@@ -51,7 +51,6 @@ public class HomeController : HumansControllerBase
             return View();
         }
 
-        // Show dashboard for logged in users
         var user = await GetCurrentUserInfoAsync();
         if (user is null)
         {
@@ -65,7 +64,6 @@ public class HomeController : HumansControllerBase
             return RedirectToAction("Index", "OnboardingWidget");
         }
 
-        // Profileless accounts go to Guest dashboard
         var hasProfile = User.HasClaim(
             Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
             Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);

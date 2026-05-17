@@ -13,22 +13,7 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.GoogleIntegration;
 
-/// <summary>
-/// Encapsulates the 4-step @nobodies.team email provisioning flow.
-/// Used by both HumanController (Admin) and TeamAdminController (Coordinators).
-/// Part of the Google Integration §15 migration tracked under issue #554 —
-/// PR #284 shipped <c>SyncSettingsService</c> first; this is the second
-/// Google Integration service to move to the Application layer.
-/// </summary>
-/// <remarks>
-/// All DbContext access has been pushed behind the cross-section service
-/// interfaces (<see cref="IUserService"/>, <see cref="IUserEmailService"/>).
-/// The Google Workspace Users API bridge is
-/// <see cref="IGoogleWorkspaceUserService"/>. Audit and notification calls
-/// go through their existing interfaces unchanged. Profile slice is read
-/// from the unified <see cref="UserInfo"/> read-model exposed by
-/// <see cref="IUserService.GetUserInfoAsync"/>.
-/// </remarks>
+/// <summary>4-step @nobodies.team email provisioning flow. Used by HumanController (Admin) and TeamAdminController (Coordinators).</summary>
 public sealed class EmailProvisioningService : IEmailProvisioningService
 {
     private readonly IUserService _userService;
@@ -77,20 +62,8 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
 
         try
         {
-            // Check DB first: reject if the address is already tied to another human in our system.
-            // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
-            // cannot silently "move" the identity off its current human.
-            //
-            // Cross-section reads — route through the owning services rather than
-            // touching _dbContext directly (design-rules §6). Each service filters
-            // UserId != userId inside the query so duplicate rows (mixed case or
-            // historical drift) can't mask a real cross-user conflict.
-            // Issue nobodies-collective/Humans#687: with UserEmail.IsGoogle as
-            // sole source of truth, any user owning the address as their Google
-            // identity also has a matching user_emails row — so the single
-            // user_emails check below covers both the previous "already linked"
-            // and "already set as GoogleEmail" rejections. The legacy
-            // _userService.GetOtherUserIdHavingGoogleEmailAsync call is gone.
+            // DB conflict check BEFORE Workspace check — prevents stale Workspace accounts from silently re-binding identity.
+            // user_emails is the single source of truth (#687).
             var conflictingEmailUserId =
                 await _userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
             if (conflictingEmailUserId is not null)
@@ -122,37 +95,17 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             if (existing is not null)
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
-            // Use real name from profile, not display/burner name.
-            // Cross-section read — route through the cached UserInfo read-model
-            // rather than a cross-domain .Include (design-rules §6).
+            // Real name from profile, not display/burner name.
             var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
             var firstName = profile?.FirstName;
             var lastName = profile?.LastName;
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: "Cannot provision account: the human must have a first and last name in their profile.");
 
-            // ──────────────────────────────────────────────────────────────
-            // ORDERING IS CRITICAL in this block.
-            //
-            // We must capture the user's personal (recovery) email BEFORE
-            // calling AddVerifiedEmailAsync, because that call switches the
-            // user's notification target to the new @nobodies.team address.
-            // If we resolved the recovery email after that point, we'd send
-            // the credentials email to the @nobodies.team mailbox — which the
-            // user can't access yet (they don't have the password).
-            //
-            // Sequence:
-            //   1. Capture recovery email  (personal address)
-            //   2. Provision Google Workspace account
-            //   3. Link @nobodies.team email  (changes notification target)
-            //   4. Send credentials to recovery email captured in step 1
-            //
-            // Do NOT reorder these steps.
-            // ──────────────────────────────────────────────────────────────
+            // ORDERING IS CRITICAL — do NOT reorder. Recovery email must be captured BEFORE AddVerifiedEmailAsync flips the notification target to @nobodies.team.
+            // 1. Capture recovery (personal) email  2. Provision Workspace  3. Link @nobodies.team  4. Send creds to recovery
 
             // Step 1: Capture recovery email BEFORE the notification target changes.
-            // Cross-section read — route through IUserEmailService rather than a
-            // cross-domain .Include on User.UserEmails (design-rules §6).
             var recoveryEmail = await ResolveRecoveryEmailAsync(userId, user.Email);
 
             // Step 2: Generate temp password and provision in Google Workspace.
@@ -161,35 +114,10 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
                 fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
-            // Step 3: Link the new email — this changes the notification target
-            // to @nobodies.team and EnsureGoogleInvariantAsync (run by the
-            // UserEmailService orchestrator) stamps IsGoogle on the new row.
-            // Do NOT move this above step 1.
-            //
-            // Issue nobodies-collective/Humans#687: the previous belt-and-suspenders
-            // _userService.SetGoogleEmailAsync write to User.GoogleEmail is gone —
-            // UserEmail.IsGoogle is sole source of truth, and the orchestrator
-            // promotes the @nobodies.team row over any personal Google row
-            // automatically (Workspace > existing-IsGoogle precedence). For the
-            // half-completed-provisioning case (UserEmail row already exists),
-            // call SetGoogleAsync explicitly to flip IsGoogle onto that row.
+            // Step 3: Link the email — flips notification target; orchestrator stamps IsGoogle (#687). Do NOT move above step 1.
             await _userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
 
-            // Re-check: if AddVerifiedEmailAsync short-circuited on
-            // ExistsForUserAsync (the row predated this provisioning attempt),
-            // the orchestrator did not run on the existing row. Promote it
-            // explicitly — same rationale as the legacy belt-and-suspenders
-            // write but via the new sole-source-of-truth surface.
-            //
-            // Half-completed-prior-provisioning case: the user (or a previous
-            // failed provisioning attempt) may have added the @nobodies.team
-            // address as an UNVERIFIED row. Workspace is now the authority for
-            // this address, so the row must be verified before we stamp
-            // IsGoogle on it (SetGoogleAsync rejects unverified rows).
-            // AdminMarkVerifiedAsync verifies the row and runs
-            // EnsureGoogleInvariantAsync, which typically stamps IsGoogle
-            // automatically; SetGoogleAsync below is the belt-and-suspenders
-            // catch for the rare case where the invariant tie-broke against us.
+            // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify + stamp IsGoogle explicitly.
             var rows = await _userEmailService.GetUserEmailsAsync(userId);
             var workspaceRow = rows.FirstOrDefault(r =>
                 string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
@@ -197,9 +125,6 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             {
                 await _userEmailService.AdminMarkVerifiedAsync(
                     userId, workspaceRow.Id, provisionedByUserId);
-
-                // Re-read: AdminMarkVerifiedAsync may have stamped IsGoogle via
-                // EnsureGoogleInvariantAsync.
                 rows = await _userEmailService.GetUserEmailsAsync(userId);
                 workspaceRow = rows.FirstOrDefault(r =>
                     string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
@@ -254,10 +179,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
     }
 
     /// <summary>
-    /// Resolves the user's personal recovery email — the verified notification-target
-    /// email, or the OAuth email as fallback. If the notification target is already
-    /// @nobodies.team, fall back to the OAuth email so credentials don't land in a
-    /// mailbox the user can't yet reach.
+    /// Returns the verified notification-target email, falling back to OAuth email. Never returns @nobodies.team (user can't yet reach it).
     /// </summary>
     private async Task<string?> ResolveRecoveryEmailAsync(Guid userId, string? oauthEmail)
     {
@@ -272,10 +194,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
     }
 
     /// <summary>
-    /// Transliterates an email prefix to ASCII by applying German-specific mappings
-    /// (ü→ue, ö→oe, ä→ae, ß→ss) first, then stripping remaining diacritics via
-    /// Unicode NFD decomposition. Returns null if the result contains non-ASCII or
-    /// invalid email local-part characters; returns empty string if input was blank.
+    /// Transliterates to ASCII: German maps (ü→ue, ö→oe, ä→ae, ß→ss) then NFD-strip diacritics. Null on invalid local-part chars; empty on blank input.
     /// </summary>
     internal static string? SanitizeEmailPrefix(string prefix)
     {

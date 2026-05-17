@@ -347,7 +347,7 @@
                                 {
                                     <span class="badge bg-warning text-dark ms-1">@Localizer["Shifts_Important"]</span>
                                 }
-                                @* Rota is server-side filtered out for non-privileged users, so the pill only renders for admin/coordinator. Matches _RotaHeader.cshtml styling. *@
+                                @* Server-filtered for non-privileged users; pill only renders for admin/coordinator. *@
                                 @if (!rotaGroup.Rota.IsVisibleToVolunteers)
                                 {
                                     <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>

@@ -26,12 +26,7 @@
     var scopeJson = System.Text.Json.JsonSerializer.Serialize(scope ?? "");
 }
 
-@*
-    Robust dropdown rendering: the <ul> is reparented to <body> on show so it
-    can never be clipped by a parent card / column / overflow rule. Position is
-    `fixed` and JS-set just below the input via getBoundingClientRect. z-index
-    is below the navbar profile menu (3000) but above all page content (auto/0).
-*@
+@* Dropdown <ul> reparented to <body> on show so no parent clips it; position fixed, z-index below navbar (3000). *@
 <div class="human-search-wrapper position-relative" style="flex: 1;">
     <input type="text"
            id="@inputId"

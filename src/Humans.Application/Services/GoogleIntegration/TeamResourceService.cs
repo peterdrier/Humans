@@ -14,25 +14,9 @@ using NodaTime;
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
-/// Application-layer service for linking and managing pre-shared Google
-/// resources for teams. Owns the <c>google_resources</c> table at the
-/// service layer (design-rules §8). Google API calls are routed through
-/// <see cref="ITeamResourceGoogleClient"/> so the <c>Humans.Application</c>
-/// project stays framework-free — the real Google-backed implementation and
-/// the dev/test stub both live in <c>Humans.Infrastructure</c>.
+/// Manages pre-shared Google resources for teams; owns the google_resources table (design-rules §8).
+/// Google API access through <see cref="ITeamResourceGoogleClient"/>. Section: GoogleIntegration (see memory/architecture/team-resources-google-integration-section.md).
 /// </summary>
-/// <remarks>
-/// Section: <c>GoogleIntegration</c>. <c>google_resources</c> is a Team
-/// Resources sub-aggregate per Teams docs, but the table is heavily
-/// Google-API-coupled — its repository
-/// (<see cref="IGoogleResourceRepository"/>, EF impl in
-/// <c>Humans.Infrastructure.Repositories.GoogleIntegration</c>) and the
-/// connector clients live in the GoogleIntegration section. To keep HUM0017
-/// happy without manufacturing a service-vs-section mismatch, the service
-/// also lives in <c>Humans.Application.Services.GoogleIntegration</c>; see
-/// <c>memory/architecture/team-resources-google-integration-section.md</c>
-/// for the rationale.
-/// </remarks>
 public sealed partial class TeamResourceService : ITeamResourceService
 {
     private readonly IGoogleResourceRepository _repository;

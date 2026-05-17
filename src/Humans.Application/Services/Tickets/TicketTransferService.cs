@@ -70,20 +70,14 @@ public sealed class TicketTransferService : ITicketTransferService
         request.VendorStepsJson = JsonSerializer.Serialize(list, VendorStepsJsonOptions);
     }
 
-    // Deliberately diverges from /api/profiles/search (the canonical
-    // _HumanSearchInput backend). That endpoint matches name+burner only;
-    // ticket-transfer senders typically have the recipient's email, not their
-    // burner name, so we keep an exact-email match path here. If/when email-
-    // exact lands in the canonical search API, this method can be retired in
-    // favour of <vc:_HumanSearchInput scope="…" /> on the Send view.
-    // See: memory/architecture/person-search.md.
+    // Diverges from /api/profiles/search to support exact-email lookup. See memory/architecture/person-search.md.
     public async Task<IReadOnlyList<ReceiverLookupResultDto>> LookupReceiversAsync(
         string query, Guid senderUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query)) return [];
         var trimmed = query.Trim();
 
-        // Email queries: exact match only, never fuzzy — don't leak addresses.
+        // Email: exact match only — don't leak addresses.
         if (trimmed.Contains('@'))
         {
             var userId = await _userEmailService.GetUserIdByExactEmailAsync(trimmed, ct);
@@ -95,8 +89,6 @@ public sealed class TicketTransferService : ITicketTransferService
                 : new[] { card };
         }
 
-        // Name queries: case-insensitive contains over BurnerName + DisplayName
-        // (the consolidated PersonSearchFields.Name bucket).
         var hits = await _userService.SearchUsersAsync(
             trimmed, PersonSearchFields.Name, MaxBurnerNameMatches, ct);
         var candidates = hits
@@ -123,9 +115,7 @@ public sealed class TicketTransferService : ITicketTransferService
         Guid userId, CancellationToken ct = default)
     {
         var visible = await _ticketRepo.GetAttendeesVisibleToUserAsync(userId, ct);
-        // GroupBy + First — defensive against any pre-existing duplicate pending rows
-        // for the same attendee (CreateRequestAsync now blocks duplicates, but the
-        // dashboard read should never crash if a stray duplicate exists).
+        // GroupBy defensive: stray duplicate pendings must not crash dashboard read.
         var pendingByAttendee = (await _transferRepo.GetBySenderAsync(userId, ct))
             .Where(r => r.Status == TicketTransferStatus.Pending)
             .GroupBy(r => r.OriginalTicketAttendeeId)
@@ -158,9 +148,6 @@ public sealed class TicketTransferService : ITicketTransferService
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct)
             ?? throw new InvalidOperationException("Attendee not found.");
 
-        // Sender must be the current holder of this attendee. Cascade rule
-        // (TicketAttendeeOwnership): attendee.MatchedUserId wins; falls back
-        // to the parent order's MatchedUserId if the attendee is unmatched.
         if (!TicketAttendeeOwnership.IsCurrentOwner(attendee, senderUserId))
             throw new InvalidOperationException("You can only transfer tickets you currently hold.");
 
@@ -169,17 +156,11 @@ public sealed class TicketTransferService : ITicketTransferService
 
         var receiverInfo = await _userService.GetUserInfoAsync(dto.ReceiverUserId, ct)
             ?? throw new InvalidOperationException("Receiver user not found.");
-        // Defense-in-depth: BuildReceiverCardAsync filters at the lookup layer, but
-        // Submit accepts a direct POST with a crafted ReceiverUserId. Receivers
-        // MUST have a legal name on file — the transfer snapshot records it onto
-        // the reissued ticket. Wording matches the not-found case above so a
-        // tampered POST learns nothing about why the recipient was rejected.
+        // Defense-in-depth: receiver MUST have legal name; mirror not-found message to avoid leaking why.
         if (!receiverInfo.HasRequiredNameFields)
             throw new InvalidOperationException("Receiver user not found.");
         var receiverProfile = receiverInfo.Profile!;
-        // No double-submits: refuse if there's already a pending transfer from this
-        // sender for this attendee. ToDictionary in GetMyAttendeesAsync would crash
-        // on duplicates, and the legitimate UX hides the Send button while pending.
+        // Block duplicate pendings (UX hides Send; ToDictionary would crash on dupes).
         var existingPending = (await _transferRepo.GetBySenderAsync(senderUserId, ct))
             .Any(r => r.OriginalTicketAttendeeId == dto.OriginalAttendeeId
                 && r.Status == TicketTransferStatus.Pending);
@@ -277,8 +258,7 @@ public sealed class TicketTransferService : ITicketTransferService
 
         var now = _clock.GetCurrentInstant();
 
-        // Vendor writeback (Option B). On any vendor failure, fall back to
-        // Option C (mark Approved + record vendor failure for admin to fix in dashboard).
+        // Option B: vendor writeback; falls back to Option C on failure.
         await WriteToVendorAsync(request, ct);
 
         request.Status = TicketTransferStatus.Approved;
@@ -292,10 +272,7 @@ public sealed class TicketTransferService : ITicketTransferService
         catch (Exception ex) when (request.VendorResult is
             TicketTransferVendorResult.Succeeded or TicketTransferVendorResult.VoidSucceededIssueFailed)
         {
-            // Vendor side committed but the local request row failed to persist.
-            // Surface the partial state so an admin can reconcile manually — the new
-            // TicketAttendee row may already exist (Succeeded) and the original is voided
-            // at the vendor (both Succeeded and VoidSucceededIssueFailed paths).
+            // Vendor committed but local persist failed — surface for manual reconcile.
             _logger.LogError(ex,
                 "Transfer {TransferId} vendor write succeeded ({VendorResult}) but request UpdateAsync failed; manual reconcile required",
                 request.Id, request.VendorResult);
@@ -363,9 +340,7 @@ public sealed class TicketTransferService : ITicketTransferService
                 .OrderBy(s => s, StringComparer.Ordinal).ToList()
             : (IReadOnlyList<string>)[];
 
-        // Cards fall back to a minimal stub if a profile somehow can't be built
-        // (e.g. user soft-deleted between request and admin review). The row's
-        // snapshot fields still carry the names we need.
+        // Stub cards if profile build fails (e.g. user soft-deleted); snapshot carries names.
         return new TicketTransferDetailDto(
             Row: row,
             SenderCard: senderCard ?? StubCard(request.SenderUserId, row.SenderDisplayName),
@@ -444,9 +419,7 @@ public sealed class TicketTransferService : ITicketTransferService
             return await BuildRowDtoAsync(request, ct);
         }
 
-        // Vendor issued the new ticket. From here local work must not throw
-        // unrecorded — if it does, the next retry would consume the same hold
-        // again. Wrap in try/catch and audit any local failure.
+        // Vendor issued — any local failure beyond here must be audited (hold is consumed).
         try
         {
             await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
@@ -513,15 +486,13 @@ public sealed class TicketTransferService : ITicketTransferService
         return await BuildRowDtoAsync(request, ct);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
     private async Task WriteToVendorAsync(TicketTransferRequest request, CancellationToken ct)
     {
         var attendee = request.OriginalTicketAttendee
             ?? await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
             ?? throw new InvalidOperationException("Original attendee missing during vendor writeback.");
 
-        // Sub-step 1: void the original (with hold so reissue can't race a sold-out event).
+        // 1: void to hold (prevents sold-out race on reissue).
         VoidIssuedTicketResult voidResult;
         try
         {
@@ -554,7 +525,7 @@ public sealed class TicketTransferService : ITicketTransferService
             return;
         }
 
-        // Sub-step 2: issue the replacement against the hold.
+        // 2: issue replacement against hold.
         VendorTicketDto issued;
         try
         {
@@ -591,20 +562,14 @@ public sealed class TicketTransferService : ITicketTransferService
                 "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained",
                 request.Id, voidResult.HoldId);
 
-            // Vendor confirmed the void; mirror that locally so the Sender's
-            // homepage card flips immediately. The reissue half failed — the
-            // Receiver does not gain a new ticket here, but the original is
-            // dead at the vendor and must read dead locally too.
+            // Void succeeded at vendor; mirror locally so Sender's card flips. Reissue failed.
             attendee.Status = TicketAttendeeStatus.Void;
             await _ticketRepo.UpsertAttendeeAsync(attendee, ct);
             _ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
             return;
         }
 
-        // Sub-step 3: atomically write both attendee rows (new Receiver Valid + original
-        // flipped to Void) in one DbContext + one SaveChangesAsync, so a mid-batch failure
-        // can't leave the DB briefly showing both Sender and Receiver holding a Valid
-        // ticket while the vendor has already committed the void+reissue.
+        // 3: write both attendee rows atomically (one SaveChanges) so no Valid-on-both window.
         var now = _clock.GetCurrentInstant();
         attendee.Status = TicketAttendeeStatus.Void;
         await _ticketRepo.UpsertAttendeesAsync([
@@ -643,10 +608,7 @@ public sealed class TicketTransferService : ITicketTransferService
     private async Task<ReceiverLookupResultDto?> BuildReceiverCardAsync(Guid userId, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        // Receiver Lookup Contract (docs/features/tickets/ticket-transfer.md):
-        // recipients must have a legal name on file — the transfer snapshot records
-        // it onto the reissued ticket. Suspension/approval state isn't relevant
-        // to a transfer recipient.
+        // Receiver Lookup Contract: legal name required. See docs/features/tickets/ticket-transfer.md.
         if (info is null || !info.HasRequiredNameFields) return null;
         var profile = info.Profile!;
         var primary = await _userEmailService.GetPrimaryEmailAsync(userId, ct);

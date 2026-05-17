@@ -50,8 +50,6 @@ public sealed class ExpensesController : HumansControllerBase
         _logger = logger;
     }
 
-    // ───────────────────────────── 6.1  Index ────────────────────────────────
-
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
@@ -90,8 +88,6 @@ public sealed class ExpensesController : HumansControllerBase
             });
         }
     }
-
-    // ───────────────────────────── 6.2  New ──────────────────────────────────
 
     [HttpGet("New")]
     public async Task<IActionResult> New()
@@ -146,8 +142,6 @@ public sealed class ExpensesController : HumansControllerBase
         }
     }
 
-    // ───────────────────────────── 6.3  Detail ───────────────────────────────
-
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Detail(Guid id)
     {
@@ -183,8 +177,6 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
     }
-
-    // ───────────────────────────── 6.4  Edit ─────────────────────────────────
 
     [HttpGet("{id:guid}/Edit")]
     public async Task<IActionResult> Edit(Guid id)
@@ -249,8 +241,6 @@ public sealed class ExpensesController : HumansControllerBase
         await PopulateEditModelAsync(model, report);
         return View(model);
     }
-
-    // ─────────────────────── 6.4 (continued) — Line add/edit/remove ──────────
 
     [HttpPost("{id:guid}/Lines/Add")]
     [ValidateAntiForgeryToken]
@@ -324,8 +314,6 @@ public sealed class ExpensesController : HumansControllerBase
         return RedirectToAction(nameof(Edit), new { id });
     }
 
-    // ─────────────────────── 6.4 (continued) — Attachment upload/remove ──────
-
     [HttpPost("{id:guid}/Lines/{lineId:guid}/Attach")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
@@ -380,8 +368,6 @@ public sealed class ExpensesController : HumansControllerBase
         return RedirectToAction(nameof(Edit), new { id });
     }
 
-    // ───────────────────────────── 6.5  Submit ───────────────────────────────
-
     [HttpPost("{id:guid}/Submit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(Guid id)
@@ -402,8 +388,6 @@ public sealed class ExpensesController : HumansControllerBase
         return RedirectToAction(nameof(Detail), new { id });
     }
 
-    // ───────────────────────────── 6.6  Withdraw ─────────────────────────────
-
     [HttpPost("{id:guid}/Withdraw")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
@@ -421,8 +405,6 @@ public sealed class ExpensesController : HumansControllerBase
         return RedirectToAction(nameof(Detail), new { id });
     }
 
-    // ───────────────────────────── 6.7  IBAN modal ───────────────────────────
-
     [HttpGet("{id:guid}/Iban")]
     public async Task<IActionResult> Iban(Guid id)
     {
@@ -433,7 +415,6 @@ public sealed class ExpensesController : HumansControllerBase
 
             var report = await _service.GetAsync(id);
             if (report is null) return NotFound();
-            // Only the submitter may set their own IBAN via this route
             if (report.SubmitterUserId != user.Id) return Forbid();
 
             var iban = await _service.GetSubmitterIbanViewAsync(user.Id);
@@ -482,8 +463,6 @@ public sealed class ExpensesController : HumansControllerBase
         return View(model);
     }
 
-    // ───────────────────────────── 6.8  Attachment stream ────────────────────
-
     [HttpGet("Attachment/{attachmentId:guid}")]
     public async Task<IActionResult> Attachment(Guid attachmentId)
     {
@@ -492,12 +471,7 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            // Single source of truth for visibility: load the owning report and ask
-            // the View handler. Curated-queue scans drifted from the handler's grant
-            // scope (e.g. coordinators View any report in their category regardless
-            // of status, but the queues stopped at Submitted+CoordinatorEndorsed).
-            // NotFound for both "no such attachment" and "no View permission" so we
-            // don't leak attachment existence to unauthorized callers.
+            // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
             var owningReport = await _service.GetReportOwningAttachmentAsync(attachmentId);
             if (owningReport is null) return NotFound();
 
@@ -516,8 +490,6 @@ public sealed class ExpensesController : HumansControllerBase
             return NotFound();
         }
     }
-
-    // ───────────────────────────── 7.5  Coordinator queue ────────────────────
 
     [HttpGet("Coordinator")]
     public async Task<IActionResult> Coordinator()
@@ -538,8 +510,6 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
     }
-
-    // ───────────────────────────── 7.6  Endorse / CoordinatorReject ──────────
 
     [HttpPost("{id:guid}/Endorse")]
     [ValidateAntiForgeryToken]
@@ -593,8 +563,6 @@ public sealed class ExpensesController : HumansControllerBase
         return RedirectToAction(nameof(Coordinator));
     }
 
-    // ───────────────────────────── 7.7  Review queue (FinanceAdmin) ──────────
-
     [HttpGet("Review")]
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> Review()
@@ -612,8 +580,6 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
     }
-
-    // ───────────────────────────── 7.8  Approve / Reject (FinanceAdmin) ──────
 
     [HttpPost("{id:guid}/Approve")]
     [ValidateAntiForgeryToken]
@@ -669,8 +635,6 @@ public sealed class ExpensesController : HumansControllerBase
         return RedirectToAction(nameof(Review));
     }
 
-    // ──────────────────────────── 9.3  SEPA generate ─────────────────────────
-
     [HttpPost("Sepa/Generate")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
@@ -709,10 +673,7 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Review));
         }
 
-        // Build the XML BEFORE marking reports as SepaSent.
-        // If XML generation throws, reports stay in Approved and the treasurer can retry.
-        // If MarkSepaSentAsync fails after XML succeeds, the response is not sent
-        // and the treasurer can retry — no orphaned-XML problem.
+        // XML before flip so failure at either step leaves a retry-safe state.
         var now = _clock.GetCurrentInstant();
         var xml = _sepaBuilder.BuildPain001(_sepaConfig.Value, now, eligible);
 
@@ -749,14 +710,7 @@ public sealed class ExpensesController : HumansControllerBase
         return result;
     }
 
-    // ──────────────────────────── Private helpers ─────────────────────────────
-
-    /// <summary>
-    /// Resolves submitter user ids to display names for queue rendering. Prefers
-    /// <c>Profile.BurnerName</c> (per <c>memory/architecture/burnername-is-the-display-name.md</c>);
-    /// falls back to <c>User.DisplayName</c> when no profile exists or BurnerName is blank,
-    /// and to a sentinel when neither resolves.
-    /// </summary>
+    /// <summary>Submitter id → display name (BurnerName → DisplayName → sentinel).</summary>
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports)
     {

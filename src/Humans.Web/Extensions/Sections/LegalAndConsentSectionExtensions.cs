@@ -21,17 +21,11 @@ internal static class LegalAndConsentSectionExtensions
 {
     internal static IServiceCollection AddLegalAndConsentSection(this IServiceCollection services)
     {
-        // Legal document section — §15 repository pattern (issue #547a).
-        // ILegalDocumentRepository owns legal_documents + document_versions and
-        // is shared across AdminLegalDocumentService and LegalDocumentSyncService.
-        // GitHub I/O lives behind IGitHubLegalDocumentConnector in Infrastructure
-        // so Application-side services stay free of Octokit.
+        // Legal documents — see #547a. GitHub I/O behind IGitHubLegalDocumentConnector keeps Application free of Octokit.
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();
         services.AddScoped<IGitHubLegalDocumentConnector, GitHubLegalDocumentConnector>();
 
-        // T-04: Inner LegalDocumentSyncService registered keyed under
-        // CachingLegalDocumentSyncService.InnerServiceKey; unkeyed
-        // ILegalDocumentSyncService resolves to the Singleton decorator.
+        // Keyed-Scoped inner + Singleton decorator.
         services.AddKeyedScoped<ILegalDocumentSyncService, LegalLegalDocumentSyncService>(
             CachingLegalDocumentSyncService.InnerServiceKey);
         services.AddSingleton<CachingLegalDocumentSyncService>();
@@ -42,36 +36,19 @@ internal static class LegalAndConsentSectionExtensions
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
-        // Post-#587: the TrackedCache base implements IHostedService and drives
-        // WarmAllAsync at startup because the decorator's base ctor passes
-        // warmOnStartup: true. Register the same Singleton instance as a
-        // hosted service so the host calls StartAsync — no bespoke warmup
-        // hosted service required.
+        // TrackedCache StartAsync drives WarmAllAsync (warmOnStartup: true) — see #587.
         services.AddHostedService(sp => sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
-        // SaveChanges interceptor — fires the wholesale Legal-cache flush
-        // whenever EF persists a write to legal_documents or document_versions.
-        // Registered Singleton so the same instance is added to both AddDbContext
-        // and AddDbContextFactory option pipelines.
+        // Singleton — same instance registered into both AddDbContext and AddDbContextFactory pipelines.
         services.AddSingleton<LegalDocumentSaveChangesInterceptor>();
 
         services.AddScoped<IAdminLegalDocumentService, LegalAdminLegalDocumentService>();
         services.AddScoped<ILegalDocumentService, LegalLegalDocumentService>();
 
-        // Legal & Consent section — ConsentService §15 repository pattern (issue #547).
-        // consent_records is append-only per design-rules §12. IConsentRepository
-        // is Singleton (IDbContextFactory-based).
+        // ConsentService — see #547. consent_records is append-only (design-rules §12).
         services.AddSingleton<IConsentRepository, ConsentRepository>();
 
-        // T-04: Two-layer cache. Inner ConsentService registered keyed under
-        // CachingConsentService.InnerServiceKey; unkeyed IConsentService
-        // resolves to the Singleton decorator. SYNCHRONOUS invalidation on
-        // SubmitConsentAsync is enforced inline in the decorator. Pattern
-        // mirrors UsersSectionExtensions: keyed IConsentService registration
-        // owns the lifecycle, unkeyed ConsentConsentService forwards to the
-        // keyed registration via cast, and IUserDataContributor resolves the
-        // unkeyed concrete type so the GdprExportDependencyInjectionTests'
-        // factory replacement still applies cleanly.
+        // Two-layer cache: keyed inner + Singleton decorator. Unkeyed concrete forwards via cast so IUserDataContributor resolves the inner cleanly for GDPR-export tests.
         services.AddKeyedScoped<IConsentService, ConsentConsentService>(
             CachingConsentService.InnerServiceKey);
         services.AddScoped<ConsentConsentService>(sp =>
@@ -88,10 +65,7 @@ internal static class LegalAndConsentSectionExtensions
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingConsentService>());
 
-        // Post-#587: TrackedCache base implements IHostedService. Register the
-        // Singleton instance as a hosted service for symmetry with the other
-        // caching decorators; with warmOnStartup: false StartAsync is a no-op
-        // and the cache stays lazy-per-key.
+        // Hosted for symmetry; warmOnStartup: false so StartAsync is a no-op.
         services.AddHostedService(sp => sp.GetRequiredService<CachingConsentService>());
 
         services.AddScoped<SyncLegalDocumentsJob>();

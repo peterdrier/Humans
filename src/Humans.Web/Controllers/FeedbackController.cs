@@ -359,7 +359,6 @@ public class FeedbackController : HumansControllerBase
             .ToList();
 
         // Include currently assigned team even if inactive, to prevent silent clearing.
-        // The (inactive) suffix is rendered conditionally in the view.
         if (viewModel.AssignedToTeamId.HasValue &&
             teamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value)
             && teamsById.TryGetValue(viewModel.AssignedToTeamId.Value, out var inactiveTeam))

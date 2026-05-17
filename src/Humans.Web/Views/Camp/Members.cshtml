@@ -17,9 +17,7 @@
 <vc:temp-data-alerts />
 
 <div class="row">
-    @* Wide column — Roles panel needs the horizontal space. *@
     <div class="col-md-8">
-        @* Per-camp roles panel (issue nobodies-collective#489) *@
         @if (Model.RolesPanel is not null)
         {
             <div class="card mb-4">
@@ -59,7 +57,6 @@
                                     <div class="text-muted small mb-2">@Html.SanitizedMarkdown(role.Description)</div>
                                 }
 
-                                @* Filled slots — render in service-supplied order (AssignedAt) *@
                                 @foreach (var slot in role.FilledSlots)
                                 {
                                     <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
@@ -76,7 +73,6 @@
                                     </div>
                                 }
 
-                                @* Empty slots — search + assign (adds the human to the camp if not already a member). *@
                                 @if (Model.RolesPanel.CanManage)
                                 {
                                     var alreadyInRole = role.FilledSlots.Select(s => s.UserId).ToList();
@@ -108,7 +104,6 @@
     </div>
 
     <div class="col-md-4">
-        @* Add active member (issue nobodies-collective#489) *@
         @if (Model.RolesPanel is not null && Model.RolesPanel.CanManage)
         {
             <div class="card mb-4">
@@ -131,7 +126,6 @@
             </div>
         }
 
-        @* Per-season membership (pending requests + active members) *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-users-gear me-1"></i> Humans this season (@Model.Year)
@@ -152,8 +146,7 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
                                 <vc:human user-id="@pending.UserId" />
                                 <div class="d-flex gap-2">
-                                    @* Defense-in-depth: only render approve/reject when status is actually Pending.
-                                       Service-side guard in CampService.ApproveCampMemberAsync remains. *@
+                                    @* Defense-in-depth: only render approve/reject for Pending; service-side guard still applies. *@
                                     @if (pending.Status == CampMemberStatus.Pending)
                                     {
                                         <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
@@ -235,7 +228,6 @@
             </div>
         </div>
 
-        @* Lead Management *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-user-shield me-1"></i> Leads

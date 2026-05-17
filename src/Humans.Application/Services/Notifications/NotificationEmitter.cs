@@ -12,18 +12,12 @@ using Humans.Application.Interfaces.Profiles;
 namespace Humans.Application.Services.Notifications;
 
 /// <summary>
-/// Minimal <see cref="INotificationEmitter"/> implementation that persists a
-/// notification to a pre-resolved list of recipient user IDs. Has no
+/// Persists a notification to a pre-resolved list of recipient user IDs. Has no
 /// dependency on <see cref="INotificationRecipientResolver"/>, so
-/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> can
-/// safely inject this interface without closing a DI cycle back through
-/// <see cref="INotificationService"/>.
+/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> can inject
+/// this without closing a DI cycle through <see cref="INotificationService"/>.
+/// <see cref="NotificationService"/> delegates here so dispatch logic lives in one place.
 /// </summary>
-/// <remarks>
-/// <see cref="NotificationService"/> delegates its own
-/// <see cref="INotificationEmitter.SendAsync"/> implementation to this type,
-/// so there is only one copy of the dispatch logic.
-/// </remarks>
 public sealed class NotificationEmitter : INotificationEmitter
 {
     private readonly INotificationRepository _repo;

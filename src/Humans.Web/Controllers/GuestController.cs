@@ -68,7 +68,6 @@ public class GuestController : HumansControllerBase
             return Challenge();
         }
 
-        // Route through the onboarding widget until the user has completed every required step.
         var step = await _widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
         if (step != OnboardingWidgetStep.Complete)
         {
@@ -86,8 +85,6 @@ public class GuestController : HumansControllerBase
             return View(new GuestDashboardViewModel { DisplayName = user.BurnerName });
         }
     }
-
-    // ─── Communication Preferences ───────────────────────────────────
 
     // WARNING: [AllowAnonymous] — accepts unauthenticated requests with a valid unsubscribe
     // token (utoken). The token scopes access to THIS page only. Do not add links to other
@@ -147,8 +144,6 @@ public class GuestController : HumansControllerBase
 
     private static string GetPreferenceUpdateSource(bool fromToken) => fromToken ? "MagicLink" : "Guest";
 
-    // ─── GDPR Data Export ────────────────────────────────────────────
-
     [HttpGet("Guest/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
@@ -189,8 +184,6 @@ public class GuestController : HumansControllerBase
         return payload;
     }
 
-    // ─── GDPR Deletion Request ─────────────────────────────────────
-
     [HttpPost("Guest/RequestDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
@@ -201,10 +194,7 @@ public class GuestController : HumansControllerBase
 
         try
         {
-            // Single orchestrator for both profile and profileless deletion
-            // requests (issue nobodies-collective/Humans#685). Ticket-hold,
-            // membership/role revoke, audit, email, and shift-authorization
-            // invalidation all live in AccountDeletionService.
+            // Single orchestrator for profile + profileless deletion (see #685).
             var result = await _accountDeletionService.RequestDeletionAsync(user.Id);
             var flash = GuestDeletionRequestFlash.From(result);
             if (!flash.Success)
@@ -246,8 +236,6 @@ public class GuestController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    // ─── Private Helpers ─────────────────────────────────────────────
-
     private async Task<GuestDashboardViewModel> BuildDashboardViewModelAsync(UserInfo user)
     {
         var viewModel = new GuestDashboardViewModel
@@ -255,14 +243,12 @@ public class GuestController : HumansControllerBase
             DisplayName = user.BurnerName,
         };
 
-        // Ticket status: check for matched ticket orders and attendees
         var hasTickets = await _ticketQueryService.HasTicketAttendeeMatchAsync(user.Id);
 
         if (hasTickets)
         {
             viewModel.HasTickets = true;
 
-            // Get ticket details for display
             var orderSummaries = await _ticketQueryService.GetUserTicketOrderSummariesAsync(user.Id);
             viewModel.TicketOrders = orderSummaries
                 .Select(s => new GuestTicketOrderSummary
@@ -276,7 +262,6 @@ public class GuestController : HumansControllerBase
                 .ToList();
         }
 
-        // Deletion request status
         viewModel.IsDeletionPending = user.IsDeletionPending;
         viewModel.DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc();
         viewModel.DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc();
@@ -285,22 +270,13 @@ public class GuestController : HumansControllerBase
         return viewModel;
     }
 
-    /// <summary>
-    /// Resolves the user ID from the current session, or falls back to an unsubscribe token.
-    /// Returns <c>UserId = null</c> if neither is available. <c>FromToken</c> is true only
-    /// when the resolution came from a valid <paramref name="utoken"/>; callers use this to
-    /// distinguish anonymous magic-link-driven updates (<c>UpdateSource = "MagicLink"</c>) from
-    /// session-driven ones (<c>UpdateSource = "Guest"</c>). <c>TokenCategory</c> carries the
-    /// category encoded in the token so the GET path can pre-focus that row.
-    /// </summary>
+    /// <summary>Resolves user from session, else unsubscribe token. FromToken=true → MagicLink source.</summary>
     private async Task<(Guid? UserId, MessageCategory? TokenCategory, bool FromToken)> ResolveUserIdOrTokenAsync(string? utoken)
     {
-        // Prefer authenticated session
         var user = await GetCurrentUserInfoAsync();
         if (user is not null)
             return (user.Id, null, false);
 
-        // Fall back to unsubscribe token
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);
 
@@ -308,7 +284,6 @@ public class GuestController : HumansControllerBase
         if (result.Status != TokenValidationStatus.Valid)
             return (null, null, false);
 
-        // Verify user still exists
         var exists = await FindUserInfoByIdAsync(result.UserId);
         return exists is not null
             ? (result.UserId, result.Category, true)

@@ -80,9 +80,7 @@ public class AccountController : HumansControllerBase
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        // Log once per sign-in whether the Google avatar URL was provided. We capture the
-        // URL on User.ProfilePictureUrl but never render it — see issue #532 and the
-        // "Import my Google photo" button on /Profile/Edit.
+        // see #532 — capture Google avatar URL but never render it; user opts in via "Import my Google photo".
         var googlePictureClaim = info.Principal.FindFirstValue("urn:google:picture");
         if (!string.IsNullOrEmpty(googlePictureClaim))
         {
@@ -93,7 +91,6 @@ public class AccountController : HumansControllerBase
             _logger.LogInformation("Google avatar URL not captured for {Provider} sign-in (claim missing)", info.LoginProvider);
         }
 
-        // Sign in the user with this external login provider if the user already has a login
         var result = await _signInManager.ExternalLoginSignInAsync(
             info.LoginProvider,
             info.ProviderKey,
@@ -102,7 +99,6 @@ public class AccountController : HumansControllerBase
 
         if (result.Succeeded)
         {
-            // Update last login time
             var existingUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
             if (existingUser is not null)
             {
@@ -116,17 +112,11 @@ public class AccountController : HumansControllerBase
             return RedirectToLocal(returnUrl);
         }
 
-        // No existing login — try to link to an existing account by email
         var email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         var name = info.Principal.FindFirstValue(ClaimTypes.Name);
         var pictureUrl = info.Principal.FindFirstValue("urn:google:picture");
 
-        // Link-while-signed-in branch: the user is already authenticated
-        // (e.g. via magic link) and just clicked "Link Google account" on
-        // /Profile/Me/Emails. Attach the OAuth identity to the current user
-        // rather than searching by email or creating a new user. This must
-        // run before the lockout, email-match, and create-new-user branches
-        // so a fresh OAuth email never spawns a duplicate account.
+        // Link-while-signed-in must precede lockout/email-match/create — otherwise a fresh OAuth email spawns a duplicate.
         if (User.Identity?.IsAuthenticated == true)
         {
             var currentUser = await _userManager.GetUserAsync(User);
@@ -158,12 +148,7 @@ public class AccountController : HumansControllerBase
                     info.LoginProvider, currentUser.Id,
                     string.Join(", ", addLinkResult.Errors.Select(e => e.Description)));
 
-                // AddLoginAsync failed for an already-authenticated user. Do NOT
-                // fall through to the lockedout / email-match / create-new-user
-                // branches below — those exist for the unauthenticated flow and
-                // can produce a duplicate User row when the caller is already
-                // signed in. Surface the failure as an error toast on the emails
-                // page instead.
+                // Don't fall through — unauthenticated branches would spawn a duplicate User. Surface as error toast.
                 SetError(_localizer["EmailGrid_LinkFailed"].Value);
                 return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/Profile/Me/Emails");
             }
@@ -171,19 +156,7 @@ public class AccountController : HumansControllerBase
 
         if (result.IsLockedOut)
         {
-            // Lockout-relink: a merge or deletion locked out the source User
-            // that owns this OAuth login (UserRepository sets
-            // LockoutEnd = MaxValue on merge/anonymize). Move the login to the
-            // active User identified by the OAuth claim email so the human
-            // can keep signing in via Google. See Auth.md.
-            //
-            // Wrapped in try/catch because UserManager calls EF Core which can
-            // throw DbException / DbUpdateException / timeouts. Without the
-            // wrapper, RemoveLoginAsync succeeding then AddLoginAsync throwing
-            // would orphan the OAuth login (removed from source, not present
-            // on target) and the user's next sign-in would create a fresh
-            // duplicate. Catching and falling through to the lockedout
-            // redirect leaves the source row intact for retry.
+            // Lockout-relink: move OAuth login from merged/anonymized source to active target (see Auth.md). Try/catch so a mid-step throw doesn't orphan the login.
             try
             {
                 if (!string.IsNullOrEmpty(email))
@@ -242,7 +215,6 @@ public class AccountController : HumansControllerBase
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        // Account linking: check if a user already exists with this email
         var existingByEmail = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
         if (existingByEmail is not null)
         {
@@ -280,7 +252,6 @@ public class AccountController : HumansControllerBase
             }
         }
 
-        // No existing account — create a new one.
         var newUserId = Guid.NewGuid();
         var user = new User
         {
@@ -300,11 +271,7 @@ public class AccountController : HumansControllerBase
             return View(nameof(Login));
         }
 
-        // Link the OAuth login. If linking fails after Create succeeded, undo the
-        // user creation to avoid an orphan User with no auth method (would be
-        // unreachable via either OAuth or magic link). RequireUniqueEmail = false
-        // means Identity no longer rejects the partial create on its own — we
-        // must clean up explicitly.
+        // Roll back the just-created User on link failure — RequireUniqueEmail=false leaves us responsible for cleanup.
         var oauthLinkResult = await _userManager.AddLoginAsync(user, info);
         if (!oauthLinkResult.Succeeded)
         {
@@ -325,15 +292,7 @@ public class AccountController : HumansControllerBase
             return View(nameof(Login));
         }
 
-        // Create the OAuth-linked UserEmail row via the reconcile entry point.
-        // For a freshly created user this hits the NewRowCreated branch (no
-        // existing rows, no cross-user collision unless the address is already
-        // verified by another user). On reconcile throw OR a CrossUserBlocked
-        // outcome (another user verified-holds the address and the provider's
-        // email_verified claim is false — so reconcile refused to displace
-        // and did NOT create a UserEmail row), roll back the User to avoid an
-        // orphan that's unreachable via either OAuth or magic link. Symmetric
-        // to CompleteSignup's cleanup.
+        // Reconcile creates the UserEmail row; on throw or CrossUserBlocked, roll back the User to avoid an unreachable orphan.
         try
         {
             var reconcile = await _userEmailService.ReconcileOAuthIdentityAsync(
@@ -343,13 +302,7 @@ public class AccountController : HumansControllerBase
                 email,
                 claimEmailVerified: ReadEmailVerifiedClaim(info));
 
-            // CrossUserBlocked: reconcile returned normally with no UserEmail
-            // row created (another user verified-holds the address and the
-            // provider's email_verified claim is false). The service has
-            // already written the OAuthRenameCollisionBlocked audit + the
-            // mother-of-all LogError — we don't re-log here. Roll back the
-            // newly-created User + AspNetUserLogins row so we don't leave
-            // an un-notifiable orphan.
+            // CrossUserBlocked: service already audited + logged; roll back the orphan User + login.
             if (reconcile.Outcome == ReconcileOutcome.CrossUserBlocked)
             {
                 await TryDeleteOrphanUserAsync(user);
@@ -386,7 +339,7 @@ public class AccountController : HumansControllerBase
             return View(nameof(Login));
         }
 
-        // Issue #635 (§15i): Stub Profile invariant — every User has a Profile.
+        // see #635 (§15i) — Stub Profile invariant.
         await _profileService.EnsureStubProfileAsync(user.Id);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
@@ -394,16 +347,7 @@ public class AccountController : HumansControllerBase
         return RedirectToLocal(returnUrl);
     }
 
-    /// <summary>
-    /// Calls <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/> for
-    /// every OAuth-success path (existing-user sign-in, already-authenticated
-    /// link, lockout-relink, email-match link). Sign-in must never block on
-    /// reconcile failures — every exception is logged and swallowed. The
-    /// service owns every audit row for the OAuth path; this controller writes
-    /// none. The new-user creation path uses the reconcile result to decide
-    /// whether to roll back, so it calls reconcile inline rather than via
-    /// this helper.
-    /// </summary>
+    // Reconcile wrapper for OAuth-success paths — sign-in never blocks on failure (swallow + log).
     private async Task TryReconcileOAuthIdentityAsync(Guid userId, ExternalLoginInfo info)
     {
         var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
@@ -425,10 +369,7 @@ public class AccountController : HumansControllerBase
         }
         catch (OAuthReconcileConcurrencyException race)
         {
-            // The verified-email partial unique index caught a concurrent
-            // insert that beat the reconcile pre-check. Rare race; surface a
-            // structured log so admins can investigate via the EmailProblems
-            // scanner. Sign-in continues (never blocks).
+            // Verified-email partial unique index caught a concurrent insert (rare race). Log; sign-in continues.
             _logger.LogError(race,
                 "OAuth reconcile race for user {UserId} " +
                 "(provider={Provider}, sub={Sub}, claimEmail={Email}); " +
@@ -443,13 +384,7 @@ public class AccountController : HumansControllerBase
         }
     }
 
-    /// <summary>
-    /// Best-effort rollback of a freshly-created user when the OAuth signup
-    /// path fails after <see cref="UserManager{TUser}.CreateAsync"/> +
-    /// <see cref="UserManager{TUser}.AddLoginAsync"/> succeeded. A failure
-    /// here leaves an orphan that's unreachable via either OAuth or magic
-    /// link — logged at Error so admins can clean up manually.
-    /// </summary>
+    // Best-effort rollback after OAuth signup fails post-CreateAsync; orphan logged at Error for manual cleanup.
     private async Task TryDeleteOrphanUserAsync(User user)
     {
         try
@@ -464,13 +399,7 @@ public class AccountController : HumansControllerBase
         }
     }
 
-    /// <summary>
-    /// Reads the OIDC <c>email_verified</c> boolean from the principal. Google
-    /// surfaces it via the <c>email_verified</c> claim (mapped in
-    /// <c>Program.cs</c>). Returns <c>false</c> when the claim is missing or
-    /// unparseable — the displacement gate in the service treats this as
-    /// "don't displace another user".
-    /// </summary>
+    // OIDC email_verified — missing/unparseable returns false (displacement gate then refuses to displace).
     private static bool ReadEmailVerifiedClaim(ExternalLoginInfo info)
     {
         var raw = info.Principal.FindFirstValue("email_verified");
@@ -497,8 +426,7 @@ public class AccountController : HumansControllerBase
             _logger.LogError(ex, "Error sending magic link for {Email}", email);
         }
 
-        // Always show "check your email" — no account enumeration
-        // Calculate expiry time in Europe/Madrid timezone for display
+        // Always show "check your email" — no account enumeration.
         var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var expiryInstant = _clock.GetCurrentInstant() + Duration.FromMinutes(15);
         var expiryLocal = expiryInstant.InZone(madridZone);
@@ -509,8 +437,7 @@ public class AccountController : HumansControllerBase
     [HttpGet]
     public IActionResult MagicLinkConfirm(Guid userId, string token, string? returnUrl = null)
     {
-        // Landing page — prevents email security scanners from consuming the token.
-        // The actual sign-in happens via POST from the landing page button.
+        // Landing page prevents email scanners from consuming the token; sign-in is POST.
         ViewData["UserId"] = userId;
         ViewData["Token"] = token;
         ViewData["ReturnUrl"] = returnUrl;

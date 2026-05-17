@@ -12,11 +12,7 @@
     </div>
 </div>
 
-@*
-    Search input mirrors the public /Profile/Search form so admins see the
-    same UI pattern. The action posts back to AdminList with `search`
-    preserved alongside the active status filter / sort.
-*@
+@* Mirrors public /Profile/Search; preserves filter+sort *@
 <form method="get" class="mb-4">
     <input type="hidden" name="sort" value="@Model.SortBy" />
     <input type="hidden" name="dir" value="@Model.SortDir" />

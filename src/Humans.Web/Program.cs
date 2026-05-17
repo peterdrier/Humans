@@ -40,7 +40,6 @@ using Humans.Web.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
 var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -63,24 +62,17 @@ Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
-// Validate the DI container at startup so obvious cycles and captive
-// dependencies fail fast instead of surfacing on first request. Factory-lambda
-// registrations still need explicit smoke coverage because the container can't
-// inspect arbitrary factory bodies until resolve time.
+// Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
 {
     options.ValidateOnBuild = true;
     options.ValidateScopes = true;
 });
 
-// Add services to the container
-
-// Configuration registry — auto-collects metadata about every config setting the app touches.
-// Created as a concrete instance so it can be used during startup config (before DI is built).
+// Concrete instance — used during startup config before DI is built.
 var configRegistry = new ConfigurationRegistry();
 builder.Services.AddSingleton(configRegistry);
 
-// Configure NodaTime clock
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 if (!builder.Environment.IsProduction())
 {
@@ -90,19 +82,15 @@ if (!builder.Environment.IsProduction())
     builder.Services.AddScoped<DevPersonaSeeder>();
 }
 
-// Configure JSON options with NodaTime support
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 });
 
-// Register connection string in the config registry for the Admin Configuration page
 builder.Configuration.GetRequiredSetting(
     configRegistry, "ConnectionStrings:DefaultConnection", "Database", isSensitive: true);
 
-// Configure Npgsql data source with NodaTime and dynamic JSON (for jsonb Dictionary columns).
-// Registered as a DI singleton so the connection string is resolved at service-resolution time,
-// allowing integration tests to override configuration via WebApplicationFactory.
+// Singleton so conn string resolves at service-resolution time (lets integration tests override via WebApplicationFactory).
 builder.Services.AddSingleton(sp =>
 {
     var connStr = sp.GetRequiredService<IConfiguration>()
@@ -114,36 +102,26 @@ builder.Services.AddSingleton(sp =>
     return dsb.Build();
 });
 
-// Query monitoring — singleton interceptor tracks execution counts by table + operation
 builder.Services.AddSingleton<QueryStatistics>();
 builder.Services.AddSingleton<QueryMonitoringInterceptor>();
 
-// Cache monitoring — decorator wraps real MemoryCache to track hit/miss stats per key type.
-// Register TrackingMemoryCache as both IMemoryCache (decorator) and ICacheStatsProvider (stats).
+// TrackingMemoryCache decorates MemoryCache for per-key hit/miss stats; exposed as both IMemoryCache and ICacheStatsProvider.
 builder.Services.AddSingleton<TrackingMemoryCache>(sp =>
     new TrackingMemoryCache(new MemoryCache(new MemoryCacheOptions())));
 builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 
-// EF Core + IDbContextFactory + migration runner — all wired in Infrastructure
-// so HumansDbContext stays internal to that assembly (issue #750).
+// EF/factory/migrations wired in Infrastructure so HumansDbContext stays internal — see #750.
 builder.Services.AddHumansPersistence(builder.Environment.IsDevelopment());
 
-// Persist Data Protection keys to the database so auth cookies survive container restarts
+// Persist DataProtection keys to DB so auth cookies survive container restarts.
 builder.Services.AddDataProtection()
     .PersistKeysToHumansDbContext()
     .SetApplicationName("Humans.Web");
 
-// Configure ASP.NET Core Identity
 builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     {
-        // Email uniqueness is enforced at the UserEmails layer
-        // (UserEmailService.AddEmailAsync + cross-User merge detection in
-        // AccountMergeService). After PR 1 of the email-identity-decoupling
-        // spec, User.Email is left null on new users — Identity-level
-        // uniqueness would either fire spuriously on the null column or, more
-        // likely, be a no-op. Disabling it makes the contract explicit: the
-        // UserEmail table owns email uniqueness.
+        // UserEmail table owns email uniqueness; User.Email is null on new users.
         options.User.RequireUniqueEmail = false;
         options.SignIn.RequireConfirmedEmail = false;
     })
@@ -151,9 +129,9 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     .AddDefaultTokenProviders()
     .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
 
-// Magic link tokens use DataProtection with explicit 15-minute lifetime (not Identity token providers).
+// Magic link tokens use DataProtection (15-min lifetime), not Identity token providers.
 
-// Configure cookie security policy (TLS terminated by Coolify/reverse proxy)
+// TLS terminated by Coolify/reverse proxy.
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
@@ -163,7 +141,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
 
-// Configure Authentication with Google OAuth
 builder.Services.AddAuthentication()
     .AddGoogle(options =>
     {
@@ -176,10 +153,7 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
-        // Issue nobodies-collective/Humans#697: surface Google's `email_verified`
-        // boolean as a claim so `AccountController.ExternalLoginCallback` can
-        // pass it to `IUserEmailService.ReconcileOAuthIdentityAsync`. Without
-        // the explicit MapJsonKey, the GoogleHandler discards the JSON field.
+        // MapJsonKey surfaces Google's email_verified as a claim — see #697.
         Microsoft.AspNetCore.Authentication.ClaimActionCollectionMapExtensions
             .MapJsonKey(options.ClaimActions, "email_verified", "email_verified", "boolean");
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
@@ -196,10 +170,7 @@ builder.Services.AddAuthentication()
 
                 var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                // All three categories are expected user behavior, but support needs to trace them
-                // when someone calls in. Log at Warning with the client IP so /Admin/Logs surfaces
-                // them and the event can be correlated to a user report. Stack traces dropped —
-                // the failure reason and IP are the actionable bits. See #483.
+                // Warning + client IP so /Admin/Logs traces user-reported sign-in issues — see #483.
                 if (isAccessDenied)
                 {
                     logger.LogWarning(
@@ -212,8 +183,7 @@ builder.Services.AddAuthentication()
                 }
                 else if (context.Failure is OperationCanceledException)
                 {
-                    // User closed tab / network dropped mid-callback. Same expected-user-behavior
-                    // category as access_denied / correlation. No log — see #728.
+                    // User closed tab / network dropped mid-callback — see #728.
                 }
                 else
                 {
@@ -228,29 +198,24 @@ builder.Services.AddAuthentication()
         };
     });
 
-// Configure Authorization — registers all canonical policies (see docs/authorization-inventory.md)
+// Canonical policies — see docs/authorization-inventory.md.
 builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
-// Named HttpClient used by /Profile/Me/ImportGooglePhoto to fetch the signed-in user's
-// Google avatar once on demand. Short timeout — if Google is slow we surface an error
-// rather than keeping the request hanging.
+// /Profile/Me/ImportGooglePhoto avatar fetch — short timeout, surface errors instead of hanging.
 builder.Services.AddHttpClient("GoogleAvatar", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Configure Hangfire
 builder.Services.AddHangfire((sp, config) =>
 {
     config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
         .UseRecommendedSerializerSettings();
 
-    // Skip Postgres storage in test environment — Hangfire's static GlobalConfiguration
-    // and JobStorage.Current are per-AppDomain, which conflicts with parallel
-    // WebApplicationFactory instances each pointing at different Testcontainers.
+    // Skip in Testing — Hangfire's per-AppDomain static state conflicts with parallel WebApplicationFactory + Testcontainers.
     if (!sp.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing"))
     {
         config.UsePostgreSqlStorage(options =>
@@ -269,7 +234,6 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHangfireServer();
 }
 
-// Configure OpenTelemetry
 var serviceName = "Humans.Web";
 var serviceVersion = "1.0.0";
 
@@ -296,10 +260,8 @@ builder.Services.AddOpenTelemetry()
         .AddMeter("Npgsql")
         .AddPrometheusExporter());
 
-// Register activity source for custom tracing
 builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
-// Configure Health Checks
 builder.Services.AddHealthChecks()
     .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
     .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire")
@@ -311,7 +273,6 @@ builder.Services.AddHealthChecks()
 
 builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
-// Configure Response Compression
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -324,38 +285,34 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     options.Level = CompressionLevel.Fastest;
 });
 
-// Configure Rate Limiting
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
-        // Exclude error pages — prevent rate limit cascade when error page triggers additional requests
+        // Avoid cascading rate-limits via error page re-entry.
         if (context.Request.Path.StartsWithSegments("/Home/Error", StringComparison.OrdinalIgnoreCase))
         {
             return RateLimitPartition.GetNoLimiter(string.Empty);
         }
 
-        // Exclude favicon — browsers request this automatically on every page load
         if (context.Request.Path == "/favicon.ico")
         {
             return RateLimitPartition.GetNoLimiter(string.Empty);
         }
 
-        // Exclude profile picture requests — list pages legitimately load ~30 images at once
+        // List pages legitimately load ~30 profile images at once.
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
         {
             return RateLimitPartition.GetNoLimiter(string.Empty);
         }
 
-        // Exclude SignalR hubs — long-polling fallback sends one POST per invoke,
-        // which trivially exceeds the global 100/min cap during active use.
-        // SignalR manages its own backpressure; abuse is handled via auth on the hub.
+        // SignalR long-polling trivially exceeds 100/min; hub manages own backpressure + auth.
         if (context.Request.Path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
         {
             return RateLimitPartition.GetNoLimiter(string.Empty);
         }
 
-        // Exclude local network — e2e tests and internal tooling run from 192.168.*
+        // e2e tests and internal tooling run from 192.168.*
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         if (remoteIp is not null && remoteIp.StartsWith("192.168.", StringComparison.Ordinal))
         {
@@ -414,12 +371,9 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
-// Forwarded headers (X-Forwarded-For, X-Forwarded-Proto) are enabled via
-// ASPNETCORE_FORWARDEDHEADERS_ENABLED=true in the deployment environment.
-// No explicit config needed — the app is only reachable through Traefik/Coolify
-// on internal Docker networks, so trusting any proxy is safe.
+// Forwarded headers enabled via ASPNETCORE_FORWARDEDHEADERS_ENABLED=true in deployment env.
 
-// Session (used for browser-detected timezone — no DB migration needed)
+// Session backs browser-detected timezone.
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -428,20 +382,14 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Configure Localization
 builder.Services.AddLocalization();
 
-// CORS — allow the public nobodies.team website to fetch /api/barrios.
-// Localhost / 127.0.0.1 (any port) are allowed so devs working on the
-// public site locally can hit the deployed barrios API. GuideApi remains
-// open so the PWA can fetch /api/events.
+// BarriosPublic: nobodies.team + localhost dev for /api/barrios. EventsApi: open for PWA /api/events.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BarriosPublic", policy =>
     {
-        // SetIsOriginAllowed is the sole origin gate — when set, ASP.NET's
-        // CorsService ignores the WithOrigins list entirely, so the lambda
-        // must cover all four allowed origins (prod + localhost dev).
+        // SetIsOriginAllowed overrides WithOrigins; lambda must cover all allowed origins.
         policy.SetIsOriginAllowed(origin =>
                 origin.StartsWith("http://localhost:", StringComparison.Ordinal) ||
                 origin.StartsWith("http://127.0.0.1:", StringComparison.Ordinal) ||
@@ -458,7 +406,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add Controllers with Views
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
@@ -467,12 +414,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
 
-// In Production, exclude DevLoginController from MVC's controller feature.
-// DevLoginController depends on DevPersonaSeeder, which is only registered
-// outside Production. ValidateOnBuild + ValidateScopes would otherwise fail
-// host startup, or every /dev/login/* request would 500 before its
-// IsDevAuthEnabled() guard could return NotFound. Excluding it at the feature
-// level means routes never bind in Production and the path returns a real 404.
+// DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
 if (builder.Environment.IsProduction())
 {
     mvcBuilder.ConfigureApplicationPartManager(apm =>
@@ -487,11 +429,7 @@ if (builder.Environment.IsDevelopment())
     mvcBuilder.AddRazorRuntimeCompilation();
 }
 
-// IExceptionHandler pipeline. Order matters — handlers run in registration order
-// until one returns true. Cancellation handler goes FIRST so client-abort
-// OperationCanceledExceptions don't get logged at Error level by the global
-// logger, then the logger captures everything else and returns false so
-// UseExceptionHandler("/Home/Error") still renders the error page.
+// Order matters — Cancellation handler FIRST so client-abort OCEs don't log at Error; GlobalLogging returns false so /Home/Error still renders.
 builder.Services.AddExceptionHandler<Humans.Web.ExceptionHandlers.CancellationExceptionHandler>();
 builder.Services.AddExceptionHandler<Humans.Web.ExceptionHandlers.GlobalLoggingExceptionHandler>();
 
@@ -518,17 +456,13 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
-// Initialize timezone-aware display extensions with IHttpContextAccessor
-// so all Instant.ToDisplay*() calls automatically use the user's session timezone.
+// Wire IHttpContextAccessor so Instant.ToDisplay*() picks up session timezone.
 DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
 
-// Seed the Serilog CurrentUserEnricher with the request-scoped HttpContextAccessor.
-// Done here (post-Build) so the parameterless enricher activator can read the current
-// principal off the ambient HttpContext on every log emission.
+// Post-Build so the parameterless enricher activator can read ambient HttpContext per log emission.
 CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 
-// Eagerly resolve IHumansMetrics so the background gauge-refresh timer starts
-// immediately — otherwise observable gauges emit nothing until first injection.
+// Eager resolve so the background gauge-refresh timer starts immediately.
 app.Services.GetRequiredService<IHumansMetrics>();
 
 // Localization diagnostic check
@@ -574,16 +508,10 @@ app.Services.GetRequiredService<IHumansMetrics>();
     }
 }
 
-// Configure the HTTP request pipeline
-
-// Forwarded headers must be first (for reverse proxy)
+// Must be first (reverse proxy).
 app.UseForwardedHeaders();
 
-// Request logging must wrap UseExceptionHandler so the exception handlers
-// (CancellationExceptionHandler in particular) get to set the response
-// status BEFORE Serilog's finally block records the event. With the order
-// reversed, OCEs surfaced as Error+500 because Serilog's catch observed the
-// exception in flight before the handler could swap status to 499. See #728.
+// Must wrap UseExceptionHandler so handlers swap status before Serilog records — see #728.
 app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
@@ -592,9 +520,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    // Runs the IExceptionHandler pipeline registered via AddExceptionHandler<T>()
-    // (CancellationExceptionHandler, GlobalLoggingExceptionHandler) and, if none
-    // short-circuit, re-executes the request at /Home/Error.
+    // Runs the AddExceptionHandler<T>() pipeline, then re-executes at /Home/Error if none short-circuit.
     app.UseExceptionHandler("/Home/Error");
 }
 
@@ -605,12 +531,7 @@ if (!app.Environment.IsDevelopment())
     app.UseResponseCompression();
 }
 
-// Profile pictures share the wwwroot/uploads/ mount with publicly-served
-// camp images but must NOT be reachable as static files — they're served
-// only via /Profile/Picture/{id} so the GDPR anonymization gate (DB
-// content-type) applies on every read. This middleware sits in front of
-// UseStaticFiles so direct requests under /uploads/profile-pictures/ 404
-// before the file provider sees them.
+// Block direct /uploads/profile-pictures/ before UseStaticFiles — must go through /Profile/Picture/{id} for GDPR anonymization gate.
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value;
@@ -637,7 +558,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// HTTP Security Headers
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Frame-Options", "DENY");
@@ -653,7 +573,6 @@ app.UseRouting();
 
 app.UseCors();
 
-// Rate limiting
 app.UseRateLimiter();
 
 app.UseAuthentication();
@@ -663,7 +582,6 @@ app.UseSession();
 
 app.UseRequestLocalization();
 
-// Health check endpoints
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = WriteDetailedHealthResponse
@@ -679,10 +597,8 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = _ => true // Readiness check - confirms all dependencies are available
 });
 
-// Prometheus metrics endpoint
 app.MapPrometheusScrapingEndpoint("/metrics");
 
-// Version endpoint (unauthenticated)
 app.MapGet("/api/version", () =>
 {
     var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
@@ -697,9 +613,7 @@ app.MapGet("/api/version", () =>
     return Results.Ok(new { version, commit, informationalVersion });
 }).AllowAnonymous();
 
-// Hangfire dashboard (admin only in production).
-// Skipped in Testing — MapHangfireDashboard resolves JobStorage from DI eagerly,
-// and Hangfire's static JobStorage.Current isn't set until after migrations.
+// Admin-only in prod. Skipped in Testing — JobStorage.Current isn't set until after migrations.
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.MapHangfireDashboard("/hangfire", new DashboardOptions
@@ -717,17 +631,11 @@ app.MapControllerRoute(
 app.MapRazorPages();
 app.MapHub<CityPlanningHub>("/hubs/city-planning");
 
-// Database migrations run via DatabaseMigrationHostedService (registered in
-// AddHumansPersistence), which fires during host StartAsync — before Hangfire
-// acquires its distributed locks. Boot is blocked on migration completion.
+// DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
-    // Force Hangfire global configuration to initialize (sets JobStorage.Current)
-    // before registering recurring jobs. The AddHangfire((sp, config) => ...) overload
-    // defers the config lambda until IGlobalConfiguration is resolved from DI;
-    // RecurringJob.AddOrUpdate() uses the static JobStorage.Current, so we must
-    // ensure it's set first.
+    // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
     app.Services.GetRequiredService<IGlobalConfiguration>();
     app.UseHumansRecurringJobs();
 }

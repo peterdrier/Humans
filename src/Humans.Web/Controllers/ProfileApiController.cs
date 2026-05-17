@@ -45,18 +45,12 @@ public class ProfileApiController : ApiControllerBase
         if (!q.HasSearchTerm())
             return Ok(Array.Empty<HumanLookupSearchResult>());
 
-        // scope=name → narrowed match on display name + burner name only.
-        // anything else (default) → broad match across bio / city / interests / CV +
-        // every public ContactField. Admin bit is never set here — services are
-        // auth-free, but a non-admin endpoint passing it would be a programmer
-        // error caught in code review (see PersonSearchFields docs).
+        // scope=name → display/burner name only; default → broad public match. Admin bit never set on public endpoint.
         var fields = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
             ? PersonSearchFields.Name
             : PersonSearchFields.PublicAll;
 
-        // [Authorize] handles the no-cookie case at the framework layer;
-        // resolve here to cover the deleted-user-but-session-still-valid race
-        // — fail-closed with 401 rather than soft-fail into empty details.
+        // Cover the deleted-user-but-session-still-valid race — fail-closed with 401.
         var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (authError is not null)
             return authError;
@@ -86,18 +80,11 @@ public class ProfileApiController : ApiControllerBase
                 pictureUrls.GetValueOrDefault(result.UserId)));
         }
 
-        // Display ordering belongs at the presentation layer, per
-        // memory/architecture/display-sort-in-controllers.md.
+        // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         return Ok(response);
     }
 
-    /// <summary>
-    /// Single-person lookup by userId. Returns the same picker row shape as
-    /// <see cref="Search"/>, so callers that already know the userId (URL
-    /// param, integration, pre-fill) can render the row without typing a name
-    /// and choosing from a dropdown. Cache-backed via
-    /// <see cref="IUserService.GetUserInfoAsync"/>.
-    /// </summary>
+    // Single-person lookup by userId — same shape as Search.
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
     {
@@ -128,16 +115,7 @@ public class ProfileApiController : ApiControllerBase
             pictureUrls.GetValueOrDefault(userId)));
     }
 
-    /// <summary>
-    /// Returns the disambiguation detail to render under the human's name in
-    /// the shared picker row. Priority: viewer-visible primary email →
-    /// highest-priority visible contact field (Phone → Signal → Telegram →
-    /// WhatsApp → Discord → Other) → <c>null</c>. Legal name is deliberately
-    /// not surfaced here even for board viewers: at ~500 users with mostly
-    /// non-board callers it would be a distraction that almost no one
-    /// benefits from, and board members can still see legal name via the
-    /// profile card on click-through.
-    /// </summary>
+    // Disambiguation: viewer-visible primary email → highest-priority visible contact field → null. Legal name omitted deliberately.
     private async Task<string?> GetSharedDetailAsync(
         Guid userId,
         Guid profileId,

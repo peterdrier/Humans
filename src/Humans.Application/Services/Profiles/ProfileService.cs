@@ -15,11 +15,6 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>
-/// Core profile service. Business logic only — no DbContext, no IMemoryCache.
-/// Cache management is handled by the <c>CachingUserService</c> decorator.
-/// Cross-domain reads use owning-section service interfaces.
-/// </summary>
 public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
 {
     private readonly IProfileRepository _profileRepository;
@@ -33,10 +28,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
-    // Per-user serialization for create-or-update on profiles.UserId. Single-server
-    // deployment, so a process-local striped semaphore is sufficient — no Postgres
-    // 23505 race can land if all writes for a given userId are sequentialized here.
-    // Striped (32 buckets) so unrelated users never contend.
+    // Striped process-local semaphore serializes create-or-update per userId (single-server; avoids profiles.UserId 23505 race).
     private static readonly SemaphoreSlim[] _userLocks = CreateUserLocks(32);
     private static SemaphoreSlim[] CreateUserLocks(int count)
     {
@@ -143,9 +135,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         try
         {
-            // If the previous picture used a different content type (and
-            // therefore a different extension on disk), remove the old file
-            // so it doesn't linger orphaned.
+            // Remove old file if content-type/extension changed.
             if (oldContentType is not null &&
                 !string.Equals(oldContentType, contentType, StringComparison.Ordinal))
             {
@@ -161,16 +151,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 profile.Id);
         }
 
-        // UserInfo cache invalidation handled by CachingUserService decorator.
     }
 
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        // Anonymization gate (GDPR): the content-type column is the source of
-        // truth for whether a picture should be served. If anonymization (or
-        // any future cleanup) has cleared the column, do not serve from disk
-        // even if a stale file remains.
+        // GDPR gate: content-type column is the source of truth — don't serve from disk if cleared.
         var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
         if (string.IsNullOrEmpty(dbContentType))
         {
@@ -219,9 +205,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         Guid userId, string displayName, ProfileSaveRequest request, string language,
         CancellationToken ct = default)
     {
-        // Serialize per-user so two concurrent first-time saves can't both pass
-        // the GetByUserIdAsync null check and race on the profiles.UserId unique
-        // index. Single-server deployment, so a process-local lock is sufficient.
+        // Per-user lock: two concurrent first-time saves would race on the profiles.UserId unique index.
         var gate = LockFor(userId);
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
@@ -244,11 +228,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         if (profile is null)
         {
-            // Issue #635 (§15i): newly created profiles always start as Stub.
-            // Transitions to Active happen below once required fields are
-            // populated (BurnerName/FirstName/LastName), giving the
-            // ProfileService_UpdateProfileAsync_TransitionsStubToActive
-            // behavior contract a single home.
+            // see #635 (§15i) — start Stub, promote to Active below when names populated.
             profile = new Profile
             {
                 Id = Guid.NewGuid(),
@@ -278,7 +258,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.NoPriorBurnExperience = request.NoPriorBurnExperience;
         profile.UpdatedAt = now;
 
-        // Parse birthday (stored as LocalDate with year=4 for Feb 29 validity)
+        // LocalDate year=4 lets Feb 29 validate.
         if (request.BirthdayMonth is >= 1 and <= 12 && request.BirthdayDay is >= 1 and <= 31)
         {
             try
@@ -295,10 +275,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             profile.DateOfBirth = null;
         }
 
-        // Profile pictures live on the file share; the DB carries only the
-        // content-type marker so reads can find the file by extension and the
-        // GDPR gate has a single source of truth. The bytea column is dead —
-        // the column drop is a follow-up PR after prod soak.
+        // Pictures live on file share; DB stores only content-type as the GDPR gate. Bytea column is dead (column-drop follow-up).
         if (request.RemoveProfilePicture)
         {
             var oldContentType = profile.ProfilePictureContentType;
@@ -344,10 +321,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             }
         }
 
-        // Issue #635 (§15i): Stub → Active transition. When BurnerName +
-        // FirstName + LastName are all populated and the profile is not
-        // Suspended, promote the lifecycle marker. UserInfo.HasRequiredNameFields
-        // is the read-side mirror of these same three checks.
+        // see #635 (§15i) — Stub→Active promotion (mirrors UserInfo.HasRequiredNameFields).
         if (profile.State != ProfileState.Suspended)
         {
             var hasNames =
@@ -359,7 +333,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         await _profileRepository.UpdateAsync(profile, ct);
 
-        // Update display name on user (cross-section → IUserService)
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
         await _userInfoInvalidator.InvalidateAsync(userId, ct);
@@ -429,11 +402,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
-    // ==========================================================================
-    // Volunteer Event Profiles — cross-section reads (§15 Step 1 quarantine)
-    // ==========================================================================
-    // GDPR Export — contributes Profile-section slices
-    // ==========================================================================
+    // --- GDPR Export — Profile-section slices ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -445,7 +414,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
 
-        // VolunteerHistory is eagerly loaded by GetByUserIdReadOnlyAsync
         var volunteerHistory = profile?.VolunteerHistory
             .OrderByDescending(v => v.Date)
             .ThenByDescending(v => v.CreatedAt)
@@ -505,15 +473,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         {
             e.Email,
             e.IsVerified,
-            // JSON keys stay "IsOAuth" and "IsNotificationTarget" per
-            // memory/code/no-rename-serialized-fields.md — the GDPR export is a JSON
-            // file users download. IsOAuth sources from (Provider != null) — the
-            // pre-PR-4 semantics meaning "this row has an OAuth login attached".
-            // The PR 4 spec's Task 17 swapped both the JSON key (rename) and the
-            // value source (e.IsGoogle); both have been reverted so the export
-            // emits identical bytes for the same row data as before PR 4.
-            // IsNotificationTarget is the legacy JSON key for the renamed C#
-            // property IsPrimary (mirrors the EF HasColumnName pin).
+            // JSON keys pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
             IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
             e.Visibility
@@ -552,12 +512,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         ];
     }
 
-    // ==========================================================================
-    // Onboarding-section support methods — profile mutations that OnboardingService
-    // delegates here so each section owns its DbSet writes (design-rules §2c).
-    // Each write invalidates the UserInfo cache so downstream readers see the
-    // committed state immediately.
-    // ==========================================================================
+    // --- Onboarding support — profile mutations OnboardingService delegates here (§2c) ---
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
         Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,
@@ -672,9 +627,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.IsSuspended = suspended;
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
 
-        // Issue #635 (§15i): mirror the bool into ProfileState. New write paths
-        // go through State; the bool write above is kept dual until the
-        // separate follow-up PR drops the column after prod soak.
+        // see #635 (§15i) — dual write to State until IsSuspended column is dropped.
         if (suspended)
         {
             profile.State = ProfileState.Suspended;
@@ -729,13 +682,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        // Anonymize clears ProfilePictureContentType in the DB and best-effort
-        // wipes the filesystem copy. The DB clear alone is NOT sufficient on
-        // its own: if this delete throws, the file remains on disk. The
-        // read-path gate in GetProfilePictureAsync (which checks the
-        // content-type column before consulting the filesystem) closes that
-        // loop — but we still log this failure as an Error so an operator can
-        // clean up the stale file out-of-band.
+        // Clear content-type column (GDPR read-gate) then best-effort delete file; log on FS failure for manual cleanup.
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
         if (anonymized)
@@ -759,19 +706,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return anonymized;
     }
 
-    // ==========================================================================
-    // Profile picture filesystem helpers
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the IFileStorage key for a profile picture with the given
-    /// content type. Profile pictures live under <c>uploads/profile-pictures/</c>
-    /// but are NOT publicly served — Program.cs configures static-file
-    /// middleware to 404 that subpath so reads must go through
-    /// <see cref="GetProfilePictureAsync"/> (which applies the GDPR gate).
-    /// The extension is derived from the content type (empty string for
-    /// unknown types — file lives at the bare profile id).
-    /// </summary>
+    // Pictures live at uploads/profile-pictures/{id}{ext}; Program.cs 404s the subpath so reads go through GetProfilePictureAsync (GDPR gate).
     internal static string ProfilePictureKey(Guid profileId, string contentType) =>
         $"uploads/profile-pictures/{profileId}{ExtensionFromContentType(contentType)}";
 
@@ -823,10 +758,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (profile is null)
             return false;
 
-        // Use IbanValidator.Normalize so the persisted value matches what IsValid accepts —
-        // the validator strips both U+0020 and U+202F (narrow no-break space, common in
-        // bank-PDF copy-paste). A mismatched normalizer here lets hidden whitespace ride
-        // into SEPA/Holded payloads and downstream payment rejections.
+        // Normalize via the validator — strips U+202F (narrow NBSP from bank-PDF paste) so SEPA/Holded payloads accept it.
         var normalized = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
         var isClearing = normalized is null;
 

@@ -10,43 +10,10 @@ using Stripe;
 namespace Humans.Infrastructure.Services;
 
 /// <summary>
-/// Auto-registers the Store Stripe webhook endpoint with Stripe at boot for
-/// short-lived environments (PR previews, ephemeral QA) where setting up a
-/// webhook in the Stripe dashboard per env is impractical.
+/// Auto-registers the Store Stripe webhook at boot for ephemeral envs (PR previews, QA).
+/// Self-gated on STRIPE_STORE_WEBHOOK_REGISTRAR_KEY; prod uses a dashboard-configured webhook.
+/// Also sweeps stale endpoints for closed PRs. Failures log warnings and don't block boot.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Self-gated: runs IFF <c>STRIPE_STORE_WEBHOOK_REGISTRAR_KEY</c> is set. That
-/// dedicated key carries <c>webhook_endpoint:read/write</c> scope and lives
-/// only in ephemeral envs. Production deliberately does not set it and uses a
-/// dashboard-configured webhook with a stable signing secret instead. Keeping
-/// the registrar key separate from <see cref="StripeSettings.StoreKey"/>
-/// preserves PR-preview testing fidelity: the Pay-button checkout path runs
-/// against a key with the production-narrow scope.
-/// </para>
-/// <para>
-/// At boot: lists existing webhooks pointing at this env's URL, deletes them,
-/// creates a fresh one, and stamps the returned signing secret onto
-/// <see cref="StripeSettings.StoreWebhookSecret"/> so the webhook controller can
-/// verify subsequent deliveries. The signing secret is in-memory only — a
-/// process restart re-registers and gets a new one. Stripe only returns the
-/// secret at creation time; there is no fetch path.
-/// </para>
-/// <para>
-/// Same boot also runs a cross-PR sweep (<see cref="SweepStaleEndpointsAsync"/>):
-/// lists every <c>n.burn.camp</c> endpoint on the account, parses the leading
-/// PR-id off the host, queries GitHub for currently-open PRs on the configured
-/// fork, and deletes endpoints whose PR is no longer open. Self-gated on
-/// <see cref="StripeSettings.IsWebhookCleanupConfigured"/> + a GitHub access
-/// token; no separate GH Action is involved. See <c>docs/sections/Store.md</c>
-/// "Stripe Configuration" for the env-var contract.
-/// </para>
-/// <para>
-/// Failures are logged as warnings and do not block boot. If registration
-/// fails, the controller returns 503 on subsequent webhook deliveries —
-/// behavior identical to "no webhook secret configured."
-/// </para>
-/// </remarks>
 public class StoreWebhookRegistrationService : IHostedService
 {
     private static readonly TimeSpan RegistrationTimeout = TimeSpan.FromSeconds(15);
@@ -55,10 +22,7 @@ public class StoreWebhookRegistrationService : IHostedService
     private const string EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
     private const string EventCheckoutSessionExpired = "checkout.session.expired";
 
-    // PR-preview subscribes to the same 4 events QA/prod register manually so async-payment
-    // behavior is observable end-to-end. Today the controller only acts on `completed`; the
-    // other three log at Warning until the async-payment state machine ships
-    // (nobodies-collective/Humans#638).
+    // Matches QA/prod registration. Async-payment events log at Warning until #638 ships.
     private static readonly IReadOnlyList<string> SubscribedEvents =
     [
         EventCheckoutSessionCompleted,

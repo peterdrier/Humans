@@ -9,10 +9,8 @@ internal static class ConfigurationMetadataExtensions
         IConfiguration configuration,
         ConfigurationRegistry? configRegistry)
     {
-        // Register all infrastructure config keys in the registry for the Admin Configuration page
         if (configRegistry is not null)
         {
-            // Email settings
             configuration.GetRequiredSetting(configRegistry, "Email:SmtpHost", "Email");
             configuration.GetOptionalSetting(configRegistry, "Email:Username", "Email", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);
@@ -23,12 +21,10 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Email:DpoAddress", "Email",
                 importance: ConfigurationImportance.Recommended);
 
-            // GitHub settings
             configuration.GetRequiredSetting(configRegistry, "GitHub:Owner", "GitHub");
             configuration.GetRequiredSetting(configRegistry, "GitHub:Repository", "GitHub");
             configuration.GetRequiredSetting(configRegistry, "GitHub:AccessToken", "GitHub", isSensitive: true);
 
-            // Guide settings
             configuration.GetOptionalSetting(configRegistry, "Guide:Owner", "Guide");
             configuration.GetOptionalSetting(configRegistry, "Guide:Repository", "Guide");
             configuration.GetOptionalSetting(configRegistry, "Guide:Branch", "Guide");
@@ -36,10 +32,8 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Guide:CacheTtlHours", "Guide");
             configuration.GetOptionalSetting(configRegistry, "Guide:AccessToken", "Guide", isSensitive: true);
 
-            // Google Maps
             configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 
-            // Google Workspace
             configuration.GetOptionalSetting(configRegistry, "GoogleWorkspace:ServiceAccountKeyPath", "Google Workspace",
                 importance: ConfigurationImportance.Recommended);
             configuration.GetOptionalSetting(configRegistry, "GoogleWorkspace:ServiceAccountKeyJson", "Google Workspace",
@@ -49,7 +43,6 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "GoogleWorkspace:CustomerId", "Google Workspace",
                 importance: ConfigurationImportance.Recommended);
 
-            // Ticket Vendor
             configuration.GetOptionalSetting(configRegistry, "TicketVendor:EventId", "Ticket Vendor");
             configuration.GetOptionalSetting(configRegistry, "TicketVendor:Provider", "Ticket Vendor");
             configuration.GetOptionalSetting(configRegistry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor");
@@ -88,10 +81,8 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Stripe:WebhookCleanupOwner", "Stripe (Store)");
             configuration.GetOptionalSetting(configRegistry, "Stripe:WebhookCleanupRepository", "Stripe (Store)");
 
-            // Dev auth
             configuration.GetOptionalSetting(configRegistry, "DevAuth:Enabled", "Development");
 
-            // Environment variable secrets
             configRegistry.RegisterEnvironmentVariable("FEEDBACK_API_KEY", "Feedback API", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("ISSUES_API_KEY", "Issues API", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("TICKET_VENDOR_API_KEY", "Ticket Vendor", isSensitive: true,

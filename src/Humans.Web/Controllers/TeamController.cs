@@ -1,10 +1,4 @@
-// TeamMember.User / TeamJoinRequest.User are [Obsolete] cross-domain navs
-// (design-rules §6c). The Teams service populates them in-memory (§6b)
-// before returning the entity graph, so these reads are safe — but the
-// compiler still warns and TreatWarningsAsErrors promotes to error. This
-// file-wide disable is cleared when the controller projects via DTOs
-// returned directly from ITeamService.
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // TeamMember.User / TeamJoinRequest.User — populated in-memory by TeamService (§6b).
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -207,7 +201,6 @@ public class TeamController : HumansControllerBase
             var directMemberUserIds = new HashSet<Guid>(viewModel.Members.Select(m => m.UserId));
             var addedUserIds = new HashSet<Guid>();
 
-            // Build a lookup of management role definitions by child team ID
             var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
             var managementRolesByTeam = await _teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
 
@@ -266,7 +259,6 @@ public class TeamController : HumansControllerBase
                 }
             }
 
-            // Resolve custom profile pictures for child team members and subteam leads
             var allChildUserEntries = viewModel.ChildTeamMembers
                 .Concat(viewModel.SubteamLeads)
                 .ToList();
@@ -370,7 +362,6 @@ public class TeamController : HumansControllerBase
         if (currentMonth < 1 || currentMonth > 12)
             currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
 
-        // Load all active profiles that have a date of birth — read off the cached UserInfo snapshot.
         var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.Profile is { IsApproved: true, State: not ProfileState.Suspended }
                         && u.Profile.BirthdayMonth == currentMonth
@@ -386,7 +377,6 @@ public class TeamController : HumansControllerBase
                 u.Profile.BirthdayMonth!.Value))
             .ToList();
 
-        // Load team memberships for these users
         var userIds = profilesWithBirthdays.Select(p => p.UserId).ToList();
         var userIdSet = userIds.ToHashSet();
         var teamsById = await _teamService.GetTeamsAsync(ct);
@@ -513,8 +503,6 @@ public class TeamController : HumansControllerBase
                 PendingRequestCount = m.PendingRequestCount
             }).ToList();
 
-        // Get pending join requests for this user
-        // Note: We'd need a method to get user's pending requests, for now just skip
         var viewModel = new MyTeamsViewModel
         {
             Memberships = membershipVMs,
@@ -545,7 +533,6 @@ public class TeamController : HumansControllerBase
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        // Hidden teams cannot be joined by non-admin users
         if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
         {
             return NotFound();
@@ -688,9 +675,7 @@ public class TeamController : HumansControllerBase
 
         var viewModel = new AdminTeamListViewModel();
 
-        // GetAdminTeamListAsync returns a flat list ordered as parent-then-its-children.
-        // Each parent's classification determines the bucket; children inherit so subteams
-        // stay grouped under their parent — including in Hidden.
+        // Parent-then-children flat list; children inherit the parent's bucket.
         List<AdminTeamViewModel>? currentBucket = null;
         foreach (var team in result.Teams.Select(MapAdminTeamSummary))
         {
@@ -832,7 +817,6 @@ public class TeamController : HumansControllerBase
             var currentUser = await GetCurrentUserInfoAsync();
             _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
-            // Handles prefix set, changed, or cleared (deactivates old resource if needed)
             try
             {
                 var groupResult = await _googleSyncService.EnsureTeamGroupAsync(id);

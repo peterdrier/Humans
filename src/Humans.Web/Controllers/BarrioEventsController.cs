@@ -297,8 +297,6 @@ public class BarrioEventsController : HumansCampControllerBase
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────
-
     private bool IsSubmissionOpen(EventGuideSettings? settings) =>
         settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
 

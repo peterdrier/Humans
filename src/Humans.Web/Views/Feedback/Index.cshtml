@@ -6,7 +6,6 @@
 <div class="container-fluid">
     <h2 class="mb-3">@Localizer["Feedback_PageTitle"]</h2>
 
-    <!-- Filter bar -->
     <form method="get" class="feedback-filter-form d-flex gap-2 mb-3 flex-wrap">
         <select name="status" class="form-select form-select-sm" style="width: auto;">
             <option value="">@Localizer["Feedback_AllStatuses"]</option>
@@ -115,7 +114,6 @@
     </form>
 
     <div class="row" style="min-height: 500px;">
-        <!-- Left panel: report list -->
         <div class="col-md-5 col-lg-4 border-end overflow-auto" style="max-height: 80vh;">
             @if (Model.Reports.Count == 0)
             {
@@ -193,7 +191,6 @@
             }
         </div>
 
-        <!-- Right panel: detail -->
         <div class="col-md-7 col-lg-8" id="detail-panel">
             <div class="d-flex align-items-center justify-content-center h-100 text-muted">
                 <p>@Localizer["Feedback_SelectReport"]</p>

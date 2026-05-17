@@ -156,8 +156,6 @@ public class EventsExportController : HumansControllerBase
         return View(model);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────
-
     private static List<(string Date, string Time)> GetOccurrences(Event e, DateTimeZone? tz)
     {
         var results = new List<(string, string)>();

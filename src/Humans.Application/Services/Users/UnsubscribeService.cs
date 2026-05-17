@@ -8,14 +8,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Services.Users;
 
-/// <summary>
-/// Validates unsubscribe tokens (new category-aware and legacy campaign-only)
-/// and applies the unsubscribe action.
-/// </summary>
-/// <remarks>
-/// Application-layer implementation — goes through <see cref="IUserRepository"/>,
-/// never injects <c>DbContext</c>.
-/// </remarks>
 public sealed class UnsubscribeService : IUnsubscribeService
 {
     private readonly IUserRepository _userRepository;
@@ -37,7 +29,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
 
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
     {
-        // Try new category-aware token first
+        // Try category-aware token first.
         var result = _preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
@@ -48,11 +40,11 @@ public sealed class UnsubscribeService : IUnsubscribeService
             return UnsubscribeTokenResult.Valid(result.UserId, user.DisplayName, result.Category);
         }
 
-        // Expired new-format token — don't fall through to legacy
+        // Expired new-format — don't fall through to legacy.
         if (result.Status == TokenValidationStatus.Expired)
             return UnsubscribeTokenResult.Expired();
 
-        // Not a new-format token at all — fall back to legacy campaign-only token
+        // Fall back to legacy campaign-only token.
         return await ValidateLegacyTokenAsync(token, ct);
     }
 
@@ -82,8 +74,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
         }
         catch (CryptographicException ex)
         {
-            // CommunicationPreferenceService already logged the first attempt at Information.
-            // Don't double-log here — this is the legacy-protector fallback for the same event. See #483.
+            // No double-log — already logged in CommunicationPreferenceService (see #483).
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
 

@@ -12,21 +12,9 @@ using Humans.Domain.Constants;
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Claims transformation that syncs active RoleAssignment entities to Identity role claims
-/// and adds membership status claims. Runs on every authenticated request.
-/// Results are cached per user for 60 seconds to avoid 2 DB queries per request.
+/// Syncs active RoleAssignment entities to Identity role claims and adds membership status claims.
+/// Runs per authenticated request; cached 60s per user. See HUM0014 / #750.
 /// </summary>
-/// <remarks>
-/// Reads role assignments via <see cref="IRoleAssignmentRepository"/> directly
-/// (HUM0014 grandfathered) instead of <see cref="Application.Interfaces.Auth.IRoleAssignmentService"/>.
-/// The service carries heavy transitive dependencies (notification emitter,
-/// system-team sync, Hangfire scheduler) that don't belong on the request-time
-/// auth hot path — and those dependencies are unresolvable in the integration-
-/// test host where Hangfire storage is intentionally not initialized. Team
-/// membership goes through the cache-backed <see cref="ITeamService"/>.
-/// Issue #750 narrowed the surface to one read-only repository method;
-/// promoting it to a thin Application-layer interface is a separate cleanup.
-/// </remarks>
 [Grandfathered(
     "HUM0014",
     "Auth claims transformation runs on every authenticated request and reads role_assignments via IRoleAssignmentRepository directly. Routing through IRoleAssignmentService drags in INotificationEmitter / ISystemTeamSync / IGoogleSyncService / Hangfire scheduler — wrong for the request-time auth hot path and unresolvable in the integration-test host. Team membership uses the cache-backed ITeamService. A thin Application-layer read-only interface is the proper home — tracked separately.",
@@ -34,15 +22,10 @@ namespace Humans.Web.Authorization;
     "nobodies-collective/Humans#750")]
 public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 {
-    /// <summary>
-    /// Claim type indicating the user is an active member of the Volunteers team.
-    /// </summary>
+    /// <summary>Active member of the Volunteers team.</summary>
     public const string ActiveMemberClaimType = "ActiveMember";
 
-    /// <summary>
-    /// Claim type indicating the user has a profile record.
-    /// Used by MembershipRequiredFilter to distinguish profileless accounts from onboarding members.
-    /// </summary>
+    /// <summary>User has a profile record. Lets MembershipRequiredFilter separate profileless accounts from onboarding members.</summary>
     public const string HasProfileClaimType = "HasProfile";
 
     public const string ActiveClaimValue = "true";
@@ -83,7 +66,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
-        // Avoid adding duplicate role claims on subsequent calls within the same request
+        // Skip duplicate claims on repeat calls within the same request.
         if (principal.HasClaim(c => string.Equals(c.Type, ClaimsAddedMarkerType, StringComparison.Ordinal) && string.Equals(c.Value, ActiveClaimValue, StringComparison.Ordinal)))
         {
             return principal;
@@ -101,7 +84,6 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             identity.AddClaim(claim);
         }
 
-        // Marker claim to prevent duplicate processing
         identity.AddClaim(new Claim(ClaimsAddedMarkerType, ActiveClaimValue));
 
         principal.AddIdentity(identity);
@@ -114,11 +96,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         var now = _clock.GetCurrentInstant();
         var claims = new List<Claim>();
 
-        // Suspension + profile-presence both come from the cached UserInfo
-        // read-model so we don't hit the profiles table on every authenticated
-        // request. Null userInfo (user row not yet loaded / not in cache) is
-        // treated as "no profile, not suspended" — same observable behavior as
-        // the prior dbContext.Profiles.AnyAsync calls returning false.
+        // Cached UserInfo read-model avoids hitting profiles on every authenticated request.
         var userInfo = await _userService.GetUserInfoAsync(userId);
         var isSuspended = userInfo?.IsSuspended ?? false;
         var hasProfile = userInfo?.HasProfile ?? false;
@@ -131,9 +109,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 
         if (!isSuspended)
         {
-            // GetUserTeamsAsync hits the warm in-memory team-membership index
-            // owned by CachingTeamService — no DB round-trip on hot path. The
-            // cache returns only active (LeftAt is null) memberships.
+            // Warm CachingTeamService index — no DB round-trip; returns active memberships only.
             var memberships = await _teams.GetUserTeamsAsync(userId);
             var isVolunteerMember = memberships.Any(m => m.TeamId == SystemTeamIds.Volunteers);
             if (isVolunteerMember)

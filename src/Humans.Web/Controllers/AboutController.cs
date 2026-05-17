@@ -7,10 +7,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
-// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
-// RoleAssignmentService stitches them in memory from IUserService so controllers can
-// continue to read them for view-model shaping. Nav-strip follow-up tracked in
-// design-rules §15i.
+// Obsolete RoleAssignment nav props (User, CreatedByUser) stitched in-memory by RoleAssignmentService; see design-rules §15i.
 #pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
@@ -60,7 +57,6 @@ public class AboutController : HumansControllerBase
                 _profileService, Url,
                 assignments.Select(ra => ra.UserId));
 
-            // Define role display order and metadata
             var roleDefinitions = StaffViewModel.GetRoleDefinitions();
 
             var roleSections = new List<StaffRoleSectionViewModel>();

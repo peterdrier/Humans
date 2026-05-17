@@ -10,10 +10,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
 
-// Issue cross-domain nav properties (Reporter, Assignee, ResolvedByUser) and
-// IssueComment.SenderUser are [Obsolete] — IssuesService stitches them in memory
-// from IUserService so controllers can continue to read them for response shaping.
-// Nav-strip follow-up tracked in design-rules §15i.
+// Obsolete nav props (Reporter/Assignee/ResolvedByUser/SenderUser) stitched in-memory by IssuesService; see design-rules §15i.
 #pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
@@ -72,10 +69,7 @@ public class IssuesApiController : ControllerBase
         if (issue is null) return NotFound();
 
         var thread = await _issues.GetThreadAsync(id);
-        // Resolve reporter UserInfo so detail endpoint keeps emitting
-        // ReporterEmail (sourced from UserInfo.Email, not User.Email) —
-        // matches the shape of the list endpoint's IssueListSnapshot
-        // path. See PR 618 review (Claude bot, IssuesApiController:275).
+        // ReporterEmail sourced from UserInfo (not User.Email) — keeps shape parity with the list endpoint. See PR 618.
         var reporter = await _users.GetUserInfoAsync(issue.ReporterUserId);
         return Ok(MapDetail(issue, thread, reporter));
     }
@@ -154,9 +148,7 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404. Log at Warning so
-            // the event stays visible in prod (always-log-problems.md).
+            // 404 on missing — log Warning per always-log-problems.
             _logger.LogWarning("Issue {IssueId} not found during API PostComment", id);
             return NotFound();
         }
@@ -178,9 +170,7 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404. Log at Warning so
-            // the event stays visible in prod (always-log-problems.md).
+            // 404 on missing — log Warning per always-log-problems.
             _logger.LogWarning("Issue {IssueId} not found during API UpdateStatus", id);
             return NotFound();
         }
@@ -201,9 +191,7 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404. Log at Warning so
-            // the event stays visible in prod (always-log-problems.md).
+            // 404 on missing — log Warning per always-log-problems.
             _logger.LogWarning("Issue {IssueId} not found during API UpdateAssignee", id);
             return NotFound();
         }
@@ -224,17 +212,13 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
-            // Log at Warning so the event stays visible in prod
-            // (always-log-problems.md). Exception object dropped — the
-            // race-style "not found" carries no useful stack.
+            // 404 on missing — log Warning per always-log-problems.
             _logger.LogWarning("Issue {IssueId} not found during API UpdateSection: {Reason}", id, ex.Message);
             return NotFound();
         }
         catch (InvalidOperationException ex)
         {
-            // State-machine violation (e.g. issue is terminal) — surface as 422.
-            // Log at Warning per always-log-problems.md so reject events are
-            // visible in the prod log viewer.
+            // State-machine violation (terminal status) → 422.
             _logger.LogWarning("Issue {IssueId} API UpdateSection rejected: {Reason}", id, ex.Message);
             return UnprocessableEntity(new { error = ex.Message });
         }
@@ -255,9 +239,7 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404. Log at Warning so
-            // the event stays visible in prod (always-log-problems.md).
+            // 404 on missing — log Warning per always-log-problems.
             _logger.LogWarning("Issue {IssueId} not found during API SetGitHubIssue", id);
             return NotFound();
         }
@@ -280,10 +262,7 @@ public class IssuesApiController : ControllerBase
         i.UserAgent,
         i.AdditionalContext,
         ReporterName = reporter?.BurnerName ?? i.Reporter?.DisplayName,
-        // ReporterEmail comes from the optional UserInfo (sourced via
-        // IUserService) so detail and list endpoints stay shape-consistent
-        // without reading User.Email directly. List endpoint that uses
-        // IssueListSnapshot has its own MapList overload below.
+        // ReporterEmail from UserInfo (not User.Email) for shape parity with list endpoint.
         ReporterEmail = reporter?.Email,
         ReporterUserId = i.ReporterUserId,
         ReporterLanguage = i.Reporter?.PreferredLanguage,

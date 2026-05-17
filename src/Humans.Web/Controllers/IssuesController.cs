@@ -13,10 +13,7 @@ using Humans.Web.Authorization.Requirements;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 
-// Issue / IssueComment cross-domain nav properties (Reporter, Assignee,
-// ResolvedByUser, SenderUser) are [Obsolete] — IssuesService stitches them in
-// memory from IUserService so controllers can read them for view-model shaping.
-// Nav-strip follow-up tracked in design-rules §15i.
+// Obsolete nav props (Reporter/Assignee/ResolvedByUser/SenderUser) stitched in-memory by IssuesService; see design-rules §15i.
 #pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
@@ -50,10 +47,7 @@ public class IssuesController : HumansControllerBase
         _logger = logger;
     }
 
-    // Roles must come from claims (the RoleAssignment → claims-transformation
-    // path), NOT from UserManager.GetRolesAsync (which only returns Identity-DB
-    // roles and misses RoleAssignment-driven roles like CampAdmin). Mirrors
-    // NavBadgesViewComponent so the badge count and the list always agree.
+    // Roles from claims (RoleAssignment → claims-transformation), NOT UserManager.GetRolesAsync (misses CampAdmin etc.).
     private List<string> ClaimsRoles() => User.Claims
         .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
         .Select(c => c.Value)
@@ -75,10 +69,7 @@ public class IssuesController : HumansControllerBase
         var isAdmin = User.IsInRole(RoleNames.Admin);
         var viewMode = view ?? IssueViewMode.All;
 
-        // "Open" expands to the non-terminal set so the count matches the
-        // nav badge's actionable definition; "Closed" inverts to terminal.
-        // "Mine" forces ReporterUserId to the current user — allowed for any
-        // user since filtering on your own reports is never a privacy escalation.
+        // Open = non-terminal (matches nav badge); Closed = terminal; Mine = ReporterUserId == current user.
         var statuses = viewMode switch
         {
             IssueViewMode.Open => new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress },
@@ -86,9 +77,7 @@ public class IssuesController : HumansControllerBase
             _ => null
         };
 
-        // Admin reporter dropdown is independent of the view-mode buttons.
-        // Non-admins may only filter by their own ID (the Mine button); the
-        // dropdown is never rendered for them.
+        // Non-admin: reporter filter forced to self (Mine button). Admin dropdown is independent.
         Guid? reporterFilter = viewMode == IssueViewMode.Mine
             ? user.Id
             : (isAdmin ? reporter : null);
@@ -222,12 +211,7 @@ public class IssuesController : HumansControllerBase
         var isPartial = partial || Request.Headers.XRequestedWith == "XMLHttpRequest";
         var issue = await _issues.GetIssueByIdAsync(id);
 
-        // Treat "not found" and "no access" identically so we don't leak which
-        // GUIDs exist. For partial requests (the JS that paints the right pane
-        // on /Issues?selected=X), return a small inline notice so the panel
-        // doesn't get the framework's full-layout 404 rendered into it. For a
-        // direct nav, drop back to the Index without the selected param so the
-        // URL doesn't keep advertising the bad ID.
+        // "Not found" and "no access" indistinguishable. Partial → inline notice; full nav → redirect to Index.
         var canHandle = issue is not null
             && (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
         var isReporter = issue is not null && issue.ReporterUserId == user.Id;

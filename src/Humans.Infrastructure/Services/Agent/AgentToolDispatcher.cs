@@ -16,16 +16,7 @@ namespace Humans.Infrastructure.Services.Agent;
 
 public sealed class AgentToolDispatcher : IAgentToolDispatcher
 {
-    /// <summary>
-    /// Default number of audit-history lines surfaced when the agent calls
-    /// <see cref="AgentToolNames.GetAuditHistory"/> without a <c>limit</c>.
-    /// </summary>
     internal const int DefaultAuditHistoryLimit = 20;
-
-    /// <summary>
-    /// Hard cap on audit-history lines per call. Prevents the agent from
-    /// pulling unbounded history in one tool turn.
-    /// </summary>
     internal const int MaxAuditHistoryLimit = 50;
 
     private readonly AgentSectionDocReader _sections;
@@ -137,14 +128,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         return new AnthropicToolResult(callId, content, IsError: false);
     }
 
-    /// <summary>
-    /// Resolves the agent's <c>get_shift_details</c> argument — which is either
-    /// a <see cref="ShiftSignup.SignupBlockId"/> (block) or a single
-    /// <see cref="ShiftSignup.Id"/> — and returns a textualized summary of the
-    /// matching signup(s). Only signups belonging to the calling user are
-    /// reachable; anything else returns "Shift not found" (no information leak
-    /// about other users' shifts).
-    /// </summary>
+    /// <summary>Resolves a SignupBlockId or Signup.Id (must belong to caller) and returns a textual summary.</summary>
     private async Task<AnthropicToolResult> DispatchGetShiftDetailsAsync(
         string callId, Guid userId, Guid shiftKey, CancellationToken ct)
     {
@@ -180,12 +164,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         return new AnthropicToolResult(callId, "Shift not found.", IsError: true);
     }
 
-    /// <summary>
-    /// Builds the textual blob returned for <c>get_shift_details</c>. Renders
-    /// the rota name, date span, status, day count, hours window, optional
-    /// shift description, and Rota.PracticalInfo (where to show up). All
-    /// signups passed in must belong to the calling user.
-    /// </summary>
+    /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
     private static string RenderShiftDetails(IReadOnlyList<ShiftSignup> signups, EventSettings ev)
     {
         // Order chronologically so first/last reflect actual span.

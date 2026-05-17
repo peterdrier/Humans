@@ -26,7 +26,6 @@
             <input type="hidden" asp-for="Slug" />
             <input type="hidden" asp-for="Year" />
 
-            @* Camp Info *@
             <div class="card mb-4">
                 <div class="card-header"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_InfoTitle"]</div>
                 <div class="card-body">
@@ -99,7 +98,6 @@
                 </div>
             </div>
 
-            @* About Your Camp *@
             <div class="card mb-4">
                 <div class="card-header"><i class="fa-solid fa-pen-fancy me-1"></i> About Your @Localizer["Camp_Singular"]</div>
                 <div class="card-body">
@@ -125,7 +123,6 @@
                 </div>
             </div>
 
-            @* Community *@
             <div class="card mb-4">
                 <div class="card-header"><i class="fa-solid fa-users me-1"></i> Community</div>
                 <div class="card-body">
@@ -167,7 +164,6 @@
                 </div>
             </div>
 
-            @* Culture & Events *@
             <div class="card mb-4">
                 <div class="card-header"><i class="fa-solid fa-masks-theater me-1"></i> Culture & Events</div>
                 <div class="card-body">
@@ -200,7 +196,6 @@
                 </div>
             </div>
 
-            @* Placement *@
             <div class="card mb-4">
                 <div class="card-header"><i class="fa-solid fa-map-location-dot me-1"></i> Placement</div>
                 <div class="card-body">
@@ -278,7 +273,6 @@
             </div>
         </div>
 
-        @* Image Management *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-images me-1"></i> Images (@Model.Images.Count/5)
@@ -359,7 +353,6 @@
             }
         </div>
 
-        @* Historical Names *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-clock-rotate-left me-1"></i> Historical Names

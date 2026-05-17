@@ -78,8 +78,6 @@ public class VatProjection
     public bool IsExpense { get; init; }
 }
 
-// --- Cash Flow Projection View Models ---
-
 public class CashFlowViewModel
 {
     public required string YearName { get; init; }

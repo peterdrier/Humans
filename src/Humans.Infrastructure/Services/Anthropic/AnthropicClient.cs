@@ -55,7 +55,6 @@ public sealed class AnthropicClient : IAnthropicClient
                 .ToList(),
         };
 
-        // Aggregated state from earlier events for the finalizer.
         string? model = null;
         long inputTokens = 0;
         long outputTokens = 0;
@@ -64,19 +63,10 @@ public sealed class AnthropicClient : IAnthropicClient
         string? stopReason = null;
         bool streamErrored = false;
 
-        // Anthropic's streaming protocol delivers tool args incrementally as
-        // input_json_delta events on content_block_delta. The content_block_start
-        // event carries only the tool id+name with empty input{}; the actual
-        // arguments arrive piecewise and only complete on content_block_stop.
-        // Accumulate per-block here and emit the AgentTurnToken once stop fires.
+        // Tool args stream as input_json_delta; accumulate per-block and emit on content_block_stop.
         var pendingToolBlocks = new Dictionary<long, (string Id, string Name, System.Text.StringBuilder Json)>();
 
-        // The await foreach below is a live HTTP/SSE call. Any failure (timeout,
-        // 5xx, network) would otherwise propagate without a finalizer, leaving
-        // the caller hung. Catch, log, and emit a synthetic "error" finalizer
-        // so AgentService can write its assistant message and yield a final
-        // SSE frame to the browser. Cancellation is re-thrown so cooperative
-        // shutdown still works.
+        // Stream failures get a synthetic "error" finalizer so AgentService can complete the SSE frame.
         var enumerator = _sdk.Messages.CreateStreaming(sdkRequest, cancellationToken).GetAsyncEnumerator(cancellationToken);
         try
         {
@@ -131,8 +121,6 @@ public sealed class AnthropicClient : IAnthropicClient
                 {
                     if (blockStartEvent.ContentBlock.TryPickToolUse(out var toolUseBlock))
                     {
-                        // Stash the tool block; args arrive via subsequent
-                        // input_json_delta events and we emit only on stop.
                         pendingToolBlocks[blockStartEvent.Index] = (
                             toolUseBlock.ID,
                             toolUseBlock.Name,
@@ -145,8 +133,7 @@ public sealed class AnthropicClient : IAnthropicClient
                 {
                     if (pendingToolBlocks.Remove(blockStopEvent.Index, out var completed))
                     {
-                        // Empty input ("{}") is valid for tools that take no args;
-                        // marshal that to the buffer here so downstream JsonDocument.Parse never fails.
+                        // "{}" so JsonDocument.Parse won't fail on zero-arg tools.
                         var jsonArgs = completed.Json.Length > 0 ? completed.Json.ToString() : "{}";
                         yield return new AgentTurnToken(
                             null,
@@ -158,7 +145,7 @@ public sealed class AnthropicClient : IAnthropicClient
 
                 if (evt.TryPickDelta(out var messageDeltaEvent))
                 {
-                    // Usage in the delta event is cumulative output usage.
+                    // Usage here is cumulative.
                     outputTokens = messageDeltaEvent.Usage.OutputTokens;
                     cacheReadTokens = messageDeltaEvent.Usage.CacheReadInputTokens ?? cacheReadTokens;
                     cacheCreationTokens = messageDeltaEvent.Usage.CacheCreationInputTokens ?? cacheCreationTokens;
@@ -173,7 +160,6 @@ public sealed class AnthropicClient : IAnthropicClient
 
                 if (evt.TryPickStop(out _))
                 {
-                    // Emit exactly one finalizer at the end of the stream.
                     yield return new AgentTurnToken(
                         null,
                         null,
@@ -264,8 +250,6 @@ public sealed class AnthropicClient : IAnthropicClient
 
     private static InputSchema MapInputSchema(string jsonSchema)
     {
-        // The SDK's InputSchema holds RawData. We can pass the JSON schema properties
-        // through by parsing the JSON and forwarding the raw dictionary.
         var rawData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonSchema)
                      ?? new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         return InputSchema.FromRawUnchecked(rawData);

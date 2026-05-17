@@ -22,15 +22,13 @@
                 </div>
             }
 
-            @* === Section ordering: Private first when fields are empty (new user) === *@
+            @* Private first when fields empty (new user) *@
             @if (Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
             }
 
-            @* ====================== *@
-            @* Section 1: General     *@
-            @* ====================== *@
+            @* --- Section 1: General --- *@
             <div class="card mb-4">
                 <div class="card-body">
                     <h3>@Localizer["ProfileEdit_SectionGeneral"]</h3>
@@ -56,8 +54,7 @@
                     </div>
                     @if (Model.CanImportGooglePicture)
                     {
-                        @* Submits to the sibling import form declared at the bottom of the
-                           view, using the HTML5 form attribute so we don't nest forms. *@
+                        @* Targets sibling form via HTML5 form attribute (no nested forms) *@
                         <div class="mb-3">
                             <button type="submit"
                                     form="importGooglePhotoForm"
@@ -310,9 +307,7 @@
                 </div>
             </div>
 
-            @* ========================== *@
-            @* Section 2: Contributor     *@
-            @* ========================== *@
+            @* --- Section 2: Contributor --- *@
             <div class="card mb-4">
                 <div class="card-body">
                     <h3>@Localizer["ProfileEdit_SectionContributor"]</h3>
@@ -399,9 +394,7 @@
                 </div>
             </div>
 
-            @* ========================== *@
-            @* Section 3: Application     *@
-            @* ========================== *@
+            @* --- Section 3: Application --- *@
             @if (Model.IsInitialSetup)
             {
                 <div class="card mb-4">
@@ -507,9 +500,7 @@
                 </div>
             }
 
-            @* ========================== *@
-            @* Section 4: Private         *@
-            @* ========================== *@
+            @* --- Section 4: Private --- *@
             @if (!Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
@@ -528,9 +519,7 @@
             </div>
         </form>
 
-        @* Sibling form targeted via the HTML5 form attribute on the Import button. Keeping
-           it out of the Edit form avoids form nesting and lets the import POST independently
-           (no profile fields shipped with the import click). *@
+        @* Sibling form targeted via HTML5 form attribute — avoids nesting and ships no profile fields *@
         @if (Model.CanImportGooglePicture)
         {
             <form id="importGooglePhotoForm" asp-action="ImportGooglePhoto" method="post"></form>

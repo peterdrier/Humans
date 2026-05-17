@@ -7,7 +7,6 @@
     <h1 class="mt-4">Code Tracking</h1>
     <partial name="_TicketNav" />
 
-    <!-- Summary Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card">
@@ -46,7 +45,6 @@
         </div>
     </div>
 
-    <!-- Per-Campaign Breakdown -->
     @if (Model.Campaigns.Count > 0)
     {
         <h4 class="mb-3">By Campaign</h4>
@@ -75,7 +73,6 @@
         </div>
     }
 
-    <!-- Individual Codes Table -->
     <h4 class="mb-3">Individual Codes</h4>
     <form method="get" class="mb-3">
         <div class="input-group" style="max-width: 400px;">

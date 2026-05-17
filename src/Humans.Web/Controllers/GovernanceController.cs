@@ -8,11 +8,7 @@ using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Auth;
 
-// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
-// RoleAssignmentService stitches them in memory from IUserService so controllers can
-// continue to read them for view-model shaping. Nav-strip follow-up tracked in
-// design-rules §15i.
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // RoleAssignment.User/CreatedByUser — stitched in-memory by RoleAssignmentService (§15i).
 
 using Humans.Application.Interfaces.Users;
 using Humans.Application;

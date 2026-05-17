@@ -7,18 +7,6 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Teams;
 
-/// <summary>
-/// Application-layer composer for the public/member team page. Owns no tables
-/// — stitches data from <see cref="ITeamService"/>, <see cref="IProfileService"/>,
-/// <see cref="ITeamResourceService"/>, <see cref="IShiftManagementService"/>,
-/// and <see cref="IUserService"/>.
-/// </summary>
-/// <remarks>
-/// Part of §15 Part 1 Teams migration (<c>#540</c>). TeamPageService moved
-/// out of <c>Humans.Infrastructure</c> first because it is a pure composer
-/// with no owned tables; the larger <c>TeamService</c>, <c>TeamResourceService</c>,
-/// and <c>StubTeamResourceService</c> migrate in separate sub-tasks.
-/// </remarks>
 public sealed class TeamPageService : ITeamPageService
 {
     private readonly ITeamService _teamService;
@@ -53,7 +41,6 @@ public sealed class TeamPageService : ITeamPageService
             return null;
         }
 
-        // For anonymous users, filter members based on coordinator visibility setting
         var visibleMembers = detail.IsAuthenticated
             ? detail.Members
             : detail.Team.ShowCoordinatorsOnPublicPage
@@ -169,8 +156,6 @@ public sealed class TeamPageService : ITeamPageService
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
         }
 
-        // For parent teams, aggregate shifts from the parent team plus all active child teams.
-        // detail.ChildTeams (authenticated path) is team.ChildTeams filtered to IsActive.
         var activeChildTeamIds = childTeams.Select(c => c.Id).ToList();
 
         if (activeChildTeamIds.Count > 0)
@@ -184,7 +169,6 @@ public sealed class TeamPageService : ITeamPageService
                 return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
             }
 
-            // Count only child teams that actually have shifts in the active event
             var childTeamIdsWithShifts = await _shiftManagementService.GetTeamIdsWithShiftsInEventAsync(
                 activeEvent.Id, activeChildTeamIds, cancellationToken);
 
@@ -197,7 +181,6 @@ public sealed class TeamPageService : ITeamPageService
                 childTeamIdsWithShifts.Count);
         }
 
-        // Child team or standalone team: show only own shifts
         var summaryData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, [team.Id]);
         if (summaryData is null)
         {

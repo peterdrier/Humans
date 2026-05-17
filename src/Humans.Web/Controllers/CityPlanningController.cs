@@ -44,11 +44,7 @@ public class CityPlanningController : HumansControllerBase
                await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
     }
 
-    /// <summary>
-    /// Resolves the current user and verifies they pass the map-admin check.
-    /// Returns the user or an error result. Centralizing the preamble keeps
-    /// every admin action one line shorter and ensures the gate never drifts.
-    /// </summary>
+    /// <summary>Resolves the current user and gates on the map-admin check.</summary>
     private async Task<(IActionResult? Error, UserInfo? User)> RequireMapAdminAsync(CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();
@@ -219,12 +215,7 @@ public class CityPlanningController : HumansControllerBase
         return RedirectToAction(nameof(Admin));
     }
 
-    /// <summary>
-    /// Shared handler for the two GeoJSON upload actions (LimitZone / OfficialZones).
-    /// Diff between callers is the user-facing label and which service method
-    /// writes the parsed payload — everything else (auth, size/MIME validation,
-    /// JSON shape check, redirect target) is identical.
-    /// </summary>
+    /// <summary>Shared GeoJSON upload (LimitZone / OfficialZones); callers differ only by label and service method.</summary>
     private async Task<IActionResult> UploadGeoJsonAsync(
         IFormFile? file,
         string namePretty,
@@ -285,9 +276,7 @@ public class CityPlanningController : HumansControllerBase
         return RedirectToAction(nameof(Admin));
     }
 
-    // ======================================================================
-    // Containers
-    // ======================================================================
+    // --- Containers ---
 
     [HttpGet("ContainerMap/{year:int}")]
     public async Task<IActionResult> ContainerMap(int year, CancellationToken cancellationToken)

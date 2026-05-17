@@ -18,37 +18,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Camps;
 
-/// <summary>
-/// Application-layer implementation of <see cref="ICampService"/>. Goes
-/// through <see cref="ICampRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
-/// </summary>
-/// <remarks>
-/// Cross-section interactions:
-/// <list type="bullet">
-///   <item><see cref="IUserService"/> — resolves lead display names for
-///     DTOs that previously loaded them via <c>CampLead.User</c>
-///     cross-domain nav (design-rules §6).</item>
-///   <item><see cref="ISystemTeamSync"/> — the Barrio Leads system team
-///     membership is kept in sync after lead mutations.</item>
-///   <item><see cref="IFileStorage"/> — infrastructure concern that owns
-///     disk writes for uploaded images (camp images live under
-///     <c>uploads/camps/{campId}/</c> and are publicly served as static
-///     files at <c>/uploads/camps/...</c>).</item>
-/// </list>
-/// Caching: T-06 (2026-05-16) replaces the legacy in-service short-TTL
-/// <c>IMemoryCache</c> with the canonical §15 caching decorator,
-/// <c>CachingCampService</c>. This inner service is cache-unaware — every
-/// read goes to <see cref="ICampRepository"/> on every call. The decorator
-/// owns the cached per-camp projection. Invalidation is decorator-only:
-/// every mutating <see cref="ICampService"/> method in
-/// <c>CachingCampService</c> calls <c>InvalidateCampAsync</c>
-/// (or <c>InvalidateSettingsAsync</c>) inline after the inner write. No
-/// <c>SaveChanges</c> interceptor backstop —
-/// <c>CampsArchitectureTests.ICampRepository_HasNoUnexpectedConsumers</c>
-/// pins the no-bypass rule instead.
-/// </remarks>
+/// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
 public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 {
     private readonly ICampRepository _repo;
@@ -94,9 +64,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         _logger = logger;
     }
 
-    // ==========================================================================
-    // Registration
-    // ==========================================================================
+    // --- Registration ---
 
     public async Task<Camp> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
@@ -171,9 +139,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return camp;
     }
 
-    // ==========================================================================
-    // Queries
-    // ==========================================================================
+    // --- Queries ---
 
     public async Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
@@ -283,8 +249,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var year = settings.PublicYear;
         var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
 
-        // Pull the user's currently-led camps once so we can both (a) pin them to the
-        // top of the public listing and (b) build the "my pending camps" panel below.
+        // Lead camps: pin to top of listing + build "my pending camps" panel.
         var leadCampIds = new HashSet<Guid>();
         IReadOnlyList<Camp> leadCamps = [];
         if (userId.HasValue)
@@ -321,10 +286,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        // T-06: always populate leads. CampInfo.Leads is non-nullable now;
-        // GetCampsWithLeadsForYearAsync remains as an [Obsolete] alias for
-        // back-compat (with an optional status filter that callers can do
-        // in-memory).
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter: null, cancellationToken);
         return camps.Select(CreateCampInfo).ToList();
@@ -333,11 +294,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     private async Task<List<Camp>> GetCampEntitiesForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        // T-06: cache-unaware inner — the §15 caching decorator
-        // (CachingCampService) owns the per-camp projection and answers
-        // cached year queries by filtering its snapshot. Direct repo call
-        // here is correct (per §15c: inner must function without the
-        // decorator).
         var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
         return camps.ToList();
     }
@@ -346,8 +302,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
     {
         var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
-        // Camp.Name lives on CampSeason, not Camp — pull s.Name not c.Name (deviation
-        // from plan; reflects actual schema where the canonical name is per-season).
+        // Canonical name lives on CampSeason (per-season), not Camp.
         return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
             (c.Id, s.Name, c.Slug, s.Id))).ToList();
     }
@@ -395,9 +350,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        // T-06: cache-unaware inner — CachingCampService caches the
-        // singleton CampSettings projection and answers from its slot
-        // without entering this path.
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
         if (settings is null)
             throw new InvalidOperationException("Camp settings not found.");
@@ -705,9 +657,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season.ElectricalGrid?.ToString());
     }
 
-    // ==========================================================================
-    // Season management
-    // ==========================================================================
+    // --- Season management ---
 
     public async Task<CampSeason> OptInToSeasonAsync(
         Guid campId, int year, CancellationToken cancellationToken = default)
@@ -929,9 +879,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             return;
         }
 
-        // The lead meter filters by season status (Active/Full), so closing a
-        // season drops that camp's pending requests from the count — refresh
-        // the cached badges.
+        // Closing a season drops pending requests from the lead-meter count.
         await InvalidateLeadBadgesAsync(campId, cancellationToken);
 
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
@@ -997,9 +945,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     }
 
-    // ==========================================================================
-    // Camp updates
-    // ==========================================================================
+    // --- Camp updates ---
 
     public async Task<CampUpdateResult> UpdateCampAsync(
         CampUpdateInput input,
@@ -1092,9 +1038,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     }
 
-    // ==========================================================================
-    // Lead management
-    // ==========================================================================
+    // --- Lead management ---
 
     public async Task<CampLead> AddLeadAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default)
@@ -1157,9 +1101,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         await _systemTeamSync.SyncMembershipForUserAsync(lead.UserId, SystemTeamType.BarrioLeads, cancellationToken);
     }
 
-    // ==========================================================================
-    // Historical names
-    // ==========================================================================
+    // --- Historical names ---
 
     public async Task AddHistoricalNameAsync(
         Guid campId, string name, CancellationToken cancellationToken = default)
@@ -1186,9 +1128,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
     }
 
-    // ==========================================================================
-    // Cross-service queries (used by CityPlanningService)
-    // ==========================================================================
+    // --- Cross-service queries (used by CityPlanningService) ---
 
     public async Task<CampSeasonLookup?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
@@ -1215,9 +1155,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         Guid userId, int year, CancellationToken cancellationToken = default) =>
         _repo.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
 
-    // ==========================================================================
-    // Authorization checks
-    // ==========================================================================
+    // --- Authorization checks ---
 
     public Task<bool> IsUserCampLeadAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
@@ -1229,9 +1167,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
     }
 
-    // ==========================================================================
-    // Images
-    // ==========================================================================
+    // --- Images ---
 
     public async Task<CampImageUploadResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
@@ -1253,10 +1189,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             return CampImageUploadResult.Failure("Image must be under 10MB.");
         }
 
-        // Filename extension must also be on the image whitelist — a client
-        // could pass MIME validation with image/jpeg but supply a .html
-        // filename, and static-file middleware would then serve the upload
-        // as HTML (script-injection vector).
+        // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
@@ -1317,9 +1250,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
     }
 
-    // ==========================================================================
-    // Settings (CampAdmin)
-    // ==========================================================================
+    // --- Settings (CampAdmin) ---
 
     public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
     {
@@ -1349,9 +1280,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return result.ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
-    // ==========================================================================
-    // Name change
-    // ==========================================================================
+    // --- Name change ---
 
     public async Task ChangeSeasonNameAsync(
         Guid seasonId, string newName, CancellationToken cancellationToken = default)
@@ -1402,7 +1331,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         if (oldName is null)
         {
-            // No-op: same name.
             return;
         }
 
@@ -1414,9 +1342,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     }
 
-    // ==========================================================================
-    // Private helpers
-    // ==========================================================================
+    // --- Private helpers ---
 
     private static CampSeason CreateSeasonFromData(
         Guid campId, int year, string name, CampSeasonData data, Instant now)
@@ -1448,9 +1374,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         };
     }
 
-    // ==========================================================================
-    // Camp membership per season (issue nobodies-collective#488)
-    // ==========================================================================
+    // --- Camp membership per season (see nobodies-collective/Humans#488) ---
 
     private async Task<CampSeason?> ResolveOpenMembershipSeasonAsync(
         Guid campId, CancellationToken cancellationToken)
@@ -1475,13 +1399,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
     }
 
-    /// <summary>
-    /// Single transition point for moving a CampMember to Removed. Handles the
-    /// role-assignment cascade, the state/timestamp flip (including clearing
-    /// HasEarlyEntry), and the audit-log entry. Callers handle status preconditions
-    /// before invoking and any post-effects (notifications, lead-badge
-    /// invalidation) afterward.
-    /// </summary>
+    /// <summary>Sole CampMember→Removed transition: role-cascade, state flip, audit. Callers own preconditions and post-effects.</summary>
     private async Task TransitionMemberToRemovedAsync(
         CampMember member,
         Guid actorUserId,
@@ -1885,34 +1803,23 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
+    // --- Account-merge fold ---
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        // Two repo calls because section ownership splits the tables:
-        // CampRepository owns camp_leads, CampRoleRepository owns
-        // camp_role_assignments. Each repo runs a single SaveChanges; the
-        // caller (AccountMergeService.AcceptAsync) wraps both inside its
-        // ambient TransactionScope so the two saves are atomic.
+        // Section ownership splits the tables; AccountMergeService.AcceptAsync wraps both saves in its TransactionScope.
         await _repo.ReassignLeadsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
         await _roleRepo.ReassignAssignmentsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
-        // Active CampLead moves change Barrio Leads system-team membership
-        // for both source and target, and the per-lead pending-membership
-        // nav badge depends on lead-camp ownership; refresh both for each
-        // user. Plain CampRoleAssignment moves don't touch either cache.
+        // Lead moves change Barrio Leads team membership + lead-badge cache for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
         await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
         _leadBadgeInvalidator.Invalidate(sourceUserId);
         _leadBadgeInvalidator.Invalidate(targetUserId);
     }
 
-    // ==========================================================================
-    // IUserDataContributor — GDPR export
-    // ==========================================================================
+    // --- IUserDataContributor — GDPR export ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

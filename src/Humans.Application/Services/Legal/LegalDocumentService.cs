@@ -5,15 +5,7 @@ using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Application.Services.Legal;
 
-/// <summary>
-/// Fetches published legal documents (Statutes) from the configured GitHub
-/// repository. This service is a thin content provider with no DB access —
-/// it lives in the Application layer after the §15 Legal-document
-/// migration so Legal services are uniformly located. GitHub I/O is
-/// delegated to <see cref="IGitHubLegalDocumentConnector"/>; caching uses
-/// <see cref="IMemoryCache"/> inline (a future caching decorator can
-/// replace the inline calls once other sections warrant the pattern here).
-/// </summary>
+// Thin GitHub-backed content provider for published legal documents. No DB; inline IMemoryCache.
 public sealed class LegalDocumentService : ILegalDocumentService
 {
     private static readonly IReadOnlyList<LegalDocumentDefinition> Documents =
@@ -64,7 +56,7 @@ public sealed class LegalDocumentService : ILegalDocumentService
             var contentDict = await _gitHub.GetFolderContentByPrefixAsync(
                 definition.RepoFolder, definition.FilePrefix);
 
-            // Return a mutable copy for callers (signature contract).
+            // Mutable copy per signature contract.
             var content = new Dictionary<string, string>(contentDict, StringComparer.Ordinal);
             _cache.Set(cacheKey, content, CacheTtl);
             return content;

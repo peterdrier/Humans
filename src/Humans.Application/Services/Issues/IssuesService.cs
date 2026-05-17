@@ -21,15 +21,8 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Services.Issues;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IIssuesService"/>. All data
-/// access flows through <see cref="IIssuesRepository"/>; cross-section reads
-/// (reporter/assignee/resolver display names, role holders, effective emails)
-/// are routed through <see cref="IUserService"/>,
-/// <see cref="IUserEmailService"/>, and <see cref="IRoleAssignmentService"/>.
-/// Audit entries are written via <see cref="IAuditLogService"/> after the
-/// business save (design-rules §7a). In-app notifications are emitted via
-/// <see cref="INotificationService"/>; emails are enqueued via
-/// <see cref="IEmailService"/>.
+/// <see cref="IIssuesService"/> impl. Data via <see cref="IIssuesRepository"/>; cross-section reads via user/email/role services;
+/// audit after save (design-rules §7a); notifications and emails dispatched at the end.
 /// </summary>
 public sealed class IssuesService : IIssuesService, IUserDataContributor
 {
@@ -94,9 +87,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         _logger = logger;
     }
 
-    // ==========================================================================
-    // Submission
-    // ==========================================================================
+    // ─── Submission ───
 
     public async Task<Issue> SubmitIssueAsync(
         Guid reporterUserId,
@@ -217,9 +208,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         return result.Length > 2000 ? result[..2000] : result;
     }
 
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
+    // ─── Reads ───
 
     public async Task<Issue?> GetIssueByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -296,9 +285,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         var issue = await GetIssueByIdAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
-        // Pull the relevant audit entries via the existing filtered-entries
-        // method on IAuditLogService — we filter by entity + the four
-        // Issue-related actions.
+        // Audit entries for the four Issue-related actions.
         var auditEntries = await _audit.GetFilteredEntriesAsync(
             entityType: nameof(Issue),
             entityId: issueId,
@@ -313,8 +300,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             limit: int.MaxValue,
             ct: ct);
 
-        // Resolve actor display names for the audit entries via IUserService
-        // (audit log doesn't expose ActorDisplayName on its DTO).
+        // Resolve actor display names (audit log DTO doesn't include them).
         var actorIds = auditEntries
             .Where(a => a.ActorUserId.HasValue)
             .Select(a => a.ActorUserId!.Value)
@@ -324,7 +310,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             ? new Dictionary<Guid, UserInfo>()
             : await _users.GetUserInfosAsync(actorIds, ct);
 
-#pragma warning disable CS0618 // Cross-domain nav populated in memory
+#pragma warning disable CS0618
         var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
             c.Id,
             c.CreatedAt,
@@ -349,9 +335,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             .ToList();
     }
 
-    // ==========================================================================
-    // Mutations
-    // ==========================================================================
+    // ─── Mutations ───
 
     public async Task<IssueComment> PostCommentAsync(
         Guid issueId,
@@ -638,9 +622,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
     }
 
-    // ==========================================================================
-    // Counts and queries used by nav badge / dashboards
-    // ==========================================================================
+    // ─── Counts & badge/dashboard queries ───
 
     public async Task<int> GetActionableCountForViewerAsync(
         Guid viewerUserId, IReadOnlyList<string> viewerRoles, bool viewerIsAdmin,
@@ -658,13 +640,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         });
     }
 
-    /// <summary>
-    /// Returns every user whose actionable-issues badge count may have shifted
-    /// because of a mutation on an issue with the given (and optionally
-    /// previous) section: the reporter, every active Admin, and every
-    /// role-holder for the section's owning role(s). Empty sections fall back
-    /// to admins-only routing per <see cref="IssueSectionRouting"/>.
-    /// </summary>
+    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current & previous sections.</summary>
     private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
         Guid reporterUserId, string? section, string? previousSection,
         CancellationToken ct)
@@ -703,9 +679,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             .ToList();
     }
 
-    // ==========================================================================
-    // Retention — invoked daily by CleanupIssuesJob
-    // ==========================================================================
+    // ─── Retention (daily via CleanupIssuesJob) ───
 
     public async Task<int> PurgeExpiredAsync(CancellationToken ct = default)
     {
@@ -717,11 +691,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         var ids = expired.Select(e => e.Id).ToList();
         var deleted = await _repo.DeleteByIdsAsync(ids, ct);
 
-        // Best-effort filesystem cleanup. Each issue's screenshots live under
-        // wwwroot/uploads/issues/{id}/. We delete the whole directory rather
-        // than file-by-file so a stray sibling (e.g. partial upload) is also
-        // swept. Failures are logged but do not roll back the DB delete — the
-        // worst case is an orphan file the next sweep will see again.
+        // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
         foreach (var row in expired)
         {
             var issueDir = Path.Combine(
@@ -748,9 +718,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         return deleted;
     }
 
-    // ==========================================================================
-    // GDPR contributor
-    // ==========================================================================
+    // ─── GDPR contributor ───
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -776,9 +744,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         return [new UserDataSlice(GdprExportSections.Issues, shaped)];
     }
 
-    // ==========================================================================
-    // Helpers — audit, notifications, in-memory stitching
-    // ==========================================================================
+    // ─── Helpers — audit, notifications, in-memory stitching ───
 
     private async Task LogAuditAsync(
         AuditAction action, Guid issueId, Guid? actorUserId, string description)
@@ -802,9 +768,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         if (senderIsReporter)
         {
-            // Reporter commented → notify role holders for the issue's section
-            // plus the assignee (if any). IRoleAssignmentService exposes a
-            // singular role lookup; iterate over the section's roles and union.
+            // Reporter commented → notify section role-holders + assignee.
             foreach (var role in IssueSectionRouting.RolesFor(issue.Section))
             {
                 foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(role, ct))
@@ -817,8 +781,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         else
         {
-            // Admin/role-holder commented → notify the reporter (in-app + email)
-            // and the assignee if different.
+            // Admin/role-holder commented → notify reporter (in-app + email) and assignee.
             if (issue.ReporterUserId != comment.SenderUserId)
                 recipients.Add(issue.ReporterUserId);
             if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
@@ -911,11 +874,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     private async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
     {
-        // Fan out to Admins + section role-holders so handlers get an in-app
-        // ping instead of relying on the nav-badge alone (per
-        // docs/features/issues/issues-system.md US-28.4). The reporter is
-        // excluded so a handler filing their own issue doesn't notify
-        // themselves.
+        // Fan out to Admins + section role-holders (US-28.4); exclude self-filer.
         var recipients = new HashSet<Guid>();
 
         foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
@@ -957,9 +916,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     private async Task DispatchAssignedNotificationAsync(
         Issue issue, Guid newAssigneeUserId, Guid? actorUserId, CancellationToken ct)
     {
-        // Self-assign is a no-op for notifications — the actor doesn't need
-        // a "you assigned yourself" alert. Mirrors the actor-exclusion pattern
-        // in DispatchCommentNotificationsAsync / DispatchStatusChangedNotificationAsync.
+        // Self-assign → no notification.
         if (newAssigneeUserId == actorUserId) return;
 
         try
@@ -983,9 +940,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
     }
 
-    // Cross-domain nav stitching — populates [Obsolete]-marked nav properties
-    // in memory from service calls (design-rules §6b "in-memory join").
-#pragma warning disable CS0618 // Cross-domain nav properties populated in-memory
+    // In-memory join for [Obsolete] cross-domain nav props (design-rules §6b).
+#pragma warning disable CS0618
     private async Task StitchCrossDomainNavsAsync(
         IReadOnlyList<Issue> issues, CancellationToken ct)
     {

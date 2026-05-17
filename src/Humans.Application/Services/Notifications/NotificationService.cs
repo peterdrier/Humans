@@ -13,23 +13,9 @@ namespace Humans.Application.Services.Notifications;
 /// <summary>
 /// Application-layer implementation of <see cref="INotificationService"/>.
 /// Dispatches in-app notifications, materializes recipients, checks
-/// preferences, and delegates persistence to
-/// <see cref="INotificationRepository"/>.
+/// preferences, and delegates persistence to <see cref="INotificationRepository"/>.
+/// Invalidates per-user nav-badge cache keys after every successful send (§15 Option A).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Goes through <see cref="INotificationRepository"/> for all data access —
-/// this type never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
-/// </para>
-/// <para>
-/// No caching decorator (§15 Option A): in-app notification dispatch is
-/// fire-and-forget — reads go through <see cref="NotificationInboxService"/>,
-/// whose nav-badge counts are cached in the view component layer via a
-/// short-TTL <see cref="IMemoryCache"/> entry keyed by user. This service
-/// invalidates those per-user cache keys after every successful send.
-/// </para>
-/// </remarks>
 public sealed class NotificationService : INotificationService, IUserMerge
 {
     private readonly INotificationEmitter _emitter;

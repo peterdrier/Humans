@@ -12,17 +12,8 @@ using NodaTime;
 namespace Humans.Infrastructure.Services.Mailer;
 
 /// <summary>
-/// Caching MailerLite client. Registered as a Singleton so the in-memory
-/// subscriber list, account summary, and group list survive across requests.
-/// First read after startup (or after <see cref="RefreshAsync"/>) populates
-/// the cache from MailerLite; every subsequent read is served from RAM.
-/// Admins force a re-pull via POST /Mailer/Admin/Refresh.
-///
-/// Writes (CreateGroup, Assign/Unassign, BulkImport) are runtime-guarded:
-/// every write either inspects the requested group name (CreateGroup) or
-/// looks up the target group by id (Assign/Unassign/BulkImport) and throws
-/// <see cref="InvalidOperationException"/> if the name doesn't start with
-/// "Humans - ". Pinned by <c>MailerLiteClientWriteGuardTests</c>.
+/// Caching MailerLite client (Singleton). Writes are restricted to groups whose
+/// name starts with "Humans - "; pinned by MailerLiteClientWriteGuardTests.
 /// </summary>
 public sealed class MailerLiteClient : IMailerLiteService
 {
@@ -73,8 +64,7 @@ public sealed class MailerLiteClient : IMailerLiteService
 
     public async Task<MailerLiteSubscriber?> GetSubscriberAsync(string email, CancellationToken ct = default)
     {
-        // Single-email lookup is a passthrough — callers asking for a specific
-        // address want live state, not a snapshot from the dashboard cache.
+        // Passthrough — callers want live state, not the dashboard snapshot.
         using var resp = await SendAsync(HttpMethod.Get,
             $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
         if (resp.StatusCode == HttpStatusCode.NotFound) return null;
@@ -112,12 +102,8 @@ public sealed class MailerLiteClient : IMailerLiteService
         return env.Data;
     }
 
-    // NOTE: Assign/Unassign/BulkImport intentionally do NOT call InvalidateSubscribersCache().
-    // They are called in tight loops by MailerAudienceSyncService, which holds its own
-    // per-sync subscriber snapshot — invalidating mid-loop would force a full ML re-fetch
-    // before every single write (N+M extra full-list calls for N assigns + M unassigns,
-    // burning the rate limit). The cache will refresh on the next admin "Refresh" click
-    // or via the singleton expiry path; the staleness window is bounded and harmless.
+    // Assign/Unassign/BulkImport deliberately don't invalidate — the sync service holds its
+    // own snapshot and tight-loop invalidation would burn the rate limit.
 
     public async Task AssignSubscriberToGroupAsync(
         string subscriberId, string groupId, CancellationToken ct = default)
@@ -150,12 +136,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         if (emails.Count == 0)
             return new BulkImportResult(0, 0, 0, 0);
 
-        // MailerLite's documented bulk-import endpoint
-        // (POST /api/groups/{id}/import-subscribers) is asynchronous: it returns
-        // an import_progress_url and we'd have to poll. Per-email upsert via
-        // POST /api/subscribers with the groups array is synchronous, returns
-        // the subscriber object directly, and is fine at our ~500-user scale.
-        // ML treats it as upsert-or-update keyed on email.
+        // Per-email upsert is synchronous; ML's bulk import endpoint requires polling.
         int created = 0, errors = 0;
 
         foreach (var email in emails)
@@ -194,12 +175,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         return group;
     }
 
-    // Merges a newly-created group into the cached list under the gate so the
-    // next RequireHumansGroupAsync call doesn't trigger a full re-populate.
-    // Nullifying _groups would cascade into EnsurePopulatedAsync re-fetching the
-    // entire subscriber list too — eviction would be disproportionate to the
-    // change. If the cache hasn't been populated yet, this is a no-op; the first
-    // read will pull the new group along with everything else.
+    // Merge under the gate — nullifying would cascade into a full subscriber re-fetch.
     private async Task AppendToGroupsCacheAsync(MailerLiteGroup newGroup, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);
@@ -228,8 +204,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         }
     }
 
-    // Pulls everything fresh. If any underlying call throws, the prior cache
-    // (if any) is left intact — callers see the exception and can retry.
+    // Throw leaves the prior cache intact; callers retry.
     private async Task PopulateLockedAsync(CancellationToken ct)
     {
         var subscribers = new List<MailerLiteSubscriber>();
@@ -260,9 +235,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         string? cursor = null;
         while (true)
         {
-            // include=groups is required — ML's list endpoint omits the per-subscriber
-            // groups array without it, which leaves GroupIds empty and breaks both the
-            // audience "currently in group" stat and the diff that suppresses re-assigns.
+            // include=groups required — omitting it returns empty GroupIds.
             var url = "/api/subscribers?limit=100&include=groups";
             if (cursor is not null) url += $"&cursor={Uri.EscapeDataString(cursor)}";
             using var resp = await SendAsync(HttpMethod.Get, url, content: null, ct);
@@ -292,8 +265,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         return results;
     }
 
-    // Internal seam for tests — calls SendAsync without the GET-only guard
-    // (the guard was removed when outbound writes landed).
+    // Test seam.
     internal Task<HttpResponseMessage> SendForTestsAsync(HttpMethod method, string url, CancellationToken ct)
         => SendAsync(method, url, content: null, ct);
 
@@ -315,17 +287,14 @@ public sealed class MailerLiteClient : IMailerLiteService
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            // Timeout (HttpClient timeout fires TaskCanceledException with no token cancel).
+            // HttpClient timeout — surfaces as TaskCanceledException with no token cancel.
             _logger.LogError(ex, "MailerLite HTTP call timed out: {Method} {Url}", method, url);
             throw;
         }
         if (resp.Headers.TryGetValues("X-RateLimit-Remaining", out var values)
             && int.TryParse(values.FirstOrDefault(), CultureInfo.InvariantCulture, out var remaining))
         {
-            // Reactive back-off — ML allows 120 req/min and returns Remaining in every
-            // response. Sleep proportionally as the window drains so tight write loops
-            // (Assign/Unassign/BulkImport) don't slam into 429s. Tiers are intentionally
-            // wide; 429-with-Retry-After handling is a separate concern.
+            // Reactive back-off — ML allows 120 req/min; drain proportionally to avoid 429s.
             var delay = remaining switch
             {
                 < 5 => TimeSpan.FromSeconds(5),
@@ -341,7 +310,7 @@ public sealed class MailerLiteClient : IMailerLiteService
                 }
                 catch
                 {
-                    // Caller never sees this response — dispose it so we don't leak the socket.
+                    // Dispose so we don't leak the socket — caller never sees this response.
                     resp.Dispose();
                     throw;
                 }
@@ -366,10 +335,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         return o;
     }
 
-    // NOTE: MailerLiteSubscriber.FirstName and LastName will be null at runtime because
-    // MailerLite stores name/last_name under a nested "fields" object, not at the
-    // top level of the subscriber JSON. The spec says the importer preview doesn't
-    // surface ML's name in this slice, so null is acceptable here.
+    // FirstName/LastName are null at runtime — ML stores them under nested "fields", not top-level.
 
     private sealed record SubscriberListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteSubscriber> Data,

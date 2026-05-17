@@ -5,18 +5,9 @@ using Humans.Domain.Entities;
 namespace Humans.Application.Services.Shifts;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IBurnSettingsService"/>.
-/// Thin read-only adapter over the Shifts-owned
-/// <see cref="IShiftManagementRepository"/> that maps the
-/// <see cref="EventSettings"/> entity to a <see cref="BurnSettingsInfo"/>
-/// DTO at the section boundary, so cross-section consumers never see the
-/// entity.
+/// Read-only adapter mapping <see cref="EventSettings"/> → <see cref="BurnSettingsInfo"/> at the
+/// section boundary. No caching (single active row, cold path — see #719).
 /// </summary>
-/// <remarks>
-/// Owned by Shifts (matches <c>event_settings</c> table ownership). No
-/// caching — <c>event_settings</c> has at most one active row and callers
-/// are not on a hot path (issue nobodies-collective/Humans#719).
-/// </remarks>
 public sealed class BurnSettingsService : IBurnSettingsService
 {
     private readonly IShiftManagementRepository _repo;

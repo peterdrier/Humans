@@ -8,22 +8,6 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Auth;
 
-/// <summary>
-/// Application-layer implementation of <see cref="IMagicLinkService"/>.
-/// MagicLinkService is special-cased under §15: it owns no tables (its only
-/// persistent state is the per-user <c>MagicLinkSentAt</c> column on
-/// <c>User</c>, updated via <see cref="UserManager{User}"/>). Data-protection
-/// token generation/validation and URL construction are abstracted into
-/// <see cref="IMagicLinkUrlBuilder"/> and rate-limit / replay state into
-/// <see cref="IMagicLinkRateLimiter"/> — both Infrastructure concerns — so
-/// this service has no <c>HumansDbContext</c>, <c>EmailSettings</c>, or
-/// <c>IMemoryCache</c> dependency (same shape as
-/// <c>CommunicationPreferenceService</c> + <c>IUnsubscribeTokenProvider</c>).
-/// </summary>
-/// <remarks>
-/// Verified-email lookup goes through <see cref="IUserEmailService.FindVerifiedEmailWithUserAsync"/>
-/// instead of raw <c>DbContext.UserEmails</c> queries.
-/// </remarks>
 public sealed class MagicLinkService : IMagicLinkService
 {
     private static readonly Duration RateLimitCooldown = Duration.FromSeconds(60);
@@ -82,7 +66,6 @@ public sealed class MagicLinkService : IMagicLinkService
             return null;
         }
 
-        // Verify DataProtection token — payload is the user ID
         var payload = _urlBuilder.UnprotectLoginToken(token);
         if (payload is null)
         {
@@ -96,7 +79,7 @@ public sealed class MagicLinkService : IMagicLinkService
             return null;
         }
 
-        // Mark token as consumed (cache for token lifetime to prevent replay)
+        // Replay-prevention: consume token for its lifetime.
         if (!await _rateLimiter.TryConsumeLoginTokenAsync(token, TokenLifetime))
         {
             _logger.LogInformation("Magic link login: token already used for user {UserId}", userId);

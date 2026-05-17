@@ -14,21 +14,7 @@ using System.Text.Json;
 
 namespace Humans.Application.Services.CityPlanning;
 
-/// <summary>
-/// Application-layer implementation of <see cref="ICityPlanningService"/>.
-/// Goes through <see cref="ICityPlanningRepository"/> for all data access —
-/// this type never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
-/// </summary>
-/// <remarks>
-/// Cross-section reads route through the other sections' public service
-/// interfaces: <see cref="ICampService"/> for camp season metadata,
-/// <see cref="ITeamService"/> for city-planning team membership, and
-/// <see cref="IUserService"/> for the cached <see cref="UserInfo"/>
-/// read-model used to resolve burner names on display and user display
-/// names on polygon history (replaces the prior cross-domain
-/// <c>.Include(h => h.ModifiedByUser)</c>).
-/// </remarks>
+/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampService/ITeamService/IUserService.</summary>
 public sealed class CityPlanningService : ICityPlanningService
 {
     private readonly ICityPlanningRepository _repo;
@@ -55,14 +41,11 @@ public sealed class CityPlanningService : ICityPlanningService
         _userService = userService;
     }
 
-    // ==========================================================================
-    // Polygon reads
-    // ==========================================================================
+    // --- Polygon reads ---
 
     public async Task<List<CampPolygonDto>> GetCampPolygonsAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        // Get display data for the year from camp service (keyed by campSeasonId).
         var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
@@ -96,7 +79,6 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        // Get display data for the year from camp service (keyed by campSeasonId).
         var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
@@ -153,7 +135,6 @@ public sealed class CityPlanningService : ICityPlanningService
             return [];
         }
 
-        // Resolve display names through IUserService — no cross-domain .Include().
         var userIds = rows.Select(r => r.ModifiedByUserId).Distinct().ToList();
         var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
 
@@ -173,9 +154,7 @@ public sealed class CityPlanningService : ICityPlanningService
         }).ToList();
     }
 
-    // ==========================================================================
-    // Polygon writes
-    // ==========================================================================
+    // --- Polygon writes ---
 
     public Task<(CampPolygon polygon, CampPolygonHistory history)> SaveCampPolygonAsync(
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,
@@ -216,9 +195,7 @@ public sealed class CityPlanningService : ICityPlanningService
             campSeasonId, entry.GeoJson, entry.AreaSqm, restoredByUserId, note, cancellationToken);
     }
 
-    // ==========================================================================
-    // Authorization
-    // ==========================================================================
+    // --- Authorization ---
 
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -234,8 +211,7 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<bool> CanUserEditAsync(
         Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        // Global role checks (Admin, CampAdmin) are done at the controller level via claims.
-        // This method only checks team-specific access: city planning team membership + camp lead.
+        // Team-specific access only; Admin/CampAdmin claims are checked at the controller.
         if (await IsCityPlanningTeamMemberAsync(userId, cancellationToken)) return true;
 
         var settings = await GetSettingsAsync(cancellationToken);
@@ -248,9 +224,7 @@ public sealed class CityPlanningService : ICityPlanningService
         return await _campService.IsUserCampLeadAsync(userId, season.CampId, cancellationToken);
     }
 
-    // ==========================================================================
-    // Settings
-    // ==========================================================================
+    // --- Settings ---
 
     public async Task<CityPlanningSettingsDto> GetSettingsAsync(
         CancellationToken cancellationToken = default)
@@ -467,10 +441,7 @@ public sealed class CityPlanningService : ICityPlanningService
             cancellationToken);
     }
 
-    // Registration info is shown on /Barrios/Register, which targets the highest open
-    // season year (see CampController.PopulateRegisterSeasonYearAsync). PublicYear can
-    // lag behind the newest open season during transitions, so key this row to the same
-    // year the register page uses to avoid editing/showing the wrong year's content.
+    // Key registration-info to the highest open season (Register page targets it), not PublicYear.
     private async Task<int> GetRegistrationTargetYearAsync(CancellationToken ct)
     {
         var campSettings = await _campService.GetSettingsAsync(ct);
@@ -479,13 +450,10 @@ public sealed class CityPlanningService : ICityPlanningService
             : campSettings.PublicYear;
     }
 
-    // ==========================================================================
-    // Export
-    // ==========================================================================
+    // --- Export ---
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
-        // Get display data for the year from camp service (keyed by campSeasonId).
         var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 

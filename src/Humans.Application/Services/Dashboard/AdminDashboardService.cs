@@ -5,17 +5,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Dashboard;
 
-/// <summary>
-/// Admin dashboard aggregator — partitions every user by membership state,
-/// joins in tier-application stats, and computes a language distribution
-/// across approved-not-suspended users for the dashboard's chart. Owns no
-/// tables; all reads route through the owning section services
-/// (<see cref="IUserService"/>, <see cref="IMembershipCalculator"/>,
-/// <see cref="IApplicationDecisionService"/>). User identity, profile state,
-/// and preferred-language reads come from the cached <see cref="UserInfo"/>
-/// snapshot — every admin dashboard render previously did a per-render
-/// <c>users</c> SELECT + GROUP BY for the language tile.
-/// </summary>
+/// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution. Owns no tables.</summary>
 public sealed class AdminDashboardService : IAdminDashboardService
 {
     private readonly IUserService _userService;
@@ -43,14 +33,7 @@ public sealed class AdminDashboardService : IAdminDashboardService
             await _applicationDecisionService.GetPendingApplicationCountAsync(ct);
         var appStats = await _applicationDecisionService.GetAdminStatsAsync(ct);
 
-        // Language distribution for the admin dashboard chart — approved,
-        // non-suspended humans, grouped by PreferredLanguage. Union
-        // Active + MissingConsents; pending-deletion users are not counted
-        // (bucket is split off earlier by PartitionUsersAsync). Group in
-        // memory over the cached UserInfo snapshot rather than a per-render
-        // SQL GROUP BY — `UserInfo.PreferredLanguage` is already projected
-        // from `User.PreferredLanguage` on the cache build. This is a
-        // visualization, not an audit count.
+        // Language distribution chart: Active ∪ MissingConsents (pending-deletion split off earlier).
         var approvedNotSuspended = new HashSet<Guid>(
             partition.Active.Concat(partition.MissingConsents));
         var languageDistribution = snapshot

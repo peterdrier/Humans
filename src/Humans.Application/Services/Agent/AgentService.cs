@@ -71,10 +71,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
             usage.TokensToday >= settings.DailyTokenCap ||
             usage.MessagesThisHour >= settings.HourlyMessageCap)
         {
-            // Invariant 6 (Agent.md): every refused turn writes an AgentMessage
-            // with RefusalReason != null. The controller-level handler normally
-            // blocks first, but this in-service guard is a second line of
-            // defence and must honour the same invariant.
+            // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
             await PersistRefusal(request, "rate_limited", cancellationToken);
             yield return Finalizer(stopReason: "rate_limited");
             yield break;
@@ -96,10 +93,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         else
         {
             var existing = await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken);
-            // Conversation may have been retention-purged or deleted in another tab
-            // between page load and submit. Start a fresh one rather than 500ing
-            // the SSE stream — the finalizer stamps the new ConversationId so the
-            // client picks it up transparently.
+            // Conversation may have been retention-purged; fall back to a fresh one (finalizer stamps the new id).
             conversation = existing
                 ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
         }
@@ -107,10 +101,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         if (conversation.UserId != request.UserId)
             throw new UnauthorizedAccessException("Conversation does not belong to this user.");
 
-        // Replay prior turns so the model has continuity. Snapshot before appending
-        // the new user message so we don't double-add it to sdkMessages below. Only
-        // user/assistant text turns replay; tool-call internals from prior turns are
-        // dropped (the model re-derives them via fetch_section_guide as needed).
+        // Replay user/assistant text turns only — tool-call internals are dropped (model re-derives via fetch_section_guide).
         var priorTurns = conversation.Messages
             .Where(m => (m.Role == AgentRole.User || m.Role == AgentRole.Assistant)
                         && !string.IsNullOrEmpty(m.Content))
@@ -154,10 +145,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         var toolCallCount = 0;
         AgentIssueProposal? issueProposal = null;
         AgentTurnFinalizer? finalFinalizer = null;
-        // Measure wall-clock turn duration from this point — covers the full
-        // streaming + tool-loop window the operator cares about. Stamped on
-        // the assistant AgentMessage below so the admin status latency panel
-        // (avg / P95) has real data.
+        // Wall-clock turn duration (streaming + tool loop) for the admin status latency panel.
         var turnStart = _clock.GetCurrentInstant();
 
         while (true)
@@ -207,10 +195,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
                 var result = await _tools.DispatchAsync(call, request.UserId, conversation.Id, cancellationToken);
                 results.Add(result);
-                // Normalize the stored slug so the admin status "Top fetched
-                // docs" panel groups by the actual document, not the raw
-                // tool-name+JSON args string (which splits identical fetches
-                // into one-off variants when argument payloads differ).
+                // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
                 fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
 
                 if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
@@ -225,10 +210,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                 break;
         }
 
-        // The proposal frame is the user-visible signal that the agent is
-        // handing off into the Issues form. It travels alongside the regular
-        // text/finalizer stream — the client opens the issue submission modal
-        // pre-filled when it sees this.
+        // Proposal frame signals client to open pre-filled Issues modal.
         if (issueProposal is not null)
         {
             yield return new AgentTurnToken(null, null, null, issueProposal);
@@ -263,9 +245,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         yield return new AgentTurnToken(null, null, fallbackFinalizer with { ConversationId = conversation.Id });
     }
 
-    /// <summary>How many prior user/assistant turns to replay to the model. Bounded
-    /// so long conversations don't blow the context budget; the daily message cap
-    /// (default 30) keeps most conversations well under this.</summary>
+    /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
     private const int HistoryReplayLimit = 20;
 
     public async Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
@@ -286,15 +266,10 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         Guid userId, Guid conversationId, CancellationToken ct)
     {
         var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        // Mismatched ownership and "doesn't exist" must look the same to the
-        // caller (Agent.md invariant 7) — both return null so the controller
-        // can 404 without leaking existence of someone else's conversation.
+        // Ownership mismatch returns null like "not found" (Agent.md invariant 7) — no existence leak.
         if (conv is null || conv.UserId != userId) return null;
 
-        // Tail is regenerated from the live snapshot. It may differ from what
-        // the model actually saw at the time of any historical turn — the
-        // view surfaces this caveat to the user. Persisting per-turn snapshots
-        // is tracked in Agent.md "Open question".
+        // Tail regenerated from current snapshot; may differ from historical turn view (Agent.md open question).
         var snapshot = await _snapshots.LoadAsync(userId, ct);
         var tail = _assembler.BuildUserContextTail(snapshot);
         return new AgentMyConversationView(ToTranscriptSnapshot(conv), tail);

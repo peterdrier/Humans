@@ -9,22 +9,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Budget;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IBudgetRepository"/>. The only
-/// non-test file that touches <c>DbContext.BudgetYears</c>,
-/// <c>DbContext.BudgetGroups</c>, <c>DbContext.BudgetCategories</c>,
-/// <c>DbContext.BudgetLineItems</c>, <c>DbContext.TicketingProjections</c>,
-/// or <c>DbContext.BudgetAuditLogs</c>.
-/// </summary>
-/// <remarks>
-/// Follows design-rules §15b: registered as Singleton, injects
-/// <see cref="IDbContextFactory{TContext}"/>, and opens a fresh short-lived
-/// <see cref="HumansDbContext"/> per method. There is no shared unit of
-/// work across methods — each public method is an atomic load-mutate-save
-/// against its own context. Multi-entity mutations that must be atomic
-/// (e.g., creating a year + its default groups + categories) happen inside a
-/// single repository method so they commit together.
-/// </remarks>
+/// <summary>EF-backed <see cref="IBudgetRepository"/>.</summary>
 internal sealed class BudgetRepository : IBudgetRepository
 {
     private const string TicketRevenueCategoryName = "Ticket Revenue";
@@ -44,9 +29,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         _logger = logger;
     }
 
-    // ==========================================================================
     // Budget Years — reads
-    // ==========================================================================
 
     public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(
         bool includeArchived, CancellationToken ct = default)
@@ -72,10 +55,7 @@ internal sealed class BudgetRepository : IBudgetRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Includes — BudgetCategory.Team is an obsolete nav; views
-        // render team info via the ResponsibleTeam nav on line items (owned by the
-        // Teams section, read in-domain until the full strip) and via TeamId-keyed
-        // lookups elsewhere.
+        // No cross-domain Includes — views read team data via TeamId lookups.
         return await ctx.BudgetYears
             .AsNoTracking()
             // arch:db-sort-ok budget tree persisted SortOrder
@@ -126,9 +106,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         return status == BudgetYearStatus.Closed;
     }
 
-    // ==========================================================================
     // Budget Years — atomic mutations
-    // ==========================================================================
 
     public async Task CreateYearWithScaffoldAsync(
         BudgetYearDraft draft, CancellationToken ct = default)
@@ -492,9 +470,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Budget Groups — atomic mutations
-    // ==========================================================================
 
     public async Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId,
@@ -614,9 +590,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Budget Categories — reads
-    // ==========================================================================
 
     public async Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -633,9 +607,7 @@ internal sealed class BudgetRepository : IBudgetRepository
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
-    // ==========================================================================
     // Budget Categories — atomic mutations
-    // ==========================================================================
 
     public async Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId,
@@ -760,9 +732,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Budget Line Items — reads
-    // ==========================================================================
 
     public async Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -773,9 +743,7 @@ internal sealed class BudgetRepository : IBudgetRepository
             .FirstOrDefaultAsync(li => li.Id == id, ct);
     }
 
-    // ==========================================================================
     // Budget Line Items — atomic mutations
-    // ==========================================================================
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         BudgetLineItemDraft draft,
@@ -931,9 +899,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Ticketing Projection — reads
-    // ==========================================================================
 
     public async Task<TicketingProjection?> GetTicketingProjectionAsync(
         Guid budgetGroupId, CancellationToken ct = default)
@@ -954,9 +920,7 @@ internal sealed class BudgetRepository : IBudgetRepository
             .FirstOrDefaultAsync(g => g.Id == groupId, ct);
     }
 
-    // ==========================================================================
     // Ticketing Projection — atomic mutations
-    // ==========================================================================
 
     public async Task<bool> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
@@ -1096,9 +1060,7 @@ internal sealed class BudgetRepository : IBudgetRepository
         return created;
     }
 
-    // ==========================================================================
     // Audit Log — reads (append-only per §12)
-    // ==========================================================================
 
     public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
         Guid? budgetYearId, CancellationToken ct = default)
@@ -1148,9 +1110,7 @@ internal sealed class BudgetRepository : IBudgetRepository
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
     // Private helpers
-    // ==========================================================================
 
     // Spanish IVA rate applied to Stripe and TicketTailor processing fees.
     private const int TicketingFeeVatRate = 21;

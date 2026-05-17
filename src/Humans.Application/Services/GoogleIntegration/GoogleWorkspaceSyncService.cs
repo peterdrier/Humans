@@ -18,39 +18,9 @@ using NodaTime;
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IGoogleSyncService"/>. Owns
-/// the Google Workspace Drive reconciliation flow, Google Group provisioning,
-/// and group-settings drift detection / remediation. Google Group membership
-/// reconciliation is owned by <see cref="IGoogleGroupSync"/>.
+/// <see cref="IGoogleSyncService"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
+/// Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Migrated to <c>Humans.Application</c> under §15 Part 2b (issue #575).
-/// Google SDK access is routed through shape-neutral connector interfaces
-/// (<see cref="IGoogleDirectoryClient"/>, <see cref="IGoogleDrivePermissionsClient"/>,
-/// <see cref="IGoogleGroupProvisioningClient"/>,
-/// <see cref="ITeamResourceGoogleClient"/>) so this service never imports
-/// <c>Google.Apis.*</c> (design-rules §13).
-/// </para>
-/// <para>
-/// Cross-section database reads flow through sibling service interfaces:
-/// <see cref="ITeamService"/> for team graph (members, child members,
-/// parent lookups), <see cref="IUserService"/> for User rows,
-/// <see cref="IUserEmailService"/> for extra-email identity resolution,
-/// <see cref="ITeamResourceService"/> for <see cref="GoogleResource"/>
-/// reads, and <see cref="IGoogleResourceRepository"/> for narrow writes to
-/// the sibling-owned <c>google_resources</c> table (design-rules §2c, §6).
-/// </para>
-/// <para>
-/// Outbox-event reads are routed through
-/// <see cref="IGoogleSyncOutboxRepository"/> for the failed-event count that
-/// the notification meter surfaces. Team-resource soft-delete after a sync
-/// pass is routed through <see cref="ITeamResourceService"/>; an
-/// <see cref="IServiceProvider"/> lazy resolve is used to break the
-/// construction cycle between <c>GoogleWorkspaceSyncService</c> and
-/// <c>TeamResourceService</c>.
-/// </para>
-/// </remarks>
 public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 {
     private readonly IGoogleGroupProvisioningClient _groupProvisioning;
@@ -224,22 +194,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         return resource;
     }
 
-    // ==========================================================================
-    // Gateway — add/remove per user per resource
-    // ==========================================================================
+    // ─── Gateway — add/remove per user per resource ───
 
     /// <inheritdoc />
     /// <remarks>
-    /// GATEWAY METHOD: the only path that adds a user to a Google Drive resource.
-    /// Respects SyncSettings — skips if GoogleDrive mode is None.
-    /// </summary>
-    /// <param name="resource">The Google resource to grant access on.</param>
-    /// <param name="userEmail">The user's email address.</param>
-    /// <param name="permissionLevelOverride">
-    /// Optional override for the permission level. When the same Drive resource
-    /// is linked to multiple teams, this is the resolved maximum level across
-    /// all teams. If null, uses the resource's own DrivePermissionLevel.
-    /// </param>
+    /// GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None.
+    /// <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.
+    /// </remarks>
     private async Task AddUserToDriveAsync(
         GoogleResource resource,
         string userEmail,
@@ -309,11 +270,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        // Drive-specific predicate — generic Cloud Identity phrases like
-        // "precondition check failed" appear in Drive responses too, but for
-        // unrelated admin-configured sharing-policy reasons. Only flip
-        // GoogleEmailStatus on phrases unique to Drive's no-Google-account
-        // signal. Issue nobodies-collective/Humans#677.
+        // Drive-specific predicate only — generic phrases (sharing-policy) must not flip GoogleEmailStatus (#677).
         if (!IsDriveTargetRejection(rawMessage))
         {
             return;
@@ -338,16 +295,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             rawMessage);
     }
 
-    /// <summary>
-    /// Matches Drive <c>permissions.create</c> error messages that indicate
-    /// the recipient is not backed by a real Google identity. Drive's
-    /// response is specific — it mentions <c>SendNotificationEmail</c> and
-    /// "no Google account" — so we scope the Drive detector to those
-    /// phrases only. Generic Google API phrases (e.g. "precondition check
-    /// failed") MUST NOT live here, because Drive uses the same wording for
-    /// admin-configured sharing-policy errors that should keep retrying.
-    /// See issue nobodies-collective/Humans#677.
-    /// </summary>
+    /// <summary>Drive-specific no-Google-account detector. Generic phrases excluded — they overlap with sharing-policy errors (#677).</summary>
     private static bool IsDriveTargetRejection(string rawMessage)
         => rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
@@ -355,14 +303,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// GATEWAY METHOD: the only path that removes a user from a Google Drive
-    /// resource. Respects SyncSettings — skips if GoogleDrive mode is not
-    /// AddAndRemove. The <paramref name="reason"/> defaults to
-    /// <see cref="SyncRemovalReason.Reconciliation"/> and is forwarded to
-    /// the notification service for audit / telemetry; it does not
-    /// currently drive suppression (issue peterdrier/Humans#639).
-    /// </summary>
+    /// <summary>GATEWAY: only path that removes a user from a Drive resource. Skips unless GoogleDrive mode is AddAndRemove. <paramref name="reason"/> forwarded to notifications (no suppression yet, #639).</summary>
     private async Task RemoveUserFromDriveAsync(
         GoogleResource resource,
         string permissionId,
@@ -411,13 +352,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
     }
 
-    /// <summary>
-    /// Best-effort derivation of a Google Group's primary email address
-    /// from its resource URL (<c>https://groups.google.com/a/{domain}/g/{prefix}</c>).
-    /// Returns <c>null</c> when the URL is missing or cannot be parsed —
-    /// callers fall back to the resource name in that case (issue
-    /// peterdrier/Humans#639 graceful-fallback acceptance criterion).
-    /// </summary>
+    /// <summary>Derive Group email from URL (groups.google.com/a/{domain}/g/{prefix}); null on parse fail (#639).</summary>
     private string? TryDeriveGroupEmail(GoogleResource resource)
     {
         if (resource.ResourceType != GoogleResourceType.Group)
@@ -524,10 +459,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (resource.ResourceType == GoogleResourceType.Group)
             {
-                // Group membership now flows through IGoogleGroupSync, which
-                // reconciles whole-group expected state from registered
-                // IGoogleGroupMembershipSource implementations. This per-user
-                // gateway remains responsible for Drive resources only.
+                // Group membership reconciliation owned by IGoogleGroupSync; this path handles Drive only.
                 await RequestGoogleGroupSyncAsync(resource, team?.GoogleGroupEmail, cancellationToken);
                 continue;
             }
@@ -1902,13 +1834,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 .FirstOrDefault();
     }
 
-    /// <summary>
-    /// Issue #635 (§15i): bulk-fetch UserEmails for a set of team members,
-    /// grouped by userId. The Google sync hot-path calls this once per
-    /// reconcile and passes the result into every <see cref="TryGetGoogleEmail"/>
-    /// call so we never traverse <c>user.UserEmails</c> cross-domain. Routed
-    /// through the owning section service per design-rules §2c.
-    /// </summary>
+    /// <summary>Bulk-fetch UserEmails by userId for sync hot-path (#635, §15i).</summary>
     private Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>>
         LoadEmailsForUserIdsAsync(
             IReadOnlyCollection<Guid> userIds,
@@ -1956,10 +1882,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private static string? GetProfilePictureUrl(TeamActiveMemberSnapshot tm) => tm.ProfilePictureUrl;
 
-    // ==========================================================================
-    // Group permissions — classification helpers (pure, over the bridge's
-    // shape-neutral DrivePermission DTO).
-    // ==========================================================================
+    // ─── Group permission classifiers over DrivePermission DTO ───
 
     private static bool IsAnyUserPermission(DrivePermission perm)
     {
@@ -2061,8 +1984,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
     /// <summary>
     /// Populates the full actual-settings dictionary (enforced + deprecated)
-    /// for the domain-wide "all groups" page. Mirrors the original service's
-    /// <c>Add(...)</c> helper so deprecated settings stay visible to admins.
+    /// for the domain-wide "all groups" page — deprecated settings stay visible
+    /// to admins.
     /// </summary>
     private static void PopulateActualSettings(Dictionary<string, string> dict, GroupSettingsSnapshot s)
     {

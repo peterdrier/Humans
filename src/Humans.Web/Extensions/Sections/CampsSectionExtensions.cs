@@ -18,42 +18,27 @@ internal static class CampsSectionExtensions
 {
     internal static IServiceCollection AddCampsSection(this IServiceCollection services)
     {
-        // Camps section — §15 repository pattern (issue #542) + T-06 caching
-        // decorator (2026-05-16 cache-migration plan).
+        // Camps section — see #542 + T-06.
         services.AddSingleton<ICampRepository, CampRepository>();
 
-        // Inner CampService: Scoped + keyed under CachingCampService.InnerServiceKey
-        // so the singleton decorator can resolve it per-call without self-
-        // resolving the unkeyed ICampService registration.
+        // Keyed-Scoped inner + Singleton decorator.
         services.AddKeyedScoped<ICampService, CampsCampService>(CachingCampService.InnerServiceKey);
         services.AddKeyedScoped<IUserMerge, CampsCampService>(CachingCampService.InnerServiceKey);
         services.AddScoped<CampsCampService>(sp =>
             (CampsCampService)sp.GetRequiredKeyedService<ICampService>(CachingCampService.InnerServiceKey));
-        // IUserDataContributor stays on the inner service (Scoped, unkeyed) —
-        // GDPR export iterates IEnumerable<IUserDataContributor> and matches
-        // the User/Teams pattern. The decorator does not implement the
-        // contributor surface.
+        // IUserDataContributor on the inner — matches User/Teams pattern (GDPR export iterates contributors).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 
-        // CachingCampService: Singleton transparent decorator. Owns the
-        // CampInfo + CampSettingsInfo projection and invalidates after every
-        // write going through this surface.
+        // Owns CampInfo + CampSettingsInfo projection; invalidates after every write through this surface.
         services.AddSingleton<CachingCampService>();
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
 
-        // ICampInfoInvalidator and IUserMerge must resolve to the SAME
-        // singleton instance that backs ICampService (§15e CRITICAL: one
-        // cache, one signaller).
+        // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampService — one cache, one signaller.
         services.AddSingleton<ICampInfoInvalidator>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingCampService>());
 
-        // Surface CampInfo cache diagnostics on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCampService>());
 
-        // CachingCampService is itself the IHostedService — TrackedCache's
-        // StartAsync triggers WarmAllAsync when warmOnStartup: true. After a
-        // bulk invalidation (Clear), the next read lazily re-warms via
-        // EnsureWarmedAsync.
         services.AddHostedService(sp => sp.GetRequiredService<CachingCampService>());
 
         // CampRoleService — separate sub-service, no decorator.

@@ -80,9 +80,7 @@ public class ShiftsController : HumansControllerBase
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                            (await _shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
-        // T-10: signups + tag-preferences come from the cached ShiftUserView
-        // (issue #720). ShiftUserView.Signups is already scoped to the active
-        // event by the inner ShiftViewService; no further filtering needed.
+        // see #720: cached ShiftUserView, already event-scoped.
         var userView = await _shiftView.GetUserAsync(user.Id);
         var userSignups = userView.Signups;
         var hasSignups = userSignups.Count > 0;
@@ -114,10 +112,7 @@ public class ShiftsController : HumansControllerBase
     private static bool CanBrowseShifts(EventSettings eventSettings, bool isPrivileged, bool hasSignups) =>
         eventSettings.IsShiftBrowsingOpen || isPrivileged || hasSignups;
 
-    // Users without a legal name on file cannot browse or sign up for shifts —
-    // the signup record would lack the name the rota report needs. Bounce them
-    // into the onboarding widget with an info message; the widget dispatcher
-    // will land them on the Names step.
+    // No legal name → bounce to onboarding widget (Names step); signup needs it for the rota report.
     private IActionResult? RedirectIfNameMissing(UserInfo user)
     {
         if (user.HasRequiredNameFields) return null;
@@ -278,9 +273,7 @@ public class ShiftsController : HumansControllerBase
 
         var es = await _shiftMgmt.GetActiveAsync();
 
-        // T-10: cached ShiftUserView (issue #720). Signups are pre-filtered to
-        // the active event by the inner ShiftViewService — no active event
-        // yields an empty list.
+        // see #720: cached ShiftUserView, event-scoped (empty when no active event).
         var userView = await _shiftView.GetUserAsync(user.Id);
         var signups = userView.Signups;
 
@@ -319,9 +312,7 @@ public class ShiftsController : HumansControllerBase
     {
         if (eventSettings is null) return;
 
-        // T-10: GeneralAvailability comes from the cached ShiftUserView
-        // (issue #720). Inner ShiftViewService loads it scoped to the active
-        // event; null when the user has no row for the event.
+        // see #720: availability via cached ShiftUserView (null when no row for event).
         if (userView.Availability is not null)
             model.AvailableDayOffsets = userView.Availability.AvailableDayOffsets.ToList();
     }
@@ -504,23 +495,8 @@ public class ShiftsController : HumansControllerBase
         };
     }
 
-    // ==========================================================================
-    // Orphan-signup reconciliation (admin diagnostic)
-    // ==========================================================================
-    //
-    // Surfaces ShiftSignups whose Id has no audit row tying the signup to a
-    // creation-or-confirmation moment (ShiftSignupCreated, ShiftSignupVoluntold,
-    // or ShiftSignupConfirmed). These are the rows behind the "user bailed
-    // from a shift they never signed up for" support thread.
-    //
-    // ShiftSignupConfirmed is included so legacy data isn't falsely flagged:
-    // pre-change, auto-confirmed self-signups wrote ShiftSignupConfirmed at
-    // creation time, and Pending → Confirmed transitions also write it. In
-    // both cases the human has a verifiable trail, even if the original
-    // Pending creation moment was never audited (the bug we're hunting). A
-    // true orphan is a signup with NONE of {Created, Voluntold, Confirmed}
-    // — i.e. a legacy Pending self-signup that went straight to
-    // Bailed/Refused/Cancelled without ever passing through Confirm.
+    // Admin diagnostic: signups with no Created/Voluntold/Confirmed audit row
+    // (legacy Pending self-signups that bypassed Confirm before Bail/Refuse/Cancel).
 
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -546,10 +522,7 @@ public class ShiftsController : HumansControllerBase
     private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
         IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
     {
-        // Display-name resolution goes through the Users section directly —
-        // OrphanSignups is a §2c cross-section consumer of audit-log
-        // entity-ids, not a render-the-audit-log view, so the names belong
-        // to IUserService rather than IAuditViewerService.
+        // §2c: names via IUserService (this isn't a render-the-audit-log view).
         var userIds = orphans
             .SelectMany(s => new[] { s.UserId, s.ReviewedByUserId, s.EnrolledByUserId })
             .Where(id => id.HasValue)

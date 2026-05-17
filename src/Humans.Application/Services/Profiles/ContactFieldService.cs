@@ -24,7 +24,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     private readonly IClock _clock;
     private readonly ILogger<ContactFieldService> _logger;
 
-    // Request-scoped cache for viewer permissions to avoid N+1 queries during listing
+    // Request-scoped cache for viewer permissions (avoid N+1 in listing).
     private bool? _cachedIsBoardMember;
     private bool? _cachedIsAnyCoordinator;
     private HashSet<Guid>? _cachedViewerTeamIds;
@@ -52,7 +52,6 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
         Guid viewerUserId,
         CancellationToken cancellationToken = default)
     {
-        // Resolve profileId → ownerUserId via a scalar repo query
         var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         if (ownerUserId is null)
             return [];
@@ -96,18 +95,14 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     {
         var now = _clock.GetCurrentInstant();
 
-        // Load existing fields. With IDbContextFactory the repo context is
-        // short-lived, so entities are detached after the call — mutations must
-        // be passed explicitly to BatchSaveAsync rather than relying on tracking.
+        // Entities detached after call (IDbContextFactory) — pass mutations explicitly to BatchSaveAsync.
         var existingFields = await _repository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
 
-        // Delete fields no longer present
         var toDelete = existingFields.Where(cf => !incomingIds.Contains(cf.Id)).ToList();
 
-        // Add new fields; collect mutated existing fields as toUpdate
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
 
@@ -115,7 +110,6 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
         {
             if (dto.Id.HasValue && existingById.TryGetValue(dto.Id.Value, out var existing))
             {
-                // Mutate the detached entity and add to toUpdate
                 existing.FieldType = dto.FieldType;
                 existing.CustomLabel = dto.CustomLabel;
                 existing.Value = dto.Value;
@@ -143,12 +137,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
 
         await _repository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
 
-        // Issue #703: contact_fields contributes to UserInfo, and writes here
-        // bypass both UserInfoSaveChangesInterceptor (which intentionally skips
-        // Profile-section tables) and CachingUserService (this service writes
-        // the repo directly). Invalidate the affected UserInfo entry so the next
-        // read reloads from the 8 contributing tables. Failure is logged but not
-        // propagated — the write has committed; the next cache miss self-heals.
+        // see #703 — UserInfo invalidation bypasses interceptor + caching decorator; failure self-heals on next miss.
         var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         if (ownerUserId is not null)
         {
@@ -170,16 +159,13 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
         Guid viewerUserId,
         CancellationToken cancellationToken = default)
     {
-        // Self viewing - can see everything
         if (ownerUserId == viewerUserId)
             return ContactFieldVisibility.BoardOnly;
 
-        // Board member - can see everything
         _cachedIsBoardMember ??= await _roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
         if (_cachedIsBoardMember.Value)
             return ContactFieldVisibility.BoardOnly;
 
-        // Check if viewer is a coordinator of any team
         if (_cachedViewerTeamIds is null)
         {
             var viewerTeams = await _teamService.GetUserTeamsAsync(viewerUserId, cancellationToken);
@@ -193,7 +179,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
         if (_cachedIsAnyCoordinator!.Value)
             return ContactFieldVisibility.CoordinatorsAndBoard;
 
-        // Check if viewer shares any team with owner (excluding Volunteers)
+        // Shared team excluding Volunteers.
         var ownerTeams = await _teamService.GetUserTeamsAsync(ownerUserId, cancellationToken);
         var ownerTeamIds = ownerTeams
             .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)

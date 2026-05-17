@@ -10,34 +10,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>
-/// Info about a dev login persona, exposed for the login view.
-/// </summary>
 public record DevPersonaInfo(string Slug, string DisplayName);
 
-/// <summary>
-/// Development/preview controller for signing in without Google OAuth.
-/// Guarded by TWO independent checks — both must pass:
-/// 1. <c>DevAuth:Enabled</c> configuration value must be "true".
-/// 2. Environment must NOT be "Production".
-/// Set <c>DevAuth__Enabled=true</c> in preview/dev environments only.
-///
-/// Personas are dynamically generated from <see cref="RoleNames"/> constants
-/// so new roles automatically get a dev login button.
-///
-/// Per design-rules §2a/§2c: this controller does not inject
-/// <see cref="HumansDbContext"/>. Persona seeding (User + Profile + UserEmail
-/// + auxiliary teams/camps/roles) is delegated to <see cref="DevPersonaSeeder"/>;
-/// user lookup goes through <see cref="UserManager{TUser}"/> and
-/// <see cref="IUserEmailService"/>.
-/// </summary>
+// Dev/preview sign-in. Gated by DevAuth:Enabled=true AND non-Production env. Personas from RoleNames.
 [Route("dev/login")]
 public class DevLoginController : Controller
 {
-    /// <summary>
-    /// All available dev personas: Volunteer (no role) + one per RoleNames constant.
-    /// Referenced by Login.cshtml to render buttons dynamically.
-    /// </summary>
     public static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
 
     private static readonly SemaphoreSlim SeedLock = new(1, 1);
@@ -71,9 +49,6 @@ public class DevLoginController : Controller
         _logger = logger;
     }
 
-    /// <summary>
-    /// Signs in as a dev persona by slug (e.g., "admin", "noinfo-admin", "volunteer").
-    /// </summary>
     [HttpGet("{persona}")]
     public async Task<IActionResult> SignIn(string persona, string? returnUrl = null)
     {
@@ -85,9 +60,7 @@ public class DevLoginController : Controller
         if (info is null)
             return NotFound();
 
-        // Guest is non-deterministic: mint a brand-new profileless user every
-        // click so multiple testers can onboard in parallel without colliding
-        // on a single shared Guest account.
+        // Guest: fresh profileless user per click so parallel testers don't collide.
         if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
             return await SignInAsFreshGuestAsync(info, returnUrl);
 
@@ -138,10 +111,6 @@ public class DevLoginController : Controller
         return (resolvedUserId, user);
     }
 
-    /// <summary>
-    /// Shows a list of all real users in the database for sign-in.
-    /// Useful in preview environments with cloned production-like data.
-    /// </summary>
     [HttpGet("users")]
     public async Task<IActionResult> Users(string? returnUrl = null)
     {
@@ -154,9 +123,6 @@ public class DevLoginController : Controller
         return View(users.ToList());
     }
 
-    /// <summary>
-    /// Signs in as any user by ID. Used by the user chooser.
-    /// </summary>
     [HttpGet("users/{id:guid}")]
     public async Task<IActionResult> SignInAsUser(Guid id, string? returnUrl = null)
     {
@@ -187,11 +153,6 @@ public class DevLoginController : Controller
             _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
-    /// <summary>
-    /// Mints a brand-new profileless guest user via the seeder and signs in as
-    /// them. Each click of the Guest button creates a fresh account so multiple
-    /// testers can run the onboarding flow in parallel.
-    /// </summary>
     private async Task<IActionResult> SignInAsFreshGuestAsync(DevPersonaInfo info, string? returnUrl)
     {
         var newId = await _personaSeeder.EnsureFreshGuestAsync(info.DisplayName);
@@ -208,9 +169,7 @@ public class DevLoginController : Controller
         return RedirectToLocalOrHome(returnUrl);
     }
 
-    // ============================================================
-    // Static helpers
-    // ============================================================
+    // --- Static helpers ---
 
     private static List<DevPersonaInfo> BuildPersonaList()
     {

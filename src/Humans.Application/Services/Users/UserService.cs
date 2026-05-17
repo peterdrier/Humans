@@ -13,27 +13,6 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-/// <summary>
-/// Application-layer implementation of <see cref="IUserService"/>. Goes
-/// through <see cref="IUserRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Cross-section invalidation: writes that change fields exposed by
-/// <see cref="UserInfo"/> (DisplayName, UserEmails, ProfilePictureUrl) call
-/// <see cref="IUserInfoInvalidator.InvalidateAsync"/> so the cache reloads
-/// the affected entry.
-/// </para>
-/// <para>
-/// No outbound edges to higher-level sections (Teams, RoleAssignments,
-/// Shifts) — account-deletion cascade orchestration lives in
-/// <see cref="IAccountDeletionService"/>, which calls back into UserService
-/// for own-data operations. See issue nobodies-collective/Humans#582 and the
-/// <c>feedback_user_profile_foundational</c> memory.
-/// </para>
-/// </remarks>
 public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 {
     private readonly IUserRepository _repo;
@@ -49,9 +28,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public UserService(
         IUserRepository repo,
-        // Users + Profiles are one ownership section ("Humans") per
-        // memory/architecture/users-profiles-one-section.md. All five repos
-        // below carry [Section("Humans")] so HUM0017 sees them as intra-section.
         IUserEmailRepository userEmailRepo,
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,
@@ -72,9 +48,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         _logger = logger;
     }
 
-    // ==========================================================================
-    // User reads
-    // ==========================================================================
+    // --- User reads ---
 
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
     {
@@ -146,10 +120,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         if (displayName is null)
             return null;
 
-        // The purge renames the user + removes UserEmail rows. The UserInfo
-        // cache entry must refresh so downstream consumers see the purged view.
-        // Cross-section invalidations (ActiveTeams cache, etc.) belong to the
-        // orchestrator — see IAccountDeletionService.PurgeAsync.
+        // Cross-section invalidations belong to IAccountDeletionService.PurgeAsync.
         await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
@@ -160,12 +131,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Own-data delete: collapses the User identity + drops UserEmail rows.
-        // Cross-section cascade (team memberships, role assignments, profile
-        // anonymization, shift cleanup) and cross-section cache invalidation
-        // are owned by IAccountDeletionService — this method only handles the
-        // User-aggregate write and the UserInfo cache (the one cache keyed
-        // directly on fields owned here).
+        // Own-data only — cross-section cascade lives in IAccountDeletionService.
         var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (result is not null)
             await _userInfoInvalidator.InvalidateAsync(userId, ct);
@@ -188,9 +154,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Instant now, CancellationToken ct = default) =>
         _repo.GetAccountsDueForAnonymizationAsync(now, ct);
 
-    // ==========================================================================
-    // User writes
-    // ==========================================================================
+    // --- User writes ---
 
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
@@ -205,13 +169,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         return await SetGoogleEmailStatusInternalAsync(userId, status, ct);
     }
 
-    /// <summary>
-    /// Private write helper for <see cref="User.GoogleEmailStatus"/>. Used
-    /// by <see cref="TrySetGoogleEmailStatusFromSyncAsync"/> after the
-    /// "Rejected is terminal" guard runs. Public surface was collapsed in
-    /// the account-merge fold redesign — every external caller is sync-driven
-    /// and goes through the Try variant.
-    /// </summary>
+    // Private write — Try variant is the only external entry point (sync-driven; Rejected is terminal).
     private async Task<bool> SetGoogleEmailStatusInternalAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {
@@ -265,9 +223,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Guid userId, Instant sentAt, CancellationToken ct = default) =>
         _repo.SetLastConsentReminderSentAsync(userId, sentAt, ct);
 
-    // ==========================================================================
-    // EventParticipation reads
-    // ==========================================================================
+    // --- EventParticipation reads ---
 
     public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
         throw new NotSupportedException(
@@ -275,9 +231,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "projects the year's participations from the cached UserInfo snapshot. If this is " +
             "being called on the inner UserService it indicates a DI registration mistake.");
 
-    // ==========================================================================
-    // EventParticipation writes — apply business rules, delegate persistence
-    // ==========================================================================
+    // --- EventParticipation writes ---
 
     public async Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
@@ -287,11 +241,11 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
         if (persisted is null)
         {
-            // Blocked by Attended — return the existing (unchanged) row.
+            // Blocked by Attended.
             _logger.LogWarning(
                 "Cannot declare NotAttending for user {UserId} year {Year} — already Attended",
                 userId, year);
-            // Caller sees the current state; re-read because upsert returned null without the entity.
+            // Re-read because upsert returned null.
             return (await _repo.GetParticipationAsync(userId, year, ct))!;
         }
 
@@ -331,7 +285,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public Task SetParticipationFromTicketSyncAsync(
         Guid userId, int year, ParticipationStatus status, CancellationToken ct = default) =>
-        // Attended-is-permanent and source override semantics live in the repo upsert.
+        // Attended-is-permanent and source-override semantics live in repo upsert.
         _repo.UpsertParticipationAsync(userId, year, status, ParticipationSource.TicketSync, declaredAt: null, ct);
 
     public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
@@ -349,9 +303,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         return count;
     }
 
-    // ==========================================================================
-    // IUserDataContributor — GDPR export
-    // ==========================================================================
+    // --- IUserDataContributor — GDPR export ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -361,9 +313,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             return [new UserDataSlice(GdprExportSections.Account, null)];
         }
 
-        // Issue nobodies-collective/Humans#687: GoogleEmail is now derived from
-        // the UserEmail row tagged IsGoogle (sole source of truth). The legacy
-        // User.GoogleEmail shadow column is deprecated and not exported.
+        // see nobodies-collective/Humans#687 — User.GoogleEmail deprecated, not exported.
         var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
         var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -412,9 +362,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         return null;
     }
 
-    // ==========================================================================
-    // Account merge — fold-into-target primitives
-    // ==========================================================================
+    // --- Account merge: fold-into-target primitives ---
 
     public async Task<bool> AnonymizeForMergeAsync(
         Guid sourceUserId, Guid targetUserId, Instant now,
@@ -426,9 +374,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
-        // Neither AspNetUserLogins nor EventParticipation carries an
-        // UpdatedAt column or an actor field, so `now` and `actorUserId`
-        // are unused here — kept for the IUserMerge contract.
+        // `now` and `actorUserId` unused — kept for IUserMerge contract.
         _ = actorUserId;
         _ = now;
         await _repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);

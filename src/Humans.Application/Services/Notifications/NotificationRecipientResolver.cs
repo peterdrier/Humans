@@ -5,18 +5,11 @@ using Humans.Application.Interfaces.Teams;
 namespace Humans.Application.Services.Notifications;
 
 /// <summary>
-/// Default <see cref="INotificationRecipientResolver"/> implementation that
-/// delegates to <see cref="ITeamService"/> and
-/// <see cref="IRoleAssignmentService"/>.
+/// Pass-through adapter delegating to <see cref="ITeamService"/> and
+/// <see cref="IRoleAssignmentService"/>. Exists so <see cref="INotificationService"/>
+/// doesn't depend on those services directly (they inject INotificationService,
+/// which would close a DI cycle).
 /// </summary>
-/// <remarks>
-/// Pass-through adapter — holds no state and applies no business logic beyond
-/// projecting team + members into <see cref="TeamNotificationInfo"/>. Exists
-/// solely to keep <see cref="INotificationService"/> from depending on the
-/// team / role-assignment services directly (those services inject
-/// <see cref="INotificationService"/> in the other direction, which would
-/// otherwise close a cycle).
-/// </remarks>
 public sealed class NotificationRecipientResolver : INotificationRecipientResolver
 {
     private readonly ITeamService _teamService;

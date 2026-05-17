@@ -516,8 +516,6 @@ public class EventsController : HumansControllerBase
         return RedirectToAction(nameof(Schedule));
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────
-
     private bool IsSubmissionOpen(EventGuideSettings? settings) =>
         settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
 

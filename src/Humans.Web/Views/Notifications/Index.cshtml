@@ -6,7 +6,6 @@
 
 <h1>@Localizer["Notification_PageTitle"]</h1>
 
-<!-- Toolbar: search + filter pills -->
 <div class="notification-toolbar mb-3">
     <form method="get" asp-action="Index" class="notification-search-form">
         <input type="hidden" name="filter" value="@Model.ActiveFilter" />
@@ -48,7 +47,6 @@
     <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDismissBtn">@Localizer["Notification_Bulk_Dismiss"]</button>
 </div>
 
-<!-- Inbox card -->
 <div class="card notification-inbox-card">
     <div class="notification-inbox-header">
         <div class="d-flex align-items-center gap-2">

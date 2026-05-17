@@ -78,12 +78,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             var accountEmails = accounts.Select(a => a.PrimaryEmail).ToList();
             var matches = await _userEmailService.MatchByEmailsAsync(accountEmails, ct);
 
-            // user_emails allows a verified + unverified row for the same
-            // address, so MatchByEmailsAsync can return multiple hits per
-            // email. Collapse to one winner per address: prefer verified
-            // rows, then the most recently updated, then a stable UserId
-            // tie-breaker. Using ToDictionary directly would throw on the
-            // duplicate key and fail the whole workspace-accounts view.
+            // user_emails may have verified+unverified rows per address. Pick one winner: verified > most-recent > stable UserId.
             var matchByEmail = matches
                 .GroupBy(m => m.Email, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
@@ -337,17 +332,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 ErrorMessage: $"Failed to reset password for {email}.");
         }
 
-        // Audit AFTER Google API success — the "business save" here is the
-        // Workspace-side password reset. No local DB write happens in this flow.
-        // EntityId carries the linked human's UserId when the address resolves
-        // to one, so the audit row renders with the human's name as subject;
-        // unlinked accounts log with Guid.Empty and fall back to the email tail.
-        // Isolate from the outer flow: if the linked-user lookup or audit
-        // persistence throws (DB outage, timeout, cancellation), the password
-        // has already been rotated in Workspace and the caller MUST still
-        // receive the new temporary password — otherwise they retry, lock
-        // the human out further, and we own the confusion. Surface the audit
-        // failure loudly via a critical log for out-of-band reconciliation.
+        // Audit AFTER Workspace success. Caller MUST get the temp password even if audit fails — retry would re-rotate and lock the human out.
         try
         {
             var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
@@ -566,30 +551,15 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     ErrorMessage: $"{email} is already linked to a human.");
             }
 
-            // Add as verified email — the UserEmailService orchestrator runs
-            // EnsureGoogleInvariantAsync, which stamps IsGoogle on the
-            // @nobodies.team row (Workspace > existing-IsGoogle precedence).
-            // The earlier IsEmailLinkedToAnyUserAsync check rules out a
-            // pre-existing row for this address, so the orchestrator's
-            // first-row-wins path is the only one we hit. Self-persists via
-            // IUserEmailRepository.
-            //
-            // Issue nobodies-collective/Humans#687: User.GoogleEmail is no
-            // longer the source of truth, so the legacy
-            // _userService.SetGoogleEmailAsync write is gone. Reset
-            // GoogleEmailStatus explicitly so reconciliation resumes against
-            // the newly-linked address.
+            // Add verified email; orchestrator stamps IsGoogle. Reset GoogleEmailStatus so reconciliation resumes (#687).
             await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
             await _userService.TrySetGoogleEmailStatusFromSyncAsync(
                 userId, GoogleEmailStatus.Unknown, ct);
 
-            // Enqueue re-sync for all current team memberships — delegated to the
-            // Teams-owning service so google_sync_outbox_events writes stay
-            // colocated with the rest of the outbox flow. Self-persists.
+            // Enqueue re-sync for team memberships (outbox writes owned by Teams service).
             await _teamService.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 
-            // Audit AFTER every business write completes so a failing upstream call
-            // never leaves a phantom "linked" audit row.
+            // Audit AFTER all business writes.
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,

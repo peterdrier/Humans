@@ -1,15 +1,4 @@
-@*
-    Canonical "page-style search" results partial. Used by:
-
-      - /Profile/Search       (PublicAll bit-flag — bio / city / interests / CV)
-      - /Profile/Admin        (AdminAll bit-flag — adds verified email + non-public ContactFields)
-
-    The model is the rendering view-model — controllers project
-    HumanSearchResult onto HumanSearchResultViewModel so the partial doesn't
-    care whether the search was public or admin. Admin-only fields
-    (AdminEmail, MembershipStatus, CreatedAt, LastLoginAt, AdminDetailUrl)
-    are rendered only when present, keeping the partial dual-purpose.
-*@
+@* Page-style search results partial — /Profile/Search (PublicAll) and /Profile/Admin (AdminAll). Admin-only fields render only when present. *@
 @model IReadOnlyList<Humans.Web.Models.HumanSearchResultViewModel>
 
 @if (Model.Count == 0)

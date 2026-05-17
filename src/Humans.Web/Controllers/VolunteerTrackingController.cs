@@ -15,14 +15,8 @@ using NodaTime.Text;
 namespace Humans.Web.Controllers;
 
 /// <summary>
-/// Coordinator-facing tracking page: the main "fell off" cohort heatmap and
-/// the declared-but-unbooked cohort heatmap, plus mutating actions for
-/// camp-setup and per-day blocks. Class-level
-/// <c>[Authorize(Policy = ShiftDashboardAccess)]</c> gates read; mutating
-/// actions add <c>[Authorize(Policy = VolunteerTrackingWrite)]</c>. Display
-/// sorting happens here (per
-/// <c>memory/architecture/display-sort-in-controllers.md</c>) — the service
-/// returns unsorted cohorts.
+/// Coordinator tracking heatmap + camp-setup/day-block mutations.
+/// Reads gated by ShiftDashboardAccess; writes add VolunteerTrackingWrite.
 /// </summary>
 [Route("Shifts/Dashboard/VolunteerTracking")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
@@ -59,13 +53,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return View(VolunteerTrackingPageViewModel.Empty);
         }
 
-        // Resolve BurnerName-aware display names for the sort key and the
-        // partials' tooltip/search strings. One sync-on-hit lookup per user
-        // (no DB round-trip in steady state). Per
-        // memory/architecture/burnername-is-the-display-name.md, never read
-        // user.DisplayName for rendering when a Profile exists — cell render
-        // uses <vc:human>; this dict is just for the controller-side sort
-        // and the row tooltip text in the partial.
+        // BurnerName lookup for sort key + partial tooltips (cell render uses <vc:human>).
         var displayUserIds = data.MainCohort.Select(r => r.UserId)
             .Concat(data.UnbookedCohort.Select(r => r.UserId))
             .Distinct()
@@ -77,7 +65,6 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             nameByUserId[uid] = info?.BurnerName ?? "";
         }
 
-        // Display sort in the controller (presentation concern).
         var mainSorted = data.MainCohort
             .Where(r => !hideNoGaps || r.GapCount > 0)
             .Where(r => !hideCampSetup || r.BarrioSetupStartDate is null)
@@ -156,8 +143,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 
         if (autoClearedDayOffs is null || autoClearedDayOffs.Count == 0) return;
 
-        // IAuditLogRepository creates a fresh DbContext per call, so the
-        // fan-out can run concurrently without sharing change-tracker state.
+        // Fresh DbContext per call → safe to fan out concurrently.
         await Task.WhenAll(autoClearedDayOffs.Select(dayOffset =>
             _auditLogService.LogAsync(
                 AuditAction.VolunteerDayOffCleared,

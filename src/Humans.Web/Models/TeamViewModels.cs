@@ -578,7 +578,6 @@ public class HumanSearchResultViewModel
     /// </summary>
     public string? MatchedEmail { get; set; }
 
-    // ── Optional admin-list metadata ────────────────────────────────────────
     // Set by the AdminList controller to surface partition status, primary
     // email, and admin-detail deep-link in the canonical _HumanSearchResults
     // partial. Always null on the public Profile/Search page.

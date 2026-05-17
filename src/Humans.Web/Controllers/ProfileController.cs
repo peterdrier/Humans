@@ -37,10 +37,7 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Services.Profiles;
 
-// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
-// RoleAssignmentService stitches them in memory from IUserService so controllers can
-// continue to read them for view-model shaping. Nav-strip follow-up tracked in
-// design-rules §15i.
+// RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
@@ -179,14 +176,7 @@ public class ProfileController : HumansControllerBase
         _googleWorkspaceOptions = googleWorkspaceOptions.Value;
     }
 
-    /// <summary>
-    /// Composes the admin humans list: optional text-filter via the
-    /// <see cref="PersonSearchFields.AdminAll"/> bit-flag search,
-    /// status-partition lookup, and projection to <see cref="AdminHumanRow"/>.
-    /// Replaces the deleted <c>IProfileService.GetFilteredHumansAsync</c>.
-    /// Pure controller-layer composition — no business logic, just data
-    /// orchestration.
-    /// </summary>
+    // Admin humans list: bit-flag PersonSearchFields filter + status partition + projection.
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
         string? search, string? statusFilter, CancellationToken ct)
     {
@@ -198,16 +188,11 @@ public class ProfileController : HumansControllerBase
         IReadOnlySet<Guid>? searchUserIds = null;
         if (!string.IsNullOrWhiteSpace(search))
         {
-            // Admin auth is enforced by the action's [Authorize] policy, so
-            // PersonSearchFields.AdminAll is appropriate here. Limit large
-            // enough that "show me every match" is the practical effect at
-            // ~500-user scale; the controller paginates afterward.
+            // Admin auth gated by [Authorize] above; limit ~== "every match" at ~500-user scale.
             var searchResults = await _userService.SearchUsersAsync(
                 search, PersonSearchFields.AdminAll, limit: 500, ct);
 
-            // Email-direct match isn't covered by the matcher's verified-emails
-            // bucket on User.Email (only UserEmail rows). Union the two so
-            // existing-data parity is preserved.
+            // Matcher covers UserEmail rows only — union User.Email match for parity.
             var byEmail = allUsers
                 .Where(u =>
                     (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
@@ -262,7 +247,7 @@ public class ProfileController : HumansControllerBase
             CampaignGrants = campaignGrants,
         };
 
-        // Show tier application status (skip Withdrawn — not interesting)
+        // Tier app status (skip Withdrawn).
         if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)
         {
             viewModel.TierApplicationStatus = latestApplication.Status;
@@ -285,9 +270,7 @@ public class ProfileController : HumansControllerBase
 
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
         var allShiftTags = await _shiftMgmt.GetTagsAsync();
-        // T-09 (issue #720): read tag preferences from the cached
-        // ShiftUserView rather than the repo-backed
-        // IShiftManagementService.GetVolunteerTagPreferencesAsync.
+        // see #720 (T-09) — tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await _shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences
             .Select(p => new ShiftTagPreferenceSummary(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))
@@ -311,8 +294,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
-        // Shift-tag catalog isn't posted back — repopulate up front so every
-        // validation-failure `View(model)` path in this action still renders the picker.
+        // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
         model.AllShiftTags = (await _shiftMgmt.GetTagsAsync())
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -327,7 +309,6 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        // Validate phone numbers start with + (E.164 format)
         var phoneTypes = new[] { ContactFieldType.Phone, ContactFieldType.WhatsApp };
         for (var i = 0; i < model.EditableContactFields.Count; i++)
         {
@@ -351,14 +332,13 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        // Validate Burner CV: must have entries OR check "no prior experience"
+        // Burner CV: entries OR "no prior experience".
         var hasVolunteerHistory = model.EditableVolunteerHistory
             .Any(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue);
         if (!model.NoPriorBurnExperience && !hasVolunteerHistory)
         {
             ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
                 _localizer["Profile_BurnerCVRequired"].Value);
-            // Need to check if initial setup for the view
             var existingProfile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
             model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
@@ -368,7 +348,6 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        // Validate tier-specific fields during initial setup
         var profileForSetupCheck = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
         var isInitialSetup = profileForSetupCheck is null || !profileForSetupCheck.IsApproved;
         if (isInitialSetup)
@@ -444,18 +423,10 @@ public class ProfileController : HumansControllerBase
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
-        // Peer-call the director threshold check. ProfileService deliberately
-        // does not call into Onboarding directly — that was the inverted arrow.
+        // Peer-call into Onboarding; ProfileService doesn't.
         await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
-        // Initial-setup tier-application orchestration. Same form submission
-        // as profile fields, by design — onboarding efficiency. The form
-        // disables the radios when a Submitted/Approved Application already
-        // exists (`isTierLocked` in the GET) so this branch only runs when
-        // either no application exists yet or an existing draft is being
-        // edited; ApplicationDecisionService.SubmitAsync also rejects with
-        // AlreadyPending as a backstop. See issue
-        // nobodies-collective/Humans#685.
+        // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop. see #685.
         if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
         {
             var existingApps = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
@@ -486,10 +457,7 @@ public class ProfileController : HumansControllerBase
             }
         }
 
-        // Cancel any pending deletion request when creating a profile.
-        // Routes through IAccountDeletionService so the deletion-fields
-        // write + UserInfo invalidation goes through the orchestrator,
-        // not raw UserManager.UpdateAsync.
+        // Route pending-deletion cancel through IAccountDeletionService, not raw UserManager.
         if (isInitialSetup && user.IsDeletionPending)
         {
             await _accountDeletionService.CancelDeletionAsync(user.Id);
@@ -498,7 +466,6 @@ public class ProfileController : HumansControllerBase
                 user.Id);
         }
 
-        // Save contact fields
         var contactFieldDtos = model.EditableContactFields
             .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))
             .Select((cf, index) => new ContactFieldEditDto(
@@ -523,9 +490,7 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        // Save CV entries. Id round-trips for existing rows so the row keeps
-        // its identity and CreatedAt; new rows post Guid.Empty and get a
-        // fresh Id assigned on insert.
+        // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
         var cvEntries = model.EditableVolunteerHistory
             .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
             .Select(vh => new CVEntry(
@@ -538,7 +503,7 @@ public class ProfileController : HumansControllerBase
 
         await _profileService.SaveCVEntriesAsync(user.Id, cvEntries);
 
-        // Save profile languages (remove-and-replace)
+        // Languages: remove-and-replace.
         var newLanguages = model.EditableLanguages
             .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
             .Select(l => new ProfileLanguage
@@ -751,8 +716,7 @@ public class ProfileController : HumansControllerBase
         {
             await _userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
-            // Self-path audit — symmetric with AdminSetPrimary. SetPrimaryAsync
-            // does not take actorUserId, so audit at the controller.
+            // Self audit at controller — SetPrimaryAsync doesn't take actorUserId.
             await _auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
                 nameof(User), user.Id,
@@ -838,7 +802,6 @@ public class ProfileController : HumansControllerBase
             }
             else
             {
-                // Provider-attached rows must go through Unlink, not Delete.
                 SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
             }
         }
@@ -985,11 +948,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        // Route the OAuth round-trip through AccountController.ExternalLoginCallback
-        // so the link-while-signed-in branch (UserManager.AddLoginAsync +
-        // ReconcileOAuthIdentityAsync) actually fires after the provider
-        // returns. Redirecting straight back to /Profile/Me/Emails would skip
-        // that branch and the linkage would never persist.
+        // Round-trip via ExternalLoginCallback so link-while-signed-in branch fires.
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
         var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { returnUrl = resolvedReturnUrl })
             ?? "/Account/ExternalLoginCallback";
@@ -1035,14 +994,7 @@ public class ProfileController : HumansControllerBase
         SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
     }
 
-    /// <summary>
-    /// Issue nobodies-collective/Humans#731: user-facing Unlink action on the
-    /// Linked Accounts dashboard. Keyed by (Provider, ProviderKey) rather
-    /// than UserEmail row id so the dashboard's authoritative-store view
-    /// drives the unlink. Enforces the auth-method invariant server-side
-    /// (independent of the UI gate) so the user cannot be left without a
-    /// sign-in method via a crafted POST.
-    /// </summary>
+    // User-facing Unlink (see nobodies-collective/Humans#731) — keyed by (Provider, ProviderKey); enforces auth-method invariant server-side.
     [HttpPost("Me/LinkedAccounts/Unlink")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkLinkedAccount(string provider, string providerKey, CancellationToken ct)
@@ -1061,8 +1013,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        // Confirm an AspNetUserLogins row exists for the (provider, key) — if
-        // not, the dashboard is stale or the request is forged; fail soft.
+        // Stale dashboard or forged request — fail soft.
         var logins = await _userManager.GetLoginsAsync(user);
         var hasLogin = logins.Any(l =>
             string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
@@ -1073,19 +1024,13 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Emails));
         }
 
-        // Look up the matching UserEmail row so the unlink can route through
-        // UserEmailService.UnlinkAsync, which keeps AspNetUserLogins and
-        // user_emails in sync. Orphan logins (no matching row) — admin-
-        // diagnostic edge case — fall back to RemoveLoginAsync directly.
+        // Route via UnlinkAsync to keep AspNetUserLogins + user_emails in sync. Orphan logins fall back to RemoveLoginAsync.
         var rawRows = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         var matching = rawRows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
             && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
 
-        // Auth-method invariant: after the unlink the user must still have
-        // at least one verified UserEmail row so magic-link sign-in remains
-        // available. The dashboard UI hides Unlink when this would fail;
-        // the server re-checks here as the source of truth.
+        // Auth-method invariant: at least one verified UserEmail must remain after unlink (server source-of-truth).
         var verifiedTotal = rawRows.Count(r => r.IsVerified);
         var verifiedAfter = verifiedTotal - (matching?.IsVerified == true ? 1 : 0);
         if (verifiedAfter < 1)
@@ -1103,9 +1048,7 @@ public class ProfileController : HumansControllerBase
             }
             else
             {
-                // Orphan AspNetUserLogins: no UserEmail row to remove. Drop
-                // the login directly. The reconcile-on-next-OAuth-sign-in
-                // safety net is irrelevant — there's no row left to reconcile.
+                // Orphan login: no UserEmail row — drop directly.
                 var removeLogin = await _userManager.RemoveLoginAsync(user, provider, providerKey);
                 if (removeLogin.Succeeded)
                 {
@@ -1136,9 +1079,7 @@ public class ProfileController : HumansControllerBase
 
         return RedirectToAction(nameof(Emails));
     }
-    // Admin grid actions — parameterized by {userId}, mirror the self-grid
-    // against a target user. No AdminLink because OAuth linking requires the
-    // target user to authenticate with the provider.
+    // Admin grid mirrors self-grid against a target user. No AdminLink: OAuth linking requires target's authentication.
 
     [HttpGet("{id:guid}/Admin/Emails")]
     public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
@@ -1197,7 +1138,7 @@ public class ProfileController : HumansControllerBase
         {
             await _userEmailService.SetPrimaryAsync(id, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
-            // Audit at the controller — SetPrimaryAsync does not take actorUserId.
+            // Audit at controller — SetPrimaryAsync has no actorUserId.
             await _auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
                 nameof(User), id,
@@ -1340,10 +1281,7 @@ public class ProfileController : HumansControllerBase
 
         SetSuccess(_localizer["EmailGrid_AdminAddSentVerification"].Value);
     }
-    // Admin-only recovery path: directly insert an already-verified UserEmail
-    // row without sending a verification email. Use when an admin needs to
-    // restore a row that was deleted in error (or otherwise re-attach a known
-    // address to the user without a round-trip to their mailbox).
+    // Admin recovery: insert a verified UserEmail without verification email.
     [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
@@ -1689,8 +1627,6 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            // Panel rendering moved to CommunicationPreferencesPanelViewComponent (issue #706).
-            // The view invokes the VC with the current user's id; no model needed.
             return View(model: user.Id);
         }
         catch (Exception ex)
@@ -1766,10 +1702,7 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        // Per design-rules §2 the controller does not talk to the picture
-        // store directly — IProfileService owns the FS-first / DB-fallback /
-        // migrate-on-read orchestration AND the anonymization gate (issue
-        // nobodies-collective/Humans#527).
+        // §2: controller routes through IProfileService (owns FS-first/DB-fallback + GDPR gate, see #527).
         var result = await _profileService.GetProfilePictureAsync(id, ct);
         if (result is null)
         {
@@ -1926,7 +1859,6 @@ public class ProfileController : HumansControllerBase
 
         var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
 
-        // The ProfileCard ViewComponent handles all data fetching and permission checks.
         var viewModel = new ProfileViewModel
         {
             Id = profile.Id,
@@ -2061,9 +1993,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
-        // hydrated through the section-owned service instead of a raw
-        // `.Include(u => u.UserEmails)` over the cross-domain nav.
+        // see #635 (§15i) — bulk-fetch via section service, not cross-domain nav.
         var participants = await _userService.GetUserInfosAsync([id, currentUser.Id]);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
@@ -2124,13 +2054,11 @@ public class ProfileController : HumansControllerBase
             return View(viewModel);
         }
 
-        // PublicAll = name + bio + public ContactFields. Admin bit is gated
-        // by code review — never set on a public endpoint.
+        // PublicAll = name + bio + public ContactFields. Admin bit gated by code review.
         var results = await _userService.SearchUsersAsync(
             q!, PersonSearchFields.PublicAll, limit: 50, ct);
 
-        // Display ordering at the controller per
-        // memory/architecture/display-sort-in-controllers.md.
+        // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
             .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .Select(r => r.ToHumanSearchViewModel())
@@ -2164,10 +2092,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin")]
     public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
     {
-        // Per-section composition (issue nobodies-collective/Humans#685): the
-        // Profile section reads its own row; cross-section data (Applications,
-        // RoleAssignments, ConsentCount, UserEmails, rejected-by display name)
-        // is fetched from each owning section here.
+        // Per-section composition (see #685) — Profile reads its own row; cross-section data fetched here.
         var info = await _userService.GetUserInfoAsync(id, ct);
         if (info is null)
             return NotFound();
@@ -2210,10 +2135,7 @@ public class ProfileController : HumansControllerBase
         return rejectedByInfo?.DisplayName;
     }
 
-    /// <summary>
-    /// Reveals the unmasked IBAN for one page load (TempData), and writes an audit entry.
-    /// Admin-only: only users in the Admin role may reveal raw IBANs on the admin user page.
-    /// </summary>
+    // Reveals unmasked IBAN once (TempData) + audit. Admin-only.
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [HttpPost("{id:guid}/Admin/RevealIban")]
     [ValidateAntiForgeryToken]
@@ -2412,7 +2334,7 @@ public class ProfileController : HumansControllerBase
 
         if (roleAssignment is null)
         {
-            // Return NotFound rather than Unauthorized to prevent role-assignment enumeration.
+            // NotFound, not Unauthorized — prevents role-assignment enumeration.
             return NotFound();
         }
 
@@ -2476,23 +2398,13 @@ public class ProfileController : HumansControllerBase
         var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
             e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
-        // Issue nobodies-collective/Humans#687: TryBackfillGoogleEmailAsync
-        // call removed. UserEmail.IsGoogle is sole source of truth and is
-        // maintained by UserEmailService.EnsureGoogleInvariantAsync on every
-        // row creation / verification; the legacy User.GoogleEmail shadow
-        // column is no longer read, so the backfill is dead.
-
-        // Use the already-loaded `emails` list (from GetUserEmailsAsync above) rather
-        // than user.UserEmails — UserManager.GetUserAsync / FindByIdAsync don't
-        // .Include(UserEmails), so the navigation would lazily reload (or be empty).
+        // Use the already-loaded `emails` — UserManager doesn't .Include(UserEmails).
         var googleServiceEmail = emails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault();
 
-        // Workspace canonical identity: Provider=Google AND email on the configured
-        // Workspace domain. While present, Primary + Google radios lock to that row.
-        // If multiple match (shouldn't happen), prefer IsPrimary, else first.
+        // Workspace canonical: Provider=Google + Workspace-domain email. Locks Primary + Google radios.
         var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
         var workspaceCandidates = emails
             .Where(e => !string.IsNullOrEmpty(e.Provider)
@@ -2502,10 +2414,7 @@ public class ProfileController : HumansControllerBase
         var workspaceLockedEmail = workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
             ?? workspaceCandidates.FirstOrDefault();
 
-        // Issue nobodies-collective/Humans#697: per-user admin diagnostic —
-        // load AspNetUserLogins alongside UserEmail rows and compute the
-        // store-disagreement flags. Self contexts skip the lookup (the section
-        // is admin-only).
+        // see nobodies-collective/Humans#697 — admin diagnostic loads AspNetUserLogins + computes store-disagreement.
         IReadOnlyList<(string Provider, string ProviderKey)> userLogins =
             [];
         IReadOnlyList<UserEmailRowSnapshot> rawUserEmails =
@@ -2518,21 +2427,14 @@ public class ProfileController : HumansControllerBase
             rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         }
 
-        // Issue nobodies-collective/Humans#731: user-facing Linked Accounts
-        // dashboard. Self contexts read AspNetUserLogins via UserManager
-        // (carries ProviderDisplayName, unlike the repo path used by the
-        // admin diagnostic) and stitch in the matching UserEmail row's id +
-        // CreatedAt for the linked-on timestamp.
+        // see nobodies-collective/Humans#731 — self uses UserManager (ProviderDisplayName); stitches UserEmail row id + CreatedAt.
         IReadOnlyList<LinkedOAuthAccountViewModel> linkedAccounts = [];
         if (!isAdminContext)
         {
             var logins = await _userManager.GetLoginsAsync(user);
             if (logins.Count > 0)
             {
-                // (Provider, ProviderKey) uniqueness is service-enforced, not
-                // DB-enforced — drift can produce duplicates. Build the lookup
-                // defensively (keep first row per key) so the dashboard
-                // degrades gracefully instead of 500'ing the whole page.
+                // (Provider, ProviderKey) uniqueness is service-enforced, not DB-enforced — keep first row per key.
                 var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
                 foreach (var r in await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
                 {
@@ -2541,15 +2443,7 @@ public class ProfileController : HumansControllerBase
                     rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
                 }
 
-                // Auth-method invariant: magic-link works on any verified email
-                // row, so the user retains the ability to sign in as long as
-                // at least one verified row remains after the unlink.
-                // UnlinkAsync (which the dashboard's Unlink button routes
-                // through) removes the matching UserEmail row, so "after
-                // unlink" means: (verified rows other than the matching one,
-                // if it's verified). Orphan logins (no matching row) leave
-                // every verified email row in place, so CanUnlink is true
-                // whenever at least one verified row exists.
+                // Auth-method invariant: at least one verified row must remain post-unlink (orphan logins don't touch rows).
                 var verifiedTotal = emails.Count(e => e.IsVerified);
 
                 linkedAccounts = logins.Select(l =>

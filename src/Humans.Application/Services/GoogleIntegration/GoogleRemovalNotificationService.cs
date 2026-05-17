@@ -8,32 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
-/// Application-layer implementation of
-/// <see cref="IGoogleRemovalNotificationService"/>. Resolves the affected
-/// user from the removed address, decides Variant 1 (loss of access) vs
-/// Variant 2 (secondary-email cleanup), and routes through
-/// <see cref="IEmailService"/> with <see cref="MessageCategory.System"/>
-/// (no unsubscribe footer).
+/// Decides Variant 1 (loss of access) vs Variant 2 (secondary cleanup) and sends as MessageCategory.System.
+/// Suppresses orphan addresses (#639). EmailRotation is plumbed for telemetry but doesn't suppress.
 /// </summary>
-/// <remarks>
-/// Suppression cases honored here (issue peterdrier/Humans#639):
-/// <list type="bullet">
-///   <item><description><b>Orphan address</b> — no <c>UserEmail</c> row
-///   matches the removed address; happens when the user was deleted /
-///   anonymized (their <c>user_emails</c> rows were removed) or when an
-///   OAuth-rename flow rewrote the address in place.</description></item>
-///   <item><description><b>User unlinked their own email via Profile UI</b>
-///   — same as orphan: the <c>UserEmail</c> row was deleted by the unlink
-///   flow before sync removed the Google permission.</description></item>
-/// </list>
-/// <para>
-/// <see cref="SyncRemovalReason.EmailRotation"/> is plumbed through for
-/// audit/telemetry but does NOT suppress here — when a Workspace identity
-/// rotates from address A to B, the user gets a Variant 2 ("secondary
-/// cleanup") email at A confirming the rotation. The OAuth-rename-in-place
-/// case is captured by orphan suppression.
-/// </para>
-/// </remarks>
 public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificationService
 {
     private readonly IUserEmailService _userEmailService;

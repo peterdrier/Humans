@@ -14,12 +14,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Dashboard;
 
-/// <summary>
-/// Orchestrates the member dashboard snapshot. Pulls from several owning services
-/// (profile, membership, applications, shifts, signups, tickets, participation)
-/// and applies the business rules (term expiry, urgent-shift aggregation, signup
-/// filtering, ticket visibility) that previously lived in <c>HomeController</c>.
-/// </summary>
+/// <summary>Orchestrates the member dashboard snapshot across profile/membership/applications/shifts/tickets/participation.</summary>
 public class DashboardService : IDashboardService
 {
     private readonly IMembershipCalculator _membershipCalculator;
@@ -66,10 +61,6 @@ public class DashboardService : IDashboardService
 
         var userInfo = await _userService.GetUserInfoAsync(userId, cancellationToken);
         var profile = userInfo?.Profile;
-        // T-09 (issue #720): read tag-preference count from the cached
-        // ShiftUserView rather than the repo-backed
-        // IShiftManagementService.GetVolunteerTagPreferencesAsync — same data,
-        // cache hit replaces a DB round trip on every dashboard render.
         var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
         var hasShiftTagPreferences = userView.TagPreferences.Count > 0;
         var dashboardProfile = profile is null
@@ -144,13 +135,7 @@ public class DashboardService : IDashboardService
             try
             {
                 var now = _clock.GetCurrentInstant();
-                // Pilot consumer for IShiftView (#720): the user-signup read
-                // that previously hit the DB on every dashboard render now
-                // comes from the cached ShiftUserView. The view holds every
-                // signup row for the user; filter to the active event in
-                // memory. Shift.Rota.EventSettings is loaded by the inner
-                // ShiftViewService. Cache hits complete synchronously via
-                // ValueTask (no Task allocation, no thread hop).
+                // Filter signups to active event in memory.
                 var userSignups = userView.Signups
                     .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
                     .ToList();
@@ -175,8 +160,7 @@ public class DashboardService : IDashboardService
                 {
                     try
                     {
-                        // Shift/Rota navs are populated by ShiftSignupRepository.GetByUserAsync
-                        // (Include chain) and the upstream .Where filtered to non-null Rota.
+                        // Shift/Rota navs populated by ShiftSignupRepository.GetByUserAsync; upstream filtered non-null Rota.
                         var item = new DashboardSignup(
                             RotaName: s.Shift.Rota.Name,
                             DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),

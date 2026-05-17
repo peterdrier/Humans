@@ -34,22 +34,15 @@ public class OnboardingWidgetState : IOnboardingWidgetState
 
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)
     {
-        // Consents-complete short-circuits everyone past the widget.
         if (await _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
             return OnboardingWidgetStep.Complete;
 
-        // No legal name on file → route to Names. Reads HasRequiredNameFields
-        // rather than IsStub so legacy/data-drift profiles in Active state with
-        // blank name fields still get caught (they'd otherwise fall through to
-        // Shifts/Consents, and the consent write would be refused downstream).
+        // HasRequiredNameFields (not IsStub) catches Active profiles with blank names from data drift.
         var info = await _users.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return OnboardingWidgetStep.Names;
 
-        // Returning member: any signed row in the current required Volunteer
-        // set means they're a known member with consents to renew (annual
-        // expiration / newly-added required doc) — skip the Shifts step and
-        // send them straight to Consents.
+        // Returning member with any prior signature → skip Shifts, go to Consents (renew/new docs).
         var requiredRows = await _consents.GetRequiredConsentRowsForUserAsync(
             userId, SystemTeamIds.Volunteers, ct);
         if (requiredRows.Any(r => r.Signed))

@@ -6,12 +6,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Application.Services.GoogleIntegration;
 
-/// <summary>
-/// Application-layer service for per-service Google sync mode settings
-/// (Drive / Groups / Discord). Owns the <c>sync_service_settings</c> table
-/// through <see cref="ISyncSettingsRepository"/> — no direct EF access.
-/// First service migrated to the §15 pattern as part of issue #554.
-/// </summary>
+/// <summary>Per-service sync-mode settings (Drive/Groups/Discord). Owns sync_service_settings via repository.</summary>
 public sealed class SyncSettingsService : ISyncSettingsService
 {
     private readonly ISyncSettingsRepository _repository;

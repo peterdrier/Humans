@@ -53,7 +53,7 @@ public class GoogleController : HumansControllerBase
         _logger = logger;
     }
 
-    // --- Sync Settings (from AdminController) ---
+    // --- Sync Settings ---
 
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -109,7 +109,7 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(SyncSettings));
     }
 
-    // --- System Team Sync (from AdminController) ---
+    // --- System Team Sync ---
 
     [HttpPost("SyncSystemTeams")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -151,7 +151,7 @@ public class GoogleController : HumansControllerBase
         return View(report);
     }
 
-    // --- Google Group Settings (from AdminController) ---
+    // --- Google Group Settings ---
 
     [HttpPost("CheckGroupSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -251,7 +251,7 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- All Domain Groups (from AdminController) ---
+    // --- All Domain Groups ---
 
     [HttpGet("AllGroups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -298,7 +298,7 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- Resource Sync Dashboard (from TeamController) ---
+    // --- Resource Sync Dashboard ---
 
     [HttpGet("Sync")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
@@ -319,11 +319,9 @@ public class GoogleController : HumansControllerBase
             ? await _googleGroupSync.ReconcileAllAsync(SyncAction.Preview, HttpContext.RequestAborted)
             : await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, HttpContext.RequestAborted);
 
-        // Sort resources alphabetically
         result.Diffs.Sort((a, b) =>
             string.Compare(a.ResourceName, b.ResourceName, StringComparison.Ordinal));
 
-        // Sort members within each resource: by state then by displayName
         foreach (var diff in result.Diffs)
         {
             diff.Members.Sort((a, b) =>
@@ -385,7 +383,7 @@ public class GoogleController : HumansControllerBase
         }
     }
 
-    // --- Human Email Provisioning (from HumanController) ---
+    // --- Human Email Provisioning ---
 
     [HttpPost("Human/{id:guid}/ProvisionEmail")]
     [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
@@ -427,7 +425,7 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
     }
 
-    // --- Workspace Accounts (from AdminEmailController) ---
+    // --- Workspace Accounts ---
 
     [HttpGet("Accounts")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -657,12 +655,7 @@ public class GoogleController : HumansControllerBase
     {
         var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
-        // Resolve display info for events via the UserInfo cache (one
-        // sync-on-hit lookup per user, no per-event DB round-trip).
-        // GoogleEmail derives from the IsGoogle UserEmail row carried inside
-        // UserInfo; fall back to the canonical primary email when no
-        // IsGoogle row is set. BurnerName-resolved name per
-        // memory/architecture/burnername-is-the-display-name.md.
+        // Display info via UserInfo cache (one lookup/user). GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
         var googleEmailLookup = new Dictionary<Guid, string>(userIds.Count);

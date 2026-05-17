@@ -14,20 +14,9 @@ namespace Humans.Application.Services.Notifications;
 /// Application-layer implementation of <see cref="INotificationInboxService"/>.
 /// Builds read models for the inbox and popup, handles resolve/dismiss/
 /// mark-read actions, and invalidates nav-badge cache entries after writes.
+/// Cross-domain display names are stitched via <c>IUserService.GetByIdsAsync</c>
+/// (design-rules §6).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Goes through <see cref="INotificationRepository"/> for all data access —
-/// this type never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
-/// </para>
-/// <para>
-/// Recipient and resolver display names are stitched in memory by calling
-/// <c>IUserService.GetByIdsAsync</c>, replacing the prior cross-domain
-/// <c>.Include(nr =&gt; nr.Notification.Recipients).ThenInclude(r =&gt; r.User)</c>
-/// chain (design-rules §6).
-/// </para>
-/// </remarks>
 public sealed class NotificationInboxService : INotificationInboxService, IUserDataContributor
 {
     private readonly INotificationRepository _repo;
@@ -217,10 +206,6 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         return [new UserDataSlice(GdprExportSections.Notifications, shaped)];
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private static (NotificationInboxFilter Filter, NotificationInboxTab Tab)
         ParseFilterAndTab(string filter, string tab)
     {
@@ -234,7 +219,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         };
 
         // Resolved filter is incompatible with unread tab — resolved items are
-        // never unread; flip tab to All in that case (matches the pre-§15 behavior).
+        // never unread; flip tab to All in that case.
         var parsedTab = parsedFilter == NotificationInboxFilter.Resolved
             ? NotificationInboxTab.All
             : tab?.ToLowerInvariant() switch

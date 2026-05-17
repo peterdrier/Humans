@@ -6,13 +6,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Agent;
 
-/// <summary>
-/// Read-only assembler for the <c>/Agent/Admin/Status</c> view. Pulls one
-/// flat per-message projection covering the broadest window (30 days), then
-/// computes every other window in memory. At the project's scale (~500
-/// users, 90-day retention, sub-thousand messages/day) the projection fits
-/// comfortably in RAM — see <c>CLAUDE.md</c> § Scale and Deployment.
-/// </summary>
+/// <summary>Read-only assembler for /Agent/Admin/Status. One 30-day projection, all sub-windows computed in memory (~500 users; fits in RAM).</summary>
 public sealed class AgentAdminStatusService : IAgentAdminStatusService
 {
     private readonly IAgentRepository _repo;
@@ -45,9 +39,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
         var window7d = now - Duration.FromDays(7);
         var window30d = now - Duration.FromDays(30);
 
-        // Month-to-date in UTC. The agent is admin-internal tooling and the
-        // operations team reads the status page knowing the windows are
-        // UTC-anchored — matches the rest of the admin diagnostics surface.
+        // MTD in UTC (matches the rest of admin diagnostics).
         var utcNow = now.InUtc();
         var firstOfMonth = new LocalDate(utcNow.Year, utcNow.Month, 1)
             .AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
@@ -59,9 +51,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
         var settings = _settings.Current;
         var defaultModel = settings.Model;
 
-        // Conversation counts per window come from the parent table — a
-        // conversation can sit in a window without producing new messages
-        // (rare, but the source-of-truth count must match the table).
+        // Conversation counts from the parent table — handles convs with no new messages in window.
         var convCount24h = await _repo.CountConversationsInWindowAsync(window24h, now, cancellationToken);
         var convCount7d = await _repo.CountConversationsInWindowAsync(window7d, now, cancellationToken);
         var convCount30d = await _repo.CountConversationsInWindowAsync(window30d, now, cancellationToken);
@@ -117,11 +107,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
     private static AgentUsageStats BuildUsage(
         IReadOnlyList<AgentStatusMessageRow> rows, Instant since, int conversationCount)
     {
-        // Repository returns rows sorted by CreatedAt descending — every
-        // message in the smaller-window slice is at the head, so the loop
-        // can early-stop once the rows fall outside `since`. Filtering with
-        // LINQ Where would also work but the explicit loop keeps the
-        // arithmetic readable when summing multiple aggregates together.
+        // Rows are CreatedAt-desc; early-stop once outside `since`.
         long prompt = 0, output = 0, cached = 0;
         var durations = new List<int>();
         var uniqueUsers = new HashSet<Guid>();
@@ -157,10 +143,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
     private static AgentSpendStats BuildSpend(
         IReadOnlyList<AgentStatusMessageRow> rows, Instant since, string defaultModel)
     {
-        // Per-message pricing so a window that spanned a model change still
-        // reports correctly. Most production traffic uses one model at a
-        // time, but the per-row lookup costs nothing and protects against
-        // a future migration window.
+        // Per-message pricing so windows spanning a model change still report correctly.
         decimal input = 0m, output = 0m, cacheRead = 0m;
         foreach (var r in rows)
         {
@@ -178,8 +161,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
         IReadOnlyList<AgentStatusMessageRow> rows, Instant since,
         AgentSettingsDto settings, Instant now)
     {
-        // Rate-limit store keys by (UserId, LocalDate, Hour) in UTC — see
-        // AgentRateLimitHandler for the authoritative usage of these keys.
+        // Rate-limit keys: (UserId, LocalDate, Hour) in UTC — see AgentRateLimitHandler.
         var utcNow = now.InUtc();
         var today = utcNow.Date;
         var hour = utcNow.Hour;

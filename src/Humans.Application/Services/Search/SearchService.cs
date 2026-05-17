@@ -9,21 +9,9 @@ using Humans.Application.Services.Profiles;
 namespace Humans.Application.Services.Search;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ISearchService"/>. Names-only
-/// orchestrator: each section's own service runs the case-insensitive Postgres
-/// ILike query against the entity's name field at the DB layer (per
-/// <c>memory/feedback_ef_ilike_not_toupper.md</c>) and returns its own hit
-/// shape; this orchestrator scores each hit by name-match strength and
-/// returns four type-grouped buckets. There is no cross-modal / relational
-/// expansion and no matching beyond the name field on the entity itself
-/// (see <c>docs/features/global/global-search.md</c>).
+/// Names-only search orchestrator: each section runs its own ILike, this scores hits and returns four buckets (unsorted).
+/// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
-/// <remarks>
-/// Display ordering is a presentation concern and lives in
-/// <c>SearchController.BuildViewModel</c> per
-/// <c>memory/architecture/display-sort-in-controllers.md</c> — the buckets
-/// returned here are scored but unsorted.
-/// </remarks>
 public sealed class SearchService : ISearchService
 {
     private readonly IUserService _userService;
@@ -84,9 +72,7 @@ public sealed class SearchService : ISearchService
     private async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
         string query, int limit, CancellationToken ct)
     {
-        // Every viewer sees the public surface — admin profile fields
-        // (verified emails, non-public ContactFields) never surface from
-        // /Search regardless of role.
+        // Public surface only — admin fields never reach /Search regardless of role.
         return await _userService.SearchUsersAsync(
             query, PersonSearchFields.PublicAll, limit, ct);
     }
@@ -124,9 +110,7 @@ public sealed class SearchService : ISearchService
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchShiftsAsync(
         string query, int limit, CancellationToken ct)
     {
-        // The "shift" search hit is a Rota (named, role-shaped grouping of
-        // shifts) — an individual Shift row is a date+time slot with no
-        // human-readable title to match against.
+        // Hits are Rotas (named shift groupings), not individual Shift rows (which have no title).
         var hits = await _shiftService.SearchAsync(query, limit, ct);
         return hits
             .Select(r => new GlobalSearchResult(

@@ -12,23 +12,9 @@ using NodaTime.Text;
 namespace Humans.Application.Services.Shifts;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IRotaCoordinatorMessageService"/>.
-/// Enumerates current Pending/Confirmed signups on a rota, groups them by user,
-/// and enqueues one personalised email per recipient via <see cref="IEmailService"/>.
+/// Groups active signups by user and enqueues one personalised email per recipient via the outbox.
+/// One audit row per dispatch (recipient rows are auditable through the outbox).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Reuses the existing outbox path so logging, opt-out routing, and category
-/// suppression stay consistent with every other transactional send. The
-/// per-recipient shift list is computed here from <see cref="Shift.GetAbsoluteStart"/>
-/// in the event's timezone — same convention the rota detail page uses.
-/// </para>
-/// <para>
-/// One audit row per send (per rota dispatch). Per-recipient email rows are
-/// already auditable through the outbox table — no need to fan out audit log
-/// entries per recipient.
-/// </para>
-/// </remarks>
 public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageService
 {
     private readonly IShiftSignupRepository _signupRepo;
@@ -132,11 +118,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
         return RotaMessageDispatchResult.Success(queued, rota.Name);
     }
 
-    /// <summary>
-    /// Builds a single recipient's chronologically ordered shift label list.
-    /// Format: <c>"ddd MMMM d"</c> for all-day, <c>"ddd MMMM d @ HH:mm"</c> for
-    /// time-slotted. Uses the event's timezone, matching the rota page convention.
-    /// </summary>
+    // Chronologically ordered "ddd MMMM d [@ HH:mm]" lines in the event's timezone.
     private static IReadOnlyList<string> BuildShiftLines(
         IReadOnlyList<ShiftSignup> userSignups,
         EventSettings eventSettings)
@@ -156,9 +138,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
     private static string FormatShiftLine(ZonedDateTime zoned, bool isAllDay)
     {
         var local = zoned.LocalDateTime;
-        // Invariant-culture day-and-month so the email body has a stable, parseable shape;
-        // recipient-locale formatting would require per-recipient pattern selection and
-        // doesn't materially help operational legibility (these messages are short ops notices).
+        // Invariant culture: stable parseable shape for short ops notices.
         var datePattern = LocalDateTimePattern.CreateWithInvariantCulture("ddd MMMM d");
         var timePattern = LocalDateTimePattern.CreateWithInvariantCulture("HH:mm");
         return isAllDay

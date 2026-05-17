@@ -63,7 +63,6 @@
 
 <vc:temp-data-alerts />
 
-<!-- Inline Summary Cards -->
 <div class="row mb-4">
     <div class="col-md-4">
         <div class="card text-center">
@@ -93,7 +92,6 @@
     </div>
 </div>
 
-<!-- Inline Summary Charts (collapsible) -->
 @if (Model.IncomeSlices.Any() || Model.ExpenseSlices.Any())
 {
     <div class="card mb-4">
@@ -136,7 +134,6 @@
     </div>
 }
 
-<!-- Budget Tree: Groups > Categories > Line Items -->
 <div class="accordion" id="budgetAccordion">
 @foreach (var group in year.Groups.OrderBy(g => g.SortOrder))
 {

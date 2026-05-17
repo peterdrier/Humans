@@ -23,9 +23,7 @@ internal static class ProfileSectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Profile section — repository/store pattern (§15 Step 0, PR #504).
-        // Repositories use IDbContextFactory and are registered as Singleton so the
-        // Singleton CachingUserService can inject them directly without scope-factory indirection.
+        // Profile section — see #504. Singleton repos so CachingUserService injects directly without scope-factory.
         services.AddSingleton<IProfileRepository, ProfileRepository>();
         services.AddSingleton<IContactFieldRepository, ContactFieldRepository>();
         services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
@@ -57,11 +55,7 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailProviderBackfillService, UsersUserEmailProviderBackfillService>();
 
-        // ProfileService: Scoped — owns Profile-table writes. Registered directly
-        // (no caching decorator) since the FullProfile cache was retired in favour
-        // of the unified UserInfo cache on CachingUserService. Profile reads that
-        // need a denormalized "everything-about-a-person" projection go through
-        // IUserService.GetUserInfoAsync instead.
+        // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.
         services.AddScoped<ProfilesProfileService>();
         services.AddScoped<IProfileService>(sp => sp.GetRequiredService<ProfilesProfileService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesProfileService>());

@@ -54,10 +54,7 @@ public class AdminController : HumansControllerBase
         _databaseDiagnostics = databaseDiagnostics;
     }
 
-    // Dashboard is reachable by any admin-shaped role (FinanceAdmin etc.) so the
-    // top-nav "Admin" link doesn't dead-end at 403. Sidebar items inside still
-    // filter per-item, and all dashboard tiles are aggregate counts that are
-    // safe across roles. Other AdminController actions remain AdminOnly.
+    // AnyAdminRole so top-nav doesn't 403 for FinanceAdmin etc.; tiles are aggregate counts safe across roles. Other actions stay AdminOnly.
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
     public async Task<IActionResult> Index(
@@ -182,8 +179,7 @@ public class AdminController : HumansControllerBase
             }
             else if (e.IsSensitive)
             {
-                // Show first 4 chars so you can tell which key is in use;
-                // fully mask only very short values (≤4 chars) where the prefix IS the secret
+                // First 4 chars to identify key; fully mask ≤4-char values (prefix would be the secret).
                 displayValue = e.Value switch
                 {
                     { Length: > 4 } v => v[..4] + "••••••",
@@ -215,9 +211,7 @@ public class AdminController : HumansControllerBase
         return View(new AdminConfigurationViewModel { Items = items });
     }
 
-    // Intentionally anonymous: exposes only migration names and counts (no sensitive data).
-    // Used by dev tooling to check which migrations have been applied in QA/prod,
-    // so old migrations can be safely squashed and removed from the repo.
+    // Anonymous on purpose: only migration names + counts (no sensitive data). Dev tooling checks QA/prod state before squashing migrations.
     [HttpGet("DbVersion")]
     [AllowAnonymous]
     [Produces("application/json")]
@@ -296,12 +290,8 @@ public class AdminController : HumansControllerBase
     }
 
     /// <summary>
-    /// One-shot backfill of <c>UserEmail.Provider</c> / <c>UserEmail.ProviderKey</c>
-    /// / <c>UserEmail.IsGoogle</c> from existing <c>AspNetUserLogins</c> rows and
-    /// the legacy <c>User.GoogleEmail</c> field. PR 3 of the
-    /// email-identity-decoupling spec. Idempotent — safe to re-run. Operator
-    /// runs once on QA (verifies the result counters), once on production
-    /// (verifies again), then PR 7 ships the legacy column drops.
+    /// One-shot, idempotent backfill of UserEmail.Provider/ProviderKey/IsGoogle from AspNetUserLogins and legacy User.GoogleEmail.
+    /// PR 3 of email-identity-decoupling spec; legacy columns dropped in PR 7.
     /// </summary>
     [HttpGet("BackfillUserEmailProviders")]
     [Authorize(Policy = PolicyNames.AdminOnly)]

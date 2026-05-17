@@ -3,8 +3,6 @@ using Humans.Application.Services.Expenses.Dtos;
 
 namespace Humans.Web.Models;
 
-// ─────────────────────────────────── Index ───────────────────────────────────
-
 public sealed class ExpensesIndexViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
@@ -14,13 +12,10 @@ public sealed class ExpensesIndexViewModel
         new Dictionary<Guid, string>();
 }
 
-// ─────────────────────────────────── New / Edit ──────────────────────────────
-
 public sealed class ExpenseNewViewModel
 {
     public IReadOnlyList<BudgetCategoryOption> Categories { get; set; } = [];
 
-    // Bound on POST
     [Required]
     public Guid BudgetCategoryId { get; set; }
 
@@ -35,7 +30,6 @@ public sealed class ExpenseEditViewModel
     public bool CanEditHeader { get; set; }
     public bool CanEditLines { get; set; }
 
-    // Header edit fields (bound on POST)
     public Guid BudgetCategoryId { get; set; }
 
     [StringLength(500)]
@@ -46,8 +40,6 @@ public sealed record BudgetCategoryOption(Guid Id, string GroupName, string Cate
 {
     public string DisplayName => $"{GroupName} / {CategoryName}";
 }
-
-// ─────────────────────────────────── Detail ──────────────────────────────────
 
 public sealed class ExpenseDetailViewModel
 {
@@ -62,8 +54,6 @@ public sealed class ExpenseDetailViewModel
     /// <summary>Non-null when the report was previously rejected.</summary>
     public string? LastRejectionReason => Report.LastRejectionReason;
 }
-
-// ────────────────────────── Add / edit line (inline form input) ──────────────
 
 public sealed class AddLineInputModel
 {
@@ -86,15 +76,11 @@ public sealed class EditLineInputModel
     public decimal Amount { get; set; }
 }
 
-// ─────────────────────────────── Coordinator queue ───────────────────────────
-
 public sealed class ExpenseCoordinatorViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
 }
-
-// ────────────────────────────── Coordinator actions ──────────────────────────
 
 public sealed class CoordinatorRejectInputModel
 {
@@ -102,15 +88,11 @@ public sealed class CoordinatorRejectInputModel
     public string Reason { get; set; } = "";
 }
 
-// ────────────────────────────────── Review queue ─────────────────────────────
-
 public sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
 }
-
-// ──────────────────────────── FinanceAdmin actions ───────────────────────────
 
 public sealed class ApproveInputModel
 {
@@ -124,15 +106,12 @@ public sealed class FinanceRejectInputModel
     public string Reason { get; set; } = "";
 }
 
-// ─────────────────────────────────── IBAN modal ──────────────────────────────
-
 public sealed class ExpenseIbanViewModel
 {
     public Guid ReportId { get; set; }
     public string? MaskedIban { get; set; }
     public bool HasIban { get; set; }
 
-    // Bound on POST
     [StringLength(34)]
     public string? Iban { get; set; }
 }

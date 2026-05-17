@@ -133,7 +133,6 @@ public class BudgetController : HumansControllerBase
             if (detail.ShouldForbid)
                 return Forbid();
 
-            // Use resource-based authorization to determine edit access
             var canEdit = (await _authService.AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)).Succeeded;
 
             var model = new CoordinatorCategoryDetailViewModel
@@ -232,11 +231,7 @@ public class BudgetController : HumansControllerBase
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }
 
-    /// <summary>
-    /// Loads the budget category and evaluates the resource-based BudgetOperationRequirement.Edit
-    /// authorization requirement. Returns an IActionResult to short-circuit the action if denied,
-    /// or null if authorized.
-    /// </summary>
+    /// <summary>Load category + auth-check Edit; returns IActionResult on deny, null on allow.</summary>
     private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId)
     {
         var category = await _budgetService.GetCategoryByIdAsync(categoryId);

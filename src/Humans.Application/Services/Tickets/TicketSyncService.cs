@@ -18,31 +18,9 @@ using NodaTime;
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ITicketSyncService"/>.
-/// Owns domain-persistence for the Tickets section's sync pipeline: upsert
-/// vendor orders and attendees into <c>ticket_orders</c>/<c>ticket_attendees</c>,
-/// match buyers and attendees to users by email, compute VAT, enrich with
-/// Stripe fee data, and reconcile event participation.
+/// Tickets sync pipeline: upsert vendor orders/attendees, match users by email,
+/// compute VAT, enrich Stripe fees, reconcile event participation.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Split vs Ticket Tailor connector (per PR #545c / umbrella #545):</b>
-/// This service never calls the vendor API directly — it delegates to
-/// <see cref="ITicketVendorService"/>, whose implementation
-/// (<c>TicketTailorService</c> or <c>StubTicketVendorService</c>) stays in
-/// Infrastructure as the HTTP/vendor connector. All DB access goes through
-/// <see cref="ITicketRepository"/> — this type never imports
-/// <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
-/// </para>
-/// <para>
-/// <b>Cross-section calls.</b> <c>event_participations</c> writes route
-/// through <see cref="IUserService"/> (per the User section's PR #243 — the
-/// User section owns that table). <c>EventSettings</c> reads route through
-/// <see cref="IShiftManagementService"/>. <c>CampaignGrants</c> redemption
-/// updates route through <see cref="ICampaignService"/>.
-/// </para>
-/// </remarks>
 public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 {
     private readonly ITicketRepository _ticketRepository;
@@ -108,11 +86,8 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             var orders = await _vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
             var tickets = await _vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
 
-            // Build email → UserId lookup from UserEmails table.
             var emailLookup = await BuildEmailLookupAsync(ct);
 
-            // Build entity list for orders — existing rows keep their Id so the repo
-            // upsert recognises them; new rows get a freshly-minted Guid.
             var existingOrdersByVendorId = await _ticketRepository
                 .GetOrdersByVendorIdsAsync(orders.Select(o => o.VendorOrderId).ToList(), ct);
 
@@ -130,10 +105,8 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             await _ticketRepository.UpsertOrdersAsync(ordersToUpsert, ct);
             var ordersSynced = ordersToUpsert.Count;
 
-            // Enrich orders with Stripe fee/payment method data.
             await EnrichOrdersWithStripeDataAsync(ct);
 
-            // Build attendee entities. Parent orders must exist by now (just upserted).
             var orderIdByVendorId = await _ticketRepository.GetOrderIdsByVendorIdAsync(ct);
             var existingAttendeesByVendorId = await _ticketRepository
                 .GetAttendeesByVendorIdsAsync(tickets.Select(t => t.VendorTicketId).ToList(), ct);
@@ -156,8 +129,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                 }
                 else
                 {
-                    // API-issued ticket (e.g. via transfer reissue) — no order id from vendor.
-                    // Prefer existing local row's parent order; otherwise treat as orphan and skip.
+                    // API-issued ticket (e.g. transfer reissue) — use existing local parent, else skip.
                     var localExisting = existingAttendeesByVendorId.GetValueOrDefault(dto.VendorTicketId);
                     if (localExisting is null)
                     {
@@ -179,28 +151,19 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             await _ticketRepository.UpsertAttendeesAsync(attendeesToUpsert, ct);
             var attendeesSynced = attendeesToUpsert.Count;
 
-            // Compute VAT for all orders using VIP split logic on attendee prices.
             await ComputeVatForOrdersAsync(ct);
 
-            // Match discount codes to campaign grants.
             var codesRedeemed = await MatchDiscountCodesAsync(ct);
 
-            // Sync event participation records.
             await SyncEventParticipationsAsync(ct);
 
-            // Update sync state.
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
             syncState.LastSyncAt = now;
             syncState.LastError = null;
             await _ticketRepository.PersistSyncStateAsync(syncState, ct);
 
-            // Invalidate all ticket-related caches after successful sync.
-            // The per-event vendor summary lives on the connector's shared
-            // IMemoryCache (Infrastructure) keyed on the vendor event id;
-            // the projection / per-user TTL entries live behind the decorator.
-            // Application stays cache-unaware (§15c) — both pokes route
-            // through the invalidator seam.
+            // invalidate ticket caches via seam (§15c)
             _ticketCache.InvalidateVendorEventSummary(eventId);
             _ticketCache.InvalidateAll();
 
@@ -217,8 +180,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         }
         catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
         {
-            // Transient HTTP errors (network failures, 5xx responses) — expected.
-            // Log concisely (no stack trace), preserve LastSyncAt, retry next run.
+            // Transient: preserve LastSyncAt, retry next run.
             _logger.LogWarning(
                 "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run",
                 (int?)ex.StatusCode, eventId);
@@ -253,28 +215,12 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         await _ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
         await _transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
 
-        // Per-user ticket coverage / dashboard / who-hasn't-bought derive
-        // from MatchedUserId on orders + attendees, so the projection must
-        // refresh; tickets just moved source → target, so both users' per-
-        // user TTL entries (UserTicketCount, UserTicketHoldings) must also
-        // be evicted or the homepage card and ticket-holdings widget lag up
-        // to 5 minutes after the merge. Both concerns live behind the
-        // ITicketCacheInvalidator seam owned by the caching decorator.
         _ticketCache.InvalidateAfterUserMerge(sourceUserId, targetUserId);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
-        // Match against verified user emails only (issue #645). Unverified emails
-        // are not trustworthy enough to drive ticket → user matching, and the prior
-        // IsGoogle tiebreak silently picked one identity over another for collisions
-        // that span verified rows. A normalized verified email is supposed to be
-        // owned by exactly one user — multiple-user collisions among verified rows
-        // are a data-integrity error, not an expected condition, so they leave the
-        // email unmatched and emit LogError. Email is normalized so gmail/googlemail
-        // aliases resolve to the same human.
+        // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
         var entries = await _ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
 
         var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
@@ -289,8 +235,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             else
             {
-                // Multiple verified users share this email — should not happen.
-                // Log as error and leave unmatched so neither user gets the ticket.
                 _logger.LogError(
                     "Email {Email} verified by {Count} users, leaving unmatched",
                     group.Key, distinctUserIds.Count);
@@ -329,8 +273,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             StripePaymentIntentId = dto.StripePaymentIntentId,
             DiscountAmount = dto.DiscountAmount,
             DonationAmount = dto.DonationAmount,
-            // Stripe enrichment + VAT are computed in later passes; preserve any
-            // prior values so the upsert doesn't stomp them back to null/0.
+            // Stripe + VAT enriched later; preserve prior values.
             PaymentMethod = existing?.PaymentMethod,
             PaymentMethodDetail = existing?.PaymentMethodDetail,
             StripeFee = existing?.StripeFee,
@@ -377,7 +320,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             .Select(r => new DiscountCodeRedemption(r.Code, r.PurchasedAt))
             .ToList();
 
-        // Delegate to CampaignService — CampaignGrants is owned by the Campaigns section.
         return await _campaignService.MarkGrantsRedeemedAsync(redemptions, ct);
     }
 
@@ -399,9 +341,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         var updated = new List<TicketOrder>(ordersToEnrich.Count);
         foreach (var order in ordersToEnrich)
         {
-            // Belt-and-suspenders: skip placeholder / whitespace-only PaymentIntent ids
-            // the repository filter should already exclude. Trim guards against
-            // unprintable characters that slipped past TT (em-dash, NBSP, etc.).
+            // Defensive: skip placeholder/whitespace PI ids the repo filter should exclude.
             var trimmedPi = order.StripePaymentIntentId?.Trim();
             if (trimmedPi is null or "" or "--")
             {
@@ -421,9 +361,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             catch (Exception ex)
             {
-                // Drop the exception arg — these warnings recur every cycle for genuinely
-                // transient Stripe errors and the stack trace adds noise without
-                // diagnostic value. Keep the structured Reason for triage.
                 _logger.LogWarning(
                     "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId}): {Reason}",
                     order.VendorOrderId, trimmedPi, ex.Message);
@@ -469,9 +406,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
             var taxableAmount = Math.Min(attendee.Price, TicketConstants.VipThresholdEuros);
 
-            // VAT is inclusive in the taxable ticket price:
-            // taxableAmount = net + VAT, where VAT = net * rate
-            // So: VAT = taxableAmount * rate / (1 + rate)
+            // VAT-inclusive: VAT = taxableAmount * rate / (1 + rate)
             var vat = Math.Round(taxableAmount * TicketConstants.VatRate / (1 + TicketConstants.VatRate), 2);
             totalVat += vat;
         }
@@ -508,18 +443,15 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
         var year = activeEvent.Year;
 
-        // Get matched attendees for the active vendor event only.
         var matchedAttendees = await _ticketRepository
             .GetMatchedAttendeesForEventAsync(_settings.EventId, ct);
 
-        // Group by user.
         var userTicketStatuses = matchedAttendees
             .GroupBy(a => a.MatchedUserId)
             .ToDictionary(
                 g => g.Key,
                 g => g.Select(a => a.Status).ToList());
 
-        // Process users with tickets.
         foreach (var (userId, statuses) in userTicketStatuses)
         {
             var hasCheckedIn = statuses.Any(s => s == TicketAttendeeStatus.CheckedIn);
@@ -538,10 +470,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
         }
 
-        // Handle users who previously had tickets but no longer do. Pull all
-        // participation records for the year and filter to TicketSync+Ticketed
-        // in memory — at ~500 users this is cheap and avoids adding a tightly
-        // scoped read method to IUserService.
+        // Clear stale Ticketed for users who no longer hold a valid ticket.
         var allParticipations = await _userService.GetAllParticipationsForYearAsync(year, ct);
         var stalePreviousTicketed = allParticipations
             .Where(ep => ep.Source == ParticipationSource.TicketSync

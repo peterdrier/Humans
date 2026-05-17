@@ -56,10 +56,7 @@ public sealed class MailerImportService : IMailerImportService
                 continue;
             }
 
-            // 2. Verified match — count distinct owners so service-level
-            // uniqueness drift (multiple users sharing the same verified
-            // address) surfaces as AmbiguousMultipleVerified instead of
-            // silently mutating one arbitrary user's preferences.
+            // 2. Verified match — count distinct owners so uniqueness drift surfaces as Ambiguous.
             var verifiedUserIds = await _userEmails.GetDistinctVerifiedUserIdsAsync(s.Email, ct);
             if (verifiedUserIds.Count > 1)
             {
@@ -95,10 +92,9 @@ public sealed class MailerImportService : IMailerImportService
     }
 
     /// <summary>
-    /// Maps a verified-match subscriber + (possibly null) existing Marketing pref
-    /// to a concrete bucket. The same decision rule is re-evaluated at apply
-    /// time inside <see cref="ApplyMarketingDeltaAsync"/> so state drift between
-    /// plan and apply is honored — the plan bucket is for preview/UI only.
+    /// Maps a verified-match subscriber + existing Marketing pref to a bucket.
+    /// Re-evaluated at apply time in <see cref="ApplyMarketingDeltaAsync"/>; the
+    /// plan bucket is for preview/UI only.
     /// </summary>
     private static SubscriberOutcome ClassifyVerifiedMatch(
         MailerLiteSubscriber ml, CommunicationPreferenceSnapshot? existingMarketing)
@@ -120,10 +116,8 @@ public sealed class MailerImportService : IMailerImportService
         if (existingMarketing is not null && existingMarketing.OptedOut == mlOptedOut)
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
-        // No pref row + ML opt-out: Marketing defaults to opted-out for users
-        // with no row (see CommunicationPreferenceService.DefaultOptedOut), so
-        // state is already effectively in sync. Treat as no-op to avoid
-        // writing a redundant opt-out row and inflating the flip count.
+        // No pref row + ML opt-out: Marketing defaults to opted-out (see
+        // CommunicationPreferenceService.DefaultOptedOut), so already in sync.
         if (existingMarketing is null && mlOptedOut)
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
@@ -250,9 +244,8 @@ public sealed class MailerImportService : IMailerImportService
     }
 
     /// <summary>
-    /// Splits <paramref name="decisions"/> into the slice to process (first
-    /// <paramref name="maxPerOutcome"/> per outcome bucket, preserving input
-    /// order) and the count held back. Null/non-positive limits process everything.
+    /// Splits decisions into the first <paramref name="maxPerOutcome"/> per outcome bucket
+    /// (preserving input order) and the throttled count. Null/non-positive processes all.
     /// </summary>
     private static (IReadOnlyList<SubscriberDecision> ToProcess, int Throttled) ApplyThrottle(
         IReadOnlyList<SubscriberDecision> decisions, int? maxPerOutcome)
@@ -265,11 +258,7 @@ public sealed class MailerImportService : IMailerImportService
         int throttled = 0;
         foreach (var d in decisions)
         {
-            // UnconfirmedSkipped, AmbiguousMultipleVerified, and VerifiedPrefsAlreadyMatch
-            // never write — the first two are unconditional skips, and ApplyMarketingDeltaAsync
-            // returns DeltaResult.NoChange for the third. Bypass the throttle so they don't
-            // consume a slot or inflate DecisionsThrottled (which would double-count against
-            // plan.Counts in the summary).
+            // No-write outcomes bypass the throttle to avoid double-counting against plan.Counts.
             if (d.Outcome is SubscriberOutcome.UnconfirmedSkipped
                           or SubscriberOutcome.AmbiguousMultipleVerified
                           or SubscriberOutcome.VerifiedPrefsAlreadyMatch)

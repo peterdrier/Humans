@@ -102,9 +102,7 @@ public sealed class MailerAudienceSyncService(
         var group = groups.FirstOrDefault(g => string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal))
             ?? await ml.CreateGroupAsync(audience.MailerLiteGroupName, ct);
 
-        // Single snapshot of ML subscribers — reused for the entire diff + apply pass.
-        // The per-write methods do NOT invalidate the subscriber cache, so this snapshot
-        // remains the source of truth throughout the loop.
+        // Single snapshot reused for diff + apply; per-write methods don't invalidate the subscriber cache.
         var subscribers = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct)) subscribers.Add(s);
         var byEmail = subscribers.ToDictionary(s => NormalizeEmail(s.Email), s => s, StringComparer.Ordinal);

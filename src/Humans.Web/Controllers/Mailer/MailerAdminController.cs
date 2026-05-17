@@ -128,8 +128,7 @@ public sealed class MailerAdminController : HumansControllerBase
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
-            // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
-            // when the caller did not cancel. Treat it as a transient failure.
+            // HttpClient timeout surfaces as TaskCanceledException when caller didn't cancel.
             _logger.LogWarning("Audience sync timed out for {Audience}", key);
             TempData["Banner"] = $"{audience.DisplayName}: sync timed out. Try again shortly.";
         }
@@ -152,8 +151,7 @@ public sealed class MailerAdminController : HumansControllerBase
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
-            // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
-            // when the caller did not cancel. Treat it as a transient refresh failure.
+            // HttpClient timeout surfaces as TaskCanceledException when caller didn't cancel.
             _logger.LogWarning("MailerLite refresh timed out");
             TempData["Banner"] = "Refresh failed: MailerLite request timed out. Try again shortly.";
         }
@@ -213,7 +211,7 @@ public sealed class MailerAdminController : HumansControllerBase
         var plan = await _import.BuildPlanAsync(ct);
         var rows = ProjectRows(plan);
 
-        // Snapshot counts in TempData for the >10% delta check on Commit (Task 27).
+        // Snapshot counts in TempData for the >10% delta check on Commit.
         TempData["PlanCountsSnapshot"] = JsonSerializer.Serialize(plan.Counts);
 
         return View("~/Views/Mailer/Admin/Import.cshtml",
@@ -245,14 +243,8 @@ public sealed class MailerAdminController : HumansControllerBase
             if (isOptedOut) humansOutMlIn++;
         }
 
-        // The "Humans-opted-in / MailerLite-absent" half of the drift report
-        // requires enumerating every user whose marketing preference is opt-in
-        // and asking IMailerLite if they exist there. There's no existing
-        // IUserEmailService / ICommunicationPreferenceService surface that
-        // returns this set, and adding a new interface method for one admin
-        // page is durable debt per
-        // memory/architecture/interface-method-additions-are-debt.md. Left
-        // null until a cross-cut use case justifies it.
+        // Humans-opted-in / ML-absent half left null — adding a new service method
+        // for one admin page is durable debt per memory/architecture/interface-method-additions-are-debt.md.
         int? humansInMlAbsent = null;
 
         return new DriftReport(

@@ -8,13 +8,7 @@ using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Repositories.Users;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IUserRepository"/>. The only
-/// non-test file that touches <c>DbContext.Users</c> or
-/// <c>DbContext.EventParticipations</c> after the User migration lands.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
-/// </summary>
+/// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
 internal sealed class UserRepository : IUserRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
@@ -24,9 +18,7 @@ internal sealed class UserRepository : IUserRepository
         _factory = factory;
     }
 
-    // ==========================================================================
     // Reads — User
-    // ==========================================================================
 
     public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
     {
@@ -55,8 +47,7 @@ internal sealed class UserRepository : IUserRepository
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
     {
-        // Include UserEmails so callers reading User.Email get the override's
-        // computed value rather than null. Cheap at ~500-user scale.
+        // Include UserEmails so computed User.Email isn't null.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
@@ -67,18 +58,13 @@ internal sealed class UserRepository : IUserRepository
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
-        // Verified email lookups route through user_emails; the legacy
-        // GoogleEmail shadow column survives on disk and is matched as a
-        // fallback via EF.Property until the column is dropped. ILIKE without
-        // escape treats '_' / '%' in the input as wildcards, so
-        // alex_smith@example.com would also match alexXsmith@example.com —
-        // escape the pattern with '\'.
+        // ILIKE: escape '_' / '%' in input or alex_smith@... matches alexXsmith@...
+        // Lookup verifies user_emails first; falls back to legacy GoogleEmail shadow column.
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // Step 1: look up by verified UserEmail (canonical email source).
         var userIdByEmail = escapedAlternate is null
             ? await ctx.UserEmails
                 .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, escapedEmail, "\\"))
@@ -99,7 +85,7 @@ internal sealed class UserRepository : IUserRepository
                 .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
         }
 
-        // Step 2: fall back to the legacy GoogleEmail shadow column.
+        // Fallback: legacy GoogleEmail shadow column.
         if (escapedAlternate is null)
         {
             return await ctx.Users
@@ -157,9 +143,7 @@ internal sealed class UserRepository : IUserRepository
         return rows.ToDictionary(x => x.Id, x => x.GoogleEmail!);
     }
 
-    // ==========================================================================
-    // Writes — User (atomic field updates)
-    // ==========================================================================
+    // Writes — User
 
     public async Task<bool> UpdateDisplayNameAsync(
         Guid userId, string displayName, CancellationToken ct = default)
@@ -286,7 +270,6 @@ internal sealed class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        // Tombstone fields — point this row at its target, stamp the time.
         user.MergedToUserId = targetUserId;
         user.MergedAt = now;
 
@@ -295,18 +278,15 @@ internal sealed class UserRepository : IUserRepository
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
-        // Clear any deletion request fields — this account is being archived
-        // through the merge flow, not the deletion flow.
+        // Archived via merge, not deletion — clear deletion fields.
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
         user.DeletionEligibleAfter = null;
 
-        // Disable login
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
         user.SecurityStamp = Guid.NewGuid().ToString();
 
-        // Clear iCal token so any saved calendar subscription links stop working
         user.ICalToken = null;
 
         await ctx.SaveChangesAsync(ct);
@@ -317,7 +297,6 @@ internal sealed class UserRepository : IUserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // Distinct UserIds present in AspNetUserLogins
         var loginUserIds = await ctx.Set<IdentityUserLogin<Guid>>()
             .AsNoTracking()
             .Select(l => l.UserId)
@@ -326,7 +305,6 @@ internal sealed class UserRepository : IUserRepository
 
         if (loginUserIds.Count == 0) return [];
 
-        // UserIds that DO have a user_emails row
         var withEmail = await ctx.UserEmails
             .AsNoTracking()
             .Where(e => loginUserIds.Contains(e.UserId))
@@ -417,15 +395,8 @@ internal sealed class UserRepository : IUserRepository
             .Where(l => l.UserId == sourceUserId)
             .ToListAsync(ct);
 
-        // No dedup needed: IdentityUserLogin<Guid>'s PK is
-        // (LoginProvider, ProviderKey), so two users cannot already share a
-        // row at the DB level. We re-FK every source row onto target.
-        //
-        // Two-pass Remove+Add is required because EF's identity map keys on
-        // the composite PK — Remove(source) and Add(target) with the same
-        // (LoginProvider, ProviderKey) in the same DbContext otherwise
-        // throws "another instance with the same key value is already being
-        // tracked". The intermediate SaveChanges flushes the deletes first.
+        // Two-pass Remove+Add: EF identity map keys on the composite PK
+        // (LoginProvider, ProviderKey), so the intermediate SaveChanges is required.
         foreach (var login in sourceLogins)
         {
             ctx.Set<IdentityUserLogin<Guid>>().Remove(login);
@@ -461,8 +432,7 @@ internal sealed class UserRepository : IUserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // Load both sides' rows in a single round-trip; resolve collisions
-        // (Year, UserId) by keeping the highest-precedence ParticipationStatus.
+        // Collision rule (Year, UserId): keep the highest-precedence status.
         var rows = await ctx.EventParticipations
             .Where(ep => ep.UserId == sourceUserId || ep.UserId == targetUserId)
             .ToListAsync(ct);
@@ -478,21 +448,16 @@ internal sealed class UserRepository : IUserRepository
             var targetRow = group.FirstOrDefault(ep => ep.UserId == targetUserId);
             if (targetRow is null)
             {
-                // No collision — re-FK the source row onto target.
                 sourceRow.UserId = targetUserId;
                 continue;
             }
 
-            // Collision — keep highest precedence status; drop the loser.
             if (StatusPrecedence(sourceRow.Status) > StatusPrecedence(targetRow.Status))
             {
-                // Source wins: copy its status/source/declaredAt onto target,
-                // then drop the source row.
                 targetRow.Status = sourceRow.Status;
                 targetRow.Source = sourceRow.Source;
                 targetRow.DeclaredAt = sourceRow.DeclaredAt;
             }
-            // Target wins (or tie): keep target as-is.
             ctx.EventParticipations.Remove(sourceRow);
         }
 
@@ -520,16 +485,12 @@ internal sealed class UserRepository : IUserRepository
 
         var displayName = user.DisplayName;
 
-        // Remove UserEmails so the unique index doesn't block the new account
-        // and the computed User.Email becomes null.
+        // Free the unique index and null out User.Email.
         var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
         ctx.UserEmails.RemoveRange(userEmails);
 
-        // Remove AspNetUserLogins so a returning external-login user (e.g.
-        // Google) is not bound to this tombstoned User. Without this the
-        // orphan login row drives ExternalLoginSignInAsync into the
-        // lockedout branch and blocks the create-new-user path.
-        // See nobodies-collective/Humans#661.
+        // Drop external logins so a returning Google user can land on a fresh
+        // account, not this tombstone. See nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
             .ToListAsync(ct);
@@ -537,7 +498,6 @@ internal sealed class UserRepository : IUserRepository
 
         user.DisplayName = $"Purged ({displayName})";
 
-        // Lock out the account permanently
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
 
@@ -590,33 +550,23 @@ internal sealed class UserRepository : IUserRepository
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
-        // Remove all verified / unverified email addresses associated with the
-        // account so the unique index does not block future accounts from
-        // reusing the same addresses and so the anonymized row cannot be
-        // discovered by email lookup.
+        // Free the unique index and prevent email-lookup discovery.
         ctx.UserEmails.RemoveRange(user.UserEmails);
 
-        // Remove AspNetUserLogins for the same reason we drop UserEmails:
-        // a returning external-login user (e.g. Google) must not be bound
-        // to this tombstoned User, or ExternalLoginSignInAsync will route
-        // into the lockedout branch and block the create-new-user path.
-        // See nobodies-collective/Humans#661.
+        // Drop external logins for the same reason — see nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
             .ToListAsync(ct);
         ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
 
-        // Clear deletion request fields (deletion is now complete).
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
         user.DeletionEligibleAfter = null;
 
-        // Permanently lock out the account.
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
         user.SecurityStamp = Guid.NewGuid().ToString();
 
-        // Clear iCal token so old calendar feed URLs stop serving data.
         user.ICalToken = null;
 
         await ctx.SaveChangesAsync(ct);
@@ -624,9 +574,7 @@ internal sealed class UserRepository : IUserRepository
             originalEmail, originalDisplayName, preferredLanguage);
     }
 
-    // ==========================================================================
     // Reads — EventParticipation
-    // ==========================================================================
 
     public async Task<EventParticipation?> GetParticipationAsync(
         Guid userId, int year, CancellationToken ct = default)
@@ -666,9 +614,7 @@ internal sealed class UserRepository : IUserRepository
             .ToDictionary(g => g.Key, g => (IReadOnlyList<EventParticipation>)g.ToList());
     }
 
-    // ==========================================================================
     // Writes — EventParticipation
-    // ==========================================================================
 
     public async Task<EventParticipation?> UpsertParticipationAsync(
         Guid userId,
@@ -710,8 +656,6 @@ internal sealed class UserRepository : IUserRepository
 
         await ctx.SaveChangesAsync(ct);
 
-        // Detach so callers cannot accidentally mutate a tracked entity through
-        // a disposed context.
         ctx.Entry(persisted).State = EntityState.Detached;
         return persisted;
     }

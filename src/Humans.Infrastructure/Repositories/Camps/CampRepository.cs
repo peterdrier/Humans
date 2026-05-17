@@ -8,16 +8,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Camps;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ICampRepository"/>. The only
-/// non-test file that touches the Camp-owned DbSets
-/// (<c>Camps</c>, <c>CampSeasons</c>, <c>CampLeads</c>, <c>CampImages</c>,
-/// <c>CampHistoricalNames</c>, <c>CampSettings</c>) after the Camps migration
-/// lands. Uses <see cref="IDbContextFactory{TContext}"/> so the repository can
-/// be registered as Singleton while <c>HumansDbContext</c> remains Scoped.
-/// Cross-domain navigation (<c>CampLead.User</c>) is never <c>Include</c>-ed;
-/// the service stitches display data via <see cref="Application.Interfaces.Users.IUserService"/>.
-/// </summary>
+/// <summary>EF-backed <see cref="ICampRepository"/>.</summary>
 internal sealed class CampRepository : ICampRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
@@ -27,9 +18,7 @@ internal sealed class CampRepository : ICampRepository
         _factory = factory;
     }
 
-    // ==========================================================================
     // Reads — Camp
-    // ==========================================================================
 
     public async Task<Camp?> GetBySlugAsync(string slug, CancellationToken ct = default)
     {
@@ -46,11 +35,8 @@ internal sealed class CampRepository : ICampRepository
 
     public async Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default)
     {
-        // Seasons.Members is loaded (active rows only) so the CachingCampService
-        // projection sees the same shape as the warmup path
-        // (GetCampsWithLeadsForYearAsync). Without it, RefreshEntryAsync rebuilds
-        // CampInfo with EeGrantedCount = 0 on every per-camp invalidation
-        // (e.g. EE grant/revoke), corrupting the cache until process restart.
+        // Active Seasons.Members included so RefreshEntryAsync sees the same shape
+        // as the warmup path — otherwise EeGrantedCount projects as 0 on each invalidation.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps
             .AsNoTracking()
@@ -137,10 +123,7 @@ internal sealed class CampRepository : ICampRepository
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
 
-    // Public camp-directory statuses, applied as a Contains() filter so EF
-    // translates to an IN clause. CampSeasonStatus is stored via
-    // HasConversion<string>(), so ||-chained == comparisons would violate
-    // memory/code/no-enum-compare-in-ef.md.
+    // Contains() → IN clause (enum stored as string; see no-enum-compare-in-ef).
     private static readonly CampSeasonStatus[] PublicCampSeasonStatuses = [CampSeasonStatus.Active, CampSeasonStatus.Full
     ];
 
@@ -158,12 +141,8 @@ internal sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year));
 
-        // Name-match and public-status gate must bind to the SAME season
-        // row — splitting them across two .Where(c => c.Seasons.Any(...))
-        // calls would emit independent correlated subqueries and let two
-        // different seasons satisfy each predicate. Public-status mirrors
-        // Camp.HasPublicSeasonForYear, the same gate the public camp
-        // directory uses.
+        // Name-match and public-status MUST bind to the same season row —
+        // splitting across two .Where(.Any(...)) lets different seasons satisfy each.
         IQueryable<Camp> q = onlyPublicStatus
             ? baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
                 && EF.Functions.ILike(s.Name, pattern, "\\")
@@ -172,8 +151,7 @@ internal sealed class CampRepository : ICampRepository
                 && EF.Functions.ILike(s.Name, pattern, "\\")));
 
         return await q
-            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
-            .OrderBy(c => c.Slug) // arch:db-sort-ok
+            .OrderBy(c => c.Slug) // arch:db-sort-ok — orchestrator re-ranks by score
             .Take(max)
             .ToListAsync(ct);
     }
@@ -184,9 +162,7 @@ internal sealed class CampRepository : ICampRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
-    // ==========================================================================
     // Writes — Camp (aggregate)
-    // ==========================================================================
 
     public async Task CreateCampAsync(
         Camp camp,
@@ -279,9 +255,7 @@ internal sealed class CampRepository : ICampRepository
         return images;
     }
 
-    // ==========================================================================
     // Writes — Season
-    // ==========================================================================
 
     public async Task<bool> UpdateSeasonAsync(
         Guid seasonId,
@@ -398,9 +372,7 @@ internal sealed class CampRepository : ICampRepository
         return rows.ToDictionary(r => r.Year, r => r.LockDate);
     }
 
-    // ==========================================================================
     // Cross-service queries
-    // ==========================================================================
 
     public async Task<CampSeason?> GetSeasonByIdAsync(
         Guid campSeasonId, CancellationToken ct = default)
@@ -457,9 +429,7 @@ internal sealed class CampRepository : ICampRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    // ==========================================================================
     // Leads
-    // ==========================================================================
 
     public async Task<bool> IsUserActiveLeadAsync(
         Guid userId, Guid campId, CancellationToken ct = default)
@@ -538,9 +508,7 @@ internal sealed class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
     // Historical names
-    // ==========================================================================
 
     public async Task AddHistoricalNameAsync(
         CampHistoricalName historicalName, CancellationToken ct = default)
@@ -565,9 +533,7 @@ internal sealed class CampRepository : ICampRepository
         return true;
     }
 
-    // ==========================================================================
     // Images
-    // ==========================================================================
 
     public async Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default)
     {
@@ -636,9 +602,7 @@ internal sealed class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
     // Settings
-    // ==========================================================================
 
     public async Task<CampSettings?> GetSettingsReadOnlyAsync(CancellationToken ct = default)
     {
@@ -693,9 +657,7 @@ internal sealed class CampRepository : ICampRepository
         return true;
     }
 
-    // ==========================================================================
     // Membership (camp_members)
-    // ==========================================================================
 
     public async Task<CampMemberInsertResult> RequestMembershipAsync(
         Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default)
@@ -754,11 +716,8 @@ internal sealed class CampRepository : ICampRepository
         Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Only consider non-Removed rows. The partial unique index
-        // IX_camp_members_active_unique permits multiple Removed rows alongside
-        // at most one non-Removed row per (season, user) — so a user who was
-        // removed in the past and re-requested can have both. Promoting an
-        // older Removed row would collide with the live Pending row on save.
+        // Only consider non-Removed rows — the partial unique index permits
+        // multiple Removed rows alongside one non-Removed row per (season, user).
         var existing = await ctx.CampMembers.FirstOrDefaultAsync(
             m => m.CampSeasonId == campSeasonId
                  && m.UserId == userId
@@ -770,7 +729,6 @@ internal sealed class CampRepository : ICampRepository
             if (existing.Status == CampMemberStatus.Active)
                 return new CampMemberInsertResult(existing.Id, CampMemberInsertOutcome.AlreadyActive);
 
-            // promote pending → active
             existing.Status = CampMemberStatus.Active;
             existing.ConfirmedAt = now;
             existing.ConfirmedByUserId = confirmedByUserId;
@@ -828,7 +786,7 @@ internal sealed class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampMembers.Attach(member);
         ctx.Entry(member).State = EntityState.Modified;
-        // Do not overwrite immutable init-only fields via EF.
+        // Protect immutable init-only fields.
         ctx.Entry(member).Property(m => m.CampSeasonId).IsModified = false;
         ctx.Entry(member).Property(m => m.UserId).IsModified = false;
         ctx.Entry(member).Property(m => m.RequestedAt).IsModified = false;
@@ -893,9 +851,7 @@ internal sealed class CampRepository : ICampRepository
             .Where(l => l.UserId == userId && l.LeftAt == null)
             .Select(l => l.CampId);
 
-        // Only count requests for seasons that are actually open (Active or Full).
-        // If a season is rejected/withdrawn, the requesters have already been
-        // notified; the row stays for audit but shouldn't nag the lead.
+        // Only seasons still open (Active/Full) — closed seasons keep rows for audit but shouldn't nag.
         return await ctx.CampMembers
             .AsNoTracking()
             .Where(m => m.Status == CampMemberStatus.Pending
@@ -916,9 +872,7 @@ internal sealed class CampRepository : ICampRepository
         return row is null ? null : (row.CampSeasonId, row.UserId, row.Status);
     }
 
-    // ==========================================================================
     // Account-merge fold
-    // ==========================================================================
 
     public async Task<int> ReassignLeadsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
@@ -926,11 +880,8 @@ internal sealed class CampRepository : ICampRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // CampLead canonical uniqueness is the partial index
-        // (CampId, UserId) WHERE LeftAt IS NULL — i.e. one active lead per
-        // (camp, user). Closed (LeftAt != null) rows can coexist freely, so
-        // they always re-FK without collision; only active source rows
-        // collide with active target rows in the same camp.
+        // Canonical uniqueness is the partial index on (CampId, UserId) WHERE LeftAt IS NULL —
+        // only active source rows can collide with active target rows.
         var sourceRows = await ctx.CampLeads
             .Where(l => l.UserId == sourceUserId)
             .ToListAsync(ct);
@@ -945,15 +896,12 @@ internal sealed class CampRepository : ICampRepository
         {
             if (src.LeftAt == null && targetActiveCampIdSet.Contains(src.CampId))
             {
-                // Target already has an active lead row for this camp —
-                // target wins, drop source's active row. Closed source
-                // rows for the same camp still re-FK below (history).
+                // Target wins; closed source rows for the same camp still re-FK below.
                 ctx.CampLeads.Remove(src);
             }
             else
             {
-                // CampLead.UserId is init-only on the entity; mutate via
-                // the EF change-tracker so the column updates.
+                // UserId is init-only — mutate via change-tracker.
                 ctx.Entry(src).Property(nameof(CampLead.UserId)).CurrentValue = targetUserId;
             }
         }
@@ -964,9 +912,7 @@ internal sealed class CampRepository : ICampRepository
             .CountAsync(l => l.UserId == targetUserId, ct);
     }
 
-    // ==========================================================================
     // Early Entry
-    // ==========================================================================
 
     public async Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)

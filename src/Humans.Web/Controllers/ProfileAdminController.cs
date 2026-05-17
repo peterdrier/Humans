@@ -218,10 +218,4 @@ public class ProfileAdminController : HumansControllerBase
 
         return RedirectToAction(nameof(EmailProblems));
     }
-
-    // Issue nobodies-collective/Humans#697: the legacy DeleteGhostLogins
-    // inline action was removed. Ghost-login remediation now lives in the
-    // per-user admin emails diagnostic at /Profile/{userId}/Admin/Emails,
-    // which shows AspNetUserLogins side-by-side with the UserEmail grid.
-    // The EmailProblems scanner deep-links to that page.
 }

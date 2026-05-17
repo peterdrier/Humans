@@ -2,24 +2,10 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.AuditLog;
 
-/// <summary>
-/// Single source of truth for audit-event textualization. Owns the verb tables
-/// (transitive verb, self-form verb, description-tail policy) that translate
-/// an <see cref="AuditAction"/> into human-readable English. Used by
-/// <see cref="AuditEvent.RenderPlainText"/> (agent / log lines) and
-/// <see cref="AuditEvent.RenderStructured"/> (HTML composition by view
-/// components). Keeping the tables in one place is what lets the agent's
-/// plain-text output and the view component's HTML stay in lock-step.
-/// </summary>
+/// <summary>Single source of truth for AuditAction → verb tables (transitive, self-form, description-tail policy). Shared by agent + view components.</summary>
 internal static class AuditEventTextualizer
 {
-    /// <summary>
-    /// Maps an <see cref="AuditAction"/> to a short transitive verb phrase. Returns
-    /// <c>null</c> when the action has no structured verb mapping — callers
-    /// fall back to <see cref="AuditLogEntry.Description"/> (HTML) or skip
-    /// the line entirely (agent tool output, which prefers silence over
-    /// dumping unstructured descriptions).
-    /// </summary>
+    /// <summary>Transitive verb for action. Null = no mapping (HTML falls back to Description; agent skips).</summary>
     internal static string? GetActionVerb(AuditAction action) => action switch
     {
         AuditAction.TeamMemberAdded => "added",
@@ -52,12 +38,7 @@ internal static class AuditEventTextualizer
         _ => null
     };
 
-    /// <summary>
-    /// Self-form verb — used when actor and subject are the same human, so
-    /// the rendered sentence skips the subject and avoids a dangling
-    /// preposition (e.g. "Peter signed up for shift X" not "Peter created
-    /// signup for shift X").
-    /// </summary>
+    /// <summary>Self-form verb for actor==subject case ("Peter signed up for X" vs "Peter created signup for X").</summary>
     internal static string? GetActionSelfVerb(AuditAction action) => action switch
     {
         AuditAction.ShiftSignupCreated => "signed up for",
@@ -66,13 +47,7 @@ internal static class AuditEventTextualizer
         _ => null
     };
 
-    /// <summary>
-    /// True when the action's <see cref="AuditLogEntry.Description"/> is
-    /// written as a context tail (e.g. "shift 'Cantina dinner @ 18:00'") and
-    /// should be appended after the structured verb+subject. False when the
-    /// description is a stand-alone sentence ("Joined Build Team directly")
-    /// that would render redundantly after the verb.
-    /// </summary>
+    /// <summary>True when Description is a context tail to append (vs a stand-alone sentence).</summary>
     internal static bool ShouldRenderDescriptionTail(AuditAction action) => action
         is AuditAction.ShiftSignupCreated
         or AuditAction.ShiftSignupConfirmed
@@ -87,10 +62,7 @@ internal static class AuditEventTextualizer
         or AuditAction.WorkspaceAccountPasswordReset
         or AuditAction.WorkspaceAccountBackupCodesGenerated;
 
-    /// <summary>
-    /// Trims a dangling " for"/" to" preposition when the verb has no subject
-    /// to attach to (subject suppressed because actor==subject, or unknown).
-    /// </summary>
+    /// <summary>Trims a dangling " for"/" to" preposition when the verb has no subject.</summary>
     internal static string TrimDanglingPreposition(string verb)
     {
         if (verb.EndsWith(" for", StringComparison.Ordinal))

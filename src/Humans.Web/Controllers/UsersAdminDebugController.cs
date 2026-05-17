@@ -9,13 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>
-/// Diagnostic debug surface for the in-memory <see cref="UserInfo"/> cache.
-/// Flat paginated/sortable table of every cached user — used to verify the
-/// cache holds the expected data after imports and migrations. Every column
-/// comes from <see cref="IUserService.GetAllUserInfosAsync"/>; nothing on this
-/// page makes a secondary query.
-/// </summary>
+// Diagnostic surface for UserInfo cache — flat sortable table from GetAllUserInfosAsync, no secondary queries.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
 public sealed class UsersAdminDebugController : HumansControllerBase

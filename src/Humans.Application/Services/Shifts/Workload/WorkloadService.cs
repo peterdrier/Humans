@@ -11,25 +11,9 @@ using NodaTime;
 namespace Humans.Application.Services.Shifts.Workload;
 
 /// <summary>
-/// Shifts-domain workload aggregations for the coordinator workload dashboard.
+/// Workload aggregations for the coordinator dashboard. Reads via cached <see cref="IShiftView"/>;
+/// no own cache (per-rota cache eviction already covers mutations).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Reads per-rota shift + signup rows through <see cref="IShiftView"/> — the
-/// Shifts-section per-rota cache owned by <c>CachingShiftViewService</c>
-/// (§15 Option B at the section level). The set of rotas to walk is derived
-/// from <see cref="IShiftManagementRepository.GetShiftsForEventAsync"/> (no
-/// signup payload, no new interface method). Cross-section name stitching
-/// via <see cref="ITeamService"/> / <see cref="IUserService"/>.
-/// </para>
-/// <para>
-/// This service does not hold its own cache: signup / shift / rota mutations
-/// already evict the per-rota cache entries via
-/// <see cref="IShiftViewInvalidator"/>, and the aggregation itself is
-/// microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
-/// Avoids a parallel cache key with its own invalidation path.
-/// </para>
-/// </remarks>
 public sealed class WorkloadService : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
@@ -57,10 +41,7 @@ public sealed class WorkloadService : IWorkloadService
         var es = await _repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return null;
 
-        // Derive rota ids by inlining a distinct on the existing
-        // GetShiftsForEventAsync (Shifts + Rota nav, no signups) — avoids
-        // adding a new interface method
-        // (memory/architecture/interface-method-additions-are-debt.md).
+        // Distinct rotaIds off GetShiftsForEventAsync — avoids adding an interface method.
         var shiftStubs = await _repo.GetShiftsForEventAsync(es.Id, null, ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
@@ -73,10 +54,7 @@ public sealed class WorkloadService : IWorkloadService
                 ByDepartment: []);
         }
 
-        // Per-rota cache supplies Rota + Shifts + ShiftSignups. AdminOnly
-        // shifts and hidden rotas are INCLUDED — ShiftRotaView is unfiltered
-        // and the workload view is admin-only (coordinators need full
-        // visibility for balancing).
+        // ShiftRotaView is unfiltered — workload view is admin-only and needs hidden rotas.
         var views = await _view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
         var entries = views.Values
             .Where(v => v.Rota is not null)
@@ -103,8 +81,7 @@ public sealed class WorkloadService : IWorkloadService
     private static decimal HoursOf(Shift shift) =>
         shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
 
-    // Lists are returned unsorted; the controller assembles the display order
-    // (memory/architecture/display-sort-in-controllers.md).
+    // Unsorted; controller assembles display order (display-sort-in-controllers).
     private static List<WorkloadByShiftRow> BuildByShift(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         EventSettings es,
@@ -166,8 +143,7 @@ public sealed class WorkloadService : IWorkloadService
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         CancellationToken ct)
     {
-        // Walk every signup once. Confirmed contributes hours; Pending bumps the
-        // pending count only (don't inflate burnout signal from queued work).
+        // Confirmed → hours; Pending → count only (don't inflate burnout from queued work).
         var perUser = new Dictionary<Guid, (int Confirmed, int Pending, decimal Hours)>();
         foreach (var (_, shift) in entries)
         {

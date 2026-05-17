@@ -22,17 +22,6 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Governance;
 
-/// <summary>
-/// Business service for the Governance section. Implements
-/// <see cref="IApplicationDecisionService"/> without touching
-/// <c>HumansDbContext</c> or <c>IMemoryCache</c> directly — goes through
-/// <see cref="IApplicationRepository"/> (persistence),
-/// <see cref="IUserService"/> / <see cref="IProfileService"/> (cross-domain
-/// reads and writes), and the existing cross-cutting services (audit log,
-/// email, notification, team sync, metrics, clock). Nav/notification/voting
-/// badge cache invalidations are called inline after successful writes —
-/// Governance is low-traffic enough that a caching decorator isn't warranted.
-/// </summary>
 public sealed class ApplicationDecisionService : IApplicationDecisionService, IUserDataContributor, IUserMerge
 {
     private readonly IApplicationRepository _repository;
@@ -99,27 +88,17 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
-        // Capture voter ids BEFORE FinalizeAsync deletes the BoardVote rows as
-        // part of its atomic commit — we need them for per-voter VotingBadge
-        // invalidation after the write succeeds.
+        // Ordering: capture voter ids → finalize (atomic governance commit) → audit → tier/sync → notifications.
+        // Voter capture must precede FinalizeAsync (which deletes BoardVote rows).
         var voterIds = await _repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
-        // State transition — mutates the entity (status, state history row).
         application.Approve(reviewerUserId, notes, _clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = notes;
 
-        // Term expiry (Dec 31 of next odd year ≥ 2 years out).
         var today = _clock.GetCurrentInstant().InUtc().Date;
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
-        // Atomic commit of governance-owned state: application update +
-        // state history append + board vote bulk-delete in one SaveChanges.
-        // MUST happen before audit log / profile tier update / team sync /
-        // notifications. Otherwise a repository failure here would leave
-        // an orphaned audit entry (append-only per §12, can't be corrected)
-        // or a partially-provisioned downstream state claiming an approval
-        // that never committed.
         await _repository.FinalizeAsync(application, cancellationToken);
 
         _navBadge.Invalidate();
@@ -127,11 +106,6 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         foreach (var voterId in voterIds)
             _votingBadge.Invalidate(voterId);
 
-        // Audit AFTER the governance state is committed — separate
-        // transaction but at minimum correctly sequenced. A failure here
-        // leaves a successful application finalize with no audit row,
-        // which is recoverable (the state history row on the application
-        // itself carries the actor + timestamp).
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationApproved,
             nameof(Domain.Entities.Application),
@@ -144,14 +118,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             "Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
 
-        // Profile tier update — separate transaction. If this fails after
-        // FinalizeAsync succeeded, the application is approved but the
-        // profile still shows the old tier. Rare and recoverable at
-        // single-server scale; documented in the PR.
         await _profileService.SetMembershipTierAsync(
             application.UserId, application.MembershipTier, cancellationToken);
 
-        // Sync team membership for the new tier.
         if (application.MembershipTier == MembershipTier.Colaborador)
             await _syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Colaboradors, cancellationToken);
@@ -159,11 +128,6 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             await _syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);
 
-        // Email + in-app notification — best-effort. User info fetched
-        // via IUserService now that Application.User is stripped. The
-        // recipient address is resolved through IUserEmailService so the
-        // notification target reflects the user's verified email rows
-        // rather than the (now-virtual) User.Email column.
         var user = await _userService.GetByIdAsync(application.UserId, cancellationToken);
         if (user is not null)
         {
@@ -230,14 +194,13 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
-        // Capture voter ids BEFORE FinalizeAsync deletes them (same rationale as ApproveAsync).
+        // Capture voter ids before FinalizeAsync deletes them.
         var voterIds = await _repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
         application.Reject(reviewerUserId, reason, _clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
-        // Atomic commit before audit (same rationale as ApproveAsync).
         await _repository.FinalizeAsync(application, cancellationToken);
 
         _navBadge.Invalidate();
@@ -400,7 +363,6 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             "User {UserId} submitted application {ApplicationId}",
             userId, application.Id);
 
-        // Dispatch in-app notification to Board members — best-effort.
         try
         {
             await _notificationService.SendToRoleAsync(
@@ -498,8 +460,6 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (application is null)
             return null;
 
-        // Collect every user id we need in one bulk fetch: applicant,
-        // reviewer (if any), plus every state-history actor.
         var userIds = new HashSet<Guid> { application.UserId };
         if (application.ReviewedByUserId is { } reviewerId)
             userIds.Add(reviewerId);
@@ -544,12 +504,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             History: history);
     }
 
-    // ==========================================================================
-    // Onboarding-section support methods — Governance owns application and
-    // board-vote tables (design-rules §2c), so these cross-section queries
-    // live here and are consumed by OnboardingService.
-    // ==========================================================================
-
+    // Onboarding-section support methods — Governance owns application/board-vote tables (design-rules §2c).
     public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         _repository.GetUserIdsWithSubmittedAsync(userIds, ct);
@@ -575,7 +530,6 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     {
         var applications = await _repository.GetAllSubmittedWithVotesAsync(ct);
 
-        // Stitch applicant display info in memory (cross-domain nav stripped).
         var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
         var applicantsById = await _userService.GetUserInfosAsync(applicantIds, ct);
 

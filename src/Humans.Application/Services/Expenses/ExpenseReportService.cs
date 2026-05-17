@@ -70,8 +70,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             ".pdf", ".jpg", ".jpeg", ".png", ".heic"
         };
 
-    // ─────────────────────────────── Reads ───────────────────────────────────
-
     public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
         => _repo.GetByIdAsync(id, ct);
 
@@ -157,8 +155,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             .ToList();
     }
 
-    // ──────────────────────────── Draft CRUD ─────────────────────────────────
-
     public async Task<Guid> CreateDraftAsync(
         Guid submitterUserId, Guid budgetCategoryId, string? note,
         CancellationToken ct = default)
@@ -233,8 +229,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             return ExpenseMutationResult.Failure(ex.Message);
         }
     }
-
-    // ────────────────────────── Line Methods ─────────────────────────────────
 
     public async Task<Guid> AddLineAsync(
         Guid reportId, Guid submitterUserId,
@@ -313,8 +307,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     {
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
-        // If the line has an attachment, clean it up first so we don't leak an
-        // orphan attachment row + file blob when the line goes away.
+        // Clean attachment first to avoid orphan row + file blob.
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line?.Attachment is not null)
         {
@@ -434,7 +427,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         if (line.Attachment is null) return; // idempotent
 
-        // Unlink first, then delete the row, then delete the file.
         await _repo.SetLineAttachmentAsync(lineId, null, ct);
         await _repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
 
@@ -457,8 +449,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             submitterUserId);
     }
 
-    // ───────────────────────── Submit / Withdraw ──────────────────────────────
-
     public async Task<bool> SubmitAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
     {
@@ -468,24 +458,17 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new UnauthorizedAccessException("Only the submitter can submit.");
         if (report.Status != ExpenseReportStatus.Draft) return false;
 
-        // Validate: at least 1 line
         if (!report.Lines.Any())
             throw new InvalidOperationException("Report must have at least one line.");
 
-        // Validate: every line has an attachment
         if (report.Lines.Any(l => l.AttachmentId is null))
             throw new InvalidOperationException("Every line must have an attachment before submitting.");
 
-        // Validate + snapshot IBAN
         var profile = (await _userService.GetUserInfoAsync(submitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
             throw new InvalidOperationException("Submitter must have an IBAN set on their profile.");
 
-        // SEPA pain.001 and Holded purchase docs are financial records — the payee name must be
-        // the legal identity that matches the bank-account holder, not the community pseudonym
-        // (BurnerName). Profile.FirstName + LastName carry the legal name; fall back to
-        // User.DisplayName for stub profiles where the legal-name fields were never populated.
-        // This is the documented carve-out from memory/architecture/burnername-is-the-display-name.md.
+        // Financial records use legal name (not BurnerName). See memory/architecture/burnername-is-the-display-name.md.
         var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
         if (string.IsNullOrWhiteSpace(legalName))
         {
@@ -561,8 +544,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             return ExpenseMutationResult.Failure($"Withdrawal failed: {ex.Message}");
         }
     }
-
-    // ─────────────────────── Coordinator Endorsement ─────────────────────────
 
     public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid submitterUserId, string? iban, CancellationToken ct = default)
@@ -693,8 +674,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         }
     }
 
-    // ────────────────────── Finance Approve / Reject ──────────────────────────
-
     public async Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
         CancellationToken ct = default)
@@ -763,8 +742,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return true;
     }
 
-    // ─────────────────────────── SEPA + Paid ─────────────────────────────────
-
     public async Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default)
@@ -792,8 +769,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         var now = _clock.GetCurrentInstant();
         var flippedIds = await _repo.MarkSepaSentAsync(reportIds, now, ct);
 
-        // Audit one entry per report that actually flipped — never for ids the
-        // repo skipped (e.g. status != Approved).
+        // Audit only reports that flipped; repo skips ineligible (e.g. status != Approved).
         foreach (var id in flippedIds)
         {
             await _auditLogService.LogAsync(
@@ -822,15 +798,11 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return true;
     }
 
-    // ─────────────────────── Coordinator Detection ───────────────────────────
-
     /// <inheritdoc/>
     public async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
         Guid categoryId, CancellationToken ct = default)
     {
-        // True iff the category is scoped to a team that has at least one
-        // active Coordinator. Reads through ITeamService.GetTeamAsync, which
-        // serves from the TeamInfo cache (no DB hit on the hot path).
+        // True iff category's team has ≥1 active Coordinator (cache hit, no DB).
         var category = await _budgetService.GetCategoryByIdAsync(categoryId);
         if (category is null || category.TeamId is null)
             return false;
@@ -841,8 +813,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         return team.Members.Any(m => m.Role == TeamMemberRole.Coordinator);
     }
-
-    // ─────────────────────────── Holded Outbox ───────────────────────────────
 
     /// <inheritdoc/>
     public async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
@@ -1000,10 +970,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 .ToList(),
         };
 
-        // Idempotency: if a prior retry already issued the Holded document but failed
-        // during attachment upload, reuse the existing id instead of creating a duplicate.
-        // SetHoldedDocIdAsync runs IMMEDIATELY after the create call so a transient
-        // upload failure cannot cause a retry to call CreatePurchaseDocumentAsync again.
+        // Idempotency: reuse existing Holded doc id if a prior retry failed during attachment upload.
         string holdedDocId;
         if (string.IsNullOrEmpty(report.HoldedDocId))
         {
@@ -1026,10 +993,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
             if (bytes is null)
             {
-                // TryReadAsync returns null for both missing files and IO errors; either
-                // way, swallowing it would mark the outbox event processed without ever
-                // uploading the receipt to Holded. Throw so the outer handler leaves the
-                // event unprocessed and Hangfire retries the job.
+                // Throw so the outbox event stays unprocessed and Hangfire retries.
                 throw new InvalidOperationException(
                     $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");
             }
@@ -1074,13 +1038,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return $"{groupSlug}-{categorySlug}";
     }
 
-    // ─────────────────────────── Private Helpers ─────────────────────────────
-
-    /// <summary>
-    /// Loads the report (with lines) and enforces that: the caller is the submitter, and
-    /// the report is in a state that allows line/attachment edits
-    /// ({Draft, Submitted, CoordinatorEndorsed}).
-    /// </summary>
+    /// <summary>Loads report; enforces submitter + editable state (Draft/Submitted/CoordinatorEndorsed).</summary>
     private async Task<ExpenseReportDto> RequireEditableReportAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct)
     {
@@ -1088,9 +1046,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             ?? throw new InvalidOperationException("Report not found.");
         if (report.SubmitterUserId != submitterUserId)
             throw new UnauthorizedAccessException("Only the submitter can edit lines.");
-        // Line mutations are Draft-only — once submitted, the coordinator and Finance
-        // review a frozen set of lines + attachments. Post-submission edits would let
-        // the submitter alter a report mid-review (after endorsement, even).
+        // Line mutations are Draft-only — submitted reports are frozen for review.
         if (report.Status is not ExpenseReportStatus.Draft)
             throw new InvalidOperationException(
                 $"Lines cannot be edited when the report is in status {report.Status}.");
@@ -1116,25 +1072,16 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new UnauthorizedAccessException("Actor is not a coordinator of the category's team.");
     }
 
-    // ─────────────────────── IUserDataContributor (GDPR) ─────────────────────
-
-    /// <summary>
-    /// Returns the user's expense reports (with lines and attachment metadata —
-    /// no bytes), a masked IBAN snapshot, and expense-related audit-log entries.
-    /// Chain-follows merge tombstones so a fold-target's export includes reports
-    /// submitted under merged source ids.
-    /// </summary>
+    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Chain-follows merge tombstones.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
 
-        // Collect all ids whose reports we should include
         var allIds = new List<Guid>(sourceIds.Count + 1);
         allIds.AddRange(sourceIds);
         allIds.Add(userId);
 
-        // GetForSubmitterAsync already returns fully-populated DTOs (lines + attachments).
         var allReports = new List<ExpenseReportDto>();
         foreach (var id in allIds)
         {
@@ -1142,13 +1089,11 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             allReports.AddRange(reports);
         }
 
-        // Fetch current IBAN from profile (masked per spec)
         var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
         var maskedIban = string.IsNullOrEmpty(profile?.Iban)
             ? null
             : IbanFormatter.Mask(profile.Iban);
 
-        // Expense-related audit actions (this user as actor or subject)
         var expenseActions = new List<AuditAction>
         {
             AuditAction.ExpenseSubmit,

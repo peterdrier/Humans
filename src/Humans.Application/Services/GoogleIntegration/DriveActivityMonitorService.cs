@@ -10,26 +10,8 @@ using Humans.Application.Interfaces.Teams;
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
-/// Monitors Google Drive Activity API for permission changes on managed
-/// resources that were not initiated by the system's service account, and
-/// records an anomaly audit-log entry for every such change.
+/// Monitors Drive Activity API for non-service-account permission changes on managed resources and logs anomaly audit entries.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Migrated to the §15 pattern under issue #554 (Google Integration). The
-/// Application-layer service now depends only on shape-neutral interfaces:
-/// <see cref="IGoogleDriveActivityClient"/> for Google API access,
-/// <see cref="ITeamResourceService"/> for the list of monitored resources,
-/// and <see cref="IDriveActivityMonitorRepository"/> for the last-run
-/// marker, anomaly audit-entry persistence, and the local-DB fallback that
-/// resolves a <c>people/{id}</c> to a user's email.
-/// </para>
-/// <para>
-/// The service no longer imports <c>Google.Apis.*</c> or
-/// <c>Microsoft.EntityFrameworkCore</c> — see the architecture tests for the
-/// compile-time guarantees.
-/// </para>
-/// </remarks>
 public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
 {
     private readonly IGoogleDriveActivityClient _driveActivityClient;
@@ -166,12 +148,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
                 resources.Count);
         }
 
-        // Only advance the last-run marker when every resource was processed successfully
-        // AND the client is actually backed by real credentials. If any resource failed,
-        // keep the old marker so the next run re-checks those events. When the client is
-        // the stub (no Google credentials), advancing would silently skip every historical
-        // permission change that happens before the same database later gains real
-        // credentials — so never advance in stub mode regardless of "success".
+        // Only advance marker on full success with real credentials — stub mode never advances (would skip historical changes).
         Instant? newMarker;
         if (hadFailures)
         {
@@ -193,11 +170,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
 
         await _repository.PersistAnomaliesAsync(anomalies, newMarker, cancellationToken);
 
-        // If every resource failed, the connector is almost certainly
-        // misconfigured (revoked service-account key, network outage, etc.)
-        // rather than hitting per-resource errors. Propagate so the Hangfire
-        // job records a failed run instead of reporting success on a run
-        // that monitored nothing.
+        // All-resources-failed = connector outage (revoked key / network). Throw so Hangfire records a failed run, not a hollow success.
         if (hadFailures && !anyResourceQueried)
         {
             throw new InvalidOperationException(
@@ -338,12 +311,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
     }
 
     /// <summary>
-    /// Resolves a Drive Activity API person name to an email address.
-    /// If the name is a people/ resource ID (e.g., "people/123456789"), attempts resolution via:
-    /// 1. Per-invocation cache
-    /// 2. Google Admin Directory API (via the connector)
-    /// 3. Local DB lookup (matching Google user IDs)
-    /// Falls back to the raw ID if all resolution fails.
+    /// Resolves a "people/{id}" name to an email via cache → Admin Directory → local DB. Falls back to raw id.
     /// </summary>
     private async Task<string> ResolvePersonNameAsync(
         string personName,

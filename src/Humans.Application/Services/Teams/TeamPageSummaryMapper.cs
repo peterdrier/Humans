@@ -6,22 +6,10 @@ using NodaTime;
 
 namespace Humans.Application.Services.Teams;
 
-/// <summary>
-/// Single source of truth for projecting a team + its parent into a
-/// <see cref="TeamPageTeamSummary"/>. Both <see cref="TeamService"/> (inner,
-/// works from the EF-loaded <see cref="Team"/> entity) and
-/// <c>CachingTeamService</c> (decorator, works from <see cref="TeamInfo"/>
-/// cache projections) project to the same record shape; this helper exists
-/// so the positional record constructor (17 fields) is built in exactly one
-/// place, eliminating drift risk between the two paths.
-/// </summary>
+// Shared TeamPageTeamSummary projection used by TeamService (Team entity) and CachingTeamService (TeamInfo).
 public static class TeamPageSummaryMapper
 {
-    /// <summary>
-    /// Builds a <see cref="TeamPageTeamSummary"/> from the canonical scalar
-    /// inputs. The display-name formula must match <see cref="Team.DisplayName"/>:
-    /// <c>parent is not null ? $"{parent.Name} - {team.Name}" : team.Name</c>.
-    /// </summary>
+    // DisplayName formula must match Team.DisplayName.
     public static TeamPageTeamSummary Map(
         Guid id,
         string name,

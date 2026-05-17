@@ -8,13 +8,7 @@ using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Repositories.Profiles;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IUserEmailRepository"/>. The only
-/// non-test file that touches <c>DbContext.UserEmails</c> after the Profile
-/// migration lands.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
-/// </summary>
+/// <summary>EF-backed <see cref="IUserEmailRepository"/>.</summary>
 internal sealed class UserEmailRepository : IUserEmailRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;

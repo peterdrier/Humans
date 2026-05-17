@@ -8,16 +8,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.HumanLifecycle;
 
-/// <summary>
-/// Lifecycle orchestrator for already-onboarded humans (suspend / unsuspend).
-/// Owns no tables — coordinates <see cref="IProfileService"/> for the state
-/// mutation and <see cref="INotificationService"/> /
-/// <see cref="INotificationInboxService"/> for user-visible notifications.
-/// Extracted from <c>OnboardingService</c> in
-/// nobodies-collective#583 (umbrella nobodies-collective#563) so the
-/// onboarding funnel and the membership state-machine live in separate
-/// services.
-/// </summary>
+// Suspend/unsuspend for onboarded humans. Owns no tables. See nobodies-collective#583 (umbrella #563).
 public sealed class HumanLifecycleService : IHumanLifecycleService
 {
     private readonly IProfileService _profileService;

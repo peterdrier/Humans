@@ -11,14 +11,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>
-/// Top-level "search the whole app" page. Aggregates name-only hits across
-/// humans, teams, camps, and shifts (rotas) into four type-grouped sections.
-/// Every authenticated viewer sees the same public-visibility surface;
-/// privileged search across hidden teams, non-public camp seasons, or
-/// admin-only profile fields is out of scope (see
-/// <c>docs/features/global/global-search.md</c>).
-/// </summary>
+/// <summary>Global search: name-only hits across humans/teams/camps/rotas. Public-visibility surface only (docs/features/global/global-search.md).</summary>
 [Authorize]
 [Route("Search")]
 public sealed class SearchController : HumansControllerBase
@@ -36,11 +29,7 @@ public sealed class SearchController : HumansControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Render the global search page. Empty/short query renders the
-    /// instructional placeholder; a real query fans out through the
-    /// orchestrator and renders type-grouped results.
-    /// </summary>
+    /// <summary>Global search page. Short query → placeholder; otherwise fans out and renders type-grouped results.</summary>
     [HttpGet("")]
     public async Task<IActionResult> Index(
         string? q,
@@ -65,21 +54,18 @@ public sealed class SearchController : HumansControllerBase
         }
         catch (OperationCanceledException)
         {
-            // Request cancellation (user navigated away mid-search) — let
-            // ASP.NET handle it normally instead of returning a 200 shell.
+            // User navigated away — let ASP.NET handle it (don't return a 200 shell).
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Global search failed for query {Query}", trimmed);
-            // Render the page shell instead of a 500; preserve the query so
-            // the user can refine it.
+            // Page shell instead of 500; preserve query so user can refine.
             return new GlobalSearchViewModel { Query = trimmed, Filter = filter };
         }
     }
 
-    // When a filter chip is active we want a deeper bucket for that type;
-    // the unified view stays at perTypeLimit=10 across all four.
+    // Filter-chip view goes deeper (50); unified view stays at 10 per bucket.
     private static int PerTypeLimit(SearchResultType? filter) =>
         filter.HasValue ? 50 : 10;
 
@@ -89,10 +75,7 @@ public sealed class SearchController : HumansControllerBase
         {
             Query = results.Query,
             Filter = filter,
-            // Display ordering belongs at the controller per
-            // memory/architecture/display-sort-in-controllers.md. Humans
-            // sort by BurnerName asc (matches /Profile/Search); the other
-            // three buckets sort by Score desc then Title asc.
+            // Display sort lives in controller (display-sort-in-controllers): humans by BurnerName, others by Score desc + Title asc.
             HumanResults = results.Humans
                 .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => r.ToHumanSearchViewModel())

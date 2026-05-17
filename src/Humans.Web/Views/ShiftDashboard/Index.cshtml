@@ -80,9 +80,7 @@
         </div>
     </div>
 
-    @* Entry point to the cross-event Volunteer Tracking page (gap-detection
-       heatmaps for the main and declared-but-unbooked cohorts). Gated on
-       ShiftDashboardAccess — the same policy that gates this page entry. *@
+    @* Volunteer Tracking entry — gated on ShiftDashboardAccess. *@
     <div class="card mb-4 border-info" authorize-policy="ShiftDashboardAccess">
         <div class="card-body d-flex align-items-center gap-3 py-3">
             <i class="fa-solid fa-people-group text-info fs-3"></i>
@@ -97,9 +95,7 @@
         </div>
     </div>
 
-    @* Unified filter card: period buttons + sub-period buttons (visible when Build is selected),
-       and the date-range + department form below. Period and date range are MUTUALLY EXCLUSIVE —
-       client-side JS clears one when the user picks the other. *@
+    @* Filter card: period buttons (+ sub-period when Build), date-range + department form. Period/dates are mutex (JS). *@
     <div class="card mb-4" id="filters">
         <div class="card-body">
             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -221,9 +217,7 @@
         }
     }
     <div class="row">
-        @* Coordinator activity (pending signups review) is privileged — only the
-           narrower ShiftDashboardAccess role list sees it. Subteam managers who
-           reach the dashboard via the wider page policy don't get this column. *@
+        @* Privileged: ShiftDashboardAccess only (subteam managers don't see this column). *@
         <div class="col-lg-6 d-flex flex-column" authorize-policy="ShiftDashboardAccess">
             @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
         </div>
@@ -238,10 +232,7 @@
     @* Staffing hours chart *@
     @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "dashboardStaffingHoursChart"))
 
-    @* Grouped urgency accordion — one card per (Rota, Department) summarising slot
-       coverage; expand to see per-day shifts and (for VolunteerCoordinator/Admin/NoInfoAdmin)
-       voluntell forms. Replaces the previous one-row-per-shift table that repeated
-       Rota and Department down the page. *@
+    @* Grouped urgency accordion: one card per (Rota, Department); expand for per-day shifts + voluntell forms. *@
     @if (Model.Shifts.Count == 0)
     {
         <div class="alert alert-info">@Localizer["ShiftDash_NoShiftsMatch"]</div>
@@ -310,9 +301,7 @@
                                         <span class="@(rowUnderstaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                         <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                     </td>
-                                    @* Voluntell action stays gated by the narrow ShiftDashboardAccess
-                                       policy (PR #401) so subteam managers see urgency rows but no
-                                       action column. *@
+                                    @* Voluntell gated by ShiftDashboardAccess (#401). *@
                                     <td class="text-end pe-3" authorize-policy="ShiftDashboardAccess">
                                         <button class="btn btn-sm btn-outline-primary"
                                                 type="button"

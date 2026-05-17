@@ -9,85 +9,30 @@ namespace Humans.Domain.Entities;
 /// </summary>
 public class User : IdentityUser<Guid>
 {
-    /// <summary>
-    /// Display name for the user. Legacy Identity column — fallback only.
-    /// New code should render via <c>UserInfo.BurnerName</c> / <c>&lt;vc:human&gt;</c>
-    /// per <c>memory/architecture/burnername-is-the-display-name.md</c>.
-    /// Mutations live in <c>UserRepository</c> (merge / purge / delete labels)
-    /// and in <c>HumansUserClaimsPrincipalFactory</c> (Identity claim).
-    /// </summary>
+    /// <summary>Legacy Identity column — fallback only. Render via UserInfo.BurnerName / &lt;vc:human&gt;.</summary>
     [PersonalData]
     [Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> per memory/architecture/burnername-is-the-display-name.md. Legitimate consumers: Identity claims, repository merge/purge/delete labels, GDPR export, debug screens.", DiagnosticId = "HUM_USER_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")]
     public string DisplayName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Preferred language code (e.g., "en", "es").
-    /// Defaults to English.
-    /// </summary>
+    /// <summary>Preferred language code (e.g., "en", "es"). Defaults to English.</summary>
     [PersonalData]
     public string PreferredLanguage { get; set; } = "en";
 
-    /// <summary>
-    /// Google profile picture URL.
-    /// </summary>
+    /// <summary>Google profile picture URL.</summary>
     [PersonalData]
     public string? ProfilePictureUrl { get; set; }
 
-    /// <summary>
-    /// When the user account was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When the user last logged in.
-    /// </summary>
     public Instant? LastLoginAt { get; set; }
 
-    /// <summary>
-    /// Navigation property to email addresses. Issue #635 (§15i): the only
-    /// cross-domain nav still declared on User. Required by the
-    /// <see cref="Email"/> / <see cref="EmailConfirmed"/> overrides which
-    /// compute their values from the loaded UserEmails collection. External
-    /// readers do not traverse this nav — they go through
-    /// <c>IUserEmailRepository</c> / <c>IUserEmailService</c> /
-    /// <c>UserInfo.PrimaryEmail</c> instead. The other six User-side navs
-    /// (<c>Profile</c>, <c>RoleAssignments</c>, <c>ConsentRecords</c>,
-    /// <c>Applications</c>, <c>TeamMemberships</c>,
-    /// <c>CommunicationPreferences</c>) and the <c>GetEffectiveEmail()</c>
-    /// method were removed; their inverse-side EF configurations now own the
-    /// schema-level FK definitions.
-    /// </summary>
+    /// <summary>The only cross-domain nav on User; required by the Email override. See #635.</summary>
     public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
 
     /// <summary>
-    /// First verified <see cref="UserEmail"/>, ordered by
-    /// <see cref="UserEmail.IsPrimary"/> desc; falls back to
-    /// <c>base.Email</c> when no UserEmails are loaded (test fixtures,
-    /// post-anonymization reads). Requires <see cref="UserEmails"/> to be
-    /// loaded for production reads.
-    ///
-    /// MUTATION: see <c>memory/architecture/email-mutation-paths.md</c>. This is
-    /// a vestigial ASP.NET Identity field. Application code never writes it —
-    /// its value changes only as a consequence of the underlying
-    /// <see cref="UserEmails"/> data changing (the verified
-    /// <see cref="UserEmail.IsPrimary"/> row's <c>Email</c> rewritten via the
-    /// OAuth callback path, or the <see cref="UserEmail.IsPrimary"/> flag
-    /// flipping between rows).
+    /// First verified UserEmail (IsPrimary desc); falls back to base.Email when UserEmails isn't loaded.
+    /// Always .Include(u => u.UserEmails) when reading Email. Vestigial Identity field — never set directly.
     /// </summary>
-    /// <remarks>
-    /// SILENT-FALLBACK FOOTGUN: when <see cref="UserEmails"/> is not loaded
-    /// (the navigation collection is empty), the getter returns
-    /// <c>base.Email</c> — the Identity column. After PR 2 of the
-    /// email-identity-decoupling spec, <c>base.Email</c> is <c>null</c> for
-    /// users created post-PR 1 (writes were stopped); for pre-PR 1 users it
-    /// still holds the legacy column value. Either result is wrong when the
-    /// caller wanted the canonical UserEmails-derived address. Always
-    /// <c>.Include(u =&gt; u.UserEmails)</c> when loading a User whose
-    /// <c>Email</c> will be read. Repository methods that intentionally skip
-    /// the include (e.g., projections that don't read Email) are responsible
-    /// for documenting that constraint locally — there is no runtime warning
-    /// when the include is missing.
-    /// </remarks>
     public override string? Email
     {
         get
@@ -104,27 +49,12 @@ public class User : IdentityUser<Guid>
         set => base.Email = value;
     }
 
-    /// <summary>
-    /// Raw legacy AspNetIdentity <c>Email</c> column value, bypassing the
-    /// computed-from-<see cref="UserEmails"/> override. Diagnostic only —
-    /// used by EmailProblems case-9 detection (legacy column populated but
-    /// no matching <see cref="UserEmail"/> row) and by the admin Manage
-    /// Emails page when a full Admin views another user. Application code
-    /// should read <see cref="Email"/>, not this property.
-    /// </summary>
+    /// <summary>Raw legacy Identity Email column — diagnostic only. Application code should read <see cref="Email"/>.</summary>
     [System.ComponentModel.DataAnnotations.Schema.NotMapped]
     public string? IdentityEmailColumn => base.Email;
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Issue #635 (§15i): NormalizedEmail is shadow-populated by Identity but
-    /// is not the canonical read path. Application code should use
-    /// <see cref="Email"/> (overridden, computed from <see cref="UserEmails"/>)
-    /// or query <c>IUserEmailRepository</c> directly. The override exists
-    /// solely to attach the obsolete diagnostic; behavior is unchanged so
-    /// Identity machinery keeps working.
-    /// </remarks>
-#pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional: marks application reads as non-canonical.
+#pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional.
     [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailRepository for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
     [Architecture.ExpiresOn("2026-06-01", reason: "Issue #635 — Identity shadow column; application reads should go through User.Email / IUserEmailRepository.")]
     public override string? NormalizedEmail
@@ -142,30 +72,10 @@ public class User : IdentityUser<Guid>
     }
 
     /// <summary>
-    /// Anchored to <see cref="IdentityUser{TKey}.Id"/> so Identity's username
-    /// uniqueness validator always sees a non-empty unique value without
-    /// callers having to populate it.
+    /// Falls back to Id so Identity's uniqueness validator always sees a value.
+    /// CALLER CONTRACT: assign Id before CreateAsync — EF assigns at SaveChanges,
+    /// which is too late and collides every new user on Guid.Empty.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// CALLER CONTRACT: <see cref="IdentityUser{TKey}.Id"/> MUST be assigned
-    /// <em>before</em> any code path reads <c>UserName</c>, including
-    /// <c>UserManager.CreateAsync</c>'s username-uniqueness validator. EF
-    /// assigns <c>Id</c> at <c>SaveChanges</c>, which is too late — the
-    /// validator runs first, sees <c>base.UserName == null</c>, and the getter
-    /// returns <c>Guid.Empty.ToString()</c>. Multiple users created in one
-    /// run will then collide on <c>"00000000-0000-0000-0000-000000000000"</c>
-    /// and <c>CreateAsync</c> fails on the second user.
-    /// </para>
-    /// <para>
-    /// Always set the Id explicitly:
-    /// <code>
-    /// var userId = Guid.NewGuid();
-    /// var user = new User { Id = userId, ... };
-    /// await _userManager.CreateAsync(user);
-    /// </code>
-    /// </para>
-    /// </remarks>
     public override string? UserName
     {
         get => base.UserName ?? Id.ToString();
@@ -179,90 +89,44 @@ public class User : IdentityUser<Guid>
         set => base.NormalizedUserName = value;
     }
 
-    /// <summary>
-    /// When the last re-consent reminder email was sent (for rate limiting).
-    /// </summary>
+    /// <summary>When the last re-consent reminder email was sent (rate limiting).</summary>
     public Instant? LastConsentReminderSentAt { get; set; }
 
-    /// <summary>
-    /// When the user requested account deletion.
-    /// Null if no deletion is pending.
-    /// </summary>
+    /// <summary>When the user requested account deletion; null if none pending.</summary>
     public Instant? DeletionRequestedAt { get; set; }
 
-    /// <summary>
-    /// When the account will be permanently deleted.
-    /// Set to DeletionRequestedAt + 30 days when a deletion is requested.
-    /// </summary>
+    /// <summary>When the account will be permanently deleted (DeletionRequestedAt + 30d).</summary>
     public Instant? DeletionScheduledFor { get; set; }
 
-    /// <summary>
-    /// Earliest date the deletion can be processed (event hold for ticket holders).
-    /// When set, ProcessAccountDeletionsJob will not process until this date has passed.
-    /// </summary>
+    /// <summary>Earliest date deletion can process (event hold for ticket holders).</summary>
     public Instant? DeletionEligibleAfter { get; set; }
 
-    /// <summary>
-    /// Whether a deletion request is pending.
-    /// </summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
-    /// <summary>
-    /// Whether the user has unsubscribed from campaign emails.
-    /// </summary>
     public bool UnsubscribedFromCampaigns { get; set; }
 
-    /// <summary>
-    /// Token for personal iCal feed URL. Regeneratable.
-    /// </summary>
+    /// <summary>Regeneratable token for the personal iCal feed URL.</summary>
     public Guid? ICalToken { get; set; }
 
-    /// <summary>
-    /// Whether to suppress email notifications for schedule changes.
-    /// </summary>
     public bool SuppressScheduleChangeEmails { get; set; }
 
-    /// <summary>
-    /// When the last magic link login email was sent (for rate limiting).
-    /// </summary>
+    /// <summary>When the last magic link login email was sent (rate limiting).</summary>
     public Instant? MagicLinkSentAt { get; set; }
 
-    /// <summary>
-    /// Status of the user's Google email for sync operations.
-    /// Set to Rejected when a permanent Google API error occurs; reset to Unknown on email change.
-    /// </summary>
+    /// <summary>Rejected on permanent Google API error; reset to Unknown on email change.</summary>
     public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
 
-    /// <summary>
-    /// Where this user was imported from (null for self-registered users).
-    /// </summary>
+    /// <summary>Source of this user; null for self-registered.</summary>
     public ContactSource? ContactSource { get; set; }
 
-    /// <summary>
-    /// ID in the external source system (e.g., MailerLite subscriber ID).
-    /// </summary>
+    /// <summary>ID in the external source system (e.g., MailerLite subscriber ID).</summary>
     public string? ExternalSourceId { get; set; }
 
-    /// <summary>
-    /// Navigation property to event participation records. Owned by the
-    /// Users section (per <c>docs/sections/Users.md</c>); not part of the
-    /// §15i nav-strip.
-    /// </summary>
     public ICollection<EventParticipation> EventParticipations { get; } = new List<EventParticipation>();
 
-    /// <summary>
-    /// When set, marks this user as a tombstone that has been folded into the
-    /// referenced target user by <c>AccountMergeService.AcceptAsync</c>.
-    /// Reads of "data for the target" union the ids of every source whose
-    /// <c>MergedToUserId</c> points at the target (via
-    /// <c>IUserService.GetMergedSourceIdsAsync</c>) for append-only history
-    /// (audit log, consent records, budget audit log). Once set, the source
-    /// cannot sign in (<c>LockoutEnd</c> is bumped far-future during merge).
-    /// </summary>
+    /// <summary>Tombstone — folded into MergedToUserId by AccountMergeService.AcceptAsync. Cannot sign in.</summary>
     public Guid? MergedToUserId { get; set; }
 
-    /// <summary>
-    /// Instant the merge tombstone was applied. Null while live.
-    /// </summary>
+    /// <summary>When the merge tombstone was applied; null while live.</summary>
     public Instant? MergedAt { get; set; }
 }

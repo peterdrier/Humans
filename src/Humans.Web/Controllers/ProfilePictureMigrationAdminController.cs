@@ -10,26 +10,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>
-/// Issue nobodies-collective/Humans#702 — Profile-picture DB→FS migration
-/// verification admin tool.
-/// </summary>
-/// <remarks>
-/// Sits between Phase 1 (#527, shipped — filesystem store with DB fallback +
-/// migrate-on-read + dual-write) and Phase 2 (#528 — drop
-/// <c>Profile.ProfilePictureData</c>). Confirms in QA/prod that every
-/// DB-stored picture is also on disk, so #528 can't lose data. The
-/// <c>Run</c> POST drives the existing migrate-on-read path
-/// (<see cref="IProfileService.GetProfilePictureAsync"/>) which writes
-/// through <see cref="Humans.Application.Interfaces.IFileStorage"/> on a DB
-/// hit — making this page a thin admin trigger over already-shipped
-/// behavior. Idempotent.
-/// <para>
-/// Routed at <c>/Profile/Admin/PictureMigration</c> per
-/// <c>memory/architecture/no-admin-url-section.md</c> (admin pages live
-/// under <c>/&lt;Section&gt;/Admin/*</c>, never <c>/Admin/&lt;Section&gt;/*</c>).
-/// </para>
-/// </remarks>
+// Profile-picture DB→FS migration verification — see #702. Idempotent; drives migrate-on-read.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/PictureMigration")]
 public sealed class ProfilePictureMigrationAdminController : HumansControllerBase
@@ -65,9 +46,7 @@ public sealed class ProfilePictureMigrationAdminController : HumansControllerBas
             return RedirectToAction(nameof(Index));
         }
 
-        // GetProfilePictureAsync drives migrate-on-read: it reads bytes from
-        // the DB fallback and writes them through IFileStorage. We discard
-        // the returned tuple — the side effect (FS save) is the whole point.
+        // GetProfilePictureAsync's FS-save side effect IS the migration; result tuple discarded.
         var migrated = 0;
         foreach (var row in snapshot.DbOnlyRows)
         {
@@ -91,8 +70,4 @@ public sealed class ProfilePictureMigrationAdminController : HumansControllerBas
     }
 }
 
-/// <summary>
-/// Issue nobodies-collective/Humans#702: view model for the profile-picture
-/// DB→FS migration verification page.
-/// </summary>
 public sealed record ProfilePictureMigrationViewModel(ProfilePictureMigrationSnapshot Snapshot);

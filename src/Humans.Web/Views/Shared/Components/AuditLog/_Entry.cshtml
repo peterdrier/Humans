@@ -11,7 +11,6 @@
     <span class="text-muted">—</span>
     @if (render.Verb != null)
     {
-        @* Actor *@
         @if (Model.ActorUserId.HasValue)
         {
             <vc:human user-id="@Model.ActorUserId.Value" />
@@ -21,29 +20,25 @@
             <span class="text-muted">System</span>
         }
 
-        @* When the view will not render a subject (actor==subject or subject unknown),
-           use selfVerb if defined, else trim a trailing preposition from the transitive verb. *@
+        @* No visible subject → selfVerb if defined, else strip trailing preposition. *@
         var noVisibleSubject = actorIsSubject || !Model.SubjectUserId.HasValue;
         var displayVerb = noVisibleSubject && render.SelfVerb != null ? render.SelfVerb
                         : noVisibleSubject ? render.TrimmedVerb
                         : render.Verb;
         <span>@displayVerb</span>
 
-        @* Subject (skip if same as actor) *@
         @if (Model.SubjectUserId.HasValue && !actorIsSubject)
         {
             <vc:human user-id="@Model.SubjectUserId.Value" />
         }
 
-        @* Target team *@
         @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
             <span class="text-muted">in</span>
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
         }
 
-        @* Description tail — only for actions whose descriptions are written as tails (e.g. ShiftSignup*).
-           Sentence-style descriptions (Team*, Role*, Member*) would render redundantly here. *@
+        @* Tail descriptions (ShiftSignup*); sentence-style (Team*, Role*, Member*) would be redundant. *@
         @if (render.ShouldRenderDescriptionTail)
         {
             <span class="text-muted">— @Model.Description</span>
@@ -51,7 +46,7 @@
     }
     else
     {
-        @* Unmapped action — render rough but fully attributed: actor · ActionName · subject · in team · "description" *@
+        @* Unmapped: actor · ActionName · subject · in team · "description". *@
         @if (Model.ActorUserId.HasValue)
         {
             <vc:human user-id="@Model.ActorUserId.Value" />

@@ -13,17 +13,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>
-/// Detects and resolves duplicate user accounts where the same email
-/// address appears on multiple User records (across <c>User.Email</c> and
-/// <c>UserEmail.Email</c>).
-/// </summary>
-/// <remarks>
-/// Moved from <c>Humans.Infrastructure.Services</c> to
-/// <c>Humans.Application.Services.Profiles</c> in PR #557. All data access
-/// flows through repository and service interfaces; this type never injects
-/// <c>HumansDbContext</c>.
-/// </remarks>
+// Detects/resolves duplicate accounts (same email across multiple User records).
 public sealed class DuplicateAccountService : IDuplicateAccountService
 {
     private readonly IUserRepository _userRepository;
@@ -38,10 +28,6 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
     private readonly IClock _clock;
 
     public DuplicateAccountService(
-        // Users + Profiles are one ownership section ("Humans") per
-        // memory/architecture/users-profiles-one-section.md. IUserRepository
-        // carries [Section("Humans")] so HUM0017 sees the injection from this
-        // Services.Profiles host as intra-section.
         IUserRepository userRepository,
         IUserService userService,
         IUserEmailRepository userEmailRepository,
@@ -67,17 +53,13 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
     public async Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default)
     {
-        // At ~500 users, loading all data into memory is cheap and avoids
-        // complex SQL for gmail/googlemail equivalence. Reads off the
-        // UserInfo snapshot — same source-of-truth used by every other
-        // cross-user diagnostic surface (T-05 cache migration).
+        // Load all into memory — ~500 users; avoids complex SQL for gmail/googlemail equivalence.
         var allInfos = await _userService.GetAllUserInfosAsync(ct);
         var users = allInfos
             .Where(u => !string.IsNullOrEmpty(u.Email) &&
                         !u.Email!.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        // Build map: normalized email -> list of (userId, source description)
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);
 
         foreach (var u in users)
@@ -104,7 +86,6 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
             }
         }
 
-        // Find emails that appear on more than one distinct user
         var conflicts = emailToUsers
             .Where(kvp => kvp.Value.Select(x => x.UserId).Distinct().Count() > 1)
             .ToList();
@@ -112,7 +93,6 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         if (conflicts.Count == 0)
             return [];
 
-        // Build groups by user pairs
         var pairGroups = new Dictionary<string, DuplicateAccountGroup>(StringComparer.Ordinal);
         var involvedUserIds = conflicts
             .SelectMany(c => c.Value.Select(x => x.UserId))
@@ -123,13 +103,11 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         var infoMap = users.Where(u => involvedUserSet.Contains(u.Id))
             .ToDictionary(u => u.Id);
 
-        // Per-user team membership counts (active only). Few involved users;
-        // per-user calls are trivial at this scale.
+        // Per-user team counts (active only).
         var teamCounts = new Dictionary<Guid, int>();
         var roleAssignmentCounts = new Dictionary<Guid, int>();
         foreach (var userId in involvedUserIds)
         {
-            // GetUserTeamsAsync already filters to active memberships (LeftAt == null).
             var memberships = await _teamService.GetUserTeamsAsync(userId, ct);
             teamCounts[userId] = memberships.Count;
 
@@ -154,7 +132,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                     if (pairGroups.ContainsKey(pairKey))
                         continue;
 
-                    // Extract raw email for display from first source entry
+                    // Raw email for display from first source.
                     var firstSource = entries.First().Source;
                     var emailStart = firstSource.IndexOf('(');
                     var emailEnd = firstSource.IndexOfAny([',', ')'], emailStart + 1);
@@ -208,34 +186,16 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
         try
         {
-            // Ambient transaction so the cross-repository writes below either
-            // all commit or all roll back. Each repository creates its own
-            // short-lived DbContext via IDbContextFactory; Npgsql enlists
-            // those connections in this scope automatically.
-            // AsyncFlowOption.Enabled is mandatory for scopes containing
-            // await — without it the transaction doesn't flow across
-            // continuations.
-            // Sequential-only: the awaits inside this scope MUST stay
-            // sequential (no Task.WhenAll / Parallel.ForEachAsync). Ambient
-            // System.Transactions flow follows a single async continuation;
-            // concurrent awaits inside the scope leak out of the ambient
-            // transaction and those writes commit independently, defeating
-            // the all-or-nothing guarantee.
+            // Ambient transaction; AsyncFlow required. Awaits inside MUST stay sequential (concurrent awaits leak out of the scope).
             using (var scope = new TransactionScope(
                 TransactionScopeOption.Required,
                 new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                 TransactionScopeAsyncFlowOption.Enabled))
             {
-                // 1. Re-link external logins from source to target. Same
-                //    composite-key (LoginProvider, ProviderKey) dupes are
-                //    dropped rather than duplicated. Routed through the
-                //    repo directly because duplicate-resolve is not the
-                //    full account-merge fold flow — it only wants the
-                //    logins move, not the IUserMerge fan-out.
+                // 1. Re-link external logins (composite-key dupes dropped). Not the IUserMerge fan-out path.
                 await _userRepository.ReassignLoginsToUserAsync(sourceUserId, targetUserId, ct);
 
-                // 2. Add target to any non-system teams the source is in, preserving
-                //    coordinator role from the source membership.
+                // 2. Add target to source's non-system teams, preserving coordinator role.
                 var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUserId, ct);
                 var targetTeams = await _teamService.GetUserTeamsAsync(targetUserId, ct);
                 var targetTeamIds = targetTeams.Select(m => m.TeamId).ToHashSet();
@@ -252,15 +212,13 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                     }
                 }
 
-                // 3. Remove source from all non-system teams
+                // 3. Remove source from non-system teams.
                 foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam))
                 {
                     await _teamService.RemoveMemberAsync(membership.TeamId, sourceUserId, adminUserId, ct);
                 }
 
-                // 4. Migrate source's active governance role assignments to target
-                //    (skip any the target already has). Then revoke the source's
-                //    active roles.
+                // 4. Migrate source's active governance roles to target (skip dupes), then revoke source's.
                 var targetActiveRoleNames = (await _roleAssignmentService.GetByUserIdAsync(targetUserId, ct))
                     .Where(r => r.ValidTo == null)
                     .Select(r => r.RoleName)
@@ -279,26 +237,14 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
                 await _roleAssignmentService.RevokeAllActiveAsync(sourceUserId, ct);
 
-                // 5. Delete source's email rows
+                // 5. Delete source's email rows.
                 await _userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
 
-                // 6. Anonymize the source account (set MergedToUserId/MergedAt
-                //    + identity tombstone fields). Routed through IUserService
-                //    so the UserInfo cache for the source is invalidated.
-                //
-                // NOTE: this path does NOT migrate VolunteerHistory/Languages
-                // from source to target. AccountMergeService.AcceptAsync (the
-                // merge-fold flow) does, via
-                // IProfileService.ReassignSubAggregatesToUserAsync. Pre-existing
-                // asymmetry — duplicate-resolve is a different flow with
-                // different completeness guarantees, called from a different
-                // admin surface. Track separately if it becomes a problem;
-                // not in scope for the account-merge fold redesign PR.
+                // 6. Anonymize source. NOTE: does NOT migrate VolunteerHistory/Languages (asymmetric vs AccountMergeService.AcceptAsync).
                 await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
                 await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
-                // 7. Audit inside the same scope so a rolled-back merge doesn't
-                //    leave a ghost audit row.
+                // 7. Audit inside scope (no ghost row on rollback).
                 await _auditLogService.LogAsync(
                     AuditAction.AccountMergeAccepted,
                     nameof(User), sourceUserId,
@@ -309,9 +255,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 scope.Complete();
             }
 
-            // Cache invalidation runs AFTER the transaction commits, so
-            // cache-aside readers don't re-populate from rows that might
-            // still roll back.
+            // Cache invalidation AFTER commit.
             await _userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
             await _userInfoInvalidator.InvalidateAsync(targetUserId, ct);
             _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
@@ -322,13 +266,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         }
         finally
         {
-            // The team service's Add/Remove/SetMemberRole calls inside the
-            // scope mutate the in-memory ActiveTeams cache immediately. On a
-            // rolled-back scope those mutations would outlive the DB state,
-            // showing the target joined to teams they don't actually belong
-            // to. Evict the master cache so the next read repopulates from
-            // the (possibly reverted) DB. Safe on the success path too —
-            // it just costs one refetch.
+            // Evict ActiveTeams cache: TeamService mutates it inside scope; rolled-back state would otherwise leak.
             _teamService.InvalidateActiveTeamsCache();
         }
     }

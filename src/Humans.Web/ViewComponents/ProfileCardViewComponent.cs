@@ -68,7 +68,6 @@ public class ProfileCardViewComponent : ViewComponent
             canViewLegalName = await _roleAssignmentService.IsUserBoardMemberAsync(viewerId);
         }
 
-        // Get contact fields
         var contactFields = profile is not null
             ? await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, viewerUserId)
             : [];
@@ -85,9 +84,6 @@ public class ProfileCardViewComponent : ViewComponent
         }
         var visibleEmails = await _userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
 
-        // nobodies.team email badge is now handled by NobodiesEmailBadgeViewComponent
-
-        // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);
         var displayableTeams = userTeams
             .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers
@@ -103,7 +99,6 @@ public class ProfileCardViewComponent : ViewComponent
             })
             .ToList();
 
-        // Get membership status
         var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
 
         var hasCustomPicture = profile?.HasCustomPicture == true;
@@ -136,7 +131,6 @@ public class ProfileCardViewComponent : ViewComponent
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
             HasPendingConsents = membershipSnapshot.PendingConsentCount > 0,
             PendingConsentCount = membershipSnapshot.PendingConsentCount,
-            // HasNobodiesTeamEmail resolved by NobodiesEmailBadgeViewComponent in the view
             ViewMode = viewMode,
             CanViewLegalName = canViewLegalName,
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel

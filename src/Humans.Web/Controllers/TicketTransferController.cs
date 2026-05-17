@@ -42,11 +42,7 @@ public sealed class TicketTransferController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        // Two flows hit this action:
-        //  1. Free-text query → service returns 0..N candidates
-        //  2. selectedUserId set → user picked one from a multi-match list,
-        //     resolve that single id directly so we render a single card
-        //     (skips re-running the search).
+        // Free-text query OR selectedUserId (direct resolve, skips search).
         IReadOnlyList<ReceiverLookupResultDto> matches;
         if (selectedUserId is { } pickedId)
         {
@@ -89,8 +85,7 @@ public sealed class TicketTransferController : HumansControllerBase
                 form.AttendeeId, ex.Message);
             SetError(ex.Message);
 
-            // Re-render the confirm form with the Receiver pick + reason intact
-            // so the Sender doesn't have to redo the lookup or retype.
+            // Preserve Receiver + reason on re-render.
             var card = await _service.GetReceiverCardAsync(form.ReceiverUserId, user.Id, ct);
             var matches = card is null
                 ? Array.Empty<ReceiverLookupResultDto>()

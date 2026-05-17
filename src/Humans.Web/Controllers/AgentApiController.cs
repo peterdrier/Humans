@@ -8,13 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>
-/// Read-only API surface for QA/prod chat-history review (issue #631). Gated by
-/// <see cref="AgentApiKeyAuthFilter"/> so dev tooling and a dev-side Claude can
-/// pull recent agent conversations to look for refusal/handoff patterns and
-/// prompt-tuning opportunities. No mutations live here — deletion and settings
-/// remain on the admin web UI.
-/// </summary>
+/// <summary>Read-only API for QA/prod chat-history review (#631). Mutations stay on the admin web UI.</summary>
 [ApiController]
 [Route("api/agent")]
 [ServiceFilter(typeof(AgentApiKeyAuthFilter))]

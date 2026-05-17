@@ -17,69 +17,38 @@ internal static class UsersSectionExtensions
 {
     internal static IServiceCollection AddUsersSection(this IServiceCollection services)
     {
-        // User section — §15 repository pattern (issue #511).
-        // Issue #703: CachingUserService decorator + UserInfo cached read-model
-        // spanning the User and Profile sections. The base UserService is
-        // registered keyed under "user-inner"; unkeyed IUserService resolves to
-        // the Singleton decorator. UserService owns Application-side write paths
-        // and signals IUserInfoInvalidator after writes; the SaveChanges
-        // interceptor (UserInfoSaveChangesInterceptor) handles UserInfo-cache
-        // invalidation for every persisted mutation including Identity-machinery
-        // writes.
+        // User section — see #511 / #703. CachingUserService decorator + UserInfo read-model spans User/Profile sections.
         services.AddSingleton<IUserRepository, UserRepository>();
 
-        // Inner UserService — Scoped + keyed. CachingUserService resolves via
-        // IServiceScopeFactory per-call.
+        // Inner Scoped + keyed; decorator resolves via IServiceScopeFactory per-call.
         services.AddKeyedScoped<IUserService, UsersUserService>(CachingUserService.InnerServiceKey);
         services.AddScoped<UsersUserService>(sp =>
             (UsersUserService)sp.GetRequiredKeyedService<IUserService>(CachingUserService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
 
-        // CachingUserService — Singleton so the _byUserId dict persists across
-        // requests. Resolves IUserRepository / IUserEmailRepository /
-        // IProfileRepository / IContactFieldRepository directly (all Singleton
-        // IDbContextFactory-based); resolves the Scoped inner IUserService via
-        // IServiceScopeFactory per-call.
+        // Singleton so _byUserId dict survives across requests.
         services.AddSingleton<CachingUserService>();
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
 
-        // IUserInfoInvalidator and IUserMerge must resolve to the SAME Singleton
-        // CachingUserService instance that backs IUserService — every external
-        // section that signals "this user changed" must hit the same instance
-        // that owns the cache.
+        // Same Singleton instance must back invalidator + merge so external "user changed" signals hit the cache owner.
         services.AddSingleton<IUserInfoInvalidator>(sp =>
             sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingUserService>());
 
-        // Surface UserInfo cache diagnostics on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingUserService>());
 
-        // SaveChanges interceptor — catches Identity-machinery writes
-        // (UserManager.UpdateAsync, sign-in LastLoginAt, OAuth UserEmail
-        // creation) and every other persisted mutation to the 8 contributing
-        // tables. Registered as Singleton so the same instance is added to
-        // both AddDbContext and AddDbContextFactory option pipelines.
+        // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail). Singleton — added to both DbContext + DbContextFactory pipelines.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
 
-        // CachingUserService is itself the IHostedService — TrackedCache's
-        // StartAsync triggers WarmAllAsync when warmOnStartup: true. Load-all
-        // reads call EnsureWarmed / EnsureWarmedAsync, which drives warmup on
-        // demand if startup hasn't yet completed.
+        // Hosted service for TrackedCache StartAsync → WarmAllAsync.
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Account deletion orchestrator (issue nobodies-collective/Humans#582). Single entry point for
-        // user-requested / admin-initiated / expiry-triggered deletion paths.
-        // Lives alongside UserService because the User aggregate is the
-        // deletion anchor; reaches up to Teams / RoleAssignments / Shifts
-        // via their service interfaces so UserService/ProfileService retain
-        // no outbound edges to higher-level sections.
+        // Account deletion orchestrator — see #582. Reaches up to Teams/RoleAssignments/Shifts via their services so UserService/ProfileService own no outbound edges.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
 
         services.AddScoped<IDashboardService, DashboardDashboardService>();
-        // Admin dashboard aggregator — owns no tables; aggregates user
-        // partition, application stats, and language distribution from
-        // the relevant section services.
+        // Owns no tables; aggregates from section services.
         services.AddScoped<IAdminDashboardService, DashboardAdminDashboardService>();
 
         return services;

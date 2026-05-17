@@ -16,28 +16,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>
-/// Service for managing account merge requests. Business logic only — no
-/// direct DbContext usage. All data access goes through repository
-/// interfaces; cross-section operations (team membership, role assignments,
-/// shift signups, notifications, etc.) route through the owning service.
-/// </summary>
-/// <remarks>
-/// Moved from <c>Humans.Infrastructure.Services</c> to
-/// <c>Humans.Application.Services.Profiles</c> in PR #557 as the §15 Part 1
-/// Profile-section cleanup. The owning Identity table
-/// (<c>account_merge_requests</c>) is accessed via
-/// <see cref="IAccountMergeRepository"/>; the UserEmail side uses
-/// <see cref="IUserEmailRepository"/>.
-/// <para>
-/// As of the fold-into-target redesign (Phase 5), <see cref="AcceptAsync"/>
-/// no longer anonymizes Profile rows or wipes source data. Instead each
-/// section service implements <see cref="IUserMerge"/> to re-FK its rows
-/// from source to target; <see cref="IUserService.AnonymizeForMergeAsync"/>
-/// then tombstones the source <c>User</c> row by setting
-/// <c>MergedToUserId</c> and <c>MergedAt</c> and locking out login.
-/// </para>
-/// </remarks>
+// AcceptAsync fans out IUserMerge across sections to re-FK source→target, then tombstones source via AnonymizeForMergeAsync.
 public sealed class AccountMergeService : IAccountMergeService, IUserDataContributor
 {
     private readonly IAccountMergeRepository _mergeRepository;
@@ -47,12 +26,9 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     private readonly ILogger<AccountMergeService> _logger;
     private readonly IClock _clock;
 
-    // Fan-out over every section that participates in account merge.
-    // Implementations register themselves alongside their owning service in
-    // each section's Add…Section extension.
+    // Fan-out — IUserMerge implementations register in each section's Add…Section extension.
     private readonly IEnumerable<IUserMerge> _userMerges;
 
-    // Cross-section terminal steps + post-commit cache invalidation owners.
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
@@ -203,8 +179,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 user.PreferredLanguage,
                 user.LastLoginAt);
         }
-        // User missing (deleted/purged): return a stub so the snapshot
-        // record's non-null contract holds. Display falls back to a sentinel.
+        // Missing user → stub for snapshot record's non-null contract.
         return new(userId, "(unknown user)", null, null, null, null);
     }
 
@@ -217,13 +192,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
         try
         {
-            // Ambient transaction so the cross-section writes below either
-            // all commit or all roll back. Each section service / repository
-            // creates its own short-lived DbContext via IDbContextFactory;
-            // Npgsql enlists those connections in this scope automatically.
-            // AsyncFlowOption.Enabled is mandatory for scopes containing
-            // await — without it the transaction doesn't flow across
-            // continuations.
+            // Ambient transaction — section services use IDbContextFactory; Npgsql enlists. AsyncFlow required for await.
             using (var scope = new TransactionScope(
                 TransactionScopeOption.Required,
                 new TransactionOptions
@@ -232,21 +201,14 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 },
                 TransactionScopeAsyncFlowOption.Enabled))
             {
-                // Fan out across every section that owns user-keyed rows.
-                // Each IUserMerge impl re-FKs its section's data from
-                // source → target. Order doesn't matter for correctness
-                // inside the same transaction.
+                // Fan-out: each IUserMerge re-FKs source→target. Order is irrelevant inside the transaction.
                 foreach (var merger in _userMerges)
                     await merger.ReassignAsync(sourceUserId, targetUserId, adminUserId, now, ct);
 
-                // Tombstone the source User row: sets MergedToUserId,
-                // MergedAt, and locks out login. Does NOT wipe data —
-                // the source row stays as a redirect for chain-follow
-                // reads (audit, consent, budget).
+                // Tombstone source User (no wipe — chain-follow reads need the redirect).
                 await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
-                // Audit inside the same scope so a rolled-back fold
-                // doesn't leave a ghost audit row.
+                // Audit inside scope — rolled-back fold must not leave a ghost row.
                 await _auditLogService.LogAsync(
                     audit.Action,
                     audit.EntityType, audit.EntityId,
@@ -258,38 +220,20 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 scope.Complete();
             }
 
-            // Cache invalidation runs AFTER the transaction commits so
-            // cache-aside readers don't repopulate from rows that might
-            // still roll back. UserInfo eviction for both users is
-            // handled by the CachingUserService decorator inside the
-            // fan-out (covers Profile / UserEmail / ContactField /
-            // CommunicationPreference, all Profile-section). Claims +
-            // nav-badge cover RoleAssignment. Notification badge counts
-            // cover NotificationRecipient. Team caches cover the
-            // TeamService.ReassignAsync writes.
+            // Cache invalidation AFTER commit so cache-aside readers don't repopulate from rolled-back rows.
             _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
             _roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
             _roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             _roleAssignmentService.InvalidateNavBadgeCache();
             _notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
 
-            // T-04: source's UserConsentInfo is now a tombstone; target's
-            // entry must rebuild against the post-merge chain so its
-            // consented-version set includes the source's records (which
-            // remain at source per design-rules §12 — DB triggers reject
-            // any rewrite).
+            // T-04: rebuild target's UserConsentInfo against post-merge chain (§12 — source records stay at source).
             _consentCacheInvalidator.InvalidateUser(sourceUserId);
             _consentCacheInvalidator.InvalidateUser(targetUserId);
         }
         finally
         {
-            // The team service's Reassign call inside the scope mutates the
-            // in-memory ActiveTeams cache immediately. On a rolled-back scope
-            // those mutations would outlive the DB state, showing the
-            // target joined to teams they don't actually belong to. Evict
-            // the master cache so the next read repopulates from the
-            // (possibly reverted) DB. Safe on the success path too — it
-            // just costs one refetch.
+            // Evict ActiveTeams cache: TeamService mutates it during scope; rolled-back state would otherwise leak.
             _teamService.InvalidateActiveTeamsCache();
         }
     }
@@ -308,18 +252,13 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
         var now = _clock.GetCurrentInstant();
 
-        // Ambient transaction so the pending-email delete and the request
-        // status update commit together. Without this, a failed status write
-        // would leave the request Pending with a dangling PendingEmailId,
-        // blocking any later AcceptAsync call.
+        // Transaction so pending-email delete and request status commit together (else dangling PendingEmailId blocks future Accept).
         using (var scope = new TransactionScope(
             TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled))
         {
-            // Remove the pending (unverified) email from the target user's
-            // account. MarkVerified may already be a no-op if the email
-            // vanished; we just best-effort remove.
+            // Best-effort remove the target's pending email.
             await _userEmailRepository.RemoveByIdAsync(request.PendingEmailId, ct);
 
             request.Status = AccountMergeRequestStatus.Rejected;
@@ -337,9 +276,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             scope.Complete();
         }
 
-        // Invalidate the target's UserInfo so the removed pending email
-        // disappears from the cached view. Runs after commit so cache-aside
-        // reads don't repopulate from an uncommitted state.
+        // Invalidate target's UserInfo AFTER commit.
         await _userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
     }
 
@@ -358,7 +295,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         return [new UserDataSlice(GdprExportSections.AccountMergeRequests, shaped)];
     }
 
-    // ---- Cross-section read helpers used by UserEmailService ----
+    // --- Cross-section read helpers for UserEmailService ---
 
     public Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
         IReadOnlyList<Guid> emailIds, CancellationToken ct = default) =>

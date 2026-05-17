@@ -54,7 +54,7 @@ public class OnboardingWidgetController : HumansControllerBase
         _localizer = localizer;
     }
 
-    // [Authorize] guarantees the NameIdentifier claim is present.
+    // [Authorize] guarantees NameIdentifier is present.
     private Guid CurrentUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -74,9 +74,7 @@ public class OnboardingWidgetController : HumansControllerBase
     [HttpGet]
     public IActionResult Names()
     {
-        // Legal name must come from the user, not from OAuth claims — provider-
-        // supplied names are unverified and let users blow through the step
-        // without thinking. Force an explicit entry.
+        // Force explicit entry — OAuth-supplied names are unverified.
         return View(new NamesViewModel());
     }
 
@@ -89,9 +87,7 @@ public class OnboardingWidgetController : HumansControllerBase
 
         var userId = CurrentUserId();
 
-        // Guard: this endpoint is reachable directly. ProfileService.SaveProfileAsync
-        // does a full-field overwrite, and the request below leaves most fields null.
-        // Past Names step → dispatch onward instead of wiping already-populated data.
+        // SaveProfileAsync does a full-field overwrite — bail if past Names step or we'd wipe data.
         var currentStep = await _state.GetCurrentStepAsync(userId, ct);
         if (currentStep != OnboardingWidgetStep.Names)
             return RedirectToAction(nameof(Index));
@@ -124,9 +120,7 @@ public class OnboardingWidgetController : HumansControllerBase
         if (es is null)
             return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 
-        // Stats line ("X% of critical filled, Y important open") needs the full
-        // event-wide set, so we fetch with priorityOnly: false and let the
-        // builder filter for display.
+        // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
         var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
             es.Id, includeAdminOnly: false, includeSignups: true,
             includeHidden: false, priorityOnly: false);
@@ -154,10 +148,7 @@ public class OnboardingWidgetController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
     {
-        // Multi-day signup for Build/Strike rotas. Mirrors ShiftsController's
-        // SignUpRange but routes back through the widget dispatcher so the
-        // user lands on Consents (or Home, if all consents are signed)
-        // instead of /Shifts/Index.
+        // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
         var result = await _signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset, isPrivileged: false);
         if (!result.Success)
         {
@@ -180,9 +171,7 @@ public class OnboardingWidgetController : HumansControllerBase
     {
         var userId = CurrentUserId();
 
-        // Stub-profile users can't sign consents (defense-in-depth gate in
-        // ConsentService.SubmitConsentAsync would refuse). Bounce them back to
-        // the Names step where they belong instead of rendering a doomed form.
+        // Stub profile can't sign — ConsentService would refuse. Bounce to Names.
         if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
@@ -224,9 +213,7 @@ public class OnboardingWidgetController : HumansControllerBase
 
         var userId = CurrentUserId();
 
-        // Mirror the GET-side gate so a Stub user who reaches the form via a
-        // stale page or back-button can't POST into the StubProfile refusal
-        // path below.
+        // Mirror GET gate against stale-page / back-button POST.
         if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
@@ -236,17 +223,14 @@ public class OnboardingWidgetController : HumansControllerBase
         var result = await _consents.SubmitConsentAsync(
             userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
 
-        // Peer-call the director threshold check after a consent grant.
         if (result.Success)
             await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         if (!result.Success)
         {
-            // Translate known error keys; never display the raw key to the user.
             switch (result.ErrorKey)
             {
                 case "StubProfile":
-                    // Defense-in-depth: gates above should have caught this.
                     return RedirectToNamesForStub();
                 case "AlreadyConsented":
                     SetInfo(_localizer["Consent_AlreadyConsented"].Value);
@@ -254,16 +238,11 @@ public class OnboardingWidgetController : HumansControllerBase
             }
         }
 
-        // Always go through the dispatcher: routes Home once the final required
-        // consent is signed instead of stranding the user on the signed-documents
-        // view. Failure path also dispatches; TempData carries the message.
+        // Always dispatch — routes Home after final consent instead of stranding on signed-docs view.
         return RedirectToAction(nameof(Index));
     }
 
-    // "Can this user sign consents?" — gated on having a legal name on file,
-    // not on Profile.State == Stub. Matches the dispatcher's HasRequiredNameFields
-    // routing so an Active-state profile with blank name fields can't slip
-    // past the Names step here either.
+    // Gated on HasRequiredNameFields, not State==Stub — catches Active profiles with blank names.
     private async Task<bool> IsNameMissingAsync(Guid userId, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);

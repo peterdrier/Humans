@@ -1,7 +1,4 @@
-@* Admin shell layout — Renaissance aesthetic, ink-dark sidebar + parchment main.
-   Inherited via _ViewStart.cshtml in admin-only view folders, or set per-view in
-   mixed folders (e.g. Views/Profile/AdminList.cshtml). All admin-shell CSS rules
-   are scoped under body.admin-shell to prevent leakage into member pages. *@
+@* Admin shell layout — CSS scoped under body.admin-shell to prevent leakage into member pages. *@
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -40,8 +37,7 @@
 
     <div class="app">
         <nav class="m-nav">
-            @* Brand mark always exits the admin shell — clicking it returns you
-               to the member home, matching the member shell's brand behavior. *@
+            @* Brand mark exits admin shell, matching member shell brand behavior. *@
             <a class="brand" asp-controller="Home" asp-action="Index" title="Exit admin">
                 Humans<small>Admin</small>
             </a>

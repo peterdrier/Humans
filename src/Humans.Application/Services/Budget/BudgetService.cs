@@ -14,24 +14,8 @@ using NodaTime;
 namespace Humans.Application.Services.Budget;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IBudgetService"/>. Goes
-/// through <see cref="IBudgetRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph. Cross-section reads
-/// (budget-flagged teams, coordinator team IDs) go through
-/// <see cref="ITeamService"/>.
+/// Budget service. Cross-section reads (teams) via ITeamService. budget_audit_logs is append-only (§12).
 /// </summary>
-/// <remarks>
-/// <c>budget_audit_logs</c> is append-only by convention — the service only
-/// requests audit writes through atomic repository methods and never updates
-/// or deletes audit rows. Per design-rules §15b, the repository now exposes
-/// atomic per-method operations (each opens its own short-lived
-/// <c>DbContext</c>). This service therefore does not hold or pass tracked
-/// entities between calls — mutations happen inside the repository as part of
-/// a single <c>SaveChanges</c>, and composite operations (e.g., creating a
-/// year plus its default scaffolding) are single high-level repository
-/// methods that do all the work in one transaction.
-/// </remarks>
 public sealed class BudgetService : IBudgetService, IUserDataContributor
 {
     private readonly IBudgetRepository _repository;
@@ -53,8 +37,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         _clock = clock;
         _logger = logger;
     }
-
-    // ───────────────────────── Budget Years ─────────────────────────
 
     public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false)
     {
@@ -96,9 +78,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     {
         var now = _clock.GetCurrentInstant();
 
-        // Resolve budgetable teams via the Teams section before calling the
-        // repository — the repository never crosses the Teams section's
-        // ownership boundary (design-rules §2c).
+        // Resolve budgetable teams via Teams service (§2c).
         var teams = (await _teamService.GetTeamsAsync()).Values
             .Where(t => t.IsActive && t.HasBudget)
             .OrderBy(t => t.Name, StringComparer.Ordinal);
@@ -211,8 +191,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
                 : "Ticketing group already exists for this budget year.");
     }
 
-    // ───────────────────────── Budget Groups ─────────────────────────
-
     public async Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
     {
@@ -249,16 +227,13 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         _logger.LogInformation("Deleted budget group {GroupId}", groupId);
     }
 
-    // ───────────────────────── Budget Categories ─────────────────────────
-
     public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id)
     {
         var category = await _repository.GetCategoryByIdAsync(id);
         if (category is null)
             return null;
 
-        // Stitch responsible-team names cross-section via ITeamService (the
-        // repository no longer Includes the obsolete nav on BudgetLineItem).
+        // Stitch team names via ITeamService.
         var teamIds = category.LineItems
             .Select(li => li.ResponsibleTeamId)
             .Where(tid => tid.HasValue)
@@ -380,8 +355,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
         _logger.LogInformation("Deleted budget category {CategoryId}", categoryId);
     }
-
-    // ───────────────────────── Budget Line Items ─────────────────────────
 
     public async Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id)
     {
@@ -506,8 +479,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         _logger.LogInformation("Deleted line item {LineItemId}", lineItemId);
     }
 
-    // ───────────────────────── Ticketing Projection ─────────────────────────
-
     public async Task<TicketingProjectionSnapshot?> GetTicketingProjectionAsync(Guid budgetGroupId)
     {
         var projection = await _repository.GetTicketingProjectionAsync(budgetGroupId);
@@ -551,8 +522,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         _logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
     }
 
-    // ───────────────────────── Audit Log ─────────────────────────
-
     public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId)
     {
         var entries = await _repository.GetAuditLogAsync(budgetYearId);
@@ -569,15 +538,11 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             e.OccurredAt)).ToList();
     }
 
-    // ───────────────────────── Coordinator ─────────────────────────
-
     public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId)
     {
         var ids = await _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId);
         return ids.ToHashSet();
     }
-
-    // ───────────────────────── Summary Computation (pure) ─────────────────────────
 
     public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)
     {
@@ -589,7 +554,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             .Where(li => !li.IsCashflowOnly)
             .ToList();
 
-        // Compute VAT projections.
         var vatProjections = budgetLineItems
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li => new
@@ -608,7 +572,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         var totalExpenses = expenses - vatExpenses;
         var netBalance = totalIncome + totalExpenses;
 
-        // Build income slices.
         var incomeCategories = groupsList
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
@@ -629,7 +592,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             })
             .ToList();
 
-        // Build expense slices.
         var expenseCategories = groupsList
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
@@ -672,8 +634,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         var groupList = groups.ToList();
         var summary = ComputeBudgetSummary(groupList);
 
-        // Per-group buffer: allocated minus line-item total.
-        // Negative = expense buffer, positive = income buffer.
+        // Per-group buffer: allocated minus line-item total (negative = expense, positive = income).
         var groupBuffers = groupList
             .Where(g => !g.IsTicketingGroup)
             .Select(g => new
@@ -756,13 +717,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         return quarterEnd.PlusDays(45);
     }
 
-    // ───────────────────────── Ticketing Budget Sync ─────────────────────────
-    //
-    // The service shapes DTOs and hands them to the repository. Projected-week
-    // materialization lives inside the repository so it runs AFTER projection
-    // parameters have been refreshed from actuals (same DbContext/SaveChanges),
-    // preventing the projected-items-lag-one-sync bug the pre-plan design had.
-
+    // Projected-week materialization lives in repo to avoid projected-items-lag-one-sync.
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
@@ -873,7 +828,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             });
 
             weekStart = weekEnd.PlusDays(1);
-            // Snap to next Monday.
             weekStart = GetTicketingIsoMonday(weekStart);
             if (weekStart <= weekEnd) weekStart = weekEnd.PlusDays(1);
         }
@@ -888,8 +842,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
         if (revenueCategory is null) return 0;
 
-        // Sum ticket counts from auto-generated (non-projected) revenue line items.
-        // These are the actuals lines with notes like "187 tickets".
+        // Actual-tickets sum from auto-generated revenue notes "N tickets" (projected use "~N").
         var total = 0;
         foreach (var item in revenueCategory.LineItems)
         {
@@ -897,7 +850,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             if (item.Description.StartsWith("Projected: ", StringComparison.Ordinal)) continue;
             if (string.IsNullOrEmpty(item.Notes)) continue;
 
-            // Notes format: "187 tickets" or "~42 tickets" (projected use ~).
             var notes = item.Notes.TrimStart('~');
             var spaceIdx = notes.IndexOf(' ', StringComparison.Ordinal);
             if (spaceIdx > 0 && int.TryParse(
@@ -925,14 +877,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
     }
 
-    // ───────────────────────── GDPR Export ─────────────────────────
-
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow merge tombstones so a fold-target's GDPR export
-        // transparently includes BudgetAuditLog entries that stayed
-        // attributed to merged source ids. budget_audit_logs is append-only
-        // (§12) so source's rows remain at source after the fold.
+        // Chain-follow merge tombstones — GDPR export must include merged-source audit rows.
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
         IReadOnlyList<BudgetAuditLog> entries;
         if (sourceIds.Count == 0)

@@ -128,7 +128,6 @@ else
         </div>
     </form>
 
-    @* Approve modals *@
     @foreach (var r in Model.Reports.Where(x =>
         x.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed))
     {
@@ -163,7 +162,6 @@ else
         </div>
     }
 
-    @* Reject modals *@
     @foreach (var r in Model.Reports.Where(x =>
         x.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed))
     {

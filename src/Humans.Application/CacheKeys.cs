@@ -36,9 +36,7 @@ public static class CacheKeys
     public static string MagicLinkUsed(string tokenPrefix) => $"magic_link_used:{tokenPrefix}";
     public static string MagicLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
 
-    /// <summary>
-    /// Cache key type classification for the Admin Cache Stats page.
-    /// </summary>
+    /// <summary>Classification for the Admin Cache Stats page.</summary>
     public enum CacheKeyType
     {
         Static,
@@ -47,14 +45,10 @@ public static class CacheKeys
         RateLimit
     }
 
-    /// <summary>
-    /// Metadata for a cache key prefix: configured TTL and key type.
-    /// </summary>
+    /// <summary>TTL + type for a cache key prefix.</summary>
     public record CacheKeyMeta(string Ttl, CacheKeyType Type);
 
-    /// <summary>
-    /// Static lookup of known cache key prefixes to their TTL and type classification.
-    /// </summary>
+    /// <summary>Known cache key prefixes → TTL + type.</summary>
     public static readonly IReadOnlyDictionary<string, CacheKeyMeta> Metadata =
         new Dictionary<string, CacheKeyMeta>(StringComparer.Ordinal)
         {

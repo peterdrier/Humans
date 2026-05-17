@@ -24,8 +24,7 @@ public sealed class TicketNoShiftsAudience(
         var activeEvent = await shiftManagement.GetActiveAsync();
         if (activeEvent is null) return new HashSet<Guid>();
 
-        // GetUserIdsWithTicketsAsync returns Valid/CheckedIn matched attendees
-        // (buyer-only matches excluded) — see ITicketQueryService docs.
+        // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketQueryService.
         var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
         var shiftHavers = await shiftSignups.GetActiveCommittedUserIdsForEventAsync(activeEvent.Id, ct);
 

@@ -24,21 +24,13 @@ namespace Humans.Application.Services.Notifications;
 /// and cached for ~2 minutes. No direct DB access.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This service replaces the pre-§15 <c>NotificationMeterProvider</c> that
-/// read <c>profiles</c>, <c>users</c>, <c>google_sync_outbox_events</c>,
-/// <c>team_join_requests</c>, <c>ticket_sync_states</c>, and
-/// <c>applications</c> directly. Per design-rules §2c the Notifications
-/// section owns <c>notifications</c>/<c>notification_recipients</c> only —
-/// every other table is reached through its owning section's public
-/// service interface.
-/// </para>
-/// <para>
+/// Per design-rules §2c the Notifications section owns
+/// <c>notifications</c>/<c>notification_recipients</c> only — every other
+/// table is reached through its owning section's public service interface.
 /// The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>) is a
 /// short-TTL request-acceleration cache appropriate for <see cref="IMemoryCache"/>
 /// per §15i. Writes elsewhere invalidate it via
 /// <see cref="INotificationMeterCacheInvalidator"/>.
-/// </para>
 /// </remarks>
 public sealed class NotificationMeterProvider : INotificationMeterProvider
 {
@@ -87,7 +79,6 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
         var isVolunteerCoordinator = user.IsInRole(RoleNames.VolunteerCoordinator);
         var isConsentCoordinator = user.IsInRole(RoleNames.ConsentCoordinator);
 
-        // Consent reviews pending — Consent Coordinator
         if (isConsentCoordinator && counts.ConsentReviewsPending > 0)
         {
             meters.Add(new NotificationMeter
@@ -99,7 +90,6 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
-        // Applications pending board vote — Board (per-user count)
         if (isBoard)
         {
             var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -119,7 +109,6 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             }
         }
 
-        // Pending account deletions — Admin
         if (isAdmin && counts.PendingDeletions > 0)
         {
             meters.Add(new NotificationMeter
@@ -131,7 +120,6 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
-        // Failed Google sync events — Admin
         if (isAdmin && counts.FailedSyncEvents > 0)
         {
             meters.Add(new NotificationMeter
@@ -143,7 +131,6 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
-        // Onboarding profiles pending — Board / Volunteer Coordinator
         if ((isBoard || isVolunteerCoordinator) && counts.OnboardingPending > 0)
         {
             meters.Add(new NotificationMeter
@@ -168,7 +155,6 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
-        // Ticket sync error — Admin
         if (isAdmin && counts.TicketSyncError)
         {
             meters.Add(new NotificationMeter

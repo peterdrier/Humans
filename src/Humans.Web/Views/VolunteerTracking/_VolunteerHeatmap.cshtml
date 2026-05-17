@@ -47,8 +47,7 @@
     <div class="card-header d-flex align-items-center">
         <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Main_Title"]</strong>
         <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
-        @* Scroll arrows: kept hidden by default; the page-level script unhides
-           the group only when the table has horizontal overflow. *@
+        @* Scroll arrows: hidden until JS detects horizontal overflow. *@
         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
@@ -151,10 +150,7 @@
                                     @if (canWrite)
                                     {
                                         <hr class="my-2" />
-                                        @* Camp set-up section is state-driven:
-                                             - Non-CampSetup cell: "Mark camp set-up" (sets start to this day)
-                                             - CampSetup cell: "Move start to this day" (only if not already the start)
-                                                              + "Clear camp set-up" (null the field) *@
+                                        @* State-driven: Mark / Move / Clear camp set-up. *@
                                         @if (cell.State != VolunteerCellState.CampSetup)
                                         {
                                             <form method="post" asp-action="SetCampSetup" class="mb-2">
@@ -168,7 +164,6 @@
                                         }
                                         else
                                         {
-                                            // setupOffset is non-null whenever cell.State == CampSetup.
                                             var setupOffset = row.BarrioSetupStartDate is { } setupDate
                                                 ? Period.Between(Model.GateOpeningDate, setupDate, PeriodUnits.Days).Days
                                                 : (int?)null;
@@ -235,7 +230,6 @@
                                                 </button>
                                             </form>
                                         }
-                                        @* CampSetup and Outside: nothing rendered. *@
                                     }
                                 </div>
                             </td>

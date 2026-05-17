@@ -59,7 +59,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                      || p.Status == ParticipationStatus.Attended)
             .ToDictionary(p => p.UserId, p => p.Status);
 
-        // Per-user, per-day: best status (Confirmed > Pending) plus distinct rota names.
+        // Per-user, per-day: best status (Confirmed > Pending) + distinct rota names.
         var perUserSignups = signups
             .GroupBy(s => s.UserId)
             .ToDictionary(g => g.Key, g => g
@@ -128,9 +128,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 cells.Add(new VolunteerCell(d2, s, rotaNames));
             }
 
-            // The repository persists DayOffs sorted by DayOffset (see
-            // VolunteerTrackingRepository.UpsertDayOffAsync), so no resort is
-            // needed here — the projection preserves order.
+            // Repo persists DayOffs sorted by DayOffset; no resort needed.
             var dayOffSummaries = (bs?.DayOffs ?? [])
                 .Select(x => new DayOffSummary(x.DayOffset, x.Reason))
                 .ToList();

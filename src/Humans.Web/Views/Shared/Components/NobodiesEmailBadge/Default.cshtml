@@ -10,7 +10,6 @@
 
 @if (string.Equals(mode, "badge", StringComparison.Ordinal))
 {
-    @* Simple badge — shows icon when user has a nobodies.team email *@
     if (hasEmail)
     {
         <span class="badge bg-light text-dark border ms-1" title="Has a @@nobodies.team email account" data-bs-toggle="tooltip">
@@ -20,7 +19,6 @@
 }
 else if (string.Equals(mode, "status", StringComparison.Ordinal))
 {
-    @* Status mode — shows warning badge when email exists but isn't primary *@
     if (hasEmail && !isPrimary)
     {
         <span class="badge bg-warning text-dark ms-1"
@@ -32,7 +30,6 @@ else if (string.Equals(mode, "status", StringComparison.Ordinal))
 }
 else if (string.Equals(mode, "email", StringComparison.Ordinal))
 {
-    @* Email mode — shows the actual email address *@
     if (email is not null)
     {
         <code class="small">@email</code>
@@ -40,7 +37,6 @@ else if (string.Equals(mode, "email", StringComparison.Ordinal))
 }
 else if (string.Equals(mode, "provision", StringComparison.Ordinal))
 {
-    @* Provision mode — shows email or provisioning form (TeamAdmin/Members) *@
     if (email is not null)
     {
         <code class="small">@email</code>
@@ -63,7 +59,6 @@ else if (string.Equals(mode, "provision", StringComparison.Ordinal))
 }
 else if (string.Equals(mode, "detail", StringComparison.Ordinal))
 {
-    @* Detail mode — shows email + linked badge, or provisioning form (AdminDetail) *@
     if (email is not null)
     {
         <p class="mb-0">

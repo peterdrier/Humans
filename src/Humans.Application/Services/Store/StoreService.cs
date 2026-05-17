@@ -41,10 +41,6 @@ public class StoreService : IStoreService
         _logger = logger;
     }
 
-    // ==========================================================================
-    // Catalog (read)
-    // ==========================================================================
-
     public async Task<StoreIndexData> GetIndexDataAsync(
         Guid userId,
         bool isPrivilegedReader,
@@ -123,10 +119,6 @@ public class StoreService : IStoreService
         var p = await _repo.GetProductByIdAsync(productId, ct);
         return p is null ? null : MapProduct(p);
     }
-
-    // ==========================================================================
-    // Catalog (write — Phase 3)
-    // ==========================================================================
 
     public async Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
@@ -249,10 +241,6 @@ public class StoreService : IStoreService
             throw new ArgumentException("Deposit cannot be negative", nameof(draft));
     }
 
-    // ==========================================================================
-    // Orders (read)
-    // ==========================================================================
-
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
         var orders = await _repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
@@ -269,10 +257,6 @@ public class StoreService : IStoreService
         var productNames = await _repo.GetProductNamesByIdsAsync(productIds, ct);
         return MapOrder(o, productNames);
     }
-
-    // ==========================================================================
-    // Orders (write)
-    // ==========================================================================
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
     {
@@ -448,10 +432,6 @@ public class StoreService : IStoreService
         return _clock.GetCurrentInstant().InZone(tz).Date;
     }
 
-    // ==========================================================================
-    // Payments / invoices / summary (Phase 5+)
-    // ==========================================================================
-
     public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, StorePaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
 
@@ -585,10 +565,6 @@ public class StoreService : IStoreService
 
     public Task<IReadOnlyList<OrderSummaryDto>> GetAllOrderSummariesAsync(int year, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
-
-    // ==========================================================================
-    // Mapping
-    // ==========================================================================
 
     private static ProductDto MapProduct(StoreProduct p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,

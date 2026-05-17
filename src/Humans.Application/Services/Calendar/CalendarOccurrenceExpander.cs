@@ -9,18 +9,10 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Application.Services.Calendar;
 
 /// <summary>
-/// Pure expansion helper. Takes the prefiltered <see cref="CalendarEventInfo"/>
-/// rows that overlap a window, a team-name lookup, and the half-open window
-/// <c>[from, to)</c>; returns a sorted <see cref="CalendarOccurrence"/> list
-/// with recurrence expansion + exception merge applied.
+/// Pure expansion over prefiltered <see cref="CalendarEventInfo"/> rows for window <c>[from, to)</c>.
+/// Returns sorted <see cref="CalendarOccurrence"/> list with recurrence expansion + exception merge.
+/// No I/O — callable from the §15 caching decorator over cached projections.
 /// </summary>
-/// <remarks>
-/// Extracted from the inner <see cref="CalendarService"/> body so the §15
-/// caching decorator (<c>CachingCalendarService</c>, T-08) can drive expansion
-/// from cached <see cref="CalendarEventInfo"/> records without round-tripping
-/// to the database. No I/O, no DI — just a static function over immutable
-/// projections.
-/// </remarks>
 public static class CalendarOccurrenceExpander
 {
     public static IReadOnlyList<CalendarOccurrence> Expand(
@@ -40,8 +32,7 @@ public static class CalendarOccurrenceExpander
 
             if (string.IsNullOrWhiteSpace(e.RecurrenceRule))
             {
-                // Half-open window [from, to): event overlaps when end > from AND start < to.
-                // Zero-duration events (start == end) are included if start is strictly inside.
+                // Half-open [from, to): overlap when end > from AND start < to.
                 var end = e.EndUtc ?? e.StartUtc;
                 if (end <= from || e.StartUtc >= to) continue;
                 results.Add(new CalendarOccurrence(
@@ -136,8 +127,7 @@ public static class CalendarOccurrenceExpander
 
             if (ex.IsCancelled) continue; // drop
 
-            // Apply overrides; if the override moves the occurrence outside the window, drop it.
-            // Half-open [from, to): include when newStart < to AND (newEnd ?? newStart) > from.
+            // Apply overrides; drop if override moves it outside [from, to).
             var newStart = ex.OverrideStartUtc ?? occ.OccurrenceStartUtc;
             var newEnd = ex.OverrideEndUtc ?? occ.OccurrenceEndUtc;
             if (newStart >= to || (newEnd ?? newStart) <= from) continue;
@@ -153,9 +143,7 @@ public static class CalendarOccurrenceExpander
             });
         }
 
-        // Inject overrides whose ORIGINAL occurrence was outside the window but whose
-        // override MOVED the occurrence into the window (the expansion pipeline never
-        // materialized them, so the override loop above didn't see them either).
+        // Inject overrides that moved INTO the window from an out-of-window original (expansion missed them).
         foreach (var ev in events)
         {
             var owningTeamName = teamNamesById.TryGetValue(ev.OwningTeamId, out var name)
@@ -194,14 +182,7 @@ public static class CalendarOccurrenceExpander
         return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
 
-    /// <summary>
-    /// Filters a snapshot of <see cref="CalendarEventInfo"/> records to those
-    /// that could possibly produce an occurrence overlapping the half-open
-    /// window <c>[from, to)</c> — mirroring the SQL prefilter in
-    /// <c>CalendarRepository.GetEventsInWindowAsync</c>:
-    /// <c>StartUtc &lt;= to AND (RecurrenceUntilUtc == null || RecurrenceUntilUtc &gt;= from)</c>,
-    /// plus optional team filter.
-    /// </summary>
+    /// <summary>Mirrors the SQL prefilter in <c>CalendarRepository.GetEventsInWindowAsync</c>.</summary>
     public static List<CalendarEventInfo> FilterForWindow(
         IEnumerable<CalendarEventInfo> snapshot,
         Instant from,
@@ -219,12 +200,7 @@ public static class CalendarOccurrenceExpander
         return result;
     }
 
-    /// <summary>
-    /// Maps a domain <see cref="Humans.Domain.Entities.CalendarEvent"/> (with
-    /// its eagerly-loaded <c>Exceptions</c> collection) to the immutable
-    /// projection. The mapper lives next to the expander because both are
-    /// used by the cache warmup / refresh path.
-    /// </summary>
+    /// <summary>Maps domain <c>CalendarEvent</c> (with Exceptions) to the immutable projection.</summary>
     public static CalendarEventInfo ToInfo(Humans.Domain.Entities.CalendarEvent ev) => new(
         Id: ev.Id,
         Title: ev.Title,

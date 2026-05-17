@@ -9,8 +9,6 @@ public class WelcomeController : Controller
     [HttpGet("/Welcome")]
     public IActionResult Index()
     {
-        // If user is already authenticated and an active member,
-        // skip the welcome page and go straight to shifts.
         if (User.Identity?.IsAuthenticated ?? false)
         {
             var isActive = User.HasClaim(
@@ -22,7 +20,7 @@ public class WelcomeController : Controller
                 return Redirect("/Shifts");
             }
 
-            // Authenticated but not active — send them into the widget instead of re-rendering the explainer.
+            // Not active — send to widget, not explainer.
             return Redirect("/OnboardingWidget");
         }
 

@@ -18,12 +18,8 @@ namespace Humans.Application.Services.Email;
 /// through <see cref="IEmailOutboxRepository"/>. Time-sensitive templates
 /// (email verification, magic-link, workspace credentials) also trigger an
 /// immediate processor run through <see cref="IImmediateOutboxProcessor"/>.
+/// SMTP-send lives in <c>ProcessEmailOutboxJob</c>.
 /// </summary>
-/// <remarks>
-/// The SMTP-send path lives in <c>ProcessEmailOutboxJob</c> (Infrastructure)
-/// and dispatches through <see cref="IEmailTransport"/>. This service is
-/// intentionally cache- and transport-free.
-/// </remarks>
 public sealed class OutboxEmailService : IEmailService
 {
     private readonly IEmailOutboxRepository _outboxRepo;
@@ -168,8 +164,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        // Invariant long-date formatter, matches Humans.Infrastructure.Helpers.EmailDateTimeExtensions
-        // (kept here to avoid an Infrastructure→Application back-reference).
+        // Invariant long-date formatter; duplicated from Infrastructure.EmailDateTimeExtensions to avoid back-reference.
         var formattedDate = deletionDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
         var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await EnqueueAsync(userEmail, userName, content, "deletion_requested", cancellationToken);
@@ -326,12 +321,10 @@ public sealed class OutboxEmailService : IEmailService
     /// <inheritdoc />
     public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
     {
-        // Renderer performs the {{Code}} / {{Name}} substitution and markdown→HTML
-        // conversion (with HTML-encoded substitutions to prevent injection).
+        // Renderer HTML-encodes {{Code}}/{{Name}} substitutions to prevent injection.
         var rendered = _renderer.RenderCampaignCode(
             request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
 
-        // Generate unsubscribe headers and footer link for the CampaignCodes category
         var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(request.UserId, MessageCategory.CampaignCodes);
         var extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
         var unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(request.UserId, MessageCategory.CampaignCodes);
@@ -429,12 +422,8 @@ public sealed class OutboxEmailService : IEmailService
         string? replyTo = null,
         MessageCategory? category = null)
     {
-        // Look up user by email to set UserId for profile email history.
-        // Routed through IUserEmailService so the Profile section's user_emails
-        // table stays behind its owning service.
         var userId = await _userEmailService.GetUserIdByVerifiedEmailAsync(recipientEmail, cancellationToken);
 
-        // Check opt-out for non-System categories
         if (category is not null && category != MessageCategory.System && userId.HasValue)
         {
             if (await _commPrefService.IsOptedOutAsync(userId.Value, category.Value, cancellationToken))
@@ -446,7 +435,6 @@ public sealed class OutboxEmailService : IEmailService
             }
         }
 
-        // Generate unsubscribe URL and headers for opt-outable categories
         string? unsubscribeUrl = null;
         string? extraHeadersJson = null;
         if (category is not null && category != MessageCategory.System && userId.HasValue)

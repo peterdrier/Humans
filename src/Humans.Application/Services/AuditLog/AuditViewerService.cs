@@ -6,16 +6,7 @@ using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.AuditLog;
 
-/// <summary>
-/// <inheritdoc cref="IAuditViewerService"/>
-/// </summary>
-/// <remarks>
-/// Pure read-side service — wraps <see cref="IAuditLogService"/> for the raw
-/// queries and resolves actor, subject, and target-team names via
-/// <see cref="IUserService"/> and <see cref="ITeamService"/>. No DB access,
-/// no caching, no merge-chain logic of its own — those concerns stay in
-/// <see cref="IAuditLogService"/> where the audit-log table is owned.
-/// </remarks>
+/// <summary>Read-side wrapper over <see cref="IAuditLogService"/> that resolves actor/subject/team names. No DB or caching.</summary>
 public sealed class AuditViewerService : IAuditViewerService
 {
     private readonly IAuditLogService _auditLog;
@@ -78,9 +69,7 @@ public sealed class AuditViewerService : IAuditViewerService
         return new AuditEventPage(events, totalCount, anomalyCount);
     }
 
-    // ==========================================================================
-    // Resolution
-    // ==========================================================================
+    // ─── Resolution ───
 
     private async Task<IReadOnlyList<AuditEvent>> ResolveAsync(
         IReadOnlyList<AuditLogEntry> entries, CancellationToken ct)
@@ -221,10 +210,7 @@ public sealed class AuditViewerService : IAuditViewerService
     private async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct)
     {
-        // BurnerName is returned when the profile has one
-        // (memory/architecture/burnername-is-the-display-name.md). For users
-        // without a profile, or with a null BurnerName (Stub), the entry is
-        // absent from the dict — callers already handle null display names.
+        // BurnerName is the display name (memory/architecture/burnername-is-the-display-name.md). Users without one are absent.
         var users = await _userService.GetUserInfosAsync(userIds, ct);
         return users
             .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.Profile?.BurnerName))
@@ -288,9 +274,7 @@ public sealed class AuditViewerService : IAuditViewerService
 
     private static Guid? ResolveSubjectId(AuditLogEntry e)
     {
-        // Subject = the person acted upon. Guid.Empty means "no linked human"
-        // (e.g. WorkspaceAccount audits where the address isn't matched to a
-        // User); treat as null so callers don't render "Unknown".
+        // Subject = person acted upon. Guid.Empty → null (e.g. unmatched WorkspaceAccount addresses).
         Guid? subject = e.EntityType is "User" or "Profile" or "WorkspaceAccount"
             ? e.EntityId
             : string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal)

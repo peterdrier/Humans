@@ -10,14 +10,6 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Legal;
 
-/// <summary>
-/// Application-layer implementation of <see cref="ILegalDocumentSyncService"/>.
-/// Persists every legal-document mutation through
-/// <see cref="ILegalDocumentRepository"/> and delegates all GitHub I/O to
-/// <see cref="IGitHubLegalDocumentConnector"/>. The section's external-API
-/// side lives in <c>Humans.Infrastructure</c> as the connector
-/// implementation; everything domain-shaped lives here.
-/// </summary>
 public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
 {
     private readonly ILegalDocumentRepository _repository;
@@ -202,8 +194,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         var documents = await _repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
         if (documents.Count == 0) return [];
 
-        // Stitch team names via ITeamService instead of the obsolete
-        // LegalDocument-to-Team nav (memory/architecture/no-cross-section-ef-joins.md).
+        // Team names via ITeamService — no cross-section EF join (memory/architecture/no-cross-section-ef-joins.md).
         var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
         var teams = await _teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
 
@@ -272,7 +263,6 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
                 $"Need a file without language suffix (e.g. 'name.md'). Found languages: {found}");
         }
 
-        // Fetch canonical file to get commit SHA
         var canonicalResult = await _gitHub.GetFileContentAsync(canonicalPath, cancellationToken);
         if (canonicalResult is null)
         {
@@ -291,7 +281,6 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             return null;
         }
 
-        // Fetch all language files
         var content = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (lang, path) in languageFiles)
         {
@@ -326,18 +315,14 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
 
         if (!persisted)
         {
-            // Document row vanished between the read above and the write —
-            // skip the in-memory mutation, success log, and notification
-            // fan-out so we don't advertise a sync that didn't happen.
+            // Document row vanished between read and write — bail without log/fanout.
             _logger.LogWarning(
                 "Skipped version add for document {Name} ({DocumentId}): document row not found during persist.",
                 document.Name, document.Id);
             return null;
         }
 
-        // Mirror the write back onto the in-memory aggregate so callers of
-        // SyncAllDocumentsAsync observe the same shape they used to get when
-        // the service mutated a tracked entity in place.
+        // Mirror write onto in-memory aggregate so callers see the same shape as the old tracked-entity path.
         document.Versions.Add(newVersion);
         document.CurrentCommitSha = commitSha;
         document.LastSyncedAt = now;
@@ -348,8 +333,6 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",
             document.Name, versionNumber, commitSha, languages);
 
-        // Fan-out notifications — route cross-section reads through IProfileService
-        // rather than hitting profile storage directly.
         if (isNew && document.IsRequired)
         {
             await TryFanoutAsync(

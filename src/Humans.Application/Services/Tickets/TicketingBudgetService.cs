@@ -9,28 +9,8 @@ using NodaTime;
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ITicketingBudgetService"/>.
-/// Bridges the Tickets section (ticket_orders / ticket_attendees) into the
-/// Budget section (budget_line_items / ticketing_projections). Goes through
-/// <see cref="ITicketingBudgetRepository"/> for ticket reads and delegates all
-/// Budget-owned mutations to <see cref="IBudgetService"/> — this type never
-/// imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
+/// Tickets→Budget bridge: reads paid ticket sales, delegates BudgetLineItem/Projection writes to IBudgetService.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Section ownership.</b> <c>TicketingBudgetService</c> is a co-owner of the
-/// Tickets section, alongside <c>TicketQueryService</c> and
-/// <c>TicketSyncService</c> (both pending their own §15 migrations in
-/// sub-tasks #545a and #545c). It is the Tickets-owned gateway for feeding
-/// completed-week sales into Budget.
-/// </para>
-/// <para>
-/// <b>ticketing_projections ownership.</b> Remains Budget-owned per
-/// design-rules §8. All projection reads/writes route through
-/// <see cref="IBudgetService"/> — this service never touches that table.
-/// </para>
-/// </remarks>
 public sealed class TicketingBudgetService : ITicketingBudgetService
 {
     private readonly ITicketingBudgetRepository _ticketRepo;
@@ -54,8 +34,6 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
     {
         try
         {
-            // Read paid ticket sales through the narrow Tickets-owned repository.
-            // TicketCount is already pre-computed server-side (valid + checked-in only).
             var orders = await _ticketRepo.GetPaidOrderSummariesAsync(ct);
 
             var today = _clock.GetCurrentInstant().InUtc().Date;
@@ -80,8 +58,6 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
                 })
                 .ToList();
 
-            // Delegate the BudgetLineItem / TicketingProjection mutations to
-            // BudgetService, which owns those tables.
             return await _budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
         }
         catch (Exception ex)

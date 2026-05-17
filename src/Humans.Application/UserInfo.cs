@@ -4,10 +4,7 @@ using NodaTime;
 
 namespace Humans.Application;
 
-/// <summary>
-/// Compact projection of a <see cref="UserEmail"/> row carried inside
-/// <see cref="UserInfo"/>.
-/// </summary>
+/// <summary>Compact projection of <see cref="UserEmail"/> carried inside <see cref="UserInfo"/>.</summary>
 public sealed record UserEmailInfo(
     Guid Id,
     string Email,
@@ -18,10 +15,7 @@ public sealed record UserEmailInfo(
     string? ProviderKey,
     ContactFieldVisibility? Visibility);
 
-/// <summary>
-/// Compact projection of a <see cref="ContactField"/> row carried inside
-/// <see cref="ProfileInfo"/>.
-/// </summary>
+/// <summary>Compact projection of <see cref="ContactField"/> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
     Guid Id,
     ContactFieldType FieldType,
@@ -30,26 +24,20 @@ public sealed record ContactFieldInfo(
     ContactFieldVisibility Visibility,
     int DisplayOrder);
 
-/// <summary>
-/// Compact projection of a <see cref="ProfileLanguage"/> row.
-/// </summary>
+/// <summary>Compact projection of <see cref="ProfileLanguage"/>.</summary>
 public sealed record ProfileLanguageInfo(
     Guid Id,
     string LanguageCode,
     LanguageProficiency Proficiency);
 
-/// <summary>
-/// Compact projection of a <see cref="VolunteerHistoryEntry"/> row.
-/// </summary>
+/// <summary>Compact projection of <see cref="VolunteerHistoryEntry"/>.</summary>
 public sealed record VolunteerHistoryInfo(
     Guid Id,
     LocalDate Date,
     string EventName,
     string? Description);
 
-/// <summary>
-/// Compact projection of a <see cref="CommunicationPreference"/> row.
-/// </summary>
+/// <summary>Compact projection of <see cref="CommunicationPreference"/>.</summary>
 public sealed record CommunicationPreferenceInfo(
     Guid Id,
     MessageCategory Category,
@@ -59,9 +47,7 @@ public sealed record CommunicationPreferenceInfo(
     string UpdateSource,
     Instant? SubscribedAt);
 
-/// <summary>
-/// Compact projection of an <see cref="EventParticipation"/> row.
-/// </summary>
+/// <summary>Compact projection of <see cref="EventParticipation"/>.</summary>
 public sealed record EventParticipationInfo(
     Guid Id,
     int Year,
@@ -69,19 +55,14 @@ public sealed record EventParticipationInfo(
     ParticipationSource Source,
     Instant? DeclaredAt);
 
-/// <summary>
-/// Compact projection of an <c>AspNetUserLogins</c> row.
-/// </summary>
+/// <summary>Compact projection of an <c>AspNetUserLogins</c> row.</summary>
 public sealed record UserExternalLoginInfo(
     string Provider,
     string ProviderKey);
 
 /// <summary>
-/// Immutable projection of a <see cref="Profile"/> row carried inside
-/// <see cref="UserInfo"/>. Picture bytes are not carried — pictures live on
-/// the file share and are served via <c>ProfileController.Picture</c>; only
-/// <c>BirthdayDay</c> / <c>BirthdayMonth</c> are carried (year-of-birth
-/// excluded by design).
+/// Immutable projection of <see cref="Profile"/> carried inside <see cref="UserInfo"/>. Picture bytes excluded
+/// (served via ProfileController.Picture); only birthday day+month carried (no year).
 /// </summary>
 public sealed record ProfileInfo(
     Guid Id,
@@ -126,9 +107,7 @@ public sealed record ProfileInfo(
     /// <summary>Full name (FirstName + " " + LastName, trimmed).</summary>
     public string FullName => $"{FirstName} {LastName}".Trim();
 
-    /// <summary>
-    /// Best available name for email greetings: BurnerName > FirstName > "there".
-    /// </summary>
+    /// <summary>Email greeting name: BurnerName > FirstName > "there".</summary>
     public string EmailGreetingName =>
         !string.IsNullOrWhiteSpace(BurnerName) ? BurnerName :
         !string.IsNullOrWhiteSpace(FirstName) ? FirstName : "there";
@@ -137,33 +116,9 @@ public sealed record ProfileInfo(
 
 
 /// <summary>
-/// Unified, immutable read-model spanning the User and Profile sections.
-/// Issue #703: the canonical "everything-about-a-person" cached entity. Top-level
-/// fields mirror the public read surface of <see cref="User"/>; nested
-/// <see cref="Profile"/> mirrors <see cref="Domain.Entities.Profile"/>.
-/// Designed as a drop-in for consumer code that previously read
-/// <c>User</c> and <c>User.Profile</c> directly — symbol substitution is the
-/// migration path.
+/// Canonical "everything-about-a-person" cached read-model spanning User + Profile sections — see #703.
+/// Built by <see cref="Create"/> from 8 contributing tables. Sensitive fields ride along; visibility filtering is view-layer.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Built by <see cref="Create"/> from the 8 contributing tables: <c>users</c>,
-/// <c>user_emails</c>, <c>event_participations</c>, <c>user_logins</c> (AspNet),
-/// <c>profiles</c>, <c>contact_fields</c>, <c>profile_languages</c>,
-/// <c>volunteer_history_entries</c>. Held in a Singleton
-/// <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/>
-/// by the caching decorator. Cache size at 3k users × ~5–15 KB ≈ 15–45 MB —
-/// trivial at this scale.
-/// </para>
-/// <para>
-/// Sensitive fields (<see cref="ProfileInfo.Iban"/>,
-/// <see cref="ProfileInfo.BoardNotes"/>, <see cref="ProfileInfo.AdminNotes"/>,
-/// <see cref="ProfileInfo.EmergencyContactName"/> /
-/// <see cref="ProfileInfo.EmergencyContactPhone"/> /
-/// <see cref="ProfileInfo.EmergencyContactRelationship"/>) ride along on the
-/// cached god-object; visibility filtering is a view-layer concern.
-/// </para>
-/// </remarks>
 public sealed record UserInfo(
     Guid Id,
     [property: Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> — DisplayName is the raw legacy column mirror. See memory/architecture/burnername-is-the-display-name.md.", DiagnosticId = "HUM_USERINFO_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")] string DisplayName,
@@ -192,29 +147,15 @@ public sealed record UserInfo(
     IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
     /// <summary>
-    /// Canonical public-facing name. <see cref="ProfileInfo.BurnerName"/>
-    /// when a profile exists and has a non-blank burner name; otherwise
-    /// <see cref="DisplayName"/> (the legacy Identity column mirror).
-    /// <para>
-    /// External render callers (avatars, lists, popovers, notifications,
-    /// audit-log labels) MUST use this property, not <see cref="DisplayName"/>.
-    /// Reading <see cref="DisplayName"/> directly leaks the legacy column
-    /// onto public surfaces for any user who has chosen a burner name. The
-    /// only legitimate consumers of the raw <see cref="DisplayName"/> field
-    /// are debug screens (e.g. <c>/Users/Admin/Debug</c>) and the
-    /// <see cref="BurnerName"/> fallback itself.
-    /// </para>
+    /// Canonical public-facing name: <see cref="ProfileInfo.BurnerName"/> when set, else <see cref="DisplayName"/>.
+    /// External render callers MUST use this — reading <see cref="DisplayName"/> directly leaks the legacy column.
     /// </summary>
     public string BurnerName =>
         Profile is not null && !string.IsNullOrWhiteSpace(Profile.BurnerName)
             ? Profile.BurnerName
             : DisplayName;
 
-    /// <summary>
-    /// Canonical effective email — first verified UserEmail (primary-preferred),
-    /// falling back to the underlying Identity column when no UserEmails are
-    /// loaded. Mirrors <see cref="User.Email"/>.
-    /// </summary>
+    /// <summary>Effective email — first verified UserEmail (primary-preferred), falling back to Identity column. Mirrors <see cref="User.Email"/>.</summary>
     public string? Email
     {
         get
@@ -230,134 +171,69 @@ public sealed record UserInfo(
         }
     }
 
-    /// <summary>
-    /// True when any <see cref="UserEmails"/> row is verified — mirrors
-    /// <see cref="User.EmailConfirmed"/>.
-    /// </summary>
+    /// <summary>Any UserEmails row verified — mirrors <see cref="User.EmailConfirmed"/>.</summary>
     public bool EmailConfirmed => UserEmails.Any(e => e.IsVerified);
 
-    /// <summary>
-    /// Whether a deletion request is pending. Mirrors
-    /// <see cref="User.IsDeletionPending"/>.
-    /// </summary>
+    /// <summary>Deletion request pending — mirrors <see cref="User.IsDeletionPending"/>.</summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
-    /// <summary>
-    /// First verified <see cref="UserEmailInfo"/> where
-    /// <see cref="UserEmailInfo.IsPrimary"/> is true; null when no primary
-    /// verified address is loaded.
-    /// </summary>
+    /// <summary>First verified primary email; null when none loaded.</summary>
     public string? PrimaryEmail => UserEmails
         .Where(e => e.IsPrimary && e.IsVerified)
         .Select(e => e.Email)
         .FirstOrDefault();
 
-    /// <summary>
-    /// First verified <see cref="UserEmailInfo"/> tagged
-    /// <see cref="UserEmailInfo.IsGoogle"/>.
-    /// </summary>
+    /// <summary>First verified IsGoogle UserEmail.</summary>
     public string? GoogleEmail => UserEmails
         .Where(e => e.IsGoogle && e.IsVerified)
         .Select(e => e.Email)
         .FirstOrDefault();
 
-    /// <summary>
-    /// Every verified address on the user, primary first.
-    /// </summary>
+    /// <summary>All verified addresses, primary first.</summary>
     public IReadOnlyList<string> AllVerifiedEmails => UserEmails
         .Where(e => e.IsVerified)
         .OrderByDescending(e => e.IsPrimary)
         .Select(e => e.Email)
         .ToList();
 
-    /// <summary>
-    /// Marketing-category opt-in tri-state: null when no preference row exists
-    /// (e.g., user imported from an external source who never hit the prefs
-    /// flow), true when opted out, false when opted in.
-    /// </summary>
+    /// <summary>Marketing opt tri-state: null = no preference row, true = opted out, false = opted in.</summary>
     public bool? MarketingOptedOut => CommunicationPreferences
         .Where(c => c.Category == MessageCategory.Marketing)
         .Select(c => (bool?)c.OptedOut)
         .FirstOrDefault();
 
-    /// <summary>
-    /// True when the user has <em>any</em> event participation in the
-    /// <see cref="ParticipationStatus.Ticketed"/> or
-    /// <see cref="ParticipationStatus.Attended"/> state, across every year.
-    /// Year-agnostic — for diagnostic surfaces where "this user is on a
-    /// ticket somewhere in the cache" is the useful signal. For year-scoped
-    /// counts (dashboard tiles, the Tickets Venn) use
-    /// <see cref="HasTicketForYear"/> against the active event year so
-    /// counts don't carry stale post-rollover data.
-    /// </summary>
+    /// <summary>Any-year Ticketed/Attended participation — diagnostic only. Use <see cref="HasTicketForYear"/> for year-scoped counts.</summary>
     public bool HasTicket => EventParticipations.Any(p =>
         p.Status == ParticipationStatus.Ticketed ||
         p.Status == ParticipationStatus.Attended);
 
-    /// <summary>
-    /// True when the user has a <see cref="ParticipationStatus.Ticketed"/>
-    /// or <see cref="ParticipationStatus.Attended"/> participation in the
-    /// given <paramref name="year"/>. The right predicate for "current ticket
-    /// holder" stats — pass the active event year so post-rollover users
-    /// stop counting against the new year's totals.
-    /// </summary>
+    /// <summary>Ticketed/Attended participation for the given <paramref name="year"/> — canonical "current ticket holder" predicate.</summary>
     public bool HasTicketForYear(int year) => EventParticipations.Any(p =>
         p.Year == year &&
         (p.Status == ParticipationStatus.Ticketed ||
          p.Status == ParticipationStatus.Attended));
 
-    /// <summary>
-    /// True when this user should be treated as a Stub profile — no profile row,
-    /// explicit <see cref="ProfileState.Stub"/>, or a legacy <c>null</c> State
-    /// row that has not yet been backfilled by
-    /// <c>CachingUserService.PopulateStateIfNullAsync</c>. Paranoid /
-    /// defense-in-depth predicate: callers writing consent records or
-    /// admitting the user to flows that require a verified legal name MUST
-    /// block on this.
-    /// </summary>
+    /// <summary>Stub profile: no profile row, explicit Stub state, or legacy null State. Callers writing consents must block on this.</summary>
     public bool IsStub =>
         Profile is null || Profile.State is null or ProfileState.Stub;
 
-    /// <summary>
-    /// A regular user of the site: has a profile and hasn't been rejected
-    /// (failed consent check). Does NOT require <see cref="ProfileInfo.IsApproved"/>
-    /// — Consent Coordinator approval is a separate gate on top of this.
-    /// </summary>
+    /// <summary>Has profile and not rejected. Does NOT require <see cref="ProfileInfo.IsApproved"/> (separate Consent Coordinator gate).</summary>
     public bool IsActive =>
         Profile is not null && Profile.RejectedAt is null;
 
-    /// <summary>
-    /// True when the user has a profile in <see cref="ProfileState.Suspended"/>.
-    /// Canonical "is this user suspended" predicate — read this instead of paving
-    /// <c>Profile.State == ProfileState.Suspended</c> at call sites (or worse,
-    /// the legacy <c>Profile.IsSuspended</c> bool — see
-    /// <c>memory/code/no-issuspended.md</c>).
-    /// </summary>
+    /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md.</summary>
     public bool IsSuspended =>
         Profile?.State == ProfileState.Suspended;
 
-    /// <summary>
-    /// True when the user's profile has been approved by the Consent Coordinator.
-    /// Canonical "is this user approved" predicate — read this instead of chaining
-    /// <c>Profile?.IsApproved ?? false</c> at call sites (see
-    /// <c>memory/architecture/derived-predicates-on-userinfo.md</c>).
-    /// </summary>
+    /// <summary>Canonical "approved by Consent Coordinator" predicate — see memory/architecture/derived-predicates-on-userinfo.md.</summary>
     public bool IsApproved => Profile?.IsApproved ?? false;
 
-    /// <summary>
-    /// True when this user has a <see cref="ProfileInfo"/> row attached. Canonical
-    /// "does this user have a profile yet" predicate — callers should never have
-    /// to navigate <c>userInfo.Profile is not null</c> themselves.
-    /// </summary>
+    /// <summary>Canonical "has profile" predicate.</summary>
     public bool HasProfile => Profile is not null;
 
     /// <summary>
-    /// True when the user has a profile and BurnerName + FirstName + LastName
-    /// are all non-blank. Canonical "has a name" predicate — gates Stub→Active
-    /// promotion, Consent Coordinator review queue inclusion, and any flow
-    /// that requires a verified legal name (consents, ticket transfers, shift
-    /// signup). Reads field values directly, ignores <see cref="ProfileInfo.State"/>
-    /// so legacy null-State rows are evaluated the same way Active rows are.
+    /// Has profile with non-blank BurnerName + FirstName + LastName. Gates Stub→Active, CC review queue, consents, transfers, signup.
+    /// Ignores State so legacy null-State rows behave like Active rows.
     /// </summary>
     public bool HasRequiredNameFields =>
         Profile is not null
@@ -365,22 +241,11 @@ public sealed record UserInfo(
         && !string.IsNullOrWhiteSpace(Profile.FirstName)
         && !string.IsNullOrWhiteSpace(Profile.LastName);
 
-    /// <summary>
-    /// True when this user belongs in the Consent Coordinator's review queue —
-    /// active (has profile, not rejected), has a legal name, not yet approved.
-    /// CC review cannot happen until the user fills in their name, so
-    /// <see cref="HasRequiredNameFields"/> gates queue inclusion. Single
-    /// predicate shared by review-queue and nav-badge call sites so the queue
-    /// list and its count cannot drift.
-    /// </summary>
+    /// <summary>In CC review queue: active, named, not yet approved. Shared by queue list + nav badge so they cannot drift.</summary>
     public bool NeedsConsentReview =>
         IsActive && HasRequiredNameFields && !Profile!.IsApproved;
 
-    /// <summary>
-    /// Builds a <see cref="UserInfo"/> from the 8 contributing tables. Each
-    /// input is the raw read-only entity (or empty list) — all snapshotting,
-    /// projection, and ordering happens here so the cached payload is immutable.
-    /// </summary>
+    /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables; snapshotting + ordering happen here so the cached payload is immutable.</summary>
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,

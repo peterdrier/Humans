@@ -16,10 +16,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-// Page entry uses the WIDER policy so any team coordinator / sub-team manager
-// can see the dashboard. Privileged sub-panels (coordinator activity, pending
-// shifts, voluntell action) stay gated by the NARROWER ShiftDashboardAccess
-// policy in the view itself.
+// Wider policy for page entry; privileged sub-panels gated by ShiftDashboardAccess in views.
 [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
 [Route("Shifts/Dashboard")]
 public class ShiftDashboardController : HumansControllerBase
@@ -59,12 +56,7 @@ public class ShiftDashboardController : HumansControllerBase
         return parsed.Success ? parsed.Value : null;
     }
 
-    // When a period/sub-period is selected, JS auto-populates the date inputs
-    // with that range as a visual cue — dates are display-only in that case.
-    // Only when period is null AND a date is present do dates take over as the
-    // filter on the urgent-shifts list. Internal for unit-test access; this is
-    // the server's enforcement of the period↔date-range mutex
-    // (Shifts.md invariant line 237).
+    // Server-side period↔date-range mutex (Shifts.md L237): dates filter only when period is null.
     internal static (LocalDate? activeStart, LocalDate? activeEnd) ResolveActiveDateRange(
         ShiftPeriod? period, LocalDate? filterStartDate, LocalDate? filterEndDate)
     {
@@ -112,9 +104,7 @@ public class ShiftDashboardController : HumansControllerBase
         return View(model);
     }
 
-    // Privileged action — overrides the controller-level wider policy with the
-    // narrow ShiftDashboardAccess so subteam managers can't volunteer-search by
-    // hitting the endpoint directly.
+    // Auth: narrow policy overrides controller-level wider one (subteam managers can't reach directly).
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
@@ -148,9 +138,7 @@ public class ShiftDashboardController : HumansControllerBase
             _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
         };
 
-    // Privileged action — only the narrow ShiftDashboardAccess role list can
-    // assign humans to shifts. Hides from the wider ShiftDepartmentManager
-    // policy that gates the page entry.
+    // Auth: narrow policy overrides controller-level wider one — only ShiftDashboardAccess can assign.
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpPost("Voluntell")]
     [ValidateAntiForgeryToken]

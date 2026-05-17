@@ -7,7 +7,6 @@ namespace Humans.Application.Services.GoogleIntegration;
 /// Manages @nobodies.team user accounts via the Google Workspace Admin SDK
 /// (Directory API), going through <see cref="IWorkspaceUserDirectoryClient"/>
 /// so the Application project stays free of <c>Google.Apis.*</c> imports.
-/// Migrated to the §15 pattern as part of issue #554 (Google Integration).
 /// </summary>
 public sealed class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
 {

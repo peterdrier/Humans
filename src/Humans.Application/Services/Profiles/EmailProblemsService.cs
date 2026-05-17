@@ -105,12 +105,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 EmailProblemKind.GhostExternalLogins, ghostId, null, null, null, null));
         }
 
-        // Case 9: legacy AspNetIdentity Email column populated but no matching
-        // verified UserEmail row exists. UserInfo carries both the legacy
-        // column (IdentityEmailColumn) and the loaded UserEmail rows —
-        // Profile-less users (mailing-list / ticketing imports) are
-        // surfaced too because we iterate every UserInfo, not just the
-        // profile-having subset.
+        // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
             var legacy = info.IdentityEmailColumn;
@@ -152,8 +147,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
         Guid actorUserId, CancellationToken ct = default)
     {
-        // actorUserId is captured by the caller's audit row; the scanner is
-        // admin-invoked and the per-row audit lives at the controller level.
+        // actorUserId captured by caller's audit row; per-row audit at controller.
         _ = actorUserId;
 
         var allInfos = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
@@ -168,11 +162,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
-            // Issue nobodies-collective/Humans#697: write the legacy address as
-            // a plain verified row. The (Provider, ProviderKey) tag is no
-            // longer authoritative for OAuth identity (AspNetUserLogins is) —
-            // the next OAuth sign-in's reconcile finds the matching row by
-            // address and attaches the tag via TagMoved.
+            // see nobodies-collective/Humans#697 — plain verified row; reconcile attaches tag on next OAuth sign-in.
             await _userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
             backfilled.Add((info.Id, legacy));
         }

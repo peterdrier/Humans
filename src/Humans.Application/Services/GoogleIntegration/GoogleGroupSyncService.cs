@@ -562,35 +562,16 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         return FormatGoogleError($"Google group add failed for {email}", error);
     }
 
-    /// <summary>
-    /// Matches Cloud Identity Group membership error messages that indicate
-    /// the target email is not backed by a real Google identity. Covers
-    /// <c>groups.memberships.create</c> 403 ("member does not have a Google
-    /// account", "invalid member") and 400 / Error(4002) ("precondition
-    /// check failed", "membership cannot be created"). Group-specific — do
-    /// NOT use on the Drive path, where "precondition check failed" can
-    /// also mean an admin-configured sharing-outside-domain restriction.
-    /// See issue nobodies-collective/Humans#677.
-    /// </summary>
+    /// <summary>Cloud Identity group-membership "no Google account" detector. Group-specific — Drive path has its own predicate (#677).</summary>
     internal static bool IsTargetMemberRejection(string rawMessage)
         => rawMessage.Contains("invalid member", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid email", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid user", StringComparison.OrdinalIgnoreCase)
-            // Cloud Identity groups.memberships.create — 403 "member does
-            // not have a Google account" / "no Google account" / variants.
-            // Same phrasings appear on Drive 400 responses; the Drive
-            // detector lives separately on GoogleWorkspaceSyncService so
-            // each path owns its own predicate.
             || rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
-            // Cloud Identity groups.memberships.create — 400 / Error(4002)
-            // "Membership ... cannot be created since precondition check failed."
-            // The precondition is that the entity resolves to a real identity.
-            // These phrases are NOT safe on the Drive path: Drive returns
-            // the same 400 wording for sharing-policy / shared-drive
-            // restrictions that have nothing to do with the recipient.
+            // "precondition check failed" is safe HERE (group path) but NOT on Drive (sharing-policy overlap).
             || rawMessage.Contains("precondition check failed", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("error(4002)", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("membership cannot be created", StringComparison.OrdinalIgnoreCase);

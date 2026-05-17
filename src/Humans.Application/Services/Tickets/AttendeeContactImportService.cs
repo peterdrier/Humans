@@ -56,23 +56,20 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         var unmatched = await _ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
         var decisions = new List<AttendeeImportDecision>();
 
-        // Rows without an email cannot be grouped — emit one decision each.
+        // No email = one decision each (ungroupable).
         foreach (var a in unmatched.Where(a => string.IsNullOrWhiteSpace(a.AttendeeEmail)))
         {
             decisions.Add(await ClassifyAsync(a, [], [], ct));
         }
 
-        // Rows with an email: group by normalized email so one buyer = one decision.
+        // Group by normalized email so one buyer = one decision.
         var grouped = unmatched
             .Where(a => !string.IsNullOrWhiteSpace(a.AttendeeEmail))
             .GroupBy(a => a.AttendeeEmail!.Trim(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var group in grouped)
         {
-            // Sort by VendorTicketId (ordinal) so the lead is stable across plan
-            // refreshes — GetUnmatchedActiveAttendeesAsync has no ORDER BY, so
-            // members[0] would otherwise depend on DB return order, and the
-            // admin's selected AttendeeId could shift between GET and POST.
+            // Stable lead across GET/POST — repo has no ORDER BY.
             var members = group.OrderBy(m => m.VendorTicketId, StringComparer.Ordinal).ToList();
             var lead = members[0];
             var additional = members.Skip(1).Select(m => m.Id).ToList();
@@ -114,15 +111,11 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         {
             attempted++;
 
-            // Collect the group: lead + any additional attendees in the same email
-            // group (one buyer with multiple tickets on the same email).
             var groupIds = new List<Guid>(1 + (d.AdditionalAttendeeIds?.Count ?? 0))
                 { d.AttendeeId };
             if (d.AdditionalAttendeeIds is { Count: > 0 } more) groupIds.AddRange(more);
 
-            // Filter to the subset still present with the same email at apply time.
-            // Per-attendee drift (email change or row deletion) is tolerated as long
-            // as the lead is intact — the others are logged and skipped.
+            // Tolerate per-attendee drift between plan and apply (lead must remain).
             var resolved = new List<TicketAttendee>();
             foreach (var gid in groupIds)
             {
@@ -133,9 +126,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                         gid, d.Email);
                     continue;
                 }
-                // Trim both sides to match plan-time grouping (which uses Trim() +
-                // OrdinalIgnoreCase). Without trimming, "buyer@x.com" vs " buyer@x.com "
-                // would be treated as drift and silently skipped during fan-out.
+                // Trim+OrdinalIgnoreCase to match plan-time grouping.
                 if (!string.Equals(ga.AttendeeEmail?.Trim(), d.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning(
@@ -146,7 +137,6 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 resolved.Add(ga);
             }
 
-            // If nothing in the group survived, the decision as a whole is void.
             if (resolved.Count == 0)
             {
                 vanished++;
@@ -233,8 +223,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             await _ticketRepository.UpsertAttendeesAsync(toUpsert, ct);
         }
 
-        // Evict before the participation loop — if SetParticipationFromTicketSyncAsync throws,
-        // the attendee mutation above must still invalidate ticket caches.
+        // Evict before participation loop so attendee mutation always invalidates caches.
         _ticketQuery.InvalidateAfterContactImport();
 
         var active = await _shifts.GetActiveAsync();

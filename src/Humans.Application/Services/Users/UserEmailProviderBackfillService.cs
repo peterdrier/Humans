@@ -10,30 +10,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-/// <summary>
-/// Implementation of <see cref="IUserEmailProviderBackfillService"/>. See
-/// interface XML doc for context.
-///
-/// <para>
-/// At ~500-user scale a full table scan is trivial. The service loads every
-/// user (with their <c>UserEmails</c> via <see cref="IUserRepository.GetAllAsync"/>)
-/// and every user's <c>AspNetUserLogins</c> rows via the existing
-/// <see cref="UserManager{TUser}.GetLoginsAsync"/> contract. For each user it
-/// (a) tags the matching <see cref="UserEmail"/> row with
-/// <c>Provider</c>/<c>ProviderKey</c> for each <c>AspNetUserLogins</c> entry
-/// and (b) flips <c>IsGoogle = true</c> on the row matching the legacy
-/// Google-email shadow column (or the legacy <c>IsOAuth=true</c> row when the
-/// shadow value is null).
-/// </para>
-///
-/// <para>
-/// The legacy CLR properties (<c>User.GoogleEmail</c>, <c>UserEmail.IsOAuth</c>)
-/// are gone; the columns survive on disk as EF shadow properties and are read
-/// here through narrow repository projections
-/// (<see cref="IUserRepository.GetLegacyGoogleEmailsAsync"/> and
-/// <see cref="IUserEmailRepository.GetLegacyBackfillSnapshotsByUserIdAsync"/>).
-/// </para>
-/// </summary>
+// One-shot backfill: tags UserEmail rows with Provider/ProviderKey from AspNetUserLogins; flips IsGoogle from the legacy shadow column.
 public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfillService
 {
     private readonly IUserRepository _userRepository;
@@ -45,10 +22,6 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
 
     public UserEmailProviderBackfillService(
         IUserRepository userRepository,
-        // Users + Profiles are one ownership section ("Humans") per
-        // memory/architecture/users-profiles-one-section.md. IUserEmailRepository
-        // carries [Section("Humans")] so HUM0017 sees the injection as
-        // intra-section.
         IUserEmailRepository userEmailRepository,
         UserManager<User> userManager,
         IAuditLogService auditLogService,

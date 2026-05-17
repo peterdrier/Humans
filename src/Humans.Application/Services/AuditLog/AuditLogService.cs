@@ -11,34 +11,9 @@ using NodaTime;
 namespace Humans.Application.Services.AuditLog;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IAuditLogService"/>. Goes
-/// through <see cref="IAuditLogRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
+/// <see cref="IAuditLogService"/> impl. Append-only (design-rules §12); best-effort — repo failures logged and swallowed (§7a).
+/// Callers must audit AFTER business save. Also <see cref="IUserDataContributor"/> for GDPR export.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <c>audit_log</c> is append-only per design-rules §12 — this service only
-/// appends entries; there is no update or delete path. Each <c>LogAsync</c>
-/// call persists its entry immediately (auto-saved by the repository). The
-/// prior pattern (adding to the caller's shared Scoped <c>DbContext</c> and
-/// relying on a downstream <c>SaveChanges</c>) is gone; it is replaced by
-/// per-call persistence, which matches how recently-migrated sections
-/// (Profile, User, Governance, Budget, City Planning) write.
-/// </para>
-/// <para>
-/// Audit is <b>best-effort</b> per design-rules §7a: repository save failures
-/// are logged at error level and swallowed so an audit hiccup never breaks
-/// the business operation that invoked it. Callers are still required to
-/// invoke audit <em>after</em> the business save has succeeded so a business
-/// rollback never leaves a ghost audit row.
-/// </para>
-/// <para>
-/// Implements <see cref="IUserDataContributor"/> so the GDPR export
-/// orchestrator can assemble per-user audit slices without crossing the
-/// section boundary.
-/// </para>
-/// </remarks>
 public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 {
     private readonly IAuditLogRepository _repo;
@@ -58,9 +33,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         _logger = logger;
     }
 
-    // ==========================================================================
-    // Writes — append-only
-    // ==========================================================================
+    // ─── Writes (append-only) ───
 
     /// <inheritdoc />
     public async Task LogAsync(AuditAction action, string entityType, Guid entityId,
@@ -151,17 +124,14 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         }
         catch (Exception ex)
         {
-            // Audit is best-effort. A save failure must not propagate into the
-            // business operation that invoked it — log loudly and move on.
+            // Best-effort: log loudly, do not propagate (would break the business op).
             _logger.LogError(ex,
                 "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
                 entry.Id, entry.Action, entry.EntityType, entry.EntityId);
         }
     }
 
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
+    // ─── Reads ───
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId)
@@ -173,8 +143,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId)
     {
-        // Chain-follow merge tombstones so a fold-target's Google sync history
-        // transparently surfaces rows still attributed to merged source ids.
+        // Chain-follow merge tombstones for source-id-attributed rows.
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId);
         if (sourceIds.Count == 0)
         {
@@ -232,8 +201,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones so a fold-target's audit history
-        // transparently surfaces rows still attributed to merged source ids.
+        // Chain-follow merge tombstones for source-id-attributed rows.
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
         if (sourceIds.Count == 0)
         {
@@ -257,9 +225,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         int limit = 20,
         CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones when a userId filter is supplied so a
-        // fold-target's history transparently surfaces rows still attributed
-        // to merged source ids.
+        // Chain-follow merge tombstones when userId is supplied.
         IReadOnlyCollection<Guid>? userIds = null;
         if (userId.HasValue)
         {
@@ -281,14 +247,11 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         return entries.Select(ToSnapshot).ToList();
     }
 
-    // ==========================================================================
-    // IUserDataContributor (GDPR export)
-    // ==========================================================================
+    // ─── IUserDataContributor (GDPR export) ───
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow merge tombstones so a fold-target's GDPR export
-        // transparently includes rows still attributed to merged source ids.
+        // Chain-follow merge tombstones for source-id-attributed rows.
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
         IReadOnlyList<AuditLogEntry> entries;
         if (sourceIds.Count == 0)
@@ -303,12 +266,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             entries = await _repo.GetAllForUserIdsContributorAsync(allIds, ct);
         }
 
-        // The "Actor" role attribution is preserved against the target id.
-        // Source-tombstone rows where ActorUserId is one of the source ids
-        // are surfaced as Subject rows for the target — which is the correct
-        // export semantic post-merge: the target now owns the source's
-        // history and the per-row actor context is anonymized along with
-        // the source User row by AnonymizeForMergeAsync.
+        // Post-merge: source rows surface as Subject for the target (actor context anonymized via AnonymizeForMergeAsync).
         var shaped = entries.Select(a => new
         {
             a.Action,

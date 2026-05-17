@@ -14,29 +14,23 @@ public class TicketDashboardViewModel
     public int BreakEvenTarget { get; set; }
     public string Currency { get; set; } = "EUR";
 
-    // Fee tracking
     public decimal TotalStripeFees { get; set; }
     public decimal TotalApplicationFees { get; set; }
     public decimal NetRevenue { get; set; }
 
-    // Fee breakdown by payment method
     public List<PaymentMethodFeeBreakdown> FeesByPaymentMethod { get; set; } = [];
 
-    // Daily sales chart data
     public List<DailySalesPoint> DailySales { get; set; } = [];
 
-    // Problems / attention items
     public int UnmatchedOrderCount { get; set; }
     public TicketSyncStatus SyncStatus { get; set; }
     public string? SyncError { get; set; }
     public Instant? LastSyncAt { get; set; }
 
-    // Recent orders (last 10)
     public List<TicketOrderSummary> RecentOrders { get; set; } = [];
 
     public bool IsConfigured { get; set; }
 
-    // Who hasn't bought count (for dashboard link)
     public int WhoHasntBoughtCount { get; set; }
 
     // Set membership across UserInfo cache for the Venn + UpSet diagrams.

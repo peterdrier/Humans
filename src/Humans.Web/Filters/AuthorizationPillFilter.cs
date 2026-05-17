@@ -9,20 +9,13 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace Humans.Web.Filters;
 
 /// <summary>
-/// Reads [Authorize(Roles = "...")] and [Authorize(Policy = "...")] from the current
-/// action and controller, formats the role list into friendly group names, and sets
-/// ViewData["AuthPillRoles"] so the layout can render an authorization indicator pill.
-/// Only runs for authenticated users who already have access to the page.
+/// Sets ViewData["AuthPillRoles"] from action/controller [Authorize] role+policy attributes so the layout renders the auth pill.
 /// </summary>
 public class AuthorizationPillFilter : IActionFilter
 {
-    // Synthetic pill label for users granted access via the IsAnyTeamManagerOrCoordinator
-    // requirement (department coordinator or sub-team manager). Not a real Identity
-    // role — only used for the pill's display string. Listed in PolicyRoles below
-    // alongside the role-based admins for any policy that admits team coordinators.
+    // Synthetic label for IsAnyTeamManagerOrCoordinator — display-only, not a real role.
     private const string TeamCoordinatorPillLabel = "TeamCoordinator";
 
-    // Map raw role names to user-friendly display labels
     private static readonly Dictionary<string, string> RoleDisplayNames = new(StringComparer.Ordinal)
     {
         [RoleNames.Admin] = "Admin",
@@ -41,7 +34,6 @@ public class AuthorizationPillFilter : IActionFilter
         [RoleNames.StoreAdmin] = "Store Admin"
     };
 
-    // Map policy names to their constituent roles for pill display
     private static readonly Dictionary<string, string[]> PolicyRoles = new(StringComparer.Ordinal)
     {
         [PolicyNames.AdminOnly] = [RoleNames.Admin],
@@ -60,9 +52,7 @@ public class AuthorizationPillFilter : IActionFilter
         [PolicyNames.ReviewQueueAccess] = [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ConsentCoordinatorBoardOrAdmin] = [RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ShiftDashboardAccess] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
-        // ShiftDepartmentManager admits the same admins PLUS any team coordinator /
-        // sub-team manager via IsAnyTeamManagerOrCoordinatorRequirement. The pill shows
-        // the full universe of accessors, not just admin roles.
+        // Admits team coordinators/sub-team managers via IsAnyTeamManagerOrCoordinatorRequirement.
         [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator, TeamCoordinatorPillLabel],
         [PolicyNames.PrivilegedSignupApprover] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
         [PolicyNames.VolunteerManager] = [RoleNames.Admin, RoleNames.VolunteerCoordinator],
@@ -71,24 +61,16 @@ public class AuthorizationPillFilter : IActionFilter
 
     public void OnActionExecuting(ActionExecutingContext context)
     {
-        // Only show pill to authenticated users
         if (context.HttpContext.User.Identity?.IsAuthenticated != true)
             return;
 
         if (context.ActionDescriptor is not ControllerActionDescriptor descriptor)
             return;
 
-        // Skip if action has [AllowAnonymous] — endpoint is open despite controller-level [Authorize]
         if (descriptor.MethodInfo.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true).Any())
             return;
 
-        // Collect roles from [Authorize(Roles = "...")] and [Authorize(Policy = "...")].
-        // Action-level [Authorize] attributes are an OVERRIDE, not an addition: when an
-        // action carries its own [Authorize], the displayed pill must reflect ONLY that
-        // narrower restriction (otherwise the pill is a misleading union of both layers
-        // — e.g. ShiftDashboard's controller-wide ShiftDepartmentManager would bleed
-        // "Team Coordinator" into the pill on the SearchVolunteers/Voluntell actions
-        // that are actually gated by the narrower ShiftDashboardAccess).
+        // Action-level [Authorize] OVERRIDES controller-level (narrower restriction wins) — otherwise pill misleads with the union.
         var roles = new HashSet<string>(StringComparer.Ordinal);
 
         var actionAuthAttrs = descriptor.MethodInfo
@@ -106,11 +88,10 @@ public class AuthorizationPillFilter : IActionFilter
             CollectRolesFromAttributes(controllerAuthAttrs, roles);
         }
 
-        // If no role-based restrictions, no pill to show
         if (roles.Count == 0)
             return;
 
-        // Admin has full access — only show "Admin only" when Admin is the sole role
+        // "Admin only" pill when Admin is the sole role.
         var hasAdmin = roles.Remove(RoleNames.Admin);
         if (roles.Count == 0)
         {
@@ -121,7 +102,6 @@ public class AuthorizationPillFilter : IActionFilter
             return;
         }
 
-        // Convert non-Admin roles to display names
         var displayNames = roles
             .Select(r => RoleDisplayNames.TryGetValue(r, out var display) ? display : r)
             .OrderBy(d => d, StringComparer.Ordinal)
@@ -135,14 +115,12 @@ public class AuthorizationPillFilter : IActionFilter
 
     public void OnActionExecuted(ActionExecutedContext context)
     {
-        // No post-action processing needed
     }
 
     private static void CollectRolesFromAttributes(IEnumerable<AuthorizeAttribute> attributes, HashSet<string> roles)
     {
         foreach (var attr in attributes)
         {
-            // Extract roles from Roles property
             if (!string.IsNullOrEmpty(attr.Roles))
             {
                 foreach (var role in attr.Roles.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
@@ -151,7 +129,6 @@ public class AuthorizationPillFilter : IActionFilter
                 }
             }
 
-            // Extract roles from Policy property via static mapping
             if (!string.IsNullOrEmpty(attr.Policy) && PolicyRoles.TryGetValue(attr.Policy, out var policyRoleList))
             {
                 foreach (var role in policyRoleList)

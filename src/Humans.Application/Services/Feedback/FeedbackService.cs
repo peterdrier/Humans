@@ -19,16 +19,12 @@ using Humans.Application.Interfaces.Profiles;
 namespace Humans.Application.Services.Feedback;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IFeedbackService"/>. Goes
-/// through <see cref="IFeedbackRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph. Cross-section reads
-/// (reporter/assignee/resolver display names, team names, effective emails)
-/// go through <see cref="IUserService"/>, <see cref="ITeamService"/>, and
-/// <see cref="IUserEmailService"/>, and are
-/// projected into <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>
-/// records before returning. Nav-badge cache invalidation is routed through
-/// <see cref="INavBadgeCacheInvalidator"/> rather than <c>IMemoryCache</c> directly.
+/// Application-layer implementation of <see cref="IFeedbackService"/>.
+/// Cross-section reads (display names, team names, effective emails) go through
+/// <see cref="IUserService"/>, <see cref="ITeamService"/>, and
+/// <see cref="IUserEmailService"/> and are projected into
+/// <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>.
+/// Nav-badge invalidation routes through <see cref="INavBadgeCacheInvalidator"/>.
 /// </summary>
 public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IUserMerge
 {
@@ -114,7 +110,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             UpdatedAt = now
         };
 
-        // Handle screenshot upload.
         if (screenshot is { Length: > 0 })
         {
             if (screenshot.Length > MaxScreenshotBytes)
@@ -205,7 +200,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         }
         else
         {
-            // Reopening — clear resolved fields.
             report.ResolvedAt = null;
             report.ResolvedByUserId = null;
         }
@@ -276,11 +270,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         report.UpdatedAt = now;
 
-        // Admin replies: send the response email BEFORE persisting. If SMTP
-        // throws, the new message and LastAdminMessageAt timestamp are never
-        // committed, so the request returns an error and can be safely retried
-        // without duplicating the admin message. The in-app notification stays
-        // post-save as a best-effort side effect.
+        // Send email BEFORE persisting so an SMTP throw leaves no committed message → safe to retry.
         if (isAdmin)
         {
             await SendAdminResponseEmailAsync(report, content, cancellationToken);
@@ -305,8 +295,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         var reportLink = $"/Feedback/{report.Id}";
 
-        // Resolve the reporter user and their effective email via the services
-        // that own that data (no cross-domain navigation).
         var reporter = await _userService.GetByIdAsync(report.UserId, ct);
         var emails = await _userEmailService.GetNotificationTargetEmailsAsync(
             [report.UserId], ct);
@@ -360,9 +348,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         var changes = new List<string>();
 
-        // Capture previous assignee/team for the audit description. Resolve
-        // the old name via the services since the tracked entity has no nav
-        // included.
+        // Capture previous assignee/team names for the audit description.
         string? oldAssigneeName = null;
         string? oldTeamName = null;
 
@@ -499,11 +485,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         return [new UserDataSlice(GdprExportSections.FeedbackReports, shaped)];
     }
 
-    // ==========================================================================
-    // Cross-domain nav stitching — populates [Obsolete]-marked nav properties
-    // in memory from service calls so controllers/views do not need to change.
-    // Design-rules §6b "in-memory join" pattern.
-    // ==========================================================================
+    // Cross-domain nav stitching (design-rules §6b in-memory join).
 #pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
 
     private async Task<IReadOnlyDictionary<Guid, string>> StitchCrossDomainNavsAsync(
@@ -558,9 +540,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         return await BuildDisplayNamesAsync(userIds, ct);
     }
 
-    // Resolves display names via UserInfo.BurnerName, which implements the
-    // BurnerName-first fallback (memory/architecture/burnername-is-the-display-name.md):
-    // Profile.BurnerName when present, else User.DisplayName.
+    // Display names via UserInfo.BurnerName (memory/architecture/burnername-is-the-display-name.md).
     private async Task<IReadOnlyDictionary<Guid, string>> BuildDisplayNamesAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct)

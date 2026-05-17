@@ -10,24 +10,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-/// <summary>
-/// Idempotent account provisioning for import jobs (ticket import, MailerLite
-/// import). Looks up existing users by email across all <see cref="UserEmail"/>
-/// records and creates a new User + UserEmail when no match exists.
-/// </summary>
-/// <remarks>
-/// Application-layer implementation — goes through <see cref="IUserRepository"/>
-/// for User reads/writes and <see cref="IUserEmailService"/> for UserEmail
-/// row creation (issue nobodies-collective/Humans#687: every UserEmail-add
-/// path must go through the orchestrator that runs the Primary + Google
-/// invariants). Never injects <c>DbContext</c>.
-/// <para>
-/// User creation itself still goes through <see cref="UserManager{TUser}"/>
-/// because ASP.NET Identity owns the password hashing / concurrency stamp /
-/// security stamp fields. UserManager is a framework abstraction and is
-/// allowed in the Application layer (see design-rules §2a exception).
-/// </para>
-/// </remarks>
+// Idempotent account provisioning for import jobs (ticket import, MailerLite). UserManager allowed per §2a exception.
 public sealed class AccountProvisioningService : IAccountProvisioningService
 {
     private readonly IUserRepository _userRepository;
@@ -62,10 +45,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
-        // 1. Check UserEmail records (includes OAuth, verified, and unverified
-        //    emails). Issue nobodies-collective/Humans#687: routed through
-        //    IUserEmailService rather than IUserEmailRepository so the orchestrator
-        //    + invariants own all UserEmail mutations.
+        // 1. Look up across OAuth / verified / unverified — via service so orchestrator owns invariants (see #687).
         var matchingUserId = await _userEmailService.FindAnyUserIdByEmailAsync(email, ct);
 
         if (matchingUserId is not null)
@@ -83,7 +63,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
                     "Found existing account {UserId} via UserEmail match for {Email} (source: {Source})",
                     existingUser.Id, email, source);
 
-                // Layer the ContactSource if the user was self-registered (no source yet)
+                // Layer ContactSource onto self-registered users.
                 if (existingUser.ContactSource is null)
                 {
                     await _userRepository.SetContactSourceIfNullAsync(existingUser.Id, source, ct);
@@ -94,7 +74,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             }
         }
 
-        // No match found — create new User + UserEmail.
+        // Create new User + UserEmail.
         var resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
             ? email.Split('@')[0]
             : displayName;
@@ -110,7 +90,6 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             CreatedAt = now,
         };
 
-        // UserManager persists the user (its Identity store calls SaveChanges).
         var result = await _userManager.CreateAsync(newUser);
         if (!result.Succeeded)
         {
@@ -118,20 +97,10 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             throw new InvalidOperationException($"Failed to create account for {email}: {errors}");
         }
 
-        // Issue nobodies-collective/Humans#687: route the UserEmail row creation
-        // through the orchestrator on IUserEmailService instead of writing to
-        // IUserEmailRepository directly. The orchestrator runs
-        // EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync so the new
-        // user gets exactly one IsPrimary row and exactly one IsGoogle row.
+        // see nobodies-collective/Humans#687
         await _userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
-        // Issue #635 (§15i): Stub Profile invariant. Every newly provisioned
-        // user gets a Profile row in the Stub state so cross-section reads
-        // (Profile.PrimaryEmail, Profile.GoogleEmail, etc.) never have to
-        // null-check the Profile pointer. Transitions to Active happen
-        // when ProfileService.SaveProfileAsync sees required fields populate.
-        // Goes through IProfileService (not IProfileRepository) per design-rules
-        // §2c: cross-section writes flow through the owning section's service.
+        // see #635 (§15i) — Stub Profile invariant; cross-section write via §2c.
         await _profileService.EnsureStubProfileAsync(newUser.Id, ct);
 
         await _auditLogService.LogAsync(

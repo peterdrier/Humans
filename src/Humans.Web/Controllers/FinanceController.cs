@@ -174,8 +174,6 @@ public class FinanceController : HumansControllerBase
         }
     }
 
-    // --- POST Actions ---
-
     [HttpPost("Years/{id:guid}/SyncDepartments")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncDepartments(Guid id)
@@ -565,24 +563,17 @@ public class FinanceController : HumansControllerBase
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
     }
 
-    /// <summary>
-    /// Builds the FinanceOverviewViewModel using the shared summary computation
-    /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
-    /// Also computes actual tickets sold for ticketing groups and stores in ViewBag.
-    /// </summary>
+    /// <summary>FinanceOverviewViewModel via shared summary + actual tickets in ViewBag.</summary>
     private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
     {
-        // All groups (including restricted) for FinanceAdmin summary, with buffer slices
         var summary = _budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
 
-        // Compute actual tickets sold and projection breakdown for ticketing group
         var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
         if (ticketingGroup is not null)
         {
             var actualSold = _ticketingBudgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
-            // Use the projection engine to compute remaining tickets consistently
             var projections = await _ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
             if (projections.Count > 0)
             {
@@ -609,37 +600,27 @@ public class FinanceController : HumansControllerBase
         };
     }
 
-    /// <summary>
-    /// Builds the CashFlowViewModel by aggregating line items by time period.
-    /// Includes IsCashflowOnly items (relevant to actual cash movement).
-    /// Generates synthetic VAT settlement entries at their settlement dates.
-    /// Restricted groups are included (FinanceAdmin-only page).
-    /// </summary>
+    /// <summary>CashFlow VM: aggregate by period; synthesize VAT settlements; FinanceAdmin-only.</summary>
     private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period, decimal grossTicketRevenue)
     {
-        // Normalize period parameter
         if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(period, "monthly", StringComparison.OrdinalIgnoreCase))
         {
             period = "monthly";
         }
 
-        // Collect real line items as cash flow entries
         var allEntries = year.Groups
             .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
             .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowEntry(
                 ctx.GroupName, ctx.CategoryName, li.Amount, li.ExpectedDate)))
             .ToList();
 
-        // Add synthetic VAT settlement entries from the service
         var vatEntries = _budgetService.ComputeVatCashFlowEntries(year.Groups);
         allEntries.AddRange(vatEntries.Select(v => new CashFlowEntry("VAT", v.CategoryName, v.Amount, v.SettlementDate)));
 
-        // Split into scheduled (has date) and unscheduled
         var scheduled = allEntries.Where(x => x.Date.HasValue).ToList();
         var unscheduled = allEntries.Where(x => !x.Date.HasValue).ToList();
 
-        // Group scheduled items into time periods
         var periodRows = new List<CashFlowPeriodRow>();
 
         if (scheduled.Count > 0)
@@ -648,8 +629,7 @@ public class FinanceController : HumansControllerBase
             var grouped = isWeekly ? GroupByWeek(scheduled) : GroupByMonth(scheduled);
 
             decimal runningNet = 0;
-            // Expense-only runway: start from gross ticket revenue, subtract only expenses.
-            // Income line items do NOT extend the runway — they're budgeted, not realized.
+            // Expense-only runway: gross ticket revenue minus expenses; income lines don't extend it.
             decimal runningExpenseBalance = grossTicketRevenue;
             var fundsExhausted = false;
             foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
@@ -659,7 +639,6 @@ public class FinanceController : HumansControllerBase
                 var periodNet = periodIncome + periodExpense;
                 runningNet += periodNet;
 
-                // Subtract expenses (periodExpense is negative, so add it to subtract)
                 runningExpenseBalance += periodExpense;
                 var isExhausted = !fundsExhausted && runningExpenseBalance <= 0;
                 if (isExhausted)
@@ -684,7 +663,6 @@ public class FinanceController : HumansControllerBase
             }
         }
 
-        // Unscheduled summary
         var unscheduledIncome = unscheduled.Where(x => x.Amount > 0).Sum(x => x.Amount);
         var unscheduledExpense = unscheduled.Where(x => x.Amount < 0).Sum(x => x.Amount);
         var unscheduledCategories = BuildCategoryRows(unscheduled);
@@ -725,7 +703,6 @@ public class FinanceController : HumansControllerBase
             .GroupBy(x =>
             {
                 var date = x.Date!.Value;
-                // ISO week: Monday-based. Find the Monday of the week.
                 var dayOfWeek = date.DayOfWeek;
                 var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
                 return monday;
@@ -764,9 +741,7 @@ public class FinanceController : HumansControllerBase
             .ToList();
     }
 
-    /// <summary>
-    /// A cash flow entry — either a real line item or a synthetic VAT settlement.
-    /// </summary>
+    /// <summary>Cash flow entry — real line item or synthetic VAT settlement.</summary>
     private sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
 
     private sealed record CashFlowPeriodGroup(

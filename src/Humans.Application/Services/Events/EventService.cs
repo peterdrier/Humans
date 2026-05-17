@@ -14,11 +14,7 @@ namespace Humans.Application.Services.Events;
 public sealed class EventService : IEventService, IUserDataContributor
 {
     private readonly IEventRepository _repo;
-    // EventSettings is owned by the Shifts section (event_settings table).
-    // Route reads through the read-only IBurnSettingsService supplier API,
-    // which returns a BurnSettingsInfo DTO — the Events section never sees
-    // the Shifts-internal entity (design-rules §2c,
-    // memory/architecture/no-cross-section-ef-joins.md, issue nobodies-collective/Humans#719).
+    // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
     private readonly IBurnSettingsService _burnSettings;
     private readonly IClock _clock;
 
@@ -28,8 +24,6 @@ public sealed class EventService : IEventService, IUserDataContributor
         _burnSettings = burnSettings;
         _clock = clock;
     }
-
-    // ── Settings ─────────────────────────────────────────────────────────
 
     public Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
         => _repo.GetGuideSettingsAsync(ct);
@@ -42,9 +36,7 @@ public sealed class EventService : IEventService, IUserDataContributor
 
     public async Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
     {
-        // Invariant: at most one active burn. Surface it as a singleton list
-        // so the admin picker (which calls this) stays shape-compatible if
-        // multi-burn support arrives later.
+        // Invariant: at most one active burn; singleton list keeps admin picker forward-compatible.
         var active = await _burnSettings.GetActiveAsync(ct);
         return active is null ? [] : [active];
     }
@@ -78,8 +70,6 @@ public sealed class EventService : IEventService, IUserDataContributor
         await _repo.UpsertGuideSettingsAsync(settings, ct);
     }
 
-    // ── Categories ────────────────────────────────────────────────────────
-
     public Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default)
         => _repo.GetActiveCategoriesAsync(ct);
 
@@ -107,8 +97,6 @@ public sealed class EventService : IEventService, IUserDataContributor
     public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default)
         => _repo.SwapCategoryOrderAsync(id, direction, ct);
 
-    // ── Venues ────────────────────────────────────────────────────────────
-
     public Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
         => _repo.GetActiveVenuesAsync(ct);
 
@@ -132,8 +120,6 @@ public sealed class EventService : IEventService, IUserDataContributor
 
     public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default)
         => _repo.SwapVenueOrderAsync(id, direction, ct);
-
-    // ── Submissions ───────────────────────────────────────────────────────
 
     public Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetUserSubmissionsAsync(userId, ct);
@@ -162,8 +148,6 @@ public sealed class EventService : IEventService, IUserDataContributor
         return _repo.SaveEventAsync(guideEvent, ct);
     }
 
-    // ── Browse / API ──────────────────────────────────────────────────────
-
     public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
@@ -171,8 +155,6 @@ public sealed class EventService : IEventService, IUserDataContributor
 
     public Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
         => _repo.GetApprovedEventByIdAsync(id, ct);
-
-    // ── Favourites ────────────────────────────────────────────────────────
 
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetFavouriteEventIdsAsync(userId, ct);
@@ -189,8 +171,6 @@ public sealed class EventService : IEventService, IUserDataContributor
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
         => _repo.RemoveFavouriteAsync(userId, eventId, ct);
 
-    // ── Preferences ───────────────────────────────────────────────────────
-
     public async Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default)
     {
         var pref = await _repo.GetPreferenceAsync(userId, ct);
@@ -203,8 +183,6 @@ public sealed class EventService : IEventService, IUserDataContributor
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
         => _repo.UpsertPreferenceAsync(userId, JsonSerializer.Serialize(slugs), _clock.GetCurrentInstant(), ct);
-
-    // ── Moderation ────────────────────────────────────────────────────────
 
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => _repo.GetModerationStatusCountsAsync(ct);
@@ -239,8 +217,6 @@ public sealed class EventService : IEventService, IUserDataContributor
         await _repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    // ── Dashboard / Export ────────────────────────────────────────────────
-
     public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
         => _repo.GetAllEventsForDashboardAsync(ct);
 
@@ -250,8 +226,6 @@ public sealed class EventService : IEventService, IUserDataContributor
         var events = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
         return (events, settings);
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private EventFavourite BuildFavourite(Guid userId, Guid eventId) => new()
     {
@@ -270,8 +244,6 @@ public sealed class EventService : IEventService, IUserDataContributor
         }
         return localDateTime.InZoneLeniently(tz).ToInstant();
     }
-
-    // ── GDPR Article 15 contributor ───────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

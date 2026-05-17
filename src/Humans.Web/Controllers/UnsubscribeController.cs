@@ -30,13 +30,13 @@ public class UnsubscribeController : Controller
 
         if (!result.IsLegacy)
         {
-            // New tokens redirect to comms preferences with token — no session created
+            // New tokens redirect to comms preferences (no session).
             return RedirectToAction(
                 nameof(GuestController.CommunicationPreferences), "Guest",
                 new { utoken = token });
         }
 
-        // Legacy tokens show the unsubscribe confirmation page
+        // Legacy: show confirmation page.
         ViewData["DisplayName"] = result.DisplayName;
         ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View();
@@ -56,22 +56,18 @@ public class UnsubscribeController : Controller
 
         if (!result.IsLegacy)
         {
-            // New tokens redirect to comms preferences with token — no session created
+            // New tokens redirect to comms preferences (no session).
             return RedirectToAction(
                 nameof(GuestController.CommunicationPreferences), "Guest",
                 new { utoken = token });
         }
 
-        // Legacy tokens show the done page
+        // Legacy: show done page.
         ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View("Done");
     }
 
-    /// <summary>
-    /// RFC 8058 one-click unsubscribe endpoint.
-    /// Email clients POST List-Unsubscribe=One-Click to the URL in the List-Unsubscribe header,
-    /// which includes the token as a query parameter. No anti-forgery token required.
-    /// </summary>
+    // RFC 8058 one-click — POSTed by email clients via List-Unsubscribe header; no AF token.
     [HttpPost("/Unsubscribe/OneClick")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> OneClick([FromQuery] string token)

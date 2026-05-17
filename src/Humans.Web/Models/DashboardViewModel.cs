@@ -4,7 +4,6 @@ namespace Humans.Web.Models;
 
 public class DashboardViewModel
 {
-    // Event participation
     public int? EventYear { get; set; }
     public ParticipationStatus? ParticipationStatus { get; set; }
 
@@ -13,25 +12,20 @@ public class DashboardViewModel
     public string? ProfilePictureUrl { get; set; }
     public MembershipStatus MembershipStatus { get; set; }
 
-    // Profile
     public bool HasProfile { get; set; }
     public bool ProfileComplete { get; set; }
     public int ProfileCompletionPercent { get; init; }
 
-    // Consents
     public int PendingConsents { get; set; }
     public int TotalRequiredConsents { get; set; }
 
-    // Membership
     public bool IsVolunteerMember { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }
 
-    // Rejection
     public bool IsRejected { get; set; }
     public string? RejectionReason { get; set; }
 
-    // Applications
     public bool HasPendingApplication { get; set; }
     public ApplicationStatus? LatestApplicationStatus { get; set; }
     public DateTime? LatestApplicationDate { get; set; }
@@ -42,18 +36,14 @@ public class DashboardViewModel
     public bool TermExpiresSoon { get; set; }
     public bool TermExpired { get; set; }
 
-    // Shift discovery
     public bool IsShiftBrowsingOpen { get; set; }
     public string? EventName { get; set; }
 
-    // Quick stats
     public DateTime MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
 
-    // Things to do wizard
     public bool HasShiftSignups { get; set; }
 
-    // Per-user ticket status
     public bool TicketsConfigured { get; set; }
     public bool HasTicket { get; set; }
     public int UserTicketCount { get; set; }

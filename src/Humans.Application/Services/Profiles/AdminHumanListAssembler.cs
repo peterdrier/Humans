@@ -4,23 +4,7 @@ using Humans.Domain.Constants;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>
-/// Stateless helper used by the Admin humans-list controller endpoint to
-/// assemble status-partitioned <see cref="AdminHumanRow"/> rows. Replaces
-/// the deleted <c>IProfileService.GetFilteredHumansAsync</c> — orchestrating
-/// "all users + profiles + partition + status filter" is presentation-layer
-/// composition, not a business-logic surface that earns its own service
-/// method (and the
-/// <c>memory/architecture/interface-method-budget-ratchet.md</c> ratchet
-/// agrees: this would have been the 40th method on
-/// <c>IProfileService</c>).
-///
-/// <para>The text-search portion is now controller-driven: the caller may
-/// pre-filter the candidate user-id set by passing
-/// <paramref name="searchUserIds"/>, which is the union returned by
-/// <c>IUserService.SearchUsersAsync(query, PersonSearchFields.AdminAll)</c>
-/// + email-direct match. Pass <c>null</c> when no search term is in play.</para>
-/// </summary>
+// Stateless helper for the admin humans-list endpoint. Caller pre-filters via searchUserIds (null when no search).
 public static class AdminHumanListAssembler
 {
     public static async Task<IReadOnlyList<AdminHumanRow>> AssembleAsync(

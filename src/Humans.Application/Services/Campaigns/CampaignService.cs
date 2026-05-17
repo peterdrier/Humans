@@ -17,18 +17,8 @@ using NodaTime;
 namespace Humans.Application.Services.Campaigns;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ICampaignService"/>. Goes
-/// through <see cref="ICampaignRepository"/> for owned-table access and
-/// through <see cref="ITeamService"/> / <see cref="IUserEmailService"/> for
-/// cross-section reads. Never imports <c>Microsoft.EntityFrameworkCore</c>.
+/// Application-layer implementation of <see cref="ICampaignService"/>.
 /// </summary>
-/// <remarks>
-/// Per-grant commits during <see cref="SendWaveAsync"/> and
-/// <see cref="RetryAllFailedAsync"/> are intentional. A batch flip-to-Queued
-/// followed by a loop would lose grants whose enqueue throws: they would
-/// leave the Failed set without a corresponding outbox row and never be
-/// retriable again.
-/// </remarks>
 public sealed class CampaignService : ICampaignService, IUserDataContributor, IUserMerge
 {
     private readonly ICampaignRepository _repository;
@@ -411,8 +401,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
-        // CampaignCodes is an always-on category, so IsOptedOutAsync returns false for every user.
-        // Kept as a guard in case the category ever becomes opt-outable.
+        // CampaignCodes is always-on today; guard kept for future opt-outability.
         var optedOutCount = 0;
         foreach (var userId in notGranted)
         {
@@ -440,7 +429,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             throw new InvalidOperationException(
                 $"Campaign {campaignId} must be in Active status to send a wave (current: {campaign.Status}).");
 
-        // Get eligible users (not already granted, not opted out).
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
         var alreadyGrantedSet = await _repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
 
@@ -448,7 +436,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
-        // Filter out users who have opted out of CampaignCodes (always-on today; this is a no-op).
         var eligibleUserIds = new List<Guid>(candidateUserIds.Count);
         foreach (var userId in candidateUserIds)
         {
@@ -459,11 +446,9 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         if (eligibleUserIds.Count == 0)
             return 0;
 
-        // Cross-section fetch: users (for DisplayName) and notification emails.
         var users = await _userService.GetUserInfosAsync(eligibleUserIds, ct);
         var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
 
-        // Get available codes ordered by ImportedAt, Id.
         var availableCodes = await _repository.GetAvailableCodesAsync(
             campaignId, eligibleUserIds.Count, ct);
 
@@ -475,9 +460,9 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var failedCount = 0;
         var grantedUserIds = new List<Guid>(eligibleUserIds.Count);
 
-        // Persist and enqueue one grant at a time. If an enqueue throws mid-loop,
-        // we flip that single grant to Failed so subsequent grants still get
-        // processed and RetryAllFailedAsync picks the failed ones up next pass.
+        // Per-grant commit: on enqueue throw, flip just that grant to Failed
+        // so subsequent grants still process and RetryAllFailedAsync can pick
+        // it up next pass.
         for (var i = 0; i < eligibleUserIds.Count; i++)
         {
             var userId = eligibleUserIds[i];
@@ -535,7 +520,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         if (grantedUserIds.Count == 0)
             return 0;
 
-        // In-app notification to each recipient who actually received a grant (best-effort).
         try
         {
             await _notificationService.SendAsync(
@@ -563,7 +547,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var now = _clock.GetCurrentInstant();
         await _repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct);
 
-        // Cross-section user + notification email resolution.
         var user = await _userService.GetByIdAsync(grant.UserId, ct)
             ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
         var emails = await _userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
@@ -592,9 +575,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     public async Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default)
     {
-        // Campaigns-owned reads go through the repository; recipient display
-        // names are resolved via IUserService so no cross-domain navigation
-        // happens in this Application-layer service.
         var summaryRows = await _repository.GetCodeTrackingSummariesAsync(ct);
         var grantRowsRaw = await _repository.GetCodeTrackingGrantRowsAsync(ct);
 
@@ -652,9 +632,8 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var now = _clock.GetCurrentInstant();
         var stillFailedCount = 0;
 
-        // Flip-and-enqueue one grant at a time. A batch flip-to-Queued + loop
-        // enqueue would lose grants whose enqueue throws: they would leave the
-        // Failed set without a corresponding outbox row and never be retriable.
+        // Per-grant flip-and-enqueue: a batch flip-to-Queued + loop would lose
+        // grants whose enqueue throws, leaving them un-retriable.
         foreach (var grant in failedGrants)
         {
             await _repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Queued, now, ct);
@@ -711,12 +690,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         return team?.Members.Select(tm => tm.UserId).ToList() ?? [];
     }
 
-    /// <summary>
-    /// Build a <see cref="CampaignCodeEmailRequest"/> from a tracked campaign
-    /// and the resolved recipient. The outbox email service performs the
-    /// actual markdown → HTML rendering and template wrapping — keeping
-    /// email_outbox_messages ownership in a single place.
-    /// </summary>
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         Campaign campaign, UserInfo user, string recipientEmail, string code, Guid grantId)
     {

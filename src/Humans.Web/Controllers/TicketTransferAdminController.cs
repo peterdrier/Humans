@@ -149,8 +149,7 @@ public sealed class TicketTransferAdminController : HumansControllerBase
             SetSuccess("Transfer approved.");
             return;
         }
-        // Approval recorded, but TT writeback didn't fully succeed — admin
-        // must finish the transfer manually in the TicketTailor dashboard.
+        // Vendor partial failure — manual finish required.
         SetError($"Transfer approved, but vendor writeback {result.VendorResult}. " +
             "Complete the transfer in the TicketTailor dashboard.");
     }

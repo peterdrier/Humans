@@ -30,7 +30,6 @@ public class AdminHumanDetailViewModel
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
-    // Profile
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? City { get; set; }
@@ -46,22 +45,18 @@ public class AdminHumanDetailViewModel
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
 
-    // Rejection
     public bool IsRejected { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? RejectedByName { get; set; }
 
-    // Workspace email
     public string? NobodiesTeamEmail { get; set; }
 
-    // Email diagnostics (read-only card)
     public string? OAuthEmail { get; set; }
     public string? GoogleServiceEmail { get; set; }
     public GoogleEmailStatus GoogleEmailStatus { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
-    // Stats
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
     public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
@@ -70,7 +65,6 @@ public class AdminHumanDetailViewModel
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
-    // Payment details
     public string? MaskedIban { get; set; }
     /// <summary>
     /// Set by the RevealIban action via TempData. Survives exactly one page load after reveal.

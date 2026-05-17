@@ -21,57 +21,34 @@ internal static class ShiftsSectionExtensions
 {
     internal static IServiceCollection AddShiftsSection(this IServiceCollection services)
     {
-        // Shift management services — §15 repository pattern (issue #541a).
-        // Repository is Singleton (IDbContextFactory-based). Service is Scoped
-        // so it can pull per-request ITeamService/IUserService/ITicketQueryService.
-        // IShiftAuthorizationInvalidator is aliased to the same Scoped instance
-        // so Profile/User section writes (and anywhere else that needs to drop the
-        // 60s shift-auth cache) resolve the same object as IShiftManagementService.
+        // Shift management — see #541a. IShiftAuthorizationInvalidator aliases the same Scoped instance so Profile/User writes drop the 60s shift-auth cache.
         services.AddSingleton<IShiftManagementRepository, ShiftManagementRepository>();
         services.AddScoped<ShiftsShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
 
-        // Cross-section read DTO supplier for the burn (event_settings row)
-        // — Events, Camps, Tickets, Notifications consume BurnSettingsInfo
-        // here instead of the Shifts-internal EventSettings entity (issue
-        // nobodies-collective/Humans#719). Mutations + Shifts-internal
-        // reads stay on IShiftManagementService.
+        // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings — see #719.
         services.AddScoped<IBurnSettingsService, ShiftsBurnSettingsService>();
 
-        // ShiftSignupService — §15 repository pattern (issue #541, sub-task b).
-        // Lives in Humans.Application.Services.Shifts; goes through
-        // IShiftSignupRepository. Repository is Scoped because mutation flows
-        // load-mutate-audit-save across multiple steps in one transaction.
+        // ShiftSignup — see #541b. Repository is Scoped so multi-step mutation transactions share one change-tracker.
         services.AddScoped<IShiftSignupRepository, ShiftSignupRepository>();
         services.AddScoped<ShiftsShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
 
-        // General Availability — §15 repository pattern (issue #541, sub-task c).
-        // Application-layer service goes through IGeneralAvailabilityRepository;
-        // no caching decorator (Option A — small admin/self-service surface,
-        // same rationale as Users/#243 and Audit Log/#552).
+        // GeneralAvailability — see #541c. No caching decorator (Option A, small surface).
         services.AddSingleton<IGeneralAvailabilityRepository, GeneralAvailabilityRepository>();
         services.AddScoped<ShiftsGeneralAvailabilityService>();
         services.AddScoped<IGeneralAvailabilityService>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
 
-        // Volunteer Tracking — §15 repository pattern (volunteer-tracking feature).
-        // Repository is Scoped (uses HumansDbContext directly, same pattern as
-        // ShiftSignupRepository) so multi-step camp-setup + blocked-day mutations
-        // share one EF change-tracker.
+        // VolunteerTracking — Scoped repository so multi-step camp-setup + blocked-day mutations share one change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
 
-        // ShiftView — issue #720. Singleton caching decorator over a Scoped
-        // inner. Mirrors the Profiles / Teams pattern (CachingUserService,
-        // CachingTeamService). The inner is registered keyed so the Singleton
-        // decorator can resolve a fresh Scoped instance per cache miss via
-        // IServiceScopeFactory without self-resolving the unkeyed
-        // IShiftView registration.
+        // ShiftView — see #720. Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
         services.AddKeyedScoped<IShiftView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
         services.AddSingleton<CachingShiftViewService>();
         services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
@@ -81,26 +58,16 @@ internal static class ShiftsSectionExtensions
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
 
-        // CachingShiftViewService implements IHostedService for symmetry with
-        // CachingUserService / CachingTeamService. Composition forces it to
-        // own this directly (can't multi-inherit TrackedCache). Today both
-        // inner caches are lazy-per-key — StartAsync is a no-op.
+        // IHostedService for symmetry with sibling caches; StartAsync is a no-op today.
         services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
 
-        // Workload aggregations — nobodies-collective/Humans#734. Reads
-        // per-rota shift + signup rows through IShiftView (the Shifts-section
-        // per-rota cache). No service-level cache: invalidation rides on
-        // IShiftViewInvalidator, and the aggregation itself is microsecond-
-        // scale CPU work over a few hundred rotas at our ~500-user scale.
+        // Workload — see #734. No service-level cache; invalidation rides on IShiftViewInvalidator.
         services.AddScoped<IWorkloadService, ShiftsWorkloadService>();
 
-        // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
-        // Pure orchestrator: enumerates active signups on a rota and fans out one
-        // outbox email per recipient via IEmailService. Scoped so it can pull the
-        // request-scoped IShiftSignupRepository + IUserService.
+        // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService,
             Humans.Application.Services.Shifts.RotaCoordinatorMessageService>();
 

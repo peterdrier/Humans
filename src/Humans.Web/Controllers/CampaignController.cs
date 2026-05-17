@@ -109,7 +109,6 @@ public class CampaignController : HumansControllerBase
                 return NotFound();
             }
 
-            // Pass submitted form values back via ViewBag for re-display
             ViewBag.Title2 = title;
             ViewBag.Description = description;
             ViewBag.EmailSubject = emailSubject;

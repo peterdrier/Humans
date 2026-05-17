@@ -15,12 +15,11 @@ public static class AuthorizationPolicyExtensions
 {
     public static IServiceCollection AddHumansAuthorizationPolicies(this IServiceCollection services)
     {
-        // Register custom authorization handlers for composite policies
         services.AddSingleton<IAuthorizationHandler, ActiveMemberOrShiftAccessHandler>();
         services.AddSingleton<IAuthorizationHandler, IsActiveMemberHandler>();
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
-        // Resource-based authorization handlers (scoped — they depend on scoped services)
+        // Scoped: depend on scoped services.
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
@@ -30,24 +29,18 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
-        // Expense report resource-based handlers (scoped — depend on scoped services)
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, IbanAccessHandler>();
 
-        // Service-layer enforcement handlers (singleton — no scoped dependencies)
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {
-            // Simple role-based policies
             options.AddPolicy(PolicyNames.AdminOnly, policy =>
                 policy.RequireRole(RoleNames.Admin));
 
-            // AnyAdminRole gates the admin-shell entry point (/Admin). The 12 roles
-            // mirror the composite OR-chain in _Layout.cshtml that decides whether
-            // to show the "Admin" top-nav link. Sidebar items inside /Admin are
-            // filtered per-item, so each role only sees what they can act on.
+            // Mirrors _Layout.cshtml top-nav check; sidebar items are filtered per-item.
             options.AddPolicy(PolicyNames.AnyAdminRole, policy =>
                 policy.RequireRole(
                     RoleNames.Admin,
@@ -107,20 +100,14 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
 
-            // ShiftDashboardAccess and ShiftDepartmentManager are intentionally identical today
-            // (both map to ShiftRoleChecks.CanManageDepartment). Kept separate so they can
-            // diverge when per-department manager roles are introduced.
+            // Intentionally identical to ShiftDepartmentManager today; kept separate for future divergence.
             options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 
             options.AddPolicy(PolicyNames.VolunteerTrackingWrite, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
 
-            // ShiftDepartmentManager is wider: privileged dashboard roles OR anyone who is
-            // a coordinator / manager of any team or sub-team. Gates the dashboard page
-            // entry point and the "open dashboard" button on /Shifts. The role-OR-team-coord
-            // disjunction is encoded inside IsAnyTeamManagerOrCoordinatorHandler so the policy
-            // stays a single requirement (multiple requirements on a policy AND together).
+            // Role-OR-team-coord disjunction encoded in IsAnyTeamManagerOrCoordinatorHandler so the policy is one requirement (policy requirements AND).
             options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
                 policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 
@@ -133,11 +120,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
 
-            // Agent rate-limit policy
             options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
                 policy.AddRequirements(new AgentRateLimitRequirement()));
 
-            // Composite policies using custom requirements
             options.AddPolicy(PolicyNames.ActiveMemberOrShiftAccess, policy =>
                 policy.AddRequirements(new ActiveMemberOrShiftAccessRequirement()));
 

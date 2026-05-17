@@ -135,10 +135,7 @@ public sealed class ContainerService : IContainerService
             await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
         }
 
-        // Placement-image files for this container are not cleaned up on
-        // deletion (no per-container scan method on the repo). Placement rows
-        // are removed by the repo's cascade; orphaned files on disk are
-        // tolerated at this scale — see docs/sections/Containers.md.
+        // Orphaned placement-image files tolerated at this scale; see docs/sections/Containers.md.
         await _repo.DeleteAsync(id, ct);
 
         await _auditLog.LogAsync(
@@ -289,9 +286,7 @@ public sealed class ContainerService : IContainerService
         {
             throw new InvalidOperationException("Image must be under 10 MB.");
         }
-        // Filename extension must also be on the whitelist — a client could
-        // pass MIME validation with image/jpeg but supply a .html filename,
-        // and static-file middleware would then serve the upload as HTML.
+        // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         var ext = Path.GetExtension(image.FileName);
         if (!AllowedImageExtensions.Contains(ext))
         {

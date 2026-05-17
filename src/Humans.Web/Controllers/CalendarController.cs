@@ -157,14 +157,10 @@ public class CalendarController : HumansControllerBase
             .Take(5)
             .ToList();
 
-        // Owning-team name resolved via ITeamService per design-rules §6b —
-        // CalendarEvent.OwningTeam nav is [Obsolete] and no longer .Include()d.
-        // Use the lightweight name-only lookup so we don't hydrate the entire
-        // team aggregate (members + users) just to render a display string.
+        // §6b: owning-team name via ITeamService lookup (OwningTeam nav is [Obsolete]).
         var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
         var owningTeamName = owningTeam?.Name ?? string.Empty;
 
-        // Any authenticated human can edit; changes are audited.
         return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));
     }
 
@@ -222,14 +218,12 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        // Fall back to Europe/Madrid if a persisted tz is unknown — lets the form render
-        // so the admin can correct it, instead of 500'ing on display.
+        // Fall back to Europe/Madrid for unknown tz so the form renders (admin can correct).
         var tzId = ev.RecurrenceTimezone ?? "Europe/Madrid";
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tzId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var startDate = ev.StartUtc.InZone(zone).Date;
-        // Stored end is half-open exclusive midnight; subtract a tick to recover the
-        // inclusive end date that the user originally entered.
+        // Stored end is half-open exclusive midnight; subtract a tick for inclusive display.
         var endDateInclusive = ev.EndUtc is { } endUtc
             ? endUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date
             : startDate;
@@ -282,9 +276,7 @@ public class CalendarController : HumansControllerBase
         return View(form);
     }
 
-    // All-day events store half-open [Start 00:00, EndDate+1 00:00) so the display
-    // helper recovers the inclusive end date with a one-tick subtraction. Adds
-    // ModelState errors instead of throwing on bad input (e.g. unknown timezone).
+    // All-day stored as half-open [Start 00:00, EndDate+1 00:00). Bad input → ModelState (no throw).
     private void TryResolveStartEnd(CalendarEventFormViewModel form, out Instant start, out Instant? end)
     {
         start = default;
@@ -424,8 +416,7 @@ public class CalendarController : HumansControllerBase
         ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
     }
 
-    // Org default for v1. Every volunteer is in Spain; showing server-UTC ("Etc/UTC") is unhelpful.
-    // Follow-up: derive from browser (Intl API) or user profile preference.
+    // Org default for v1 (all volunteers in Spain). TODO: derive from browser/profile.
     private static DateTimeZone GetViewerZone() =>
         DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }

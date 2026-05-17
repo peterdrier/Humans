@@ -10,11 +10,6 @@ using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.Legal;
 
-/// <summary>
-/// Application-layer implementation of <see cref="IAdminLegalDocumentService"/>.
-/// Routes all persistence through <see cref="ILegalDocumentRepository"/>
-/// and cross-domain team reads through <see cref="ITeamService"/>.
-/// </summary>
 public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentService
 {
     private readonly ILegalDocumentRepository _repository;
@@ -47,7 +42,7 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
 
         var now = _clock.GetCurrentInstant();
 
-        // Stitch team names in memory instead of the old .Include(d => d.Team).
+        // Stitch team names in memory (no .Include).
         var teamIds = documents.Select(d => d.TeamId).Distinct().ToList();
         var teams = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
 

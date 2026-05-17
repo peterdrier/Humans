@@ -50,8 +50,7 @@ public class ContainerController : HumansControllerBase
         var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
         if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
 
-        // Place fails for leads when phase is closed — that's the signal we
-        // use to render the "lead but phase closed" message in the view.
+        // Place returns false for leads when phase is closed — drives the "phase closed" view message.
         var canPlace = await AuthorizeAsync(target, ContainerOperationRequirement.Place);
 
         var settings = await _cityPlanningService.GetSettingsAsync(ct);

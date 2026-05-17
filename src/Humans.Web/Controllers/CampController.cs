@@ -57,9 +57,7 @@ public class CampController : HumansCampControllerBase
         _localizer = localizer;
     }
 
-    // ======================================================================
-    // Public routes
-    // ======================================================================
+    // --- Public routes ---
 
     [AllowAnonymous]
     [HttpGet("")]
@@ -175,9 +173,7 @@ public class CampController : HumansCampControllerBase
         };
     }
 
-    // ======================================================================
-    // Facilitated Contact
-    // ======================================================================
+    // --- Facilitated Contact ---
 
     [Authorize]
     [HttpGet("{slug}/Contact")]
@@ -249,9 +245,7 @@ public class CampController : HumansCampControllerBase
         }
     }
 
-    // ======================================================================
-    // Registration
-    // ======================================================================
+    // --- Registration ---
 
     [Authorize]
     [HttpGet("Register")]
@@ -332,10 +326,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (DbUpdateException ex)
         {
-            // Belt-and-suspenders for any future race in downstream sync side effects
-            // (e.g. duplicate system-team memberships). The primary fix lives in the
-            // owning service; this ensures the user always sees a friendly error
-            // instead of a 500.
+            // Belt-and-suspenders: friendly error if downstream sync races (primary fix lives in owning service).
             _logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, "We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.");
             await PopulateRegisterSeasonYearAsync();
@@ -344,9 +335,7 @@ public class CampController : HumansCampControllerBase
         }
     }
 
-    // ======================================================================
-    // Edit
-    // ======================================================================
+    // --- Edit ---
 
     [Authorize]
     [HttpGet("{slug}/Edit")]
@@ -526,9 +515,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // ======================================================================
-    // Season opt-in
-    // ======================================================================
+    // --- Season opt-in ---
 
     [Authorize]
     [HttpPost("{slug}/OptIn/{year:int}")]
@@ -605,9 +592,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Details), new { slug });
     }
 
-    // ======================================================================
-    // Lead management
-    // ======================================================================
+    // --- Lead management ---
 
     [Authorize]
     [HttpPost("{slug}/Leads/Add")]
@@ -666,9 +651,7 @@ public class CampController : HumansCampControllerBase
     }
 
 
-    // ======================================================================
-    // Historical name management
-    // ======================================================================
+    // --- Historical name management ---
 
     [Authorize]
     [HttpPost("{slug}/HistoricalNames/Add")]
@@ -722,9 +705,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // ======================================================================
-    // Image management
-    // ======================================================================
+    // --- Image management ---
 
     [Authorize]
     [HttpPost("{slug}/Images/Upload")]
@@ -812,9 +793,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // ======================================================================
-    // Camp membership per season (issue nobodies-collective#488)
-    // ======================================================================
+    // --- Camp membership per season (see nobodies-collective/Humans#488) ---
 
     [Authorize]
     [HttpPost("{slug}/Members/Request")]
@@ -909,7 +888,7 @@ public class CampController : HumansCampControllerBase
 
         try
         {
-            // Scope by the authorized camp.Id � service rejects cross-camp member ids.
+            // C2: cross-camp check — service rejects cross-camp member ids.
             await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
             SetSuccess("Membership approved.");
         }
@@ -1021,9 +1000,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Members), new { slug });
     }
 
-    // ======================================================================
-    // Per-camp role assignments (issue nobodies-collective#489)
-    // ======================================================================
+    // --- Per-camp role assignments (see nobodies-collective/Humans#489) ---
 
     [Authorize]
     [HttpPost("{slug}/Roles/Assign")]
@@ -1043,12 +1020,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Members), new { slug });
     }
 
-    /// <summary>
-    /// Search-driven assign: takes a userId from the human-search typeahead. If the
-    /// human isn't yet a camp member, they're added as Active first (idempotent), then
-    /// the role is assigned. One UI action covers both "assign existing member" and
-    /// "add this human and assign them" � see issue request from Frank, May 2026.
-    /// </summary>
+    /// <summary>Search-driven assign: adds the human as Active if needed (idempotent), then assigns the role.</summary>
     [Authorize]
     [HttpPost("{slug}/Roles/AssignByUser")]
     [ValidateAntiForgeryToken]
@@ -1135,9 +1107,7 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Members), new { slug });
     }
 
-    // ======================================================================
-    // Helper methods
-    // ======================================================================
+    // --- Helper methods ---
 
     private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)
     {

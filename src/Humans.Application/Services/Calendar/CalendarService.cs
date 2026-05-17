@@ -15,29 +15,9 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Application.Services.Calendar;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ICalendarService"/>. Goes
-/// through <see cref="ICalendarRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph (design-rules §2b).
+/// Inner service behind <c>CachingCalendarService</c> (§15). Mutations call the repo and return;
+/// the decorator handles invalidation. Owning-team names resolved via <see cref="ITeamService"/> (§6b).
 /// </summary>
-/// <remarks>
-/// Cross-section interactions:
-/// <list type="bullet">
-///   <item><see cref="ITeamService"/> — resolves owning-team display names
-///     for the occurrence projection that previously loaded them via the
-///     <c>CalendarEvent.OwningTeam</c> cross-domain nav (design-rules §6b
-///     "in-memory join").</item>
-///   <item><see cref="IAuditLogService"/> — create / update / delete /
-///     occurrence-cancel / occurrence-override mutations are audited.</item>
-/// </list>
-/// Caching (T-08): this service is the <em>inner</em> behind the §15 caching
-/// decorator <c>CachingCalendarService</c> in Infrastructure. The decorator
-/// owns the canonical <see cref="CalendarEventInfo"/> read-model and answers
-/// reads from a snapshot; every mutating method on this type calls
-/// <c>CalendarRepository</c> and returns — invalidation is decorator-mediated
-/// (the decorator wraps each call and refreshes the affected event's cache
-/// entry afterward).
-/// </remarks>
 public sealed class CalendarService : ICalendarService
 {
     private readonly ICalendarRepository _repo;
@@ -74,8 +54,7 @@ public sealed class CalendarService : ICalendarService
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
         IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
     {
-        // In-memory join (§6b): resolve owning-team display names up front
-        // via ITeamService instead of .Include(e => e.OwningTeam).
+        // In-memory join (§6b): no .Include(e => e.OwningTeam).
         var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
         var teamsById = await _teamService.GetTeamsAsync(ct);
         return teamIds
@@ -121,12 +100,8 @@ public sealed class CalendarService : ICalendarService
 
         await _repo.AddAsync(ev, ct);
 
-        // Audit is best-effort observability; the DB write is source of truth.
-        // If the audit log throws after the calendar row commits, we MUST NOT
-        // re-raise — doing so would (a) lie to the caller (their event exists)
-        // and (b) cause the §15 caching decorator to skip its post-write
-        // invalidation, leaving the cache silently stale. Mirrors the pattern
-        // in GoogleAdminService.ResetPasswordAsync. See PR #585 follow-up.
+        // Audit best-effort: row already committed. Re-raising would lie to the caller and
+        // skip §15 decorator invalidation. See PR #585 follow-up.
         try
         {
             await _audit.LogAsync(
@@ -172,9 +147,7 @@ public sealed class CalendarService : ICalendarService
         }
     }
 
-    // Parse-check the RRULE at write time so a malformed rule cannot persist and break
-    // calendar reads (where occurrence expansion would throw). Ical.Net's RecurrencePattern
-    // ctor throws for syntactically invalid rules. Internal so tests can call it directly.
+    // Reject malformed RRULE at write time so reads can't crash during occurrence expansion.
     internal static void ValidateRecurrenceRule(string? rrule)
     {
         if (string.IsNullOrWhiteSpace(rrule)) return;
@@ -188,9 +161,7 @@ public sealed class CalendarService : ICalendarService
         }
     }
 
-    // Validate the timezone at write time so service callers (jobs, tests, future API endpoints)
-    // can't slip an unknown ID past the controller-layer guard and then crash inside
-    // ComputeRecurrenceUntilUtc / occurrence expansion. Internal so tests can call it directly.
+    // Reject unknown timezone at write time — controller-layer guard isn't enough for jobs/tests.
     internal static void ValidateTimezone(string? tz)
     {
         if (string.IsNullOrWhiteSpace(tz)) return;
@@ -203,9 +174,8 @@ public sealed class CalendarService : ICalendarService
             ? nameof(CreateCalendarEventDto.RecurrenceTimezone)
             : nameof(CreateCalendarEventDto.RecurrenceRule);
 
-    // Denormalise RRULE UNTIL (or the last occurrence for COUNT-bounded rules) into an Instant
-    // so the SQL window prefilter can skip events that cannot possibly contribute occurrences
-    // inside `[from, to]`. Returns null only for truly open-ended rules.
+    // Denormalised RRULE end (UNTIL or COUNT-bounded last-occurrence) for SQL window prefilter.
+    // Returns null only for truly open-ended rules.
     private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz, Instant dtStart, Instant? dtEnd)
     {
         if (string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
@@ -253,8 +223,7 @@ public sealed class CalendarService : ICalendarService
 
         if (count is null) return null;
 
-        // Expand the COUNT-bounded rule via Ical.Net to find the last occurrence, then
-        // return its end-time so "rule still reaches window" checks stay correct.
+        // Expand COUNT-bounded rule via Ical.Net; return last-occurrence end-time.
         var ruleZone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
         if (ruleZone is null) return null;
 
@@ -430,10 +399,7 @@ public sealed class CalendarService : ICalendarService
             apply: apply,
             ct: ct);
 
-        // Audit best-effort: exception upsert already committed. See
-        // CreateEventAsync. Re-throwing here would also skip the §15 caching
-        // decorator's parent-event invalidation, leaving the parent's
-        // Exceptions list silently stale.
+        // Audit best-effort: exception upsert already committed (see CreateEventAsync).
         try
         {
             await _audit.LogAsync(

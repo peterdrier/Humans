@@ -1,10 +1,4 @@
-@*
-    Renders one type-grouped section (teams / camps / shifts) of the global
-    search results page. Humans use the canonical _HumanSearchResults
-    partial directly; this partial is for the simpler list-row types only.
-
-    ViewData["Icon"] is the FontAwesome class for the placeholder tile.
-*@
+@* One type-grouped section (teams/camps/shifts) of global search. Humans use _HumanSearchResults. ViewData["Icon"] = FA class. *@
 @using Humans.Application.DTOs
 @model IReadOnlyList<GlobalSearchResult>
 

@@ -17,7 +17,6 @@ public class NotificationRowViewModel
     public DateTime CreatedAt { get; init; }
     public bool IsRead { get; init; }
 
-    // Resolution
     public bool IsResolved { get; init; }
     public DateTime? ResolvedAt { get; init; }
     public string? ResolvedByName { get; init; }

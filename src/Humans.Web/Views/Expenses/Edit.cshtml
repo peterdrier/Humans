@@ -16,7 +16,6 @@
 
 <vc:temp-data-alerts />
 
-@* ── Header edit ── *@
 <div class="card mb-4">
     <div class="card-header"><strong>Report header</strong></div>
     <div class="card-body">
@@ -46,7 +45,6 @@
                 }
                 else
                 {
-                    @* Category locked after submission *@
                     var selectedCategory = Model.Categories.FirstOrDefault(c => c.Id == Model.BudgetCategoryId);
                     <input type="hidden" asp-for="BudgetCategoryId" />
                     <p class="form-control-plaintext">@(selectedCategory?.DisplayName ?? "(unknown)")</p>
@@ -66,7 +64,6 @@
     </div>
 </div>
 
-@* ── Lines ── *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <strong>Expense lines</strong>
@@ -94,7 +91,6 @@
                     </div>
                 </div>
 
-                @* Attachment *@
                 @if (line.Attachment is not null)
                 {
                     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -131,7 +127,6 @@
                     <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
                 }
 
-                @* Inline line edit (only in Draft) *@
                 @if (Model.CanEditLines)
                 {
                     <details class="mt-2">
@@ -159,7 +154,6 @@
         }
     </div>
 
-    @* Add line (only in Draft) *@
     @if (Model.CanEditLines)
     {
         <div class="card-footer">

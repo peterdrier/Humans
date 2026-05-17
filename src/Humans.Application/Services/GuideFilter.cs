@@ -5,16 +5,12 @@ using Humans.Domain.Constants;
 namespace Humans.Application.Services;
 
 /// <summary>
-/// Strips role-scoped blocks the current user is not entitled to see. Operates on the
-/// HTML produced by <c>GuideRenderer</c> (with &lt;div data-guide-role&gt; wrappers).
-/// Pure function — returns the filtered HTML.
+/// Strips role-scoped blocks the current user can't see. Operates on GuideRenderer's
+/// HTML output (with &lt;div data-guide-role&gt; wrappers).
 /// </summary>
 public static class GuideFilter
 {
-    /// <summary>
-    /// Regex that matches the innermost &lt;/div&gt; (non-greedy .*?), which is safe because
-    /// guide markdown is PR-reviewed and does not contain nested &lt;div&gt;s.
-    /// </summary>
+    // Non-greedy: safe because PR-reviewed guide markdown has no nested <div>s.
     private static readonly Regex BlockPattern = new(
         """<div\s+data-guide-role="(?<role>[^"]+)"\s+data-guide-roles="(?<roles>[^"]*)"\s*>(?<body>.*?)</div>""",
         RegexOptions.Compiled | RegexOptions.Singleline,
@@ -25,8 +21,7 @@ public static class GuideFilter
         ArgumentNullException.ThrowIfNull(html);
         ArgumentNullException.ThrowIfNull(context);
 
-        // Two-pass: first pass decides each block's visibility; second pass applies the
-        // within-file Coordinator superset (Coordinator inherits from Board/Admin).
+        // Two-pass: pass 1 detects boardadmin visibility; pass 2 promotes Coordinator if seen.
         var fileSeesBoardAdmin = false;
         var matches = BlockPattern.Matches(html).ToList();
 

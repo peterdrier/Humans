@@ -14,11 +14,6 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>
-/// Service for managing user email addresses. Business logic only —
-/// no direct DbContext usage. Cross-section reads (AccountMergeRequests,
-/// Users) are routed through their owning service interfaces.
-/// </summary>
 public sealed class UserEmailService : IUserEmailService, IUserMerge
 {
     private readonly IUserEmailRepository _repository;
@@ -52,8 +47,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         _logger = logger;
     }
 
-    // Lazy to break the DI cycle:
-    // TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
+    // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => _serviceProvider.GetRequiredService<IAccountMergeService>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
@@ -61,7 +55,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     {
         var emails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
 
-        // Check which emails have pending merge requests (cross-section → IAccountMergeService)
         var emailIds = emails.Select(e => e.Id).ToList();
         var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
 
@@ -114,24 +107,17 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
-        // Check duplicate for this user
         if (await _repository.ExistsForUserAsync(userId, normalizedEmail, alternateEmail, cancellationToken))
             throw new ValidationException("This email address is already in your account.");
 
-        // Check pending merge (cross-section → IAccountMergeService)
         if (await MergeService.HasPendingForUserAndEmailAsync(
                 userId, normalizedEmail, alternateEmail, cancellationToken))
             throw new ValidationException("A merge request is already pending for this email address.");
 
-        // Check conflict for merge flow
         var isConflict = await _repository.ExistsVerifiedForOtherUserAsync(
             userId, normalizedEmail, alternateEmail, cancellationToken);
 
-        // Cache hits from CachingUserService rehydrate User from UserInfo,
-        // which does not carry SecurityStamp. UserManager.GenerateUserTokenAsync
-        // (below) reads user.SecurityStamp directly without a DB round-trip, so
-        // we must load via UserManager.FindByIdAsync here to get a fully
-        // populated entity.
+        // FindByIdAsync, not cache: UserManager token APIs read SecurityStamp directly and cache-rehydrated Users lack it.
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
@@ -152,12 +138,9 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             UpdatedAt = now
         };
 
-        // Issue nobodies-collective/Humans#687: every UserEmail-add path goes
-        // through AddRowWithInvariantsAsync — adds the row, runs the Primary +
-        // Google invariants, and invalidates UserInfo.
+        // see nobodies-collective/Humans#687 — every UserEmail-add path routes through AddRowWithInvariantsAsync.
         await AddRowWithInvariantsAsync(userEmail, cancellationToken);
 
-        // Generate verification token via Identity
         var token = await _userManager.GenerateUserTokenAsync(
             user,
             TokenOptions.DefaultEmailProvider,
@@ -177,12 +160,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        // Issue nobodies-collective/Humans#611: load the specific pending row
-        // the verification link was issued for, not "any non-verified plain
-        // row". The token is bound to this row's Id via the purpose suffix
-        // ("{EmailVerificationTokenPurpose}:{emailId}"), so picking a
-        // different row would cause token validation to fail against the
-        // wrong row even when the token is valid.
+        // see nobodies-collective/Humans#611 — token is bound to this row's Id via the purpose suffix.
         var pendingEmail = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
@@ -198,7 +176,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (!isValid)
             throw new ValidationException("The verification link has expired or is invalid.");
 
-        // Check conflict for merge flow
         var normalizedPendingEmail = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
         var alternatePendingEmail = GetAlternateComparableEmail(normalizedPendingEmail);
         var conflictingEmail = await _repository.GetConflictingVerifiedEmailAsync(
@@ -206,7 +183,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         if (conflictingEmail is not null)
         {
-            // Check for existing pending merge (avoid duplicates from link prefetch/double-click)
+            // avoid duplicates from link prefetch/double-click
             if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
             {
                 var now = _clock.GetCurrentInstant();
@@ -231,11 +208,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(pendingEmail, cancellationToken);
 
-        // Issue nobodies-collective/Humans#687: when an unverified row flips to
-        // verified, the Google identity invariant may now be satisfiable for
-        // the first time (for users whose only verified row is the one just
-        // verified). Run the invariant here in addition to the
-        // creation-time call inside AddRowWithInvariantsAsync.
+        // see nobodies-collective/Humans#687 — flipping unverified→verified may newly satisfy the Google invariant.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
@@ -252,10 +225,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             throw new ValidationException("No email pending verification.");
         }
 
-        // Mirror VerifyEmailAsync's duplicate-handling: if the address is
-        // already verified on another account, create a merge request rather
-        // than silently completing verification — the duplicate-account flow
-        // owns reconciliation.
+        // Mirror VerifyEmailAsync duplicate-handling: create merge request when address verified on another account.
         var normalizedPendingEmail = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
         var alternatePendingEmail = GetAlternateComparableEmail(normalizedPendingEmail);
         var conflictingEmail = await _repository.GetConflictingVerifiedEmailAsync(
@@ -287,7 +257,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(pendingEmail, cancellationToken);
 
-        // Issue nobodies-collective/Humans#687: see VerifyEmailAsync.
+        // see nobodies-collective/Humans#687
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
@@ -330,7 +300,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         await _repository.UpdateBatchAsync(changed, cancellationToken);
 
-        // UserInfo.PrimaryEmail derives from the row with IsPrimary=true.
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
@@ -355,19 +324,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         if (!string.IsNullOrEmpty(email.Provider))
         {
-            // Provider-attached rows go through UnlinkAsync (which removes the
-            // AspNetUserLogins row and the email row). The per-row UI never
-            // routes a Provider-attached row to Delete; this is the service-level
-            // guard for non-UI callers.
+            // Provider-attached rows must go through UnlinkAsync; this guards non-UI callers.
             return false;
         }
 
-        // Preserve at least one verified UserEmail. An OAuth-only account can still
-        // sign in but cannot receive system notifications (the User.Email override
-        // falls back to base.Email when no verified UserEmails are loaded, and
-        // base.Email is null post email-decoupling), so blocking the last-verified-row
-        // delete is preferable to silently dropping notifications. Unverified rows
-        // aren't notification targets, so deleting one is safe.
+        // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
         if (email.IsVerified)
         {
             var allEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
@@ -383,17 +344,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         await _repository.RemoveAsync(email, cancellationToken);
 
-        // If the removed row was primary, promote the highest-priority remaining
-        // verified row (Workspace > most-recently-updated).
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
-
-        // If the removed row was the IsGoogle row, restamp the canonical
-        // remaining @nobodies.team row so the user doesn't drift into the
-        // zero-IsGoogle state.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
-
-        // UserInfo.PrimaryEmail derives from user_emails; drop the stale entry so
-        // admin/search/profile surfaces stop showing the removed address.
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return true;
@@ -407,10 +359,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
-        // Cache invalidation is the caller's responsibility — must run AFTER
-        // the ambient TransactionScope completes so a rolled-back fold
-        // doesn't repopulate caches from now-uncommitted state.
-        // See AccountMergeService.AcceptAsync post-commit block.
+        // Caller invalidates cache AFTER the ambient TransactionScope commits — see AccountMergeService.AcceptAsync.
         await _repository.ReassignToUserAsync(
             mergedFromUserId, mergedToUserId, now, ct);
     }
@@ -439,11 +388,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             UpdatedAt = now
         };
 
-        // Issue nobodies-collective/Humans#687: every UserEmail-add path goes
-        // through the orchestrator. EnsureGoogleInvariantAsync stamps IsGoogle
-        // on the canonical row (Workspace > existing-IsGoogle > most-recent),
-        // so the @nobodies.team row wins automatically without a separate
-        // _userService.TrySetGoogleEmailAsync write.
+        // see nobodies-collective/Humans#687
         await AddRowWithInvariantsAsync(userEmail, cancellationToken);
         return true;
     }
@@ -452,11 +397,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public Task<bool> TryBackfillGoogleEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // Body intentionally left as a no-op. The Google identity invariant
-        // is now maintained by EnsureGoogleInvariantAsync, which is called from
-        // AddRowWithInvariantsAsync on every UserEmail row creation and from
-        // VerifyEmailAsync / AdminMarkVerifiedAsync on every verification.
-        // See issue nobodies-collective/Humans#687.
+        // no-op — see nobodies-collective/Humans#687 (EnsureGoogleInvariantAsync now owns the invariant).
         _ = userId;
         _ = cancellationToken;
         return Task.FromResult(false);
@@ -515,7 +456,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        // Start with users who have a verified IsPrimary row.
         var allNotificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
@@ -525,8 +465,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 result[userId] = email;
         }
 
-        // For users without a notification-target row, fall back to User.Email
-        // (the Identity email). Single-batch round-trip via IUserService.
+        // Fall back to User.Email (Identity) for users without a notification-target row.
         var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
         if (missing.Count > 0)
         {
@@ -569,10 +508,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
     public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
     {
-        // Returns null on zero matches (unverified-only or unknown address) and
-        // on ambiguous matches (the same verified address appears on more than one
-        // user — an invariant violation, but we treat it safely). Only returns a
-        // non-null id when exactly one distinct UserId owns the verified address.
+        // Returns null on zero matches OR ambiguous matches; only non-null when exactly one user verified-holds the address.
         var userIds = await _repository.GetDistinctUserIdsByVerifiedEmailAsync(email, ct);
         return userIds.Count == 1 ? userIds[0] : (Guid?)null;
     }
@@ -584,7 +520,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (primary is not null) return primary.Email;
         var anyVerified = emails.FirstOrDefault(e => e.IsVerified);
         if (anyVerified is not null) return anyVerified.Email;
-        // Fall back to User.Email as last resort
         var user = await _userService.GetByIdAsync(userId, ct);
         return user?.Email;
     }
@@ -705,24 +640,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         return null;
     }
 
-    /// <summary>
-    /// Maintains the "exactly one IsPrimary=true verified row per user" invariant
-    /// (Profiles.md Data Model — UserEmail.IsNotificationTarget). Centralizes the
-    /// rule in one place so any code path that adds or removes a UserEmail row
-    /// can call it as a safety step.
-    ///
-    /// Rules:
-    /// - 0 verified rows → no-op (no candidate to promote; unverified rows are
-    ///   never the notification target).
-    /// - 1+ verified rows but 0 IsPrimary → pick a successor and promote it.
-    /// - 2+ IsPrimary rows → demote all but the winner.
-    ///
-    /// Successor priority (highest to lowest):
-    /// 1. Verified @nobodies.team row (Workspace identity wins per Peter's
-    ///    feedback — the Workspace row IS the canonical Primary).
-    /// 2. Most recently updated verified row.
-    /// 3. Any verified row.
-    /// </summary>
+    // Invariant: exactly one IsPrimary=true verified row per user. Winner: @nobodies.team > existing primary > most-recent.
     private async Task EnsurePrimaryInvariantAsync(
         Guid userId, CancellationToken cancellationToken)
     {
@@ -733,18 +651,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         var currentPrimaries = verified.Where(e => e.IsPrimary).ToList();
 
-        // Pick the canonical winner from the verified set.
-        // 1. Workspace (@nobodies.team) row wins per Peter's feedback — that row IS
-        //    the canonical Primary when present.
-        // 2. Otherwise prefer an existing IsPrimary row if any (stable — don't
-        //    flip the primary just because a row was added/removed elsewhere).
-        // 3. Otherwise most-recently-updated, with Id as the stable tiebreaker.
         var winner =
             verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
             ?? currentPrimaries.OrderBy(e => e.Id).FirstOrDefault()
             ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
 
-        // Already correct: exactly one primary, and it's the winner.
         if (currentPrimaries.Count == 1 && currentPrimaries[0].Id == winner.Id)
             return;
 
@@ -768,27 +679,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
-    /// <summary>
-    /// Issue nobodies-collective/Humans#687: maintains the "at most one
-    /// IsGoogle=true verified row per user" invariant. Mirrors
-    /// <see cref="EnsurePrimaryInvariantAsync"/> — when ≥1 verified row exists
-    /// for the user but none is IsGoogle, picks the canonical winner and stamps
-    /// it. Single source of truth for the Google identity, replacing the
-    /// drift-prone <c>User.GoogleEmail</c> shadow column.
-    ///
-    /// Rules:
-    /// - 0 verified rows → no-op (no candidate to promote).
-    /// - 1+ verified rows but 0 IsGoogle → pick a winner and stamp it.
-    /// - 2+ IsGoogle rows → demote all but the winner.
-    /// - Exactly 1 IsGoogle row that is verified → no-op (stable).
-    ///
-    /// Successor priority (highest to lowest), same as
-    /// <see cref="EnsurePrimaryInvariantAsync"/>:
-    /// 1. Verified @nobodies.team row (Workspace identity wins).
-    /// 2. Existing IsGoogle row (stable — don't flip the Google identity just
-    ///    because a sibling row changed).
-    /// 3. Most-recently-updated verified row, with Id as stable tiebreaker.
-    /// </summary>
+    // Invariant: at most one IsGoogle=true verified row per user (see nobodies-collective/Humans#687). Same precedence as EnsurePrimaryInvariantAsync.
     private async Task EnsureGoogleInvariantAsync(
         Guid userId, CancellationToken cancellationToken)
     {
@@ -799,14 +690,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         var currentGoogles = verified.Where(e => e.IsGoogle).ToList();
 
-        // Pick the canonical winner from the verified set — same precedence as
-        // EnsurePrimaryInvariantAsync.
         var winner =
             verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
             ?? currentGoogles.OrderBy(e => e.Id).FirstOrDefault()
             ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
 
-        // Already correct: exactly one IsGoogle row, and it's the winner.
         if (currentGoogles.Count == 1 && currentGoogles[0].Id == winner.Id)
             return;
 
@@ -830,14 +718,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
-    /// <summary>
-    /// Issue nobodies-collective/Humans#687: single orchestrator for every
-    /// UserEmail-add path. Adds the row, then runs the Primary and Google
-    /// invariants and invalidates the UserInfo cache. The four call sites
-    /// (<see cref="AddEmailAsync"/>, <see cref="AddVerifiedEmailAsync"/>,
-    /// <see cref="LinkAsync"/>, <see cref="AddProvisionedEmailAsync"/>) all
-    /// route through here so no path can silently skip an invariant.
-    /// </summary>
+    // Single orchestrator for every UserEmail-add path — see nobodies-collective/Humans#687.
     private async Task AddRowWithInvariantsAsync(
         UserEmail row, CancellationToken cancellationToken)
     {
@@ -854,8 +735,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
 
-        // Idempotent — duplicate provisioning attempts (e.g. retried imports)
-        // must not re-add the row.
+        // Idempotent — retried imports must not re-add the row.
         if (await _repository.ExistsForUserAsync(userId, normalizedEmail, alternateEmail, cancellationToken))
             return;
 
@@ -866,7 +746,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             UserId = userId,
             Email = email,
             IsVerified = true,
-            // IsPrimary / IsGoogle set by the orchestrator's invariants.
             IsPrimary = false,
             Visibility = null,
             CreatedAt = now,
@@ -907,8 +786,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsVerified) return false;
 
-        // Capture the previous Google email (if any) for the audit description.
-        // ReadOnly is fine — SetGoogleExclusiveAsync is the canonical mutation.
+        // Capture previous Google email for audit description.
         var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
         var previousGoogle = allEmails.FirstOrDefault(e => e.IsGoogle && e.Id != row.Id);
 
@@ -938,10 +816,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsGoogle) return false;
 
-        // Only allow clearing IsGoogle when the user has another row also
-        // carrying the flag (the duplicate-flag recovery scenario). Clearing
-        // the sole IsGoogle row would leave the user in the ZeroIsGoogle state
-        // EmailProblems flags as a bug.
+        // Only allow clearing IsGoogle on a duplicate — clearing the sole IsGoogle row → ZeroIsGoogle violation.
         var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
         if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
 
@@ -968,22 +843,14 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsPrimary) return false;
 
-        // Only allow clearing IsPrimary when the user has another verified
-        // IsPrimary row (the duplicate-flag recovery scenario). The verified
-        // filter mirrors the view's `hasMultiplePrimary` and the scanner's
-        // notion of a primary (`verifiedPrimaryCount`); without it, a row
-        // in `IsPrimary=true,IsVerified=false` would count as a successor
-        // and clearing the verified primary would leave zero verified
-        // primaries — the ZeroIsPrimary state EmailProblems flags as a bug.
+        // Only allow clearing IsPrimary on a duplicate verified row — must mirror the scanner's verified filter to avoid ZeroIsPrimary.
         var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
         if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
 
         row.IsPrimary = false;
         row.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(row, cancellationToken);
-        // Don't auto-promote a successor — the admin is resolving a
-        // duplicate-IsPrimary state and may want to pick the new primary
-        // deliberately.
+        // No auto-promote — admin is resolving a duplicate and picks the new primary deliberately.
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
@@ -1011,9 +878,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 var verifiedIsGoogleCount = verified.Count(e => e.IsGoogle);
                 var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
                 var hasMultipleGoogle = isGoogleCount > 1;
-                // EnsureGoogleInvariantAsync only stamps IsGoogle on verified rows,
-                // so the "zero" check must mirror that — an unverified IsGoogle row
-                // is itself a violation, not a satisfier of the invariant.
+                // Zero-check filters to verified rows — an unverified IsGoogle row is itself a violation.
                 var hasZeroGoogle = verified.Count > 0 && verifiedIsGoogleCount == 0;
                 var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
                 return (
@@ -1088,8 +953,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user is null) return false;
 
-        // Capture provider/key/email before mutation — RemoveAsync may detach
-        // the entity and the audit description needs them.
+        // Capture before RemoveAsync may detach the entity.
         var provider = row.Provider;
         var providerKey = row.ProviderKey;
         var email = row.Email;
@@ -1097,12 +961,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var removeLogin = await _userManager.RemoveLoginAsync(user, provider, providerKey);
         if (!removeLogin.Succeeded)
         {
-            // Hard-fail: don't delete the UserEmail row if Identity refused to
-            // remove the AspNetUserLogins row. Otherwise the user would believe
-            // they unlinked their Google account (UserEmail row is gone) but
-            // they could still sign in via Google (AspNetUserLogins row
-            // persists). Hard-failing keeps the two stores in sync — the caller
-            // can retry, and an admin can investigate the logged failure.
+            // Hard-fail to keep AspNetUserLogins and user_emails in sync — otherwise user thinks they unlinked but can still sign in.
             _logger.LogError(
                 "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
@@ -1112,13 +971,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         await _repository.RemoveAsync(row, cancellationToken);
 
-        // If the unlinked row was primary, promote the highest-priority
-        // remaining verified row.
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
-
-        // If the unlinked row was the IsGoogle row, restamp the canonical
-        // remaining @nobodies.team row so the user doesn't drift into the
-        // zero-IsGoogle state.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
 
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
@@ -1156,7 +1009,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
             string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
 
-        // 1. NoChange: tagged row already at claim email.
+        // 1. NoChange
         if (tagged is not null &&
             string.Equals(tagged.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
         {
@@ -1168,23 +1021,16 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             !ReferenceEquals(r, tagged) &&
             string.Equals(r.Email, claimEmail, StringComparison.OrdinalIgnoreCase));
 
-        // Every remaining branch (rewrite, tag-move, insert) ends with a
-        // verified row at claimEmail. Cross-user check fires before any of
-        // them mutate. Normalize the claim email through the same comparison
-        // rules every other UserEmail lookup uses (gmail/googlemail alternate,
-        // case-insensitive, trimmed) so the security-critical displacement
-        // gate cannot be bypassed by a Gmail dot-alias.
+        // Cross-user check before any mutation. Normalize via gmail/googlemail alternate so dot-aliases can't bypass the displacement gate.
         var normalizedClaim = EmailNormalization.NormalizeForComparison(claimEmail);
         var alternateClaim = GetAlternateComparableEmail(normalizedClaim);
         var blocker = await _repository.FindOtherUsersVerifiedRowAsync(
             normalizedClaim, alternateClaim, userId, cancellationToken);
 
-        // 2. CrossUserBlocked: another user verified-holds the claim and the
-        //    provider's claim is unverified → no mutation, audit the attempt.
+        // 2. CrossUserBlocked: another user verified-holds the claim and provider's claim is unverified — no mutation, audit the attempt.
         if (blocker is not null && !claimEmailVerified)
         {
-            // CrossUserBlocked needs the displaced user's rows for the
-            // diagnostic only — load them here on the rare blocked path.
+            // Load displaced user rows for diagnostic only (rare path).
             var blockerRows = await _repository.GetByUserIdForMutationAsync(
                 blocker.UserId, cancellationToken);
 
@@ -1219,9 +1065,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 DisplacedUserLeftWithoutVerifiedEmail: false);
         }
 
-        // 3. Decide the cross-user displacement (snapshot only — does not
-        //    mutate the DB yet). The displacement and the signing user's
-        //    mutation commit together in step 5.
+        // 3. Decide cross-user displacement (snapshot only; commits with step 5).
         var displaced = false;
         Guid? displacedUserId = null;
         Guid? displacedRowId = null;
@@ -1265,7 +1109,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         if (tagged is not null && siblingAtClaim is not null)
         {
-            // Tag-move (explicit old-tagged row + sibling holds claim email).
+            // Tag-move: old-tagged row + sibling holds claim email.
             siblingAtClaim.Provider = provider;
             siblingAtClaim.ProviderKey = providerKey;
             siblingAtClaim.IsVerified = true;
@@ -1287,8 +1131,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         }
         else if (tagged is not null)
         {
-            // Rewrite in place — tagged row holds a different email and no
-            // sibling of the same user holds the claim email.
+            // Rewrite in place — no sibling at claim email.
             tagged.Email = claimEmail;
             tagged.IsVerified = true;
             tagged.UpdatedAt = now;
@@ -1304,9 +1147,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         }
         else if (siblingAtClaim is not null)
         {
-            // No tagged row but the user has an existing row at the claim
-            // email — attach the tag (legacy backfill / first OAuth sign-in
-            // after a plain-email account).
+            // Attach tag to existing row (legacy backfill / first OAuth on plain-email account).
             siblingAtClaim.Provider = provider;
             siblingAtClaim.ProviderKey = providerKey;
             siblingAtClaim.IsVerified = true;
@@ -1323,7 +1164,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         }
         else
         {
-            // Fresh row — no tagged row and no sibling at the claim email.
+            // Fresh row.
             rowToInsert = new UserEmail
             {
                 Id = Guid.NewGuid(),
@@ -1345,10 +1186,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 $"(provider={provider}, sub={providerKey}, email={claimEmail}).";
         }
 
-        // 5. Apply the displacement + signing-user mutation atomically — one
-        //    DbContext, one transaction. Either both happen or neither does;
-        //    the displaced user's row cannot be deleted while the signing
-        //    user's mutation is left undone.
+        // 5. Apply displacement + signing-user mutation atomically — one transaction.
         await _repository.ApplyReconcilePlanAsync(
             displacedRowToDelete: displaced ? blocker : null,
             rowToDelete: rowToDelete,
@@ -1356,10 +1194,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             rowToInsert: rowToInsert,
             cancellationToken);
 
-        // 6. Invariants + cache invalidation on every affected user. These
-        //    run AFTER the data-change commit. They are idempotent and the
-        //    next sign-in re-runs them — when they can't run (process crash
-        //    after step 5), no destructive state is left in the DB.
+        // 6. Invariants + cache invalidation (idempotent; re-runs on next sign-in if process crashes here).
         if (displaced)
         {
             await EnsurePrimaryInvariantAsync(blocker!.UserId, cancellationToken);
@@ -1370,9 +1205,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
-        // 7. Audit. The cross-user-displaced path writes the OAuthRename-
-        //    Collision pair as the audit for this callback; we don't also
-        //    write GoogleEmailRenamed / UserEmailLinked on top.
+        // 7. Audit. Displaced path writes the OAuthRenameCollision pair instead of GoogleEmailRenamed/UserEmailLinked.
         if (displaced)
         {
             _logger.LogError(
@@ -1426,13 +1259,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             displacedUserLeftWithoutVerifiedEmail);
     }
 
-    /// <summary>
-    /// Builds the structured diagnostic string used by every cross-user
-    /// collision outcome (<see cref="ReconcileOutcome.CrossUserDisplaced"/>
-    /// and <see cref="ReconcileOutcome.CrossUserBlocked"/>). Captures every
-    /// available field so admins can trace what the provider claimed,
-    /// what state both users were in, and which row was deleted or blocked.
-    /// </summary>
+    // Structured diagnostic for cross-user collision audits — captures both users' full state.
     private async Task<string> BuildCrossUserDiagnosticAsync(
         string kind,
         Guid signingUserId,

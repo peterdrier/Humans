@@ -7,19 +7,9 @@ using NodaTime;
 namespace Humans.Application.Services.AuditLog;
 
 /// <summary>
-/// A resolved view of an <see cref="AuditLogEntry"/> — the raw entry plus
-/// pre-resolved actor / subject / related-subject display names so render
-/// targets (agent tool, view components, controllers) never need to chase
-/// down user or team name lookups themselves.
+/// Resolved view of an <see cref="AuditLogEntry"/> with pre-resolved actor/subject/team display names.
+/// Constructed exclusively by <see cref="IAuditViewerService"/>. Privacy guard: no raw GUIDs in rendered output.
 /// </summary>
-/// <remarks>
-/// Owned by the Audit Log section. Constructed exclusively by
-/// <see cref="IAuditViewerService"/>; do not new this up at call sites.
-/// Privacy guard: <see cref="RenderPlainText"/> never emits a raw GUID — the
-/// viewer's own id is substituted with "You", other users render as their
-/// resolved display name only, and entries with no verb mapping render
-/// nothing (the caller filters them out).
-/// </remarks>
 public sealed record AuditEvent(
     Guid Id,
     Instant OccurredAt,
@@ -45,25 +35,13 @@ public sealed record AuditEvent(
     string? ResourceName)
 {
     /// <summary>
-    /// Renders this event as a single-line English sentence suitable for the
-    /// in-app agent's tool output. No GUIDs ever appear in the output.
+    /// Renders this event as a single-line sentence for the agent's tool output. Never emits raw GUIDs.
+    /// When <paramref name="viewerUserId"/> matches actor/subject, substitutes "You"/"you" and uses the self-verb.
+    /// Returns null when the action has no verb mapping (caller filters).
     /// </summary>
-    /// <param name="viewerUserId">
-    /// When supplied, occurrences of this user (as actor or subject) are
-    /// substituted with "You" / "you" instead of the resolved display name,
-    /// and the self-form verb is used when actor == viewer.
-    /// </param>
-    /// <returns>
-    /// A non-empty single-line sentence on success, or <c>null</c> when the
-    /// action has no structured verb mapping — callers should filter null
-    /// results rather than dumping a raw <see cref="Description"/> blob into
-    /// agent context.
-    /// </returns>
     public string? RenderPlainText(Guid? viewerUserId = null)
     {
-        // Google sync entries have their own structured fields and aren't
-        // verb-mapped — render them on a deterministic schema so the agent
-        // can still surface "your Drive role on resource X was changed".
+        // Google sync entries use a separate structured schema.
         if (SyncSource.HasValue)
             return RenderGoogleSync(viewerUserId);
 
@@ -76,16 +54,14 @@ public sealed record AuditEvent(
         var actorIsSubject = ActorUserId.HasValue && SubjectUserId.HasValue
             && ActorUserId.Value == SubjectUserId.Value;
 
-        // Actor token — "You" if the viewer acted, the resolved display name
-        // otherwise, "System" for jobs (no actor id).
+        // "System" for jobs (no actor id).
         string actor = ActorUserId.HasValue
             ? actorIsViewer
                 ? "You"
                 : (ActorDisplayName ?? "Someone")
             : "System";
 
-        // Subject token. Suppressed when actor == subject (keeps the sentence
-        // tight — "You signed up" not "You created signup for You").
+        // Suppress subject when actor == subject ("You signed up", not "You created signup for You").
         string? subject = null;
         if (SubjectUserId.HasValue && !actorIsSubject)
         {
@@ -94,8 +70,6 @@ public sealed record AuditEvent(
                 : (SubjectDisplayName ?? "someone");
         }
 
-        // When no subject will render, prefer the self-verb if defined; else
-        // strip the dangling preposition off the transitive verb.
         var noVisibleSubject = subject is null;
         var displayVerb = noVisibleSubject
             ? AuditEventTextualizer.GetActionSelfVerb(Action) ?? AuditEventTextualizer.TrimDanglingPreposition(verb)
@@ -130,10 +104,7 @@ public sealed record AuditEvent(
     }
 
     /// <summary>
-    /// Returns a structured render bundle for HTML composition. The verb
-    /// and self-verb come from the same tables that power
-    /// <see cref="RenderPlainText"/>, so the in-app audit log and the agent
-    /// tool stay in lock-step.
+    /// Structured render bundle for HTML composition. Shares verb tables with <see cref="RenderPlainText"/>.
     /// </summary>
     public AuditEventRender RenderStructured()
     {
@@ -150,11 +121,7 @@ public sealed record AuditEvent(
 
     private string RenderGoogleSync(Guid? viewerUserId)
     {
-        // Google sync entries describe a permission/role change against a
-        // resource. The user-facing form: "<date> — <action> <role> for
-        // <email or You> on <resource> (<source>)". We deliberately keep
-        // GUIDs out of the output; resource name comes from the resolved
-        // entity (or a fallback "a Google resource" if name lookup missed).
+        // Form: "<date> — <action> <role> for <email|You> on <resource> (<source>)". No GUIDs.
         var sb = new StringBuilder();
         sb.Append(FormatDate(OccurredAt));
         sb.Append(" — ");
@@ -169,9 +136,6 @@ public sealed record AuditEvent(
         if (!string.IsNullOrWhiteSpace(UserEmail))
         {
             sb.Append(" for ");
-            // The viewer's own email isn't a GUID, so we don't need to mask
-            // it; but rephrase to "You" when it matches the viewer's
-            // primary subject for friendliness.
             var subjectIsViewer = viewerUserId.HasValue && SubjectUserId == viewerUserId.Value;
             sb.Append(subjectIsViewer ? "You" : UserEmail);
         }
@@ -202,11 +166,7 @@ public sealed record AuditEvent(
         occurredAt.InUtc().Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }
 
-/// <summary>
-/// Structured render bundle returned by <see cref="AuditEvent.RenderStructured"/>.
-/// View components compose HTML from these fields so the verb tables don't
-/// need to be re-imported at the view layer.
-/// </summary>
+/// <summary>Structured render bundle from <see cref="AuditEvent.RenderStructured"/>.</summary>
 public sealed record AuditEventRender(
     string? Verb,
     string? SelfVerb,

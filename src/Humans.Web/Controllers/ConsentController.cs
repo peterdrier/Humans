@@ -91,9 +91,7 @@ public class ConsentController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        // A Stub profile (null legal name) cannot legally attest to a consent
-        // document. Bounce to /Profile/Edit so the user can add the required
-        // identity fields before signing.
+        // Stub profile (no legal name) cannot attest to a consent. Bounce to /Profile/Edit.
         if (await IsStubProfileAsync(user.Id))
             return RedirectToProfileEditForStub();
 
@@ -135,8 +133,7 @@ public class ConsentController : HumansControllerBase
                 return RedirectToAction(nameof(Index));
             }
 
-            // Peer-call the director threshold check. ConsentService deliberately
-            // does not call into Onboarding directly — that was the inverted arrow.
+            // Peer-call: ConsentService does not call into Onboarding (avoids inverted arrow).
             await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
             SetConsentSubmitSuccessFlash(result);

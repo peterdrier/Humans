@@ -10,36 +10,14 @@ using Humans.Application.Interfaces.Governance;
 
 namespace Humans.Application.Services.Governance;
 
-/// <summary>
-/// Pure orchestrator that computes membership status (Volunteer / Colaborador /
-/// Asociado tier, Active / Inactive / Suspended / Pending state) from the data
-/// owned by other sections: profiles, team memberships, role assignments,
-/// users, legal documents, and consent records. Owns no tables of its own —
-/// every read goes through the corresponding section service interface per
-/// design-rules §9. Writes are delegated to those services.
-///
-/// <para>
-/// Moved from <c>Humans.Infrastructure.Services</c> to
-/// <c>Humans.Application.Services.Governance</c> alongside
-/// <see cref="ApplicationDecisionService"/> as part of the §15 migration
-/// (issue #559).
-/// </para>
-/// </summary>
 public sealed class MembershipCalculator : IMembershipCalculator
 {
-    // Team + role reads go through IMembershipQuery (not ITeamService /
-    // IRoleAssignmentService directly) to break a circular DI graph: both of
-    // those services inject ISystemTeamSync, whose implementation injects
-    // IMembershipCalculator. IMembershipQuery is a thin pass-through that
-    // depends on the team/role services but has no other dependents.
+    // IMembershipQuery (not ITeamService/IRoleAssignmentService) breaks DI cycle through ISystemTeamSync.
     private readonly IMembershipQuery _membershipQuery;
     private readonly IUserService _userService;
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
 
-    // ConsentService is resolved lazily via IServiceProvider to break the
-    // cyclic registration: ConsentService depends on IMembershipCalculator
-    // (for GetRequiredTeamIdsForUserAsync), and MembershipCalculator needs
-    // consent data. Both live in the same scope, so a lazy lookup is safe.
+    // Lazy IConsentService resolve — ConsentService depends on IMembershipCalculator.
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
 
@@ -80,8 +58,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
             return MembershipStatus.Pending;
         }
 
-        // A user is considered active if they have governance role assignments
-        // OR are a member of the Volunteers team (i.e., a plain volunteer).
+        // Active = has role assignments OR is a Volunteers-team member.
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
         var isVolunteerMember = await _membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
@@ -106,7 +83,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
     {
         var status = await ComputeStatusAsync(userId, cancellationToken);
 
-        // Get required docs from all teams the user is eligible for
         var eligibleTeamIds = await GetRequiredTeamIdsForUserAsync(userId, cancellationToken);
         var allRequiredVersionIds = new List<Guid>();
 
@@ -116,7 +92,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
             allRequiredVersionIds.AddRange(versions.Select(v => v.Id));
         }
 
-        // Deduplicate in case a doc is shared across teams
         var requiredVersionIds = allRequiredVersionIds.Distinct().ToList();
 
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, cancellationToken);
@@ -186,14 +161,11 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Get current versions of all required documents (Volunteers team = global)
         var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
         var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
 
-        // Get versions the user has consented to
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, cancellationToken);
 
-        // Find missing consents
         return requiredVersionIds
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
@@ -209,10 +181,8 @@ public sealed class MembershipCalculator : IMembershipCalculator
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
         CancellationToken cancellationToken = default)
     {
-        // Get all users with active roles
         var usersWithActiveRoles = await _membershipQuery.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 
-        // Use batch method to avoid N+1 queries
         var usersWithAnyExpiredConsents = await GetUsersWithAnyExpiredConsentsAsync(usersWithActiveRoles, cancellationToken);
 
         return usersWithAnyExpiredConsents.ToList();
@@ -289,7 +259,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         var expiredVersionIds = expiredVersions.Select(v => v.Id).ToHashSet();
 
-        // Get consented version IDs for all users in batch
         var consentsByUser = await ConsentService.GetConsentMapForUsersAsync(userIdList, cancellationToken);
 
         var result = new HashSet<Guid>();
@@ -297,7 +266,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
         {
             if (consentsByUser.TryGetValue(userId, out var consented))
             {
-                // User has expired consents if any expired version is NOT in their consented list
                 if (expiredVersionIds.Any(id => !consented.Contains(id)))
                 {
                     result.Add(userId);
@@ -305,7 +273,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
             }
             else
             {
-                // No consents at all, and there are expired required versions
                 result.Add(userId);
             }
         }
@@ -317,19 +284,15 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Start with current team memberships. The membership query returns
-        // the small team snapshot needed for the Coordinator-of-user-team
-        // check below without exposing TeamMember entities.
         var memberships = await _membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
         var teamIds = memberships.Select(m => m.TeamId).ToList();
 
-        // Always include Volunteers (global docs apply to everyone)
+        // Volunteers docs apply to everyone.
         if (!teamIds.Contains(SystemTeamIds.Volunteers))
         {
             teamIds.Add(SystemTeamIds.Volunteers);
         }
 
-        // Include Coordinators if user is Coordinator of any user-created team
         if (!teamIds.Contains(SystemTeamIds.Coordinators))
         {
             var isCoordinatorAnywhere = memberships.Any(m =>
@@ -350,17 +313,12 @@ public sealed class MembershipCalculator : IMembershipCalculator
     {
         var allIds = userIds.ToList();
 
-        // Pull users (UserInfo carries the profile slice) through the cache —
-        // no direct DbContext access. Missing entities are simply absent from
-        // the map.
         var usersById = await _userService.GetUserInfosAsync(allIds, ct);
 
-        // 1. PendingDeletion — DeletionRequestedAt is not null (highest priority)
         var pendingDeletion = allIds
             .Where(id => usersById.TryGetValue(id, out var u) && u.DeletionRequestedAt != null)
             .ToHashSet();
 
-        // 2. IncompleteSignup — no Profile slice
         var remaining = allIds.Where(id => !pendingDeletion.Contains(id)).ToList();
         var incompleteSignup = new HashSet<Guid>();
         foreach (var id in remaining)
@@ -373,7 +331,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
 
-        // 3. Suspended — UserInfo.IsSuspended (State == Suspended)
         var suspended = new HashSet<Guid>();
         foreach (var id in remaining)
         {
@@ -385,7 +342,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !suspended.Contains(id)).ToList();
 
-        // 4. PendingApproval — !Profile.IsApproved (rejected users go to IncompleteSignup)
+        // Rejected → IncompleteSignup.
         var pendingApproval = new HashSet<Guid>();
         foreach (var id in remaining)
         {
@@ -405,7 +362,6 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !pendingApproval.Contains(id) && !incompleteSignup.Contains(id)).ToList();
 
-        // 5. Active vs MissingConsents — approved, not suspended
         var usersWithConsents = await GetUsersWithAllRequiredConsentsForTeamAsync(remaining, SystemTeamIds.Volunteers, ct);
         var active = remaining.Where(id => usersWithConsents.Contains(id)).ToHashSet();
         var missingConsents = remaining.Where(id => !usersWithConsents.Contains(id)).ToHashSet();

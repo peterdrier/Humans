@@ -103,7 +103,6 @@ else
         </table>
     </div>
 
-    @* Coordinator rejection modals *@
     @foreach (var r in Model.Reports.Where(x => x.Status == ExpenseReportStatus.Submitted))
     {
         <div class="modal fade" id="rejectModal-@r.Id" tabindex="-1"

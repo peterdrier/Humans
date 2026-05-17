@@ -13,23 +13,9 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Onboarding;
 
-/// <summary>
-/// Onboarding orchestrator (intake funnel only). Owns no tables —
-/// coordinates <see cref="IProfileService"/> (profile mutations),
-/// <see cref="IUserService"/> (user reads for rejection email),
-/// <see cref="IApplicationDecisionService"/> (review-queue cross-section
-/// reads only — pending-application lookup, approved-tier lookup), and
-/// <see cref="ISystemTeamSync"/> (system team membership sync). All reads
-/// and writes flow through the owning-section service interfaces, never
-/// through DbContext. Cache invalidation is owned by the target services'
-/// decorators/invalidators — this orchestrator never touches caches directly.
-///
-/// Out of scope (handled by sibling services):
-/// suspend/unsuspend (→ <c>IHumanLifecycleService</c>),
-/// board voting (→ <see cref="IApplicationDecisionService"/>), admin
-/// dashboard aggregation (→ <see cref="Dashboard.IAdminDashboardService"/>),
-/// and account deletion (→ future <c>IAccountDeletionService</c>).
-/// </summary>
+// Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
+// Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
+// admin dashboard (IAdminDashboardService), account deletion (future IAccountDeletionService).
 public sealed class OnboardingService : IOnboardingService
 {
     private readonly IProfileService _profileService;
@@ -64,14 +50,11 @@ public sealed class OnboardingService : IOnboardingService
         _logger = logger;
     }
 
-    // ==========================================================================
-    // Queries — review queue
-    // ==========================================================================
+    // --- Queries: review queue ---
 
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
     {
-        // Read off the cached UserInfo snapshot — review queue = profiles not
-        // approved and not rejected, oldest profile first.
+        // Review queue = not approved, not rejected, oldest first.
         var reviewable = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.NeedsConsentReview)
             .OrderBy(u => u.Profile!.CreatedAt)
@@ -95,8 +78,7 @@ public sealed class OnboardingService : IOnboardingService
             .ToList();
         var pending = reviewable.Except(flagged).ToList();
 
-        // ReviewQueueData currently types PendingAppUserIds as HashSet<Guid> —
-        // materialize from the IReadOnlySet<Guid> returned by Governance.
+        // ReviewQueueData types PendingAppUserIds as HashSet<Guid>; Governance returns IReadOnlySet.
         var pendingAppHashSet = pendingAppUserIds.ToHashSet();
 
         return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress);
@@ -129,23 +111,18 @@ public sealed class OnboardingService : IOnboardingService
             pendingApp?.Motivation);
     }
 
-    // ==========================================================================
-    // Consent-check mutations
-    // ==========================================================================
+    // --- Consent-check mutations ---
 
     public async Task<OnboardingResult> ClearConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
-        // Profile mutation + cache invalidation owned by ProfileService/decorator.
         var result = await _profileService.RecordConsentCheckAsync(
             userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
         if (!result.Success)
             return result;
 
-        // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
 
-        // If user already has approved tier applications, sync those teams too.
         var approvedTiers = await _applicationDecisionService.GetApprovedTiersForUserAsync(userId, ct);
 
         foreach (var tier in approvedTiers)
@@ -205,9 +182,7 @@ public sealed class OnboardingService : IOnboardingService
         return result;
     }
 
-    // ==========================================================================
-    // Signup reject / volunteer approve
-    // ==========================================================================
+    // --- Signup reject / volunteer approve ---
 
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
@@ -259,14 +234,11 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> ApproveVolunteerAsync(
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
-        // Pre-flight existence check so we keep the historical "NotFound" error
-        // key contract — ApproveVolunteer used to gate on User + Profile both
-        // existing; with the nav strip we gate on the profile via ProfileService.
+        // Preserves historical "NotFound" error-key contract via ProfileService.
         var result = await _profileService.ApproveVolunteerAsync(userId, adminId, ct);
         if (!result.Success)
             return result;
 
-        // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
 
         _metrics.RecordVolunteerApproved();
@@ -292,12 +264,7 @@ public sealed class OnboardingService : IOnboardingService
         return result;
     }
 
-    // ==========================================================================
-    // Consent-check pending threshold (peer-called from controllers after a
-    // ProfileService.SaveProfileAsync or ConsentService.SubmitConsentAsync write
-    // completes — the leaves do not invoke this directly; that was the inverted
-    // arrow that produced the DI cycle this PR removes).
-    // ==========================================================================
+    // --- Consent-check pending threshold (peer-called by controllers after Profile/Consent writes) ---
 
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
         Guid userId, CancellationToken ct = default)
@@ -336,9 +303,7 @@ public sealed class OnboardingService : IOnboardingService
         return true;
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
+    // --- Helpers ---
 
     private async Task DeprovisionApprovalGatedSystemTeamsAsync(Guid userId)
     {

@@ -88,11 +88,7 @@
             </div>
         }
 
-        @* Issue nobodies-collective/Humans#677 — surface Google sync rejection *@
-        @* to the affected user so they understand why Drive/Groups access is   *@
-        @* not being granted. Cleared by an admin once the underlying problem   *@
-        @* (typically a non-Google email selected as the Google address) is     *@
-        @* resolved.                                                            *@
+        @* see nobodies-collective/Humans#677 — Google sync rejection banner *@
         @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
             <div class="alert alert-danger d-flex align-items-start mb-3">
@@ -174,9 +170,7 @@
                                         var primaryChecked = isLockedRow ? true : row.IsPrimary;
                                         var primaryDisabled = workspaceLocked || !row.IsVerified;
                                     }
-                                    @* Button-based set/clear (issue 650): radios in independent forms *@
-                                    @* are not a real radio group, so a checked one cannot be unselected *@
-                                    @* — admins could not recover from the duplicate-IsPrimary state.   *@
+                                    @* Buttons not radios (see #650): independent forms can't form a real radio group; admin needs unselect path *@
                                     @{
                                         var showClearPrimary = !isLockedRow && row.IsPrimary
                                             && hasMultiplePrimary;
@@ -215,8 +209,7 @@
                                     }
                                     else if (workspaceLocked && row.IsVerified)
                                     {
-                                        @* Verified, but another row holds the Workspace lock — *@
-                                        @* don't claim "verify first", which is a lie.          *@
+                                        @* Verified but Workspace lock held elsewhere — don't claim "verify first" *@
                                         <span class="text-muted small" title="Locked by the Workspace email row">—</span>
                                     }
                                     else
@@ -310,9 +303,7 @@
                                             </button>
                                         </form>
                                     }
-                                    @* Never offer a destructive action on the only remaining email — *@
-                                    @* removing the last row would leave the user with no email at all, *@
-                                    @* regardless of whether the row is provider-linked. *@
+                                    @* No destructive action on the last remaining email row *@
                                     @if (Model.Emails.Count > 1)
                                     {
                                         @if (!string.IsNullOrEmpty(row.Provider))
@@ -366,12 +357,7 @@
             </div>
         </div>
 
-        @* Issue nobodies-collective/Humans#697: admin-only AspNetUserLogins   *@
-        @* snapshot so admins can see the Identity-owned OAuth identity store *@
-        @* alongside the UserEmail tag rows. Per-row disagreement flags surface *@
-        @* the "tagged but no login" and "login but no tag" states. The store *@
-        @* is authoritative for `(Provider, ProviderKey) -> UserId`; mismatches *@
-        @* self-heal on next OAuth sign-in via ReconcileOAuthIdentityAsync.   *@
+        @* see nobodies-collective/Humans#697 — admin AspNetUserLogins snapshot + disagreement flags *@
         @if (Model.IsAdminContext)
         {
             <div class="card mb-4 border-danger" id="external-logins">
@@ -424,8 +410,7 @@
                 </div>
             </div>
 
-            @* Admin-only raw UserEmail dump — every column verbatim. *@
-            @* Diagnostic surface; no formatting, no actions. *@
+            @* Admin raw UserEmail dump — diagnostic, no formatting *@
             <div class="card mb-4 border-danger" id="raw-user-emails">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Raw <code>user_emails</code> rows <small class="ms-2 opacity-75">(Admin only)</small></h5>
@@ -481,11 +466,7 @@
                 </div>
             </div>
 
-            @* Admin-only recovery: insert an already-verified UserEmail row    *@
-            @* directly, no verification email. Use when a row was deleted in   *@
-            @* error and the address is already known-good. Bypasses the legacy *@
-            @* "this is already your sign-in email" check that blocks the       *@
-            @* normal Add flow when User.Email still holds the address.         *@
+            @* Admin recovery: insert verified UserEmail without verification email *@
             <div class="card mb-4 border-danger" id="admin-add-verified">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Add verified email directly <small class="ms-2 opacity-75">(Admin only)</small></h5>
@@ -566,12 +547,7 @@
 
         @if (!Model.IsAdminContext)
         {
-            @* Issue nobodies-collective/Humans#731: user-facing Linked        *@
-            @* Accounts dashboard. Lists AspNetUserLogins rows for the         *@
-            @* current user; the existing per-email-row Unlink (in the grid   *@
-            @* above) is keyed off UserEmail rows, this is keyed off the      *@
-            @* authoritative OAuth-identity store. CanUnlink server-validated *@
-            @* against the auth-method invariant.                             *@
+            @* see nobodies-collective/Humans#731 — Linked Accounts dashboard (server-validates CanUnlink) *@
             <div class="card mb-4" id="linked-accounts">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fa-solid fa-link me-2"></i>@Localizer["LinkedAccounts_Title"]</h5>
@@ -703,7 +679,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    @* site.js has a global form[data-confirm] submit handler and a global *@
-    @* js-auto-submit change handler that already cover these forms. No    *@
-    @* local listeners — duplicating the handler causes double-submit.     *@
+    @* No local listeners — site.js global handlers cover these forms (duplicates double-submit) *@
 }

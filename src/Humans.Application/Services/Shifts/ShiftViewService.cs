@@ -5,13 +5,7 @@ using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Shifts;
 
-/// <summary>
-/// Undecorated (inner) <see cref="IShiftView"/> implementation. Builds the
-/// view records directly from repositories on every call — no caching layer.
-/// Resolved by the Singleton <c>CachingShiftViewService</c> on cache miss /
-/// refresh via the keyed registration (<c>CachingShiftViewService.InnerServiceKey</c>).
-/// Issue #720.
-/// </summary>
+/// <summary>Inner <see cref="IShiftView"/> — direct repo reads, no caching. CachingShiftViewService wraps it (#720).</summary>
 public sealed class ShiftViewService : IShiftView
 {
     private readonly IShiftManagementRepository _management;

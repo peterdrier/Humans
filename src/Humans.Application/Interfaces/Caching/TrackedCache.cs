@@ -5,28 +5,9 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
-/// Generic, thread-safe in-memory cache primitive used by the Singleton caching
-/// decorators (<c>CachingUserService</c>, <c>CachingTeamService</c>,
-/// <c>CachingShiftViewService</c>). Owns a
-/// <see cref="ConcurrentDictionary{TKey, TValue}"/> and tracks hit / miss /
-/// invalidation counters via <see cref="Interlocked"/>.
-///
-/// <para>Implements <see cref="IHostedService"/> directly: when constructed
-/// with <c>warmOnStartup: true</c>, <see cref="IHostedService.StartAsync"/>
-/// invokes the subclass's <see cref="WarmAllAsync"/> override and flips
-/// <see cref="IsWarmedUp"/> to true on success. Subclasses with no warmup
-/// strategy pass <c>warmOnStartup: false</c> and stay lazy-per-key.</para>
-///
-/// <para>The dict itself is <c>private readonly</c>; subclasses interact
-/// through <see cref="TryGet"/>/<see cref="Set"/>/<see cref="Invalidate"/>/
-/// <see cref="Clear"/> and the read-only views (<see cref="Values"/>,
-/// <see cref="AsReadOnlyDictionary"/>, <see cref="Snapshot"/>).</para>
-///
-/// <para>Used either as a base class (single-dict decorators inherit it) or
-/// as a composed field (decorators that need multiple dicts hold N instances
-/// and implement their own <see cref="IHostedService"/>). Either way each
-/// instance is exposed as <see cref="ICacheStats"/> on
-/// <c>/Admin/CacheStats</c>.</para>
+/// Thread-safe in-memory cache primitive used by Singleton caching decorators (CachingUserService, etc).
+/// Implements <see cref="IHostedService"/>: warmOnStartup=true → StartAsync calls WarmAllAsync.
+/// Inherit for single-dict decorators, compose for multi-dict. Each instance surfaces as <see cref="ICacheStats"/>.
 /// </summary>
 public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey : notnull
 {
@@ -42,22 +23,9 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
 
     public string Name { get; }
 
-    /// <summary>
-    /// Public so composing decorators (e.g. <c>CachingShiftViewService</c>) can
-    /// hold an instance directly. Inheriting decorators call this base ctor
-    /// with their own name and warmup policy.
-    /// </summary>
-    /// <param name="name">Stable identifier used by <c>/Admin/CacheStats</c>.</param>
-    /// <param name="warmOnStartup">When true, the host's
-    /// <see cref="Microsoft.Extensions.Hosting.IHostedService.StartAsync"/>
-    /// triggers <see cref="WarmAllAsync"/> at boot. Either way load-all readers
-    /// call <see cref="EnsureWarmedAsync"/> which is a no-op once warmed and
-    /// otherwise drives <see cref="WarmAllAsync"/> on demand.</param>
-    /// <param name="logger">Logger used to surface startup-warmup failures
-    /// at Warning before they are swallowed (so the host always boots — see
-    /// <c>memory/architecture/no-startup-guards.md</c>). Required — pass
-    /// <see cref="NullLogger"/>.Instance only from tests that explicitly
-    /// don't care about the log signal.</param>
+    /// <param name="name">Stable identifier for /Admin/CacheStats.</param>
+    /// <param name="warmOnStartup">When true, StartAsync triggers WarmAllAsync; load-all readers call EnsureWarmedAsync on demand.</param>
+    /// <param name="logger">Surfaces startup-warmup failures at Warning before they're swallowed — see memory/architecture/no-startup-guards.md.</param>
     public TrackedCache(string name, bool warmOnStartup, ILogger logger)
     {
         Name = name;
@@ -75,27 +43,13 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         ? Math.Round(Hits * 100.0 / (Hits + Misses), 1)
         : 0;
 
-    /// <summary>
-    /// True after <see cref="WarmAllAsync"/> has run to completion at least
-    /// once. Flips back to false on <see cref="Clear"/>. Load-all readers do
-    /// not check this directly — they call <see cref="EnsureWarmedAsync"/>,
-    /// which drives warmup on demand.
-    /// </summary>
+    /// <summary>True once WarmAllAsync has completed; resets on Clear. Readers use EnsureWarmedAsync, not this directly.</summary>
     protected bool IsWarmedUp => _warmedUp;
 
-    /// <summary>
-    /// Snapshot of cached values. Backed by <see cref="ConcurrentDictionary{TKey,TValue}.Values"/>
-    /// — iteration is safe under concurrent mutation. Live view; not a copy.
-    /// </summary>
+    /// <summary>Live snapshot of cached values; concurrent-safe iteration, not a copy.</summary>
     public ICollection<TValue> Values => _dict.Values;
 
-    /// <summary>
-    /// Read-only view of the cache. Used by decorators (e.g. <c>CachingTeamService</c>)
-    /// that return the cache as an <see cref="IReadOnlyDictionary{TKey, TValue}"/>
-    /// for bulk consumption. Lookups via this view do <b>not</b> increment
-    /// hit/miss counters — use <see cref="TryGet"/> for tracked access. Live
-    /// view; not a copy.
-    /// </summary>
+    /// <summary>Live read-only view for bulk consumption. Does NOT increment hit/miss counters — use <see cref="TryGet"/> for tracked access.</summary>
     public IReadOnlyDictionary<TKey, TValue> AsReadOnlyDictionary => _dict;
 
     /// <summary>

@@ -126,7 +126,6 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         await _shiftMgmt.CreateRotaAsync(rota);
 
-        // Handle tag assignment
         if (!string.IsNullOrWhiteSpace(model.TagIds))
         {
             var tagIdList = ParseTagIds(model.TagIds);
@@ -156,7 +155,6 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         await _shiftMgmt.UpdateRotaAsync(rota);
 
-        // Handle tag assignment
         var tagIdList = ParseTagIds(model.TagIds);
         await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
 
@@ -366,10 +364,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
-    // Management scope (Admin + VolunteerCoordinator + dept coordinator); matches
-    // the existing rota CRUD authorization gate and the "coordinator role" wording
-    // in the spec. Explicitly excludes NoInfoAdmin per CanManageDepartmentAsync.
+    // see nobodies-collective/Humans#732 — coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId)
     {

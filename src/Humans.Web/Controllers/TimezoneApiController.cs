@@ -15,7 +15,6 @@ public class TimezoneApiController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.TimeZone))
             return BadRequest();
 
-        // Validate the timezone ID is known to NodaTime
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(request.TimeZone);
         if (zone is null)
             return BadRequest();

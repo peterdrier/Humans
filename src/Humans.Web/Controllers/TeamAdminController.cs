@@ -1,10 +1,4 @@
-// TeamMember.User / TeamJoinRequest.User are [Obsolete] cross-domain navs
-// (design-rules §6c). The Teams service populates them in-memory (§6b)
-// before returning the entity graph, so these reads are safe — but the
-// compiler still warns and TreatWarningsAsErrors promotes to error. This
-// file-wide disable is cleared when the controller projects via DTOs
-// returned directly from ITeamService.
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // TeamMember.User / TeamJoinRequest.User — populated in-memory by TeamService (§6b).
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -152,7 +146,6 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
-        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
@@ -183,7 +176,6 @@ public class TeamAdminController : HumansTeamControllerBase
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
 
-        // Load Google resources for the resource access summary card
         var allTeamResources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
         var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
 
@@ -289,9 +281,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return teamError;
         }
 
-        // Form posted without a user selected (or the hidden input was empty / tampered).
-        // Reject at the controller so we don't reach EF and crash on the
-        // google_sync_outbox FK with Guid.Empty.
+        // Reject empty userId at controller — google_sync_outbox FK rejects Guid.Empty.
         if (model.UserId == Guid.Empty)
         {
             SetError("Select a user to add.");
@@ -328,7 +318,6 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        // Verify that the target user is actually a member of this team
         var teamInfo = await _teamService.GetTeamAsync(team.Id);
         if (teamInfo is null || teamInfo.Members.All(m => m.UserId != userId))
         {
@@ -345,7 +334,6 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         else
         {
-            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
             _cache.InvalidateNobodiesTeamEmails();
 
             if (result.RecoveryEmail is not null)
@@ -375,18 +363,14 @@ public class TeamAdminController : HumansTeamControllerBase
             return Json(Array.Empty<HumanLookupSearchResult>());
         }
 
-        // Name-only narrows the picker to display name + burner name; admin
-        // bit is intentionally NOT set here (the callers are team admins, not
-        // global admins, so they don't get to search by hidden contact data).
+        // Name-only — team admins are not global admins, so no contact-data search.
         var results = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: 50);
 
-        // Exclude existing team members.
         var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
-        // Display ordering at the controller per
-        // memory/architecture/display-sort-in-controllers.md.
+        // Display sort at controller (memory/architecture/display-sort-in-controllers.md).
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
             .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
@@ -926,7 +910,6 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
-            // Look up the member's UserId before unassigning
             var teamInfo = await _teamService.GetTeamAsync(team.Id);
             var member = teamInfo?.Members.FirstOrDefault(m => m.TeamMemberId == memberId);
             var userId = member?.UserId;
@@ -1044,7 +1027,6 @@ public class TeamAdminController : HumansTeamControllerBase
             .Select(m => m.UserId)
             .ToHashSet();
 
-        // Search team members first by name match
         var matchingTeamMembers = teamMembers
             .Where(m => m.DisplayName.ContainsOrdinalIgnoreCase(q) ||
                         (m.Email?.ContainsOrdinalIgnoreCase(q) ?? false))
@@ -1052,9 +1034,7 @@ public class TeamAdminController : HumansTeamControllerBase
             .Select(m => new RoleAssignmentSearchResult(m.UserId, m.DisplayName, m.Email ?? "", true))
             .ToList();
 
-        // Also search all approved humans for non-members. Name-only is the
-        // appropriate scope for the role-picker (no bio / contact data); admin
-        // bit is not set because team admins are not global admins.
+        // Name-only for role-picker (no bio/contact data); team admins are not global admins.
         var allResults = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: 50);
         var nonMembers = allResults
@@ -1070,11 +1050,10 @@ public class TeamAdminController : HumansTeamControllerBase
 
     private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
     {
-        // Claims-first for global roles; DB only for team-specific coordinator check
         if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
             return true;
 
-        // Sub-team managers cannot manage Google resources — check at department level
+        // Sub-team managers cannot manage Google resources — check at department level.
         var checkTeamId = team.ParentTeamId ?? team.Id;
         return await _teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
     }

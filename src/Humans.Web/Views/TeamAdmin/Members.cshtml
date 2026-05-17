@@ -181,12 +181,7 @@
 
 @if (Model.CanManageRoles)
 {
-    @*
-        Canonical inline picker — _HumanSearchInput posts the chosen UserId
-        into a hidden input the parent form submits to AddMember. Replaces
-        the bespoke _MemberSearchScript that had its own JSON+form hybrid.
-        Scope=name keeps the picker tight (no bio / city / interests).
-    *@
+    @* Inline picker — _HumanSearchInput posts UserId into a hidden input for AddMember. *@
     <div class="card mb-4 position-relative" style="z-index: 2;">
         <div class="card-header">@Localizer["TeamAdmin_AddMember"]</div>
         <div class="card-body">

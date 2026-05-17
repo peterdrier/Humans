@@ -14,7 +14,6 @@
         <div class="col-lg-10">
             <h1 class="mb-2">Pick a shift</h1>
 
-            @* ─── Proposal copy + pill + Skip (all top-of-page) ─── *@
             @if (Model.HasAnyCritical)
             {
                 <div class="alert alert-danger" role="alert">
@@ -51,7 +50,7 @@
 
             @if (!hasShifts)
             {
-                @* Empty-state — mirrors Shifts/BrowsingClosed. Either no active event or nothing matches the priority filter. *@
+                @* Empty-state — mirrors Shifts/BrowsingClosed. *@
                 <div class="alert alert-info text-center my-4">
                     @if (es is null)
                     {
@@ -118,9 +117,7 @@
                                 var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
                                 var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
                             }
-                            @* Both partials post back to OnboardingWidget so signup success
-                               flows through the widget dispatcher (→ Consents) instead of
-                               bouncing the user out to /Shifts/Index. *@
+                            @* Partials post back to OnboardingWidget so success routes via widget dispatcher → Consents. *@
                             @if (isBuildStrike || hasAllDayShifts)
                             {
                                 @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
