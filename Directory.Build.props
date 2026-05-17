@@ -43,13 +43,18 @@
           handles are threaded through every Application-layer service entry
           point per issue #691. Kept visible as warnings (not hidden via
           NoWarn) so new render-path violations stay surfaced.
+        - HUM_USER_GetById: [Obsolete] marker on IUserService.GetByIdAsync.
+          Callers are being migrated to GetUserInfoAsync; remaining sites
+          (e.g. CampaignService.cs:550 private-helper overload) ride the
+          warning until the migration finishes. Kept visible as a warning
+          so new callers stay surfaced.
         - HUM0019: read of Identity-derived User column from Application or
           Web (issue nobodies-collective/Humans#506). Stays a warning while
           legacy reads (computed-override projections of UserEmails) are
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
