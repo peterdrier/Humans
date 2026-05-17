@@ -422,7 +422,6 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u1);
         result[0].UpdatedAtTicks.Should().Be(profileUpdatedAt.ToUnixTimeTicks());
 
-        _ = profileRepo.ReceivedCalls();
         profileRepo.ReceivedCalls().Should().BeEmpty(
             "GetCustomPictureInfoByUserIdsAsync should read from the UserInfo cache, not the profiles table");
     }
