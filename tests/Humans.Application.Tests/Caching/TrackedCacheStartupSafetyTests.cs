@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Caching;
@@ -21,10 +22,12 @@ public class TrackedCacheStartupSafetyTests
 
         sut.WarmAttempts.Should().Be(1);
 
-        logger.ReceivedCalls()
-            .Should()
-            .Contain(c => c.GetMethodInfo().Name == "Log",
-                "warmup failure must surface in logs at Warning");
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [HumansFact]
@@ -71,7 +74,7 @@ public class TrackedCacheStartupSafetyTests
         public bool IsWarmedUpExposed => IsWarmedUp;
 
         public ThrowingCache(string name, bool warmOnStartup, ILogger? logger = null)
-            : base(name, warmOnStartup, logger)
+            : base(name, warmOnStartup, logger ?? NullLogger.Instance)
         {
         }
 
@@ -91,7 +94,7 @@ public class TrackedCacheStartupSafetyTests
         private readonly CancellationTokenSource _cts;
 
         public CancellingCache(string name, bool warmOnStartup, CancellationTokenSource cts)
-            : base(name, warmOnStartup)
+            : base(name, warmOnStartup, NullLogger.Instance)
         {
             _cts = cts;
         }

@@ -33,7 +33,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     private readonly ConcurrentDictionary<TKey, TValue> _dict = new();
     private readonly bool _warmOnStartup;
     private readonly SemaphoreSlim _warmLock = new(1, 1);
-    private readonly ILogger? _logger;
+    private readonly ILogger _logger;
     private volatile bool _warmedUp;
     private long _hits;
     private long _misses;
@@ -53,10 +53,12 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// triggers <see cref="WarmAllAsync"/> at boot. Either way load-all readers
     /// call <see cref="EnsureWarmedAsync"/> which is a no-op once warmed and
     /// otherwise drives <see cref="WarmAllAsync"/> on demand.</param>
-    /// <param name="logger">Optional logger; when supplied, startup-warmup
-    /// failures are logged at Warning before being swallowed (so the host
-    /// always boots — see <c>memory/architecture/no-startup-guards.md</c>).</param>
-    public TrackedCache(string name, bool warmOnStartup, ILogger? logger = null)
+    /// <param name="logger">Logger used to surface startup-warmup failures
+    /// at Warning before they are swallowed (so the host always boots — see
+    /// <c>memory/architecture/no-startup-guards.md</c>). Required — pass
+    /// <see cref="NullLogger"/>.Instance only from tests that explicitly
+    /// don't care about the log signal.</param>
+    public TrackedCache(string name, bool warmOnStartup, ILogger logger)
     {
         Name = name;
         _warmOnStartup = warmOnStartup;
@@ -284,7 +286,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(
+            _logger.LogWarning(
                 ex,
                 "TrackedCache startup warmup failed; falling back to lazy on-demand warm. Cache: {CacheName}",
                 Name);

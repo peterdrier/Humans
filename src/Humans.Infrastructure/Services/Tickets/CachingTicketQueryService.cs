@@ -9,6 +9,7 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Tickets;
@@ -75,11 +76,12 @@ public sealed class CachingTicketQueryService
     public CachingTicketQueryService(
         ITicketRepository ticketRepository,
         IMemoryCache perUserCache,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        ILogger<CachingTicketQueryService> logger)
     {
         _perUserCache = perUserCache;
         _scopeFactory = scopeFactory;
-        _orders = new OrdersCache(ticketRepository);
+        _orders = new OrdersCache(ticketRepository, logger);
     }
 
     // ==========================================================================
@@ -476,8 +478,8 @@ public sealed class CachingTicketQueryService
     {
         private readonly ITicketRepository _repository;
 
-        public OrdersCache(ITicketRepository repository)
-            : base("Tickets.Orders", warmOnStartup: true)
+        public OrdersCache(ITicketRepository repository, ILogger logger)
+            : base("Tickets.Orders", warmOnStartup: true, logger)
         {
             _repository = repository;
         }

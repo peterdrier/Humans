@@ -64,7 +64,7 @@ public sealed class CachingLegalDocumentSyncService
         IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<CachingLegalDocumentSyncService> logger)
-        : base("Legal.LegalDocumentInfo", warmOnStartup: true)
+        : base("Legal.LegalDocumentInfo", warmOnStartup: true, logger)
     {
         _repository = repository;
         _scopeFactory = scopeFactory;

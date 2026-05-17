@@ -42,10 +42,8 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingShiftViewService> _logger;
 
-    private readonly TrackedCache<Guid, ShiftUserView> _userCache =
-        new("ShiftView.UserView", warmOnStartup: false);
-    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache =
-        new("ShiftView.RotaView", warmOnStartup: false);
+    private readonly TrackedCache<Guid, ShiftUserView> _userCache;
+    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache;
 
     public ICacheStats UserCacheStats => _userCache;
     public ICacheStats RotaCacheStats => _rotaCache;
@@ -56,6 +54,8 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _userCache = new TrackedCache<Guid, ShiftUserView>("ShiftView.UserView", warmOnStartup: false, logger);
+        _rotaCache = new TrackedCache<Guid, ShiftRotaView>("ShiftView.RotaView", warmOnStartup: false, logger);
     }
 
     // ==========================================================================

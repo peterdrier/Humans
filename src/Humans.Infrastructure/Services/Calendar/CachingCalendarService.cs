@@ -89,7 +89,7 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
         ICalendarRepository repo,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingCalendarService> logger)
-        : base("Calendar.Event", warmOnStartup: true)
+        : base("Calendar.Event", warmOnStartup: true, logger)
     {
         _repo = repo;
         _scopeFactory = scopeFactory;

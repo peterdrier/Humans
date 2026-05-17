@@ -81,7 +81,7 @@ public sealed class CachingCampService :
         IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<CachingCampService> logger)
-        : base("Camp.CampInfo", warmOnStartup: true)
+        : base("Camp.CampInfo", warmOnStartup: true, logger)
     {
         _repo = repo;
         _scopeFactory = scopeFactory;

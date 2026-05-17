@@ -35,7 +35,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         ITeamRepository teamRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingTeamService> logger)
-        : base("Team.TeamInfo", warmOnStartup: true)
+        : base("Team.TeamInfo", warmOnStartup: true, logger)
     {
         _teamRepository = teamRepository;
         _scopeFactory = scopeFactory;

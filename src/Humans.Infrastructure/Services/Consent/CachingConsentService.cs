@@ -70,7 +70,7 @@ public sealed class CachingConsentService
         IClock clock,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingConsentService> logger)
-        : base("Consent.UserConsentInfo", warmOnStartup: false)
+        : base("Consent.UserConsentInfo", warmOnStartup: false, logger)
     {
         // ILegalDocumentSyncService and IClock are Singletons — inject directly.
         // _scopeFactory is still needed to resolve the keyed Scoped inner

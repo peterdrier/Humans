@@ -68,7 +68,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingUserService> logger)
-        : base("User.UserInfo", warmOnStartup: true)
+        : base("User.UserInfo", warmOnStartup: true, logger)
     {
         _userRepository = userRepository;
         _userEmailRepository = userEmailRepository;

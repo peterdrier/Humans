@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Tickets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -55,7 +56,11 @@ public sealed class CachingTicketQueryServiceTests
         services.AddSingleton(_perUserCache);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 
-        _decorator = new CachingTicketQueryService(_repo, _perUserCache, scopeFactory);
+        _decorator = new CachingTicketQueryService(
+            _repo,
+            _perUserCache,
+            scopeFactory,
+            NullLogger<CachingTicketQueryService>.Instance);
 
         // Default: empty projection. Tests that need orders override via
         // SeedOrders(...) which re-stubs the repo and re-warms.

@@ -53,8 +53,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
     // four projections (events + categories + venues + settings) via its own
     // IHostedService surface; per-cache hosted-service kickoff would only see
     // the events dict.
-    private readonly TrackedCache<Guid, ApprovedEventView> _eventCache =
-        new("Event.ApprovedEventView", warmOnStartup: false);
+    private readonly TrackedCache<Guid, ApprovedEventView> _eventCache;
 
     // Flat lookup tables — categories and venues are admin-managed lookups
     // (~10–30 rows each), so a simple immutable snapshot is the natural shape.
@@ -77,6 +76,8 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         _repo = repo;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _eventCache = new TrackedCache<Guid, ApprovedEventView>(
+            "Event.ApprovedEventView", warmOnStartup: false, logger);
     }
 
     // ==========================================================================
