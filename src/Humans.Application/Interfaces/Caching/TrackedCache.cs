@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Interfaces.Caching;
 
@@ -32,6 +33,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     private readonly ConcurrentDictionary<TKey, TValue> _dict = new();
     private readonly bool _warmOnStartup;
     private readonly SemaphoreSlim _warmLock = new(1, 1);
+    private readonly ILogger? _logger;
     private volatile bool _warmedUp;
     private long _hits;
     private long _misses;
@@ -51,10 +53,14 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// triggers <see cref="WarmAllAsync"/> at boot. Either way load-all readers
     /// call <see cref="EnsureWarmedAsync"/> which is a no-op once warmed and
     /// otherwise drives <see cref="WarmAllAsync"/> on demand.</param>
-    public TrackedCache(string name, bool warmOnStartup)
+    /// <param name="logger">Optional logger; when supplied, startup-warmup
+    /// failures are logged at Warning before being swallowed (so the host
+    /// always boots — see <c>memory/architecture/no-startup-guards.md</c>).</param>
+    public TrackedCache(string name, bool warmOnStartup, ILogger? logger = null)
     {
         Name = name;
         _warmOnStartup = warmOnStartup;
+        _logger = logger;
     }
 
     public int Entries => _dict.Count;
@@ -258,7 +264,32 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     }
 
     Task IHostedService.StartAsync(CancellationToken ct) =>
-        _warmOnStartup ? EnsureWarmedAsync(ct) : Task.CompletedTask;
+        _warmOnStartup ? StartupWarmAsync(ct) : Task.CompletedTask;
+
+    /// <summary>
+    /// Wraps <see cref="EnsureWarmedAsync"/> so warmup exceptions are logged and
+    /// swallowed: the host MUST boot even if the DB is briefly unavailable
+    /// (no-startup-guards HARD RULE). Lazy on-demand reads re-trigger warmup
+    /// via <see cref="EnsureWarmedAsync"/>, which is idempotent.
+    /// </summary>
+    private async Task StartupWarmAsync(CancellationToken ct)
+    {
+        try
+        {
+            await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(
+                ex,
+                "TrackedCache startup warmup failed; falling back to lazy on-demand warm. Cache: {CacheName}",
+                Name);
+        }
+    }
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 
