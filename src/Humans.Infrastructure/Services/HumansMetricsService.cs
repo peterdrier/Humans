@@ -240,28 +240,31 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var now = clock.GetCurrentInstant();
 
             // humans_total by status — read off the cached UserInfo snapshot
-            // instead of issuing two table scans against the users table per
-            // refresh tick.
+            // instead of full-scanning profiles every scrape tick. UserInfo
+            // already projects IsApproved (via Profile) and the canonical
+            // IsSuspended predicate (ProfileState-based, per
+            // memory/code/no-issuspended.md).
             var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
             var allUserIds = userInfos.Select(u => u.Id).ToList();
-            var profileData = await db.Profiles
-                .Select(p => new { p.UserId, p.IsApproved, p.IsSuspended })
-                .ToListAsync();
-
-            var profileLookup = profileData.ToDictionary(p => p.UserId);
 
             int activeCount = 0, suspendedCount = 0, pendingCount = 0, inactiveCount = 0;
-            foreach (var userId in allUserIds)
+            foreach (var userInfo in userInfos)
             {
-                if (profileLookup.TryGetValue(userId, out var p))
+                if (userInfo.Profile is null)
                 {
-                    if (p.IsSuspended) suspendedCount++;
-                    else if (!p.IsApproved) pendingCount++;
-                    else activeCount++;
+                    inactiveCount++;
+                }
+                else if (userInfo.IsSuspended)
+                {
+                    suspendedCount++;
+                }
+                else if (!userInfo.Profile.IsApproved)
+                {
+                    pendingCount++;
                 }
                 else
                 {
-                    inactiveCount++;
+                    activeCount++;
                 }
             }
 
