@@ -565,18 +565,26 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     /// <summary>
     /// Matches Cloud Identity Group membership error messages that indicate
     /// the target email is not backed by a real Google identity. Covers
-    /// <c>groups.memberships.create</c> 403/400 ("invalid member",
-    /// "precondition check failed", Error(4002), "membership cannot be
-    /// created"). Group-specific — do NOT use on the Drive path, where
-    /// "precondition check failed" can also mean an admin-configured
-    /// sharing-outside-domain restriction. See issue
-    /// nobodies-collective/Humans#677.
+    /// <c>groups.memberships.create</c> 403 ("member does not have a Google
+    /// account", "invalid member") and 400 / Error(4002) ("precondition
+    /// check failed", "membership cannot be created"). Group-specific — do
+    /// NOT use on the Drive path, where "precondition check failed" can
+    /// also mean an admin-configured sharing-outside-domain restriction.
+    /// See issue nobodies-collective/Humans#677.
     /// </summary>
     internal static bool IsTargetMemberRejection(string rawMessage)
-        => IsDriveTargetRejection(rawMessage)
-            || rawMessage.Contains("invalid member", StringComparison.OrdinalIgnoreCase)
+        => rawMessage.Contains("invalid member", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid email", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid user", StringComparison.OrdinalIgnoreCase)
+            // Cloud Identity groups.memberships.create — 403 "member does
+            // not have a Google account" / "no Google account" / variants.
+            // Same phrasings appear on Drive 400 responses; the Drive
+            // detector lives separately on GoogleWorkspaceSyncService so
+            // each path owns its own predicate.
+            || rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
             // Cloud Identity groups.memberships.create — 400 / Error(4002)
             // "Membership ... cannot be created since precondition check failed."
             // The precondition is that the entity resolves to a real identity.
@@ -586,23 +594,6 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             || rawMessage.Contains("precondition check failed", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("error(4002)", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("membership cannot be created", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Matches Drive <c>permissions.create</c> error messages that indicate
-    /// the recipient is not backed by a real Google identity. Drive's
-    /// response is specific — it mentions <c>SendNotificationEmail</c> and
-    /// "no Google account" — so we scope the Drive detector to those
-    /// phrases only. Generic Google API phrases (e.g. "precondition check
-    /// failed") MUST NOT live here, because Drive uses the same wording for
-    /// admin-configured sharing-policy errors that should keep retrying.
-    /// See issue nobodies-collective/Humans#677.
-    /// </summary>
-    internal static bool IsDriveTargetRejection(string rawMessage)
-        => rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase);
 
     private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt)
     {

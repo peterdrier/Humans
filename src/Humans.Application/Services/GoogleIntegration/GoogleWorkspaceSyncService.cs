@@ -314,7 +314,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // unrelated admin-configured sharing-policy reasons. Only flip
         // GoogleEmailStatus on phrases unique to Drive's no-Google-account
         // signal. Issue nobodies-collective/Humans#677.
-        if (!GoogleGroupSyncService.IsDriveTargetRejection(rawMessage))
+        if (!IsDriveTargetRejection(rawMessage))
         {
             return;
         }
@@ -337,6 +337,23 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             resource.GoogleId,
             rawMessage);
     }
+
+    /// <summary>
+    /// Matches Drive <c>permissions.create</c> error messages that indicate
+    /// the recipient is not backed by a real Google identity. Drive's
+    /// response is specific — it mentions <c>SendNotificationEmail</c> and
+    /// "no Google account" — so we scope the Drive detector to those
+    /// phrases only. Generic Google API phrases (e.g. "precondition check
+    /// failed") MUST NOT live here, because Drive uses the same wording for
+    /// admin-configured sharing-policy errors that should keep retrying.
+    /// See issue nobodies-collective/Humans#677.
+    /// </summary>
+    private static bool IsDriveTargetRejection(string rawMessage)
+        => rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// GATEWAY METHOD: the only path that removes a user from a Google Drive
