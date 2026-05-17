@@ -30,6 +30,29 @@ internal sealed class CampRoleRepository : ICampRoleRepository
         return await ctx.CampRoleDefinitions.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, ct);
     }
 
+    public async Task<CampRoleDefinition?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var lowered = slug.ToLowerInvariant();
+        return await ctx.CampRoleDefinitions.AsNoTracking()
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            .FirstOrDefaultAsync(d => d.Slug.ToLower() == lowered, ct);
+#pragma warning restore MA0011
+    }
+
+    public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var lowered = slug.ToLowerInvariant();
+        var query = ctx.CampRoleDefinitions.AsNoTracking()
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            .Where(d => d.Slug.ToLower() == lowered);
+#pragma warning restore MA0011
+        if (excludingId is { } id)
+            query = query.Where(d => d.Id != id);
+        return await query.AnyAsync(ct);
+    }
+
     public async Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -159,6 +182,33 @@ internal sealed class CampRoleRepository : ICampRoleRepository
             .Select(g => new { g.Key.CampSeasonId, g.Key.CampRoleDefinitionId, Count = g.Count() })
             .ToListAsync(ct);
         return rows.Select(r => (r.CampSeasonId, r.CampRoleDefinitionId, r.Count)).ToList();
+    }
+
+    public async Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForDefinitionInYearAsync(
+        Guid definitionId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Display sort happens in the service (CampRoleService.BuildDrillDownAsync).
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .Include(a => a.CampMember)
+            .Where(a => a.CampRoleDefinitionId == definitionId && a.CampSeason.Year == year)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<CampRoleAssignment>> GetActiveAssignmentsForYearsAsync(
+        IReadOnlyCollection<int> years, CancellationToken ct = default)
+    {
+        if (years.Count == 0) return [];
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var yearList = years.Distinct().ToList();
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .Include(a => a.CampMember)
+            .Include(a => a.CampSeason)
+            .Include(a => a.Definition)
+            .Where(a => yearList.Contains(a.CampSeason.Year)
+                     && a.Definition.DeactivatedAt == null
+                     && a.CampMember.Status == Humans.Domain.Enums.CampMemberStatus.Active)
+            .ToListAsync(ct);
     }
 
     // ==========================================================================

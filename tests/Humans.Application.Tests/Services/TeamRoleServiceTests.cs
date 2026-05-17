@@ -50,6 +50,7 @@ public class TeamRoleServiceTests : IDisposable
             Substitute.For<ISystemTeamSync>(),
             Substitute.For<INavBadgeCacheInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
+            Substitute.For<IRoleAssignmentCacheInvalidator>(),
             _clock,
             NullLogger<RoleAssignmentService>.Instance);
         var serviceProvider = Substitute.For<IServiceProvider>();

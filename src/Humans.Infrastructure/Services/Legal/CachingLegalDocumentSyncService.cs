@@ -90,6 +90,12 @@ public sealed class CachingLegalDocumentSyncService
             .ToList();
     }
 
+    public async Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)
+    {
+        var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
+        return docs.Count;
+    }
+
     public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
         Guid teamId, CancellationToken cancellationToken = default)
     {

@@ -65,6 +65,7 @@ public class RoleAssignmentServiceTests : IDisposable
             Substitute.For<ISystemTeamSync>(),
             _navBadge,
             _claimsInvalidator,
+            Substitute.For<IRoleAssignmentCacheInvalidator>(),
             _clock,
             NullLogger<RoleAssignmentService>.Instance);
     }

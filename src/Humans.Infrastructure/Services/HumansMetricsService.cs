@@ -1,13 +1,13 @@
 using System.Diagnostics.Metrics;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Governance;
 
@@ -220,7 +220,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
         try
         {
             using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
             var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
             var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
@@ -264,11 +263,9 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var applicationStats = await applicationDecisionService.GetAdminStatsAsync();
             var asociados = applicationStats.Approved;
 
-            var roleAssignments = await db.RoleAssignments
-                .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
-                .GroupBy(ra => ra.RoleName)
-                .Select(g => new { Role = g.Key, Count = g.Count() })
-                .ToListAsync();
+            // Via IRoleAssignmentService — service does not touch role_assignments directly (design-rules §2c, #749).
+            var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
+            var roleAssignmentCounts = await roleAssignmentService.GetActiveCountsByRoleAsync();
 
             var teams = await teamService.GetTeamsAsync(CancellationToken.None);
             var teamsActive = teams.Values.Count(t => t.IsActive);
@@ -279,8 +276,9 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceService>();
             var googleResources = await teamResourceService.GetResourceCountAsync();
 
-            var legalDocumentsActive = await db.LegalDocuments
-                .CountAsync(d => d.IsActive && d.IsRequired);
+            // Via ILegalDocumentSyncService cached projection — service does not touch legal_documents directly (design-rules §2c, #749).
+            var legalDocumentSyncService = scope.ServiceProvider.GetRequiredService<ILegalDocumentSyncService>();
+            var legalDocumentsActive = await legalDocumentSyncService.GetActiveRequiredCountAsync();
 
             var applicationsSubmitted = await applicationDecisionService.GetPendingApplicationCountAsync();
 
@@ -299,8 +297,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
                 ConsentDeadlineApproaching = consentDeadlineApproaching,
                 PendingDeletions = pendingDeletions,
                 Asociados = asociados,
-                RoleAssignmentsByRole = roleAssignments
-                    .Select(r => (r.Role, r.Count))
+                RoleAssignmentsByRole = roleAssignmentCounts
+                    .Select(kv => (kv.Key, kv.Value))
                     .ToList(),
                 TeamsActive = teamsActive,
                 TeamsInactive = teamsInactive,

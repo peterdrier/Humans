@@ -9,6 +9,12 @@ public sealed class CampRoleDefinitionFormViewModel : IValidatableObject
     [Required, StringLength(100)]
     public string Name { get; set; } = string.Empty;
 
+    [Required, StringLength(60, MinimumLength = 1)]
+    [RegularExpression(
+        @"^[a-z0-9]+(-[a-z0-9]+)*$",
+        ErrorMessage = "Slug must be kebab-case: lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens.")]
+    public string Slug { get; set; } = string.Empty;
+
     [StringLength(2000)]
     public string? Description { get; set; }
 

@@ -188,6 +188,47 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         CancellationToken ct)
     {
         var lookup = await _provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
+
+        // Provisioning: a claim references a group key that doesn't exist in Google.
+        // Cloud Identity returns HTTP 404 (or sometimes 403) when the group is
+        // not found. Best-effort create-then-retry-lookup; on failure we fall
+        // through to the existing error path.
+        if (lookup.GroupNumericId is null
+            && IsGroupNotFound(lookup.Error)
+            && action == SyncAction.Execute)
+        {
+            try
+            {
+                var create = await _provisioningClient.CreateGroupAsync(
+                    claim.GroupKey,
+                    displayName: claim.GroupKey,
+                    description: $"Auto-provisioned group ({claim.GroupKey}).",
+                    ct);
+                if (create.GroupNumericId is not null)
+                {
+                    _logger.LogInformation(
+                        "Auto-provisioned Google Group for {GroupKey}",
+                        claim.GroupKey);
+                    lookup = await _provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Failed to auto-provision Google Group for {GroupKey}: HTTP {StatusCode} {Message}",
+                        claim.GroupKey,
+                        create.Error?.StatusCode,
+                        create.Error?.RawMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    "Error auto-provisioning Google Group for {GroupKey}; treating as failed lookup: {Error}",
+                    claim.GroupKey,
+                    ex.Message);
+            }
+        }
+
         if (lookup.GroupNumericId is null)
         {
             var error = FormatGoogleError("Google group lookup failed", lookup.Error);
@@ -639,6 +680,14 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private static string FormatGoogleError(string prefix, GoogleClientError? error) =>
         $"{prefix} (HTTP {error?.StatusCode ?? 0}): {error?.RawMessage}";
+
+    /// <summary>
+    /// Cloud Identity returns HTTP 404 when a Group lookup misses. Other
+    /// status codes (403 caller permission, 5xx backend, etc.) are real
+    /// failures and must not trigger auto-provisioning.
+    /// </summary>
+    private static bool IsGroupNotFound(GoogleClientError? error)
+        => error is { StatusCode: 404 };
 
     private sealed record GroupClaim(string GroupKey, int ClaimCount, string[] SourceNames, Guid[] UserIds)
     {

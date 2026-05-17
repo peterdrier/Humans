@@ -100,11 +100,30 @@ public interface IRoleAssignmentService : IApplicationService
     void InvalidateNavBadgeCache();
 
     /// <summary>
+    /// Evicts the singleton role-assignment row cache (the one backing
+    /// <see cref="GetActiveCountsByRoleAsync"/>). Called post-commit by
+    /// <c>AccountMergeService.AcceptAsync</c> after a fold, since the fold's
+    /// bulk re-FK happens through <c>IRoleAssignmentRepository.ReassignToUserAsync</c>
+    /// without flowing through one of this service's standalone write
+    /// methods. Other writes (<see cref="AssignRoleAsync"/>,
+    /// <see cref="EndRoleAsync"/>, <see cref="RevokeAllActiveAsync"/>)
+    /// invalidate themselves and do not require the caller to do so.
+    /// </summary>
+    void InvalidateRoleAssignmentCache();
+
+    /// <summary>
     /// Returns all currently active role assignments for the user
     /// (ValidFrom &lt;= now and ValidTo is null or in the future).
     /// Used by the agent snapshot provider.
     /// </summary>
     Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of currently active role assignments grouped by role
+    /// name. Used by the metrics snapshot refresh so the metrics service does
+    /// not need to read <c>role_assignments</c> directly.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default);
 }
 
 public sealed record RoleAssignmentSnapshot(

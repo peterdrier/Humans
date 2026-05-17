@@ -12,6 +12,15 @@ public interface ICampRoleService : IApplicationService
 
     Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<CampRoleDefinitionInfo?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default);
+
+    /// <summary>
+    /// Builds the cross-camp roster for one role definition in a given year. One row per
+    /// camp-season participating in <paramref name="year"/>, with assignees (name + Google email)
+    /// or an empty state. Read-only; caller authorizes.
+    /// </summary>
+    Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default);
+
     Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
     Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
@@ -49,6 +58,7 @@ public interface ICampRoleService : IApplicationService
 
 public sealed record CreateCampRoleDefinitionInput(
     string Name,
+    string Slug,
     string? Description,
     int SlotCount,
     int MinimumRequired,
@@ -56,6 +66,7 @@ public sealed record CreateCampRoleDefinitionInput(
 
 public sealed record UpdateCampRoleDefinitionInput(
     string Name,
+    string Slug,
     string? Description,
     int SlotCount,
     int MinimumRequired,
@@ -79,6 +90,7 @@ public sealed record UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStat
 public sealed record CampRoleDefinitionInfo(
     Guid Id,
     string Name,
+    string Slug,
     string? Description,
     int SlotCount,
     int MinimumRequired,

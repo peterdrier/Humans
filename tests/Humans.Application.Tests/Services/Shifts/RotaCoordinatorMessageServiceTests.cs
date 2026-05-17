@@ -228,6 +228,96 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Any<CoordinatorRotaMessageRequest>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits()
+    {
+        var rota = MakeRota(out _);
+        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+        var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
+
+        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+            .Returns(new ShiftSignup[]
+            {
+                MakeSignup(userA, shift),
+                MakeSignup(userB, shift),
+            });
+
+        StubUsers(sender, userA, userB);
+
+        // First recipient throws (simulating a transient outbox-write failure);
+        // the loop must continue, enqueue the second, and still write the audit row.
+        _emailService
+            .When(s => s.SendCoordinatorRotaMessageAsync(
+                Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com"),
+                Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
+
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
+
+        result.Succeeded.Should().BeTrue("partial dispatch still returns success");
+        result.RecipientCount.Should().Be(1, "only the surviving enqueue counts as queued");
+
+        await _emailService.Received(1).SendCoordinatorRotaMessageAsync(
+            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "b@example.com"),
+            Arg.Any<CancellationToken>());
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CoordinatorRotaMessageSent,
+            nameof(Rota),
+            rota.Id,
+            Arg.Is<string>(d => d.Contains("1 failed") && d.Contains("schedule change")),
+            sender,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow()
+    {
+        var rota = MakeRota(out _);
+        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+        var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
+
+        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+            .Returns(new ShiftSignup[]
+            {
+                MakeSignup(userA, shift),
+                MakeSignup(userB, shift),
+            });
+
+        StubUsers(sender, userA, userB);
+
+        // Every recipient's enqueue throws — no email gets queued.
+        _emailService
+            .When(s => s.SendCoordinatorRotaMessageAsync(
+                Arg.Any<CoordinatorRotaMessageRequest>(), Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("simulated outbox outage"));
+
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
+
+        result.Succeeded.Should().BeFalse(
+            "queued == 0 && failed > 0 must surface as Failure so the controller does not render a misleading success toast");
+        result.Error.Should().Contain("Failed to enqueue");
+
+        // Audit row still written so the failures are forensically visible.
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CoordinatorRotaMessageSent,
+            nameof(Rota),
+            rota.Id,
+            Arg.Is<string>(d => d.Contains("2 failed")),
+            sender,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
     private static Rota MakeRota(out EventSettings es)
     {
         es = new EventSettings

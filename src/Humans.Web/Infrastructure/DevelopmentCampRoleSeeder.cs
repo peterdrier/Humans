@@ -6,11 +6,11 @@ public sealed class DevelopmentCampRoleSeeder
 {
     private static readonly CreateCampRoleDefinitionInput[] Seeds =
     [
-        new("Consent Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
-        new("LNT", null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
-        new("Shit Ninja", null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
-        new("Power", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
-        new("Build Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
+        new("Consent Lead", "consent-lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
+        new("LNT", "lnt", null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
+        new("Shit Ninja", "shit-ninja", null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
+        new("Power", "power", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
+        new("Build Lead", "build-lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
     ];
 
     private readonly ICampRoleService _campRoleService;

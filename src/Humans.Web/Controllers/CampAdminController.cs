@@ -335,7 +335,57 @@ public class CampAdminController : HumansControllerBase
     }
 
     private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
-        new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
+        new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
+
+    [HttpGet("Roles/{slug}")]
+    public async Task<IActionResult> RolesDrillDown(string slug, int? year, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return NotFound();
+
+        // Slug → GUID fallback per memory/architecture/slug-routes-fallback-to-guid.md.
+        // Slugs are user-controlled and may be empty ("" = no group yet); the GUID
+        // form is always reachable.
+        var info = await _campRoleService.GetDefinitionBySlugAsync(slug, ct);
+        if (info is null && Guid.TryParse(slug, out var roleId))
+            info = await _campRoleService.GetDefinitionByIdAsync(roleId, ct);
+        if (info is null) return NotFound();
+
+        var settings = await _campService.GetSettingsAsync(ct);
+        var resolvedYear = year ?? settings.PublicYear;
+
+        var data = await _campRoleService.BuildDrillDownAsync(info.Id, resolvedYear, ct);
+        if (data is null) return NotFound();
+
+        // Year picker options: union of open seasons, public year, and the resolved year
+        // (so a manually-entered year remains selectable). Sorted descending — most recent first.
+        var yearOptions = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear, resolvedYear };
+
+        var vm = new CampRoleDrillDownViewModel
+        {
+            Slug = data.Definition.Slug,
+            RouteKey = string.IsNullOrWhiteSpace(data.Definition.Slug)
+                ? data.Definition.Id.ToString()
+                : data.Definition.Slug,
+            RoleName = data.Definition.Name,
+            Description = data.Definition.Description,
+            SlotCount = data.Definition.SlotCount,
+            MinimumRequired = data.Definition.MinimumRequired,
+            Year = data.Year,
+            GroupEmail = data.GroupEmail,
+            YearOptions = yearOptions.OrderByDescending(y => y).ToList(),
+            Camps = data.Rows
+                .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
+                .Select(r => new CampRoleDrillDownCampRowViewModel(
+                    r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
+                    r.Assignees
+                        .OrderBy(a => a.AssignedAt)
+                        .Select(a => new CampRoleDrillDownAssigneeViewModel(
+                            a.UserId, a.GoogleEmail))
+                        .ToList()))
+                .ToList(),
+        };
+        return View("RoleDrillDown", vm);
+    }
 
     private IActionResult RedirectToRolesWithSuccess(string message)
     {
@@ -359,7 +409,7 @@ public class CampAdminController : HumansControllerBase
         try
         {
             var input = new CreateCampRoleDefinitionInput(
-                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
+                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             await _campRoleService.CreateDefinitionAsync(input, user.Id, ct);
             SetSuccess($"Created camp role '{form.Name}'.");
             return RedirectToAction(nameof(Roles));
@@ -386,6 +436,7 @@ public class CampAdminController : HumansControllerBase
         {
             Id = def.Id,
             Name = def.Name,
+            Slug = def.Slug,
             Description = def.Description,
             SlotCount = def.SlotCount,
             MinimumRequired = def.MinimumRequired,
@@ -407,7 +458,7 @@ public class CampAdminController : HumansControllerBase
         try
         {
             var input = new UpdateCampRoleDefinitionInput(
-                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
+                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             var result = await _campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
             return result.Status switch
             {

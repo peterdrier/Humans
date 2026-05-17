@@ -51,6 +51,11 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             // reconciliation pass ever touched them.
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
+
+            // Provisioning of missing Google Groups is handled inside
+            // GoogleGroupSyncService.ReconcileAllAsync — when a claim references
+            // a group that doesn't yet exist in Google, the reconcile path
+            // creates it inline (best-effort) before reconciling membership.
             await _googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
 
             // Update Drive folder paths (detects renames and moves)

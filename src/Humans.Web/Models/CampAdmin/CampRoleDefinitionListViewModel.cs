@@ -7,5 +7,5 @@ public sealed class CampRoleDefinitionListViewModel
 }
 
 public sealed record CampRoleDefinitionListRowViewModel(
-    Guid Id, string Name, string? Description, int SlotCount, int MinimumRequired,
+    Guid Id, string Name, string Slug, string? Description, int SlotCount, int MinimumRequired,
     int SortOrder, bool IsActive);

@@ -90,9 +90,8 @@ public sealed class LegalDocumentSaveChangesInterceptor : SaveChangesInterceptor
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogWarning(
-                        "LegalDocumentSaveChangesInterceptor invalidation failed: {ExType}",
-                        ex.GetType().Name);
+                    _logger.LogError(ex,
+                        "LegalDocumentSaveChangesInterceptor: cache invalidation failed after SaveChanges");
                 }
             }
         }

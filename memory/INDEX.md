@@ -37,6 +37,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`repository-required-for-db-access`](architecture/repository-required-for-db-access.md) — HARD RULE. Every DB-accessing service goes through a repository interface; no service injects `HumansDbContext` directly, even for singleton-row tables.
 - [`no-leaf-to-director-callbacks`](architecture/no-leaf-to-director-callbacks.md) — HARD RULE. ProfileService/ConsentService/UserService never depend on or call back into OnboardingService/HumanLifecycleService/etc. Narrow-interface band-aids are a symptom; relocate the predicate to the field's owner.
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
+- [`slug-routes-fallback-to-guid`](architecture/slug-routes-fallback-to-guid.md) — slug-keyed URLs accept the entity GUID in the same slot and look up by Id when the slug doesn't match; new routes only, pre-existing routes migrate opportunistically
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
 

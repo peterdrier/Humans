@@ -70,6 +70,13 @@ public interface ILegalDocumentSyncService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the count of currently active+required legal documents. Used by
+    /// the metrics snapshot refresh so the metrics service does not need to
+    /// read <c>legal_documents</c> directly.
+    /// </summary>
+    Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed record ActiveRequiredLegalDocumentSnapshot(

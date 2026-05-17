@@ -108,6 +108,7 @@ CampAdmin-managed catalogue of per-camp roles. Soft-deleted via `DeactivatedAt`;
 |----------|------|-------|
 | Id | Guid | PK |
 | Name | string | Unique (case-insensitive) |
+| Slug | string | Kebab-case identifier, unique case-insensitive, NOT NULL. Used in `/Camps/Admin/Roles/{slug}` URLs and as the per-role component of the derived Google Group key (`barrios-{year}-{slug}@{domain}`). Backfilled from `Name` in migration `20260517140206_AddCampRoleSlug` (issue nobodies-collective/Humans#740). |
 | Description | string? | Markdown |
 | SlotCount | int | Default 1; soft cap enforced in service, not in DB |
 | MinimumRequired | int | Default 1; cross-field validation enforces `0 ≤ MinimumRequired ≤ SlotCount` |
@@ -177,6 +178,7 @@ Three controllers serve this section. The MVC URL surface is dual-routed under `
 | `/Camps/{slug}/HistoricalNames/*` | `CampController` | Historical-name add/remove |
 | `/Camps/Admin` | `CampAdminController` | CampAdmin-only directory + season management |
 | `/Camps/Admin/Roles/*` | `CampAdminController` | `CampRoleDefinition` CRUD |
+| `/Camps/Admin/Roles/{slug}` | `CampAdminController.RolesDrillDown` | Cross-camp roster for one role definition (issue nobodies-collective/Humans#740): per-camp-season assignees with name + Google email and a `mailto:` to the derived group email; year-picker drop-down. CampAdmin only. |
 | `/Camps/Admin/Compliance` | `CampAdminController` | Per-season role compliance report |
 | `/Camps/Admin/Export` | `CampAdminController` | CSV export |
 | `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetPublicYear,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions |
@@ -260,6 +262,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - **Camps internal — `CampRoleService` ↔ `CampService`:** `CampRoleService` calls `ICampService` for camp/season lookup and active-membership verification, and is called back by `ICampService` from the Leave/Withdraw/Remove paths via `ICampRoleService.RemoveAllForMemberAsync`. Both services live within the Camps section.
 - **Audit Log:** `IAuditLogService` — definition CRUD, role assign/unassign, and `CampMemberAddedByLead` actions.
 - **Notifications:** `INotificationService` — `CampRoleAssigned` notification on assign (best-effort, try/catch in controller).
+- **Google Integration:** `CampRoleService` implements `IGoogleGroupMembershipSource` (issue nobodies-collective/Humans#740) — the single contract Camps exposes to the Google sync orchestrator. For every active `CampRoleDefinition` with a non-empty `Slug` × every in-scope season year (`CampSettings.PublicYear` ∪ `OpenSeasons`), `GetExpectedAsync` claims a Google Group keyed `barrios-{year}-{slug}@{GoogleWorkspaceOptions.Domain}` whose expected members are the assignees from `camp_role_assignments` (filtered to `CampMember.Status = Active`). Definitions with empty `Slug` do not get a group and are not claimed — admins set the slug via the role-edit form when they want a group. Reconciliation is **pull-only**: the orchestrator (`GoogleGroupSyncService.ReconcileAllAsync`) enumerates membership sources on its own schedule; Camps does not push, does not call `IGoogleGroupSync.RequestSyncAsync`, and does not depend on `IGoogleGroupProvisioningClient`. Provisioning of missing groups happens inside `GoogleGroupSyncService.ReconcileClaimAsync` when a claim references a group that returns HTTP 404 from Cloud Identity — best-effort, per claim. No new email column is stored — the key is recomputed on demand from `(slug, year, domain)`.
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ICampService.ReassignAssignmentsToUserAsync` re-FKs `CampLead` and `CampRoleAssignment` user references during account merge fold. `CampMember` is **not** folded (known gap).
 
 ## Architecture

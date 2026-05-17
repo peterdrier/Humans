@@ -1,0 +1,147 @@
+@using Humans.Web.Models.CampAdmin
+@model CampRoleDrillDownViewModel
+@{
+    ViewData["Title"] = $"{Model.RoleName} — {Model.Year}";
+    var allAssigneeEmails = Model.Camps
+        .SelectMany(c => c.Assignees)
+        .Where(a => !string.IsNullOrWhiteSpace(a.GoogleEmail))
+        .Select(a => a.GoogleEmail!)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Roles">Roles</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.RoleName</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="mb-1">@Model.RoleName <small class="text-muted">— @Model.Year</small></h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <p class="text-muted mb-0">@Html.SanitizedMarkdown(Model.Description)</p>
+        }
+    </div>
+    <form asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@Model.RouteKey" method="get" class="d-flex gap-2 align-items-center">
+        <label for="year" class="form-label mb-0 text-nowrap">Year</label>
+        <select id="year" name="year" class="form-select form-select-sm js-autosubmit" style="max-width: 120px;">
+            @foreach (var y in Model.YearOptions)
+            {
+                if (y == Model.Year)
+                {
+                    <option value="@y" selected>@y</option>
+                }
+                else
+                {
+                    <option value="@y">@y</option>
+                }
+            }
+        </select>
+        <noscript><button type="submit" class="btn btn-outline-primary btn-sm">Show</button></noscript>
+    </form>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row align-items-center">
+            <div class="col-md-3 small text-muted">Slot count</div>
+            <div class="col-md-3"><strong>@Model.SlotCount</strong> per camp</div>
+            <div class="col-md-3 small text-muted">Minimum required</div>
+            <div class="col-md-3"><strong>@Model.MinimumRequired</strong></div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.GroupEmail))
+        {
+            <hr class="my-2" />
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="small text-muted me-2">Group email:</span>
+                    <code>@Model.GroupEmail</code>
+                </div>
+                @if (allAssigneeEmails.Count > 0)
+                {
+                    var mailto = "mailto:" + Model.GroupEmail
+                        + "?bcc=" + string.Join(",", allAssigneeEmails);
+                    <a href="@mailto" class="btn btn-outline-primary btn-sm">
+                        <i class="fa-regular fa-envelope me-1"></i>Email assignees (@allAssigneeEmails.Count)
+                    </a>
+                }
+                else
+                {
+                    <a href="@("mailto:" + Model.GroupEmail)" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-regular fa-envelope me-1"></i>Email group
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<script nonce="@Context.Items["CspNonce"]">
+    // Year picker auto-submit — CSP-compliant replacement for inline onchange.
+    document.querySelectorAll('select.js-autosubmit').forEach(function(el) {
+        el.addEventListener('change', function() { el.form.submit(); });
+    });
+</script>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fa-solid fa-table-list me-2"></i>Roster (@Model.Camps.Count camp(s) for @Model.Year)
+    </div>
+    @if (Model.Camps.Count == 0)
+    {
+        <div class="card-body">
+            <p class="text-muted mb-0">No camps participate in @Model.Year.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Barrio</th>
+                        <th>Assignees</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Camps)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@row.CampSlug">@row.CampName</a>
+                            </td>
+                            <td>
+                                @if (row.Assignees.Count == 0)
+                                {
+                                    <span class="text-muted small">— none —</span>
+                                }
+                                else
+                                {
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach (var a in row.Assignees)
+                                        {
+                                            <li class="mb-2">
+                                                <vc:human user-id="@a.UserId" layout="AvatarName" size="60" />
+                                                @if (!string.IsNullOrWhiteSpace(a.GoogleEmail))
+                                                {
+                                                    <span class="text-muted small ms-1">&lt;@a.GoogleEmail&gt;</span>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -2,10 +2,12 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
+using CampRoleService = Humans.Application.Services.Camps.CampRoleService;
 using CampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -243,6 +245,54 @@ public class CampsArchitectureTests
             .GetProperty("UserId")
             .Should().NotBeNull(
                 because: "FK stays — only the navigation property is stripped");
+    }
+
+    // ── Google Group membership source — Camps claim ─────────────────────────
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#740: CampRoleService is the only
+    /// Camps-side <see cref="IGoogleGroupMembershipSource"/> claimant. Pins
+    /// the rule that any new Camps source goes through this service so the
+    /// orchestrator's collision detection sees a single Camps voice per group key.
+    /// </summary>
+    [HumansFact]
+    public void CampRoleService_IsTheOnlyCampsSideGoogleGroupMembershipSource()
+    {
+        var campsAssembly = typeof(CampService).Assembly;
+        var campsClaimants = campsAssembly
+            .GetTypes()
+            .Where(t => !t.IsAbstract
+                        && !t.IsInterface
+                        && typeof(IGoogleGroupMembershipSource).IsAssignableFrom(t)
+                        && (t.Namespace ?? string.Empty).StartsWith(
+                            "Humans.Application.Services.Camps", System.StringComparison.Ordinal))
+            .Select(t => t.FullName ?? t.Name)
+            .ToList();
+
+        campsClaimants.Should().BeEquivalentTo(
+            new[] { typeof(CampRoleService).FullName! },
+            because: "CampRoleService is the only Camps-side IGoogleGroupMembershipSource claimant; new Camps groups must route through this service so the orchestrator's collision check sees one Camps voice per group key (issue nobodies-collective/Humans#740)");
+    }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#740: the Camps section exposes its
+    /// Google Group claims through <see cref="IGoogleGroupMembershipSource"/>
+    /// only — the orchestrator (<c>GoogleGroupSyncService</c>) pulls; sections
+    /// never push. The "post-commit RequestSyncAsync nudge" pattern was
+    /// removed, and provisioning of missing groups moved into the orchestrator.
+    /// Pins that CampRoleService takes neither <c>IGoogleGroupSync</c> nor
+    /// <c>IGoogleGroupProvisioningClient</c> in its constructor.
+    /// </summary>
+    [HumansFact]
+    public void CampRoleService_DoesNotDependOnGoogleSyncOrProvisioning()
+    {
+        var ctor = typeof(CampRoleService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().NotContain(typeof(IGoogleGroupSync),
+            because: "sections must not call IGoogleGroupSync.RequestSyncAsync; the orchestrator pulls from IGoogleGroupMembershipSource (issue nobodies-collective/Humans#740)");
+        paramTypes.Should().NotContain(typeof(IGoogleGroupProvisioningClient),
+            because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
     }
 
     // ── Public detail page — EE non-exposure invariant ───────────────────────

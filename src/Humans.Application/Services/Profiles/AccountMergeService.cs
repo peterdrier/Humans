@@ -225,6 +225,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             _roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
             _roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             _roleAssignmentService.InvalidateNavBadgeCache();
+            _roleAssignmentService.InvalidateRoleAssignmentCache();
             _notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
 
             // T-04: rebuild target's UserConsentInfo against post-merge chain (§12 — source records stay at source).
