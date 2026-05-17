@@ -1034,7 +1034,7 @@ public class UserEmailServiceTests
         };
 
         var user = new User { Id = userId, DisplayName = "U" };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
         _repository.GetByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
@@ -1078,7 +1078,7 @@ public class UserEmailServiceTests
         };
 
         var user = new User { Id = userId, DisplayName = "U" };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
         // Token from row A's link is NOT valid against row B's purpose suffix.
@@ -1109,7 +1109,7 @@ public class UserEmailServiceTests
         };
 
         var user = new User { Id = userId, DisplayName = "U" };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(verified);
 
@@ -1136,7 +1136,7 @@ public class UserEmailServiceTests
         };
 
         var user = new User { Id = userId, DisplayName = "U" };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(oauth);
 

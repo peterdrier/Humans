@@ -127,8 +127,12 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var isConflict = await _repository.ExistsVerifiedForOtherUserAsync(
             userId, normalizedEmail, alternateEmail, cancellationToken);
 
-        // Check same as OAuth login email (cross-section → IUserService)
-        var user = await _userService.GetByIdAsync(userId, cancellationToken)
+        // Cache hits from CachingUserService rehydrate User from UserInfo,
+        // which does not carry SecurityStamp. UserManager.GenerateUserTokenAsync
+        // (below) reads user.SecurityStamp directly without a DB round-trip, so
+        // we must load via UserManager.FindByIdAsync here to get a fully
+        // populated entity.
+        var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
         if (EmailNormalization.EmailsMatch(email, user.Email))
@@ -165,7 +169,12 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId, Guid emailId, string token, CancellationToken cancellationToken = default)
     {
-        var user = await _userService.GetByIdAsync(userId, cancellationToken)
+        // Cache hits from CachingUserService rehydrate User from UserInfo,
+        // which does not carry SecurityStamp. UserManager.VerifyUserTokenAsync
+        // (below) reads user.SecurityStamp directly without a DB round-trip, so
+        // we must load via UserManager.FindByIdAsync here to get a fully
+        // populated entity.
+        var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
         // Issue nobodies-collective/Humans#611: load the specific pending row
