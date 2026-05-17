@@ -25,8 +25,8 @@ public static class AgentPricing
     private static readonly Dictionary<string, PriceRow> _pricesByModelPrefix = new(StringComparer.OrdinalIgnoreCase)
     {
         ["claude-sonnet-4"] = new PriceRow(3.00m, 15.00m, 0.30m),
-        ["claude-haiku-4"]  = new PriceRow(0.80m, 4.00m, 0.08m),
-        ["claude-opus-4"]   = new PriceRow(15.00m, 75.00m, 1.50m),
+        ["claude-haiku-4"] = new PriceRow(0.80m, 4.00m, 0.08m),
+        ["claude-opus-4"] = new PriceRow(15.00m, 75.00m, 1.50m),
     };
 
     private static readonly PriceRow _fallback = new(3.00m, 15.00m, 0.30m);

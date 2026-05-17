@@ -42,7 +42,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
     {
         var now = _clock.GetCurrentInstant();
         var window24h = now - Duration.FromDays(1);
-        var window7d  = now - Duration.FromDays(7);
+        var window7d = now - Duration.FromDays(7);
         var window30d = now - Duration.FromDays(30);
 
         // Month-to-date in UTC. The agent is admin-internal tooling and the
@@ -63,15 +63,15 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
         // conversation can sit in a window without producing new messages
         // (rare, but the source-of-truth count must match the table).
         var convCount24h = await _repo.CountConversationsInWindowAsync(window24h, now, cancellationToken);
-        var convCount7d  = await _repo.CountConversationsInWindowAsync(window7d,  now, cancellationToken);
+        var convCount7d = await _repo.CountConversationsInWindowAsync(window7d, now, cancellationToken);
         var convCount30d = await _repo.CountConversationsInWindowAsync(window30d, now, cancellationToken);
 
         var usage24h = BuildUsage(rows, window24h, convCount24h);
-        var usage7d  = BuildUsage(rows, window7d,  convCount7d);
+        var usage7d = BuildUsage(rows, window7d, convCount7d);
         var usage30d = BuildUsage(rows, window30d, convCount30d);
 
         var spend24h = BuildSpend(rows, window24h, defaultModel);
-        var spend7d  = BuildSpend(rows, window7d,  defaultModel);
+        var spend7d = BuildSpend(rows, window7d, defaultModel);
         var spend30d = BuildSpend(rows, window30d, defaultModel);
         var spendMtd = BuildSpend(rows, firstOfMonth, defaultModel);
 

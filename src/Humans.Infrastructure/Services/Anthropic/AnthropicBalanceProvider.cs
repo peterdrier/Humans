@@ -1,7 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Models;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Services.Anthropic;
@@ -17,18 +16,11 @@ namespace Humans.Infrastructure.Services.Anthropic;
 /// </summary>
 public sealed class AnthropicBalanceProvider : IAgentAnthropicBalanceProvider
 {
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly AnthropicOptions _options;
-    private readonly ILogger<AnthropicBalanceProvider> _logger;
 
-    public AnthropicBalanceProvider(
-        IHttpClientFactory httpClientFactory,
-        IOptions<AnthropicOptions> options,
-        ILogger<AnthropicBalanceProvider> logger)
+    public AnthropicBalanceProvider(IOptions<AnthropicOptions> options)
     {
-        _httpClientFactory = httpClientFactory;
         _options = options.Value;
-        _logger = logger;
     }
 
     public async Task<AgentBalanceStatus> GetBalanceAsync(CancellationToken cancellationToken)
@@ -44,23 +36,11 @@ public sealed class AnthropicBalanceProvider : IAgentAnthropicBalanceProvider
         // which return spend, not credit. Until Anthropic ships a balance
         // endpoint we degrade gracefully: surface the unavailable reason and
         // the admin panel links to the console. Spec #709 explicitly accepts
-        // this fallback over fake numbers.
-        //
-        // Implementation note: keeping the HttpClient + AdminApiKey wiring
-        // ready means the day Anthropic publishes the endpoint, this is a
-        // ~10-line change here, not a new feature.
-        try
-        {
-            _ = _httpClientFactory; // touch to silence unused-warning until endpoint exists
-            await Task.CompletedTask.ConfigureAwait(false);
-            return new AgentBalanceStatus(
-                BalanceUsd: null,
-                UnavailableReason: "Anthropic does not expose a balance endpoint");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to fetch Anthropic balance");
-            return new AgentBalanceStatus(BalanceUsd: null, UnavailableReason: "Balance lookup failed");
-        }
+        // this fallback over fake numbers. When the endpoint ships, restore
+        // the HttpClient + try/catch wiring and call it here.
+        await Task.CompletedTask.ConfigureAwait(false);
+        return new AgentBalanceStatus(
+            BalanceUsd: null,
+            UnavailableReason: "Anthropic does not expose a balance endpoint");
     }
 }
