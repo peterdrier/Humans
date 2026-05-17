@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -222,13 +221,12 @@ internal sealed class RoleAssignmentRepository : IRoleAssignmentRepository
         return rows.ToDictionary(r => r.Role, r => r.Count, StringComparer.Ordinal);
     }
 
-    public async Task<IReadOnlyList<RoleAssignmentRow>> GetAllRowsForCacheAsync(
+    public async Task<IReadOnlyList<RoleAssignment>> GetAllRowsForCacheAsync(
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.RoleAssignments
             .AsNoTracking()
-            .Select(ra => new RoleAssignmentRow(ra.Id, ra.RoleName, ra.ValidFrom, ra.ValidTo))
             .ToListAsync(ct);
     }
 

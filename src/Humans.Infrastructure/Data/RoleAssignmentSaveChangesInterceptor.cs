@@ -63,9 +63,8 @@ public sealed class RoleAssignmentSaveChangesInterceptor : SaveChangesIntercepto
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogWarning(
-                        "RoleAssignmentSaveChangesInterceptor invalidation failed: {ExType}",
-                        ex.GetType().Name);
+                    _logger.LogError(ex,
+                        "RoleAssignmentSaveChangesInterceptor: cache invalidation failed after SaveChanges");
                 }
             }
         }

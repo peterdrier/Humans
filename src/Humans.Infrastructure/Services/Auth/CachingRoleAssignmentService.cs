@@ -88,9 +88,9 @@ public sealed class CachingRoleAssignmentService
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var rows = await _repository.GetAllRowsForCacheAsync(ct);
-        foreach (var row in rows)
-            Set(row.Id, row);
+        var entities = await _repository.GetAllRowsForCacheAsync(ct);
+        foreach (var ra in entities)
+            Set(ra.Id, new RoleAssignmentRow(ra.Id, ra.RoleName, ra.ValidFrom, ra.ValidTo));
     }
 
     // ==========================================================================

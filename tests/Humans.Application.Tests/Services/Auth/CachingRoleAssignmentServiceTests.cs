@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Auth;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,7 +26,7 @@ public class CachingRoleAssignmentServiceTests
         var clock = new FakeClock(now);
         var repository = Substitute.For<IRoleAssignmentRepository>();
         repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentRow>
+            .Returns(new List<RoleAssignment>
             {
                 Active("Board", now),
                 Active("Board", now),
@@ -53,9 +53,15 @@ public class CachingRoleAssignmentServiceTests
         var clock = new FakeClock(now);
         var repository = Substitute.For<IRoleAssignmentRepository>();
         repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentRow>
+            .Returns(new List<RoleAssignment>
             {
-                new(Guid.NewGuid(), "Board", now - Duration.FromDays(30), ValidTo: null),
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    RoleName = "Board",
+                    ValidFrom = now - Duration.FromDays(30),
+                    ValidTo = null,
+                },
             });
 
         var service = BuildService(repository, clock);
@@ -71,7 +77,7 @@ public class CachingRoleAssignmentServiceTests
         var clock = new FakeClock(now);
         var repository = Substitute.For<IRoleAssignmentRepository>();
         repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentRow> { Active("Board", now) });
+            .Returns(new List<RoleAssignment> { Active("Board", now) });
 
         var service = BuildService(repository, clock);
 
@@ -89,7 +95,7 @@ public class CachingRoleAssignmentServiceTests
         var clock = new FakeClock(now);
         var repository = Substitute.For<IRoleAssignmentRepository>();
         repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentRow> { Active("Board", now) });
+            .Returns(new List<RoleAssignment> { Active("Board", now) });
 
         var service = BuildService(repository, clock);
 
@@ -112,9 +118,15 @@ public class CachingRoleAssignmentServiceTests
         var expiresAt = t0 + Duration.FromHours(1);
         var repository = Substitute.For<IRoleAssignmentRepository>();
         repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentRow>
+            .Returns(new List<RoleAssignment>
             {
-                new(Guid.NewGuid(), "Board", t0 - Duration.FromDays(1), ValidTo: expiresAt),
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    RoleName = "Board",
+                    ValidFrom = t0 - Duration.FromDays(1),
+                    ValidTo = expiresAt,
+                },
             });
 
         var service = BuildService(repository, clock);
@@ -136,12 +148,30 @@ public class CachingRoleAssignmentServiceTests
             clock,
             NullLogger<CachingRoleAssignmentService>.Instance);
 
-    private static RoleAssignmentRow Active(string role, Instant now) =>
-        new(Guid.NewGuid(), role, now - Duration.FromDays(30), ValidTo: now + Duration.FromDays(30));
+    private static RoleAssignment Active(string role, Instant now) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            RoleName = role,
+            ValidFrom = now - Duration.FromDays(30),
+            ValidTo = now + Duration.FromDays(30),
+        };
 
-    private static RoleAssignmentRow Expired(string role, Instant now) =>
-        new(Guid.NewGuid(), role, now - Duration.FromDays(60), ValidTo: now - Duration.FromDays(1));
+    private static RoleAssignment Expired(string role, Instant now) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            RoleName = role,
+            ValidFrom = now - Duration.FromDays(60),
+            ValidTo = now - Duration.FromDays(1),
+        };
 
-    private static RoleAssignmentRow Future(string role, Instant now) =>
-        new(Guid.NewGuid(), role, now + Duration.FromDays(1), ValidTo: null);
+    private static RoleAssignment Future(string role, Instant now) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            RoleName = role,
+            ValidFrom = now + Duration.FromDays(1),
+            ValidTo = null,
+        };
 }
