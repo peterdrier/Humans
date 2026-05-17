@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Services.Teams;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
 
 namespace Humans.Application.Tests.Architecture;
 

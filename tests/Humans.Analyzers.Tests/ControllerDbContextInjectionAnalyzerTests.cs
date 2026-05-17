@@ -119,7 +119,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             "Humans.Web",
             source);
 
-        diagnostics.Where(d => IsHum0008(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0008).Should().BeEmpty();
     }
 
     [HumansFact]

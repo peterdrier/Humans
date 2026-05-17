@@ -1,8 +1,6 @@
 using Humans.Application.Interfaces.Notifications;
-using Humans.Domain.Entities;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 

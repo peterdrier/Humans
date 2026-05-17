@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Onboarding;
 using Microsoft.EntityFrameworkCore;
 using OnboardingService = Humans.Application.Services.Onboarding.OnboardingService;
 

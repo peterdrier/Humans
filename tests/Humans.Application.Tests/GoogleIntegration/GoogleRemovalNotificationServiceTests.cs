@@ -263,7 +263,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             SyncRemovalReason.Reconciliation);
 
         await _userEmailService.DidNotReceiveWithAnyArgs()
-            .GetUserIdByVerifiedEmailAsync(default!, Arg.Any<CancellationToken>());
+            .GetUserIdByVerifiedEmailAsync(null!, Arg.Any<CancellationToken>());
     }
 
     /// <summary>

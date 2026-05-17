@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -107,7 +106,7 @@ public class WorkloadServiceTests : IDisposable
         var report = await _service.GetForActiveEventAsync();
 
         report.Should().NotBeNull();
-        report!.EventSettingsId.Should().Be(es.Id);
+        report.EventSettingsId.Should().Be(es.Id);
         report.EventYear.Should().Be(2026);
         report.ByPerson.Should().BeEmpty();
         report.ByShift.Should().BeEmpty();
@@ -132,7 +131,7 @@ public class WorkloadServiceTests : IDisposable
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
 
-        var aliceRow = report!.ByPerson.Single(p => p.UserId == alice.Id);
+        var aliceRow = report.ByPerson.Single(p => p.UserId == alice.Id);
         aliceRow.ConfirmedHours.Should().Be(10m);
         aliceRow.ConfirmedSignupCount.Should().Be(2);
         aliceRow.PendingSignupCount.Should().Be(0);
@@ -162,7 +161,7 @@ public class WorkloadServiceTests : IDisposable
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        report!.ByPerson.Single(p => p.UserId == alice.Id).ConfirmedHours.Should().Be(2m);
+        report.ByPerson.Single(p => p.UserId == alice.Id).ConfirmedHours.Should().Be(2m);
         report.ByPerson.Single(p => p.UserId == bob.Id).ConfirmedHours.Should().Be(8m);
     }
 
@@ -182,7 +181,7 @@ public class WorkloadServiceTests : IDisposable
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        var dept = report!.ByDepartment.Single();
+        var dept = report.ByDepartment.Single();
         dept.PlannedSlots.Should().Be(3);
         dept.FilledSlots.Should().Be(3); // capped at MaxVolunteers
         dept.PlannedHours.Should().Be(12m); // 4h * 3 slots
@@ -203,8 +202,8 @@ public class WorkloadServiceTests : IDisposable
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        report!.ByShift.Should().HaveCount(2);
-        report.ByShift.Select(s => s.ShiftId).Should().BeEquivalentTo(new[] { adminShift.Id, hiddenShift.Id });
+        report.ByShift.Should().HaveCount(2);
+        report.ByShift.Select(s => s.ShiftId).Should().BeEquivalentTo([adminShift.Id, hiddenShift.Id]);
     }
 
     [HumansFact]
@@ -219,7 +218,7 @@ public class WorkloadServiceTests : IDisposable
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        var row = report!.ByShift.Single(s => s.ShiftId == allDay.Id);
+        var row = report.ByShift.Single(s => s.ShiftId == allDay.Id);
         row.IsAllDay.Should().BeTrue();
         row.DurationHours.Should().Be(10m); // 18:00 - 08:00
     }

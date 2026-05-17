@@ -151,7 +151,7 @@ public class MailerAdminControllerTests
         _mlService.GetAccountSummaryAsync(Arg.Any<CancellationToken>())
             .Returns(new MailerLiteAccountSummary(0, 0, 0, 0, 0));
         _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<MailerLiteGroup>)[]);
+            .Returns([]);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _prefs.GetCountByCategoryAndStateAsync(
@@ -164,7 +164,7 @@ public class MailerAdminControllerTests
                 actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)[]);
+            .Returns([]);
 
         var ctrl = BuildSut();
 
@@ -209,7 +209,7 @@ public class MailerAdminControllerTests
                 actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)[]);
+            .Returns([]);
 
         var ctrl = BuildSut();
 
@@ -262,8 +262,8 @@ public class MailerAdminControllerTests
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
         var banner = ctrl.TempData["Banner"] as string;
         Assert.NotNull(banner);
-        Assert.Contains("Refresh failed", banner!, StringComparison.Ordinal);
-        Assert.Contains("429", banner!, StringComparison.Ordinal);
+        Assert.Contains("Refresh failed", banner, StringComparison.Ordinal);
+        Assert.Contains("429", banner, StringComparison.Ordinal);
     }
 
     [HumansFact]
@@ -282,7 +282,7 @@ public class MailerAdminControllerTests
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
         var banner = ctrl.TempData["Banner"] as string;
         Assert.NotNull(banner);
-        Assert.Contains("timed out", banner!, StringComparison.Ordinal);
+        Assert.Contains("timed out", banner, StringComparison.Ordinal);
     }
 
     // -----------------------------------------------------------------------

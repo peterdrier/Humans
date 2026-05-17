@@ -159,7 +159,7 @@ public static class CalendarOccurrenceExpander
                 var newStart = ex.OverrideStartUtc.Value;
                 var eventDuration = (ev.EndUtc ?? ev.StartUtc) - ev.StartUtc;
                 var newEnd = ex.OverrideEndUtc
-                    ?? (ev.EndUtc is null ? (Instant?)null : newStart.Plus(eventDuration));
+                    ?? (ev.EndUtc is null ? null : newStart.Plus(eventDuration));
 
                 if (newStart >= to || (newEnd ?? newStart) <= from) continue;
 

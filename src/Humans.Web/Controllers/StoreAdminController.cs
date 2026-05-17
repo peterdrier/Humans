@@ -1,10 +1,8 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;

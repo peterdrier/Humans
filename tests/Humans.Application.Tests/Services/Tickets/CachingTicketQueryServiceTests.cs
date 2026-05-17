@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
@@ -65,7 +64,7 @@ public sealed class CachingTicketQueryServiceTests
         // Default: empty projection. Tests that need orders override via
         // SeedOrders(...) which re-stubs the repo and re-warms.
         _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<TicketOrder>)[]);
+            .Returns([]);
     }
 
     [HumansFact]
@@ -80,7 +79,7 @@ public sealed class CachingTicketQueryServiceTests
 
         var result = await _decorator.GetUserIdsWithTicketsAsync();
 
-        result.Should().BeEquivalentTo(new[] { UserA, UserB },
+        result.Should().BeEquivalentTo([UserA, UserB],
             because: "void attendees don't count as ticket coverage; matched buyer-only orders also excluded");
     }
 
@@ -95,7 +94,7 @@ public sealed class CachingTicketQueryServiceTests
 
         var result = await _decorator.GetAllMatchedUserIdsAsync();
 
-        result.Should().BeEquivalentTo(new[] { UserA, UserB });
+        result.Should().BeEquivalentTo([UserA, UserB]);
     }
 
     [HumansFact]
@@ -212,7 +211,7 @@ public sealed class CachingTicketQueryServiceTests
     private void SeedOrders(params TicketOrder[] orders)
     {
         _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<TicketOrder>)orders);
+            .Returns(orders);
     }
 
     private static TicketOrder MakeOrder(

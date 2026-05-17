@@ -83,7 +83,7 @@ public class WebRepositoryInjectionAnalyzerTests
             "Humans.Web",
             source);
 
-        diagnostics.Where(d => IsHum0014(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0014).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -105,7 +105,7 @@ public class WebRepositoryInjectionAnalyzerTests
             "Humans.Infrastructure",
             source);
 
-        diagnostics.Where(d => IsHum0014(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0014).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -137,7 +137,7 @@ public class WebRepositoryInjectionAnalyzerTests
             "Humans.Web",
             source);
 
-        var hum0014 = diagnostics.Where(d => IsHum0014(d)).ToList();
+        var hum0014 = diagnostics.Where(IsHum0014).ToList();
         hum0014.Should().ContainSingle();
         hum0014[0].Severity.Should().Be(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
     }

@@ -63,7 +63,7 @@ public class NotificationRecipientResolverTests
         var info = await _resolver.GetTeamNotificationInfoAsync(teamId);
 
         info.Should().NotBeNull();
-        info!.Id.Should().Be(teamId);
+        info.Id.Should().Be(teamId);
         info.Name.Should().Be("Build Team");
         info.MemberUserIds.Should().BeEquivalentTo([u1, u2]);
     }
@@ -86,7 +86,7 @@ public class NotificationRecipientResolverTests
         var info = await _resolver.GetTeamNotificationInfoAsync(teamId);
 
         info.Should().NotBeNull();
-        info!.MemberUserIds.Should().BeEmpty();
+        info.MemberUserIds.Should().BeEmpty();
     }
 
     [HumansFact]

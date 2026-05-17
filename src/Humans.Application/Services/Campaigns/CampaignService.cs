@@ -414,7 +414,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
         return new WaveSendPreview(
             EligibleCount: eligibleCount,
-            AlreadyGrantedExcluded: activeTeamUserIds.Count(id => alreadyGrantedSet.Contains(id)),
+            AlreadyGrantedExcluded: activeTeamUserIds.Count(alreadyGrantedSet.Contains),
             UnsubscribedExcluded: optedOutCount,
             CodesAvailable: availableCodes,
             CodesRemainingAfterSend: availableCodes - eligibleCount);

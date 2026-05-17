@@ -567,7 +567,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamBySlugAsync("alpha");
 
         result.Should().NotBeNull();
-        result!.Name.Should().Be("Alpha");
+        result.Name.Should().Be("Alpha");
         result.Members.Should().ContainSingle();
     }
 
@@ -612,7 +612,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamByIdAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().ContainSingle();
+        result.Members.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -795,7 +795,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamDetailAsync(team.Slug, userId: null);
 
         result.Should().NotBeNull();
-        result!.IsAuthenticated.Should().BeFalse();
+        result.IsAuthenticated.Should().BeFalse();
         result.Members.Select(m => m.DisplayName).Should().BeEquivalentTo(
             ["Coordinator"],
             cfg => cfg.WithStrictOrdering());
@@ -823,7 +823,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamDetailAsync(team.Slug, coordinator.Id);
 
         result.Should().NotBeNull();
-        result!.IsAuthenticated.Should().BeTrue();
+        result.IsAuthenticated.Should().BeTrue();
         result.IsCurrentUserMember.Should().BeTrue();
         result.IsCurrentUserCoordinator.Should().BeTrue();
         result.CanCurrentUserManage.Should().BeTrue();
@@ -918,7 +918,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
         result.Should().NotBeNull();
-        result!.UserId.Should().Be(user.Id);
+        result.UserId.Should().Be(user.Id);
     }
 
     [HumansFact]
@@ -964,7 +964,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().ContainSingle();
+        result.Members.Should().ContainSingle();
         result.Members[0].UserId.Should().Be(active.Id);
     }
 
@@ -1006,7 +1006,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().HaveCount(3);
+        result.Members.Should().HaveCount(3);
         result.Members.Count(m => m.Role == TeamMemberRole.Member).Should().Be(2);
         result.Members.Count(m => m.Role == TeamMemberRole.Coordinator).Should().Be(1);
         result.Members.Select(m => m.UserId).Should().Contain([memberEarly.Id, memberLate.Id]);
@@ -1035,7 +1035,7 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().BeEmpty();
+        result.Members.Should().BeEmpty();
     }
 
     // ==========================================================================

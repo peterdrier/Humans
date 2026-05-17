@@ -121,7 +121,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+            .Returns(new HashSet<Guid>());
 
         await _job.ExecuteAsync();
 
@@ -143,7 +143,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { userId });
+            .Returns(new HashSet<Guid> { userId });
 
         _userService.GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
@@ -336,6 +336,6 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)suspendedIds.ToHashSet());
+            .Returns(suspendedIds.ToHashSet());
     }
 }

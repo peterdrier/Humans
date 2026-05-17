@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
 using Humans.Application.Models;
 using Humans.Application.Services.Agent;
 using Humans.Domain.Entities;
@@ -164,7 +163,7 @@ public class AgentAdminStatusServiceTests
             CachedTokens = cached,
             Model = "claude-sonnet-4-6",
             DurationMs = 1200,
-            FetchedDocs = fetched ?? Array.Empty<string>(),
+            FetchedDocs = fetched ?? [],
             RefusalReason = refusalReason,
         });
     }

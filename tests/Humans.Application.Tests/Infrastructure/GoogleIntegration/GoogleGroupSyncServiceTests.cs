@@ -307,7 +307,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         result.ErrorCount.Should().Be(1);
         await _provisioningClient.DidNotReceiveWithAnyArgs()
-            .LookupGroupIdAsync(default!, default);
+            .LookupGroupIdAsync(null!, CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
             nameof(GoogleResource),
@@ -341,7 +341,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.MembersToRemove.Should().BeEmpty();
         await _membershipClient.DidNotReceiveWithAnyArgs()
-            .DeleteMembershipAsync(default!, default);
+            .DeleteMembershipAsync(null!, CancellationToken.None);
     }
 
     [HumansFact]
@@ -434,9 +434,9 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain("invalid argument 'roles'");
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, CancellationToken.None);
         await _userService.DidNotReceiveWithAnyArgs()
-            .GetByEmailOrAlternateAsync(default!, default);
+            .GetByEmailOrAlternateAsync(null!, CancellationToken.None);
         _syncScheduler.Scheduled.Should().ContainSingle();
     }
 
@@ -457,9 +457,9 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain("billing account disabled");
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, CancellationToken.None);
         await _userService.DidNotReceiveWithAnyArgs()
-            .GetByEmailOrAlternateAsync(default!, default);
+            .GetByEmailOrAlternateAsync(null!, CancellationToken.None);
         _syncScheduler.Scheduled.Should().ContainSingle();
     }
 
@@ -486,7 +486,7 @@ public sealed class GoogleGroupSyncServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new GroupCreateResult("group-new", null));
         _membershipClient.ListMembershipsAsync("group-new", Arg.Any<CancellationToken>())
-            .Returns(new GroupMembershipListResult(Array.Empty<GroupMembership>(), null));
+            .Returns(new GroupMembershipListResult([], null));
         _membershipClient.CreateMembershipAsync("group-new", "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
 
@@ -761,27 +761,18 @@ public sealed class GoogleGroupSyncServiceTests
             resource.Url,
             IsActive: resource.IsActive);
 
-    private sealed class StaticSource : IGoogleGroupMembershipSource
+    private sealed class StaticSource(string key, params Guid[] userIds) : IGoogleGroupMembershipSource
     {
-        private readonly string _groupKey;
-        private readonly Guid[] _userIds;
-
-        public StaticSource(string groupKey, params Guid[] userIds)
-        {
-            _groupKey = groupKey;
-            _userIds = userIds;
-        }
-
         public Task<Dictionary<string, Guid[]>> GetExpectedAsync(
             string? groupKey = null,
             CancellationToken ct = default)
         {
-            if (groupKey is not null && !string.Equals(groupKey, _groupKey, StringComparison.OrdinalIgnoreCase))
+            if (groupKey is not null && !string.Equals(groupKey, key, StringComparison.OrdinalIgnoreCase))
                 return Task.FromResult(new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase));
 
             return Task.FromResult(new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase)
             {
-                [_groupKey] = _userIds
+                [key] = userIds
             });
         }
     }

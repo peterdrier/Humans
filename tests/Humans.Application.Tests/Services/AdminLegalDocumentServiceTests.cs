@@ -190,7 +190,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
 
         updated.Should().BeTrue();
         version.Should().NotBeNull();
-        version!.ChangesSummary.Should().Be("Clarified scope");
+        version.ChangesSummary.Should().Be("Clarified scope");
     }
 
     [HumansFact]
@@ -226,11 +226,10 @@ public class AdminLegalDocumentServiceTests : IDisposable
         return document;
     }
 
-    private sealed class FakeDbContextFactory : IDbContextFactory<HumansDbContext>
+    private sealed class FakeDbContextFactory(DbContextOptions<HumansDbContext> options)
+        : IDbContextFactory<HumansDbContext>
     {
-        private readonly DbContextOptions<HumansDbContext> _options;
-        public FakeDbContextFactory(DbContextOptions<HumansDbContext> options) { _options = options; }
-        public HumansDbContext CreateDbContext() => new HumansDbContext(_options);
+        public HumansDbContext CreateDbContext() => new(options);
     }
 
     private sealed class FakeLegalDocumentSyncService : ILegalDocumentSyncService

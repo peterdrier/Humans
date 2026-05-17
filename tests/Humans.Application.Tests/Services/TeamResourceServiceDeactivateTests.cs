@@ -255,15 +255,12 @@ public class TeamResourceServiceDeactivateTests : IDisposable
     /// <see cref="DbContextOptions"/>, matching the production behavior where
     /// the repository tears its context down per call.
     /// </summary>
-    private sealed class SingleContextFactory : IDbContextFactory<HumansDbContext>
+    private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
+        : IDbContextFactory<HumansDbContext>
     {
-        private readonly DbContextOptions<HumansDbContext> _options;
-
-        public SingleContextFactory(DbContextOptions<HumansDbContext> options) => _options = options;
-
-        public HumansDbContext CreateDbContext() => new(_options);
+        public HumansDbContext CreateDbContext() => new(options);
 
         public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(_options));
+            Task.FromResult(new HumansDbContext(options));
     }
 }

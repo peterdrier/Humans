@@ -51,14 +51,14 @@ public class HomeControllerTests
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 user,
-                Array.Empty<UserEmail>(),
-                Array.Empty<EventParticipation>(),
-                Array.Empty<(string, string)>(),
+                [],
+                [],
+                [],
                 profile: null,
-                Array.Empty<ContactField>(),
-                Array.Empty<ProfileLanguage>(),
-                Array.Empty<VolunteerHistoryEntry>(),
-                Array.Empty<CommunicationPreference>())));
+                [],
+                [],
+                [],
+                [])));
 
         var ctrl = new HomeController(
             _userService,

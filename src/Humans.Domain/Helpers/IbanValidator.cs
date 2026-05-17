@@ -55,7 +55,7 @@ public static class IbanValidator
         var country = v[..2];
         if (!Lengths.TryGetValue(country, out var expectedLen)) return false;
         if (v.Length != expectedLen) return false;
-        if (!v.All(c => char.IsLetterOrDigit(c))) return false;
+        if (!v.All(char.IsLetterOrDigit)) return false;
 
         var rearranged = v[4..] + v[..4];
         var sb = new System.Text.StringBuilder(rearranged.Length * 2);

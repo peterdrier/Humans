@@ -77,7 +77,7 @@ public class EmailMutationPathsAnalyzerTests
             "Humans.Web",
             source);
 
-        diagnostics.Where(d => IsHum0005(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0005).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -129,7 +129,7 @@ public class EmailMutationPathsAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0006(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0006).Should().BeEmpty();
     }
 
     [HumansFact]

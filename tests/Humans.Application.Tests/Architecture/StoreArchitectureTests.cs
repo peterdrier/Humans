@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Store;
 using Humans.Infrastructure.Repositories.Store;
 using StoreService = Humans.Application.Services.Store.StoreService;
 

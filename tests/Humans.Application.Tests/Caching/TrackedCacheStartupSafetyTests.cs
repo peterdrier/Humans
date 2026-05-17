@@ -67,16 +67,12 @@ public class TrackedCacheStartupSafetyTests
         sut.WarmAttempts.Should().Be(0);
     }
 
-    private sealed class ThrowingCache : TrackedCache<Guid, string>
+    private sealed class ThrowingCache(string name, bool warmOnStartup, ILogger? logger = null)
+        : TrackedCache<Guid, string>(name, warmOnStartup, logger ?? NullLogger.Instance)
     {
         public int WarmAttempts;
         public bool ShouldThrow = true;
         public bool IsWarmedUpExposed => IsWarmedUp;
-
-        public ThrowingCache(string name, bool warmOnStartup, ILogger? logger = null)
-            : base(name, warmOnStartup, logger ?? NullLogger.Instance)
-        {
-        }
 
         public Task WarmFromOutsideAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
 
@@ -89,19 +85,12 @@ public class TrackedCacheStartupSafetyTests
         }
     }
 
-    private sealed class CancellingCache : TrackedCache<Guid, string>
+    private sealed class CancellingCache(string name, bool warmOnStartup, CancellationTokenSource cts)
+        : TrackedCache<Guid, string>(name, warmOnStartup, NullLogger.Instance)
     {
-        private readonly CancellationTokenSource _cts;
-
-        public CancellingCache(string name, bool warmOnStartup, CancellationTokenSource cts)
-            : base(name, warmOnStartup, NullLogger.Instance)
-        {
-            _cts = cts;
-        }
-
         protected override async Task WarmAllAsync(CancellationToken ct)
         {
-            await _cts.CancelAsync();
+            await cts.CancelAsync();
             ct.ThrowIfCancellationRequested();
         }
     }

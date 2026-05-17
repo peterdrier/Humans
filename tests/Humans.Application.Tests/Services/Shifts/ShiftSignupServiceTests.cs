@@ -558,7 +558,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Warning.Should().Contain("Time conflict");
 
         var newOffsets = await _dbContext.ShiftSignups
-            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
+            .Where(s => s.UserId == userId && s.Shift.RotaId == buildRota.Id)
             .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
             .OrderBy(o => o)
             .ToListAsync();
@@ -655,7 +655,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Warning.Should().Contain("Time conflict");
 
         var newOffsets = await _dbContext.ShiftSignups
-            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id && s.ShiftId != dayMinus3Shift.Id)
+            .Where(s => s.UserId == userId && s.Shift.RotaId == buildRota.Id && s.ShiftId != dayMinus3Shift.Id)
             .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
             .OrderBy(o => o)
             .ToListAsync();
@@ -714,7 +714,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("Time conflict");
 
         var newSignupCount = await _dbContext.ShiftSignups
-            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
+            .Where(s => s.UserId == userId && s.Shift.RotaId == buildRota.Id)
             .CountAsync();
         newSignupCount.Should().Be(0);
     }
@@ -900,7 +900,7 @@ public class ShiftSignupServiceTests : IDisposable
         SeedSignup(sourceUserId, shift.Id, SignupStatus.Confirmed);
         await _dbContext.SaveChangesAsync();
 
-        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, default);
+        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, CancellationToken.None);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,
@@ -918,7 +918,7 @@ public class ShiftSignupServiceTests : IDisposable
         var actorUserId = Guid.NewGuid();
         await _dbContext.SaveChangesAsync();
 
-        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, default);
+        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, CancellationToken.None);
 
         await _auditLog.DidNotReceive().LogAsync(
             AuditAction.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),

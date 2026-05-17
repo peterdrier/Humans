@@ -1,10 +1,8 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Search;
-using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.Application.Interfaces.Users;

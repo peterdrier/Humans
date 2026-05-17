@@ -1,7 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

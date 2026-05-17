@@ -65,9 +65,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _job.ExecuteAsync();
 
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
-            .AnonymizeExpiredAccountAsync(default, default);
+            .AnonymizeExpiredAccountAsync(Guid.Empty, CancellationToken.None);
         await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
-            default!, default!, default, default);
+            null!, null!, null, CancellationToken.None);
     }
 
     [HumansFact]
@@ -149,7 +149,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _job.ExecuteAsync();
 
         await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
-            default!, default!, default, default);
+            null!, null!, null, CancellationToken.None);
 
         // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(

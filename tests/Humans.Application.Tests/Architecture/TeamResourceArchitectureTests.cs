@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 using TeamResourceService = Humans.Application.Services.GoogleIntegration.TeamResourceService;
 

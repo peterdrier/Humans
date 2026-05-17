@@ -281,7 +281,7 @@ public class CityPlanningServiceTests : IDisposable
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: members);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
+            .Returns(new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
     }
 
     [HumansFact]
@@ -604,7 +604,7 @@ public class CityPlanningServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
         _dbContext.Entry(seeded).State = EntityState.Detached;
 
-        await _sut.UpdatePlacementDatesAsync((LocalDateTime?)null, (LocalDateTime?)null);
+        await _sut.UpdatePlacementDatesAsync(null, (LocalDateTime?)null);
 
         var updated = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.PlacementOpensAt.Should().BeNull();

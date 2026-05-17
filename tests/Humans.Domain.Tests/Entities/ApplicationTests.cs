@@ -9,12 +9,7 @@ namespace Humans.Domain.Tests.Entities;
 
 public class ApplicationTests
 {
-    private readonly FakeClock _clock;
-
-    public ApplicationTests()
-    {
-        _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 10, 0));
-    }
+    private readonly FakeClock _clock = new(Instant.FromUtc(2024, 1, 15, 10, 0));
 
     [HumansFact]
     public void NewApplication_ShouldHaveSubmittedStatus()
@@ -167,7 +162,7 @@ public class ApplicationTests
         var application = CreateSubmittedApplication();
         application.MembershipTier = MembershipTier.Volunteer;
 
-        var act = () => application.ValidateTier();
+        var act = application.ValidateTier;
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Volunteer*");
     }
@@ -180,7 +175,7 @@ public class ApplicationTests
         var application = CreateSubmittedApplication();
         application.MembershipTier = tier;
 
-        var act = () => application.ValidateTier();
+        var act = application.ValidateTier;
         act.Should().NotThrow();
     }
 

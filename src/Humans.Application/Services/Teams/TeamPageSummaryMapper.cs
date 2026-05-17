@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using NodaTime;

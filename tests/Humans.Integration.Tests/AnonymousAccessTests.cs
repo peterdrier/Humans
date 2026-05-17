@@ -5,10 +5,8 @@ using Xunit;
 
 namespace Humans.Integration.Tests;
 
-public class AnonymousAccessTests : IntegrationTestBase
+public class AnonymousAccessTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public AnonymousAccessTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 30000)]
     public async Task Homepage_IsAccessibleAnonymously()
     {

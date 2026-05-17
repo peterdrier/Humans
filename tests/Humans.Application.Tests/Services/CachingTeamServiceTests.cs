@@ -531,7 +531,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var info = await _service.GetTeamAsync(team.Id);
 
         info.Should().NotBeNull();
-        info!.PendingRequestCount.Should().Be(2);
+        info.PendingRequestCount.Should().Be(2);
     }
 
     private TeamJoinRequest SeedJoinRequest(Guid teamId, Guid userId)

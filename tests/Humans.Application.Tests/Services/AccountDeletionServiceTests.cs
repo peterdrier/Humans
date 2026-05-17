@@ -82,7 +82,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _teamService.DidNotReceiveWithAnyArgs()
-            .RevokeAllMembershipsAsync(default, default);
+            .RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -97,7 +97,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
         await _teamService.DidNotReceiveWithAnyArgs()
-            .RevokeAllMembershipsAsync(default, default);
+            .RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -218,7 +218,7 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NoDeletionPending");
-        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -231,7 +231,7 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
-        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, CancellationToken.None);
     }
 
     // ==========================================================================
@@ -249,7 +249,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
-        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -300,7 +300,7 @@ public class AccountDeletionServiceTests
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().BeNull();
-        await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(default, default);
+        await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -324,7 +324,7 @@ public class AccountDeletionServiceTests
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
-        result!.OriginalEmail.Should().Be("expired@example.com");
+        result.OriginalEmail.Should().Be("expired@example.com");
         result.OriginalDisplayName.Should().Be("Expired Human");
         result.PreferredLanguage.Should().Be("es");
         result.CancelledSignupIds.Should().ContainSingle()
@@ -355,7 +355,7 @@ public class AccountDeletionServiceTests
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
-        result!.OriginalEmail.Should().Be("gone@example.com");
+        result.OriginalEmail.Should().Be("gone@example.com");
         result.OriginalDisplayName.Should().Be("Gone");
         // Steps 1–5 already invalidated their own section caches; the
         // step-7 cross-section invalidations key off the identity write

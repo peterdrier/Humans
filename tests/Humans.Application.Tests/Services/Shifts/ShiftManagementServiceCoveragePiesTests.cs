@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Shifts;
@@ -47,7 +46,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
                 var direct = _dbContext.Teams.Where(t => ids.Contains(t.Id)).AsEnumerable().ToList();
                 var parentIds = direct.Where(t => t.ParentTeamId.HasValue).Select(t => t.ParentTeamId!.Value).ToList();
                 var parents = parentIds.Count == 0
-                    ? new List<Team>()
+                    ? []
                     : _dbContext.Teams.Where(t => parentIds.Contains(t.Id)).AsEnumerable().ToList();
                 var all = direct.Concat(parents).GroupBy(t => t.Id).Select(g => g.First());
                 return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(all.ToDictionary(t => t.Id));
@@ -111,7 +110,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
     public async Task PromotedSubteam_GetsOwnPie_ParentExcludesSubteamRotas()
     {
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: true);
-        AddShift(AddRota(es, art!, RotaPeriod.Event, name: "ArtRota"),
+        AddShift(AddRota(es, art, RotaPeriod.Event, name: "ArtRota"),
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
@@ -132,7 +131,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
     public async Task NonPromotedSubteam_RotasRollUpToParent_NoSubteamPie()
     {
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
-        AddShift(AddRota(es, art!, RotaPeriod.Event, name: "ArtRota"),
+        AddShift(AddRota(es, art, RotaPeriod.Event, name: "ArtRota"),
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);

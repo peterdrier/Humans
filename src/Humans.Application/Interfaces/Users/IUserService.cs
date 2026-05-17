@@ -82,6 +82,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// callers — the cache holds the full user payload, so there is no
     /// "without emails" variant.
     /// </summary>
+    [Obsolete("Callers must migrate to IUserService.GetUserInfoAsync()", false, DiagnosticId = "HUM_USER_GetById")]
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>

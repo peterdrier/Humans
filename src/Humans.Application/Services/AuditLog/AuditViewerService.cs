@@ -85,7 +85,7 @@ public sealed class AuditViewerService : IAuditViewerService
             ? new Dictionary<Guid, (string Name, string Slug)>()
             : await GetTeamNamesAsync(teamIds, ct);
         var resources = resourceIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+            ? new Dictionary<Guid, string>()
             : await _teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
 
         var result = new List<AuditEvent>(entries.Count);
@@ -108,7 +108,7 @@ public sealed class AuditViewerService : IAuditViewerService
             ? new Dictionary<Guid, (string Name, string Slug)>()
             : await GetTeamNamesAsync(teamIds, ct);
         var resources = resourceIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+            ? new Dictionary<Guid, string>()
             : await _teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
 
         var result = new List<AuditEvent>(entries.Count);

@@ -37,7 +37,7 @@ public class AccountMergeServiceAdminMergeTests
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
         _userService.GetByIdAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = sourceId, MergedToUserId = sourceTombstoned ? targetId : (Guid?)null });
+            .Returns(new User { Id = sourceId, MergedToUserId = sourceTombstoned ? targetId : null });
         _userService.GetByIdAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = targetId });
     }

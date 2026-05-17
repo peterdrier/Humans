@@ -98,7 +98,7 @@ public class CampRoleServiceTests : IDisposable
         var result = await _service.GetDefinitionByIdAsync(def.Id);
 
         result.Should().NotBeNull();
-        result!.Name.Should().Be("Build Lead");
+        result.Name.Should().Be("Build Lead");
     }
 
     [HumansFact]
@@ -259,7 +259,7 @@ public class CampRoleServiceTests : IDisposable
         var member = await SeedActiveMemberAsync(season.Id);
         var def = await SeedDefinitionAsync();
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -292,7 +292,7 @@ public class CampRoleServiceTests : IDisposable
         var member = await SeedActiveMemberAsync(season.Id);
         var def = await SeedDefinitionAsync();
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Pending));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -309,7 +309,7 @@ public class CampRoleServiceTests : IDisposable
         var member = await SeedActiveMemberAsync(otherSeason.Id);
         var def = await SeedDefinitionAsync();
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(otherSeason.Id, member.UserId, CampMemberStatus.Active));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -348,7 +348,7 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync(slotCount: 2);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         (await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId))
@@ -364,7 +364,7 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync(deactivated: true);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -378,7 +378,7 @@ public class CampRoleServiceTests : IDisposable
         var (camp, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync();
         var member = await SeedActiveMemberAsync(season.Id);
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -424,8 +424,8 @@ public class CampRoleServiceTests : IDisposable
 
         var users = new Dictionary<Guid, User>
         {
-            [member1.UserId] = new User { Id = member1.UserId, DisplayName = "Member One" },
-            [member2.UserId] = new User { Id = member2.UserId, DisplayName = "Member Two" },
+            [member1.UserId] = new() { Id = member1.UserId, DisplayName = "Member One" },
+            [member2.UserId] = new() { Id = member2.UserId, DisplayName = "Member Two" },
         };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
@@ -462,8 +462,8 @@ public class CampRoleServiceTests : IDisposable
 
         var users = new Dictionary<Guid, User>
         {
-            [m1.UserId] = new User { Id = m1.UserId, DisplayName = "Alpha" },
-            [m2.UserId] = new User { Id = m2.UserId, DisplayName = "Beta" },
+            [m1.UserId] = new() { Id = m1.UserId, DisplayName = "Alpha" },
+            [m2.UserId] = new() { Id = m2.UserId, DisplayName = "Beta" },
         };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
@@ -491,7 +491,7 @@ public class CampRoleServiceTests : IDisposable
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
         await _dbContext.SaveChangesAsync();
 
-        _campService.GetCampSeasonsForComplianceAsync(2026, default)
+        _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
@@ -508,7 +508,7 @@ public class CampRoleServiceTests : IDisposable
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
-        _campService.GetCampSeasonsForComplianceAsync(2026, default)
+        _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
@@ -524,7 +524,7 @@ public class CampRoleServiceTests : IDisposable
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync("Power", slotCount: 1, minimumRequired: 0);
 
-        _campService.GetCampSeasonsForComplianceAsync(2026, default)
+        _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
@@ -577,7 +577,7 @@ public class CampRoleServiceTests : IDisposable
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: new[] { 2026 },
+                OpenSeasons: [2026],
                 EeStartDate: null));
 
         var result = await _service.GetExpectedAsync();
@@ -608,7 +608,7 @@ public class CampRoleServiceTests : IDisposable
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: new[] { 2026 },
+                OpenSeasons: [2026],
                 EeStartDate: null));
 
         var result = await _service.GetExpectedAsync();
@@ -641,7 +641,7 @@ public class CampRoleServiceTests : IDisposable
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: new[] { 2026 },
+                OpenSeasons: [2026],
                 EeStartDate: null));
 
         var result = await _service.GetExpectedAsync();
@@ -695,7 +695,7 @@ public class CampRoleServiceTests : IDisposable
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: new[] { 2026 },
+                OpenSeasons: [2026],
                 EeStartDate: null));
 
         var result = await _service.GetExpectedAsync();

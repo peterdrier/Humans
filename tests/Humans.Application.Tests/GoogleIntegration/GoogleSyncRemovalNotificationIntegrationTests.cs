@@ -209,25 +209,18 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             .Returns((GoogleClientError?)null);
     }
 
-    private sealed class StaticSource : IGoogleGroupMembershipSource
+    private sealed class StaticSource(string key) : IGoogleGroupMembershipSource
     {
-        private readonly string _groupKey;
-
-        public StaticSource(string groupKey)
-        {
-            _groupKey = groupKey;
-        }
-
         public Task<Dictionary<string, Guid[]>> GetExpectedAsync(
             string? groupKey = null,
             CancellationToken ct = default)
         {
-            if (groupKey is not null && !string.Equals(groupKey, _groupKey, StringComparison.OrdinalIgnoreCase))
+            if (groupKey is not null && !string.Equals(groupKey, key, StringComparison.OrdinalIgnoreCase))
                 return Task.FromResult(new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase));
 
             return Task.FromResult(new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase)
             {
-                [_groupKey] = []
+                [key] = []
             });
         }
     }

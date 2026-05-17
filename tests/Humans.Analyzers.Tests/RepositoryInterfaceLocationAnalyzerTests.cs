@@ -49,7 +49,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0013(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0013).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -60,7 +60,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
             "Humans.Application",
             Stubs);
 
-        diagnostics.Where(d => IsHum0013(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0013).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -79,7 +79,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0013(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0013).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -103,7 +103,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0013(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0013).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -133,7 +133,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
 
         // Both IMidRepository and ICampRepository extend IRepository transitively
         // and live outside the expected namespace.
-        diagnostics.Where(d => IsHum0013(d)).Should().HaveCount(2);
+        diagnostics.Where(IsHum0013).Should().HaveCount(2);
     }
 
     [HumansFact]
@@ -162,7 +162,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        var hum0013 = diagnostics.Where(d => IsHum0013(d)).ToList();
+        var hum0013 = diagnostics.Where(IsHum0013).ToList();
         hum0013.Should().ContainSingle();
         hum0013[0].Severity.Should().Be(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
     }

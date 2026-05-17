@@ -63,7 +63,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
 
         var tracked = await _repo.FindForMutationAsync(assignment.Id);
         tracked.Should().NotBeNull();
-        tracked!.ValidTo = _clock.GetCurrentInstant();
+        tracked.ValidTo = _clock.GetCurrentInstant();
         await _repo.UpdateAsync(tracked);
 
         var reloaded = await _dbContext.RoleAssignments.AsNoTracking().FirstAsync(ra => ra.Id == assignment.Id);
@@ -80,7 +80,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         var result = await _repo.GetByIdAsync(assignment.Id);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(assignment.Id);
+        result.Id.Should().Be(assignment.Id);
         // Cross-domain navs must NOT be populated by the repository.
 #pragma warning disable CS0618
         // Use property presence only (in-memory EF in tests may auto-fix the back-ref

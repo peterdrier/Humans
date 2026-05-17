@@ -953,7 +953,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         // Assert: MedicalConditions stripped
         result.Should().NotBeNull();
-        result!.MedicalConditions.Should().BeNull();
+        result.MedicalConditions.Should().BeNull();
     }
 
     [HumansFact]
@@ -977,7 +977,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         // Assert: MedicalConditions intact
         result.Should().NotBeNull();
-        result!.MedicalConditions.Should().Be("Asthma; severe nut allergy");
+        result.MedicalConditions.Should().Be("Asthma; severe nut allergy");
     }
 
     // ============================================================

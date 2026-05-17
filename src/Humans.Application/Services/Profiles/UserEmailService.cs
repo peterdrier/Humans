@@ -510,7 +510,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     {
         // Returns null on zero matches OR ambiguous matches; only non-null when exactly one user verified-holds the address.
         var userIds = await _repository.GetDistinctUserIdsByVerifiedEmailAsync(email, ct);
-        return userIds.Count == 1 ? userIds[0] : (Guid?)null;
+        return userIds.Count == 1 ? userIds[0] : null;
     }
 
     public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)

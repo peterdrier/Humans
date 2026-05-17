@@ -357,7 +357,7 @@ public class AgentToolDispatcherTests
         Guid userId, IReadOnlyList<Humans.Domain.Entities.ShiftSignup> signups)
     {
         var view = Substitute.For<Interfaces.Shifts.IShiftView>();
-        var record = new Humans.Application.DTOs.Shifts.ShiftUserView(
+        var record = new DTOs.Shifts.ShiftUserView(
             UserId: userId,
             Profile: null,
             Availability: null,
@@ -365,13 +365,13 @@ public class AgentToolDispatcherTests
             TagPreferences: [],
             Signups: signups);
         view.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.DTOs.Shifts.ShiftUserView>(record));
+            .Returns(new ValueTask<DTOs.Shifts.ShiftUserView>(record));
         return view;
     }
 
     private sealed class StubAuditViewer : Humans.Application.Interfaces.AuditLog.IAuditViewerService
     {
-        public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } =
+        public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; init; } =
             [];
 
         /// <summary>Captures the limit value passed to <see cref="GetForUserAsync"/> for clamp-behaviour assertions.</summary>

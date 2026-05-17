@@ -117,7 +117,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var record = await _repo.GetByUserAndVersionAsync(userId, versionId);
 
         record.Should().NotBeNull();
-        record!.UserId.Should().Be(userId);
+        record.UserId.Should().Be(userId);
         record.DocumentVersionId.Should().Be(versionId);
     }
 

@@ -462,7 +462,7 @@ public class VolunteerTrackingServiceTests
 
         blank.Should().BeNull();
         capped.Should().NotBeNull();
-        capped!.Length.Should().Be(200);
+        capped.Length.Should().Be(200);
     }
 
     [HumansFact]
@@ -711,23 +711,16 @@ public class VolunteerTrackingServiceTests
     // Fake repository that captures mutations
     // ----------------------------------------------------------------------
 
-    private sealed class FakeVolunteerTrackingRepository : IVolunteerTrackingRepository
+    private sealed class FakeVolunteerTrackingRepository(
+        IReadOnlyList<EligibleBuildSignup> signups,
+        IReadOnlyList<VolunteerBuildStatus> buildStatuses) : IVolunteerTrackingRepository
     {
-        private readonly IReadOnlyList<EligibleBuildSignup> _signups;
-        public List<VolunteerBuildStatus> BuildStatuses { get; }
+        public List<VolunteerBuildStatus> BuildStatuses { get; } = buildStatuses.ToList();
 
         public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } =
             [];
         public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
         public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
-
-        public FakeVolunteerTrackingRepository(
-            IReadOnlyList<EligibleBuildSignup> signups,
-            IReadOnlyList<VolunteerBuildStatus> buildStatuses)
-        {
-            _signups = signups;
-            BuildStatuses = buildStatuses.ToList();
-        }
 
         public Task<VolunteerBuildStatus?> GetAsync(Guid userId, Guid eventSettingsId, CancellationToken ct = default)
             => Task.FromResult(BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId));
@@ -807,6 +800,6 @@ public class VolunteerTrackingServiceTests
 
         public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
             Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult(_signups);
+            => Task.FromResult(signups);
     }
 }

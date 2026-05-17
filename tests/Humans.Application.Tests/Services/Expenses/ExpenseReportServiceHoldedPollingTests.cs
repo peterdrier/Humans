@@ -97,9 +97,9 @@ public class ExpenseReportServiceHoldedPollingTests
         await _sut.PollHoldedPaidStatusAsync(BatchSize);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .GetPurchaseDocumentAsync(default!, default);
+            .GetPurchaseDocumentAsync(null!, CancellationToken.None);
         await _repo.DidNotReceiveWithAnyArgs()
-            .MarkPaidAsync(default, default, default);
+            .MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
     }
 
     // ─── happy path ───────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ public class ExpenseReportServiceHoldedPollingTests
 
         await _sut.PollHoldedPaidStatusAsync(BatchSize);
 
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
     }
 
     [HumansFact]
@@ -155,7 +155,7 @@ public class ExpenseReportServiceHoldedPollingTests
 
         await _sut.PollHoldedPaidStatusAsync(BatchSize);
 
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
     }
 
     // ─── error handling ───────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ public class ExpenseReportServiceHoldedPollingTests
         var act = () => _sut.PollHoldedPaidStatusAsync(BatchSize);
 
         await act.Should().NotThrowAsync();
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
     }
 
     // ─── batch cap ────────────────────────────────────────────────────────────

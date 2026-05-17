@@ -363,7 +363,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         remaining = remaining.Where(id => !pendingApproval.Contains(id) && !incompleteSignup.Contains(id)).ToList();
 
         var usersWithConsents = await GetUsersWithAllRequiredConsentsForTeamAsync(remaining, SystemTeamIds.Volunteers, ct);
-        var active = remaining.Where(id => usersWithConsents.Contains(id)).ToHashSet();
+        var active = remaining.Where(usersWithConsents.Contains).ToHashSet();
         var missingConsents = remaining.Where(id => !usersWithConsents.Contains(id)).ToHashSet();
 
         return new MembershipPartition(

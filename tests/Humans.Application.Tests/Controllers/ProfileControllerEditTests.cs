@@ -53,7 +53,6 @@ namespace Humans.Application.Tests.Controllers;
 /// </summary>
 public class ProfileControllerEditTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IApplicationDecisionService _applicationDecisionService =
@@ -66,7 +65,7 @@ public class ProfileControllerEditTests
     public ProfileControllerEditTests()
     {
         var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
+        var userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
 
         var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
@@ -87,7 +86,7 @@ public class ProfileControllerEditTests
 
         _controller = new ProfileController(
             _userService,
-            _userManager,
+            userManager,
             _profileService,
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
@@ -118,7 +117,7 @@ public class ProfileControllerEditTests
             Substitute.For<IMembershipCalculator>(),
             Substitute.For<IHttpClientFactory>(),
             Substitute.For<SignInManager<User>>(
-                _userManager,
+                userManager,
                 Substitute.For<IHttpContextAccessor>(),
                 Substitute.For<IUserClaimsPrincipalFactory<User>>(),
                 Options.Create(new IdentityOptions()),
@@ -134,9 +133,9 @@ public class ProfileControllerEditTests
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         _controller.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
 
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
+        userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
-        _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
+        userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
@@ -164,9 +163,9 @@ public class ProfileControllerEditTests
         await _controller.Edit(model);
 
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(default, default, default!, default, default, default, default!, default);
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, CancellationToken.None);
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(default, default, default!, default, default, default, default);
+            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, CancellationToken.None);
     }
 
     [HumansFact]
@@ -186,7 +185,7 @@ public class ProfileControllerEditTests
             Arg.Is<string?>(x => x == null),
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(default, default, default!, default, default, default, default);
+            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, CancellationToken.None);
     }
 
     [HumansFact]
@@ -226,7 +225,7 @@ public class ProfileControllerEditTests
             Arg.Is<string?>(x => x == null),
             Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(default, default, default!, default, default, default, default!, default);
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, CancellationToken.None);
     }
 
     [HumansFact]
@@ -252,11 +251,11 @@ public class ProfileControllerEditTests
         await _controller.Edit(model);
 
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(default, default, default!, default, default, default, default!, default);
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, CancellationToken.None);
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(default, default, default!, default, default, default, default);
+            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, CancellationToken.None);
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .GetUserApplicationsAsync(default, default);
+            .GetUserApplicationsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -313,7 +312,7 @@ public class ProfileControllerEditTests
         returnedModel.AllShiftTags.Should().HaveCountGreaterThan(0);
 
         await _shiftMgmt.DidNotReceiveWithAnyArgs()
-            .SetVolunteerTagPreferencesAsync(default, default!);
+            .SetVolunteerTagPreferencesAsync(Guid.Empty, null!);
     }
 
     private static ProfileViewModel MakeValidModel(

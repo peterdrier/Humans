@@ -1,12 +1,10 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Web.Helpers.EventsLookupHelpers;

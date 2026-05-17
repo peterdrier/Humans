@@ -5,11 +5,9 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Agent;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime.Serialization.SystemTextJson;
 

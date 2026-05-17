@@ -34,10 +34,6 @@ public class DevSeedControllerTests
     private readonly ConfigurationRegistry _configRegistry = new();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
 
-    public DevSeedControllerTests()
-    {
-    }
-
     [HumansFact]
     public async Task SeedDashboard_NotDevelopmentEnvironment_ReturnsNotFound()
     {

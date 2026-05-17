@@ -139,7 +139,7 @@ public class CalendarArchitectureTests
         navProperty.Should().NotBeNull(
             because: "EF configuration still needs the nav reference to declare FK + cascade behavior");
 
-        navProperty!.GetCustomAttributes(typeof(ObsoleteAttribute), inherit: false)
+        navProperty.GetCustomAttributes(typeof(ObsoleteAttribute), inherit: false)
             .Should().NotBeEmpty(
                 because: "CalendarEvent.OwningTeam is a cross-domain nav into the Teams section; resolve via ITeamService instead (design-rules §6c)");
     }

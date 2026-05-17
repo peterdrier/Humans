@@ -127,7 +127,7 @@ public class ShiftsControllerNameGateTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(default, default, default);
+        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(Guid.Empty, Guid.Empty, null);
     }
 
     [HumansFact]
@@ -144,7 +144,7 @@ public class ShiftsControllerNameGateTests
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpRangeAsync(
-            default, default, default, default, default, default);
+            Guid.Empty, Guid.Empty, 0, 0, null, false);
     }
 
     [HumansFact]

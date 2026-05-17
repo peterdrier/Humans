@@ -88,7 +88,7 @@ public class AgentArchitectureTests
 
         impl.Should().NotBeNull(
             because: "the EF-backed AgentRepository lives in Humans.Infrastructure");
-        impl!.Assembly.GetName().Name
+        impl.Assembly.GetName().Name
             .Should().Be("Humans.Infrastructure",
                 because: "EF-backed repositories live in Humans.Infrastructure per design-rules §15b");
     }

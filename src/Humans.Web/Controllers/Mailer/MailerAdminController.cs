@@ -5,12 +5,10 @@ using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers.Mailer;

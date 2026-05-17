@@ -86,7 +86,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -110,7 +110,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -132,7 +132,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
         diagnostics.Should().ContainSingle(d => IsHum0018(d));
     }
 
@@ -182,7 +182,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -204,7 +204,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Infrastructure",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -277,7 +277,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -331,7 +331,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0017).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -353,7 +353,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
             "Humans.Application",
             source);
 
-        var hum0017 = diagnostics.Where(d => IsHum0017(d)).ToList();
+        var hum0017 = diagnostics.Where(IsHum0017).ToList();
         hum0017.Should().ContainSingle();
         hum0017[0].Severity.Should().Be(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
     }

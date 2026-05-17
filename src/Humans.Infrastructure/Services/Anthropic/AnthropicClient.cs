@@ -39,7 +39,7 @@ public sealed class AnthropicClient : IAnthropicClient
             MaxTokens = request.MaxOutputTokens,
             System = new List<TextBlockParam>
             {
-                new TextBlockParam(request.SystemCacheablePrefix)
+                new(request.SystemCacheablePrefix)
                 {
                     CacheControl = new CacheControlEphemeral(),
                 },

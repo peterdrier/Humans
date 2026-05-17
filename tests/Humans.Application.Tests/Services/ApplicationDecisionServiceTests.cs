@@ -643,7 +643,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId);
 
         result.Should().NotBeNull();
-        result!.ReviewerName.Should().Be("Reviewer");
+        result.ReviewerName.Should().Be("Reviewer");
         result.History.Should().NotBeEmpty();
         result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
     }
@@ -677,7 +677,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId);
 
         result.Should().NotBeNull();
-        result!.History.Should().HaveCount(1);
+        result.History.Should().HaveCount(1);
         result.History[0].Status.Should().Be(ApplicationStatus.Withdrawn);
     }
 
@@ -816,7 +816,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetApplicationDetailAsync(app.Id);
 
         result.Should().NotBeNull();
-        result!.UserId.Should().Be(applicantId);
+        result.UserId.Should().Be(applicantId);
         result.UserDisplayName.Should().Be("Applicant");
         result.UserEmail.Should().Be("a@t.com");
         result.UserProfilePictureUrl.Should().Be("https://example.com/pic.png");
@@ -841,7 +841,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetApplicationDetailAsync(app.Id);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(app.Id);
+        result.Id.Should().Be(app.Id);
         result.UserId.Should().Be(userId);
     }
 

@@ -12,7 +12,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;

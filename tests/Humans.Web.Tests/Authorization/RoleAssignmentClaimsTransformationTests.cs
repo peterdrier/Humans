@@ -37,12 +37,12 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         _roleAssignments = Substitute.For<IRoleAssignmentRepository>();
         _roleAssignments
             .GetActiveRoleNamesAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<string>());
+            .Returns([]);
 
         _teams = Substitute.For<ITeamService>();
         _teams
             .GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
+            .Returns([]);
 
         _userService = Substitute.For<IUserService>();
         _clock = Substitute.For<IClock>();
@@ -60,8 +60,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
 
     private static ClaimsPrincipal BuildPrincipal(Guid userId)
     {
-        var identity = new ClaimsIdentity(
-            new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             authenticationType: "test");
         return new ClaimsPrincipal(identity);
     }
@@ -136,7 +135,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         // but suspension wins and the claim must be omitted.
         _teams
             .GetUserTeamsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new[] { VolunteersMembership(userId) });
+            .Returns([VolunteersMembership(userId)]);
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: true, isSuspended: true)));
@@ -172,7 +171,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
 
         _teams
             .GetUserTeamsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new[] { VolunteersMembership(userId) });
+            .Returns([VolunteersMembership(userId)]);
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
@@ -200,7 +199,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
 
         _roleAssignments
             .GetActiveRoleNamesAsync(userId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { "Board", "Treasurer" });
+            .Returns(["Board", "Treasurer"]);
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
 

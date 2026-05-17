@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 using DriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 

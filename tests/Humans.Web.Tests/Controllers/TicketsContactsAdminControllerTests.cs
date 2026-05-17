@@ -29,14 +29,14 @@ public class TicketsContactsAdminControllerTests
         users.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 currentUser,
-                Array.Empty<UserEmail>(),
-                Array.Empty<EventParticipation>(),
-                Array.Empty<(string, string)>(),
+                [],
+                [],
+                [],
                 profile: null,
-                Array.Empty<ContactField>(),
-                Array.Empty<ProfileLanguage>(),
-                Array.Empty<VolunteerHistoryEntry>(),
-                Array.Empty<CommunicationPreference>())));
+                [],
+                [],
+                [],
+                [])));
 
         var ctrl = new TicketsContactsAdminController(
             import, users,
@@ -47,9 +47,10 @@ public class TicketsContactsAdminControllerTests
         var http = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
-            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
-                new[] { new System.Security.Claims.Claim(
-                    System.Security.Claims.ClaimTypes.NameIdentifier, currentUser.Id.ToString()) },
+            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([
+                    new System.Security.Claims.Claim(
+                    System.Security.Claims.ClaimTypes.NameIdentifier, currentUser.Id.ToString())
+                ],
                 "test")),
         };
 
@@ -76,7 +77,7 @@ public class TicketsContactsAdminControllerTests
 
         var (controller, _, _) = NewController(import);
 
-        var result = await controller.Index(default);
+        var result = await controller.Index(CancellationToken.None);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         var vm = view.Model.Should().BeOfType<ContactImportPreviewViewModel>().Subject;
@@ -102,7 +103,7 @@ public class TicketsContactsAdminControllerTests
         var (controller, currentUser, _) = NewController(import);
 
         var selectedId = Guid.NewGuid();
-        var result = await controller.Apply([selectedId], default);
+        var result = await controller.Apply([selectedId], CancellationToken.None);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(TicketsContactsAdminController.Index));
@@ -121,7 +122,7 @@ public class TicketsContactsAdminControllerTests
         var import = Substitute.For<IAttendeeContactImportService>();
         var (controller, _, _) = NewController(import);
 
-        var result = await controller.Apply([], default);
+        var result = await controller.Apply([], CancellationToken.None);
 
         result.Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().NotBeNull();

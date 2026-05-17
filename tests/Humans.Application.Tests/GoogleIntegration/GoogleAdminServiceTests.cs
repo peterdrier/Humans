@@ -30,7 +30,6 @@ public class GoogleAdminServiceTests
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly ITeamService _teamService;
-    private readonly ITeamResourceService _teamResourceService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
@@ -43,12 +42,12 @@ public class GoogleAdminServiceTests
         _workspaceUserService = Substitute.For<IGoogleWorkspaceUserService>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _teamService = Substitute.For<ITeamService>();
-        _teamResourceService = Substitute.For<ITeamResourceService>();
+        var teamResourceService = Substitute.For<ITeamResourceService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
-        _teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
+        teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
 
         // Default: Reset+2FA gate sees the account as not-yet-enrolled in 2SV,
@@ -68,7 +67,7 @@ public class GoogleAdminServiceTests
             _workspaceUserService,
             _googleSyncService,
             _teamService,
-            _teamResourceService,
+            teamResourceService,
             _userService,
             _userEmailService,
             _auditLogService,
@@ -261,8 +260,8 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("All fields are required.");
 
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(default!, default);
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(default!, default!, default!, default!, default, default);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, CancellationToken.None);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(null!, null!, null!, null!, null, CancellationToken.None);
     }
 
     [HumansFact]
@@ -338,7 +337,7 @@ public class GoogleAdminServiceTests
             Members: [],
             GoogleGroupPrefix: "comms");
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [commsTeamId] = commsTeam });
+            .Returns(new Dictionary<Guid, TeamInfo> { [commsTeamId] = commsTeam });
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "comms", "Any", "Name", _actorUserId);
@@ -421,7 +420,7 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("Email is required.");
 
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, CancellationToken.None);
     }
 
     [HumansFact]
@@ -753,8 +752,8 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("Email is required.");
 
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(default!, default);
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, CancellationToken.None);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, CancellationToken.None);
     }
 
     // --- LinkAccountAsync ---
@@ -904,7 +903,7 @@ public class GoogleAdminServiceTests
                 Members: []),
         };
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)teams);
+            .Returns(teams);
 
         var result = await _service.GetActiveTeamsAsync();
 

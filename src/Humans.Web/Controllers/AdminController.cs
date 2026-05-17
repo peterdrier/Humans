@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
@@ -9,7 +8,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Models;

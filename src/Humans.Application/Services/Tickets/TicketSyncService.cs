@@ -1,6 +1,5 @@
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Repositories;

@@ -1,6 +1,5 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces.Governance;
@@ -10,7 +9,6 @@ using Humans.Web.Extensions;
 using Humans.Web.Models;
 
 using Humans.Application.Interfaces.Users;
-using Humans.Application;
 
 namespace Humans.Web.Controllers;
 

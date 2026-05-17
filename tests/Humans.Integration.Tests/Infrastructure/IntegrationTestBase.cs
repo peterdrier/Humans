@@ -2,18 +2,15 @@ using Xunit;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
-public abstract class IntegrationTestBase : IClassFixture<HumansWebApplicationFactory>
+public abstract class IntegrationTestBase(HumansWebApplicationFactory factory)
+    : IClassFixture<HumansWebApplicationFactory>
 {
-    protected readonly HttpClient Client;
-    protected readonly HumansWebApplicationFactory Factory;
-
-    protected IntegrationTestBase(HumansWebApplicationFactory factory)
+    protected readonly HttpClient Client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
     {
-        Factory = factory;
-        Client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
-        {
-            // Don't follow redirects so we can assert on redirect responses
-            AllowAutoRedirect = false
-        });
-    }
+        // Don't follow redirects so we can assert on redirect responses
+        AllowAutoRedirect = false
+    });
+    protected readonly HumansWebApplicationFactory Factory = factory;
+
+    // Don't follow redirects so we can assert on redirect responses
 }

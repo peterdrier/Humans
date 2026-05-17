@@ -82,7 +82,7 @@ public class StubGoogleGroupMembershipClientTests
         var result = await _client.DeleteMembershipAsync("groups/missing/memberships/nope");
 
         result.Should().NotBeNull();
-        result!.StatusCode.Should().Be(404,
+        result.StatusCode.Should().Be(404,
             because: "missing memberships surface as 404 errors matching Google's HTTP behaviour");
     }
 

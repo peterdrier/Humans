@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,8 +57,8 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(0);
-        _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(default!, default!, default);
-        await _repository.DidNotReceiveWithAnyArgs().PersistAnomaliesAsync(default!, default, default);
+        _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, CancellationToken.None);
+        await _repository.DidNotReceiveWithAnyArgs().PersistAnomaliesAsync(null!, null, CancellationToken.None);
     }
 
     [HumansFact]
@@ -195,7 +194,7 @@ public class DriveActivityMonitorServiceTests
         count.Should().Be(1);
         await _repository.Received(1).PersistAnomaliesAsync(
             Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 1),
-            (Instant?)null,
+            null,
             Arg.Any<CancellationToken>());
     }
 
@@ -236,7 +235,7 @@ public class DriveActivityMonitorServiceTests
         count.Should().Be(0);
         await _repository.Received(1).PersistAnomaliesAsync(
             Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 0),
-            (Instant?)null,
+            null,
             Arg.Any<CancellationToken>());
     }
 

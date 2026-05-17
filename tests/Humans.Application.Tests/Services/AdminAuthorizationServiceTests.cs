@@ -34,7 +34,7 @@ public sealed class AdminAuthorizationServiceTests
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
         await _roleAssignments.DidNotReceiveWithAnyArgs()
-            .HasActiveRoleAsync(default, default!, default, default);
+            .HasActiveRoleAsync(Guid.Empty, null!, default, CancellationToken.None);
     }
 
     [HumansFact]

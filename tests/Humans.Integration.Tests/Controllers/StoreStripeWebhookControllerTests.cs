@@ -13,10 +13,8 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class StoreStripeWebhookControllerTests : IntegrationTestBase
+public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public StoreStripeWebhookControllerTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 30000)]
     public async Task Webhook_with_invalid_signature_returns_400()
     {

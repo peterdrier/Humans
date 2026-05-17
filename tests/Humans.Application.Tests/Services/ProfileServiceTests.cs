@@ -13,7 +13,6 @@ using Xunit;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Profiles;
 
@@ -235,7 +234,7 @@ public class ProfileServiceTests : IDisposable
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
         result.Should().NotBeNull();
-        result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        result.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
         result.Value.ContentType.Should().Be("image/png");
     }
 
@@ -276,7 +275,7 @@ public class ProfileServiceTests : IDisposable
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
         result.Should().NotBeNull();
-        result!.Value.Data.Should().BeEquivalentTo(fsPayload);
+        result.Value.Data.Should().BeEquivalentTo(fsPayload);
         result.Value.ContentType.Should().Be("image/png");
     }
 

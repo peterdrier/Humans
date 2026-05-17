@@ -260,7 +260,7 @@ public class MagicLinkServiceTests : IDisposable
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token");
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
+        result.Id.Should().Be(userId);
     }
 
     [HumansFact]
@@ -277,7 +277,7 @@ public class MagicLinkServiceTests : IDisposable
         var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com");
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
+        result.Id.Should().Be(userId);
     }
 
     [HumansFact]

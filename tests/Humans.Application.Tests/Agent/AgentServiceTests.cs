@@ -97,7 +97,7 @@ public class AgentServiceTests
             new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
-            new AgentTurnRequest(ConversationId: conversationId!.Value, UserId: userId, Message: "Can I join?", Locale: "es"),
+            new AgentTurnRequest(ConversationId: conversationId.Value, UserId: userId, Message: "Can I join?", Locale: "es"),
             CancellationToken.None))
         {
         }

@@ -118,27 +118,25 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         await FoldAsync(request.SourceUserId, request.TargetUserId, adminUserId, audit, ct);
 
         var now = _clock.GetCurrentInstant();
-        using (var scope = new TransactionScope(
+        using var scope = new TransactionScope(
             TransactionScopeOption.Required,
             new TransactionOptions
             {
                 IsolationLevel = IsolationLevel.ReadCommitted
             },
-            TransactionScopeAsyncFlowOption.Enabled))
-        {
-            var verified = await _userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
-            if (!verified)
-                throw new InvalidOperationException(
-                    $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
+            TransactionScopeAsyncFlowOption.Enabled);
+        var verified = await _userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
+        if (!verified)
+            throw new InvalidOperationException(
+                $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
 
-            request.Status = AccountMergeRequestStatus.Accepted;
-            request.ResolvedAt = now;
-            request.ResolvedByUserId = adminUserId;
-            request.AdminNotes = notes;
-            await _mergeRepository.UpdateAsync(request, ct);
+        request.Status = AccountMergeRequestStatus.Accepted;
+        request.ResolvedAt = now;
+        request.ResolvedByUserId = adminUserId;
+        request.AdminNotes = notes;
+        await _mergeRepository.UpdateAsync(request, ct);
 
-            scope.Complete();
-        }
+        scope.Complete();
     }
 
     private sealed record AuditEntry(

@@ -242,7 +242,7 @@ public class DependencyCycleResolutionTests
         var cycles = new List<List<Type>>();
         foreach (var node in edges.Keys)
         {
-            DfsForCycle(node, edges, state, new List<Type>(), cycles);
+            DfsForCycle(node, edges, state, [], cycles);
         }
 
         cycles.Should().BeEmpty(

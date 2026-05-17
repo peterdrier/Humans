@@ -183,7 +183,7 @@ public class AttendeeContactImportServicePlanTests
         var d = plan.Decisions[0];
         d.Outcome.Should().Be(AttendeeImportOutcome.CreateNewUser);
         d.AttendeeId.Should().Be(leadId);
-        d.AdditionalAttendeeIds.Should().BeEquivalentTo(new[] { extra1, extra2 });
+        d.AdditionalAttendeeIds.Should().BeEquivalentTo([extra1, extra2]);
         d.ObservedNames.Should().BeEquivalentTo(new[] { "Sara Smith", "Sara S." });
         plan.TotalUnmatched.Should().Be(3);
     }

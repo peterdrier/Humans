@@ -84,7 +84,7 @@ public class GoogleWorkspaceUserServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*FamilyName is required*");
         await _client.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(
-            default!, default!, default!, default!, default, default);
+            null!, null!, null!, null!, null, CancellationToken.None);
     }
 
     [HumansFact]

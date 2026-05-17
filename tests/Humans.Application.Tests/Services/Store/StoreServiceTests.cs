@@ -221,7 +221,7 @@ public class StoreServiceTests
         var result = await _service.GetOrderAsync(orderId);
 
         result.Should().NotBeNull();
-        result!.BalanceEur.Should().Be(60.50m);
+        result.BalanceEur.Should().Be(60.50m);
         result.Lines[0].ProductName.Should().Be("Tent");
     }
 

@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
 using Humans.Web.Models.CampAdmin;
@@ -51,7 +50,7 @@ internal static class CampsSectionExtensions
         services.AddScoped<ICampRoleService>(sp => sp.GetRequiredService<CampsCampRoleService>());
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampsCampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService → ICampRoleService → ICampService.
-        services.AddTransient(sp => new Lazy<ICampRoleService>(() => sp.GetRequiredService<ICampRoleService>()));
+        services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
 
         services.AddScoped<ICampContactService, CampsCampContactService>();
         services.AddScoped<CampAdminPageBuilder>();

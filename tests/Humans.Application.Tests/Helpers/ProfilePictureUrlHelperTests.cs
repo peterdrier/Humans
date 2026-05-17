@@ -26,7 +26,7 @@ public class ProfilePictureUrlHelperTests
 
         // No repository call should have fired — the helper short-circuits on empty input.
         _ = profileService.DidNotReceiveWithAnyArgs().GetCustomPictureInfoByUserIdsAsync(
-            default!, default);
+            null!, CancellationToken.None);
     }
 
     [HumansFact]

@@ -1,6 +1,5 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.GoogleIntegration;

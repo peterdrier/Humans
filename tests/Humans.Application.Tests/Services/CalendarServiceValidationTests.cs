@@ -263,7 +263,7 @@ public class CalendarServiceValidationTests
         var repo = Substitute.For<ICalendarRepository>();
         var eventId = Guid.NewGuid();
         repo.SoftDeleteAsync(eventId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(((Guid OwningTeamId, string Title)?)(Guid.NewGuid(), "Deleted event"));
+            .Returns((Guid.NewGuid(), "Deleted event"));
 
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(

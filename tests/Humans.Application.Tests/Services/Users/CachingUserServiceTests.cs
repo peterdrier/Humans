@@ -123,7 +123,7 @@ public class CachingUserServiceTests
 
         var fresh = await sut.GetUserInfoAsync(userId);
         fresh.Should().NotBeNull();
-        fresh!.DisplayName.Should().Be("After");
+        fresh.DisplayName.Should().Be("After");
 
         // Inner GetUserInfoAsync called only on the initial prime.
         await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
@@ -144,7 +144,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
-        await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
+        await sut.InvalidateAsync(userId);
 
         // Entry should be tombstoned by ReplaceAsync's null-load path.
         (await sut.GetUserInfoAsync(userId)).Should().BeNull();
@@ -168,7 +168,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fresh));
 
-        await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
+        await sut.InvalidateAsync(userId);
 
         var hit = await sut.GetUserInfoAsync(userId);
         hit!.DisplayName.Should().Be("After");
@@ -195,7 +195,7 @@ public class CachingUserServiceTests
         results.Should().AllSatisfy(r =>
         {
             r.Should().NotBeNull();
-            r!.Id.Should().Be(userId);
+            r.Id.Should().Be(userId);
         });
     }
 
@@ -421,7 +421,7 @@ public class CachingUserServiceTests
         var result = await sut.GetUserInfoAsync(userId);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
+        result.Id.Should().Be(userId);
         result.DisplayName.Should().Be("Eight");
         result.PreferredLanguage.Should().Be("es");
         result.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
@@ -579,7 +579,7 @@ public class CachingUserServiceTests
 
         user.Should().NotBeNull();
 #pragma warning disable CS0618
-        user!.DisplayName.Should().Be("Cached");
+        user.DisplayName.Should().Be("Cached");
 #pragma warning restore CS0618
 
         // GetByIdAsync should not have been delegated.
@@ -669,7 +669,7 @@ public class CachingUserServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             State = isSuspended ? ProfileState.Suspended : (isApproved ? ProfileState.Active : ProfileState.Stub),
-            RejectedAt = isRejected ? (Instant?)Instant.FromUtc(2026, 1, 1, 0, 0) : null,
+            RejectedAt = isRejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
         };
 
         var cfRows = (contactFields ?? [])

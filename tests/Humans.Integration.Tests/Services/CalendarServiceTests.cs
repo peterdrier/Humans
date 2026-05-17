@@ -12,15 +12,12 @@ using Xunit;
 
 namespace Humans.Integration.Tests.Services;
 
-public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
+public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
 {
-    private readonly HumansWebApplicationFactory _factory;
-    public CalendarServiceTests(HumansWebApplicationFactory factory) => _factory = factory;
-
     [HumansFact]
     public async Task CreateEventAsync_persists_and_GetEventById_returns_it()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -57,7 +54,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task GetOccurrencesInWindow_returns_single_event_when_overlapping()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -89,7 +86,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task GetOccurrencesInWindow_filters_by_team()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -119,7 +116,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task Soft_deleted_events_do_not_appear_in_window()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -144,7 +141,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task Recurring_weekly_event_stays_at_local_time_across_Madrid_DST()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -182,7 +179,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task Recurring_bounded_event_is_skipped_when_until_before_window()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -208,7 +205,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task Cancelled_exception_removes_that_occurrence()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -239,7 +236,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task Override_changes_title_and_moves_occurrence()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -280,7 +277,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task UpdateEvent_changes_fields_and_preserves_id()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -307,7 +304,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task CreateEvent_rejects_malformed_rrule()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -329,7 +326,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task UpdateEvent_rejects_malformed_rrule()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
@@ -356,7 +353,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     [HumansFact]
     public async Task DeleteEvent_soft_deletes_and_hides_from_queries()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 

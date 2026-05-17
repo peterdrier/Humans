@@ -48,7 +48,7 @@ public class AuditLogRepositoryTests
 
         stored.Should().NotBeNull(
             because: "AddAsync is the sole write path — it must persist immediately without a caller SaveChanges");
-        stored!.Action.Should().Be(entry.Action);
+        stored.Action.Should().Be(entry.Action);
         stored.EntityType.Should().Be(entry.EntityType);
         stored.EntityId.Should().Be(entry.EntityId);
     }
