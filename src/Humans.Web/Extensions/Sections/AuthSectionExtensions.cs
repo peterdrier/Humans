@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Infrastructure.Caching;
+using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Services.Auth;
 using Humans.Web.Authorization;
@@ -16,17 +17,43 @@ internal static class AuthSectionExtensions
     internal static IServiceCollection AddAuthSection(this IServiceCollection services)
     {
         // Auth section (§15 migration, issue #551) — repository + Application-
-        // layer service, no caching decorator. Singleton + IDbContextFactory
-        // pattern (§15b) so the repository owns context lifetime.
+        // layer service. Singleton + IDbContextFactory pattern (§15b) so the
+        // repository owns context lifetime. CachingRoleAssignmentService
+        // (issue #749) caches the row set so cross-section reads such as
+        // GetActiveCountsByRoleAsync derive from RAM, invalidated wholesale
+        // by RoleAssignmentSaveChangesInterceptor.
         services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 
-        services.AddScoped<RoleAssignmentService>();
-        services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
+        // Issue #749: Inner RoleAssignmentService registered keyed under
+        // CachingRoleAssignmentService.InnerServiceKey; the unkeyed concrete
+        // forwards to the keyed registration via cast so IUserDataContributor
+        // and IUserMerge resolve the same scoped instance the decorator wraps.
+        // Mirrors the ConsentService pattern in LegalAndConsentSectionExtensions.
+        services.AddKeyedScoped<IRoleAssignmentService, RoleAssignmentService>(
+            CachingRoleAssignmentService.InnerServiceKey);
+        services.AddScoped<RoleAssignmentService>(sp =>
+            (RoleAssignmentService)sp.GetRequiredKeyedService<IRoleAssignmentService>(
+                CachingRoleAssignmentService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<RoleAssignmentService>());
+
+        services.AddSingleton<CachingRoleAssignmentService>();
+        services.AddSingleton<IRoleAssignmentService>(sp =>
+            sp.GetRequiredService<CachingRoleAssignmentService>());
+        services.AddSingleton<IRoleAssignmentCacheInvalidator>(sp =>
+            sp.GetRequiredService<CachingRoleAssignmentService>());
+        services.AddSingleton<ICacheStats>(sp =>
+            sp.GetRequiredService<CachingRoleAssignmentService>());
+        services.AddHostedService(sp => sp.GetRequiredService<CachingRoleAssignmentService>());
+
+        // SaveChanges interceptor — fires the wholesale role-assignment cache
+        // flush whenever EF persists a write to role_assignments. Registered
+        // Singleton so the same instance is added to both AddDbContext and
+        // AddDbContextFactory option pipelines (see Program.cs).
+        services.AddSingleton<RoleAssignmentSaveChangesInterceptor>();
 
         // Auth section (§15 migration, issue #551) — Application-layer
         // MagicLinkService + Infrastructure-owned token/url builder and

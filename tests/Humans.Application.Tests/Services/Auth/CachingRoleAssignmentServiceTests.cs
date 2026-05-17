@@ -1,0 +1,147 @@
+using AwesomeAssertions;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Services.Auth;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+
+namespace Humans.Application.Tests.Services.Auth;
+
+/// <summary>
+/// Exercises <see cref="CachingRoleAssignmentService"/>'s cache-served path
+/// (<c>GetActiveCountsByRoleAsync</c>) and wholesale invalidation. Pass-
+/// through methods are not tested here — the build verifies they satisfy
+/// <see cref="IRoleAssignmentService"/>; their behavior is the inner
+/// service's behavior, covered by <c>RoleAssignmentServiceTests</c>.
+/// </summary>
+public class CachingRoleAssignmentServiceTests
+{
+    [HumansFact]
+    public async Task GetActiveCountsByRoleAsync_GroupsActiveRowsByRoleName()
+    {
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignmentRow>
+            {
+                Active("Board", now),
+                Active("Board", now),
+                Active("Admin", now),
+                Expired("Board", now),                   // past — excluded
+                Future("Coordinator", now),              // future — excluded
+            });
+
+        var service = BuildService(repository, clock);
+
+        var counts = await service.GetActiveCountsByRoleAsync();
+
+        counts.Should().BeEquivalentTo(new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["Board"] = 2,
+            ["Admin"] = 1,
+        });
+    }
+
+    [HumansFact]
+    public async Task GetActiveCountsByRoleAsync_OpenEndedAssignmentsCountAsActive()
+    {
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignmentRow>
+            {
+                new(Guid.NewGuid(), "Board", now - Duration.FromDays(30), ValidTo: null),
+            });
+
+        var service = BuildService(repository, clock);
+        var counts = await service.GetActiveCountsByRoleAsync();
+
+        counts["Board"].Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task SecondCall_HitsCache_DoesNotReQueryRepository()
+    {
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignmentRow> { Active("Board", now) });
+
+        var service = BuildService(repository, clock);
+
+        await service.GetActiveCountsByRoleAsync();
+        await service.GetActiveCountsByRoleAsync();
+        await service.GetActiveCountsByRoleAsync();
+
+        await repository.Received(1).GetAllRowsForCacheAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task InvalidateAll_DropsCache_NextReadReQueriesRepository()
+    {
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignmentRow> { Active("Board", now) });
+
+        var service = BuildService(repository, clock);
+
+        await service.GetActiveCountsByRoleAsync();
+        service.InvalidateAll();
+        await service.GetActiveCountsByRoleAsync();
+
+        await repository.Received(2).GetAllRowsForCacheAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetActiveCountsByRoleAsync_ReflectsClockAdvance_WithoutInvalidation()
+    {
+        // The cache holds raw rows; "active" is derived from the clock per
+        // call. Advancing the clock past a ValidTo boundary must drop that
+        // row's contribution to the count without requiring an explicit
+        // invalidation — proves the count is recomputed, not memoized.
+        var t0 = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(t0);
+        var expiresAt = t0 + Duration.FromHours(1);
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignmentRow>
+            {
+                new(Guid.NewGuid(), "Board", t0 - Duration.FromDays(1), ValidTo: expiresAt),
+            });
+
+        var service = BuildService(repository, clock);
+
+        (await service.GetActiveCountsByRoleAsync())["Board"].Should().Be(1);
+
+        clock.Reset(expiresAt + Duration.FromMinutes(1));
+        var afterExpiry = await service.GetActiveCountsByRoleAsync();
+
+        afterExpiry.Should().NotContainKey("Board");
+    }
+
+    private static CachingRoleAssignmentService BuildService(
+        IRoleAssignmentRepository repository,
+        IClock clock) =>
+        new(
+            repository,
+            Substitute.For<IServiceScopeFactory>(),
+            clock,
+            NullLogger<CachingRoleAssignmentService>.Instance);
+
+    private static RoleAssignmentRow Active(string role, Instant now) =>
+        new(Guid.NewGuid(), role, now - Duration.FromDays(30), ValidTo: now + Duration.FromDays(30));
+
+    private static RoleAssignmentRow Expired(string role, Instant now) =>
+        new(Guid.NewGuid(), role, now - Duration.FromDays(60), ValidTo: now - Duration.FromDays(1));
+
+    private static RoleAssignmentRow Future(string role, Instant now) =>
+        new(Guid.NewGuid(), role, now + Duration.FromDays(1), ValidTo: null);
+}

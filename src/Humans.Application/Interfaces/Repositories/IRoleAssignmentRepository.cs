@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Auth;
 using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Domain.Attributes;
@@ -133,6 +134,16 @@ public interface IRoleAssignmentRepository : IRepository
     /// </summary>
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads every <c>role_assignments</c> row as a compact
+    /// <see cref="RoleAssignmentRow"/> projection. Used by the
+    /// <c>CachingRoleAssignmentService</c> warm path so the singleton cache
+    /// can derive active-by-role counts in memory at any clock instant
+    /// without re-reading the table.
+    /// </summary>
+    Task<IReadOnlyList<RoleAssignmentRow>> GetAllRowsForCacheAsync(
         CancellationToken ct = default);
 
     // ==========================================================================
