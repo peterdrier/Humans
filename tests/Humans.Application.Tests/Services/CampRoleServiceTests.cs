@@ -1,9 +1,7 @@
 using AwesomeAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
@@ -33,8 +31,6 @@ public class CampRoleServiceTests : IDisposable
     private readonly IUserEmailService _userEmailService;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampService _campService;
-    private readonly IGoogleGroupSync _googleGroupSync;
-    private readonly IGoogleGroupProvisioningClient _googleGroupProvisioning;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
@@ -49,15 +45,9 @@ public class CampRoleServiceTests : IDisposable
         _userEmailService = Substitute.For<IUserEmailService>();
         _notificationEmitter = Substitute.For<INotificationEmitter>();
         _campService = Substitute.For<ICampService>();
-        _googleGroupSync = Substitute.For<IGoogleGroupSync>();
-        _googleGroupProvisioning = Substitute.For<IGoogleGroupProvisioningClient>();
 
         var factory = new TestDbContextFactory(_options);
         var repo = new CampRoleRepository(factory);
-
-        var serviceProvider = new ServiceCollection()
-            .AddSingleton(_googleGroupSync)
-            .BuildServiceProvider();
 
         _service = new CampRoleService(
             repo,
@@ -66,8 +56,6 @@ public class CampRoleServiceTests : IDisposable
             _userEmailService,
             _auditLog,
             _notificationEmitter,
-            serviceProvider,
-            _googleGroupProvisioning,
             Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
             _clock,
             NullLogger<CampRoleService>.Instance);
@@ -627,6 +615,40 @@ public class CampRoleServiceTests : IDisposable
 
         // No key should claim the deactivated role's slug.
         result.Keys.Should().NotContain(k => k.Contains("-old@", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [HumansFact]
+    public async Task GetExpected_excludes_definitions_with_empty_slug()
+    {
+        // Empty Slug = admin hasn't assigned a slug to this role yet → no
+        // Google Group is provisioned and the role does not appear in the
+        // membership-source's claim list.
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("No Slug Yet", slug: "");
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = member.Id,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: new[] { 2026 },
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        // No key for the slug-less role.
+        result.Should().BeEmpty(
+            because: "definitions with an empty Slug do not get a Google Group and must not appear in expected claims");
     }
 
     [HumansFact]

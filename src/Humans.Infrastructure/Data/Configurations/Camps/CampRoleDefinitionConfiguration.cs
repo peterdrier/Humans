@@ -18,11 +18,10 @@ public class CampRoleDefinitionConfiguration : IEntityTypeConfiguration<CampRole
             .IsUnique()
             .HasDatabaseName("IX_camp_role_definitions_name_unique");
 
-        // Slug is normalized to lower-case kebab at service entry, so a plain
-        // unique index suffices for case-insensitive uniqueness.
-        builder.HasIndex(d => d.Slug)
-            .IsUnique()
-            .HasDatabaseName("IX_camp_role_definitions_slug_unique");
+        // Slug uniqueness is enforced in C# (DefinitionSlugExistsAsync). Empty
+        // slug ("") is a valid state — admin-controlled, set via the role-edit
+        // form when the role needs a Google Group. Multiple rows with empty
+        // Slug coexist; that's why the DB-level unique index isn't applied.
 
         builder.HasIndex(d => d.SortOrder);
 

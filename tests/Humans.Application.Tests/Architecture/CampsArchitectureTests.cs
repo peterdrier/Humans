@@ -274,6 +274,27 @@ public class CampsArchitectureTests
             because: "CampRoleService is the only Camps-side IGoogleGroupMembershipSource claimant; new Camps groups must route through this service so the orchestrator's collision check sees one Camps voice per group key (issue nobodies-collective/Humans#740)");
     }
 
+    /// <summary>
+    /// Issue nobodies-collective/Humans#740: the Camps section exposes its
+    /// Google Group claims through <see cref="IGoogleGroupMembershipSource"/>
+    /// only — the orchestrator (<c>GoogleGroupSyncService</c>) pulls; sections
+    /// never push. The "post-commit RequestSyncAsync nudge" pattern was
+    /// removed, and provisioning of missing groups moved into the orchestrator.
+    /// Pins that CampRoleService takes neither <c>IGoogleGroupSync</c> nor
+    /// <c>IGoogleGroupProvisioningClient</c> in its constructor.
+    /// </summary>
+    [HumansFact]
+    public void CampRoleService_DoesNotDependOnGoogleSyncOrProvisioning()
+    {
+        var ctor = typeof(CampRoleService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().NotContain(typeof(IGoogleGroupSync),
+            because: "sections must not call IGoogleGroupSync.RequestSyncAsync; the orchestrator pulls from IGoogleGroupMembershipSource (issue nobodies-collective/Humans#740)");
+        paramTypes.Should().NotContain(typeof(IGoogleGroupProvisioningClient),
+            because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
+    }
+
     // ── Public detail page — EE non-exposure invariant ───────────────────────
 
     /// <summary>

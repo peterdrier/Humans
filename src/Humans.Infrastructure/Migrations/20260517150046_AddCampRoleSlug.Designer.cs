@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260517140206_AddCampRoleSlug")]
+    [Migration("20260517150046_AddCampRoleSlug")]
     partial class AddCampRoleSlug
     {
         /// <inheritdoc />
@@ -1168,10 +1168,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique()
                         .HasDatabaseName("IX_camp_role_definitions_name_unique");
-
-                    b.HasIndex("Slug")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_role_definitions_slug_unique");
 
                     b.HasIndex("SortOrder");
 

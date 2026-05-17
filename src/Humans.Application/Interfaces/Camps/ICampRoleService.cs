@@ -19,7 +19,7 @@ public interface ICampRoleService : IApplicationService
     /// camp-season participating in <paramref name="year"/>, with assignees (name + Google email)
     /// or an empty state. Read-only; caller authorizes.
     /// </summary>
-    Task<CampRoleDrillDownData?> BuildDrillDownAsync(string slug, int year, CancellationToken ct = default);
+    Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default);
 
     Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
@@ -54,24 +54,6 @@ public interface ICampRoleService : IApplicationService
     // Reporting
 
     Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default);
-
-    // Provisioning
-
-    /// <summary>
-    /// Walks every active role × every in-scope season year and creates any
-    /// Google Group whose deterministic key (<c>barrios-{year}-{slug}@{domain}</c>)
-    /// is claimed by this section but does not yet exist in Google. Idempotent:
-    /// existing groups are left untouched. Best-effort per group — a failure on
-    /// one key is logged and does not abort the rest. Returns the count of
-    /// groups successfully created.
-    /// </summary>
-    /// <remarks>
-    /// Called by the nightly <c>GoogleResourceReconciliationJob</c>. Provisioning
-    /// is intentionally NOT triggered inline from Assign/Unassign — the membership
-    /// sync request enqueued on those paths will surface a missing group as an
-    /// error and the next nightly pass will create it.
-    /// </remarks>
-    Task<int> EnsureGroupsProvisionedAsync(CancellationToken ct = default);
 }
 
 public sealed record CreateCampRoleDefinitionInput(

@@ -464,6 +464,73 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_GroupNotFound_AutoProvisionsAndReconciles()
+    {
+        // Issue nobodies-collective/Humans#740: when a membership source claims
+        // a group that doesn't exist in Cloud Identity (HTTP 404), the
+        // orchestrator auto-provisions it via CreateGroupAsync then re-runs
+        // the lookup to proceed with the reconcile pass in the same call.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("new-group@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+
+        // First lookup misses (404), then succeeds after create.
+        _provisioningClient.LookupGroupIdAsync("new-group@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(
+                new GroupLookupIdResult(null, new GoogleClientError(404, "not found")),
+                new GroupLookupIdResult("group-new", null));
+        _provisioningClient.CreateGroupAsync(
+                "new-group@nobodies.team",
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new GroupCreateResult("group-new", null));
+        _membershipClient.ListMembershipsAsync("group-new", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipListResult(Array.Empty<GroupMembership>(), null));
+        _membershipClient.CreateMembershipAsync("group-new", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute);
+
+        diff.ErrorMessage.Should().BeNull();
+        await _provisioningClient.Received(1).CreateGroupAsync(
+            "new-group@nobodies.team",
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _provisioningClient.Received(2).LookupGroupIdAsync(
+            "new-group@nobodies.team", Arg.Any<CancellationToken>());
+        await _membershipClient.Received(1).CreateMembershipAsync(
+            "group-new", "alice@nobodies.team", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_GroupNotFoundButCreateFails_RecordsErrorAndSchedulesRetry()
+    {
+        // When auto-provisioning fails (e.g. backend 503), the reconcile path
+        // must fall through to the existing error/retry behavior — not silently
+        // succeed and not crash.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("new-group@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+
+        _provisioningClient.LookupGroupIdAsync("new-group@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")));
+        _provisioningClient.CreateGroupAsync(
+                "new-group@nobodies.team",
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new GroupCreateResult(null, new GoogleClientError(503, "backend error")));
+
+        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute);
+
+        diff.ErrorMessage.Should().NotBeNull();
+        _syncScheduler.Scheduled.Should().ContainSingle()
+            .Which.GroupKey.Should().Be("new-group@nobodies.team");
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_RemoveFailure_AuditsRevokedFailure()
     {
         var service = CreateService(new StaticSource("team@nobodies.team"));

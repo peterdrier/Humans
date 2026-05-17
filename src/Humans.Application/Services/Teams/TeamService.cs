@@ -74,9 +74,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     private IUserService UserService
         => _serviceProvider.GetRequiredService<IUserService>();
 
-    private IGoogleGroupSync GoogleGroupSync
-        => _serviceProvider.GetRequiredService<IGoogleGroupSync>();
-
     public TeamService(
         ITeamRepository repo,
         IAuditLogService auditLogService,
@@ -734,7 +731,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
-        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
         await SendAddedToTeamEmailAsync(userId, team, cancellationToken);
         await SendTeamMemberAddedNotificationAsync(team, userId, cancellationToken);
 
@@ -858,7 +854,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
-        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
 
         if (wasCoordinator)
         {
@@ -942,7 +937,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         _notificationMeterInvalidator.Invalidate();
 
-        await RequestGoogleGroupSyncForTeamIdAsync(request.TeamId, cancellationToken);
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
         await SendJoinRequestApprovedNotificationAsync(request.Team, member.UserId, cancellationToken);
 
@@ -1145,7 +1139,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
-        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
 
         try
         {
@@ -1251,7 +1244,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
-        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
         await SendAddedToTeamEmailAsync(targetUserId, team, cancellationToken);
 
         return member;
@@ -1649,8 +1641,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 $"Auto-added to {definition.Team.Name} via role assignment",
                 actorUserId,
                 relatedEntityId: targetUserId, relatedEntityType: nameof(User));
-
-            await RequestGoogleGroupSyncForTeamIdAsync(definition.TeamId, cancellationToken);
         }
 
         await _auditLogService.LogAsync(
@@ -2161,51 +2151,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             OccurredAt = _clock.GetCurrentInstant(),
             DeduplicationKey = $"{teamMemberId}:{eventType}"
         };
-    }
-
-    private async Task RequestGoogleGroupSyncForTeamAsync(Team team, CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(team.GoogleGroupEmail))
-        {
-            await RequestGoogleGroupSyncAsync(team.Id, team.GoogleGroupEmail, cancellationToken);
-        }
-
-        if (team.ParentTeamId.HasValue)
-        {
-            var parent = await _repo.GetByIdAsync(team.ParentTeamId.Value, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(parent?.GoogleGroupEmail))
-            {
-                await RequestGoogleGroupSyncAsync(parent.Id, parent.GoogleGroupEmail, cancellationToken);
-            }
-        }
-    }
-
-    private async Task RequestGoogleGroupSyncForTeamIdAsync(Guid teamId, CancellationToken cancellationToken)
-    {
-        var team = await _repo.GetByIdAsync(teamId, cancellationToken);
-        if (team is not null)
-        {
-            await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
-        }
-    }
-
-    private async Task RequestGoogleGroupSyncAsync(
-        Guid teamId,
-        string groupEmail,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await GoogleGroupSync.RequestSyncAsync(groupEmail, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to request Google Group sync for team {TeamId} ({GroupEmail})",
-                teamId,
-                groupEmail);
-        }
     }
 
     private async Task SendAddedToTeamEmailAsync(Guid userId, Team team, CancellationToken cancellationToken)

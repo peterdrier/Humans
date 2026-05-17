@@ -2,7 +2,6 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -19,7 +18,6 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IGoogleGroupSync _googleGroupSync;
-    private readonly ICampRoleService _campRoleService;
     private readonly INotificationService _notificationService;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
@@ -28,7 +26,6 @@ public class GoogleResourceReconciliationJob : IRecurringJob
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
         IGoogleGroupSync googleGroupSync,
-        ICampRoleService campRoleService,
         INotificationService notificationService,
         IHumansMetrics metrics,
         ILogger<GoogleResourceReconciliationJob> logger,
@@ -36,7 +33,6 @@ public class GoogleResourceReconciliationJob : IRecurringJob
     {
         _googleSyncService = googleSyncService;
         _googleGroupSync = googleGroupSync;
-        _campRoleService = campRoleService;
         _notificationService = notificationService;
         _metrics = metrics;
         _logger = logger;
@@ -56,21 +52,10 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
 
-            // Provision Google Groups claimed by the Camps role/season source that
-            // don't yet exist in Google. Idempotent + best-effort per group.
-            // Runs BEFORE ReconcileAllAsync so the membership reconcile pass can pick
-            // up the newly-created groups in the same job execution.
-            try
-            {
-                var provisioned = await _campRoleService.EnsureGroupsProvisionedAsync(cancellationToken);
-                if (provisioned > 0)
-                    _logger.LogInformation("Provisioned {Count} camps-role Google Group(s)", provisioned);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Camps role Google Group provisioning failed; continuing with reconciliation");
-            }
-
+            // Provisioning of missing Google Groups is handled inside
+            // GoogleGroupSyncService.ReconcileAllAsync — when a claim references
+            // a group that doesn't yet exist in Google, the reconcile path
+            // creates it inline (best-effort) before reconciling membership.
             await _googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
 
             // Update Drive folder paths (detects renames and moves)

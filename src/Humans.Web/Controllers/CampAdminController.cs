@@ -342,10 +342,18 @@ public class CampAdminController : HumansControllerBase
     {
         if (string.IsNullOrWhiteSpace(slug)) return NotFound();
 
+        // Slug → GUID fallback per memory/architecture/slug-routes-fallback-to-guid.md.
+        // Slugs are user-controlled and may be empty ("" = no group yet); the GUID
+        // form is always reachable.
+        var info = await _campRoleService.GetDefinitionBySlugAsync(slug, ct);
+        if (info is null && Guid.TryParse(slug, out var roleId))
+            info = await _campRoleService.GetDefinitionByIdAsync(roleId, ct);
+        if (info is null) return NotFound();
+
         var settings = await _campService.GetSettingsAsync(ct);
         var resolvedYear = year ?? settings.PublicYear;
 
-        var data = await _campRoleService.BuildDrillDownAsync(slug, resolvedYear, ct);
+        var data = await _campRoleService.BuildDrillDownAsync(info.Id, resolvedYear, ct);
         if (data is null) return NotFound();
 
         // Year picker options: union of open seasons, public year, and the resolved year
@@ -355,6 +363,9 @@ public class CampAdminController : HumansControllerBase
         var vm = new CampRoleDrillDownViewModel
         {
             Slug = data.Definition.Slug,
+            RouteKey = string.IsNullOrWhiteSpace(data.Definition.Slug)
+                ? data.Definition.Id.ToString()
+                : data.Definition.Slug,
             RoleName = data.Definition.Name,
             Description = data.Definition.Description,
             SlotCount = data.Definition.SlotCount,
@@ -363,6 +374,7 @@ public class CampAdminController : HumansControllerBase
             GroupEmail = data.GroupEmail,
             YearOptions = yearOptions.OrderByDescending(y => y).ToList(),
             Camps = data.Rows
+                .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new CampRoleDrillDownCampRowViewModel(
                     r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
                     r.Assignees.Select(a => new CampRoleDrillDownAssigneeViewModel(

@@ -1166,10 +1166,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_camp_role_definitions_name_unique");
 
-                    b.HasIndex("Slug")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_role_definitions_slug_unique");
-
                     b.HasIndex("SortOrder");
 
                     b.ToTable("camp_role_definitions", (string)null);

@@ -8,7 +8,7 @@ namespace Humans.Application.Services.Camps;
 public sealed record CampRoleDrillDownData(
     Humans.Application.Interfaces.Camps.CampRoleDefinitionInfo Definition,
     int Year,
-    string GroupEmail,
+    string? GroupEmail,
     IReadOnlyList<CampRoleDrillDownCampRow> Rows);
 
 public sealed record CampRoleDrillDownCampRow(
