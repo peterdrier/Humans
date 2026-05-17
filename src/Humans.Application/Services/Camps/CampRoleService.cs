@@ -120,6 +120,9 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
             throw new ArgumentException(
                 "Slug must be kebab-case (lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens; max 60 chars).",
                 nameof(slug));
+        // "create" would route to CampAdminController.CreateRole instead of RolesDrillDown.
+        if (string.Equals(normalized, "create", StringComparison.Ordinal))
+            throw new InvalidOperationException("\"create\" is reserved and cannot be used as a camp role slug.");
         return normalized;
     }
 
