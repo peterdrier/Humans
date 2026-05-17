@@ -211,7 +211,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                 // docs" panel groups by the actual document, not the raw
                 // tool-name+JSON args string (which splits identical fetches
                 // into one-off variants when argument payloads differ).
-                fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments));
+                fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
 
                 if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
                 {
@@ -428,7 +428,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     /// non-doc tools we drop the JSON args entirely — different shift ids /
     /// audit limits would otherwise split the bucket per invocation.
     /// </summary>
-    private static string NormalizeFetchedDocSlug(string toolName, string jsonArguments)
+    private static string NormalizeFetchedDocSlug(string toolName, string jsonArguments, ILogger<AgentService> logger)
     {
         switch (toolName)
         {
@@ -447,8 +447,9 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                         slug = n.GetString();
                     return string.IsNullOrEmpty(slug) ? toolName : $"{toolName}:{slug}";
                 }
-                catch (System.Text.Json.JsonException)
+                catch (System.Text.Json.JsonException ex)
                 {
+                    logger.LogWarning(ex, "Failed to parse JSON args for tool {ToolName}; FetchedDocs slug falls back to bare tool name", toolName);
                     return toolName;
                 }
             default:
