@@ -132,8 +132,11 @@ public class WorkloadServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ByPerson_OrdersByConfirmedHoursDescending()
+    public async Task ByPerson_TotalsConfirmedHoursPerUser()
     {
+        // Service no longer sorts (display ordering belongs in the controller —
+        // memory/architecture/display-sort-in-controllers.md). Verify the
+        // per-user hour totals are correct regardless of row order.
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es);
@@ -147,7 +150,8 @@ public class WorkloadServiceTests : IDisposable
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        report!.ByPerson.Select(p => p.UserId).Should().ContainInOrder(bob.Id, alice.Id);
+        report!.ByPerson.Single(p => p.UserId == alice.Id).ConfirmedHours.Should().Be(2m);
+        report.ByPerson.Single(p => p.UserId == bob.Id).ConfirmedHours.Should().Be(8m);
     }
 
     [HumansFact]

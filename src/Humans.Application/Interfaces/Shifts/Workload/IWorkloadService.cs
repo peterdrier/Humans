@@ -6,7 +6,7 @@ namespace Humans.Application.Interfaces.Shifts.Workload;
 /// Workload aggregations across the Shifts domain — "who is doing how much"
 /// rolled up per-person, per-shift, and per-department for the active event.
 /// Read-only. Service-level cache (§15 Option B); coordinator dashboard
-/// surface (<c>/Admin/Workload</c>, <c>ShiftDashboardAccess</c> policy).
+/// surface (<c>/Shifts/Admin/Workload</c>, <c>ShiftDashboardAccess</c> policy).
 /// </summary>
 /// <remarks>
 /// Role-based hours (role hours + shift hours unified) are deferred until

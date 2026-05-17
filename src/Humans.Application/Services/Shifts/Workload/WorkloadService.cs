@@ -103,6 +103,8 @@ public sealed class WorkloadService : IWorkloadService
     private static decimal HoursOf(Shift shift) =>
         shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
 
+    // Lists are returned unsorted; the controller assembles the display order
+    // (memory/architecture/display-sort-in-controllers.md).
     private static List<WorkloadByShiftRow> BuildByShift(
         IReadOnlyList<Shift> shifts,
         EventSettings es,
@@ -128,9 +130,6 @@ public sealed class WorkloadService : IWorkloadService
                     ConfirmedCount: confirmed,
                     PendingCount: pending);
             })
-            .OrderBy(r => r.DayOffset)
-            .ThenBy(r => r.StartTime)
-            .ThenBy(r => r.TeamName, StringComparer.Ordinal)
             .ToList();
 
     private static List<WorkloadByDepartmentRow> BuildByDepartment(
@@ -160,7 +159,6 @@ public sealed class WorkloadService : IWorkloadService
                     PlannedHours: plannedHours,
                     FilledHours: filledHours);
             })
-            .OrderBy(r => r.TeamName, StringComparer.Ordinal)
             .ToList();
 
     private async Task<List<WorkloadByPersonRow>> BuildByPersonAsync(
@@ -208,8 +206,6 @@ public sealed class WorkloadService : IWorkloadService
                     PendingSignupCount: kvp.Value.Pending,
                     ConfirmedHours: kvp.Value.Hours);
             })
-            .OrderByDescending(r => r.ConfirmedHours)
-            .ThenBy(r => r.DisplayName, StringComparer.Ordinal)
             .ToList();
     }
 }

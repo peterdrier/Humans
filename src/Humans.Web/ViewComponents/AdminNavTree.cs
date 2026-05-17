@@ -25,7 +25,7 @@ public static class AdminNavTree
         ]),
         new("Shifts", [
             new("Dashboard", "ShiftDashboard", "Index",  null, null, "fa-solid fa-gauge",            PolicyNames.ShiftDepartmentManager),
-            new("Workload",  "AdminWorkload", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess)
+            new("Workload",  "ShiftWorkloadAdmin", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess)
         ]),
         new("Money", [
             new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",     PolicyNames.FinanceAdminOrAdmin),
