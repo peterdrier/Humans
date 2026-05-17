@@ -109,7 +109,11 @@ public sealed class CachingConsentService
         // would open N DI scopes and do N rounds of repo + IUserService
         // calls. Issue #747.
         var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
-        List<Guid>? misses = null;
+        // Dedupe misses: duplicate ids in userIds must not redo merge/source
+        // resolution work in the inner bulk call. Tracked via a HashSet
+        // because `result` is only populated after the bulk call, so the
+        // result.ContainsKey check above can't catch a repeat-miss id.
+        HashSet<Guid>? misses = null;
         foreach (var userId in userIds)
         {
             if (result.ContainsKey(userId)) continue;
@@ -119,7 +123,7 @@ public sealed class CachingConsentService
             }
             else
             {
-                (misses ??= new List<Guid>()).Add(userId);
+                (misses ??= new HashSet<Guid>()).Add(userId);
             }
         }
 
@@ -127,9 +131,10 @@ public sealed class CachingConsentService
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
-            var bulk = await inner.GetConsentMapForUsersAsync(misses, ct).ConfigureAwait(false);
+            var missList = misses.ToList();
+            var bulk = await inner.GetConsentMapForUsersAsync(missList, ct).ConfigureAwait(false);
 
-            foreach (var userId in misses)
+            foreach (var userId in missList)
             {
                 // Inner contract: every input id appears in the result
                 // (empty set if no consents). Defensively freeze the set

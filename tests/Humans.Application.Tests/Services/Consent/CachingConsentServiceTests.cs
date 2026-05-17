@@ -91,6 +91,33 @@ public class CachingConsentServiceTests
     }
 
     [HumansFact]
+    public async Task GetConsentMapForUsersAsync_DuplicateColdIds_DedupedBeforeInnerCall()
+    {
+        // Caller passes the same uncached id multiple times. The inner
+        // bulk call must see each id once, not redo merge/source work
+        // per duplicate.
+        var id = Guid.NewGuid();
+        var userIds = new List<Guid> { id, id, id };
+        var stub = new Dictionary<Guid, IReadOnlySet<Guid>>
+        {
+            [id] = new HashSet<Guid> { Guid.NewGuid() },
+        };
+        _inner.GetConsentMapForUsersAsync(
+                Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(stub);
+
+        var sut = CreateSut();
+        var result = await sut.GetConsentMapForUsersAsync(userIds);
+
+        result.Should().HaveCount(1);
+        result[id].Should().BeEquivalentTo(stub[id]);
+
+        await _inner.Received(1).GetConsentMapForUsersAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetConsentMapForUsersAsync_PartialHits_OnlyMissesGoToInner()
     {
         var hitIds = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToList();
