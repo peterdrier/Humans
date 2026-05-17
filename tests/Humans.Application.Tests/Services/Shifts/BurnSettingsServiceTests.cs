@@ -8,26 +8,30 @@ using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public sealed class EventSettingsServiceTests
+public sealed class BurnSettingsServiceTests
 {
     private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
-    private readonly EventSettingsService _service;
+    private readonly BurnSettingsService _service;
 
-    public EventSettingsServiceTests()
+    public BurnSettingsServiceTests()
     {
-        _service = new EventSettingsService(_repo);
+        _service = new BurnSettingsService(_repo);
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_DelegatesToRepository()
+    public async Task GetByIdAsync_MapsEntityToDto()
     {
         var id = Guid.NewGuid();
-        var settings = NewEventSettings(id);
-        _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(settings);
+        var entity = NewEventSettings(id);
+        _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(entity);
 
         var result = await _service.GetByIdAsync(id);
 
-        result.Should().BeSameAs(settings);
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(id);
+        result.EventName.Should().Be(entity.EventName);
+        result.TimeZoneId.Should().Be(entity.TimeZoneId);
+        result.GateOpeningDate.Should().Be(entity.GateOpeningDate);
         await _repo.Received(1).GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>());
     }
 
@@ -43,36 +47,44 @@ public sealed class EventSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveAsync_DelegatesToRepository()
+    public async Task GetActiveAsync_MapsEntityToDto()
     {
-        var settings = NewEventSettings(Guid.NewGuid());
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings);
+        var entity = NewEventSettings(Guid.NewGuid());
+        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
 
         var result = await _service.GetActiveAsync();
 
-        result.Should().BeSameAs(settings);
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(entity.Id);
         await _repo.Received(1).GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task GetActiveOptionsAsync_ReturnsEmpty_WhenNoActiveSettings()
+    public async Task GetActiveAsync_ReturnsNull_WhenRepositoryReturnsNull()
     {
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
 
-        var result = await _service.GetActiveOptionsAsync();
+        var result = await _service.GetActiveAsync();
 
-        result.Should().BeEmpty();
+        result.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetActiveOptionsAsync_ReturnsSingleton_WhenActiveSettingsExist()
+    public async Task GetEarlyEntryCapacityForDay_OnReturnedDto_PerformsStepFunctionLookup()
     {
-        var settings = NewEventSettings(Guid.NewGuid());
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings);
+        var entity = NewEventSettings(Guid.NewGuid());
+        entity.EarlyEntryCapacity[-10] = 5;
+        entity.EarlyEntryCapacity[-5] = 12;
+        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
 
-        var result = await _service.GetActiveOptionsAsync();
+        var result = await _service.GetActiveAsync();
 
-        result.Should().ContainSingle().Which.Should().BeSameAs(settings);
+        result.Should().NotBeNull();
+        result!.GetEarlyEntryCapacityForDay(-11).Should().Be(0);
+        result.GetEarlyEntryCapacityForDay(-10).Should().Be(5);
+        result.GetEarlyEntryCapacityForDay(-7).Should().Be(5);
+        result.GetEarlyEntryCapacityForDay(-5).Should().Be(12);
+        result.GetEarlyEntryCapacityForDay(0).Should().Be(12);
     }
 
     [HumansFact]
@@ -83,10 +95,9 @@ public sealed class EventSettingsServiceTests
 
         await _service.GetByIdAsync(Guid.NewGuid(), token);
         await _service.GetActiveAsync(token);
-        await _service.GetActiveOptionsAsync(token);
 
         await _repo.Received(1).GetEventSettingsByIdAsync(Arg.Any<Guid>(), token);
-        await _repo.Received(2).GetActiveEventSettingsAsync(token);
+        await _repo.Received(1).GetActiveEventSettingsAsync(token);
     }
 
     private static EventSettings NewEventSettings(Guid id) => new()

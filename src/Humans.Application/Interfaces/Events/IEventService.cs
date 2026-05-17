@@ -1,5 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -21,8 +22,8 @@ public interface IEventService : IApplicationService
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);
     Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<EventSettings>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
-    Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
+    Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     Task SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,

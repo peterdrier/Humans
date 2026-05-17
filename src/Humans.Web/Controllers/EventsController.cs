@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -52,7 +53,7 @@ public class EventsController : HumansControllerBase
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
         DateTimeZone? tz = eventSettings != null
@@ -97,7 +98,7 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var model = await BuildFormAsync(guideSettings!, eventSettings);
         return View("IndividualEventForm", model);
@@ -117,7 +118,7 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
@@ -192,7 +193,7 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -238,7 +239,7 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
@@ -300,7 +301,7 @@ public class EventsController : HumansControllerBase
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
@@ -386,7 +387,7 @@ public class EventsController : HumansControllerBase
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
@@ -520,31 +521,31 @@ public class EventsController : HumansControllerBase
     private bool IsSubmissionOpen(EventGuideSettings? settings) =>
         settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings, EventSettings eventSettings)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings, BurnSettingsInfo burn)
     {
         var model = new IndividualEventFormViewModel
         {
-            TimeZoneId = eventSettings.TimeZoneId
+            TimeZoneId = burn.TimeZoneId
         };
-        await PopulateDropdownsAsync(model, eventSettings);
+        await PopulateDropdownsAsync(model, burn);
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettings eventSettings)
+    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, BurnSettingsInfo burn)
     {
         var categories = await _guide.GetActiveCategoriesAsync();
         var venues = await _guide.GetActiveVenuesAsync();
 
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
-        model.TimeZoneId = eventSettings.TimeZoneId;
+        model.TimeZoneId = burn.TimeZoneId;
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
 
         model.EventDays = [];
-        for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
+        for (var offset = 0; offset <= burn.EventEndOffset; offset++)
         {
-            var date = eventSettings.GateOpeningDate.PlusDays(offset);
+            var date = burn.GateOpeningDate.PlusDays(offset);
             var dt = tz != null
                 ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
                 : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
@@ -558,7 +559,7 @@ public class EventsController : HumansControllerBase
         }
     }
 
-    private async Task<EventSettings?> LoadEventSettingsAsync(EventGuideSettings? guideSettings)
+    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettings? guideSettings)
     {
         if (guideSettings == null) return null;
         return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
