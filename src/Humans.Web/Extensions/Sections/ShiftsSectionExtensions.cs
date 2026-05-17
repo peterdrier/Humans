@@ -6,8 +6,10 @@ using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupS
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
+using ShiftsWorkloadService = Humans.Application.Services.Shifts.Workload.WorkloadService;
 using ShiftsBurnSettingsService = Humans.Application.Services.Shifts.BurnSettingsService;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Shifts.Workload;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Infrastructure.Services.Shifts;
@@ -87,6 +89,13 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
+
+        // Workload aggregations — nobodies-collective/Humans#734. Reads
+        // per-rota shift + signup rows through IShiftView (the Shifts-section
+        // per-rota cache). No service-level cache: invalidation rides on
+        // IShiftViewInvalidator, and the aggregation itself is microsecond-
+        // scale CPU work over a few hundred rotas at our ~500-user scale.
+        services.AddScoped<IWorkloadService, ShiftsWorkloadService>();
 
         // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
         // Pure orchestrator: enumerates active signups on a rota and fans out one

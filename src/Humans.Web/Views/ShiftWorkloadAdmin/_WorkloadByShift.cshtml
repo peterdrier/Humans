@@ -1,0 +1,45 @@
+@using Humans.Application.DTOs.Shifts.Workload
+@model IReadOnlyList<WorkloadByShiftRow>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No shifts in this event.</div>
+    return;
+}
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped table-hover workload-table">
+        <thead>
+            <tr>
+                <th data-sort>Date</th>
+                <th data-sort>Start</th>
+                <th data-sort class="text-end">Hours</th>
+                <th data-sort>Department</th>
+                <th data-sort>Rota</th>
+                <th data-sort class="text-end">Slots</th>
+                <th data-sort class="text-end">Confirmed</th>
+                <th data-sort class="text-end">Pending</th>
+                <th data-sort class="text-end">Open</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model)
+            {
+                var open = Math.Max(0, row.MaxVolunteers - row.ConfirmedCount);
+                var dateText = row.Date.ToDisplayDate();
+                var timeText = row.IsAllDay ? "all-day" : row.StartTime.ToDisplayTime();
+                <tr>
+                    <td data-value="@row.DayOffset">@dateText</td>
+                    <td data-value="@row.StartTime.TickOfDay">@timeText</td>
+                    <td class="text-end" data-value="@row.DurationHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@row.DurationHours.ToString("0.##")</td>
+                    <td data-value="@row.TeamName">@row.TeamName</td>
+                    <td data-value="@row.RotaName">@row.RotaName</td>
+                    <td class="text-end" data-value="@row.MaxVolunteers">@row.MaxVolunteers</td>
+                    <td class="text-end" data-value="@row.ConfirmedCount">@row.ConfirmedCount</td>
+                    <td class="text-end" data-value="@row.PendingCount">@row.PendingCount</td>
+                    <td class="text-end" data-value="@open">@open</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

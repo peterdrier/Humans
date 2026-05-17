@@ -1,0 +1,32 @@
+@using Humans.Application.DTOs.Shifts.Workload
+@model IReadOnlyList<WorkloadByPersonRow>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No humans have signed up for shifts yet.</div>
+    return;
+}
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped table-hover workload-table">
+        <thead>
+            <tr>
+                <th data-sort>Human</th>
+                <th data-sort class="text-end">Confirmed hours</th>
+                <th data-sort class="text-end">Confirmed signups</th>
+                <th data-sort class="text-end">Pending signups</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td data-value="@row.DisplayName">@row.DisplayName</td>
+                    <td class="text-end" data-value="@row.ConfirmedHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@row.ConfirmedHours.ToString("0.##")</td>
+                    <td class="text-end" data-value="@row.ConfirmedSignupCount">@row.ConfirmedSignupCount</td>
+                    <td class="text-end" data-value="@row.PendingSignupCount">@row.PendingSignupCount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

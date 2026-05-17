@@ -1,0 +1,106 @@
+@using Humans.Application.DTOs.Shifts.Workload
+@model WorkloadReport?
+
+@{
+    ViewData["Title"] = "Workload";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Shifts" asp-action="Index">Shifts</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Workload</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Site-wide workload</h2>
+        @if (Model is not null)
+        {
+            <span class="badge bg-secondary fs-6">Event @Model.EventYear</span>
+        }
+    </div>
+
+    @if (Model is null)
+    {
+        <div class="alert alert-warning">No active event is configured — no workload data to show.</div>
+        return;
+    }
+
+    <p class="text-muted">
+        Shift-based workload aggregations across the whole event. Role hours are
+        deferred to a follow-up — see
+        <a href="https://github.com/nobodies-collective/Humans/issues/734">issue #734</a>.
+        Counts and hours derive from <strong>Confirmed</strong> shift signups; pending signups
+        are reported separately so queued work doesn't inflate the burnout signal.
+    </p>
+
+    <ul class="nav nav-tabs mb-3" id="workloadTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="people-tab" data-bs-toggle="tab"
+                    data-bs-target="#people" type="button" role="tab"
+                    aria-controls="people" aria-selected="true">
+                By person <span class="badge text-bg-light ms-1">@Model.ByPerson.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="departments-tab" data-bs-toggle="tab"
+                    data-bs-target="#departments" type="button" role="tab"
+                    aria-controls="departments" aria-selected="false">
+                By department <span class="badge text-bg-light ms-1">@Model.ByDepartment.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="shifts-tab" data-bs-toggle="tab"
+                    data-bs-target="#shifts" type="button" role="tab"
+                    aria-controls="shifts" aria-selected="false">
+                By shift <span class="badge text-bg-light ms-1">@Model.ByShift.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="workloadTabContent">
+        <div class="tab-pane fade show active" id="people" role="tabpanel" aria-labelledby="people-tab">
+            <partial name="_WorkloadByPerson" model="Model.ByPerson" />
+        </div>
+        <div class="tab-pane fade" id="departments" role="tabpanel" aria-labelledby="departments-tab">
+            <partial name="_WorkloadByDepartment" model="Model.ByDepartment" />
+        </div>
+        <div class="tab-pane fade" id="shifts" role="tabpanel" aria-labelledby="shifts-tab">
+            <partial name="_WorkloadByShift" model="Model.ByShift" />
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Plain JS column-sort: click <th data-sort> to toggle asc/desc by that
+        // cell's data-value (numeric) or text. Keeps the page client-only so
+        // there's no per-sort server round-trip on the workload tables.
+        document.querySelectorAll('table.workload-table').forEach(function (table) {
+            var headers = table.querySelectorAll('th[data-sort]');
+            headers.forEach(function (th, idx) {
+                th.style.cursor = 'pointer';
+                th.addEventListener('click', function () {
+                    var dir = th.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+                    headers.forEach(function (h) { h.removeAttribute('data-sort-dir'); h.classList.remove('sort-asc', 'sort-desc'); });
+                    th.setAttribute('data-sort-dir', dir);
+                    th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+                    var rows = Array.from(table.querySelectorAll('tbody tr'));
+                    rows.sort(function (a, b) {
+                        var av = a.children[idx].getAttribute('data-value');
+                        var bv = b.children[idx].getAttribute('data-value');
+                        var an = parseFloat(av), bn = parseFloat(bv);
+                        var cmp;
+                        if (!isNaN(an) && !isNaN(bn)) cmp = an - bn;
+                        else cmp = (av || '').localeCompare(bv || '');
+                        return dir === 'asc' ? cmp : -cmp;
+                    });
+                    var tbody = table.querySelector('tbody');
+                    rows.forEach(function (r) { tbody.appendChild(r); });
+                });
+            });
+        });
+    </script>
+}
