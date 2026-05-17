@@ -6,7 +6,9 @@ using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupS
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
+using ShiftsWorkloadService = Humans.Application.Services.Shifts.Workload.WorkloadService;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Shifts.Workload;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Infrastructure.Services.Shifts;
@@ -79,6 +81,11 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
+
+        // Workload aggregations — nobodies-collective/Humans#734. Reads
+        // through IShiftManagementRepository; in-memory cached at the service
+        // layer (5 min sliding, same TTL as the dashboard analytics).
+        services.AddScoped<IWorkloadService, ShiftsWorkloadService>();
 
         return services;
     }
