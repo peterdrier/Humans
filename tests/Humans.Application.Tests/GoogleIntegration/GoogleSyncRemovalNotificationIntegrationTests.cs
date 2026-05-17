@@ -118,10 +118,6 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
         _userEmailService.GetUserIdByVerifiedEmailAsync(removedEmail, Arg.Any<CancellationToken>())
             .Returns(userId);
-        _userService.GetByIdsWithEmailsAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
-            Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())

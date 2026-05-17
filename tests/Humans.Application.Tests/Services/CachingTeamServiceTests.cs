@@ -38,14 +38,7 @@ public sealed class CachingTeamServiceTests : IDisposable
             .Returns(callInfo =>
             {
                 var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                return Task.FromResult(LoadUsers(ids, includeEmails: false));
-            });
-        userService
-            .GetByIdsWithEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                return Task.FromResult(LoadUsers(ids, includeEmails: true));
+                return Task.FromResult(LoadUsers(ids));
             });
         userService.StubGetUserInfosFromDb(_options);
 
@@ -116,17 +109,14 @@ public sealed class CachingTeamServiceTests : IDisposable
         member.Email.Should().Be("alice@example.test");
     }
 
-    private IReadOnlyDictionary<Guid, User> LoadUsers(IReadOnlyCollection<Guid> ids, bool includeEmails)
+    private IReadOnlyDictionary<Guid, User> LoadUsers(IReadOnlyCollection<Guid> ids)
     {
         if (ids.Count == 0)
             return new Dictionary<Guid, User>();
 
         using var db = new HumansDbContext(_options);
-        var users = db.Users.AsNoTracking();
-        if (includeEmails)
-            users = users.Include(u => u.UserEmails);
-
-        return users
+        return db.Users.AsNoTracking()
+            .Include(u => u.UserEmails)
             .Where(u => ids.Contains(u.Id))
             .ToDictionary(u => u.Id);
     }

@@ -33,25 +33,11 @@ public sealed class UserRepository : IUserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
+            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
     }
 
     public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, User>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var list = await ctx.Users
-            .AsNoTracking()
-            .Where(u => userIds.Contains(u.Id))
-            .ToListAsync(ct);
-
-        return list.ToDictionary(u => u.Id);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)

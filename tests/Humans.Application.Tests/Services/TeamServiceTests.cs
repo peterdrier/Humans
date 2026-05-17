@@ -107,17 +107,6 @@ public class TeamServiceTests : IDisposable
                 if (ids.Count == 0)
                     return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
                 using var db = new HumansDbContext(options);
-                var users = db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
-            });
-        testUserService
-            .GetByIdsWithEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
-                using var db = new HumansDbContext(options);
                 var users = db.Users.AsNoTracking()
                     .Include(u => u.UserEmails)
                     .Where(u => ids.Contains(u.Id))

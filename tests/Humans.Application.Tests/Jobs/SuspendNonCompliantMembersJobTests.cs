@@ -145,10 +145,6 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { userId });
 
-        _userService.GetByIdsWithEmailsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
         _userService.GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
@@ -325,13 +321,6 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             PreferredLanguage = "en",
         };
 
-        _userService.GetByIdsWithEmailsAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
-            Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>
-            {
-                [userId] = user,
-            });
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())

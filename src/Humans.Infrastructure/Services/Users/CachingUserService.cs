@@ -452,19 +452,105 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         await work(inner);
     }
 
-    // Reads — pure pass-through; the dict is keyed by userId, these methods
-    // either don't fit that key or are infrequent enough not to warrant caching.
+    // GetByIdAsync / GetByIdsAsync — issue #744: serve from the in-memory
+    // UserInfo dict for cache hits, falling back to the inner UserService only
+    // for ids missing from the cache. The cached payload already carries every
+    // User-side column AND the UserEmails collection, so rehydration is
+    // mechanical and zero-DB for warm-cache callers. There is no
+    // "without emails" variant because there is nothing else the cache could
+    // serve — UserInfo is the whole person.
+    // Callers consume the returned User as read-only (the repo emits the
+    // entity AsNoTracking) so rehydrated instances are safe to share.
 
-    public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetByIdAsync(userId, ct));
+    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (TryGet(userId, out var info))
+            return RehydrateUser(info);
+        return await WithInnerAsync(inner => inner.GetByIdAsync(userId, ct));
+    }
 
-    public Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetByIdsAsync(userIds, ct));
+    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, User>();
 
-    public Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetByIdsWithEmailsAsync(userIds, ct));
+        var result = new Dictionary<Guid, User>(userIds.Count);
+        List<Guid>? misses = null;
+        foreach (var id in userIds)
+        {
+            if (TryGet(id, out var info))
+                result[id] = RehydrateUser(info);
+            else
+                (misses ??= []).Add(id);
+        }
+
+        if (misses is not null)
+        {
+            var inner = await WithInnerAsync(svc => svc.GetByIdsAsync(misses, ct));
+            foreach (var (id, user) in inner)
+                result[id] = user;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Inverse of <see cref="UserInfo.Create"/> for the User-side columns —
+    /// rebuilds the read-only fields the section consumers actually touch
+    /// (DisplayName, Email/UserEmails, ProfilePictureUrl, GoogleEmailStatus,
+    /// and the rest of the User columns UserInfo carries) plus the full
+    /// <see cref="User.UserEmails"/> collection. Identity-machinery fields
+    /// (PasswordHash, SecurityStamp, lockout, phone) are not carried in
+    /// UserInfo and therefore not rehydrated; callers reading those go
+    /// through UserManager / IUserRepository directly, not IUserService.
+    /// </summary>
+    private static User RehydrateUser(UserInfo info)
+    {
+#pragma warning disable CS0618 // DisplayName fallback is the legacy column we are mirroring.
+        var user = new User
+        {
+            Id = info.Id,
+            DisplayName = info.DisplayName,
+            PreferredLanguage = info.PreferredLanguage,
+            ProfilePictureUrl = info.ProfilePictureUrl,
+            CreatedAt = info.CreatedAt,
+            LastLoginAt = info.LastLoginAt,
+            LastConsentReminderSentAt = info.LastConsentReminderSentAt,
+            DeletionRequestedAt = info.DeletionRequestedAt,
+            DeletionScheduledFor = info.DeletionScheduledFor,
+            DeletionEligibleAfter = info.DeletionEligibleAfter,
+            UnsubscribedFromCampaigns = info.UnsubscribedFromCampaigns,
+            ICalToken = info.ICalToken,
+            SuppressScheduleChangeEmails = info.SuppressScheduleChangeEmails,
+            MagicLinkSentAt = info.MagicLinkSentAt,
+            GoogleEmailStatus = info.GoogleEmailStatus,
+            ContactSource = info.ContactSource,
+            ExternalSourceId = info.ExternalSourceId,
+            MergedToUserId = info.MergedToUserId,
+            MergedAt = info.MergedAt,
+            Email = info.IdentityEmailColumn,
+        };
+#pragma warning restore CS0618
+
+        foreach (var e in info.UserEmails)
+        {
+            user.UserEmails.Add(new UserEmail
+            {
+                Id = e.Id,
+                UserId = info.Id,
+                Email = e.Email,
+                IsVerified = e.IsVerified,
+                IsPrimary = e.IsPrimary,
+                IsGoogle = e.IsGoogle,
+                Provider = e.Provider,
+                ProviderKey = e.ProviderKey,
+                Visibility = e.Visibility,
+            });
+        }
+
+        return user;
+    }
 
     public async Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
     {
