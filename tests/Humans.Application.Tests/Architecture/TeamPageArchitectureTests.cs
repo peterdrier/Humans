@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -15,10 +14,9 @@ namespace Humans.Application.Tests.Architecture;
 ///
 /// <para>
 /// TeamPageService owns no tables — it composes across <see cref="ITeamService"/>,
-/// <see cref="IProfileService"/>, <see cref="ITeamResourceService"/>,
-/// <see cref="IShiftManagementService"/>, and <see cref="IUserService"/>. No
-/// repository is needed; the tests below guard that it never regains a
-/// <c>DbContext</c> dependency.
+/// <see cref="ITeamResourceService"/>, <see cref="IShiftManagementService"/>,
+/// and <see cref="IUserService"/>. No repository is needed; the tests below
+/// guard that it never regains a <c>DbContext</c> dependency.
 /// </para>
 /// </summary>
 public class TeamPageArchitectureTests
@@ -37,7 +35,6 @@ public class TeamPageArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(ITeamService));
-        paramTypes.Should().Contain(typeof(IProfileService));
         paramTypes.Should().Contain(typeof(ITeamResourceService));
         paramTypes.Should().Contain(typeof(IShiftManagementService));
         paramTypes.Should().Contain(typeof(IUserService),

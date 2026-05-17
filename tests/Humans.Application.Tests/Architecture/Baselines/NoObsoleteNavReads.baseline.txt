@@ -153,7 +153,6 @@ src/Humans.Web/Controllers/AdminMergeController.cs:Team#1
 src/Humans.Web/Filters/AuthorizationPillFilter.cs:User#1
 src/Humans.Web/HangfireAuthorizationFilter.cs:User#1
 src/Humans.Web/HangfireAuthorizationFilter.cs:User#2
-src/Humans.Web/Helpers/ProfilePictureUrlHelper.cs:User#1
 src/Humans.Web/Hubs/CityPlanningHub.cs:User#1
 src/Humans.Web/Hubs/CityPlanningHub.cs:User#2
 src/Humans.Web/Hubs/CityPlanningHub.cs:User#3

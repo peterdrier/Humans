@@ -1944,11 +1944,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var memberships = await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct);
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(
-            info,
-            memberships,
-            p => Url.Action(nameof(Picture), "Profile",
-                new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships);
 
         return PartialView("_HumanPopover", vm);
     }

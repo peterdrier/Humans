@@ -141,10 +141,7 @@ public class TeamAdminController : HumansTeamControllerBase
             .ToList();
 
         var memberUserIds = pagedMembers.Select(m => m.UserId).ToList();
-        var profilesWithCustomPictures = await _profileService.GetCustomPictureInfoByUserIdsAsync(memberUserIds);
-        var customPictureByUserId = profilesWithCustomPictures.ToDictionary(
-            p => p.UserId,
-            p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
+        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
 
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
@@ -152,9 +149,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 UserId = m.UserId,
                 DisplayName = m.DisplayName,
                 Email = m.Email ?? "",
-                ProfilePictureUrl = m.ProfilePictureUrl,
-                HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
-                CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
+                ProfilePictureUrl = memberInfos.GetValueOrDefault(m.UserId)?.ProfilePictureUrl,
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator
@@ -701,10 +696,7 @@ public class TeamAdminController : HumansTeamControllerBase
             .ToList() ?? [];
 
         var memberUserIds = members.Select(m => m.UserId).ToList();
-        var profilesWithCustomPictures = await _profileService.GetCustomPictureInfoByUserIdsAsync(memberUserIds);
-        var customPictureByUserId = profilesWithCustomPictures.ToDictionary(
-            p => p.UserId,
-            p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
+        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
 
         var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
 
@@ -713,9 +705,7 @@ public class TeamAdminController : HumansTeamControllerBase
             UserId = m.UserId,
             DisplayName = m.DisplayName,
             Email = m.Email ?? "",
-            ProfilePictureUrl = m.ProfilePictureUrl,
-            HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
-            CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
+            ProfilePictureUrl = memberInfos.GetValueOrDefault(m.UserId)?.ProfilePictureUrl,
             Role = m.Role,
             JoinedAt = m.JoinedAt.ToDateTimeUtc(),
             IsCoordinator = m.Role == TeamMemberRole.Coordinator

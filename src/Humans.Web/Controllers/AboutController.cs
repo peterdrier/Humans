@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 // Obsolete RoleAssignment nav props (User, CreatedByUser) stitched in-memory by RoleAssignmentService; see design-rules §15i.
@@ -16,20 +14,19 @@ namespace Humans.Web.Controllers;
 public class AboutController : HumansControllerBase
 {
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<AboutController> _logger;
 
     public AboutController(
         IUserService userService,
         IRoleAssignmentService roleAssignmentService,
-        IProfileService profileService,
         IClock clock,
         ILogger<AboutController> logger)
         : base(userService)
     {
         _roleAssignmentService = roleAssignmentService;
-        _profileService = profileService;
+        _userService = userService;
         _clock = clock;
         _logger = logger;
     }
@@ -52,10 +49,8 @@ public class AboutController : HumansControllerBase
             var (assignments, _) = await _roleAssignmentService.GetFilteredAsync(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
 
-            // Resolve effective profile picture URLs (custom uploads only — see issue #532).
-            var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-                _profileService, Url,
-                assignments.Select(ra => ra.UserId));
+            var assigneeInfos = await _userService.GetUserInfosAsync(
+                assignments.Select(ra => ra.UserId).Distinct().ToList());
 
             var roleDefinitions = StaffViewModel.GetRoleDefinitions();
 
@@ -69,7 +64,7 @@ public class AboutController : HumansControllerBase
                     {
                         UserId = ra.UserId,
                         DisplayName = ra.UserDisplayName,
-                        ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
+                        ProfilePictureUrl = assigneeInfos.GetValueOrDefault(ra.UserId)?.ProfilePictureUrl
                     })
                     .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
                     .ToList();

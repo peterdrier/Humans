@@ -4,16 +4,13 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
-public record TeamPageCustomPicture(Guid ProfileId, long UpdatedAtTicks);
-
 public record TeamPageMemberSummary(
     Guid UserId,
     string DisplayName,
     string? Email,
     string? ProfilePictureUrl,
     TeamMemberRole Role,
-    Instant? JoinedAt,
-    TeamPageCustomPicture? CustomPicture);
+    Instant? JoinedAt);
 
 public record TeamPageResourceSummary(
     string Name,

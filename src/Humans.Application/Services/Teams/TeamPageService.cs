@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -10,20 +9,17 @@ namespace Humans.Application.Services.Teams;
 public sealed class TeamPageService : ITeamPageService
 {
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IShiftManagementService _shiftManagementService;
     private readonly IUserService _userService;
 
     public TeamPageService(
         ITeamService teamService,
-        IProfileService profileService,
         ITeamResourceService teamResourceService,
         IShiftManagementService shiftManagementService,
         IUserService userService)
     {
         _teamService = teamService;
-        _profileService = profileService;
         _teamResourceService = teamResourceService;
         _shiftManagementService = shiftManagementService;
         _userService = userService;
@@ -47,9 +43,6 @@ public sealed class TeamPageService : ITeamPageService
                 ? detail.Members.Where(m => m.Role == TeamMemberRole.Coordinator).ToList()
                 : [];
 
-        var customPictures = await GetCustomPicturesByUserIdAsync(
-            visibleMembers,
-            cancellationToken);
         var members = visibleMembers
             .Select(member => new TeamPageMemberSummary(
                 member.UserId,
@@ -57,8 +50,7 @@ public sealed class TeamPageService : ITeamPageService
                 detail.IsAuthenticated ? member.Email : null,
                 member.ProfilePictureUrl,
                 member.Role,
-                detail.IsAuthenticated ? member.JoinedAt : null,
-                customPictures.GetValueOrDefault(member.UserId)))
+                detail.IsAuthenticated ? member.JoinedAt : null))
             .ToList();
 
         var pageContentUpdatedByDisplayName = await GetPageContentUpdatedByDisplayNameAsync(
@@ -99,24 +91,6 @@ public sealed class TeamPageService : ITeamPageService
             detail.PendingRequestCount,
             pageContentUpdatedByDisplayName,
             shiftsSummary);
-    }
-
-    private async Task<Dictionary<Guid, TeamPageCustomPicture>> GetCustomPicturesByUserIdAsync(
-        IReadOnlyList<TeamDetailMemberSummary> members,
-        CancellationToken cancellationToken)
-    {
-        if (members.Count == 0)
-        {
-            return [];
-        }
-
-        var customPictures = await _profileService.GetCustomPictureInfoByUserIdsAsync(
-            members.Select(member => member.UserId),
-            cancellationToken);
-
-        return customPictures.ToDictionary(
-            picture => picture.UserId,
-            picture => new TeamPageCustomPicture(picture.ProfileId, picture.UpdatedAtTicks));
     }
 
     private async Task<string?> GetPageContentUpdatedByDisplayNameAsync(

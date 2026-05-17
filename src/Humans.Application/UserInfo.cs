@@ -123,7 +123,7 @@ public sealed record UserInfo(
     Guid Id,
     [property: Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> — DisplayName is the raw legacy column mirror. See memory/architecture/burnername-is-the-display-name.md.", DiagnosticId = "HUM_USERINFO_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")] string DisplayName,
     string PreferredLanguage,
-    string? ProfilePictureUrl,
+    string? FallbackPictureUrl,
     Instant CreatedAt,
     Instant? LastLoginAt,
     Instant? LastConsentReminderSentAt,
@@ -154,6 +154,17 @@ public sealed record UserInfo(
         Profile is not null && !string.IsNullOrWhiteSpace(Profile.BurnerName)
             ? Profile.BurnerName
             : DisplayName;
+
+    /// <summary>
+    /// Canonical profile picture URL. Custom upload served from the file share via
+    /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
+    /// legacy <see cref="User.ProfilePictureUrl"/> column as a fallback. This is the ONLY
+    /// place profile picture URLs come from across the application.
+    /// </summary>
+    public string? ProfilePictureUrl =>
+        Profile is { HasCustomPicture: true }
+            ? $"/Profile/Picture?id={Profile.Id}&v={Profile.UpdatedAt.ToUnixTimeTicks()}"
+            : FallbackPictureUrl;
 
     /// <summary>Effective email — first verified UserEmail (primary-preferred), falling back to Identity column. Mirrors <see cref="User.Email"/>.</summary>
     public string? Email
@@ -347,7 +358,7 @@ public sealed record UserInfo(
             Id: user.Id,
             DisplayName: user.DisplayName,
             PreferredLanguage: user.PreferredLanguage,
-            ProfilePictureUrl: user.ProfilePictureUrl,
+            FallbackPictureUrl: user.ProfilePictureUrl,
             CreatedAt: user.CreatedAt,
             LastLoginAt: user.LastLoginAt,
             LastConsentReminderSentAt: user.LastConsentReminderSentAt,
