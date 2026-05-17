@@ -4,4 +4,8 @@
     <ProjectReference Include="..\..\src\Humans.Web\Humans.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
 </Project>

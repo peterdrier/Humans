@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
 
@@ -33,12 +34,18 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
 
-    public RoleAssignmentClaimsTransformation(IServiceProvider serviceProvider, IClock clock, IMemoryCache cache)
+    public RoleAssignmentClaimsTransformation(
+        IServiceProvider serviceProvider,
+        IUserService userService,
+        IClock clock,
+        IMemoryCache cache)
     {
         _serviceProvider = serviceProvider;
+        _userService = userService;
         _clock = clock;
         _cache = cache;
     }
@@ -90,11 +97,14 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         var now = _clock.GetCurrentInstant();
         var claims = new List<Claim>();
 
-        // Check suspension status — suspended users lose ActiveMember claim
-        // but keep role claims (Admin/Board) so they can manage their own unsuspension
-        var isSuspended = await dbContext.Profiles
-            .AsNoTracking()
-            .AnyAsync(p => p.UserId == userId && p.IsSuspended);
+        // Suspension + profile-presence both come from the cached UserInfo
+        // read-model so we don't hit the profiles table on every authenticated
+        // request. Null userInfo (user row not yet loaded / not in cache) is
+        // treated as "no profile, not suspended" — same observable behavior as
+        // the prior dbContext.Profiles.AnyAsync calls returning false.
+        var userInfo = await _userService.GetUserInfoAsync(userId);
+        var isSuspended = userInfo?.IsSuspended ?? false;
+        var hasProfile = userInfo?.Profile is not null;
 
         var activeRoles = await dbContext.RoleAssignments
             .AsNoTracking()
@@ -125,10 +135,6 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
                 claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
             }
         }
-
-        var hasProfile = await dbContext.Profiles
-            .AsNoTracking()
-            .AnyAsync(p => p.UserId == userId);
 
         if (hasProfile)
         {
