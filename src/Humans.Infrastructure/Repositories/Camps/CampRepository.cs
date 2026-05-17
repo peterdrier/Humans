@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Repositories.Camps;
 /// Cross-domain navigation (<c>CampLead.User</c>) is never <c>Include</c>-ed;
 /// the service stitches display data via <see cref="Application.Interfaces.Users.IUserService"/>.
 /// </summary>
-public sealed class CampRepository : ICampRepository
+internal sealed class CampRepository : ICampRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

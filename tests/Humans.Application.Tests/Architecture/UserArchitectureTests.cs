@@ -120,9 +120,12 @@ public class UserArchitectureTests
     [HumansFact]
     public void User_repository_has_expected_application_interface_and_sealed_implementation()
     {
+        // Repositories are internal sealed since issue #750 (HumansDbContext
+        // sealed). Use GetTypes() — Humans.Application.Tests has
+        // InternalsVisibleTo on Humans.Infrastructure.
         var repoType = typeof(IUserRepository).Assembly
-            .GetExportedTypes()
-            .Concat(typeof(UserRepository).Assembly.GetExportedTypes())
+            .GetTypes()
+            .Concat(typeof(UserRepository).Assembly.GetTypes())
             .Single(t => string.Equals(t.Name, "UserRepository", StringComparison.Ordinal)
                          && typeof(IUserRepository).IsAssignableFrom(t));
 

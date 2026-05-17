@@ -17,7 +17,7 @@ namespace Humans.Infrastructure.Repositories.Calendar;
 /// <c>Include</c>-ed; the service stitches team names via
 /// <see cref="Application.Interfaces.Teams.ITeamService"/>.
 /// </summary>
-public sealed class CalendarRepository : ICalendarRepository
+internal sealed class CalendarRepository : ICalendarRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

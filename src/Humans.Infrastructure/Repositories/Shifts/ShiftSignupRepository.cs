@@ -23,7 +23,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// steps participate in a single EF change-tracker, which is simpler than
 /// juggling per-method contexts in the service.
 /// </remarks>
-public sealed class ShiftSignupRepository : IShiftSignupRepository
+internal sealed class ShiftSignupRepository : IShiftSignupRepository
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Infrastructure.Repositories.Admin;
 
-public sealed class AdminDatabaseDiagnosticsRepository : IAdminDatabaseDiagnosticsRepository
+internal sealed class AdminDatabaseDiagnosticsRepository : IAdminDatabaseDiagnosticsRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

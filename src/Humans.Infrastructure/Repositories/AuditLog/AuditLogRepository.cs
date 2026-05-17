@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Repositories.AuditLog;
 /// <see cref="AddAsync"/> is exposed; there are no <c>UpdateAsync</c> or
 /// <c>DeleteAsync</c>.
 /// </remarks>
-public sealed class AuditLogRepository : IAuditLogRepository
+internal sealed class AuditLogRepository : IAuditLogRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

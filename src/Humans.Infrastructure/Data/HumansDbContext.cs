@@ -10,7 +10,16 @@ namespace Humans.Infrastructure.Data;
 /// <summary>
 /// Database context for the Humans application.
 /// </summary>
-public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>, IDataProtectionKeyContext
+/// <remarks>
+/// <para>
+/// Internal-sealed (issue #750). Access from outside this assembly is only
+/// available via repository interfaces in <c>Humans.Application.Interfaces.Repositories</c>
+/// or — for cross-cutting wiring — the extension methods in
+/// <c>Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions</c>.
+/// Test projects access this type via <c>InternalsVisibleTo</c>.
+/// </para>
+/// </remarks>
+internal sealed class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>, IDataProtectionKeyContext
 {
     public HumansDbContext(DbContextOptions<HumansDbContext> options)
         : base(options)

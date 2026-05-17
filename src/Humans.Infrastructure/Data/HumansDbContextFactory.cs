@@ -1,10 +1,21 @@
-using Humans.Infrastructure.Data;
+using Humans.Application.Architecture;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Infrastructure.Data;
 
-public sealed class HumansDbContextDesignTimeFactory : IDesignTimeDbContextFactory<HumansDbContext>
+/// <summary>
+/// Design-time factory used by <c>dotnet ef migrations</c>. Internal because
+/// <see cref="HumansDbContext"/> itself is internal — the EF tooling locates
+/// this type via reflection in the migrations-assembly, no public surface
+/// needed.
+/// </summary>
+[Grandfathered(
+    ruleId: "HUM0009",
+    justification: "Design-time factory IS the persistence boundary — it constructs HumansDbContext for `dotnet ef migrations` tooling. There is no repository to route through. Follow-up to teach the analyzer about design-time-factory roles in #750.",
+    since: "2026-05-17",
+    issueRef: "nobodies-collective/Humans#750")]
+internal sealed class HumansDbContextFactory : IDesignTimeDbContextFactory<HumansDbContext>
 {
     public HumansDbContext CreateDbContext(string[] args)
     {

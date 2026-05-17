@@ -92,9 +92,11 @@ public class EmailArchitectureTests
     [HumansFact]
     public void EmailOutboxRepository_IsSealed()
     {
+        // Repositories are internal sealed since issue #750. Use GetTypes() —
+        // Humans.Application.Tests has InternalsVisibleTo on Humans.Infrastructure.
         var repoType = typeof(IEmailOutboxRepository).Assembly
-            .GetExportedTypes()
-            .Concat(typeof(EmailOutboxRepository).Assembly.GetExportedTypes())
+            .GetTypes()
+            .Concat(typeof(EmailOutboxRepository).Assembly.GetTypes())
             .Single(t => string.Equals(t.Name, "EmailOutboxRepository", StringComparison.Ordinal)
                          && typeof(IEmailOutboxRepository).IsAssignableFrom(t));
 

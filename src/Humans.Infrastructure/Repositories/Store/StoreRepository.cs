@@ -17,7 +17,7 @@ namespace Humans.Infrastructure.Repositories.Store;
 /// <see cref="IDbContextFactory{TContext}"/>, and opens a fresh short-lived
 /// <see cref="HumansDbContext"/> per method.
 /// </remarks>
-public sealed class StoreRepository : IStoreRepository
+internal sealed class StoreRepository : IStoreRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

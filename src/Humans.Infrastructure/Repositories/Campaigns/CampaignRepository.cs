@@ -16,7 +16,7 @@ namespace Humans.Infrastructure.Repositories.Campaigns;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class CampaignRepository : ICampaignRepository
+internal sealed class CampaignRepository : ICampaignRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

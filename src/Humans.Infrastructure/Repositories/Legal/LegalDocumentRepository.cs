@@ -13,7 +13,7 @@ namespace Humans.Infrastructure.Repositories.Legal;
 /// lands. Uses <see cref="IDbContextFactory{TContext}"/> so the repository
 /// can be registered as Singleton.
 /// </summary>
-public sealed class LegalDocumentRepository : ILegalDocumentRepository
+internal sealed class LegalDocumentRepository : ILegalDocumentRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

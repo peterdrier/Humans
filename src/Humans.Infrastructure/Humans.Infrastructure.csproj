@@ -2,6 +2,17 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!--
+      Humans.Web is granted internals access because its section-DI extensions
+      register the concrete repository implementations (which take
+      IDbContextFactory<HumansDbContext> in their constructors). HumansDbContext
+      itself is no longer referenced in live Web code — see issue #750. A
+      follow-up can relocate the repository DI registrations into Infrastructure
+      and drop this entry.
+    -->
+    <InternalsVisibleTo Include="Humans.Web" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Repositories.Consent;
 /// <c>DeleteAsync</c>. Database triggers reject any UPDATE/DELETE at the
 /// storage layer as a secondary defense.
 /// </remarks>
-public sealed class ConsentRepository : IConsentRepository
+internal sealed class ConsentRepository : IConsentRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

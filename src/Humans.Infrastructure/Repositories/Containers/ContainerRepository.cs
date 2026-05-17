@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Containers;
 
-public sealed class ContainerRepository : IContainerRepository
+internal sealed class ContainerRepository : IContainerRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

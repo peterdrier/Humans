@@ -22,7 +22,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// registered as <b>Singleton</b> while <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </summary>
-public sealed class ShiftManagementRepository : IShiftManagementRepository
+internal sealed class ShiftManagementRepository : IShiftManagementRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

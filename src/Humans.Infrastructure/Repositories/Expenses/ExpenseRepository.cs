@@ -9,7 +9,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Expenses;
 
-public sealed class ExpenseRepository : IExpenseRepository
+internal sealed class ExpenseRepository : IExpenseRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly ILogger<ExpenseRepository> _logger;

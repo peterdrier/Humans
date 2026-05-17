@@ -22,7 +22,7 @@ namespace Humans.Infrastructure.Repositories.Notifications;
 /// display names through <c>IUserService</c> and stitch results in memory,
 /// preserving table ownership (§2c) and eliminating cross-domain joins (§6).
 /// </remarks>
-public sealed class NotificationRepository : INotificationRepository
+internal sealed class NotificationRepository : INotificationRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

@@ -14,7 +14,7 @@ namespace Humans.Infrastructure.Repositories.Governance;
 /// <c>DbContext.BoardVotes</c>, or <c>DbContext.ApplicationStateHistories</c>
 /// after the Governance migration lands.
 /// </summary>
-public sealed class ApplicationRepository : IApplicationRepository
+internal sealed class ApplicationRepository : IApplicationRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

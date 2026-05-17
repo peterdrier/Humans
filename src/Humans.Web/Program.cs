@@ -25,6 +25,7 @@ using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Hosting;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
@@ -124,57 +125,13 @@ builder.Services.AddSingleton<TrackingMemoryCache>(sp =>
 builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 
-// Configure EF Core with PostgreSQL.
-// optionsLifetime: Singleton so the Singleton IDbContextFactory<HumansDbContext> below can
-// consume DbContextOptions; HumansDbContext itself stays Scoped for normal controller/service use.
-builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
-{
-    options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
-    {
-        npgsqlOptions.UseNodaTime();
-        npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
-        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-    });
-    options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
-    // Issue #703: SaveChanges interceptor that signals UserInfo cache
-    // invalidation for every persisted mutation to the 8 contributing tables.
-    options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-    // T-04: SaveChanges interceptor that wholesale-flushes the Legal-document
-    // cache after any persisted write to legal_documents or document_versions.
-    options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
-    // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
-    // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
-    options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
-    if (builder.Environment.IsDevelopment())
-    {
-        options.EnableSensitiveDataLogging();
-        options.EnableDetailedErrors();
-    }
-}, optionsLifetime: ServiceLifetime.Singleton);
-
-// Register IDbContextFactory for creating short-lived DbContext instances from the
-// Singleton Profile-section repositories (ProfileRepository, ContactFieldRepository,
-// UserEmailRepository, CommunicationPreferenceRepository). Lifetime defaults to
-// Singleton — required so Singleton consumers (the repositories) can inject it
-// without tripping scope validation.
-builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
-{
-    options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
-    {
-        npgsqlOptions.UseNodaTime();
-        npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
-        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-    });
-    // Issue #703: same SaveChanges interceptor for the IDbContextFactory pipeline.
-    options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-    // T-04: same Legal-cache invalidation interceptor for the IDbContextFactory pipeline.
-    options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
-    options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
-});
+// EF Core + IDbContextFactory + migration runner — all wired in Infrastructure
+// so HumansDbContext stays internal to that assembly (issue #750).
+builder.Services.AddHumansPersistence(builder.Environment.IsDevelopment());
 
 // Persist Data Protection keys to the database so auth cookies survive container restarts
 builder.Services.AddDataProtection()
-    .PersistKeysToDbContext<HumansDbContext>()
+    .PersistKeysToHumansDbContext()
     .SetApplicationName("Humans.Web");
 
 // Configure ASP.NET Core Identity
@@ -190,7 +147,7 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
         options.User.RequireUniqueEmail = false;
         options.SignIn.RequireConfirmedEmail = false;
     })
-    .AddEntityFrameworkStores<HumansDbContext>()
+    .AddHumansEntityFrameworkStores()
     .AddDefaultTokenProviders()
     .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
 
@@ -760,50 +717,9 @@ app.MapControllerRoute(
 app.MapRazorPages();
 app.MapHub<CityPlanningHub>("/hubs/city-planning");
 
-// Run database migrations on startup (must happen before Hangfire job registration
-// because Hangfire needs its tables to exist for distributed lock acquisition)
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseMigration");
-    var dbName = dbContext.Database.GetDbConnection().Database;
-
-    try
-    {
-        var pending = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
-        var applied = (await dbContext.Database.GetAppliedMigrationsAsync()).ToList();
-
-        migrationLogger.LogInformation(
-            "Database {Database}: {AppliedCount} applied migrations, {PendingCount} pending",
-            dbName, applied.Count, pending.Count);
-
-        if (pending.Count > 0)
-        {
-            foreach (var migration in pending)
-            {
-                migrationLogger.LogInformation("Pending migration: {Migration}", migration);
-            }
-
-            await dbContext.Database.MigrateAsync();
-
-            var nowApplied = (await dbContext.Database.GetAppliedMigrationsAsync()).ToList();
-            migrationLogger.LogInformation(
-                "Database {Database}: migrations complete — {AppliedCount} total applied",
-                dbName, nowApplied.Count);
-        }
-        else
-        {
-            migrationLogger.LogInformation("Database {Database}: schema is up to date", dbName);
-        }
-    }
-    catch (Exception ex)
-    {
-        migrationLogger.LogError(ex,
-            "Database migration failed for {Database}. The application may not function correctly",
-            dbName);
-        throw;
-    }
-}
+// Database migrations run via DatabaseMigrationHostedService (registered in
+// AddHumansPersistence), which fires during host StartAsync — before Hangfire
+// acquires its distributed locks. Boot is blocked on migration completion.
 
 if (!app.Environment.IsEnvironment("Testing"))
 {

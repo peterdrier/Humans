@@ -25,6 +25,11 @@
           window, then error. Past-deadline diagnostics are emitted with
           effectiveSeverity: Error directly (bypasses this list); pre-deadline
           warnings must stay warnings so the deadline mechanism works.
+        - HUM0014: Web class injects a repository directly. Grandfathered via
+          [Grandfathered("HUM0014", ...)] for the auth claims transformation,
+          which sits on the request-time hot path and cannot afford to drag in
+          the IRoleAssignmentService / ITeamService ctor chain (notifications,
+          system-team sync, Hangfire scheduler). See issue #750.
         - HUM0017 / HUM0018: cross-section repository injection (HUM0017)
           and "section indeterminate" companion (HUM0018, fires only when
           HUM0017 cannot resolve a repository's [Section]). Both start as
@@ -44,7 +49,7 @@
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

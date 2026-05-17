@@ -17,7 +17,7 @@ namespace Humans.Infrastructure.Repositories.Teams;
 /// registered as Singleton.
 /// </para>
 /// </summary>
-public sealed class TeamRepository : ITeamRepository
+internal sealed class TeamRepository : ITeamRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

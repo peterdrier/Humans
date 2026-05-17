@@ -25,7 +25,7 @@ namespace Humans.Infrastructure.Repositories.Budget;
 /// (e.g., creating a year + its default groups + categories) happen inside a
 /// single repository method so they commit together.
 /// </remarks>
-public sealed class BudgetRepository : IBudgetRepository
+internal sealed class BudgetRepository : IBudgetRepository
 {
     private const string TicketRevenueCategoryName = "Ticket Revenue";
     private const string ProcessingFeesCategoryName = "Processing Fees";

@@ -16,7 +16,7 @@ namespace Humans.Infrastructure.Repositories.Email;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository is
 /// registered as Singleton while <c>HumansDbContext</c> stays Scoped.
 /// </summary>
-public sealed class EmailOutboxRepository : IEmailOutboxRepository
+internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

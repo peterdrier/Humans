@@ -117,6 +117,16 @@ public interface IRoleAssignmentRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Distinct role names the user holds via an active assignment at
+    /// <paramref name="now"/>. Used by the claims transformation to populate
+    /// Identity role claims every authenticated request.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetActiveRoleNamesAsync(
+        Guid userId,
+        Instant now,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Writes
     // ==========================================================================

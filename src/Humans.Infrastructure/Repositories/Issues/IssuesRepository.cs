@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Repositories.Issues;
 /// so the repository can be registered as Singleton while
 /// <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class IssuesRepository : IIssuesRepository
+internal sealed class IssuesRepository : IIssuesRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

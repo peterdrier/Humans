@@ -23,7 +23,7 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// per method — same pattern as <c>ProfileRepository</c>, <c>UserRepository</c>,
 /// and <c>TicketingBudgetRepository</c> (design-rules §15b).
 /// </remarks>
-public sealed class TicketRepository : ITicketRepository
+internal sealed class TicketRepository : ITicketRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

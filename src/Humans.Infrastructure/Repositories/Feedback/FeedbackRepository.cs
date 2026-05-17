@@ -14,7 +14,7 @@ namespace Humans.Infrastructure.Repositories.Feedback;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class FeedbackRepository : IFeedbackRepository
+internal sealed class FeedbackRepository : IFeedbackRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

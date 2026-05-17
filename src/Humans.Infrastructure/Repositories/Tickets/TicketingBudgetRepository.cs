@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// per-request, short-lived instance — the same pattern as the other §15
 /// repositories (Profile, User, etc., per design-rules §15b).
 /// </remarks>
-public sealed class TicketingBudgetRepository : ITicketingBudgetRepository
+internal sealed class TicketingBudgetRepository : ITicketingBudgetRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

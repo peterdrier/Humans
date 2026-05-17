@@ -12,7 +12,7 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// per design-rules §15b — every method creates and disposes a fresh
 /// short-lived <see cref="HumansDbContext"/>.
 /// </summary>
-public sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
+internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
 {
     private const int LastErrorMaxLength = 4000;
 

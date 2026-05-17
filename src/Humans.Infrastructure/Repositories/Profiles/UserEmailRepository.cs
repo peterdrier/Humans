@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class UserEmailRepository : IUserEmailRepository
+internal sealed class UserEmailRepository : IUserEmailRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class ProfileRepository : IProfileRepository
+internal sealed class ProfileRepository : IProfileRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly IClock _clock;

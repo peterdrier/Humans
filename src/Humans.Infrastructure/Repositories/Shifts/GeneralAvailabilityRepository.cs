@@ -13,7 +13,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityRepository
+internal sealed class GeneralAvailabilityRepository : IGeneralAvailabilityRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

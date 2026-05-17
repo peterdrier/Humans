@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Events;
 
-public sealed class EventRepository : IEventRepository
+internal sealed class EventRepository : IEventRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

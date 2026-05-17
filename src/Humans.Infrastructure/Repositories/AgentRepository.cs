@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories;
 
-public sealed class AgentRepository : IAgentRepository
+internal sealed class AgentRepository : IAgentRepository
 {
     private readonly HumansDbContext _db;
     private readonly IClock _clock;

@@ -42,6 +42,8 @@ Business services (`ProfileService`, `TeamService`, `BudgetService`, etc.) live 
 
 Repository **implementations** (the classes that talk to `DbContext`) live in `Humans.Infrastructure`. That is the only project that may touch EF Core.
 
+`HumansDbContext` is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `AddHumansEntityFrameworkStores`, `PersistKeysToHumansDbContext`). The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. The design-time factory for `dotnet ef migrations` lives next to the context (`Humans.Infrastructure.Data.HumansDbContextFactory`). Test projects access `HumansDbContext` directly via `InternalsVisibleTo`.
+
 ### 2c. Table Ownership Is Strict and Sectional
 
 Each domain's tables are owned by exactly one service (and that service's repository). **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs a profile, it calls `IProfileService` — it does not query the `profiles` table, does not instantiate `IProfileRepository`, does not access the Profile section's in-memory cache directly.

@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Camps;
 
-public sealed class CampRoleRepository : ICampRoleRepository
+internal sealed class CampRoleRepository : ICampRoleRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 

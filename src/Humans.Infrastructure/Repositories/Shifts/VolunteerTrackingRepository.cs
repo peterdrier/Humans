@@ -17,7 +17,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <see cref="ShiftSignupRepository"/>) so multi-step mutations on
 /// <see cref="VolunteerBuildStatus"/> share one EF change-tracker.
 /// </remarks>
-public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
+internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
 {
     private readonly HumansDbContext _db;
 

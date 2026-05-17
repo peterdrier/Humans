@@ -12,7 +12,7 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// <see cref="IDbContextFactory{TContext}"/> to maintain singleton registration
 /// while keeping <c>HumansDbContext</c> short-lived (design-rules §15b).
 /// </summary>
-public sealed class TicketTransferRepository : ITicketTransferRepository
+internal sealed class TicketTransferRepository : ITicketTransferRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 
