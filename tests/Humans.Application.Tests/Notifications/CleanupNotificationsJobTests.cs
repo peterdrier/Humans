@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -33,7 +34,8 @@ public class CleanupNotificationsJobTests : IDisposable
 
         var metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+            Substitute.For<ILogger<HumansMetricsService>>(),
+            Substitute.For<IUserActivityTracker>());
         var repo = new NotificationRepository(new TestDbContextFactory(options));
         _job = new CleanupNotificationsJob(repo, _clock, metrics, NullLogger<CleanupNotificationsJob>.Instance);
     }

@@ -35,16 +35,19 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<HumansMetricsService> _logger;
+    private readonly IUserActivityTracker _activityTracker;
     private readonly Timer _refreshTimer;
 
     private volatile GaugeSnapshot _snapshot = GaugeSnapshot.Empty;
 
     public HumansMetricsService(
         IServiceScopeFactory scopeFactory,
-        ILogger<HumansMetricsService> logger)
+        ILogger<HumansMetricsService> logger,
+        IUserActivityTracker activityTracker)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _activityTracker = activityTracker;
 
         _emailsSent = HumansMeter.CreateCounter<long>(
             "humans.emails_sent_total",
@@ -147,6 +150,11 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             observeValue: () => _snapshot.PendingOutboxEvents,
             description: "Unprocessed Google sync outbox events");
 
+        HumansMeter.CreateObservableGauge(
+            "humans.active_users",
+            observeValues: ObserveActiveUsers,
+            description: "Distinct users with an authenticated request in the trailing window. In-memory only; resets on process restart.");
+
         // humans.email_outbox_pending lives on IMeters via ProcessEmailOutboxJob.
 
         _refreshTimer = new Timer(
@@ -213,6 +221,19 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
     {
         var s = _snapshot;
         yield return new Measurement<int>(s.ApplicationsSubmitted, new KeyValuePair<string, object?>("status", "submitted"));
+    }
+
+    private IEnumerable<Measurement<int>> ObserveActiveUsers()
+    {
+        yield return new Measurement<int>(
+            _activityTracker.CountActiveWithin(Duration.FromMinutes(5)),
+            new KeyValuePair<string, object?>("window", "5m"));
+        yield return new Measurement<int>(
+            _activityTracker.CountActiveWithin(Duration.FromHours(1)),
+            new KeyValuePair<string, object?>("window", "1h"));
+        yield return new Measurement<int>(
+            _activityTracker.CountActiveWithin(Duration.FromHours(24)),
+            new KeyValuePair<string, object?>("window", "24h"));
     }
 
     private async Task RefreshSnapshotAsync()

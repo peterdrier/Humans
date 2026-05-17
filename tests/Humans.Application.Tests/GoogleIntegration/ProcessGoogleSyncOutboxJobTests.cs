@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
@@ -61,7 +62,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+            Substitute.For<ILogger<HumansMetricsService>>(),
+            Substitute.For<IUserActivityTracker>());
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
         _job = new ProcessGoogleSyncOutboxJob(

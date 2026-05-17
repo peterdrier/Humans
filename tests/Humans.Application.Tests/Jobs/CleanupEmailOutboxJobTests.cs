@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -37,7 +38,8 @@ public class CleanupEmailOutboxJobTests : IDisposable
         _clock = new FakeClock(Now);
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+            Substitute.For<ILogger<HumansMetricsService>>(),
+            Substitute.For<IUserActivityTracker>());
         var logger = Substitute.For<ILogger<CleanupEmailOutboxJob>>();
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });
         var repo = new EmailOutboxRepository(new TestDbContextFactory(options));

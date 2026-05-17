@@ -7,6 +7,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
@@ -56,7 +57,8 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _clock = new FakeClock(Now);
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+            Substitute.For<ILogger<HumansMetricsService>>(),
+            Substitute.For<IUserActivityTracker>());
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests

@@ -578,6 +578,9 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Feeds humans.active_users gauges and the /Admin active-users tile. Must run after UseAuthentication so HttpContext.User is populated.
+app.UseMiddleware<UserActivityTrackingMiddleware>();
+
 app.UseSession();
 
 app.UseRequestLocalization();

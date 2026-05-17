@@ -8,6 +8,7 @@ using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 
@@ -28,7 +29,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 9, 2, 0));
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+            Substitute.For<ILogger<HumansMetricsService>>(),
+            Substitute.For<IUserActivityTracker>());
 
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,

@@ -4,6 +4,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
@@ -43,7 +44,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _clock = new FakeClock(Now);
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+            Substitute.For<ILogger<HumansMetricsService>>(),
+            Substitute.For<IUserActivityTracker>());
         var logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
         _job = new ProcessAccountDeletionsJob(
