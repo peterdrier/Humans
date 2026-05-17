@@ -52,8 +52,10 @@ public class AttendeeContactImportServicePlanTests
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
             .Returns([userId]);
-        harness.Users.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, MergedToUserId = null });
+        harness.Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                new User { Id = userId, MergedToUserId = null },
+                [], [], [], null, [], [], [], []));
 
         var plan = await harness.Service.BuildPlanAsync();
 
@@ -79,10 +81,14 @@ public class AttendeeContactImportServicePlanTests
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
             .Returns([deadId]);
-        harness.Users.GetByIdAsync(deadId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = deadId, MergedToUserId = liveId });
-        harness.Users.GetByIdAsync(liveId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = liveId, MergedToUserId = null });
+        harness.Users.GetUserInfoAsync(deadId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                new User { Id = deadId, MergedToUserId = liveId },
+                [], [], [], null, [], [], [], []));
+        harness.Users.GetUserInfoAsync(liveId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                new User { Id = liveId, MergedToUserId = null },
+                [], [], [], null, [], [], [], []));
 
         var plan = await harness.Service.BuildPlanAsync();
 

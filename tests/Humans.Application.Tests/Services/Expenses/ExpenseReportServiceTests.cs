@@ -1328,8 +1328,6 @@ public class ExpenseReportServiceTests
         var firstName = nameParts.Length > 0 ? nameParts[0] : displayName;
         var lastName = nameParts.Length > 1 ? nameParts[1] : "Tester";
 
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = displayName });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(new Profile
             {

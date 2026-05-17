@@ -795,8 +795,8 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task LinkAccountAsync_ReturnsErrorIfUserNotFound()
     {
-        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((User?)null);
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
         var result = await _service.LinkAccountAsync(
             "alice@nobodies.team", Guid.NewGuid(), _actorUserId);

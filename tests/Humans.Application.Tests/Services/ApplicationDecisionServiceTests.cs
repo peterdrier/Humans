@@ -59,6 +59,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<User?>(null));
         _userService.StubGetUserInfosFromContext(_dbContext);
+        _userService.StubGetUserInfoFromContext(_dbContext);
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
@@ -458,7 +459,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = null,
             PreferredLanguage = "en"
         };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(user, [], [], [], null, [], [], [], []));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 

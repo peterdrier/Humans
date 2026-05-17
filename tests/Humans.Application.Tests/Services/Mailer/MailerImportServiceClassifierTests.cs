@@ -258,16 +258,20 @@ internal sealed class ClassifierHarness
                 return Task.FromResult<(Guid, Guid)?>(null);
             });
 
-        // IUserService.GetByIdAsync: returns a tombstoned user when there's an entry in MergedToTargets.
+        // IUserService.GetUserInfoAsync: returns a tombstoned user when there's an entry in MergedToTargets.
         _users
-            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var userId = (Guid)ci[0];
                 if (MergedToTargets.TryGetValue(userId, out var targetId))
-                    return Task.FromResult<User?>(new User { Id = userId, MergedToUserId = targetId });
+                    return new ValueTask<UserInfo?>(UserInfo.Create(
+                        new User { Id = userId, MergedToUserId = targetId },
+                        [], [], [], null, [], [], [], []));
                 // Live user — no tombstone.
-                return Task.FromResult<User?>(new User { Id = userId, MergedToUserId = null });
+                return new ValueTask<UserInfo?>(UserInfo.Create(
+                    new User { Id = userId, MergedToUserId = null },
+                    [], [], [], null, [], [], [], []));
             });
 
         // Default: no pref row for any user. SetMarketingPref overrides per-user.

@@ -320,9 +320,9 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         if (sourceUserId == targetUserId)
             throw new InvalidOperationException("Source and target users are the same.");
 
-        var source = await _userService.GetByIdAsync(sourceUserId, ct)
+        var source = await _userService.GetUserInfoAsync(sourceUserId, ct)
             ?? throw new InvalidOperationException($"Source user {sourceUserId} not found.");
-        var target = await _userService.GetByIdAsync(targetUserId, ct)
+        var target = await _userService.GetUserInfoAsync(targetUserId, ct)
             ?? throw new InvalidOperationException($"Target user {targetUserId} not found.");
 
         if (source.MergedToUserId is not null)
