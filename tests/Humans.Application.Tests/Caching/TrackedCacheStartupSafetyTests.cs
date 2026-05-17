@@ -26,7 +26,7 @@ public class TrackedCacheStartupSafetyTests
             LogLevel.Warning,
             Arg.Any<EventId>(),
             Arg.Any<object>(),
-            Arg.Any<Exception>(),
+            Arg.Is<Exception?>(e => e == null),
             Arg.Any<Func<object, Exception?, string>>());
     }
 

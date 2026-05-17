@@ -287,9 +287,10 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         catch (Exception ex)
         {
             _logger.LogWarning(
-                ex,
-                "TrackedCache startup warmup failed; falling back to lazy on-demand warm. Cache: {CacheName}",
-                Name);
+                "TrackedCache startup warmup failed; falling back to lazy on-demand warm. Cache: {CacheName}. {ExceptionType}: {ExceptionMessage}",
+                Name,
+                ex.GetType().Name,
+                ex.Message);
         }
     }
 
