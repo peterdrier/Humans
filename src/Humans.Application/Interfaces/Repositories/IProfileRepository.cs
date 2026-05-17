@@ -60,13 +60,6 @@ public interface IProfileRepository : IRepository
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batch query returning (ProfileId, UserId, UpdatedAtTicks) for users
-    /// that have a custom profile picture. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
-        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Issue nobodies-collective/Humans#702: returns every profile whose
     /// <c>ProfilePictureContentType</c> is non-null — the population the
     /// DB→FS migration verification page operates on. Projects only the

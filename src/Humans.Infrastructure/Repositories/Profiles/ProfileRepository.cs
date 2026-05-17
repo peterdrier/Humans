@@ -74,23 +74,6 @@ public sealed class ProfileRepository : IProfileRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
-        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default)
-    {
-        var userIdList = userIds.ToList();
-        if (userIdList.Count == 0)
-            return [];
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => userIdList.Contains(p.UserId) && p.ProfilePictureContentType != null)
-            .Select(p => new { p.Id, p.UserId, p.UpdatedAt })
-            .AsAsyncEnumerable()
-            .Select(p => (p.Id, p.UserId, p.UpdatedAt.ToUnixTimeTicks()))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
         GetCustomPictureRowsAsync(CancellationToken ct = default)
     {

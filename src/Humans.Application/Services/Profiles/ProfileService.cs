@@ -369,9 +369,18 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return profile.Id;
     }
 
-    public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
-        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
-        _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
+    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
+        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default)
+    {
+        var userIdList = userIds.ToList();
+        if (userIdList.Count == 0) return [];
+
+        var infos = await _userService.GetUserInfosAsync(userIdList, ct);
+        return infos.Values
+            .Where(u => u.Profile is not null && u.Profile.HasCustomPicture)
+            .Select(u => (u.Profile!.Id, u.Id, u.Profile.UpdatedAt.ToUnixTimeTicks()))
+            .ToList();
+    }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
