@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Shifts;
 using NodaTime;
 
 namespace Humans.Web.Helpers;
@@ -8,9 +8,9 @@ namespace Humans.Web.Helpers;
 /// </summary>
 public static class EventsTimeHelpers
 {
-    public static DateTimeZone? GetTimeZone(EventSettings? eventSettings)
-        => eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+    public static DateTimeZone? GetTimeZone(BurnSettingsInfo? burn)
+        => burn != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
             : null;
 
     public static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)

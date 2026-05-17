@@ -109,6 +109,11 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
+        // Issue #743: warm before the miss-detection loop. Without this, a cold
+        // cache turns every requested id into a per-row LoadRowAsync (7 SELECTs
+        // each) instead of the single bulk WarmAllAsync.
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+
         var result = new Dictionary<Guid, UserInfo>(userIds.Count);
         List<Guid>? misses = null;
         foreach (var id in userIds)

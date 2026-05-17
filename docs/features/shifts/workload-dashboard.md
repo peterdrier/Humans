@@ -94,7 +94,7 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 ## Architecture
 
-`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and `GetRotaIdsForEventAsync` (a small indexed point-list). Cross-section name stitching via `ITeamService.GetByIdsWithParentsAsync` and `IUserService.GetUserInfosAsync`.
+`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and an inlined distinct over `GetShiftsForEventAsync` to derive the set of rota ids to walk (no new interface method — see `memory/architecture/interface-method-additions-are-debt.md`). Cross-section name stitching via `ITeamService.GetByIdsWithParentsAsync` and `IUserService.GetUserInfosAsync`.
 
 **Cache:** No service-level cache. Source data lives in the Shifts-section per-rota cache owned by `CachingShiftViewService` (§15 Option B at the section level). Signup / shift / rota mutations evict the affected rota cache entries via `IShiftViewInvalidator`, so workload totals stay consistent without a parallel cache key. The aggregation itself is microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
 

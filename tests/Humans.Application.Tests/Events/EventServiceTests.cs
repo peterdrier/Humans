@@ -17,12 +17,12 @@ public sealed class EventServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
-    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly EventService _service;
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _shiftManagement, _clock);
+        _service = new EventService(_repo, _burnSettings, _clock);
     }
 
     [HumansFact]
@@ -62,17 +62,22 @@ public sealed class EventServiceTests
     public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
     {
         var eventSettingsId = Guid.NewGuid();
-        _shiftManagement.GetByIdAsync(eventSettingsId).Returns(new EventSettings
-        {
-            Id = eventSettingsId,
-            EventName = "Nowhere 2026",
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
+        _burnSettings.GetByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new BurnSettingsInfo(
+            Id: eventSettingsId,
+            EventName: "Nowhere 2026",
+            Year: 2026,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: new LocalDate(2026, 7, 1),
+            BuildStartOffset: -14,
+            EventEndOffset: 7,
+            StrikeEndOffset: 10,
+            FirstCrewStartOffset: -25,
+            SetupWeekStartOffset: -16,
+            PreEventWeekStartOffset: -9,
+            FinishingWeekendStartOffset: -4,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null));
 
         await _service.SaveGuideSettingsAsync(
             existingId: null,

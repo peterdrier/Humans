@@ -15,16 +15,17 @@ public sealed class EventService : IEventService, IUserDataContributor
 {
     private readonly IEventRepository _repo;
     // EventSettings is owned by the Shifts section (event_settings table).
-    // Route reads through IShiftManagementService so the Events repo never
-    // touches a cross-section DbSet (memory/architecture/no-cross-section-ef-joins.md).
-    // Tracked: peterdrier#719.
-    private readonly IShiftManagementService _shiftManagement;
+    // Route reads through the read-only IBurnSettingsService supplier API,
+    // which returns a BurnSettingsInfo DTO — the Events section never sees
+    // the Shifts-internal entity (design-rules §2c,
+    // memory/architecture/no-cross-section-ef-joins.md, issue nobodies-collective/Humans#719).
+    private readonly IBurnSettingsService _burnSettings;
     private readonly IClock _clock;
 
-    public EventService(IEventRepository repo, IShiftManagementService shiftManagement, IClock clock)
+    public EventService(IEventRepository repo, IBurnSettingsService burnSettings, IClock clock)
     {
         _repo = repo;
-        _shiftManagement = shiftManagement;
+        _burnSettings = burnSettings;
         _clock = clock;
     }
 
@@ -39,26 +40,27 @@ public sealed class EventService : IEventService, IUserDataContributor
         return settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
     }
 
-    public async Task<IReadOnlyList<EventSettings>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
     {
-        // Invariant: at most one EventSettings.IsActive == true. The admin
-        // picker for the camp guide presents that single row when present.
-        var active = await _shiftManagement.GetActiveAsync();
+        // Invariant: at most one active burn. Surface it as a singleton list
+        // so the admin picker (which calls this) stays shape-compatible if
+        // multi-burn support arrives later.
+        var active = await _burnSettings.GetActiveAsync(ct);
         return active is null ? [] : [active];
     }
 
-    public Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-        => _shiftManagement.GetByIdAsync(id);
+    public Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
+        => _burnSettings.GetByIdAsync(id, ct);
 
     public async Task SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default)
     {
-        var eventSettings = await _shiftManagement.GetByIdAsync(eventSettingsId)
+        var burn = await _burnSettings.GetByIdAsync(eventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         var now = _clock.GetCurrentInstant();
 
         var settings = new EventGuideSettings

@@ -23,8 +23,6 @@ Humans.Application.Interfaces.Events.IEventService.GetCampEventAsync:Humans.Doma
 Humans.Application.Interfaces.Events.IEventService.GetCampSubmissionsAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Events.IEventService.GetCategoryAsync:Humans.Domain.Entities.EventCategory
 Humans.Application.Interfaces.Events.IEventService.GetEventForModerationAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetEventSettingsByIdAsync:Humans.Domain.Entities.EventSettings
-Humans.Application.Interfaces.Events.IEventService.GetEventSettingsOptionsAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Events.IEventService.GetEventsByStatusAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Events.IEventService.GetFavouritesWithEventsAsync:Humans.Domain.Entities.EventFavourite
 Humans.Application.Interfaces.Events.IEventService.GetGuideSettingsAsync:Humans.Domain.Entities.EventGuideSettings

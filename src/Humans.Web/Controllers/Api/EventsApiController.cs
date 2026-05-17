@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
@@ -37,7 +38,7 @@ public class EventsApiController : ControllerBase
         [FromQuery] string? q)
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
@@ -70,7 +71,7 @@ public class EventsApiController : ControllerBase
     public async Task<IActionResult> GetEvent(Guid id)
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
@@ -89,7 +90,7 @@ public class EventsApiController : ControllerBase
     public async Task<IActionResult> GetBarrios()
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
 
         var events = await _guide.GetApprovedEventsAsync(null, null, null, null, []);
@@ -114,7 +115,7 @@ public class EventsApiController : ControllerBase
     public async Task<IActionResult> GetBarrio(Guid id)
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
@@ -202,7 +203,7 @@ public class EventsApiController : ControllerBase
         if (user == null) return Unauthorized();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
@@ -256,7 +257,7 @@ public class EventsApiController : ControllerBase
         return await _guide.GetExcludedCategorySlugsAsync(user.Id);
     }
 
-    private async Task<EventSettings?> LoadEventSettingsAsync(EventGuideSettings? guideSettings)
+    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettings? guideSettings)
     {
         if (guideSettings == null) return null;
         return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);

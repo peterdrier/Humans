@@ -2,7 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces.Issues;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
@@ -22,13 +24,16 @@ namespace Humans.Web.Controllers;
 public class IssuesApiController : ControllerBase
 {
     private readonly IIssuesService _issues;
+    private readonly IUserService _users;
     private readonly ILogger<IssuesApiController> _logger;
 
     public IssuesApiController(
         IIssuesService issues,
+        IUserService users,
         ILogger<IssuesApiController> logger)
     {
         _issues = issues;
+        _users = users;
         _logger = logger;
     }
 
@@ -67,7 +72,12 @@ public class IssuesApiController : ControllerBase
         if (issue is null) return NotFound();
 
         var thread = await _issues.GetThreadAsync(id);
-        return Ok(MapDetail(issue, thread));
+        // Resolve reporter UserInfo so detail endpoint keeps emitting
+        // ReporterEmail (sourced from UserInfo.Email, not User.Email) —
+        // matches the shape of the list endpoint's IssueListSnapshot
+        // path. See PR 618 review (Claude bot, IssuesApiController:275).
+        var reporter = await _users.GetUserInfoAsync(issue.ReporterUserId);
+        return Ok(MapDetail(issue, thread, reporter));
     }
 
     [HttpPost]
@@ -258,7 +268,7 @@ public class IssuesApiController : ControllerBase
         }
     }
 
-    private static object MapList(Issue i) => new
+    private static object MapList(Issue i, UserInfo? reporter = null) => new
     {
         i.Id,
         Status = i.Status.ToString(),
@@ -269,8 +279,12 @@ public class IssuesApiController : ControllerBase
         i.PageUrl,
         i.UserAgent,
         i.AdditionalContext,
-        ReporterName = i.Reporter?.DisplayName,
-        ReporterEmail = i.Reporter?.Email,
+        ReporterName = reporter?.BurnerName ?? i.Reporter?.DisplayName,
+        // ReporterEmail comes from the optional UserInfo (sourced via
+        // IUserService) so detail and list endpoints stay shape-consistent
+        // without reading User.Email directly. List endpoint that uses
+        // IssueListSnapshot has its own MapList overload below.
+        ReporterEmail = reporter?.Email,
         ReporterUserId = i.ReporterUserId,
         ReporterLanguage = i.Reporter?.PreferredLanguage,
         AssigneeUserId = i.AssigneeUserId,
@@ -310,9 +324,9 @@ public class IssuesApiController : ControllerBase
         i.CommentCount
     };
 
-    private static object MapDetail(Issue i, IReadOnlyList<IssueThreadEvent> thread) => new
+    private static object MapDetail(Issue i, IReadOnlyList<IssueThreadEvent> thread, UserInfo? reporter) => new
     {
-        issue = MapList(i),
+        issue = MapList(i, reporter),
         thread = thread.Select(e => e switch
         {
             IssueCommentEvent c => (object)new

@@ -17,10 +17,10 @@ namespace Humans.Application.Services.Shifts.Workload;
 /// <para>
 /// Reads per-rota shift + signup rows through <see cref="IShiftView"/> — the
 /// Shifts-section per-rota cache owned by <c>CachingShiftViewService</c>
-/// (§15 Option B at the section level). Uses
-/// <see cref="IShiftManagementRepository"/> only for the active-event lookup
-/// and the small "rota ids for this event" point list. Cross-section name
-/// stitching via <see cref="ITeamService"/> / <see cref="IUserService"/>.
+/// (§15 Option B at the section level). The set of rotas to walk is derived
+/// from <see cref="IShiftManagementRepository.GetShiftsForEventAsync"/> (no
+/// signup payload, no new interface method). Cross-section name stitching
+/// via <see cref="ITeamService"/> / <see cref="IUserService"/>.
 /// </para>
 /// <para>
 /// This service does not hold its own cache: signup / shift / rota mutations
@@ -57,7 +57,12 @@ public sealed class WorkloadService : IWorkloadService
         var es = await _repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return null;
 
-        var rotaIds = await _repo.GetRotaIdsForEventAsync(es.Id, ct);
+        // Derive rota ids by inlining a distinct on the existing
+        // GetShiftsForEventAsync (Shifts + Rota nav, no signups) — avoids
+        // adding a new interface method
+        // (memory/architecture/interface-method-additions-are-debt.md).
+        var shiftStubs = await _repo.GetShiftsForEventAsync(es.Id, null, ct);
+        var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
         {
             return new WorkloadReport(

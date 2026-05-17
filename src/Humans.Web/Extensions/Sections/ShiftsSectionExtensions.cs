@@ -7,6 +7,7 @@ using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.Gene
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
 using ShiftsWorkloadService = Humans.Application.Services.Shifts.Workload.WorkloadService;
+using ShiftsBurnSettingsService = Humans.Application.Services.Shifts.BurnSettingsService;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Shifts.Workload;
 using Humans.Application.Interfaces.Users;
@@ -31,6 +32,13 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+
+        // Cross-section read DTO supplier for the burn (event_settings row)
+        // — Events, Camps, Tickets, Notifications consume BurnSettingsInfo
+        // here instead of the Shifts-internal EventSettings entity (issue
+        // nobodies-collective/Humans#719). Mutations + Shifts-internal
+        // reads stay on IShiftManagementService.
+        services.AddScoped<IBurnSettingsService, ShiftsBurnSettingsService>();
 
         // ShiftSignupService — §15 repository pattern (issue #541, sub-task b).
         // Lives in Humans.Application.Services.Shifts; goes through

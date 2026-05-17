@@ -88,17 +88,16 @@ public sealed record EventVenueView(
 /// </para>
 /// <para>
 /// <b>Stop-gap stale window (issue #719):</b> <see cref="TimeZoneId"/> is
-/// read from the foreign <see cref="EventSettings"/> table at warm /
-/// refresh time. The Events section has no invalidation signal for
-/// <c>EventSettings</c> edits (no <c>IEventSettingsService</c> exists yet),
-/// so a moderator changing <c>EventSettings.TimeZoneId</c> will <em>not</em>
-/// flush this cache entry until either: (a) another event-section write
-/// happens, or (b) the process restarts. Acceptable in practice —
-/// <c>TimeZoneId</c> is set per-event-edition and effectively never changes
-/// mid-edition. Tracked in
+/// read from the Shifts-owned <c>event_settings</c> table at warm /
+/// refresh time via <c>IBurnSettingsService</c>. The Events section has no
+/// invalidation signal for burn-settings edits today, so a moderator
+/// changing the burn's <c>TimeZoneId</c> will <em>not</em> flush this
+/// cache entry until either: (a) another event-section write happens, or
+/// (b) the process restarts. Acceptable in practice — <c>TimeZoneId</c>
+/// is set per-burn and effectively never changes mid-cycle. Tracked in
 /// <see href="https://github.com/nobodies-collective/Humans/issues/719"/>;
-/// once <c>IEventSettingsService</c> ships, this section will subscribe to
-/// its invalidation signal and the stale window collapses to zero.
+/// once <c>IBurnSettingsService</c> exposes an invalidation signal, this
+/// section will subscribe and the stale window collapses to zero.
 /// </para>
 /// </remarks>
 public sealed record EventGuideSettingsView(

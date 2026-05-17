@@ -62,12 +62,12 @@ public class OnboardingReviewController : HumansControllerBase
         if (profile is null)
             return NotFound();
 
-        var detailUser = await _userService.GetByIdAsync(userId, ct);
+        var detailUser = await _userService.GetUserInfoAsync(userId, ct);
 
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = detailUser?.DisplayName ?? "Unknown",
+            DisplayName = detailUser?.BurnerName ?? "Unknown",
             ProfilePictureUrl = detailUser?.ProfilePictureUrl,
             Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,
