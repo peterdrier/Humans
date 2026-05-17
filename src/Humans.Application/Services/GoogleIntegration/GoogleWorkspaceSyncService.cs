@@ -277,8 +277,60 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
                     apiRole, userEmail, resource.GoogleId,
                     result.Error?.StatusCode, result.Error?.RawMessage);
+                await HandleDriveAddFailureAsync(resource, userEmail, result.Error, cancellationToken);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#677 — when Drive's
+    /// <c>permissions.create</c> returns a target-rejection (HTTP 400/403
+    /// referencing "no Google account" / "SendNotificationEmail"), mark the
+    /// owning user's <see cref="GoogleEmailStatus"/> as
+    /// <see cref="GoogleEmailStatus.Rejected"/> so the orchestrator stops
+    /// re-attempting until an admin clears the state. Mirrors the existing
+    /// <c>GoogleGroupSyncService.HandleGroupAddFailureAsync</c> pattern.
+    /// </summary>
+    private async Task HandleDriveAddFailureAsync(
+        GoogleResource resource,
+        string userEmail,
+        GoogleClientError? error,
+        CancellationToken ct)
+    {
+        var statusCode = error?.StatusCode ?? 0;
+        var rawMessage = error?.RawMessage ?? string.Empty;
+
+        // Drive returns 400 when the recipient has no Google account on a
+        // domain that supports notification-free sharing. 403 covers caller-
+        // permission failures (not the target's problem) so we don't mark
+        // those.
+        if (statusCode != 400)
+        {
+            return;
+        }
+
+        if (!GoogleGroupSyncService.IsTargetMemberRejection(rawMessage))
+        {
+            return;
+        }
+
+        var user = await _userService.GetByEmailOrAlternateAsync(userEmail, ct);
+        if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        {
+            return;
+        }
+
+        await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+            user.Id,
+            GoogleEmailStatus.Rejected,
+            ct);
+
+        _logger.LogWarning(
+            "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP 400. " +
+            "User.GoogleEmailStatus marked Rejected. Google error: {ErrorMessage}",
+            userEmail,
+            resource.GoogleId,
+            rawMessage);
     }
 
     /// <summary>

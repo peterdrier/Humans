@@ -510,23 +510,30 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         var statusCode = error?.StatusCode ?? 0;
         var rawMessage = error?.RawMessage ?? string.Empty;
 
-        if (statusCode != 403)
+        // Cloud Identity returns HTTP 403 when the target email has no Google
+        // account and HTTP 400 "precondition check failed" / Error(4002) for
+        // the same root cause (issue nobodies-collective/Humans#677). Both
+        // map to a permanent target rejection.
+        if (statusCode != 403 && statusCode != 400)
         {
             return FormatGoogleError($"Google group add failed for {email}", error);
         }
 
-        var isCallerPermissionError = rawMessage.Contains("caller", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("service account", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("does not have permission", StringComparison.OrdinalIgnoreCase);
-
-        if (isCallerPermissionError)
+        if (statusCode == 403)
         {
-            _logger.LogWarning(
-                "Service account lacks permission to add members to group {GroupKey} ({GroupId}) - HTTP 403: {ErrorMessage}",
-                groupKey,
-                resource?.GoogleId,
-                rawMessage);
-            return FormatGoogleError($"Google group add failed for {email}", error);
+            var isCallerPermissionError = rawMessage.Contains("caller", StringComparison.OrdinalIgnoreCase)
+                || rawMessage.Contains("service account", StringComparison.OrdinalIgnoreCase)
+                || rawMessage.Contains("does not have permission", StringComparison.OrdinalIgnoreCase);
+
+            if (isCallerPermissionError)
+            {
+                _logger.LogWarning(
+                    "Service account lacks permission to add members to group {GroupKey} ({GroupId}) - HTTP 403: {ErrorMessage}",
+                    groupKey,
+                    resource?.GoogleId,
+                    rawMessage);
+                return FormatGoogleError($"Google group add failed for {email}", error);
+            }
         }
 
         if (IsTargetMemberRejection(rawMessage))
@@ -541,26 +548,46 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             }
 
             _logger.LogWarning(
-                "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP 403. " +
+                "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
                 "Legacy User.GoogleEmailStatus was marked Rejected when a matching user was found. Google error: {ErrorMessage}",
                 email,
                 groupKey,
                 resource?.GoogleId,
+                statusCode,
                 rawMessage);
 
-            return $"Google rejected {email} for group membership - no Google account for this address (HTTP 403)";
+            return $"Google rejected {email} for group membership - no Google account for this address (HTTP {statusCode})";
         }
 
         return FormatGoogleError($"Google group add failed for {email}", error);
     }
 
-    private static bool IsTargetMemberRejection(string rawMessage)
+    /// <summary>
+    /// Matches Google API error messages that indicate the target email is
+    /// not backed by a real Google identity. Covers Cloud Identity Group
+    /// membership 403/400 ("invalid member", "precondition check failed",
+    /// Error(4002)) and Drive permission 400 ("recipient has no Google
+    /// account ... SendNotificationEmail must be true"). See issue
+    /// nobodies-collective/Humans#677.
+    /// </summary>
+    internal static bool IsTargetMemberRejection(string rawMessage)
         => rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid member", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid email", StringComparison.OrdinalIgnoreCase)
-            || rawMessage.Contains("invalid user", StringComparison.OrdinalIgnoreCase);
+            || rawMessage.Contains("invalid user", StringComparison.OrdinalIgnoreCase)
+            // Drive permissions.create — 400 when the recipient is not on a
+            // Google domain. Google's response mentions SendNotificationEmail
+            // as the only path that would invite them.
+            || rawMessage.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase)
+            // Cloud Identity groups.memberships.create — 400 / Error(4002)
+            // "Membership ... cannot be created since precondition check failed."
+            // The precondition is that the entity resolves to a real identity.
+            || rawMessage.Contains("precondition check failed", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("error(4002)", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("membership cannot be created", StringComparison.OrdinalIgnoreCase);
 
     private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt)
     {
