@@ -194,9 +194,10 @@ public class IdentityColumnReadAnalyzerTests
     [HumansFact]
     public async Task Fires_on_property_pattern_read()
     {
-        // Property patterns (`u is { Email: not null }`) read the member via
-        // IPropertySubpatternOperation, not IPropertyReferenceOperation. The
-        // analyzer must catch this bypass.
+        // Property patterns (`u is { Email: not null }`) fire IPropertyReferenceOperation
+        // because IPropertySubpatternOperation.Member wraps a PropertyReference child —
+        // registering only PropertyReference catches this path without double-counting.
+        // This test is regression coverage: the pattern is NOT a bypass.
         var source = DomainStub + """
 
             namespace Some.App.Code
@@ -220,7 +221,8 @@ public class IdentityColumnReadAnalyzerTests
     [HumansFact]
     public async Task Fires_on_switch_property_pattern_read()
     {
-        // Same bypass via `switch` expression property pattern.
+        // Same path via `switch` expression property pattern — also caught by
+        // IPropertyReferenceOperation, not a bypass. Regression coverage.
         var source = DomainStub + """
 
             namespace Some.App.Code

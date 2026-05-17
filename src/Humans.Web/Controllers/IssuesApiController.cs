@@ -279,7 +279,7 @@ public class IssuesApiController : ControllerBase
         i.PageUrl,
         i.UserAgent,
         i.AdditionalContext,
-        ReporterName = i.Reporter?.DisplayName,
+        ReporterName = reporter?.BurnerName ?? i.Reporter?.DisplayName,
         // ReporterEmail comes from the optional UserInfo (sourced via
         // IUserService) so detail and list endpoints stay shape-consistent
         // without reading User.Email directly. List endpoint that uses
