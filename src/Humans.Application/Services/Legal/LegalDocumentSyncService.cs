@@ -196,6 +196,12 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             version.CreatedAt,
             version.ChangesSummary);
 
+    public async Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)
+    {
+        var documents = await _repository.GetActiveRequiredDocumentsAsync(cancellationToken);
+        return documents.Count;
+    }
+
     public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
     {

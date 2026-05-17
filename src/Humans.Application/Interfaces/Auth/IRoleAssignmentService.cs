@@ -105,6 +105,13 @@ public interface IRoleAssignmentService : IApplicationService
     /// Used by the agent snapshot provider.
     /// </summary>
     Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of currently active role assignments grouped by role
+    /// name. Used by the metrics snapshot refresh so the metrics service does
+    /// not need to read <c>role_assignments</c> directly.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default);
 }
 
 public sealed record RoleAssignmentSnapshot(

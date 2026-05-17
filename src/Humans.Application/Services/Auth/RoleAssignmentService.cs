@@ -332,6 +332,9 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             .ToList();
     }
 
+    public Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default) =>
+        _repository.GetActiveCountsByRoleAsync(_clock.GetCurrentInstant(), ct);
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var assignments = await _repository.GetByUserIdAsync(userId, ct);

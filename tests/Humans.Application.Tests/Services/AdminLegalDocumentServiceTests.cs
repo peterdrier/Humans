@@ -269,5 +269,8 @@ public class AdminLegalDocumentServiceTests : IDisposable
         {
             return Task.FromResult<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>>([]);
         }
+
+        public Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(0);
     }
 }

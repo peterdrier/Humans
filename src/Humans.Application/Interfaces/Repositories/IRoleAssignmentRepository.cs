@@ -127,6 +127,14 @@ public interface IRoleAssignmentRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Counts active assignments at <paramref name="now"/> grouped by role
+    /// name. Used by the metrics snapshot refresh.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
+        Instant now,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Writes
     // ==========================================================================
