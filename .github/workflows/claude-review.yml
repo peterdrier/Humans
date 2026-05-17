@@ -32,10 +32,10 @@ name: claude-review
 #               do NOT check out the PR head into the workspace root.
 #
 # Run cadence:
-#   Auto: on PR open (non-draft), draft → ready_for_review, AND every push
-#         ('synchronize'). 'synchronize' is normally OFF because review-every-
-#         push burns budget; it's enabled here while we have spare quota to
-#         burn. Revert by removing 'synchronize' from both trigger 'types'.
+#   Auto: on PR open (non-draft) and draft → ready_for_review. 'synchronize'
+#         (every push) is intentionally OFF — review-every-push burns budget
+#         and re-flags suppressed findings churns reviewer attention. Enable
+#         by adding 'synchronize' to both trigger 'types' if quota allows.
 #   On-demand: any OWNER/MEMBER/COLLABORATOR posting a comment starting with
 #              `/review` on the PR triggers a fresh run. The docs-only skip
 #              does NOT apply to comment-triggered runs (explicit ask wins).
@@ -58,9 +58,9 @@ name: claude-review
 
 on:
   pull_request:
-    types: [opened, ready_for_review, synchronize]
+    types: [opened, ready_for_review]
   pull_request_target:
-    types: [opened, ready_for_review, synchronize]
+    types: [opened, ready_for_review]
   issue_comment:
     types: [created]
   # Note: do NOT use trigger-level paths-ignore here. For pull_request /

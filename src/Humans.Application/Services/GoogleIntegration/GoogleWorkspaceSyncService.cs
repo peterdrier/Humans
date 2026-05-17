@@ -196,11 +196,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
     // ─── Gateway — add/remove per user per resource ───
 
-    /// <inheritdoc />
-    /// <remarks>
-    /// GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None.
-    /// <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.
-    /// </remarks>
+    /// <summary>GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None. <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.</summary>
     private async Task AddUserToDriveAsync(
         GoogleResource resource,
         string userEmail,
