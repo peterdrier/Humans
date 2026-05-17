@@ -28,3 +28,6 @@ src/Humans.Infrastructure/Migrations/20260414215135_RestrictGoogleResourceTeamDe
 src/Humans.Infrastructure/Migrations/20260426185621_DropCampRoleIsRequired.cs:DropColumn(name=IsRequired)#1
 src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(name=ContainerCount)#1
 src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(name=ContainerNotes)#1
+src/Humans.Infrastructure/Migrations/20260517154100_DropCrossDomainTeamFkConstraints.cs:DropForeignKey(name=FK_budget_line_items_teams_ResponsibleTeamId)#1
+src/Humans.Infrastructure/Migrations/20260517154100_DropCrossDomainTeamFkConstraints.cs:DropForeignKey(name=FK_google_resources_teams_TeamId)#1
+src/Humans.Infrastructure/Migrations/20260517154100_DropCrossDomainTeamFkConstraints.cs:DropForeignKey(name=FK_legal_documents_teams_TeamId)#1

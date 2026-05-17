@@ -17,7 +17,6 @@ src/Humans.Infrastructure/Data/Configurations/Email/EmailOutboxMessageConfigurat
 src/Humans.Infrastructure/Data/Configurations/Email/EmailOutboxMessageConfiguration.cs:HasOne<User>(Email->Users)#1
 src/Humans.Infrastructure/Data/Configurations/Feedback/FeedbackReportConfiguration.cs:HasOne(=>.User)(Feedback->Users)#1
 src/Humans.Infrastructure/Data/Configurations/Legal/ConsentRecordConfiguration.cs:HasOne(=>.User)(Legal->Users)#1
-src/Humans.Infrastructure/Data/Configurations/Legal/LegalDocumentConfiguration.cs:HasOne(=>.Team)(Legal->Teams)#1
 src/Humans.Infrastructure/Data/Configurations/Notifications/NotificationRecipientConfiguration.cs:HasOne(=>.User)(Notifications->Users)#1
 src/Humans.Infrastructure/Data/Configurations/Profiles/CommunicationPreferenceConfiguration.cs:HasOne<User>(Profiles->Users)#1
 src/Humans.Infrastructure/Data/Configurations/Profiles/ProfileConfiguration.cs:HasOne<User>(Profiles->Users)#1
