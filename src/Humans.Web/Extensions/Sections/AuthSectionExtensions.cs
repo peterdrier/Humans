@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Services.Auth;
 using Humans.Web.Authorization;
@@ -20,8 +19,10 @@ internal static class AuthSectionExtensions
         // layer service. Singleton + IDbContextFactory pattern (§15b) so the
         // repository owns context lifetime. CachingRoleAssignmentService
         // (issue #749) caches the row set so cross-section reads such as
-        // GetActiveCountsByRoleAsync derive from RAM, invalidated wholesale
-        // by RoleAssignmentSaveChangesInterceptor.
+        // GetActiveCountsByRoleAsync derive from RAM. Invalidation is
+        // service-level: RoleAssignmentService's writes call
+        // IRoleAssignmentCacheInvalidator.InvalidateAll() directly. Single
+        // writer (this service) = no EF interceptor needed.
         services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
@@ -48,12 +49,6 @@ internal static class AuthSectionExtensions
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingRoleAssignmentService>());
-
-        // SaveChanges interceptor — fires the wholesale role-assignment cache
-        // flush whenever EF persists a write to role_assignments. Registered
-        // Singleton so the same instance is added to both AddDbContext and
-        // AddDbContextFactory option pipelines (see Program.cs).
-        services.AddSingleton<RoleAssignmentSaveChangesInterceptor>();
 
         // Auth section (§15 migration, issue #551) — Application-layer
         // MagicLinkService + Infrastructure-owned token/url builder and

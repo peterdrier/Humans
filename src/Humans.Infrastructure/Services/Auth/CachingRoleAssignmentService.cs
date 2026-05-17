@@ -164,6 +164,10 @@ public sealed class CachingRoleAssignmentService
         inner.InvalidateNavBadgeCache();
     }
 
+    // Implemented directly on the decorator (it IS the cache invalidator);
+    // no need to flow through the inner service.
+    void IRoleAssignmentService.InvalidateRoleAssignmentCache() => InvalidateAll();
+
     // ==========================================================================
     // Inner-service resolution
     // ==========================================================================

@@ -271,6 +271,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             _roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
             _roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             _roleAssignmentService.InvalidateNavBadgeCache();
+            _roleAssignmentService.InvalidateRoleAssignmentCache();
             _notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
 
             // T-04: source's UserConsentInfo is now a tombstone; target's
