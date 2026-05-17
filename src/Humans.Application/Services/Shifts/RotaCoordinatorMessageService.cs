@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
@@ -33,7 +32,6 @@ namespace Humans.Application.Services.Shifts;
 public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageService
 {
     private readonly IShiftSignupRepository _signupRepo;
-    private readonly IShiftManagementService _shiftMgmt;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
@@ -41,14 +39,12 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
 
     public RotaCoordinatorMessageService(
         IShiftSignupRepository signupRepo,
-        IShiftManagementService shiftMgmt,
         IUserService userService,
         IEmailService emailService,
         IAuditLogService auditLogService,
         ILogger<RotaCoordinatorMessageService> logger)
     {
         _signupRepo = signupRepo;
-        _shiftMgmt = shiftMgmt;
         _userService = userService;
         _emailService = emailService;
         _auditLogService = auditLogService;
@@ -114,8 +110,8 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
 
             var request = new CoordinatorRotaMessageRequest(
                 RecipientEmail: email,
-                RecipientName: recipient.EmailGreetingName,
-                SenderName: sender.EmailGreetingName,
+                RecipientName: recipient.BurnerName,
+                SenderName: sender.BurnerName,
                 SenderEmail: sender.Email,
                 RotaName: rota.Name,
                 MessageText: messageText,

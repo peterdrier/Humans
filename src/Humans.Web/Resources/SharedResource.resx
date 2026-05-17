@@ -2277,6 +2277,7 @@
   <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts on this rota are:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=rota name, {3}=message body, {4}=shift list HTML, {5}=sender contact block HTML</comment></data>
   <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve"><value>(no shifts on this rota yet)</value></data>
   <data name="EmailRota_Title" xml:space="preserve"><value>Email rota: {0}</value><comment>{0} = rota name</comment></data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve"><value>Email rota</value></data>
   <data name="EmailRota_Heading" xml:space="preserve"><value>Email everyone on rota: {0}</value><comment>{0} = rota name</comment></data>
   <data name="EmailRota_RecipientsHeading" xml:space="preserve"><value>Recipients ({0})</value><comment>{0} = recipient count</comment></data>
   <data name="EmailRota_NoRecipients" xml:space="preserve"><value>No one is signed up to this rota yet.</value></data>

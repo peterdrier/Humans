@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Helpers;
@@ -366,10 +367,13 @@ public class ShiftAdminController : HumansTeamControllerBase
     }
 
     // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
+    // Management scope (Admin + VolunteerCoordinator + dept coordinator); matches
+    // the existing rota CRUD authorization gate and the "coordinator role" wording
+    // in the spec. Explicitly excludes NoInfoAdmin per CanManageDepartmentAsync.
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId)
     {
-        var (teamError, _, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
@@ -392,7 +396,7 @@ public class ShiftAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId, EmailRotaViewModel model)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);

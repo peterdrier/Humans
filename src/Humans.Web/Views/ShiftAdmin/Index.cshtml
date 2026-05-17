@@ -205,6 +205,14 @@
                             }
                         </form>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-rota-@rota.Id.ToString("N")">Edit</button>
+                        @* Issue nobodies-collective/Humans#732 — coordinator "Email a rota" action. *@
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-action="EmailRota"
+                           asp-route-slug="@Model.Department.Slug"
+                           asp-route-rotaId="@rota.Id"
+                           title="@Localizer["EmailRota_Button"]">
+                            <i class="fa-solid fa-envelope"></i>
+                        </a>
                         @if (Model.AllDepartments.Count > 0)
                         {
                             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#move-rota-@rota.Id.ToString("N")" title="Move to another team">
