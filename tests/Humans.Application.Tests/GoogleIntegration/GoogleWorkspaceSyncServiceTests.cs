@@ -364,6 +364,68 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
     }
 
+    [HumansFact]
+    public async Task AddUserToDriveAsync_WhenPreconditionCheckFailed_DoesNotMarkGoogleEmailRejected()
+    {
+        // Issue nobodies-collective/Humans#677 — Drive returns HTTP 400
+        // "precondition check failed" for admin-configured policies like
+        // sharing-outside-domain restrictions on a shared drive, NOT just for
+        // missing Google accounts. The Cloud Identity Group path treats that
+        // phrase as a target-rejection, but the Drive path must not — flipping
+        // GoogleEmailStatus to Rejected would permanently silence retries for
+        // what is actually an admin-configuration issue affecting every user.
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.None);
+
+        var user = MakeUser(TestUserId, TestUserEmail);
+        _userService.GetByIdAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(user);
+
+        _userEmailService
+            .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<UserEmailRowSnapshot>)[
+                new UserEmailRowSnapshot(
+                    Guid.NewGuid(),
+                    TestUserId,
+                    TestUserEmail,
+                    IsVerified: true,
+                    Provider: null,
+                    ProviderKey: null,
+                    IsGoogle: true,
+                    IsPrimary: false,
+                    Visibility: null,
+                    VerificationSentAt: null,
+                    CreatedAt: default,
+                    UpdatedAt: default)
+            ]);
+
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+        _resourceRepository
+            .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
+
+        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((Team?)null);
+        _teamService.GetUserTeamsAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        _drivePermissions
+            .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(
+                DrivePermissionCreateOutcome.Failed,
+                new GoogleClientError(
+                    400,
+                    "Precondition check failed for shared drive sharing policy.")));
+
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
+
+        await _userService.DidNotReceiveWithAnyArgs()
+            .TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

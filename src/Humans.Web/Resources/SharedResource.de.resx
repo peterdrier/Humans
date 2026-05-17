@@ -5030,6 +5030,12 @@
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Prüfe deinen Posteingang und klicke auf den Link in der Bestätigungs-E-Mail, um deine Adresse zu bestätigen.</value>
   </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Google-Synchronisierung für diese Adresse pausiert.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google hat die ausgewählte Google-Adresse abgelehnt, als versucht wurde, Drive-Zugriff zu gewähren oder dich einer Gruppe hinzuzufügen — meist weil die Adresse mit keinem Google-Konto verknüpft ist. Neue Synchronisationsversuche werden ausgesetzt, bis ein Administrator das Problem behebt. Wähle eine andere von Google unterstützte Adresse und bitte einen Administrator, den abgelehnten Status zu löschen.</value>
+  </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Sichtbarkeit</value>
   </data>

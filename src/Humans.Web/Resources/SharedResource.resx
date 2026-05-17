@@ -2026,6 +2026,8 @@
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
   <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve"><value>Google sync paused for this address.</value></data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve"><value>Google rejected your selected Google email when trying to grant access to Drive or add you to a Group — typically because the address is not backed by a Google account. New sync attempts are suppressed until an administrator resolves this. Select a different Google-backed email and ask an admin to clear the rejected state.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibility</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Merge pending</value></data>

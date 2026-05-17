@@ -309,7 +309,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        if (!GoogleGroupSyncService.IsTargetMemberRejection(rawMessage))
+        // Drive-specific predicate — generic Cloud Identity phrases like
+        // "precondition check failed" appear in Drive responses too, but for
+        // unrelated admin-configured sharing-policy reasons. Only flip
+        // GoogleEmailStatus on phrases unique to Drive's no-Google-account
+        // signal. Issue nobodies-collective/Humans#677.
+        if (!GoogleGroupSyncService.IsDriveTargetRejection(rawMessage))
         {
             return;
         }
