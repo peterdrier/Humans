@@ -93,7 +93,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         if (requests.Count == 0) return [];
 
         var userIds = CollectUserIds(requests);
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
         return requests.Select(r => ToSnapshot(r, users)).ToList();
     }
 
@@ -103,7 +103,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         if (request is null) return null;
 
         var userIds = CollectUserIds([request]);
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
         return ToSnapshot(request, users);
     }
 
@@ -175,7 +175,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
     private static AccountMergeRequestSnapshot ToSnapshot(
         AccountMergeRequest request,
-        IReadOnlyDictionary<Guid, User> users) =>
+        IReadOnlyDictionary<Guid, UserInfo> users) =>
         new(
             request.Id,
             request.Email,
@@ -185,19 +185,19 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             request.CreatedAt,
             request.ResolvedAt,
             request.ResolvedByUserId is Guid id && users.TryGetValue(id, out var rb)
-                ? rb.DisplayName
+                ? rb.BurnerName
                 : null,
             request.AdminNotes);
 
     private static AccountMergeUserSnapshot ToUserSnapshot(
         Guid userId,
-        IReadOnlyDictionary<Guid, User> users)
+        IReadOnlyDictionary<Guid, UserInfo> users)
     {
         if (users.TryGetValue(userId, out var user))
         {
             return new(
                 user.Id,
-                user.DisplayName,
+                user.BurnerName,
                 user.Email,
                 user.ProfilePictureUrl,
                 user.PreferredLanguage,
