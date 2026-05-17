@@ -380,7 +380,7 @@ public class CampAdminController : HumansControllerBase
                     r.Assignees
                         .OrderBy(a => a.AssignedAt)
                         .Select(a => new CampRoleDrillDownAssigneeViewModel(
-                            a.UserId, a.DisplayName, a.GoogleEmail))
+                            a.UserId, a.GoogleEmail))
                         .ToList()))
                 .ToList(),
         };

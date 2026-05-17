@@ -389,16 +389,10 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var allUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
-        IReadOnlyDictionary<Guid, UserInfo> users = allUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(allUserIds, ct);
         var emailsByUserId = allUserIds.Count == 0
             ? new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>()
             : await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
 
-        // Display sort happens at the presentation layer (CampAdminController.RolesDrillDown
-        // assembles the view model and orders rows by CampName) per
-        // memory/architecture/display-sort-in-controllers.md.
         var rows = seasons
             .Select(s =>
             {
@@ -406,9 +400,8 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
                     ? list.Select(a =>
                     {
                         var userId = a.CampMember.UserId;
-                        var displayName = users.TryGetValue(userId, out var u) ? u.BurnerName : "(unknown)";
                         var googleEmail = TryGetGoogleEmail(userId, emailsByUserId);
-                        return new CampRoleDrillDownAssignee(userId, displayName, googleEmail, a.AssignedAt);
+                        return new CampRoleDrillDownAssignee(userId, googleEmail, a.AssignedAt);
                     }).ToList()
                     : new List<CampRoleDrillDownAssignee>();
 

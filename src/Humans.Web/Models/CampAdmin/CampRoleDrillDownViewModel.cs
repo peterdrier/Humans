@@ -28,5 +28,4 @@ public sealed record CampRoleDrillDownCampRowViewModel(
 
 public sealed record CampRoleDrillDownAssigneeViewModel(
     Guid UserId,
-    string DisplayName,
     string? GoogleEmail);

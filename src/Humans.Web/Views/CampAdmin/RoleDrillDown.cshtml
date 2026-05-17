@@ -127,8 +127,8 @@
                                     <ul class="list-unstyled mb-0">
                                         @foreach (var a in row.Assignees)
                                         {
-                                            <li>
-                                                <strong>@a.DisplayName</strong>
+                                            <li class="mb-2">
+                                                <vc:human user-id="@a.UserId" layout="AvatarName" size="60" />
                                                 @if (!string.IsNullOrWhiteSpace(a.GoogleEmail))
                                                 {
                                                     <span class="text-muted small ms-1">&lt;@a.GoogleEmail&gt;</span>
