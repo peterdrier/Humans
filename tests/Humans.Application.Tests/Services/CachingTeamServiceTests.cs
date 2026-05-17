@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -23,6 +24,7 @@ public sealed class CachingTeamServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly ServiceProvider _serviceProvider;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly CachingTeamService _service;
 
     public CachingTeamServiceTests()
@@ -42,8 +44,14 @@ public sealed class CachingTeamServiceTests : IDisposable
             });
         userService.StubGetUserInfosFromDb(_options);
 
+        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        _roleAssignmentService
+            .IsUserBoardMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
         var services = new ServiceCollection();
         services.AddSingleton(userService);
+        services.AddSingleton(_roleAssignmentService);
         services.AddKeyedScoped<ITeamService>(
             CachingTeamService.InnerServiceKey,
             (_, _) => Substitute.For<ITeamService>());
@@ -304,6 +312,240 @@ public sealed class CachingTeamServiceTests : IDisposable
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamService>(
             CachingTeamService.InnerServiceKey);
         await inner.DidNotReceive().GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // GetMyTeamMembershipsAsync — cache-served (issue nobodies-collective/Humans#748)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_Coordinator_GetsPendingCountsForManageableNonSystemTeams()
+    {
+        var user = SeedUser("Coordinator");
+        var managedTeam = SeedTeam("Alpha");
+        var systemTeam = SeedTeam("Volunteers");
+        systemTeam.SystemTeamType = SystemTeamType.Volunteers;
+        SeedTeamMember(managedTeam.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(systemTeam.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedJoinRequest(managedTeam.Id, SeedUser("Requester A").Id);
+        SeedJoinRequest(systemTeam.Id, SeedUser("Requester B").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        result.Should().HaveCount(2);
+        result.Single(m => m.TeamId == managedTeam.Id).PendingRequestCount.Should().Be(1);
+        result.Single(m => m.TeamId == managedTeam.Id).CanLeave.Should().BeTrue();
+        result.Single(m => m.TeamId == systemTeam.Id).PendingRequestCount.Should().Be(0);
+        result.Single(m => m.TeamId == systemTeam.Id).CanLeave.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_BoardMember_GetsPendingCountsForRegularMemberships()
+    {
+        var user = SeedUser("Board Human");
+        _roleAssignmentService
+            .IsUserBoardMemberAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedJoinRequest(team.Id, SeedUser("Requester").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        result.Should().ContainSingle();
+        result[0].Role.Should().Be(TeamMemberRole.Member);
+        result[0].PendingRequestCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_Coordinator_AggregatesChildTeamPendingCounts()
+    {
+        var user = SeedUser("Department Coordinator");
+        var department = SeedTeam("Department");
+        var child = SeedTeam("Child");
+        child.ParentTeamId = department.Id;
+        SeedTeamMember(department.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedJoinRequest(department.Id, SeedUser("Direct Requester").Id);
+        SeedJoinRequest(child.Id, SeedUser("Child Requester A").Id);
+        SeedJoinRequest(child.Id, SeedUser("Child Requester B").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        var deptRow = result.Should().ContainSingle(m => m.TeamId == department.Id).Subject;
+        deptRow.PendingRequestCount.Should().Be(3);
+        deptRow.TeamName.Should().Be("Department");
+    }
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_InheritedCoordinator_GetsPendingCountForChildMembership()
+    {
+        // User coordinates the parent and is a regular Member on the child.
+        // Per CanUserApproveRequestsForTeamAsync's parent-walk semantics, they
+        // can manage the child team, so the child membership row must surface
+        // its pending count.
+        var user = SeedUser("Inherited Coordinator");
+        var parent = SeedTeam("Parent");
+        var child = SeedTeam("Child");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
+        SeedJoinRequest(child.Id, SeedUser("Child Requester").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        var childRow = result.Should().ContainSingle(m => m.TeamId == child.Id).Subject;
+        childRow.Role.Should().Be(TeamMemberRole.Member);
+        childRow.PendingRequestCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_NonCoordinatorNonBoard_DoesNotCountPending()
+    {
+        var user = SeedUser("Regular Member");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedJoinRequest(team.Id, SeedUser("Requester").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        result.Should().ContainSingle();
+        result[0].PendingRequestCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_ChildTeamMembership_DisplayNameIsParentDashChild()
+    {
+        var user = SeedUser("Alice");
+        var parent = SeedTeam("Comms");
+        var child = SeedTeam("Logo");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        var row = result.Should().ContainSingle().Subject;
+        row.TeamName.Should().Be("Comms - Logo");
+    }
+
+    [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_WarmCache_DoesNotCallInnerService()
+    {
+        var user = SeedUser("Alice");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedJoinRequest(team.Id, SeedUser("Requester").Id);
+        await _dbContext.SaveChangesAsync();
+
+        // Drive a first call to warm the cache (which uses the repository, not
+        // the inner service).
+        var first = await _service.GetMyTeamMembershipsAsync(user.Id);
+        first.Should().ContainSingle();
+        first[0].PendingRequestCount.Should().Be(1);
+
+        var inner = _serviceProvider.GetRequiredKeyedService<ITeamService>(
+            CachingTeamService.InnerServiceKey);
+
+        // A warm-cache second call must NOT touch the inner ITeamService — the
+        // T-01 zero-EF-on-warm assertion for GetMyTeamMembershipsAsync.
+        var second = await _service.GetMyTeamMembershipsAsync(user.Id);
+        second.Should().ContainSingle();
+
+        await inner.DidNotReceive()
+            .GetMyTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // Join-lifecycle invalidation — issue nobodies-collective/Humans#748
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_InvalidatesCache()
+    {
+        var team = SeedTeam("Alpha");
+        await _dbContext.SaveChangesAsync();
+
+        // Warm the cache so we can observe invalidation by counter.
+        await _service.GetTeamAsync(team.Id);
+        var before = _service.BulkInvalidations;
+
+        await _service.RequestToJoinTeamAsync(team.Id, Guid.NewGuid(), null);
+
+        _service.BulkInvalidations.Should().BeGreaterThan(before);
+    }
+
+    [HumansFact]
+    public async Task WithdrawJoinRequestAsync_InvalidatesCache()
+    {
+        var team = SeedTeam("Alpha");
+        await _dbContext.SaveChangesAsync();
+        await _service.GetTeamAsync(team.Id);
+        var before = _service.BulkInvalidations;
+
+        await _service.WithdrawJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid());
+
+        _service.BulkInvalidations.Should().BeGreaterThan(before);
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_InvalidatesCache()
+    {
+        var team = SeedTeam("Alpha");
+        await _dbContext.SaveChangesAsync();
+        await _service.GetTeamAsync(team.Id);
+        var before = _service.BulkInvalidations;
+
+        await _service.RejectJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), "reason");
+
+        _service.BulkInvalidations.Should().BeGreaterThan(before);
+    }
+
+    [HumansFact]
+    public async Task ApproveJoinRequestAsync_InvalidatesCache()
+    {
+        var team = SeedTeam("Alpha");
+        await _dbContext.SaveChangesAsync();
+        await _service.GetTeamAsync(team.Id);
+        var before = _service.BulkInvalidations;
+
+        // Inner is an unconfigured NSubstitute mock; ApproveJoinRequestAsync
+        // returns default (null TeamMember) — that's fine for this assertion.
+        await _service.ApproveJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), null);
+
+        _service.BulkInvalidations.Should().BeGreaterThan(before);
+    }
+
+    [HumansFact]
+    public async Task WarmAllAsync_PopulatesTeamInfoPendingRequestCount()
+    {
+        var team = SeedTeam("Alpha");
+        SeedJoinRequest(team.Id, SeedUser("Requester A").Id);
+        SeedJoinRequest(team.Id, SeedUser("Requester B").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var info = await _service.GetTeamAsync(team.Id);
+
+        info.Should().NotBeNull();
+        info!.PendingRequestCount.Should().Be(2);
+    }
+
+    private TeamJoinRequest SeedJoinRequest(Guid teamId, Guid userId)
+    {
+        var request = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            UserId = userId,
+            Status = TeamJoinRequestStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.TeamJoinRequests.Add(request);
+        return request;
     }
 
     public void Dispose()

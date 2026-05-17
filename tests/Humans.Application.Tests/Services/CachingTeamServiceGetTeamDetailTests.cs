@@ -47,6 +47,9 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _teamRepository
             .GetAllRoleDefinitionsByTeamAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<TeamRoleDefinition>>());
+        _teamRepository
+            .GetPendingCountsByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
