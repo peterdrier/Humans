@@ -363,26 +363,6 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             "User {UserId} submitted application {ApplicationId}",
             userId, application.Id);
 
-        try
-        {
-            await _notificationService.SendToRoleAsync(
-                NotificationSource.ApplicationSubmitted,
-                NotificationClass.Actionable,
-                NotificationPriority.Normal,
-                $"New {tier} application submitted",
-                RoleNames.Board,
-                body: $"A new {tier} application requires Board review.",
-                actionUrl: "/Governance/BoardVoting",
-                actionLabel: "Review \u2192",
-                cancellationToken: ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Failed to dispatch ApplicationSubmitted notification for application {ApplicationId}",
-                application.Id);
-        }
-
         return new ApplicationDecisionResult(true, ApplicationId: application.Id);
     }
 

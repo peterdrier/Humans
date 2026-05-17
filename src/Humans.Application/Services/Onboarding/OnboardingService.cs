@@ -282,24 +282,6 @@ public sealed class OnboardingService : IOnboardingService
         if (!set)
             return false;
 
-        try
-        {
-            await _notificationService.SendToRoleAsync(
-                NotificationSource.ConsentReviewNeeded,
-                NotificationClass.Actionable,
-                NotificationPriority.High,
-                "New consent review needed",
-                RoleNames.ConsentCoordinator,
-                body: "A human has completed all required consents and needs review.",
-                actionUrl: "/OnboardingReview",
-                actionLabel: "Review →",
-                cancellationToken: ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
-        }
-
         return true;
     }
 

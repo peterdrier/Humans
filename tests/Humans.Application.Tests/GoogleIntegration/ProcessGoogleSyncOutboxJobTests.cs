@@ -5,7 +5,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -29,7 +28,6 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
-    private readonly INotificationService _notificationService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
     private readonly ProcessGoogleSyncOutboxJob _job;
@@ -57,7 +55,6 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
-        _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
@@ -70,7 +67,6 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             _userService,
             _teamService,
             _googleSyncService,
-            _notificationService,
             _metrics,
             _clock,
             logger);
@@ -122,7 +118,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_FinalFailure_SendsAdminNotificationToGoogleSyncDashboard()
+    public async Task ExecuteAsync_FinalFailure_RecordsLastErrorAndExhaustsRetries()
     {
         var outboxEvent = await SeedOutboxEventAsync(
             GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources,
@@ -137,16 +133,11 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _notificationService.Received(1).SendToRoleAsync(
-            NotificationSource.SyncError,
-            NotificationClass.Actionable,
-            NotificationPriority.High,
-            "Google sync event failed after all retries",
-            RoleNames.Admin,
-            Arg.Any<string?>(),
-            "/Google/SyncOutbox",
-            "View →",
-            Arg.Any<CancellationToken>());
+        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync();
+        updatedEvent.RetryCount.Should().Be(10);
+        updatedEvent.LastError.Should().Contain("google timeout");
+        updatedEvent.FailedPermanently.Should().BeTrue();
+        updatedEvent.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
     private async Task<GoogleSyncOutboxEvent> SeedOutboxEventAsync(string eventType, int retryCount = 0)

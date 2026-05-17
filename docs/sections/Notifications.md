@@ -93,6 +93,7 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 - `Actionable` notifications cannot be dismissed (dismiss requires `Class == Informational` in the repository); they can only be resolved via `Resolve` or click-through into the underlying work item.
 - Notification fan-out should be fire-and-forget from the caller's perspective. (Note: the dispatch methods themselves are not `try/catch`-wrapped today — callers wrap the call when needed; see `design-rules` §7a for the current pattern.)
 - In-app notifications and email notifications are separate surfaces — emitting a notification does not automatically queue an email. Sections that need both send both.
+- Role-fanout `Actionable` notifications (`SendToRoleAsync(…, Actionable, …)`) must **not** duplicate a meter. If a role-gated meter already counts the same work (e.g. "Applications pending your vote" for Board, "Consent reviews pending" for Consent Coordinators), the meter is the surface and a stored per-event row would just be noise. Role-fanout `Actionable` is reserved for sources without a corresponding meter. Per-recipient `Actionable` (via `SendAsync(…, recipientUserIds)` to specific humans) is fine — it's not a fan-out.
 
 ## Negative Access Rules
 

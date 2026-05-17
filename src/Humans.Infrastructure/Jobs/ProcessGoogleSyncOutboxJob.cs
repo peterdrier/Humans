@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -44,7 +43,6 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
-    private readonly INotificationService _notificationService;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ProcessGoogleSyncOutboxJob> _logger;
@@ -55,7 +53,6 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         IUserService userService,
         ITeamService teamService,
         IGoogleSyncService googleSyncService,
-        INotificationService notificationService,
         IHumansMetrics metrics,
         IClock clock,
         ILogger<ProcessGoogleSyncOutboxJob> logger)
@@ -65,7 +62,6 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         _userService = userService;
         _teamService = teamService;
         _googleSyncService = googleSyncService;
-        _notificationService = notificationService;
         _metrics = metrics;
         _clock = clock;
         _logger = logger;
@@ -177,30 +173,6 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                         retryCount,
                         MaxRetryCount);
 
-                    // Notify admins on final failure (exhausted retries)
-                    if (exhausted)
-                    {
-                        var snippet = ex.Message.Length > 200 ? ex.Message[..200] : ex.Message;
-                        try
-                        {
-                            await _notificationService.SendToRoleAsync(
-                                NotificationSource.SyncError,
-                                NotificationClass.Actionable,
-                                NotificationPriority.High,
-                                "Google sync event failed after all retries",
-                                RoleNames.Admin,
-                                body: $"Event {outboxEvent.EventType} for team {outboxEvent.TeamId} failed: {snippet}",
-                                actionUrl: "/Google/SyncOutbox",
-                                actionLabel: "View →",
-                                cancellationToken: cancellationToken);
-                        }
-                        catch (Exception notifEx)
-                        {
-                            _logger.LogError(notifEx,
-                                "Failed to dispatch SyncError notification for outbox event {OutboxId}",
-                                outboxEvent.Id);
-                        }
-                    }
                 }
             }
 
