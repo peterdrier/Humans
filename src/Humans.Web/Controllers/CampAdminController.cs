@@ -377,8 +377,11 @@ public class CampAdminController : HumansControllerBase
                 .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new CampRoleDrillDownCampRowViewModel(
                     r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
-                    r.Assignees.Select(a => new CampRoleDrillDownAssigneeViewModel(
-                        a.UserId, a.DisplayName, a.GoogleEmail)).ToList()))
+                    r.Assignees
+                        .OrderBy(a => a.AssignedAt)
+                        .Select(a => new CampRoleDrillDownAssigneeViewModel(
+                            a.UserId, a.DisplayName, a.GoogleEmail))
+                        .ToList()))
                 .ToList(),
         };
         return View("RoleDrillDown", vm);

@@ -222,9 +222,10 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
-                    "Error auto-provisioning Google Group for {GroupKey}; treating as failed lookup",
-                    claim.GroupKey);
+                _logger.LogWarning(
+                    "Error auto-provisioning Google Group for {GroupKey}; treating as failed lookup: {Error}",
+                    claim.GroupKey,
+                    ex.Message);
             }
         }
 

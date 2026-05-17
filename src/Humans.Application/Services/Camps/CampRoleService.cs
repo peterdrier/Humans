@@ -386,7 +386,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
         var assignmentsBySeason = assignments
             .GroupBy(a => a.CampSeasonId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(a => a.AssignedAt).ToList());
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var allUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
         IReadOnlyDictionary<Guid, UserInfo> users = allUserIds.Count == 0
@@ -408,7 +408,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
                         var userId = a.CampMember.UserId;
                         var displayName = users.TryGetValue(userId, out var u) ? u.BurnerName : "(unknown)";
                         var googleEmail = TryGetGoogleEmail(userId, emailsByUserId);
-                        return new CampRoleDrillDownAssignee(userId, displayName, googleEmail);
+                        return new CampRoleDrillDownAssignee(userId, displayName, googleEmail, a.AssignedAt);
                     }).ToList()
                     : new List<CampRoleDrillDownAssignee>();
 

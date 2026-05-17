@@ -64,14 +64,6 @@ public interface ICampRoleRepository : IRepository
     Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every assignment whose <c>CampMemberId</c> equals <paramref name="campMemberId"/>.
-    /// Used by post-mutation Google Group sync to identify the (role-definition, season)
-    /// pairs whose group keys need to be re-reconciled after a cascade removal.
-    /// </summary>
-    Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForMemberAsync(
-        Guid campMemberId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every role assignment ever made for the given user (joined to
     /// <see cref="CampRoleAssignment.CampMember"/> on <c>UserId</c>), with
     /// parent <see cref="CampSeason"/>, <c>Camp</c>, and

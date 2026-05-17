@@ -144,15 +144,6 @@ public sealed class CampRoleRepository : ICampRoleRepository
         return true;
     }
 
-    public async Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForMemberAsync(
-        Guid campMemberId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.CampMemberId == campMemberId)
-            .ToListAsync(ct);
-    }
-
     public async Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

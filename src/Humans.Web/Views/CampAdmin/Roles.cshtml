@@ -53,7 +53,7 @@
                         <tr>
                             <td>@row.SortOrder</td>
                             <td>
-                                <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@row.Slug"><strong>@row.Name</strong></a>
+                                <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(row.Slug) ? row.Id.ToString() : row.Slug)"><strong>@row.Name</strong></a>
                                 <br />
                                 <small class="text-muted"><code>@row.Slug</code></small>
                                 @if (!string.IsNullOrWhiteSpace(row.Description))
@@ -65,7 +65,7 @@
                             <td class="text-end">@row.SlotCount</td>
                             <td class="text-end">@row.MinimumRequired</td>
                             <td class="text-end">
-                                <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@row.Slug" class="btn btn-outline-secondary btn-sm">
+                                <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(row.Slug) ? row.Id.ToString() : row.Slug)" class="btn btn-outline-secondary btn-sm">
                                     <i class="fa-solid fa-table-list me-1"></i>Roster
                                 </a>
                                 <a asp-controller="CampAdmin" asp-action="EditRole" asp-route-id="@row.Id" class="btn btn-outline-primary btn-sm">

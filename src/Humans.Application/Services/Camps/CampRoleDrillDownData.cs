@@ -21,4 +21,5 @@ public sealed record CampRoleDrillDownCampRow(
 public sealed record CampRoleDrillDownAssignee(
     System.Guid UserId,
     string DisplayName,
-    string? GoogleEmail);
+    string? GoogleEmail,
+    NodaTime.Instant AssignedAt);
