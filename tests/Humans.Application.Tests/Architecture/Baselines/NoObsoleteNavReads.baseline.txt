@@ -47,12 +47,7 @@ src/Humans.Application/Services/Agent/AgentService.cs:User#3
 src/Humans.Application/Services/Agent/AgentService.cs:User#4
 src/Humans.Application/Services/Agent/AgentService.cs:User#5
 src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#1
-src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#2
-src/Humans.Application/Services/Camps/CampService.cs:User#1
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:User#1
-src/Humans.Application/Services/Governance/ApplicationDecisionService.cs:User#1
-src/Humans.Application/Services/Legal/AdminLegalDocumentService.cs:Team#1
-src/Humans.Application/Services/Notifications/NotificationInboxService.cs:User#1
 src/Humans.Application/Services/Profiles/ContactFieldService.cs:Team#1
 src/Humans.Application/Services/Profiles/ContactFieldService.cs:Team#2
 src/Humans.Application/Services/Profiles/DuplicateAccountService.cs:Team#1
@@ -88,8 +83,6 @@ src/Humans.Application/Services/Teams/TeamService.cs:Team#6
 src/Humans.Application/Services/Teams/TeamService.cs:Team#7
 src/Humans.Application/Services/Teams/TeamService.cs:Team#8
 src/Humans.Application/Services/Teams/TeamService.cs:Team#9
-src/Humans.Application/Services/Teams/TeamService.cs:User#1
-src/Humans.Application/Services/Teams/TeamService.cs:User#2
 src/Humans.Infrastructure/Data/Configurations/AuditLog/AuditLogEntryConfiguration.cs:ActorUser#1
 src/Humans.Infrastructure/Data/Configurations/Camps/CampConfiguration.cs:CreatedByUser#1
 src/Humans.Infrastructure/Data/Configurations/Camps/CampLeadConfiguration.cs:User#1
@@ -103,10 +96,8 @@ src/Humans.Infrastructure/Data/Configurations/Teams/TeamConfiguration.cs:Team#2
 src/Humans.Infrastructure/Data/Configurations/Teams/TeamRoleDefinitionConfiguration.cs:Team#1
 src/Humans.Infrastructure/Jobs/TermRenewalReminderJob.cs:User#1
 src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:ActorUser#1
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:Team#1
 src/Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs:OwningTeam#1
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:User#1
-src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:User#1
 src/Humans.Infrastructure/Repositories/Legal/LegalDocumentRepository.cs:Team#1
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:ResolvedByUser#1
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:User#1
@@ -159,12 +150,6 @@ src/Humans.Web/Authorization/Requirements/UserEmailAuthorizationHandler.cs:User#
 src/Humans.Web/Authorization/Requirements/UserEmailAuthorizationHandler.cs:User#2
 src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs:Team#1
 src/Humans.Web/Controllers/AdminMergeController.cs:Team#1
-src/Humans.Web/Controllers/CalendarController.cs:OwningTeam#1
-src/Humans.Web/Controllers/IssuesApiController.cs:SenderUser#1
-src/Humans.Web/Controllers/TeamAdminController.cs:User#1
-src/Humans.Web/Controllers/TeamAdminController.cs:User#2
-src/Humans.Web/Controllers/TeamController.cs:User#1
-src/Humans.Web/Controllers/TeamController.cs:User#2
 src/Humans.Web/Filters/AuthorizationPillFilter.cs:User#1
 src/Humans.Web/HangfireAuthorizationFilter.cs:User#1
 src/Humans.Web/HangfireAuthorizationFilter.cs:User#2

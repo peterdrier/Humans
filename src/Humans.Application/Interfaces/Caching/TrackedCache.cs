@@ -23,6 +23,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
 
     public string Name { get; }
 
+    /// <summary>Constructs a TrackedCache.</summary>
     /// <param name="name">Stable identifier for /Admin/CacheStats.</param>
     /// <param name="warmOnStartup">When true, StartAsync triggers WarmAllAsync; load-all readers call EnsureWarmedAsync on demand.</param>
     /// <param name="logger">Surfaces startup-warmup failures at Warning before they're swallowed — see memory/architecture/no-startup-guards.md.</param>
