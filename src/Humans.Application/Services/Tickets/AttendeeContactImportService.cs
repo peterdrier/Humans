@@ -69,7 +69,11 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
         foreach (var group in grouped)
         {
-            var members = group.ToList();
+            // Sort by VendorTicketId (ordinal) so the lead is stable across plan
+            // refreshes — GetUnmatchedActiveAttendeesAsync has no ORDER BY, so
+            // members[0] would otherwise depend on DB return order, and the
+            // admin's selected AttendeeId could shift between GET and POST.
+            var members = group.OrderBy(m => m.VendorTicketId, StringComparer.Ordinal).ToList();
             var lead = members[0];
             var additional = members.Skip(1).Select(m => m.Id).ToList();
             var observed = members
@@ -129,7 +133,10 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                         gid, d.Email);
                     continue;
                 }
-                if (!string.Equals(ga.AttendeeEmail, d.Email, StringComparison.OrdinalIgnoreCase))
+                // Trim both sides to match plan-time grouping (which uses Trim() +
+                // OrdinalIgnoreCase). Without trimming, "buyer@x.com" vs " buyer@x.com "
+                // would be treated as drift and silently skipped during fan-out.
+                if (!string.Equals(ga.AttendeeEmail?.Trim(), d.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning(
                         "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); skipping",
