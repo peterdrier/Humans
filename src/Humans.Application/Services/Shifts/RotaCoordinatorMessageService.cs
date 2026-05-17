@@ -142,9 +142,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
         EventSettings eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
-        // Shift may be null when the projection is partial; the repo includes Shift so this is defensive only.
         return userSignups
-            .Where(s => s.Shift is not null)
             .Select(s => new
             {
                 s.Shift.IsAllDay,
