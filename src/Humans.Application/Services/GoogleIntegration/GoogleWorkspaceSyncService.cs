@@ -228,8 +228,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     // Gateway — add/remove per user per resource
     // ==========================================================================
 
-    /// <inheritdoc />
-    /// <remarks>
+    /// <summary>
     /// GATEWAY METHOD: the only path that adds a user to a Google Drive resource.
     /// Respects SyncSettings — skips if GoogleDrive mode is None.
     /// </summary>
