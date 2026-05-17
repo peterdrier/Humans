@@ -1,5 +1,7 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Issues;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
@@ -25,11 +27,12 @@ namespace Humans.Application.Tests.Controllers;
 public class IssuesApiControllerTests
 {
     private readonly IIssuesService _issues = Substitute.For<IIssuesService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IssuesApiController _sut;
 
     public IssuesApiControllerTests()
     {
-        _sut = new IssuesApiController(_issues, NullLogger<IssuesApiController>.Instance);
+        _sut = new IssuesApiController(_issues, _users, NullLogger<IssuesApiController>.Instance);
     }
 
     private static Issue MakeIssue(
@@ -264,6 +267,58 @@ public class IssuesApiControllerTests
         var second = threadList[1];
         second.GetType().GetProperty("type")!.GetValue(second).Should().Be("audit");
         second.GetType().GetProperty("action")!.GetValue(second).Should().Be("IssueStatusChanged");
+    }
+
+    [HumansFact]
+    public async Task Get_emits_ReporterEmail_resolved_via_IUserService()
+    {
+        // Regression for PR 618 review: detail endpoint shape must include
+        // ReporterEmail (sourced from UserInfo.Email via IUserService) to
+        // stay consistent with the list endpoint, without reading User.Email.
+        var issue = MakeIssue();
+        _issues.GetIssueByIdAsync(issue.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Issue?>(issue));
+        _issues.GetThreadAsync(issue.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<IssueThreadEvent>>([]));
+
+        var reporterInfo = UserInfo.Create(
+            user: new User
+            {
+                Id = issue.ReporterUserId,
+                DisplayName = "Reporter",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+                Email = "reporter@example.com",
+            },
+            userEmails:
+            [
+                new UserEmail
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = issue.ReporterUserId,
+                    Email = "reporter@example.com",
+                    IsVerified = true,
+                    IsPrimary = true,
+                }
+            ],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+        _users.GetUserInfoAsync(issue.ReporterUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(reporterInfo));
+
+        var result = await _sut.Get(issue.Id);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var detail = ok.Value!;
+        var issueProp = detail.GetType().GetProperty("issue")!.GetValue(detail)!;
+        var reporterEmail = issueProp.GetType().GetProperty("ReporterEmail")!.GetValue(issueProp);
+        reporterEmail.Should().Be("reporter@example.com");
     }
 
     // ==========================================================================

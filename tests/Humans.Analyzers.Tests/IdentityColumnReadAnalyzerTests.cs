@@ -192,6 +192,59 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_property_pattern_read()
+    {
+        // Property patterns (`u is { Email: not null }`) read the member via
+        // IPropertySubpatternOperation, not IPropertyReferenceOperation. The
+        // analyzer must catch this bypass.
+        var source = DomainStub + """
+
+            namespace Some.App.Code
+            {
+                public class Reader
+                {
+                    public bool HasEmail(Humans.Domain.Entities.User u) =>
+                        u is { Email: not null };
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new IdentityColumnReadAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0019(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_on_switch_property_pattern_read()
+    {
+        // Same bypass via `switch` expression property pattern.
+        var source = DomainStub + """
+
+            namespace Some.App.Code
+            {
+                public class Reader
+                {
+                    public string Classify(Humans.Domain.Entities.User u) => u switch
+                    {
+                        { UserName: null } => "anon",
+                        _ => "named"
+                    };
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new IdentityColumnReadAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0019(d));
+    }
+
+    [HumansFact]
     public async Task Fires_on_string_interpolation_read()
     {
         var source = DomainStub + """

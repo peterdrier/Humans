@@ -73,6 +73,11 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
         if (!AssemblyScope.IsApplicationOrWeb(context.Compilation.Assembly))
             return;
 
+        // PropertyReference fires for direct reads (`user.Email`), reads inside
+        // property patterns (`is { Email: ... }`), and reads inside switch
+        // arm patterns. Subpattern operations always wrap a PropertyReference
+        // child, so registering only PropertyReference catches every read
+        // path without double-counting.
         context.RegisterOperationAction(AnalyzePropertyReference, OperationKind.PropertyReference);
     }
 
