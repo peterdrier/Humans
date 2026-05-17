@@ -110,7 +110,6 @@ src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:User#1
 src/Humans.Infrastructure/Repositories/Legal/LegalDocumentRepository.cs:Team#1
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:ResolvedByUser#1
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:User#1
-src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:ResolvedByUser#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#10
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#11

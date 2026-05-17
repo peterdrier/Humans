@@ -5030,6 +5030,12 @@
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Revisa la teva safata d’entrada i fes clic a l’enllaç del correu de verificació per confirmar la teva adreça.</value>
   </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Sincronització de Google pausada per a aquesta adreça.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google ha rebutjat el correu de Google seleccionat en intentar concedir accés a Drive o afegir-te a un grup — normalment perquè l’adreça no està vinculada a un compte de Google. Els nous intents de sincronització es suprimeixen fins que un administrador ho resolgui. Selecciona un altre correu vinculat a un compte de Google i demana a un administrador que esborri l’estat rebutjat.</value>
+  </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Visibilitat</value>
   </data>

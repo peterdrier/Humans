@@ -122,6 +122,15 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .OrderBy(d => d.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<ShiftSignup>> GetActiveByRotaAsync(
+        Guid rotaId, CancellationToken ct = default) =>
+        await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift)
+            .Where(d => d.Shift.RotaId == rotaId &&
+                        (d.Status == SignupStatus.Pending || d.Status == SignupStatus.Confirmed))
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(
         Guid userId, CancellationToken ct = default) =>
         await _dbContext.ShiftSignups

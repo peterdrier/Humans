@@ -259,6 +259,32 @@ public sealed class OutboxEmailService : IEmailService
     }
 
     /// <inheritdoc />
+    public async Task SendCoordinatorRotaMessageAsync(
+        CoordinatorRotaMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var content = _renderer.RenderCoordinatorRotaMessage(
+            request.RecipientName,
+            request.SenderName,
+            request.SenderEmail,
+            request.RotaName,
+            request.MessageText,
+            request.ShiftLines,
+            request.Culture);
+
+        await EnqueueAsync(
+            request.RecipientEmail,
+            request.RecipientName,
+            content,
+            "coordinator_rota_message",
+            cancellationToken,
+            replyTo: request.SenderEmail,
+            category: MessageCategory.VolunteerUpdates);
+    }
+
+    /// <inheritdoc />
     public async Task SendMagicLinkLoginAsync(
         string toEmail,
         string displayName,

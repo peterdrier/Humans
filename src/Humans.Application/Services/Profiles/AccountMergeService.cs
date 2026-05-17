@@ -90,13 +90,33 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     public async Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default)
     {
         var requests = await _mergeRepository.GetPendingAsync(ct);
-        return requests.Select(ToSnapshot).ToList();
+        if (requests.Count == 0) return [];
+
+        var userIds = CollectUserIds(requests);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        return requests.Select(r => ToSnapshot(r, users)).ToList();
     }
 
     public async Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var request = await _mergeRepository.GetByIdAsync(id, ct);
-        return request is null ? null : ToSnapshot(request);
+        if (request is null) return null;
+
+        var userIds = CollectUserIds([request]);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        return ToSnapshot(request, users);
+    }
+
+    private static IReadOnlyCollection<Guid> CollectUserIds(IReadOnlyList<AccountMergeRequest> requests)
+    {
+        var ids = new HashSet<Guid>();
+        foreach (var r in requests)
+        {
+            ids.Add(r.TargetUserId);
+            ids.Add(r.SourceUserId);
+            if (r.ResolvedByUserId is Guid resolvedBy) ids.Add(resolvedBy);
+        }
+        return ids;
     }
 
     public async Task AcceptAsync(
@@ -153,28 +173,40 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         Guid? RelatedEntityId = null,
         string? RelatedEntityType = null);
 
-#pragma warning disable CS0618 // Cross-domain nav read: AccountMergeRequest.{TargetUser,SourceUser,ResolvedByUser} are included on this read path; resolving via IUserService here would be N+1 across the admin list view.
-    private static AccountMergeRequestSnapshot ToSnapshot(AccountMergeRequest request) =>
+    private static AccountMergeRequestSnapshot ToSnapshot(
+        AccountMergeRequest request,
+        IReadOnlyDictionary<Guid, UserInfo> users) =>
         new(
             request.Id,
             request.Email,
-            ToUserSnapshot(request.TargetUser),
-            ToUserSnapshot(request.SourceUser),
+            ToUserSnapshot(request.TargetUserId, users),
+            ToUserSnapshot(request.SourceUserId, users),
             request.Status,
             request.CreatedAt,
             request.ResolvedAt,
-            request.ResolvedByUser?.DisplayName,
+            request.ResolvedByUserId is Guid id && users.TryGetValue(id, out var rb)
+                ? rb.BurnerName
+                : null,
             request.AdminNotes);
-#pragma warning restore CS0618
 
-    private static AccountMergeUserSnapshot ToUserSnapshot(User user) =>
-        new(
-            user.Id,
-            user.DisplayName,
-            user.Email,
-            user.ProfilePictureUrl,
-            user.PreferredLanguage,
-            user.LastLoginAt);
+    private static AccountMergeUserSnapshot ToUserSnapshot(
+        Guid userId,
+        IReadOnlyDictionary<Guid, UserInfo> users)
+    {
+        if (users.TryGetValue(userId, out var user))
+        {
+            return new(
+                user.Id,
+                user.BurnerName,
+                user.Email,
+                user.ProfilePictureUrl,
+                user.PreferredLanguage,
+                user.LastLoginAt);
+        }
+        // User missing (deleted/purged): return a stub so the snapshot
+        // record's non-null contract holds. Display falls back to a sentinel.
+        return new(userId, "(unknown user)", null, null, null, null);
+    }
 
     private async Task FoldAsync(
         Guid sourceUserId, Guid targetUserId,

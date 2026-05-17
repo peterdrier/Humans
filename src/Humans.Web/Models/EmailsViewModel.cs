@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Web.Models;
 
@@ -99,6 +100,67 @@ public class EmailsViewModel
     /// </summary>
     public IReadOnlyList<UserEmailRowSnapshot> RawUserEmails { get; init; } =
         [];
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#731: user-facing dashboard of OAuth
+    /// providers linked to the current user, keyed off
+    /// <c>AspNetUserLogins</c>. Populated only in self contexts; empty in
+    /// admin contexts (admins use the diagnostic
+    /// <see cref="ExternalLogins"/> table instead).
+    /// </summary>
+    public IReadOnlyList<LinkedOAuthAccountViewModel> LinkedAccounts { get; init; } =
+        [];
+}
+
+/// <summary>
+/// One linked OAuth provider on the user-facing Linked Accounts dashboard
+/// (issue nobodies-collective/Humans#731). Keyed off the authoritative
+/// <c>AspNetUserLogins</c> store; the matching <c>UserEmail</c> row (when
+/// present) supplies the linked-on timestamp and the row id used by the
+/// unlink endpoint.
+/// </summary>
+public class LinkedOAuthAccountViewModel
+{
+    public string Provider { get; init; } = string.Empty;
+    public string ProviderKey { get; init; } = string.Empty;
+    public string? ProviderDisplayName { get; init; }
+
+    /// <summary>
+    /// First 8 hex chars of SHA-256(ProviderKey). Shown rather than the raw
+    /// OIDC <c>sub</c> so the page can be screenshotted without leaking the
+    /// stable provider identifier.
+    /// </summary>
+    public string ProviderKeyHash { get; init; } = string.Empty;
+
+    /// <summary>
+    /// When non-null, the <c>UserEmail</c> row tagged with this
+    /// <c>(Provider, ProviderKey)</c> pair. Null when the AspNetUserLogins
+    /// row is orphan (no matching UserEmail tag — admin-diagnostic edge
+    /// case). The row id is needed to route the unlink action through
+    /// <c>UserEmailService.UnlinkAsync</c>, which keeps the two stores in
+    /// sync.
+    /// </summary>
+    public Guid? MatchingUserEmailId { get; init; }
+
+    /// <summary>
+    /// The email address on the matching <c>UserEmail</c> row, when present.
+    /// </summary>
+    public string? Email { get; init; }
+
+    /// <summary>
+    /// CreatedAt of the matching <c>UserEmail</c> row, when present.
+    /// Approximates the linked-on timestamp (AspNetUserLogins itself has no
+    /// timestamp column).
+    /// </summary>
+    public Instant? LinkedAt { get; init; }
+
+    /// <summary>
+    /// False when unlinking this provider would leave the user with no way
+    /// to sign in — i.e. no remaining verified email row (which magic-link
+    /// would otherwise grant). UI hides the Unlink button when false; the
+    /// controller re-validates the invariant server-side.
+    /// </summary>
+    public bool CanUnlink { get; init; }
 }
 
 /// <summary>

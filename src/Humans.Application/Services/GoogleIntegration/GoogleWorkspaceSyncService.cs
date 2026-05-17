@@ -277,9 +277,83 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
                     apiRole, userEmail, resource.GoogleId,
                     result.Error?.StatusCode, result.Error?.RawMessage);
+                await HandleDriveAddFailureAsync(resource, userEmail, result.Error, cancellationToken);
                 break;
         }
     }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#677 — when Drive's
+    /// <c>permissions.create</c> returns a target-rejection (HTTP 400/403
+    /// referencing "no Google account" / "SendNotificationEmail"), mark the
+    /// owning user's <see cref="GoogleEmailStatus"/> as
+    /// <see cref="GoogleEmailStatus.Rejected"/> so the orchestrator stops
+    /// re-attempting until an admin clears the state. Mirrors the existing
+    /// <c>GoogleGroupSyncService.HandleGroupAddFailureAsync</c> pattern.
+    /// </summary>
+    private async Task HandleDriveAddFailureAsync(
+        GoogleResource resource,
+        string userEmail,
+        GoogleClientError? error,
+        CancellationToken ct)
+    {
+        var statusCode = error?.StatusCode ?? 0;
+        var rawMessage = error?.RawMessage ?? string.Empty;
+
+        // Drive returns 400 when the recipient has no Google account on a
+        // domain that supports notification-free sharing. 403 covers caller-
+        // permission failures (not the target's problem) so we don't mark
+        // those.
+        if (statusCode != 400)
+        {
+            return;
+        }
+
+        // Drive-specific predicate — generic Cloud Identity phrases like
+        // "precondition check failed" appear in Drive responses too, but for
+        // unrelated admin-configured sharing-policy reasons. Only flip
+        // GoogleEmailStatus on phrases unique to Drive's no-Google-account
+        // signal. Issue nobodies-collective/Humans#677.
+        if (!IsDriveTargetRejection(rawMessage))
+        {
+            return;
+        }
+
+        var user = await _userService.GetByEmailOrAlternateAsync(userEmail, ct);
+        if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        {
+            return;
+        }
+
+        await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+            user.Id,
+            GoogleEmailStatus.Rejected,
+            ct);
+
+        _logger.LogWarning(
+            "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP 400. " +
+            "User.GoogleEmailStatus marked Rejected. Google error: {ErrorMessage}",
+            userEmail,
+            resource.GoogleId,
+            rawMessage);
+    }
+
+    /// <summary>
+    /// Matches Drive <c>permissions.create</c> error messages that indicate
+    /// the recipient is not backed by a real Google identity. Drive's
+    /// response is specific — it mentions <c>SendNotificationEmail</c> and
+    /// "no Google account" — so we scope the Drive detector to those
+    /// phrases only. Generic Google API phrases (e.g. "precondition check
+    /// failed") MUST NOT live here, because Drive uses the same wording for
+    /// admin-configured sharing-policy errors that should keep retrying.
+    /// See issue nobodies-collective/Humans#677.
+    /// </summary>
+    private static bool IsDriveTargetRejection(string rawMessage)
+        => rawMessage.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("no google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
+            || rawMessage.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// GATEWAY METHOD: the only path that removes a user from a Google Drive

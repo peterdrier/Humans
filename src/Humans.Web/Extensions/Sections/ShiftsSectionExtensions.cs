@@ -83,9 +83,18 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftDashboardPageBuilder>();
 
         // Workload aggregations — nobodies-collective/Humans#734. Reads
-        // through IShiftManagementRepository; in-memory cached at the service
-        // layer (5 min sliding, same TTL as the dashboard analytics).
+        // per-rota shift + signup rows through IShiftView (the Shifts-section
+        // per-rota cache). No service-level cache: invalidation rides on
+        // IShiftViewInvalidator, and the aggregation itself is microsecond-
+        // scale CPU work over a few hundred rotas at our ~500-user scale.
         services.AddScoped<IWorkloadService, ShiftsWorkloadService>();
+
+        // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
+        // Pure orchestrator: enumerates active signups on a rota and fans out one
+        // outbox email per recipient via IEmailService. Scoped so it can pull the
+        // request-scoped IShiftSignupRepository + IUserService.
+        services.AddScoped<IRotaCoordinatorMessageService,
+            Humans.Application.Services.Shifts.RotaCoordinatorMessageService>();
 
         return services;
     }

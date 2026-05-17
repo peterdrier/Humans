@@ -232,6 +232,17 @@ public interface IEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a personalized "email a rota" message from the rota's coordinator
+    /// to a single signup on the rota. The body carries the coordinator's free-text
+    /// message plus the recipient's own chronologically-ordered shift list on this
+    /// rota. Category is <see cref="MessageCategory.VolunteerUpdates"/>; replies go
+    /// to the coordinator's email when supplied.
+    /// </summary>
+    Task SendCoordinatorRotaMessageAsync(
+        CoordinatorRotaMessageRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a magic link login email to an existing user.
     /// </summary>
     Task SendMagicLinkLoginAsync(
@@ -334,6 +345,22 @@ public interface IEmailService : IApplicationService
         string? culture = null,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Payload for a coordinator "email a rota" message to a single signup.
+/// <see cref="ShiftLines"/> are pre-rendered, chronologically-ordered shift labels
+/// for the recipient on this rota (e.g. "Mon July 6 @ 19:30") — the renderer
+/// HTML-encodes them, it does not parse or sort them.
+/// </summary>
+public record CoordinatorRotaMessageRequest(
+    string RecipientEmail,
+    string RecipientName,
+    string SenderName,
+    string? SenderEmail,
+    string RotaName,
+    string MessageText,
+    IReadOnlyList<string> ShiftLines,
+    string? Culture = null);
 
 /// <summary>
 /// Payload for enqueuing a campaign-code email.

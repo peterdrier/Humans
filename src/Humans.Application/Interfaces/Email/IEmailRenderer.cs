@@ -102,6 +102,20 @@ public interface IEmailRenderer
         string? culture = null);
 
     /// <summary>
+    /// "Email a rota" message from the coordinator to a single signup on the
+    /// rota. Body contains the coordinator's free-text message plus the
+    /// recipient's chronologically-ordered shift list on this rota.
+    /// </summary>
+    EmailContent RenderCoordinatorRotaMessage(
+        string recipientName,
+        string senderName,
+        string? senderEmail,
+        string rotaName,
+        string messageText,
+        IReadOnlyList<string> shiftLines,
+        string? culture = null);
+
+    /// <summary>
     /// Magic link login email for an existing user.
     /// </summary>
     EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null);

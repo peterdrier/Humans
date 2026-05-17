@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Helpers;
@@ -30,6 +31,8 @@ public class ShiftAdminController : HumansTeamControllerBase
     private readonly ShiftAdminPageBuilder _pageBuilder;
     private readonly ILogger<ShiftAdminController> _logger;
 
+    private readonly IRotaCoordinatorMessageService _rotaMessenger;
+
     public ShiftAdminController(
         ITeamService teamService,
         IShiftManagementService shiftMgmt,
@@ -41,6 +44,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         IAuthorizationService authorizationService,
         IClock clock,
         ShiftAdminPageBuilder pageBuilder,
+        IRotaCoordinatorMessageService rotaMessenger,
         ILogger<ShiftAdminController> logger)
         : base(userService, teamService, authorizationService)
     {
@@ -52,6 +56,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         _userManager = userManager;
         _clock = clock;
         _pageBuilder = pageBuilder;
+        _rotaMessenger = rotaMessenger;
         _logger = logger;
     }
 
@@ -359,6 +364,83 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
 
         return RedirectToAction(nameof(Index), new { slug });
+    }
+
+    // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
+    // Management scope (Admin + VolunteerCoordinator + dept coordinator); matches
+    // the existing rota CRUD authorization gate and the "coordinator role" wording
+    // in the spec. Explicitly excludes NoInfoAdmin per CanManageDepartmentAsync.
+    [HttpGet("Rotas/{rotaId}/Email")]
+    public async Task<IActionResult> EmailRota(string slug, Guid rotaId)
+    {
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        if (rota is null) return NotFound();
+
+        var recipientNames = await GetRotaRecipientNamesAsync(rota.Id);
+
+        var vm = new EmailRotaViewModel
+        {
+            RotaId = rota.Id,
+            RotaName = rota.Name,
+            TeamSlug = slug,
+            RecipientCount = recipientNames.Count,
+            RecipientNames = recipientNames
+        };
+        return View(vm);
+    }
+
+    [HttpPost("Rotas/{rotaId}/Email")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EmailRota(string slug, Guid rotaId, EmailRotaViewModel model)
+    {
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        if (rota is null) return NotFound();
+
+        // Repopulate display fields before any return-with-error path.
+        var recipientNames = await GetRotaRecipientNamesAsync(rota.Id);
+        model.RotaId = rota.Id;
+        model.RotaName = rota.Name;
+        model.TeamSlug = slug;
+        model.RecipientCount = recipientNames.Count;
+        model.RecipientNames = recipientNames;
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var result = await _rotaMessenger.SendRotaMessageAsync(rota.Id, user.Id, model.Message);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue rota emails.");
+            return View(model);
+        }
+
+        SetSuccess($"Queued {result.RecipientCount} email(s) to recipients on rota '{result.RotaName}'.");
+        return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
+    }
+
+    private async Task<IReadOnlyList<string>> GetRotaRecipientNamesAsync(Guid rotaId)
+    {
+        var view = await _shiftView.GetRotaAsync(rotaId);
+        var userIds = view.Signups
+            .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+            .Select(s => s.UserId)
+            .Distinct()
+            .ToList();
+        if (userIds.Count == 0) return [];
+
+        var infos = await UserService.GetUserInfosAsync(userIds);
+        return userIds
+            .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n!)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     [HttpPost("Rotas/{rotaId}/Delete")]

@@ -106,6 +106,16 @@ public interface IShiftSignupRepository : IRepository
     Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns Pending and Confirmed signups for every shift on the given rota,
+    /// with <c>Shift</c> included for date/time resolution. Refused, Bailed,
+    /// Cancelled, and NoShow signups are excluded. Used by the coordinator
+    /// "email a rota" action to enumerate current recipients. Read-only.
+    /// Caller resolves user display fields via <c>IUserService.GetByIdsAsync</c>.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetActiveByRotaAsync(
+        Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all no-show signups for a user with <c>Shift.Rota.EventSettings</c>.
     /// Ordered by <c>ReviewedAt</c> descending. Read-only. Caller resolves
     /// reviewer display fields via <c>IUserService.GetByIdsAsync</c> and the

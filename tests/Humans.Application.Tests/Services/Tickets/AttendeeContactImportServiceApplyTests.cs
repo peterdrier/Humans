@@ -204,6 +204,167 @@ public class AttendeeContactImportServiceApplyTests
     }
 
     [HumansFact]
+    public async Task Apply_GroupedDecision_FansMatchedUserIdToAllGroupAttendees()
+    {
+        var harness = new ApplyHarness();
+        var leadId = Guid.NewGuid();
+        var extraId = Guid.NewGuid();
+        var newUserId = Guid.NewGuid();
+        var lead = new TicketAttendee
+        {
+            Id = leadId,
+            VendorTicketId = "tkt_1",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "buyer@x.com",
+            Status = TicketAttendeeStatus.Valid,
+        };
+        var extra = new TicketAttendee
+        {
+            Id = extraId,
+            VendorTicketId = "tkt_2",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "buyer@x.com",
+            Status = TicketAttendeeStatus.Valid,
+        };
+        harness.WithUnmatched(lead);
+        harness.WithUnmatched(extra);
+        harness.WithActiveYear(2026);
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                "buyer@x.com", "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
+
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(
+                leadId, "buyer@x.com", "Sara Smith", "tkt_1",
+                AttendeeImportOutcome.CreateNewUser,
+                TargetUserId: null,
+                UnverifiedEmailIdToDelete: null,
+                UnverifiedRowUserId: null,
+                AmbiguousUserIds: null,
+                AdditionalAttendeeIds: [extraId],
+                ObservedNames: ["Sara Smith"])
+        ], 2);
+
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid());
+
+        result.TotalAttempted.Should().Be(1);
+        result.UsersCreated.Should().Be(1);
+        lead.MatchedUserId.Should().Be(newUserId);
+        extra.MatchedUserId.Should().Be(newUserId);
+
+        // Provisioning runs once even though two attendees share the email.
+        await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
+            "buyer@x.com", "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
+
+        // Upsert receives both rows so DB is updated for every grouped attendee.
+        await harness.TicketRepo.Received(1)
+            .UpsertAttendeesAsync(Arg.Is<IReadOnlyList<TicketAttendee>>(
+                l => l.Count == 2
+                    && l.Any(x => x.Id == leadId)
+                    && l.Any(x => x.Id == extraId)),
+                Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Apply_GroupedDecision_AttachVerified_FansToAllGroupAttendees()
+    {
+        var harness = new ApplyHarness();
+        var leadId = Guid.NewGuid();
+        var extraId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var lead = new TicketAttendee
+        {
+            Id = leadId,
+            VendorTicketId = "tkt_1",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "buyer@x.com",
+            Status = TicketAttendeeStatus.Valid,
+        };
+        var extra = new TicketAttendee
+        {
+            Id = extraId,
+            VendorTicketId = "tkt_2",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "buyer@x.com",
+            Status = TicketAttendeeStatus.Valid,
+        };
+        harness.WithUnmatched(lead);
+        harness.WithUnmatched(extra);
+        harness.WithActiveYear(2026);
+
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(
+                leadId, "buyer@x.com", "Sara Smith", "tkt_1",
+                AttendeeImportOutcome.AttachVerified,
+                TargetUserId: targetUserId,
+                UnverifiedEmailIdToDelete: null,
+                UnverifiedRowUserId: null,
+                AmbiguousUserIds: null,
+                AdditionalAttendeeIds: [extraId])
+        ], 2);
+
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid());
+
+        result.AttachedToExistingVerified.Should().Be(1);
+        lead.MatchedUserId.Should().Be(targetUserId);
+        extra.MatchedUserId.Should().Be(targetUserId);
+
+        // Participation flips once for the single user, not twice.
+        await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
+            targetUserId, 2026, ParticipationStatus.Ticketed, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Apply_GroupedDecision_GroupMemberWithDriftedEmail_IsSkippedButLeadProceeds()
+    {
+        var harness = new ApplyHarness();
+        var leadId = Guid.NewGuid();
+        var driftedId = Guid.NewGuid();
+        var newUserId = Guid.NewGuid();
+        var lead = new TicketAttendee
+        {
+            Id = leadId,
+            VendorTicketId = "tkt_1",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "buyer@x.com",
+            Status = TicketAttendeeStatus.Valid,
+        };
+        var drifted = new TicketAttendee
+        {
+            Id = driftedId,
+            VendorTicketId = "tkt_2",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "different@x.com", // email changed since plan
+            Status = TicketAttendeeStatus.Valid,
+        };
+        harness.WithUnmatched(lead);
+        harness.WithUnmatched(drifted);
+        harness.WithActiveYear(2026);
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                "buyer@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
+
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(
+                leadId, "buyer@x.com", "Sara Smith", "tkt_1",
+                AttendeeImportOutcome.CreateNewUser,
+                TargetUserId: null,
+                UnverifiedEmailIdToDelete: null,
+                UnverifiedRowUserId: null,
+                AmbiguousUserIds: null,
+                AdditionalAttendeeIds: [driftedId])
+        ], 2);
+
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid());
+
+        // Lead still wins; drifted is silently skipped (logged), not vanished.
+        result.UsersCreated.Should().Be(1);
+        lead.MatchedUserId.Should().Be(newUserId);
+        drifted.MatchedUserId.Should().BeNull();
+        result.VanishedBetweenPlanAndApply.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task Apply_AttendeeVanishedBetweenPlanAndApply_IsCountedAndSkipped()
     {
         var harness = new ApplyHarness();

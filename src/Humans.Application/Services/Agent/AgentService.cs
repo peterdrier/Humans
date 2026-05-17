@@ -154,6 +154,11 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         var toolCallCount = 0;
         AgentIssueProposal? issueProposal = null;
         AgentTurnFinalizer? finalFinalizer = null;
+        // Measure wall-clock turn duration from this point — covers the full
+        // streaming + tool-loop window the operator cares about. Stamped on
+        // the assistant AgentMessage below so the admin status latency panel
+        // (avg / P95) has real data.
+        var turnStart = _clock.GetCurrentInstant();
 
         while (true)
         {
@@ -202,7 +207,11 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
                 var result = await _tools.DispatchAsync(call, request.UserId, conversation.Id, cancellationToken);
                 results.Add(result);
-                fetchedDocs.Add(call.Name + ":" + call.JsonArguments);
+                // Normalize the stored slug so the admin status "Top fetched
+                // docs" panel groups by the actual document, not the raw
+                // tool-name+JSON args string (which splits identical fetches
+                // into one-off variants when argument payloads differ).
+                fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
 
                 if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
                 {
@@ -225,18 +234,22 @@ public sealed class AgentService : IAgentService, IUserDataContributor
             yield return new AgentTurnToken(null, null, null, issueProposal);
         }
 
+        var turnEnd = _clock.GetCurrentInstant();
+        var durationMs = (int)Math.Min(
+            int.MaxValue,
+            (turnEnd - turnStart).TotalMilliseconds);
         var message = new AgentMessage
         {
             Id = Guid.NewGuid(),
             ConversationId = conversation.Id,
             Role = AgentRole.Assistant,
             Content = assistantBuffer.ToString(),
-            CreatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = turnEnd,
             PromptTokens = finalFinalizer?.InputTokens ?? 0,
             OutputTokens = finalFinalizer?.OutputTokens ?? 0,
             CachedTokens = finalFinalizer?.CacheReadTokens ?? 0,
             Model = settings.Model,
-            DurationMs = 0,
+            DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
             HandedOffToFeedbackId = null
         };
@@ -406,6 +419,43 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
     private AgentTurnToken Finalizer(string stopReason) =>
         new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
+
+    /// <summary>
+    /// Build a stable, low-cardinality slug for the <c>FetchedDocs</c> column
+    /// so the admin status "Top fetched docs" panel groups identical fetches
+    /// together. For doc-style tools (<c>fetch_section_guide</c>,
+    /// <c>fetch_feature_spec</c>) the slug is <c>tool:argument</c>. For
+    /// non-doc tools we drop the JSON args entirely — different shift ids /
+    /// audit limits would otherwise split the bucket per invocation.
+    /// </summary>
+    private static string NormalizeFetchedDocSlug(string toolName, string jsonArguments, ILogger<AgentService> logger)
+    {
+        switch (toolName)
+        {
+            case AgentToolNames.FetchSectionGuide:
+            case AgentToolNames.FetchFeatureSpec:
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(jsonArguments);
+                    var root = doc.RootElement;
+                    string? slug = null;
+                    if (string.Equals(toolName, AgentToolNames.FetchSectionGuide, StringComparison.Ordinal)
+                        && root.TryGetProperty("section", out var s))
+                        slug = s.GetString();
+                    else if (string.Equals(toolName, AgentToolNames.FetchFeatureSpec, StringComparison.Ordinal)
+                        && root.TryGetProperty("name", out var n))
+                        slug = n.GetString();
+                    return string.IsNullOrEmpty(slug) ? toolName : $"{toolName}:{slug}";
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse JSON args for tool {ToolName}; FetchedDocs slug falls back to bare tool name", toolName);
+                    return toolName;
+                }
+            default:
+                return toolName;
+        }
+    }
 
     private AgentIssueProposal? ParseIssueProposalArgs(string jsonArguments, Guid conversationId)
     {

@@ -1,0 +1,72 @@
+@model Humans.Web.Models.Shifts.EmailRotaViewModel
+@{
+    ViewData["Title"] = string.Format(Localizer["EmailRota_Title"].Value, Model.RotaName);
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@Localizer["Teams_Title"]</a></li>
+            <li class="breadcrumb-item"><a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.TeamSlug">@Localizer["Shifts_Title"]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["EmailRota_Breadcrumb"]</li>
+        </ol>
+    </nav>
+
+    <h2>@string.Format(Localizer["EmailRota_Heading"].Value, Model.RotaName)</h2>
+
+    <vc:temp-data-alerts />
+
+    <div class="row mt-3">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="EmailRota" asp-route-slug="@Model.TeamSlug" asp-route-rotaId="@Model.RotaId" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="RotaId" />
+                        <input type="hidden" asp-for="RotaName" />
+                        <input type="hidden" asp-for="TeamSlug" />
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Message" class="form-label">@Localizer["EmailRota_MessageLabel"]</label>
+                            <textarea asp-for="Message" class="form-control" rows="10" maxlength="4000" required></textarea>
+                            <span asp-validation-for="Message" class="text-danger"></span>
+                            <div class="form-text">@Localizer["EmailRota_MessageHelp"]</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" @(Model.RecipientCount == 0 ? "disabled" : null)>
+                                @string.Format(Localizer["EmailRota_Send"].Value, Model.RecipientCount)
+                            </button>
+                            <a asp-action="Index" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">@string.Format(Localizer["EmailRota_RecipientsHeading"].Value, Model.RecipientCount)</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecipientCount == 0)
+                    {
+                        <p class="text-muted mb-0">@Localizer["EmailRota_NoRecipients"]</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-0 small">
+                            @foreach (var name in Model.RecipientNames)
+                            {
+                                <li>@name</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

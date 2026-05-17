@@ -1034,6 +1034,108 @@ public class ProfileController : HumansControllerBase
 
         SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
     }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#731: user-facing Unlink action on the
+    /// Linked Accounts dashboard. Keyed by (Provider, ProviderKey) rather
+    /// than UserEmail row id so the dashboard's authoritative-store view
+    /// drives the unlink. Enforces the auth-method invariant server-side
+    /// (independent of the UI gate) so the user cannot be left without a
+    /// sign-in method via a crafted POST.
+    /// </summary>
+    [HttpPost("Me/LinkedAccounts/Unlink")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnlinkLinkedAccount(string provider, string providerKey, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
+        {
+            SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            return RedirectToAction(nameof(Emails));
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        // Confirm an AspNetUserLogins row exists for the (provider, key) — if
+        // not, the dashboard is stale or the request is forged; fail soft.
+        var logins = await _userManager.GetLoginsAsync(user);
+        var hasLogin = logins.Any(l =>
+            string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
+            && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
+        if (!hasLogin)
+        {
+            SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            return RedirectToAction(nameof(Emails));
+        }
+
+        // Look up the matching UserEmail row so the unlink can route through
+        // UserEmailService.UnlinkAsync, which keeps AspNetUserLogins and
+        // user_emails in sync. Orphan logins (no matching row) — admin-
+        // diagnostic edge case — fall back to RemoveLoginAsync directly.
+        var rawRows = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
+        var matching = rawRows.FirstOrDefault(r =>
+            string.Equals(r.Provider, provider, StringComparison.Ordinal)
+            && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
+
+        // Auth-method invariant: after the unlink the user must still have
+        // at least one verified UserEmail row so magic-link sign-in remains
+        // available. The dashboard UI hides Unlink when this would fail;
+        // the server re-checks here as the source of truth.
+        var verifiedTotal = rawRows.Count(r => r.IsVerified);
+        var verifiedAfter = verifiedTotal - (matching?.IsVerified == true ? 1 : 0);
+        if (verifiedAfter < 1)
+        {
+            SetError(_localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
+            return RedirectToAction(nameof(Emails));
+        }
+
+        try
+        {
+            if (matching is not null)
+            {
+                var ok = await _userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
+                SetEmailUnlinkedResult(ok);
+            }
+            else
+            {
+                // Orphan AspNetUserLogins: no UserEmail row to remove. Drop
+                // the login directly. The reconcile-on-next-OAuth-sign-in
+                // safety net is irrelevant — there's no row left to reconcile.
+                var removeLogin = await _userManager.RemoveLoginAsync(user, provider, providerKey);
+                if (removeLogin.Succeeded)
+                {
+                    await _auditLogService.LogAsync(
+                        AuditAction.UserEmailUnlinked,
+                        nameof(User), user.Id,
+                        $"Unlinked orphan {provider} login (no matching UserEmail row)",
+                        user.Id);
+                    SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
+                        user.Id, provider,
+                        string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
+                    SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(
+                "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
+                provider, user.Id, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
     // Admin grid actions — parameterized by {userId}, mirror the self-grid
     // against a target user. No AdminLink because OAuth linking requires the
     // target user to authenticate with the provider.
@@ -2416,6 +2518,60 @@ public class ProfileController : HumansControllerBase
             rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         }
 
+        // Issue nobodies-collective/Humans#731: user-facing Linked Accounts
+        // dashboard. Self contexts read AspNetUserLogins via UserManager
+        // (carries ProviderDisplayName, unlike the repo path used by the
+        // admin diagnostic) and stitch in the matching UserEmail row's id +
+        // CreatedAt for the linked-on timestamp.
+        IReadOnlyList<LinkedOAuthAccountViewModel> linkedAccounts = [];
+        if (!isAdminContext)
+        {
+            var logins = await _userManager.GetLoginsAsync(user);
+            if (logins.Count > 0)
+            {
+                // (Provider, ProviderKey) uniqueness is service-enforced, not
+                // DB-enforced — drift can produce duplicates. Build the lookup
+                // defensively (keep first row per key) so the dashboard
+                // degrades gracefully instead of 500'ing the whole page.
+                var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
+                foreach (var r in await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
+                {
+                    if (string.IsNullOrEmpty(r.Provider) || string.IsNullOrEmpty(r.ProviderKey))
+                        continue;
+                    rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
+                }
+
+                // Auth-method invariant: magic-link works on any verified email
+                // row, so the user retains the ability to sign in as long as
+                // at least one verified row remains after the unlink.
+                // UnlinkAsync (which the dashboard's Unlink button routes
+                // through) removes the matching UserEmail row, so "after
+                // unlink" means: (verified rows other than the matching one,
+                // if it's verified). Orphan logins (no matching row) leave
+                // every verified email row in place, so CanUnlink is true
+                // whenever at least one verified row exists.
+                var verifiedTotal = emails.Count(e => e.IsVerified);
+
+                linkedAccounts = logins.Select(l =>
+                {
+                    rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
+                    var rowIsVerified = row?.IsVerified == true;
+                    var verifiedAfter = verifiedTotal - (rowIsVerified ? 1 : 0);
+                    return new LinkedOAuthAccountViewModel
+                    {
+                        Provider = l.LoginProvider,
+                        ProviderKey = l.ProviderKey,
+                        ProviderDisplayName = l.ProviderDisplayName,
+                        ProviderKeyHash = HashForDisplay(l.ProviderKey),
+                        MatchingUserEmailId = row?.Id,
+                        Email = row?.Email,
+                        LinkedAt = row?.CreatedAt,
+                        CanUnlink = verifiedAfter >= 1,
+                    };
+                }).ToList();
+            }
+        }
+
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
             && !string.IsNullOrEmpty(provider)
@@ -2460,6 +2616,7 @@ public class ProfileController : HumansControllerBase
                 HasOrphanLogin = LoginHasOrphanRow(l.Provider, l.ProviderKey),
             }).ToList(),
             RawUserEmails = rawUserEmails,
+            LinkedAccounts = linkedAccounts,
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = googleServiceEmail,

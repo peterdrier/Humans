@@ -5030,6 +5030,12 @@
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Vérifiez votre boîte de réception et cliquez sur le lien dans l’e-mail de vérification pour confirmer votre adresse.</value>
   </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Synchronisation Google suspendue pour cette adresse.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google a rejeté l’adresse Google sélectionnée lors de la tentative d’octroi d’accès à Drive ou d’ajout à un Groupe — généralement parce que l’adresse n’est pas liée à un compte Google. Les nouvelles tentatives de synchronisation sont suspendues jusqu’à ce qu’un administrateur résolve le problème. Sélectionnez une autre adresse liée à un compte Google et demandez à un administrateur d’effacer l’état rejeté.</value>
+  </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Visibilité</value>
   </data>

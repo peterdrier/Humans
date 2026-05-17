@@ -5030,6 +5030,12 @@
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Controlla la tua casella di posta e fai clic sul link nell’email di verifica per confermare il tuo indirizzo.</value>
   </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Sincronizzazione Google sospesa per questo indirizzo.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google ha rifiutato l’indirizzo Google selezionato durante il tentativo di concedere l’accesso a Drive o di aggiungerti a un Gruppo — di solito perché l’indirizzo non è collegato a un account Google. I nuovi tentativi di sincronizzazione sono sospesi finché un amministratore non risolve il problema. Seleziona un altro indirizzo supportato da Google e chiedi a un amministratore di cancellare lo stato rifiutato.</value>
+  </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Visibilità</value>
   </data>

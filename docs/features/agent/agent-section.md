@@ -36,6 +36,15 @@ As an **Admin** I want to **disable the agent globally with one setting change**
 **Acceptance:**
 - Setting `Enabled = false` hides the Assistant menu item and returns 503 from `/Agent/Ask` within the next request (store refreshes on write).
 
+### US-40.5 — Admin sees operational status
+As an **Admin** I want to **see usage, spend, refusals, and Anthropic balance on one page** so that **I can run the agent safely without drilling into individual conversations**.
+
+**Acceptance:**
+- `/Agent/Admin/Status` (Admin-only) renders read-only panels: system state, usage (24h / 7d / 30d — conversations, messages, unique users, prompt/output/cached tokens, cache-hit ratio, avg + P95 turn duration), spend (24h / 7d / 30d / MTD, broken into input / output / cache-read USD), Anthropic balance, refusals (last 7d count + per-reason breakdown linking to `/Agent/Conversations?refusalsOnly=true`), top-fetched-docs (last 7d), top-users (last 7d, with daily/hourly remaining capacity), retention-job last-run + delete count.
+- Spend USD is estimated from `AgentMessage` token counts × hard-coded per-model rates (Anthropic published; one model at a time). Cache-write folds into Input at the standard input rate — called out in the panel footer.
+- Anthropic balance reads via an opt-in admin API key (`Anthropic__AdminApiKey`). When unset, the panel shows "balance unavailable — see Anthropic Console" with a link; never an error. Anthropic does not currently publish a balance endpoint, so the panel surfaces "balance unavailable" until they do — the wiring is in place to populate it when the endpoint ships.
+- No form posts on the page. Settings stays the actions surface.
+
 ## Data Model
 
 Reference: `src/Humans.Domain/Entities/Agent*.cs`. Key entities: `AgentConversation`, `AgentMessage`, `AgentSettings`. Per-user rate-limit counters are in-memory (Singleton `IAgentRateLimitStore`), no DB table.

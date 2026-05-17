@@ -781,9 +781,71 @@ public class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CategoryRequiresCoordinatorEndorsementAsync_AlwaysReturnsFalse()
+    public async Task CategoryRequiresCoordinatorEndorsementAsync_True_WhenCategoryTeamHasCoordinator()
     {
-        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(Guid.NewGuid());
+        var teamId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var coordinatorUserId = Guid.NewGuid();
+
+        var category = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = teamId,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, [(coordinatorUserId, TeamMemberRole.Coordinator)]));
+
+        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId);
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryTeamHasNoCoordinator()
+    {
+        var teamId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+
+        var category = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = teamId,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, [(Guid.NewGuid(), TeamMemberRole.Member)]));
+
+        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId);
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryHasNoTeam()
+    {
+        var categoryId = Guid.NewGuid();
+        var category = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = null,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+
+        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId);
         result.Should().BeFalse();
     }
 
@@ -1161,6 +1223,36 @@ public class ExpenseReportServiceTests
         result.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task GetCoordinatorQueueAsync_ReturnsSubmittedReportsForCoordinatedCategories()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinatorUserId = Guid.NewGuid();
+        var teamId = category.TeamId!.Value;
+        var yearId = Guid.NewGuid();
+
+        var submittedId = Guid.NewGuid();
+        var draftId = Guid.NewGuid();
+        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, yearId,
+            ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(draftId, Guid.NewGuid(), category.Id, yearId,
+            ExpenseReportStatus.Draft);
+
+        // Also seed a Submitted report in a category the user does NOT coordinate.
+        var otherCategoryId = Guid.NewGuid();
+        var otherSubmittedId = Guid.NewGuid();
+        await SeedReportWithStatus(otherSubmittedId, Guid.NewGuid(), otherCategoryId, yearId,
+            ExpenseReportStatus.Submitted);
+
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns([teamId]);
+
+        var result = await _sut.GetCoordinatorQueueAsync(coordinatorUserId);
+
+        result.Should().HaveCount(1);
+        result[0].Id.Should().Be(submittedId);
+    }
+
     // ─────────────────────────── Helpers ─────────────────────────────────────
 
     private (BudgetYear Year, BudgetCategory Category) SetupActiveYear()
@@ -1237,6 +1329,32 @@ public class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = userId, Iban = iban }));
     }
+
+    private static TeamInfo MakeTeamInfo(Guid teamId,
+        IReadOnlyList<(Guid UserId, TeamMemberRole Role)> members) =>
+        new(
+            Id: teamId,
+            Name: "Test Team",
+            Description: null,
+            Slug: "test-team",
+            IsActive: true,
+            IsSystemTeam: false,
+            SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            CreatedAt: FakeNow,
+            Members: members
+                .Select(m => new TeamMemberInfo(
+                    TeamMemberId: Guid.NewGuid(),
+                    UserId: m.UserId,
+                    DisplayName: "Member",
+                    Email: null,
+                    ProfilePictureUrl: null,
+                    Role: m.Role,
+                    JoinedAt: FakeNow))
+                .ToList());
 
     private void SetupCoordinatorAuthz(Guid categoryId, Guid teamId, Guid coordinatorUserId)
     {

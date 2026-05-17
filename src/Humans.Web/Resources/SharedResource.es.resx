@@ -5028,6 +5028,12 @@
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Revisa tu bandeja de entrada y haz clic en el enlace del correo de verificación para confirmar tu dirección.</value>
   </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Sincronización de Google pausada para esta dirección.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google rechazó el correo de Google seleccionado al intentar conceder acceso a Drive o añadirte a un grupo — normalmente porque la dirección no está vinculada a una cuenta de Google. Los nuevos intentos de sincronización se suprimen hasta que un administrador lo resuelva. Selecciona otro correo respaldado por Google y pide a un administrador que borre el estado rechazado.</value>
+  </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Visibilidad</value>
   </data>

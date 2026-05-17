@@ -379,6 +379,68 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_UserRejectedByGoogle400Precondition_MarksGoogleEmailRejected()
+    {
+        // Issue nobodies-collective/Humans#677 — Cloud Identity returns HTTP
+        // 400 / Error(4002) "Membership cannot be created since precondition
+        // check failed" when the target email has no Google identity. Must
+        // be treated as a permanent target rejection, same as the 403 path.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice@external.test"));
+        StubGroup("team@nobodies.team", "group-1");
+
+        _membershipClient.CreateMembershipAsync("group-1", "alice@external.test", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.Failed,
+                new GoogleClientError(400, "Error(4002): Membership cannot be created since precondition check failed.")));
+        _userService.GetByEmailOrAlternateAsync("alice@external.test", Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = userId,
+                DisplayName = "Alice",
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+                CreatedAt = _clock.GetCurrentInstant()
+            });
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+
+        diff.ErrorMessage.Should().Contain("Google rejected alice@external.test");
+        diff.ErrorMessage.Should().Contain("HTTP 400");
+        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+            userId,
+            GoogleEmailStatus.Rejected,
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_GenericGoogle400_DoesNotMarkGoogleEmailRejected()
+    {
+        // Issue nobodies-collective/Humans#677 — make sure the 400 branch only
+        // marks Rejected when the message text matches a target-rejection
+        // pattern. A generic 400 (e.g. malformed payload) must not flip the
+        // user's GoogleEmailStatus.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubGroup("team@nobodies.team", "group-1");
+
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.Failed,
+                new GoogleClientError(400, "Bad Request: invalid argument 'roles'")));
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+
+        diff.ErrorMessage.Should().Contain("invalid argument 'roles'");
+        await _userService.DidNotReceiveWithAnyArgs()
+            .TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
+        await _userService.DidNotReceiveWithAnyArgs()
+            .GetByEmailOrAlternateAsync(default!, default);
+        _syncScheduler.Scheduled.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_GenericGoogle403_DoesNotMarkGoogleEmailRejected()
     {
         var userId = Guid.NewGuid();

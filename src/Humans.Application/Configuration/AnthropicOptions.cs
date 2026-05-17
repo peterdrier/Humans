@@ -7,6 +7,14 @@ public class AnthropicOptions
     /// <summary>Bearer API key. Read from user-secrets locally and env var <c>Anthropic__ApiKey</c> in Coolify.</summary>
     public string ApiKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional admin API key used only by the admin balance lookup
+    /// (<c>IAgentAnthropicBalanceProvider</c>). When unset, the admin status
+    /// page renders "balance unavailable" and links to the Anthropic Console
+    /// — never an error. Bound to env var <c>Anthropic__AdminApiKey</c>.
+    /// </summary>
+    public string AdminApiKey { get; set; } = string.Empty;
+
     /// <summary>Model id sent to the API when <c>AgentSettings.Model</c> is empty.</summary>
     public string DefaultModel { get; set; } = "claude-sonnet-4-6";
 

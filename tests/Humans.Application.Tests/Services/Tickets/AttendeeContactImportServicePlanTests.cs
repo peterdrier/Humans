@@ -141,6 +141,82 @@ public class AttendeeContactImportServicePlanTests
     }
 
     [HumansFact]
+    public async Task Plan_MultipleAttendeesSameEmail_CollapseToOneDecisionWithGroup()
+    {
+        var harness = new PlanHarness();
+        var leadId = Guid.NewGuid();
+        var extra1 = Guid.NewGuid();
+        var extra2 = Guid.NewGuid();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = leadId,
+            VendorTicketId = "tkt_1",
+            AttendeeEmail = "buyer@x.com",
+            AttendeeName = "Sara Smith",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = extra1,
+            VendorTicketId = "tkt_2",
+            AttendeeEmail = "buyer@x.com",
+            AttendeeName = "Sara S.",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = extra2,
+            VendorTicketId = "tkt_3",
+            // Case-insensitive grouping: trim + casefold should still group.
+            AttendeeEmail = "BUYER@x.com",
+            AttendeeName = "Sara Smith",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.UserEmails.GetDistinctVerifiedUserIdsAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
+        harness.UserEmails.FindAnyEmailRowByAddressAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(((Guid, Guid)?)null);
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Should().ContainSingle();
+        var d = plan.Decisions[0];
+        d.Outcome.Should().Be(AttendeeImportOutcome.CreateNewUser);
+        d.AttendeeId.Should().Be(leadId);
+        d.AdditionalAttendeeIds.Should().BeEquivalentTo(new[] { extra1, extra2 });
+        d.ObservedNames.Should().BeEquivalentTo(new[] { "Sara Smith", "Sara S." });
+        plan.TotalUnmatched.Should().Be(3);
+    }
+
+    [HumansFact]
+    public async Task Plan_NoEmailAttendees_RemainPerAttendee_NotGrouped()
+    {
+        var harness = new PlanHarness();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_a",
+            AttendeeEmail = null,
+            AttendeeName = "A",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_b",
+            AttendeeEmail = "   ",
+            AttendeeName = "B",
+            Status = TicketAttendeeStatus.Valid,
+        });
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Should().HaveCount(2);
+        plan.Decisions.Should().OnlyContain(d => d.Outcome == AttendeeImportOutcome.SkipNoEmail);
+        plan.Decisions.Should().OnlyContain(d => d.AdditionalAttendeeIds == null);
+    }
+
+    [HumansFact]
     public async Task Plan_MultipleVerifiedMatches_ClassifiedAsAmbiguous()
     {
         var harness = new PlanHarness();

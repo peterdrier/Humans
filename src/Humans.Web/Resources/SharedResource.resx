@@ -2026,6 +2026,8 @@
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
   <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve"><value>Google sync paused for this address.</value></data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve"><value>Google rejected your selected Google email when trying to grant access to Drive or add you to a Group — typically because the address is not backed by a Google account. New sync attempts are suppressed until an administrator resolves this. Select a different Google-backed email and ask an admin to clear the rejected state.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibility</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Merge pending</value></data>
@@ -2058,6 +2060,18 @@
   <data name="EmailGrid_AdminVerifyMergeRequested" xml:space="preserve"><value>This address is already verified on another account. A merge request was created instead of verifying.</value></data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>We couldn't link this Google account. Please try again.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
+
+  <!-- Linked OAuth Accounts dashboard (issue nobodies-collective/Humans#731) -->
+  <data name="LinkedAccounts_Title" xml:space="preserve"><value>Linked accounts</value></data>
+  <data name="LinkedAccounts_Description" xml:space="preserve"><value>OAuth providers currently linked to your account. You can use any of these to sign in.</value></data>
+  <data name="LinkedAccounts_Empty" xml:space="preserve"><value>No linked OAuth accounts.</value></data>
+  <data name="LinkedAccounts_Provider" xml:space="preserve"><value>Provider</value></data>
+  <data name="LinkedAccounts_Account" xml:space="preserve"><value>Account</value></data>
+  <data name="LinkedAccounts_LinkedOn" xml:space="preserve"><value>Linked on</value></data>
+  <data name="LinkedAccounts_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="LinkedAccounts_ConfirmUnlink" xml:space="preserve"><value>Unlink this account? You'll no longer be able to sign in with it.</value></data>
+  <data name="LinkedAccounts_LastSignInMethod" xml:space="preserve"><value>Only sign-in method — cannot unlink.</value></data>
+  <data name="LinkedAccounts_UnlinkBlockedLastSignInMethod" xml:space="preserve"><value>Cannot unlink — this is your only remaining sign-in method.</value></data>
 
   <!-- Issues section -->
   <data name="Issue_PageTitle" xml:space="preserve"><value>Issues</value></data>
@@ -2272,5 +2286,20 @@
 
   <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value></data>
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value></data>
+  <!-- Coordinator Rota Message ("Email a rota") -->
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve"><value>A message about your shifts on {0}</value><comment>{0} = rota name (HTML-encoded)</comment></data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts on this rota are:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=rota name, {3}=message body, {4}=shift list HTML, {5}=sender contact block HTML</comment></data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve"><value>(no shifts on this rota yet)</value></data>
+  <data name="EmailRota_Title" xml:space="preserve"><value>Email rota: {0}</value><comment>{0} = rota name</comment></data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve"><value>Email rota</value></data>
+  <data name="EmailRota_Heading" xml:space="preserve"><value>Email everyone on rota: {0}</value><comment>{0} = rota name</comment></data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve"><value>Recipients ({0})</value><comment>{0} = recipient count</comment></data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve"><value>No one is signed up to this rota yet.</value></data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve"><value>Your message</value></data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve"><value>Plain text only. Each recipient will see this body plus their own shift list on this rota.</value></data>
+  <data name="EmailRota_Button" xml:space="preserve"><value>Email a rota</value></data>
+  <data name="EmailRota_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
+  <data name="EmailRota_Success" xml:space="preserve"><value>Queued {0} email(s) to recipients on rota '{1}'.</value><comment>{0} = recipient count, {1} = rota name</comment></data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve"><value>This rota has no active signups to email.</value></data>
 
 </root>

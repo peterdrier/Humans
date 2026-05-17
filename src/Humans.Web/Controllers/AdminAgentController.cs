@@ -15,18 +15,34 @@ public class AdminAgentController : HumansControllerBase
 {
     private readonly IAgentSettingsService _settings;
     private readonly IAgentService _agent;
+    private readonly IAgentAdminStatusService _status;
     private readonly IUserService _users;
 
     public AdminAgentController(
         IAgentSettingsService settings,
         IAgentService agent,
+        IAgentAdminStatusService status,
         IUserService users,
         IUserService userService)
         : base(userService)
     {
         _settings = settings;
         _agent = agent;
+        _status = status;
         _users = users;
+    }
+
+    /// <summary>Index lands on Status — the operational view is the default
+    /// destination for an admin clicking through the nav.</summary>
+    [HttpGet("")]
+    public IActionResult Index() => RedirectToAction(nameof(Status));
+
+    [HttpGet("Status")]
+    public async Task<IActionResult> Status(CancellationToken ct)
+    {
+        var report = await _status.GetStatusAsync(ct);
+        var vm = new AdminAgentStatusViewModel(report, _settings.Current);
+        return View("~/Views/Admin/Agent/Status.cshtml", vm);
     }
 
     [HttpGet("Settings")]
