@@ -148,6 +148,13 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
                 + auditSuffix,
             senderUserId);
 
+        // Total-failure path: every enqueue threw. Audit row already records
+        // the failures; surface a Failure result so the controller does not
+        // render a misleading "Queued 0 email(s)" success toast.
+        if (queued == 0 && failed > 0)
+            return RotaMessageDispatchResult.Failure(
+                $"Failed to enqueue any emails ({failed} enqueue error(s)); check server logs.");
+
         return RotaMessageDispatchResult.Success(queued, rota.Name);
     }
 
