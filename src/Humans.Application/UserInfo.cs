@@ -337,6 +337,14 @@ public sealed record UserInfo(
         Profile?.State == ProfileState.Suspended;
 
     /// <summary>
+    /// True when the user's profile has been approved by the Consent Coordinator.
+    /// Canonical "is this user approved" predicate — read this instead of chaining
+    /// <c>Profile?.IsApproved ?? false</c> at call sites (see
+    /// <c>memory/architecture/derived-predicates-on-userinfo.md</c>).
+    /// </summary>
+    public bool IsApproved => Profile?.IsApproved ?? false;
+
+    /// <summary>
     /// True when the user has a profile and BurnerName + FirstName + LastName
     /// are all non-blank. Canonical "has a name" predicate — gates Stub→Active
     /// promotion, Consent Coordinator review queue inclusion, and any flow

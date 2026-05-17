@@ -258,7 +258,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
                 {
                     suspendedCount++;
                 }
-                else if (!userInfo.Profile.IsApproved)
+                else if (!userInfo.IsApproved)
                 {
                     pendingCount++;
                 }
