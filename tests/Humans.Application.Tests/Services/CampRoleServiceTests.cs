@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
@@ -54,6 +55,10 @@ public class CampRoleServiceTests : IDisposable
         var factory = new TestDbContextFactory(_options);
         var repo = new CampRoleRepository(factory);
 
+        var serviceProvider = new ServiceCollection()
+            .AddSingleton(_googleGroupSync)
+            .BuildServiceProvider();
+
         _service = new CampRoleService(
             repo,
             _campService,
@@ -61,7 +66,7 @@ public class CampRoleServiceTests : IDisposable
             _userEmailService,
             _auditLog,
             _notificationEmitter,
-            _googleGroupSync,
+            serviceProvider,
             _googleGroupProvisioning,
             Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
             _clock,

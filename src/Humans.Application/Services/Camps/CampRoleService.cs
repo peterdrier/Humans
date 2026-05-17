@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -23,7 +24,13 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLog;
     private readonly INotificationEmitter _notificationEmitter;
-    private readonly IGoogleGroupSync _googleGroupSync;
+    // Lazy lookup to break the DI cycle: GoogleGroupSyncService injects
+    // IEnumerable&lt;IGoogleGroupMembershipSource&gt; — including this service —
+    // so direct constructor injection of IGoogleGroupSync would self-loop.
+    // Mirrors the TeamService pattern.
+    private readonly IServiceProvider _serviceProvider;
+    private IGoogleGroupSync GoogleGroupSync
+        => _serviceProvider.GetRequiredService<IGoogleGroupSync>();
     private readonly IGoogleGroupProvisioningClient _googleGroupProvisioning;
     private readonly GoogleWorkspaceOptions _googleOptions;
     private readonly IClock _clock;
@@ -36,7 +43,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         IUserEmailService userEmailService,
         IAuditLogService auditLog,
         INotificationEmitter notificationEmitter,
-        IGoogleGroupSync googleGroupSync,
+        IServiceProvider serviceProvider,
         IGoogleGroupProvisioningClient googleGroupProvisioning,
         IOptions<GoogleWorkspaceOptions> googleOptions,
         IClock clock,
@@ -48,7 +55,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         _userEmailService = userEmailService;
         _auditLog = auditLog;
         _notificationEmitter = notificationEmitter;
-        _googleGroupSync = googleGroupSync;
+        _serviceProvider = serviceProvider;
         _googleGroupProvisioning = googleGroupProvisioning;
         _googleOptions = googleOptions.Value;
         _clock = clock;
@@ -516,7 +523,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
             if (season is null) return;
 
             var groupKey = BuildGroupKey(season.Year, def.Slug);
-            await _googleGroupSync.RequestSyncAsync(groupKey, ct);
+            await GoogleGroupSync.RequestSyncAsync(groupKey, ct);
         }
         catch (Exception ex)
         {
