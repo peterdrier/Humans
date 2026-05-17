@@ -269,6 +269,45 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserInfosAsync_ColdCache_WarmsBeforeFallback_DoesNotLoadPerKey()
+    {
+        // Issue #743 regression. On cold cache, GetUserInfosAsync(ids) must
+        // trigger the bulk WarmAllAsync exactly once instead of issuing a
+        // per-id LoadRowAsync for each requested userId (which would emit
+        // 7 SELECTs per user via the inner service on each miss).
+        var userA = SampleUser();
+        var userB = SampleUser();
+        var userC = SampleUser();
+        _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { userA, userB, userC });
+        _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _userRepo.GetExternalLoginsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
+        _userRepo.GetEventParticipationsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
+        _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var sut = CreateSut();
+
+        // Cold cache — no StartAsync. First call must warm in bulk, not per-id.
+        var result = await sut.GetUserInfosAsync([userA.Id, userB.Id, userC.Id]);
+
+        result.Should().HaveCount(3);
+
+        // Bulk warm path ran exactly once.
+        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        // The inner per-id loader was never called — the bug would have
+        // routed each of the three misses through inner.GetUserInfoAsync.
+        await _inner.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SingleKeyReads_StillWorkBeforeWarmup()
     {
         var userId = Guid.NewGuid();
