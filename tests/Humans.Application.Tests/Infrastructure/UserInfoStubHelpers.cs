@@ -7,11 +7,11 @@ using NSubstitute;
 namespace Humans.Application.Tests.Infrastructure;
 
 /// <summary>
-/// Helpers for stubbing the new <see cref="IUserService.GetUserInfosAsync"/> reader on
+/// Helpers for stubbing the <see cref="IUserService.GetUserInfosAsync"/> reader on
 /// NSubstitute test doubles, mirroring whatever in-memory DB the existing
-/// <c>GetByIdsAsync</c> / <c>GetByIdsWithEmailsAsync</c> stubs read from.
-/// Builds a minimal UserInfo (the User + its UserEmails) — empty collections for
-/// the rest, which matches what existing legacy stubs covered.
+/// <c>GetByIdsAsync</c> stubs read from. Builds a minimal UserInfo
+/// (the User + its UserEmails) — empty collections for the rest, which
+/// matches what existing legacy stubs covered.
 /// </summary>
 internal static class UserInfoStubHelpers
 {

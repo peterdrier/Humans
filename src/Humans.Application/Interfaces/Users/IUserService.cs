@@ -45,9 +45,9 @@ public interface IUserService : IApplicationService, IUserMerge
     /// caching decorator's in-memory dict for any id already cached; missing
     /// ids are refilled through the same per-user load path used by
     /// <see cref="GetUserInfoAsync"/>. The canonical replacement for
-    /// <c>GetByIdsAsync</c> / <c>GetByIdsWithEmailsAsync</c> at reader call
-    /// sites — those still exist for the rare consumer that needs a real
-    /// <see cref="User"/> entity (Identity machinery, in-place mutations).
+    /// <see cref="GetByIdsAsync"/> at reader call sites — that still exists
+    /// for the rare consumer that needs a real <see cref="User"/> entity
+    /// (Identity machinery, in-place mutations).
     /// </summary>
     ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds,
@@ -76,33 +76,23 @@ public interface IUserService : IApplicationService, IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
-    /// Fetches a single user by id. Returns null if the user does not exist.
-    /// Used by section services that need a slice of user data (email,
-    /// display name, preferred language) for rendering or notifications
-    /// without loading a cross-domain navigation property.
+    /// Fetches a single user by id with the <see cref="User.UserEmails"/>
+    /// collection populated. Returns null if the user does not exist. Served
+    /// from the caching decorator's <see cref="UserInfo"/> dict for warm-cache
+    /// callers — the cache holds the full user payload, so there is no
+    /// "without emails" variant.
     /// </summary>
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Fetches a batched set of users keyed by id. Missing users are simply
+    /// Fetches a batched set of users keyed by id with each user's
+    /// <see cref="User.UserEmails"/> collection populated. Missing users are
     /// absent from the returned dictionary. Used for in-memory stitching
     /// when rendering lists that previously relied on
-    /// <c>.Include(x =&gt; x.User)</c>.
+    /// <c>.Include(x =&gt; x.User)</c>. Served from the caching decorator's
+    /// <see cref="UserInfo"/> dict for warm-cache callers.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="GetByIdsAsync"/> but also hydrates each user's
-    /// <see cref="User.UserEmails"/> collection so callers can resolve
-    /// <see cref="User.GetEffectiveEmail"/> (the verified notification-target
-    /// address) without a second round-trip. Used by notification-sending
-    /// jobs (digests, re-consent reminder, term renewal) so the correct
-    /// recipient is picked instead of silently falling back to
-    /// <see cref="User.Email"/>.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
 

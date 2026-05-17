@@ -2051,7 +2051,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             return;
 
         var userIds = list.Select(m => m.UserId).Distinct().ToList();
-        var users = await UserService.GetByIdsWithEmailsAsync(userIds, ct);
+        var users = await UserService.GetByIdsAsync(userIds, ct);
 
         foreach (var member in list)
         {

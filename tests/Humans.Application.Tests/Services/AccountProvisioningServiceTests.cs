@@ -133,9 +133,6 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<User?> GetByNormalizedEmailAsync(string? normalizedEmail, CancellationToken ct = default) =>

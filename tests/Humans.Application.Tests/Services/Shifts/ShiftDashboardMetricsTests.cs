@@ -1042,7 +1042,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
         {
             if (userIds.Count == 0) return new Dictionary<Guid, User>();
-            var users = await _db.Users.Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
+            var users = await _db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
             return users.ToDictionary(u => u.Id);
         }
 
@@ -1055,13 +1055,6 @@ public class ShiftDashboardMetricsTests : IDisposable
                 if (snapshot.TryGetValue(id, out var info))
                     dict[id] = info;
             return dict;
-        }
-
-        public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-        {
-            if (userIds.Count == 0) return new Dictionary<Guid, User>();
-            var users = await _db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
-            return users.ToDictionary(u => u.Id);
         }
 
         public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)

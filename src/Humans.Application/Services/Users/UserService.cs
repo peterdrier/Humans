@@ -137,10 +137,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         _repo.GetByIdsAsync(userIds, ct);
 
-    public Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetByIdsWithEmailsAsync(userIds, ct);
-
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _repo.GetAllAsync(ct);
 

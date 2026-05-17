@@ -425,10 +425,12 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetByIdsWithEmailsAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
+    public async Task GetByIdsAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
     {
-        // Issue #744. Warm cache + GetByIdsWithEmailsAsync(known ids) must
-        // never call the inner service (zero EF queries).
+        // Issue #744. Warm cache + GetByIdsAsync(known ids) must never call
+        // the inner service (zero EF queries). The single GetByIdsAsync always
+        // returns Users with UserEmails populated — there is no "without
+        // emails" variant because there is nothing else the cache can serve.
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
         var user = new User
@@ -470,7 +472,7 @@ public class CachingUserServiceTests
         await sut.GetUserInfoAsync(userId);
 
         // Warm-cache call should rehydrate locally, never delegate.
-        var result = await sut.GetByIdsWithEmailsAsync([userId]);
+        var result = await sut.GetByIdsAsync([userId]);
 
         result.Should().ContainKey(userId);
         var hit = result[userId];
@@ -482,8 +484,6 @@ public class CachingUserServiceTests
         hit.UserEmails.Should().ContainSingle(e =>
             e.Id == emailId && e.Email == "cached@example.com" && e.IsPrimary && e.IsGoogle && e.IsVerified);
 
-        await _inner.DidNotReceive().GetByIdsWithEmailsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
         await _inner.DidNotReceive().GetByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }

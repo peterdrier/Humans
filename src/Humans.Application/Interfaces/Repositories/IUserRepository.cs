@@ -25,25 +25,18 @@ public interface IUserRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Loads a single user by id. Read-only (AsNoTracking). Returns null if
-    /// the user does not exist.
+    /// Loads a single user by id with the <see cref="User.UserEmails"/>
+    /// collection populated. Read-only (AsNoTracking). Returns null if the
+    /// user does not exist.
     /// </summary>
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batched user fetch keyed by id. Missing users are absent from the
-    /// returned dictionary. Read-only (AsNoTracking).
+    /// Batched user fetch keyed by id with each user's
+    /// <see cref="User.UserEmails"/> collection populated. Missing users are
+    /// absent from the returned dictionary. Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="GetByIdsAsync"/> but includes each user's
-    /// <see cref="User.UserEmails"/> collection so callers can resolve
-    /// <see cref="User.GetEffectiveEmail"/> correctly. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
 

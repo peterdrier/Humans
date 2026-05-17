@@ -57,4 +57,3 @@ Humans.Application.Interfaces.Users.IUserService.GetAllUsersAsync:Humans.Domain.
 Humans.Application.Interfaces.Users.IUserService.GetByEmailOrAlternateAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByIdAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByIdsAsync:Humans.Domain.Entities.User
-Humans.Application.Interfaces.Users.IUserService.GetByIdsWithEmailsAsync:Humans.Domain.Entities.User
