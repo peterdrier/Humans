@@ -611,7 +611,7 @@
                                         <td>
                                             @if (acct.LinkedAt.HasValue)
                                             {
-                                                @acct.LinkedAt.Value.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                                                @acct.LinkedAt.ToDisplayDate()
                                             }
                                             else
                                             {
