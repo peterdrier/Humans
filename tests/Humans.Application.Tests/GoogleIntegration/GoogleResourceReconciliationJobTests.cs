@@ -8,6 +8,7 @@ using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 
@@ -33,6 +34,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,
             _googleGroupSync,
+            Substitute.For<ICampRoleService>(),
             Substitute.For<INotificationService>(),
             _metrics,
             NullLogger<GoogleResourceReconciliationJob>.Instance,

@@ -25,7 +25,11 @@ public interface ICampRoleRepository : IRepository
 
     Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<CampRoleDefinition?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default);
+
     Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default);
+
+    Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default);
 
     Task AddDefinitionAsync(CampRoleDefinition definition, CancellationToken ct = default);
 
@@ -60,6 +64,14 @@ public interface ICampRoleRepository : IRepository
     Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every assignment whose <c>CampMemberId</c> equals <paramref name="campMemberId"/>.
+    /// Used by post-mutation Google Group sync to identify the (role-definition, season)
+    /// pairs whose group keys need to be re-reconciled after a cascade removal.
+    /// </summary>
+    Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForMemberAsync(
+        Guid campMemberId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every role assignment ever made for the given user (joined to
     /// <see cref="CampRoleAssignment.CampMember"/> on <c>UserId</c>), with
     /// parent <see cref="CampSeason"/>, <c>Camp</c>, and
@@ -77,6 +89,24 @@ public interface ICampRoleRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<(Guid CampSeasonId, Guid DefinitionId, int Count)>> GetAssignmentCountsForYearAsync(
         int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every assignment for the given <paramref name="definitionId"/> whose season's
+    /// <c>Year</c> equals <paramref name="year"/>. Joined to <see cref="CampMember"/> so the
+    /// caller can resolve assignee UserIds without a second hop. Used by the cross-camp
+    /// role drill-down view.
+    /// </summary>
+    Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForDefinitionInYearAsync(
+        Guid definitionId, int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every (CampSeason.Year, CampRoleDefinition.Slug, assigneeUserIds) tuple for
+    /// active role definitions in the given <paramref name="year"/> set. Used by
+    /// <see cref="Camps.ICampRoleService"/>'s
+    /// <see cref="GoogleIntegration.IGoogleGroupMembershipSource.GetExpectedAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<CampRoleAssignment>> GetActiveAssignmentsForYearsAsync(
+        IReadOnlyCollection<int> years, CancellationToken ct = default);
 
     // Account-merge fold
 

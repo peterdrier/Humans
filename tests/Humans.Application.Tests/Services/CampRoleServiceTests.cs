@@ -1,7 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;
@@ -11,6 +14,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -25,8 +29,11 @@ public class CampRoleServiceTests : IDisposable
     private readonly CampRoleService _service;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
+    private readonly IUserEmailService _userEmailService;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampService _campService;
+    private readonly IGoogleGroupSync _googleGroupSync;
+    private readonly IGoogleGroupProvisioningClient _googleGroupProvisioning;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
@@ -38,8 +45,11 @@ public class CampRoleServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 26, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
         _userService = Substitute.For<IUserService>();
+        _userEmailService = Substitute.For<IUserEmailService>();
         _notificationEmitter = Substitute.For<INotificationEmitter>();
         _campService = Substitute.For<ICampService>();
+        _googleGroupSync = Substitute.For<IGoogleGroupSync>();
+        _googleGroupProvisioning = Substitute.For<IGoogleGroupProvisioningClient>();
 
         var factory = new TestDbContextFactory(_options);
         var repo = new CampRoleRepository(factory);
@@ -48,8 +58,12 @@ public class CampRoleServiceTests : IDisposable
             repo,
             _campService,
             _userService,
+            _userEmailService,
             _auditLog,
             _notificationEmitter,
+            _googleGroupSync,
+            _googleGroupProvisioning,
+            Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
             _clock,
             NullLogger<CampRoleService>.Instance);
     }
@@ -106,7 +120,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task CreateDefinition_persists_and_audits()
     {
         var input = new CreateCampRoleDefinitionInput(
-            Name: "Sound Lead", Description: "Manages sound system",
+            Name: "Sound Lead", Slug: "sound-lead", Description: "Manages sound system",
             SlotCount: 1, MinimumRequired: 0, SortOrder: 60);
 
         var result = await _service.CreateDefinitionAsync(input, _actorUserId);
@@ -131,7 +145,7 @@ public class CampRoleServiceTests : IDisposable
         await SeedDefinitionAsync("Consent Lead");
 
         var input = new CreateCampRoleDefinitionInput(
-            Name: "Consent Lead", Description: null,
+            Name: "Consent Lead", Slug: "consent-lead-2", Description: null,
             SlotCount: 1, MinimumRequired: 1, SortOrder: 99);
 
         var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
@@ -143,7 +157,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task CreateDefinition_rejects_minimumRequired_above_slotCount()
     {
         var input = new CreateCampRoleDefinitionInput(
-            Name: "Bad Role", Description: null,
+            Name: "Bad Role", Slug: "bad-role", Description: null,
             SlotCount: 1, MinimumRequired: 2, SortOrder: 99);
 
         var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
@@ -157,7 +171,7 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync("Old Name", slotCount: 1);
 
         var input = new UpdateCampRoleDefinitionInput(
-            Name: "New Name", Description: "Updated description",
+            Name: "New Name", Slug: "new-name", Description: "Updated description",
             SlotCount: 2, MinimumRequired: 0, SortOrder: 99);
 
         var result = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
@@ -185,7 +199,7 @@ public class CampRoleServiceTests : IDisposable
         var def2 = await SeedDefinitionAsync("LNT");
 
         var input = new UpdateCampRoleDefinitionInput(
-            Name: "Consent Lead", Description: null,
+            Name: "Consent Lead", Slug: "consent-lead", Description: null,
             SlotCount: def2.SlotCount, MinimumRequired: def2.MinimumRequired,
             SortOrder: def2.SortOrder);
 
@@ -198,7 +212,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task UpdateDefinition_returns_false_when_not_found()
     {
         var input = new UpdateCampRoleDefinitionInput(
-            Name: "Anything", Description: null,
+            Name: "Anything", Slug: "anything", Description: null,
             SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
         var result = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
@@ -545,14 +559,139 @@ public class CampRoleServiceTests : IDisposable
         (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
     }
 
+    // ==========================================================================
+    // IGoogleGroupMembershipSource.GetExpectedAsync — issue #740
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetExpected_returns_one_key_per_active_role_and_in_scope_year_with_assignees()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = member.Id,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: new[] { 2026 },
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        result.Should().ContainKey("barrios-2026-consent-lead@nobodies.team");
+        result["barrios-2026-consent-lead@nobodies.team"]
+            .Should().Equal(member.UserId);
+    }
+
+    [HumansFact]
+    public async Task GetExpected_excludes_deactivated_definitions()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("Old", slug: "old", deactivated: true);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = member.Id,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: new[] { 2026 },
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        // No key should claim the deactivated role's slug.
+        result.Keys.Should().NotContain(k => k.Contains("-old@", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [HumansFact]
+    public async Task GetExpected_excludes_assignment_when_member_is_inactive()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
+
+        // Seed a member that is NOT Active (Removed).
+        var inactiveMember = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Removed,
+            RequestedAt = _clock.GetCurrentInstant(),
+            RemovedAt = _clock.GetCurrentInstant(),
+        };
+        _dbContext.CampMembers.Add(inactiveMember);
+
+        var activeMember = await SeedActiveMemberAsync(season.Id);
+
+        await _dbContext.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = def.Id,
+                CampMemberId = inactiveMember.Id,
+                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedByUserId = _actorUserId,
+            },
+            new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = def.Id,
+                CampMemberId = activeMember.Id,
+                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedByUserId = _actorUserId,
+            });
+        await _dbContext.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: new[] { 2026 },
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        // Service-layer filtering: stale assignments whose CampMember is no longer Active
+        // must not appear as expected group members. The orchestrator's user-state filter
+        // catches suspended/rejected users; per-section sources are responsible for keeping
+        // their own data clean of dangling member references.
+        var key = "barrios-2026-consent-lead@nobodies.team";
+        result.Should().ContainKey(key);
+        result[key].Should().NotContain(inactiveMember.UserId);
+        result[key].Should().Contain(activeMember.UserId);
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
-        bool deactivated = false)
+        bool deactivated = false, string? slug = null)
     {
         var def = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
             Name = name,
+            Slug = slug ?? Humans.Application.Helpers.SlugHelper.GenerateSlug(name) + "-" + Guid.NewGuid().ToString("N").Substring(0, 6),
             SlotCount = slotCount,
             MinimumRequired = minimumRequired,
             CreatedAt = _clock.GetCurrentInstant(),

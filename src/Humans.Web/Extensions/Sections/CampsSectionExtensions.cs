@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
@@ -57,8 +58,13 @@ internal static class CampsSectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<CachingCampService>());
 
         // CampRoleService — separate sub-service, no decorator.
+        // Registered under both ICampRoleService and IGoogleGroupMembershipSource so
+        // the Google sync orchestrator can enumerate the Camps claim alongside the
+        // Teams claim. Mirrors the Teams pattern in TeamsSectionExtensions.
         services.AddSingleton<ICampRoleRepository, CampRoleRepository>();
-        services.AddScoped<ICampRoleService, CampsCampRoleService>();
+        services.AddScoped<CampsCampRoleService>();
+        services.AddScoped<ICampRoleService>(sp => sp.GetRequiredService<CampsCampRoleService>());
+        services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampsCampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService → ICampRoleService → ICampService.
         services.AddTransient(sp => new Lazy<ICampRoleService>(() => sp.GetRequiredService<ICampRoleService>()));
 

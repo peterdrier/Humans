@@ -1,22 +1,31 @@
+using Humans.Application.Configuration;
+using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Application.Services.Camps;
 
-public sealed class CampRoleService : ICampRoleService
+public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSource
 {
     private readonly ICampRoleRepository _repo;
     private readonly ICampService _campService;
     private readonly IUserService _userService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLog;
     private readonly INotificationEmitter _notificationEmitter;
+    private readonly IGoogleGroupSync _googleGroupSync;
+    private readonly IGoogleGroupProvisioningClient _googleGroupProvisioning;
+    private readonly GoogleWorkspaceOptions _googleOptions;
     private readonly IClock _clock;
     private readonly ILogger<CampRoleService> _logger;
 
@@ -24,16 +33,24 @@ public sealed class CampRoleService : ICampRoleService
         ICampRoleRepository repo,
         ICampService campService,
         IUserService userService,
+        IUserEmailService userEmailService,
         IAuditLogService auditLog,
         INotificationEmitter notificationEmitter,
+        IGoogleGroupSync googleGroupSync,
+        IGoogleGroupProvisioningClient googleGroupProvisioning,
+        IOptions<GoogleWorkspaceOptions> googleOptions,
         IClock clock,
         ILogger<CampRoleService> logger)
     {
         _repo = repo;
         _campService = campService;
         _userService = userService;
+        _userEmailService = userEmailService;
         _auditLog = auditLog;
         _notificationEmitter = notificationEmitter;
+        _googleGroupSync = googleGroupSync;
+        _googleGroupProvisioning = googleGroupProvisioning;
+        _googleOptions = googleOptions.Value;
         _clock = clock;
         _logger = logger;
     }
@@ -50,18 +67,30 @@ public sealed class CampRoleService : ICampRoleService
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
 
+    public async Task<CampRoleDefinitionInfo?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var definition = await _repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
+        return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
+    }
+
     public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
+        var slug = NormalizeAndValidateSlug(input.Slug);
 
         if (await _repo.DefinitionNameExistsAsync(input.Name, excludingId: null, ct))
             throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
+
+        if (await _repo.DefinitionSlugExistsAsync(slug, excludingId: null, ct))
+            throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
 
         var now = _clock.GetCurrentInstant();
         var def = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
             Name = input.Name,
+            Slug = slug,
             Description = input.Description,
             SlotCount = input.SlotCount,
             MinimumRequired = input.MinimumRequired,
@@ -89,10 +118,23 @@ public sealed class CampRoleService : ICampRoleService
                 nameof(minimumRequired));
     }
 
+    private static string NormalizeAndValidateSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new ArgumentException("Slug is required.", nameof(slug));
+        var normalized = slug.Trim().ToLowerInvariant();
+        if (!SlugHelper.IsValidKebabSlug(normalized))
+            throw new ArgumentException(
+                "Slug must be kebab-case (lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens; max 60 chars).",
+                nameof(slug));
+        return normalized;
+    }
+
     private static CampRoleDefinitionInfo CreateCampRoleDefinitionInfo(CampRoleDefinition definition) =>
         new(
             definition.Id,
             definition.Name,
+            definition.Slug,
             definition.Description,
             definition.SlotCount,
             definition.MinimumRequired,
@@ -111,14 +153,19 @@ public sealed class CampRoleService : ICampRoleService
     public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
+        var slug = NormalizeAndValidateSlug(input.Slug);
 
         if (await _repo.DefinitionNameExistsAsync(input.Name, excludingId: id, ct))
             throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
+
+        if (await _repo.DefinitionSlugExistsAsync(slug, excludingId: id, ct))
+            throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
 
         var now = _clock.GetCurrentInstant();
         var updated = await _repo.UpdateDefinitionAsync(id, def =>
         {
             def.Name = input.Name;
+            def.Slug = slug;
             def.Description = input.Description;
             def.SlotCount = input.SlotCount;
             def.MinimumRequired = input.MinimumRequired;
@@ -268,6 +315,8 @@ public sealed class CampRoleService : ICampRoleService
             _logger.LogWarning(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);
         }
 
+        await RequestGoogleGroupSyncForRoleSeasonAsync(roleDefinitionId, campSeasonId, ct);
+
         return AssignCampRoleOutcome.Assigned;
     }
 
@@ -294,11 +343,22 @@ public sealed class CampRoleService : ICampRoleService
             relatedEntityId: assignment.CampMemberId,
             relatedEntityType: nameof(CampMember));
 
+        await RequestGoogleGroupSyncForRoleSeasonAsync(
+            assignment.CampRoleDefinitionId, assignment.CampSeasonId, ct);
+
         return true;
     }
 
     public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
     {
+        // Capture (definition, season) pairs BEFORE deletion so we can request
+        // a Google sync for each affected group after the rows are gone.
+        var affected = await _repo.GetAssignmentsForMemberAsync(campMemberId, ct);
+        var groupTargets = affected
+            .Select(a => (a.CampRoleDefinitionId, a.CampSeasonId))
+            .Distinct()
+            .ToList();
+
         var deleted = await _repo.DeleteAllForMemberAsync(campMemberId, ct);
         if (deleted > 0)
         {
@@ -307,6 +367,11 @@ public sealed class CampRoleService : ICampRoleService
                 nameof(CampMember), campMemberId,
                 $"Cascade-removed {deleted} role assignment(s) for camp member.",
                 actorUserId);
+
+            foreach (var (definitionId, seasonId) in groupTargets)
+            {
+                await RequestGoogleGroupSyncForRoleSeasonAsync(definitionId, seasonId, ct);
+            }
         }
         return deleted;
     }
@@ -334,5 +399,191 @@ public sealed class CampRoleService : ICampRoleService
         }).ToList();
 
         return new CampRoleComplianceReport(year, rows);
+    }
+
+    public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(string slug, int year, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var def = await _repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
+        if (def is null) return null;
+
+        var seasons = await _campService.GetCampSeasonsForComplianceAsync(year, ct);
+        var assignments = await _repo.GetAssignmentsForDefinitionInYearAsync(def.Id, year, ct);
+
+        var assignmentsBySeason = assignments
+            .GroupBy(a => a.CampSeasonId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(a => a.AssignedAt).ToList());
+
+        var allUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
+        IReadOnlyDictionary<Guid, UserInfo> users = allUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(allUserIds, ct);
+        var emailsByUserId = allUserIds.Count == 0
+            ? new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>()
+            : await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
+
+        var rows = seasons
+            .OrderBy(s => s.CampName, StringComparer.OrdinalIgnoreCase)
+            .Select(s =>
+            {
+                var assignees = assignmentsBySeason.TryGetValue(s.CampSeasonId, out var list)
+                    ? list.Select(a =>
+                    {
+                        var userId = a.CampMember.UserId;
+                        var displayName = users.TryGetValue(userId, out var u) ? u.BurnerName : "(unknown)";
+                        var googleEmail = TryGetGoogleEmail(userId, emailsByUserId);
+                        return new CampRoleDrillDownAssignee(userId, displayName, googleEmail);
+                    }).ToList()
+                    : new List<CampRoleDrillDownAssignee>();
+
+                return new CampRoleDrillDownCampRow(
+                    s.CampId, s.CampName, s.CampSlug, s.CampSeasonId, assignees);
+            })
+            .ToList();
+
+        var info = CreateCampRoleDefinitionInfo(def);
+        var groupEmail = BuildGroupKey(year, info.Slug);
+        return new CampRoleDrillDownData(info, year, groupEmail, rows);
+    }
+
+    // ==========================================================================
+    // IGoogleGroupMembershipSource
+    // ==========================================================================
+
+    /// <inheritdoc />
+    public async Task<Dictionary<string, Guid[]>> GetExpectedAsync(
+        string? groupKey = null,
+        CancellationToken ct = default)
+    {
+        var requestedKey = string.IsNullOrWhiteSpace(groupKey) ? null : groupKey.Trim();
+
+        // In-scope years: the public year + every open season year. This matches
+        // the years users can currently interact with via the UI.
+        var settings = await _campService.GetSettingsAsync(ct);
+        var inScopeYears = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear };
+        if (inScopeYears.Count == 0)
+            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
+
+        var activeDefs = (await _repo.ListDefinitionsAsync(includeDeactivated: false, ct)).ToList();
+        if (activeDefs.Count == 0)
+            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
+
+        // Pull assignments for every in-scope year in one shot. Filters out
+        // deactivated definitions at the repo level.
+        var assignments = await _repo.GetActiveAssignmentsForYearsAsync(inScopeYears, ct);
+        var assignmentsBySlugAndYear = assignments
+            .GroupBy(a => (a.Definition.Slug, Year: a.CampSeason.Year))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
+
+        var result = new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var def in activeDefs)
+        {
+            foreach (var year in inScopeYears)
+            {
+                var key = BuildGroupKey(year, def.Slug);
+                if (requestedKey is not null
+                    && !string.Equals(key, requestedKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                var userIds = assignmentsBySlugAndYear.TryGetValue((def.Slug, year), out var ids)
+                    ? ids
+                    : [];
+                result[key] = userIds;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Builds the deterministic group key for a (role-definition slug, season year) pair:
+    /// <c>barrios-{year}-{slug}@{domain}</c>.
+    /// </summary>
+    public string BuildGroupKey(int year, string slug) =>
+        $"barrios-{year}-{slug}@{_googleOptions.Domain}";
+
+    private async Task RequestGoogleGroupSyncForRoleSeasonAsync(
+        Guid roleDefinitionId, Guid campSeasonId, CancellationToken ct)
+    {
+        try
+        {
+            var def = await _repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
+            if (def is null) return;
+            var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, ct);
+            if (season is null) return;
+
+            var groupKey = BuildGroupKey(season.Year, def.Slug);
+            await _googleGroupSync.RequestSyncAsync(groupKey, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to request Google Group sync for camp role {RoleDefinitionId} season {CampSeasonId}",
+                roleDefinitionId,
+                campSeasonId);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> EnsureGroupsProvisionedAsync(CancellationToken ct = default)
+    {
+        var expected = await GetExpectedAsync(groupKey: null, ct);
+        if (expected.Count == 0) return 0;
+
+        var created = 0;
+        foreach (var (groupKey, _) in expected)
+        {
+            try
+            {
+                var lookup = await _googleGroupProvisioning.LookupGroupIdAsync(groupKey, ct);
+                if (lookup.GroupNumericId is not null)
+                    continue;
+
+                var displayName = groupKey;
+                var description = $"Camps role group ({groupKey}).";
+                var create = await _googleGroupProvisioning.CreateGroupAsync(
+                    groupKey, displayName, description, ct);
+                if (create.GroupNumericId is not null)
+                {
+                    created++;
+                    _logger.LogInformation("Provisioned Google Group for camps role: {GroupKey}", groupKey);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Failed to provision Google Group for camps role {GroupKey}: HTTP {StatusCode} {Message}",
+                        groupKey,
+                        create.Error?.StatusCode,
+                        create.Error?.RawMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error provisioning Google Group for camps role {GroupKey}", groupKey);
+            }
+        }
+        return created;
+    }
+
+    private static string? TryGetGoogleEmail(
+        Guid userId,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
+    {
+        if (!emailsByUserId.TryGetValue(userId, out var emails))
+            return null;
+        return emails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault()
+            ?? emails
+                .Where(e => e.IsVerified)
+                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                .Select(e => e.Email)
+                .FirstOrDefault();
     }
 }

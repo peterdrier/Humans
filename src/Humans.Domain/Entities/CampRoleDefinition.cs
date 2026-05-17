@@ -13,6 +13,13 @@ public class CampRoleDefinition
 
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Kebab-case identifier used in admin URLs and as the per-role component of the
+    /// derived Google Group key (<c>barrios-{year}-{slug}@{domain}</c>).
+    /// Unique case-insensitive; not user-visible.
+    /// </summary>
+    public string Slug { get; set; } = string.Empty;
+
     [MarkdownContent]
     public string? Description { get; set; }
 
