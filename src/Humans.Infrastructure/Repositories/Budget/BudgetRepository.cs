@@ -622,16 +622,14 @@ public sealed class BudgetRepository : IBudgetRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // BudgetCategory.Team is an obsolete cross-domain nav — callers resolve
-        // team names via ITeamService keyed off TeamId. BudgetLineItem.ResponsibleTeam
-        // is still used by the Finance CategoryDetail view and will be stripped in
-        // a follow-up; keep the Include until that PR lands.
+        // No cross-domain Includes — the team navs on BudgetCategory and
+        // BudgetLineItem are obsolete cross-section navs. Callers resolve
+        // team names via ITeamService keyed off TeamId / ResponsibleTeamId.
         return await ctx.BudgetCategories
             .AsNoTracking()
             .Include(c => c.BudgetGroup)
                 .ThenInclude(g => g!.BudgetYear)
             .Include(c => c.LineItems.OrderBy(li => li.SortOrder))
-                .ThenInclude(li => li.ResponsibleTeam)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 

@@ -129,7 +129,8 @@ else
                     <th style="cursor:pointer;" data-sort-col="2" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
                     <th style="cursor:pointer;" data-sort-col="3" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
                     <th style="cursor:pointer;" data-sort-col="4" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Invalidations <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="6" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -149,7 +150,8 @@ else
                         <td class="text-end">@entry.Hits.ToString("N0")</td>
                         <td class="text-end">@entry.Misses.ToString("N0")</td>
                         <td class="text-end">@(entry.Hits + entry.Misses == 0 ? "—" : entry.HitRatePercent.ToString("F1") + "%")</td>
-                        <td class="text-end">@entry.Invalidations.ToString("N0")</td>
+                        <td class="text-end">@entry.KeyRemovals.ToString("N0")</td>
+                        <td class="text-end">@entry.BulkInvalidations.ToString("N0")</td>
                     </tr>
                 }
             </tbody>
@@ -186,7 +188,7 @@ else
                 });
             }
             wireTable('cacheStatsTable', [2, 4, 5, 6]);
-            wireTable('decoratorCacheStatsTable', [1, 2, 3, 4, 5]);
+            wireTable('decoratorCacheStatsTable', [1, 2, 3, 4, 5, 6]);
         })();
     </script>
 }

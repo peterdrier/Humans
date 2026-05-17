@@ -189,13 +189,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(SyncMode.AddOnly); // not AddAndRemove → removal should be skipped
 
         var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
-        driveResource.Team = new Team
-        {
-            Id = TestTeamId,
-            Name = "Test Team",
-            Slug = "test-team",
-            IsActive = true
-        };
 
         _resourceRepository
             .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
@@ -204,18 +197,17 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
-        var teamDict = new Dictionary<Guid, Team>
-        {
-            [TestTeamId] = driveResource.Team
-        };
-        _teamService
-            .GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(teamDict);
-
-        // No expected members (empty team) — any permission in Google is "extra".
+        // TeamInfo cache resolves the team cross-section. No expected members
+        // (empty team) — any permission in Google is "extra".
+        var teamInfo = new TeamInfo(
+            TestTeamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: []);
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
 
         _userEmailService
             .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

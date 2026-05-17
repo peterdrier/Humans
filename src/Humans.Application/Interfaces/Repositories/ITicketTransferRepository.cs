@@ -1,7 +1,10 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
+
+[Section("Tickets")]
 
 public interface ITicketTransferRepository : IRepository
 {

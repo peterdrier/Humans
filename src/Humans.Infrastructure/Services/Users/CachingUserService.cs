@@ -60,8 +60,6 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingUserService> _logger;
 
-    public bool IsWarmedUp { get; private set; }
-
     public CachingUserService(
         IUserRepository userRepository,
         IUserEmailRepository userEmailRepository,
@@ -70,7 +68,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingUserService> logger)
-        : base("User.UserInfo")
+        : base("User.UserInfo", warmOnStartup: true)
     {
         _userRepository = userRepository;
         _userEmailRepository = userEmailRepository;
@@ -85,26 +83,27 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     // UserInfo reads
     // ==========================================================================
 
-    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (TryGet(userId, out var hit))
-            return new ValueTask<UserInfo?>(hit);
+    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default) =>
+        GetAsync(userId, ct);
 
-        return new ValueTask<UserInfo?>(LoadAndCacheAsync(userId, ct));
-    }
-
-    private async Task<UserInfo?> LoadAndCacheAsync(Guid userId, CancellationToken ct)
+    /// <summary>
+    /// Per-key loader plugged into <see cref="TrackedCache{TKey,TValue}.GetAsync"/>.
+    /// Resolves the Scoped inner <see cref="IUserService"/> per call; the base
+    /// caches the result via <see cref="TrackedCache{TKey,TValue}.Set"/>.
+    /// </summary>
+    protected override async ValueTask<UserInfo?> LoadRowAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
-        var result = await inner.GetUserInfoAsync(userId, ct);
-        if (result is not null)
-            Set(userId, result);
-        return result;
+        return await inner.GetUserInfoAsync(userId, ct);
     }
 
-    /// <inheritdoc cref="IUserService.GetAllUserInfos" />
-    public IReadOnlyCollection<UserInfo> GetAllUserInfos() => Values.ToArray();
+    /// <inheritdoc cref="IUserService.GetAllUserInfosAsync" />
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        return Values.ToArray();
+    }
 
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
@@ -124,9 +123,12 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         {
             foreach (var id in misses)
             {
-                var info = await LoadAndCacheAsync(id, ct);
+                var info = await LoadRowAsync(id, ct).ConfigureAwait(false);
                 if (info is not null)
+                {
+                    Set(id, info);
                     result[id] = info;
+                }
             }
         }
 
@@ -134,11 +136,13 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     }
 
     /// <inheritdoc cref="IUserService.SearchUsersAsync" />
-    public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
     {
         if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
-            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+            return [];
+
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
         var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
 
@@ -149,7 +153,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         {
             if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
             {
-                return Task.FromResult<IReadOnlyList<HumanSearchResult>>([
+                return [
                     new HumanSearchResult(
                         UserId: byId.Id,
                         ProfileId: byId.Profile.Id,
@@ -158,9 +162,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                         MatchField: "User ID",
                         MatchSnippet: null,
                         MatchedEmail: null)
-                ]);
+                ];
             }
-            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+            return [];
         }
 
         var results = new List<HumanSearchResult>();
@@ -194,7 +198,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
             if (results.Count >= limit) break;
         }
 
-        return Task.FromResult<IReadOnlyList<HumanSearchResult>>(results);
+        return results;
     }
 
     /// <summary>
@@ -298,7 +302,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         var user = await _userRepository.GetByIdAsync(userId, ct);
         if (user is null)
         {
-            Invalidate(userId);
+            DeleteKey(userId);
             return;
         }
 
@@ -335,16 +339,18 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// once and indexes by userId so per-user materialization is allocation-only.
     /// Trivial at ~500-user scale.
     /// </summary>
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <remarks>
+    /// Invoked by <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> via
+    /// the <see cref="Microsoft.Extensions.Hosting.IHostedService"/> contract
+    /// inherited from <see cref="TrackedCache{TKey,TValue}"/>. The base flips
+    /// the warmed flag on success. An empty system (fresh dev DB / new deploy)
+    /// is a legitimate warm state — this method simply returns early and the
+    /// flag still flips.
+    /// </remarks>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
         var users = await _userRepository.GetAllAsync(ct);
-        if (users.Count == 0)
-        {
-            // Empty system (fresh dev DB / new deploy) is a legitimate warm
-            // state — flag flips, jobs may safely run against an empty cache.
-            IsWarmedUp = true;
-            return;
-        }
+        if (users.Count == 0) return;
 
         var userIds = users.Select(u => u.Id).ToList();
 
@@ -400,8 +406,6 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                 profile, contactFields, languages, volunteerHistory,
                 preferences));
         }
-
-        IsWarmedUp = true;
     }
 
     // ==========================================================================
@@ -409,7 +413,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     // ==========================================================================
 
     /// <inheritdoc cref="IUserInfoInvalidator.InvalidateAsync" />
-    public Task InvalidateAsync(
+    public async Task InvalidateAsync(
         Guid userId,
         CancellationToken ct = default,
         [CallerMemberName] string memberName = "",
@@ -419,7 +423,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
             "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
             userId, memberName, Path.GetFileName(filePath));
 
-        return RefreshEntryAsync(userId, ct);
+        // Warmed cache, row updated: replace in-place via the base primitive
+        // (LoadRowAsync → Set, or DeleteKey if the inner returns null).
+        await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
     // ==========================================================================
@@ -455,8 +461,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByIdsWithEmailsAsync(userIds, ct));
 
-    public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
+    public async Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
     {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
         var snapshot = Values;
         var result = new List<EventParticipation>();
         foreach (var u in snapshot)
@@ -475,7 +482,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                 });
             }
         }
-        return Task.FromResult(result);
+        return result;
     }
 
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
@@ -494,16 +501,17 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));
 
-    public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
+    public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default)
     {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
         var ids = new HashSet<Guid>();
         foreach (var u in Values)
         {
             if (u.MergedToUserId == targetUserId)
                 ids.Add(u.Id);
         }
-        return Task.FromResult<IReadOnlySet<Guid>>(ids);
+        return ids;
     }
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
@@ -644,7 +652,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         var deleted = await WithInnerAsync(inner => inner.DeleteUsersAsync(userIds, ct));
         foreach (var userId in userIds)
         {
-            Invalidate(userId);
+            DeleteKey(userId);
         }
         return deleted;
     }

@@ -254,19 +254,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
-        //
-        // Destructive reconciliation guard: if the UserInfo cache has not warmed
-        // (startup failure), GetAllUserInfos() returns empty and would
-        // deprovision every Volunteers-team member. The job runs hourly, so a
-        // skipped run is cheap; the next run after warmup recovers.
-        if (!_userService.IsWarmedUp)
-        {
-            _logger.LogWarning("Skipping Volunteers team sync: UserInfo cache is not warmed");
-            report?.Steps.Add(step);
-            return;
-        }
-
-        var candidateIds = _userService.GetAllUserInfos()
+        var candidateIds = (await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
             .Where(u => u.Profile is not null
                 && !u.IsSuspended
                 && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
@@ -392,7 +380,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .GetActiveApprovedTierUserIdsAsync(tier, today, cancellationToken);
 
         // Filter by profile status to match per-user sync behavior.
-        var activeSet = _userService.GetAllUserInfos()
+        var activeSet = (await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToHashSet();

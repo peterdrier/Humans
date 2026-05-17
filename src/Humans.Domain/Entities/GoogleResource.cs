@@ -39,8 +39,13 @@ public class GoogleResource
     public Guid TeamId { get; set; }
 
     /// <summary>
-    /// Navigation property to the owning team.
+    /// Cross-domain navigation to the owning team. Do not use — callers resolve
+    /// team slices via <c>ITeamService</c>, keyed off <see cref="TeamId"/>. Retained
+    /// only so EF's configured relationship keeps the FK constraint (see
+    /// <see cref="Humans.Infrastructure"/> GoogleResourceConfiguration / TeamConfiguration).
     /// </summary>
+    [Architecture.ExpiresOn("2026-06-01", reason: "Stream C typed-FK conversion — readers must stitch via ITeamService.")]
+    [Obsolete("Cross-domain nav. Use TeamId + ITeamService to resolve the team.")]
     public Team Team { get; set; } = null!;
 
     /// <summary>

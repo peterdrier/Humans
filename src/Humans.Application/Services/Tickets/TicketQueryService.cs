@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
@@ -18,25 +17,30 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Application-layer query service for the Tickets section. Owns
-/// <c>ticket_orders</c> and <c>ticket_attendees</c> read access via
-/// <see cref="ITicketRepository"/> and stitches cross-section data
-/// (users, profiles, teams, emails, participation, campaigns, budget, event
-/// settings) via their owning service interfaces.
+/// Application-layer query service for the Tickets section — inner-keyed
+/// service behind <c>CachingTicketQueryService</c> (Infrastructure decorator,
+/// see §15 / T-07). Owns <c>ticket_orders</c> and <c>ticket_attendees</c>
+/// read access via <see cref="ITicketRepository"/> and stitches cross-section
+/// data (users, profiles, teams, emails, participation, campaigns, budget,
+/// event settings) via their owning service interfaces.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Migrated to <see cref="Humans.Application"/> per §15 (issue
 /// nobodies-collective/Humans#545 sub-task #545a). Never imports EF types —
 /// all DB access flows through <see cref="ITicketRepository"/>.
+/// </para>
+/// <para>
+/// Cache-free since T-07: every previously-cached read (per-user count,
+/// per-user holdings, user-ids-with-tickets set, valid-attendee-emails set)
+/// now goes straight to the repository on this inner side. The decorator
+/// owns the projection and intercepts before this layer is reached.
+/// Architecture test pins no <c>IMemoryCache</c> in the constructor.
+/// </para>
 /// </remarks>
 public sealed class TicketQueryService : ITicketQueryService, IUserDataContributor
 {
-    private static readonly TimeSpan TicketCountCacheTtl = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan UserIdsWithTicketsCacheTtl = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan ValidAttendeeEmailsCacheTtl = TimeSpan.FromMinutes(5);
-
     private readonly ITicketRepository _ticketRepository;
-    private readonly IMemoryCache _cache;
     private readonly IBudgetService _budgetService;
     private readonly ICampaignService _campaignService;
     private readonly IUserService _userService;
@@ -47,7 +51,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     public TicketQueryService(
         ITicketRepository ticketRepository,
-        IMemoryCache cache,
         IBudgetService budgetService,
         ICampaignService campaignService,
         IUserService userService,
@@ -57,7 +60,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         IClock clock)
     {
         _ticketRepository = ticketRepository;
-        _cache = cache;
         _budgetService = budgetService;
         _campaignService = campaignService;
         _userService = userService;
@@ -73,17 +75,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
     {
-        var cacheKey = CacheKeys.UserTicketCount(userId);
-        if (_cache.TryGetExistingValue(cacheKey, out int cached))
-            return cached;
-
-        var count = await GetUserTicketCountCoreAsync(userId);
-        _cache.Set(cacheKey, count, TicketCountCacheTtl);
-        return count;
-    }
-
-    private async Task<int> GetUserTicketCountCoreAsync(Guid userId)
-    {
         // Match on attendees only — a buyer who purchased tickets for others
         // should NOT count as having a ticket themselves.
 
@@ -94,14 +85,14 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             return matchedCount;
 
         // Fallback: check all verified user emails against attendee emails
-        // case-insensitively. The attendee email set is cached and compared
-        // in memory — avoids SQL upper() vs .NET ToUpperInvariant drift for
-        // non-ASCII code points by applying a single StringComparer rule.
+        // case-insensitively. Compared in memory — avoids SQL upper() vs
+        // .NET ToUpperInvariant drift for non-ASCII code points by applying
+        // a single StringComparer rule.
         var verifiedEmails = await _userEmailService.GetVerifiedEmailsForUserAsync(userId);
         if (verifiedEmails.Count == 0)
             return 0;
 
-        var attendeeEmails = await GetValidAttendeeEmailsCachedAsync();
+        var attendeeEmails = await _ticketRepository.GetValidAttendeeEmailsAsync();
         if (attendeeEmails.Count == 0)
             return 0;
 
@@ -109,22 +100,10 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return attendeeEmails.Count(e => verifiedSet.Contains(e));
     }
 
-    private Task<IReadOnlyList<string>> GetValidAttendeeEmailsCachedAsync() =>
-        _cache.GetOrCreateAsync<IReadOnlyList<string>>(CacheKeys.ValidAttendeeEmails, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = ValidAttendeeEmailsCacheTtl;
-            return await _ticketRepository.GetValidAttendeeEmailsAsync();
-        })!;
-
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
-        return await _cache.GetOrCreateAsync(CacheKeys.UserIdsWithTickets, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = UserIdsWithTicketsCacheTtl;
-
-            var ids = await _ticketRepository.GetValidMatchedAttendeeUserIdsAsync();
-            return ids.ToHashSet();
-        }) ?? [];
+        var ids = await _ticketRepository.GetValidMatchedAttendeeUserIdsAsync();
+        return ids.ToHashSet();
     }
 
     public async Task<List<string>> GetAvailableTicketTypesAsync()
@@ -535,7 +514,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     PaymentStatus = r.PaymentStatus,
                     VendorDashboardUrl = r.VendorDashboardUrl,
                     MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.DisplayName,
+                    MatchedUserName = user.BurnerName,
                 };
             }
             return r;
@@ -566,7 +545,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     Price = r.Price,
                     Status = r.Status,
                     MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.DisplayName,
+                    MatchedUserName = user.BurnerName,
                     VendorOrderId = r.VendorOrderId,
                 };
             }
@@ -585,7 +564,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var matchedUserIds = await GetAllMatchedUserIdsAsync();
 
         // Load Users and Volunteers-team membership via service interfaces.
-        var allUsers = _userService.GetAllUserInfos();
+        var allUsers = await _userService.GetAllUserInfosAsync().ConfigureAwait(false);
         var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
@@ -651,7 +630,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 {
                     UserId = id,
                     HasTicket = matchedUserIds.Contains(id),
-                    Name = user.DisplayName,
+                    Name = user.BurnerName,
                     Email = email ?? string.Empty,
                     TeamNames = teamNames ?? [],
                     Tier = user.Profile!.MembershipTier,
@@ -788,10 +767,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.UserTicketHoldings(userId);
-        if (_cache.TryGetExistingValue<UserTicketHoldings>(cacheKey, out var cached))
-            return cached;
-
         var orders = await _ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
         var orderCount = orders.Count;
 
@@ -801,14 +776,12 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
             .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
             .Select(a => new UserTicketHoldingRow(
-                a.AttendeeName ?? string.Empty,
-                a.TicketTypeName ?? string.Empty,
+                a.AttendeeName,
+                a.TicketTypeName,
                 a.Status))
             .ToList();
 
-        var holdings = new UserTicketHoldings(orderCount, tickets);
-        _cache.Set(cacheKey, holdings, TimeSpan.FromMinutes(5));
-        return holdings;
+        return new UserTicketHoldings(orderCount, tickets);
     }
 
     public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
@@ -925,22 +898,15 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
-    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
-    {
-        _cache.InvalidateTicketCaches();
-        _cache.InvalidateUserTicketCount(senderUserId);
-        _cache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
-        if (receiverUserId is { } receiver)
-        {
-            _cache.InvalidateUserTicketCount(receiver);
-            _cache.Remove(CacheKeys.UserTicketHoldings(receiver));
-        }
-    }
+    // Cache invalidation is owned by CachingTicketQueryService. The inner has
+    // no cache to drop; these methods exist on ITicketQueryService for the
+    // surface contract and are no-ops here. Callers that hit the keyed inner
+    // directly (architecture tests, the FakeTicketQueryService in unit tests)
+    // get harmless calls. The decorator intercepts in normal DI resolution.
 
-    public void InvalidateAfterContactImport()
-    {
-        _cache.InvalidateTicketCaches();
-    }
+    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) { }
+
+    public void InvalidateAfterContactImport() { }
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         _ticketRepository.GetOrderDriftAsync(ct);

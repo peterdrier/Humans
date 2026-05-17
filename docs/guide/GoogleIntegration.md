@@ -3,7 +3,6 @@
   src/Humans.Web/Views/TeamAdmin/Resources.cshtml
   src/Humans.Web/Controllers/GoogleController.cs
   src/Humans.Application/Services/GoogleIntegration/**
-  src/Humans.Application/Services/Teams/TeamResourceService.cs
   src/Humans.Domain/Entities/GoogleResource.cs
   src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
   src/Humans.Domain/Entities/SyncServiceSettings.cs

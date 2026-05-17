@@ -170,7 +170,7 @@ public class TimeSlotEntry
 
 public class ShiftBrowseViewModel
 {
-    public EventSettings EventSettings { get; set; } = null!;
+    public EventSettings? EventSettings { get; set; }
     public List<DepartmentShiftGroup> Departments { get; set; } = [];
     public List<DepartmentOption> AllDepartments { get; set; } = [];
     public Guid? FilterDepartmentId { get; set; }
@@ -188,6 +188,13 @@ public class ShiftBrowseViewModel
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// Department coverage pies rendered above the page. One row per
+    /// top-level department + each promoted sub-team. Empty when the event
+    /// has no rotas that contribute pie hours.
+    /// </summary>
+    public IReadOnlyList<DepartmentCoveragePie> CoveragePies { get; set; } = [];
 
     /// <summary>
     /// Current sort mode: "urgency" for most-needed-first, null/empty for default by-department grouping.
@@ -459,7 +466,7 @@ public class ShiftInfoViewModel
     /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
     public static List<string> MergeQuirks(string? timePreference, List<string> toggleQuirks)
     {
-        var result = new List<string>(toggleQuirks ?? []);
+        var result = new List<string>(toggleQuirks);
         if (!string.IsNullOrEmpty(timePreference))
             result.Add(timePreference);
         return result;

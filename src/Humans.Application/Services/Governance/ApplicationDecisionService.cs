@@ -605,7 +605,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             RoleNames.Board, ct);
         var boardUsersById = await _userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values
-            .Select(u => new BoardMemberInfo(u.Id, u.DisplayName))
+            .Select(u => new BoardMemberInfo(u.Id, u.BurnerName))
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

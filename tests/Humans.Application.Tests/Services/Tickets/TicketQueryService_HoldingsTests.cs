@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 
@@ -31,7 +30,6 @@ public sealed class TicketQueryService_HoldingsTests
     {
         Service = new TicketQueryService(
             _ticketRepo,
-            new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IBudgetService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IUserService>(),

@@ -80,7 +80,7 @@ public class HomeController : HumansControllerBase
         var viewModel = new DashboardViewModel
         {
             UserId = user.Id,
-            DisplayName = user.DisplayName,
+            DisplayName = user.BurnerName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             MembershipStatus = data.MembershipSnapshot.Status,
             HasProfile = data.Profile is not null,

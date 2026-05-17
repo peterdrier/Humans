@@ -49,6 +49,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public UserService(
         IUserRepository repo,
+        // Users + Profiles are one ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. All five repos
+        // below carry [Section("Humans")] so HUM0017 sees them as intra-section.
         IUserEmailRepository userEmailRepo,
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,
@@ -68,11 +71,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         _clock = clock;
         _logger = logger;
     }
-
-    // The undecorated service has no cache to warm — bulk-read callers that
-    // care about warmup state are decorated, this base impl is only used by
-    // the decorator on miss.
-    public bool IsWarmedUp => true;
 
     // ==========================================================================
     // User reads
@@ -110,9 +108,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             communicationPreferences);
     }
 
-    public IReadOnlyCollection<UserInfo> GetAllUserInfos() =>
+    public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default) =>
         throw new NotSupportedException(
-            "GetAllUserInfos is only meaningful through CachingUserService. " +
+            "GetAllUserInfosAsync is only meaningful through CachingUserService. " +
             "If this is being called on the inner UserService it indicates a DI " +
             "registration mistake — IUserService should resolve to CachingUserService.");
 

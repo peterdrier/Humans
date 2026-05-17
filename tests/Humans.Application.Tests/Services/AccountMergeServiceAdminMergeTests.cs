@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -23,6 +24,7 @@ public class AccountMergeServiceAdminMergeTests
     private readonly ITeamService _team = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
+    private readonly IConsentCacheInvalidator _consentCache = Substitute.For<IConsentCacheInvalidator>();
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
@@ -30,7 +32,7 @@ public class AccountMergeServiceAdminMergeTests
         new(
             _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _team, _roles, _notify);
+            _userMerges, _userService, _team, _roles, _notify, _consentCache);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {

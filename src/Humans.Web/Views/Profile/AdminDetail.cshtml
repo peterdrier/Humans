@@ -220,7 +220,7 @@
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
-        @if (campaignGrants != null && campaignGrants.Any())
+        @if (campaignGrants.Any())
         {
             <div class="card mb-4">
                 <div class="card-header"><h6 class="mb-0">Campaign Codes</h6></div>

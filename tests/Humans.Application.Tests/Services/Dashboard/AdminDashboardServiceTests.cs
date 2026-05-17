@@ -42,7 +42,8 @@ public class AdminDashboardServiceTests
             // the in-memory filter respects the Active+MissingConsents union.
             MakeUserInfo(u4Suspended, "fr"),
         };
-        _userService.GetAllUserInfos().Returns(snapshot);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(snapshot));
 
         var partition = new MembershipPartition(
             IncompleteSignup: [],
@@ -111,7 +112,8 @@ public class AdminDashboardServiceTests
         var approved = MakeUserInfoWithProfile(approved: true, rejected: false);
         var profileless = MakeUserInfo(Guid.NewGuid(), "en");
 
-        _userService.GetAllUserInfos().Returns([pending1, pending2, rejected, approved, profileless]);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([pending1, pending2, rejected, approved, profileless]));
 
         var sut = BuildSut();
 

@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -14,6 +15,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
 /// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
+[Section("Humans")]
 public interface IProfileRepository : IRepository
 {
     /// <summary>
@@ -29,13 +31,6 @@ public interface IProfileRepository : IRepository
     /// Used by read-through cache paths that need the full projection.
     /// </summary>
     Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Batched profile fetch keyed by user id. Missing users are absent from
-    /// the returned dictionary. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Loads every profile with aggregate-local <c>VolunteerHistory</c> and

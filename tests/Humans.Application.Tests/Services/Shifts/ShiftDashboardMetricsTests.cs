@@ -1010,18 +1010,16 @@ public class ShiftDashboardMetricsTests : IDisposable
         private readonly HumansDbContext _db;
         public FakeUserService(HumansDbContext db) => _db = db;
 
-        public bool IsWarmedUp => true;
-
         public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
-        public IReadOnlyCollection<UserInfo> GetAllUserInfos()
+        public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
         {
             // Build a UserInfo snapshot from the in-memory DB so dashboard-metrics
             // tests that drive ComputeDashboardTrendsAsync (which now filters
             // LastLoginAt off the cached snapshot) can observe the fake's data.
             var users = _db.Users.ToList();
-            return users.Select(u => UserInfo.Create(
+            IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfo.Create(
                 u,
                 userEmails: [],
                 eventParticipations: [],
@@ -1031,6 +1029,7 @@ public class ShiftDashboardMetricsTests : IDisposable
                 profileLanguages: [],
                 volunteerHistory: [],
                 communicationPreferences: [])).ToList();
+            return Task.FromResult(result);
         }
 
         public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
@@ -1047,15 +1046,15 @@ public class ShiftDashboardMetricsTests : IDisposable
             return users.ToDictionary(u => u.Id);
         }
 
-        public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
         {
-            var snapshot = GetAllUserInfos().ToDictionary(u => u.Id);
+            var snapshot = (await GetAllUserInfosAsync(ct)).ToDictionary(u => u.Id);
             var dict = new Dictionary<Guid, UserInfo>();
             foreach (var id in userIds)
                 if (snapshot.TryGetValue(id, out var info))
                     dict[id] = info;
-            return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
+            return dict;
         }
 
         public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)

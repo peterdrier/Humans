@@ -60,9 +60,9 @@ public class CityPlanningApiController : ControllerBase
 
     private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
     {
-        var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
-        return campsWithLeads
-            .FirstOrDefault(c => c.Leads?.Any(l => l.UserId == userId) == true)?.Id;
+        var camps = await _campService.GetCampsForYearAsync(year, ct);
+        return camps
+            .FirstOrDefault(c => c.Leads.Any(l => l.UserId == userId))?.Id;
     }
 
     /// <summary>Returns current map state: settings, all camp polygons, unmapped seasons.</summary>

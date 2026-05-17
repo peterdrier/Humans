@@ -34,7 +34,10 @@
                         <th><a href="@Toggle("displayName")">Display name@(ArrowFor("displayName"))</a></th>
                         <th><a href="@Toggle("burnerName")">Burner name@(ArrowFor("burnerName"))</a></th>
                         <th><a href="@Toggle("legalName")">Legal name@(ArrowFor("legalName"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasName")">HasName@(ArrowFor("hasName"))</a></th>
                         <th class="text-center"><a href="@Toggle("hasConsent")">HasConsent@(ArrowFor("hasConsent"))</a></th>
+                        <th><a href="@Toggle("createdAt")">Created@(ArrowFor("createdAt"))</a></th>
+                        <th><a href="@Toggle("lastLoginAt")">Last login@(ArrowFor("lastLoginAt"))</a></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,7 +51,10 @@
                         <td>@row.DisplayName</td>
                         <td>@row.BurnerName</td>
                         <td>@row.LegalName</td>
+                        <td class="text-center">@Tri(row.HasName)</td>
                         <td class="text-center">@Tri(row.HasConsent)</td>
+                        <td>@row.CreatedAt.ToDisplayCompactDateTime()</td>
+                        <td>@(row.LastLoginAt?.ToDisplayCompactDateTime() ?? "—")</td>
                     </tr>
                 }
                 </tbody>

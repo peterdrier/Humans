@@ -255,6 +255,11 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         return await TeamDirectoryBuilder.BuildAsync(teamsById, RoleAssignmentService, userId, cancellationToken);
     }
 
+    // T-01 (cache-migration): production callers route through
+    // CachingTeamService.GetTeamDetailAsync, which projects entirely from the
+    // TeamInfo snapshot. This inner implementation is retained as the
+    // canonical reference for projection semantics and is still exercised by
+    // TeamServiceTests; it is not on the production read path.
     public async Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,
         Guid? userId,
@@ -2109,7 +2114,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     {
         var members = definitions
             .SelectMany(d => d.Assignments.Select(a => a.TeamMember))
-            .Where(m => m is not null)
             .ToList();
         if (members.Count == 0)
             return;
@@ -2226,7 +2230,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
                 await EmailService.SendAddedToTeamAsync(
-                    email, user.DisplayName, team.Name, team.Slug,
+                    email, user.BurnerName, team.Name, team.Slug,
                     resources.Select(r => (r.Name, r.Url)),
                     user.PreferredLanguage,
                     cancellationToken);
@@ -2316,24 +2320,25 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             team.IsHidden);
     }
 
-    private static TeamPageTeamSummary MapTeamSummary(Team team) => new(
-        team.Id,
-        team.Name,
-        team.DisplayName,
-        team.Description,
-        team.Slug,
-        team.IsActive,
-        team.RequiresApproval,
-        team.IsSystemTeam,
-        team.SystemTeamType,
-        team.CreatedAt,
-        team.IsPublicPage,
-        team.ShowCoordinatorsOnPublicPage,
-        team.PageContent,
-        team.CallsToAction ?? [],
-        team.PageContentUpdatedAt,
-        team.PageContentUpdatedByUserId,
-        team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
+    private static TeamPageTeamSummary MapTeamSummary(Team team) =>
+        TeamPageSummaryMapper.Map(
+            id: team.Id,
+            name: team.Name,
+            parentName: team.ParentTeam?.Name,
+            description: team.Description,
+            slug: team.Slug,
+            isActive: team.IsActive,
+            requiresApproval: team.RequiresApproval,
+            isSystemTeam: team.IsSystemTeam,
+            systemTeamType: team.SystemTeamType,
+            createdAt: team.CreatedAt,
+            isPublicPage: team.IsPublicPage,
+            showCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+            pageContent: team.PageContent,
+            callsToAction: team.CallsToAction ?? [],
+            pageContentUpdatedAt: team.PageContentUpdatedAt,
+            pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+            parentLink: team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
 
     private static TeamPageTeamLink MapTeamLink(Team team) => new(
         team.Id,

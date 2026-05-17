@@ -1,37 +1,26 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Microsoft.EntityFrameworkCore;
+using Humans.Application.Interfaces.Teams;
+using Humans.Domain.Constants;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Services;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.Teams;
-using Humans.Infrastructure.Services;
+using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class GuideRoleResolverTests : IDisposable
+public class GuideRoleResolverTests
 {
-    private readonly HumansDbContext _db;
-    private readonly TestDbContextFactory _factory;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     public GuideRoleResolverTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _db = new HumansDbContext(options);
-        _factory = new TestDbContextFactory(options);
-    }
-
-    public void Dispose()
-    {
-        _db.Dispose();
-        GC.SuppressFinalize(this);
+        // Default: empty team cache.
+        _teamService
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
     }
 
     private ClaimsPrincipal PrincipalWithRoles(Guid? userId, params string[] roles)
@@ -49,8 +38,39 @@ public class GuideRoleResolverTests : IDisposable
         return new ClaimsPrincipal(identity);
     }
 
-    private GuideRoleResolver CreateResolver() =>
-        new(new TeamRepository(_factory));
+    private GuideRoleResolver CreateResolver() => new(_teamService);
+
+    private TeamInfo BuildTeam(Guid teamId, params TeamMemberInfo[] members) => new(
+        Id: teamId,
+        Name: "T",
+        Description: null,
+        Slug: "t",
+        IsActive: true,
+        IsSystemTeam: false,
+        SystemTeamType: SystemTeamType.None,
+        RequiresApproval: false,
+        IsPublicPage: false,
+        IsHidden: false,
+        IsPromotedToDirectory: false,
+        CreatedAt: _clock.GetCurrentInstant(),
+        Members: members.ToList());
+
+    private TeamMemberInfo Member(Guid userId, TeamMemberRole role) => new(
+        TeamMemberId: Guid.NewGuid(),
+        UserId: userId,
+        DisplayName: "u",
+        Email: null,
+        ProfilePictureUrl: null,
+        Role: role,
+        JoinedAt: _clock.GetCurrentInstant());
+
+    private void StubTeams(params TeamInfo[] teams)
+    {
+        var byId = teams.ToDictionary(t => t.Id);
+        _teamService
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)byId);
+    }
 
     [HumansFact]
     public async Task Resolve_Anonymous_ReturnsAnonymousContext()
@@ -81,24 +101,7 @@ public class GuideRoleResolverTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _db.Teams.Add(new Team
-        {
-            Id = teamId,
-            Name = "T",
-            Slug = "t",
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        _db.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Role = TeamMemberRole.Coordinator,
-            JoinedAt = _clock.GetCurrentInstant()
-        });
-        await _db.SaveChangesAsync(CancellationToken.None);
+        StubTeams(BuildTeam(teamId, Member(userId, TeamMemberRole.Coordinator)));
 
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
@@ -111,27 +114,11 @@ public class GuideRoleResolverTests : IDisposable
     [HumansFact]
     public async Task Resolve_FormerTeamCoordinator_IsTeamCoordinatorFalse()
     {
+        // TeamInfo.Members in the cache only contains active (LeftAt is null) memberships,
+        // so a former coordinator simply does not appear in the cached members list.
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _db.Teams.Add(new Team
-        {
-            Id = teamId,
-            Name = "T",
-            Slug = "t",
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        _db.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Role = TeamMemberRole.Coordinator,
-            JoinedAt = _clock.GetCurrentInstant(),
-            LeftAt = _clock.GetCurrentInstant()
-        });
-        await _db.SaveChangesAsync(CancellationToken.None);
+        StubTeams(BuildTeam(teamId)); // no members — former coordinator pruned
 
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
@@ -146,24 +133,7 @@ public class GuideRoleResolverTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _db.Teams.Add(new Team
-        {
-            Id = teamId,
-            Name = "T",
-            Slug = "t",
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        _db.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant()
-        });
-        await _db.SaveChangesAsync(CancellationToken.None);
+        StubTeams(BuildTeam(teamId, Member(userId, TeamMemberRole.Member)));
 
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
@@ -171,5 +141,21 @@ public class GuideRoleResolverTests : IDisposable
         var result = await resolver.ResolveAsync(user, CancellationToken.None);
 
         result.IsTeamCoordinator.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Resolve_CoordinatorOnOneTeamMemberOnAnother_IsTeamCoordinatorTrue()
+    {
+        var userId = Guid.NewGuid();
+        StubTeams(
+            BuildTeam(Guid.NewGuid(), Member(userId, TeamMemberRole.Member)),
+            BuildTeam(Guid.NewGuid(), Member(userId, TeamMemberRole.Coordinator)));
+
+        var resolver = CreateResolver();
+        var user = PrincipalWithRoles(userId);
+
+        var result = await resolver.ResolveAsync(user, CancellationToken.None);
+
+        result.IsTeamCoordinator.Should().BeTrue();
     }
 }

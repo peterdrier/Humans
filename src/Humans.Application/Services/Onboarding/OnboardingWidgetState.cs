@@ -38,11 +38,12 @@ public class OnboardingWidgetState : IOnboardingWidgetState
         if (await _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
             return OnboardingWidgetStep.Complete;
 
-        // A Stub profile (or no profile row) means the user hasn't filled in
-        // legal name yet — the consent flow will refuse to write a record
-        // (ConsentService defense-in-depth gate), so route to Names first.
+        // No legal name on file → route to Names. Reads HasRequiredNameFields
+        // rather than IsStub so legacy/data-drift profiles in Active state with
+        // blank name fields still get caught (they'd otherwise fall through to
+        // Shifts/Consents, and the consent write would be refused downstream).
         var info = await _users.GetUserInfoAsync(userId, ct);
-        if (info is null || info.IsStub)
+        if (info is null || !info.HasRequiredNameFields)
             return OnboardingWidgetStep.Names;
 
         // Returning member: any signed row in the current required Volunteer

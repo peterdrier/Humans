@@ -2,6 +2,7 @@ using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -23,6 +24,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </para>
 /// </remarks>
 [SurfaceBudget(18)]
+[Section("Notifications")]
 public interface INotificationRepository : IRepository
 {
     // ==========================================================================

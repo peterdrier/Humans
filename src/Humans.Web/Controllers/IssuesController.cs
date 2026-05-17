@@ -257,7 +257,7 @@ public class IssuesController : HumansControllerBase
 
     private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
     {
-        var activeIds = _users.GetAllUserInfos()
+        var activeIds = (await _users.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToList();
@@ -267,10 +267,10 @@ public class IssuesController : HumansControllerBase
         }
         else
         {
-            var users = await _users.GetByIdsAsync(activeIds);
+            var users = await _users.GetUserInfosAsync(activeIds);
             vm.AssigneeOptions = users.Values
-                .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+                .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
+                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
                 .ToList();
         }
 

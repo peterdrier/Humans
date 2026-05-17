@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -22,6 +23,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Users.IUserService"/>. See design-rules §6.
 /// </para>
 /// </summary>
+[Section("Teams")]
 public interface ITeamRepository : IRepository
 {
     // ==========================================================================

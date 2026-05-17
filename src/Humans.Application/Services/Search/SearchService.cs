@@ -54,7 +54,7 @@ public sealed class SearchService : ISearchService
         int perTypeLimit = 10,
         CancellationToken ct = default)
     {
-        var trimmed = (query ?? string.Empty).Trim();
+        var trimmed = query.Trim();
         if (trimmed.Length < 2)
         {
             return new GlobalSearchResults(

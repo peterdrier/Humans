@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -21,6 +22,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
+[Section("AuditLog")]
 public interface IAuditLogRepository : IRepository
 {
     // ==========================================================================

@@ -1,8 +1,11 @@
 using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
+
+[Section("Issues")]
 
 public interface IIssuesRepository : IRepository
 {

@@ -159,8 +159,8 @@ public sealed class CityPlanningService : ICityPlanningService
 
         return rows.Select(h =>
         {
-            var displayName = users.TryGetValue(h.ModifiedByUserId, out var user) && !string.IsNullOrEmpty(user.DisplayName)
-                ? user.DisplayName
+            var displayName = users.TryGetValue(h.ModifiedByUserId, out var user) && !string.IsNullOrEmpty(user.BurnerName)
+                ? user.BurnerName
                 : h.ModifiedByUserId.ToString();
 
             return new CampPolygonHistoryEntryDto(

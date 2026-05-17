@@ -17,3 +17,5 @@ HUM0013 | Humans.Architecture   | Error    | Repository interface (IRepository e
 HUM0014 | Humans.Architecture   | Error    | Class in Humans.Web injects a repository directly (must go through an application service)
 HUM0015 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods
 HUM0016 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack — decrement budget)
+HUM0017 | Humans.Architecture   | Warning  | Application service injects a repository whose [Section] differs from the service's namespace section
+HUM0018 | Humans.Architecture   | Warning  | Section-aware analyzer (e.g. HUM0017) cannot determine the section of a type — missing [Section] or unsection'd namespace

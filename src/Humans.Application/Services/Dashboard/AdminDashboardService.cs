@@ -34,7 +34,7 @@ public sealed class AdminDashboardService : IAdminDashboardService
 
     public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var snapshot = _userService.GetAllUserInfos();
+        var snapshot = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var allUserIds = snapshot.Select(u => u.Id).ToList();
         var totalMembers = allUserIds.Count;
         var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
@@ -77,9 +77,9 @@ public sealed class AdminDashboardService : IAdminDashboardService
             languageDistribution);
     }
 
-    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
+    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
     {
-        var count = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
-        return Task.FromResult(count);
+        var count = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);
+        return count;
     }
 }

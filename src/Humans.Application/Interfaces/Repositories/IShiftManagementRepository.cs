@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -33,6 +34,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// contexts per call.
 /// </para>
 /// </summary>
+[Section("Shifts")]
 public interface IShiftManagementRepository : IRepository
 {
     // ==========================================================================

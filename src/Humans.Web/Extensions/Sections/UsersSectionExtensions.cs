@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Repositories.Users;
 using Humans.Infrastructure.Services.Users;
 using DashboardAdminDashboardService = Humans.Application.Services.Dashboard.AdminDashboardService;
@@ -63,9 +62,11 @@ internal static class UsersSectionExtensions
         // both AddDbContext and AddDbContextFactory option pipelines.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
 
-        // Eagerly warm the UserInfo dict at startup. Failures are logged and
-        // swallowed; lazy population still works.
-        services.AddHostedService<UserInfoWarmupHostedService>();
+        // CachingUserService is itself the IHostedService — TrackedCache's
+        // StartAsync triggers WarmAllAsync when warmOnStartup: true. Load-all
+        // reads call EnsureWarmed / EnsureWarmedAsync, which drives warmup on
+        // demand if startup hasn't yet completed.
+        services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
         // Account deletion orchestrator (issue nobodies-collective/Humans#582). Single entry point for
         // user-requested / admin-initiated / expiry-triggered deletion paths.

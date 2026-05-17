@@ -335,7 +335,8 @@ public class DecoratorCacheStatEntryViewModel
     public int Entries { get; set; }
     public long Hits { get; set; }
     public long Misses { get; set; }
-    public long Invalidations { get; set; }
+    public long KeyRemovals { get; set; }
+    public long BulkInvalidations { get; set; }
     public double HitRatePercent { get; set; }
 }
 

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Profiles;
@@ -43,7 +44,6 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         _service = new TicketQueryService(
             _repo,
-            new MemoryCache(new MemoryCacheOptions()),
             _budgetService,
             _campaignService,
             _userService,
@@ -593,13 +593,14 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(allUsers);
-        _userService.GetAllUserInfos()
-            .Returns(allUsers.Select(u => u.ToUserInfo(profile: new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = u.Id,
-                MembershipTier = MembershipTier.Volunteer,
-            })).ToList());
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
+                allUsers.Select(u => u.ToUserInfo(profile: new Profile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = u.Id,
+                    MembershipTier = MembershipTier.Volunteer,
+                })).ToList<UserInfo>()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));

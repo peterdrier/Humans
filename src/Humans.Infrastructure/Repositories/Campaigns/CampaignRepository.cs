@@ -97,7 +97,7 @@ public sealed class CampaignRepository : ICampaignRepository
                 g.Campaign.Title,
                 g.Id,
                 g.UserId,
-                g.Code != null ? g.Code.Code : null,
+                g.Code.Code,
                 g.RedeemedAt,
                 g.LatestEmailStatus))
             .ToListAsync(ct);
@@ -293,11 +293,10 @@ public sealed class CampaignRepository : ICampaignRepository
         var unredeemed = (await ctx.CampaignGrants
             .Include(g => g.Code)
             .Include(g => g.Campaign)
-            .Where(g => g.Code != null
-                && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
+            .Where(g => (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
                 && g.RedeemedAt == null)
             .ToListAsync(ct))
-            .Where(g => g.Code != null && codeStrings.Contains(g.Code.Code))
+            .Where(g => codeStrings.Contains(g.Code.Code))
             .ToList();
 
         // Iterate redemptions in input order, matching one grant per redemption

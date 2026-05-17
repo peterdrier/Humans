@@ -114,7 +114,7 @@ public class ProfileCardViewComponent : ViewComponent
         var model = new ProfileCardViewModel
         {
             UserId = userId,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             ProfilePictureUrl = info.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = pictureUrl,

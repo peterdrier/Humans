@@ -36,9 +36,8 @@ public class DiResolutionSmokeTests : IClassFixture<HumansWebApplicationFactory>
             {
                 if (group.Count() == 1)
                 {
-                    var resolved = scope.ServiceProvider.GetRequiredService(group.Key);
-                    if (resolved is null)
-                        failures.Add($"{group.Key.FullName}: resolved null");
+                    // GetRequiredService throws if the service is missing; no null path.
+                    scope.ServiceProvider.GetRequiredService(group.Key);
                 }
                 else
                 {

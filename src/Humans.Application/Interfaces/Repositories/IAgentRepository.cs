@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -9,6 +10,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// and its EF model has no cross-section FK or nav wiring — owned-table joins
 /// only.
 /// </summary>
+[Section("Agent")]
 public interface IAgentRepository : IRepository
 {
     // ---- Settings (singleton row, Id = 1) ------------------------------------

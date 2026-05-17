@@ -47,7 +47,7 @@ public sealed class TicketsContactsAdminController : HumansControllerBase
     [HttpPost("Apply")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Apply(
-        [FromForm(Name = "selected")] Guid[] selected,
+        [FromForm(Name = "selected")] Guid[]? selected,
         CancellationToken ct)
     {
         if (selected is null || selected.Length == 0)

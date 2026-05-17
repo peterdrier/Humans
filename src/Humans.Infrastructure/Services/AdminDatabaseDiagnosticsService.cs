@@ -29,7 +29,7 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
 
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
-        var allUsers = _userService.GetAllUserInfos();
+        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         IReadOnlySet<Guid> ticketUserIds = year.HasValue
             ? await _ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
             : await _ticketQueryService.GetAllMatchedUserIdsAsync();

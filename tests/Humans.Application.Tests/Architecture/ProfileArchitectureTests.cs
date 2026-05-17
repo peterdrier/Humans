@@ -106,6 +106,26 @@ public class ProfileArchitectureTests
     }
 
     [HumansFact]
+    public void Profile_lookup_by_user_ids_does_not_exist_on_profile_surface()
+    {
+        // T-05 cache migration: GetByUserIdsAsync was the last fan-out path that
+        // re-loaded Profile rows from the DB after a caller already had the
+        // user ids in hand. Every consumer now reads UserInfo.Profile from the
+        // unified read-model (UserInfo) instead. Re-adding GetByUserIdsAsync to
+        // either surface would resurrect the parallel-read-path divergence the
+        // unified read-model was built to eliminate — pin it.
+        typeof(IProfileService)
+            .GetMethod("GetByUserIdsAsync")
+            .Should().BeNull(
+                because: "callers read UserInfo.Profile via IUserService.GetUserInfoAsync / GetUserInfosAsync");
+
+        typeof(IProfileRepository)
+            .GetMethod("GetByUserIdsAsync")
+            .Should().BeNull(
+                because: "IProfileRepository has no fan-out reader path; the only legitimate batched profile read is UserInfo.Profile off the cache");
+    }
+
+    [HumansFact]
     public void EmailProblemsService_depends_only_on_section_services_not_repositories()
     {
         var ctor = typeof(EmailProblemsService).GetConstructors().Single();

@@ -22,24 +22,6 @@ public sealed class EventRepository : IEventRepository
         return await ctx.EventGuideSettings.AsNoTracking().FirstOrDefaultAsync(ct);
     }
 
-    // TODO: switch to IEventSettingsService once https://github.com/nobodies-collective/Humans/issues/719 ships.
-    public async Task<IReadOnlyList<EventSettings>> GetActiveEventSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
-            .AsNoTracking()
-            .Where(e => e.IsActive)
-            .OrderByDescending(e => e.GateOpeningDate)
-            .ToListAsync(ct);
-    }
-
-    // TODO: switch to IEventSettingsService once https://github.com/nobodies-collective/Humans/issues/719 ships.
-    public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
-
     public async Task UpsertGuideSettingsAsync(EventGuideSettings settings, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

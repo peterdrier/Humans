@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -16,6 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>DeleteAsync</c>. Restores write a new history row and update the
 /// corresponding <see cref="Humans.Domain.Entities.CampPolygon"/>.
 /// </remarks>
+[Section("CityPlanning")]
 public interface ICityPlanningRepository : IRepository
 {
     // ==========================================================================

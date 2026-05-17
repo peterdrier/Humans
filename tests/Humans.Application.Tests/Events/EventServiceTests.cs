@@ -2,11 +2,13 @@ using AwesomeAssertions;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -15,11 +17,12 @@ public sealed class EventServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
+    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
     private readonly EventService _service;
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _clock);
+        _service = new EventService(_repo, _shiftManagement, _clock);
     }
 
     [HumansFact]
@@ -59,7 +62,7 @@ public sealed class EventServiceTests
     public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
     {
         var eventSettingsId = Guid.NewGuid();
-        _repo.EventSettings[eventSettingsId] = new EventSettings
+        _shiftManagement.GetByIdAsync(eventSettingsId).Returns(new EventSettings
         {
             Id = eventSettingsId,
             EventName = "Nowhere 2026",
@@ -69,7 +72,7 @@ public sealed class EventServiceTests
             IsActive = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
-        };
+        });
 
         await _service.SaveGuideSettingsAsync(
             existingId: null,
@@ -253,7 +256,6 @@ public sealed class EventServiceTests
     private sealed class FakeEventRepository : IEventRepository
     {
         public EventGuideSettings? Settings { get; set; }
-        public Dictionary<Guid, EventSettings> EventSettings { get; } = [];
         public List<EventCategory> Categories { get; } = [];
         public List<EventVenue> Venues { get; } = [];
         public List<EventVenue> RemovedVenues { get; } = [];
@@ -265,12 +267,6 @@ public sealed class EventServiceTests
 
         public Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
             => Task.FromResult(Settings);
-
-        public Task<IReadOnlyList<EventSettings>> GetActiveEventSettingsAsync(CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<EventSettings>>(EventSettings.Values.Where(e => e.IsActive).ToList());
-
-        public Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-            => Task.FromResult(EventSettings.GetValueOrDefault(id));
 
         public Task UpsertGuideSettingsAsync(EventGuideSettings settings, CancellationToken ct = default)
         {

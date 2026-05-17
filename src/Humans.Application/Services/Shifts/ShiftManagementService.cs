@@ -52,6 +52,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         [ShiftPriority.Essential] = 6
     };
 
+    // Width of the all-day shift window, used by the pie-row math. Inputs are
+    // static constants so this evaluates once per process.
+    private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
+        Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
+
     private readonly IShiftManagementRepository _repo;
     private readonly IAuditLogService _auditLogService;
     private readonly IAdminAuthorizationService _adminAuthorization;
@@ -633,6 +638,41 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return (minDayOffset, maxDayOffset);
     }
 
+    /// <summary>
+    /// Builds the explicit list of day offsets covered by <paramref name="period"/>
+    /// (or all three periods when <paramref name="period"/> is null). Narrows
+    /// the list to the Build sub-period bounds when both <paramref name="period"/>
+    /// is <see cref="ShiftPeriod.Build"/> and <paramref name="subPeriod"/> is set.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the iteration-list counterpart to <see cref="GetDayOffsetBounds"/>,
+    /// which returns a min/max pair for repository queries. Callers that need to
+    /// iterate per-day (staffing data, staffing hours, coverage heatmap,
+    /// per-day department staffing) consume the list; callers that only need
+    /// query bounds keep using <c>GetDayOffsetBounds</c>.
+    /// </para>
+    /// </remarks>
+    private static List<int> BuildDayOffsetList(
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettings es)
+    {
+        var offsets = new List<int>();
+        if (period is null or ShiftPeriod.Build)
+            for (var d = es.BuildStartOffset; d < 0; d++) offsets.Add(d);
+        if (period is null or ShiftPeriod.Event)
+            for (var d = 0; d <= es.EventEndOffset; d++) offsets.Add(d);
+        if (period is null or ShiftPeriod.Strike)
+            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) offsets.Add(d);
+
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            offsets = offsets.Where(d => d >= start && d < end).ToList();
+        }
+
+        return offsets;
+    }
+
     public async Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
         Guid? departmentId = null,
@@ -848,24 +888,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        // TODO(consolidation): these 6 day-offset-list builders inline BoundsFor directly
-        // rather than going through GetDayOffsetBounds, because they need an explicit
-        // iteration list (not a min/max tuple). Unifying would require a new helper overload.
-        var dayOffsets = new List<int>();
-        if (period is null or ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Event)
-            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Strike)
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        // Narrow to sub-period bounds when set (only meaningful for Build).
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
@@ -911,20 +934,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        var dayOffsets = new List<int>();
-        if (period is null or ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Event)
-            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Strike)
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
@@ -1008,6 +1018,81 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default) =>
         _repo.GetTeamIdsWithShiftsInEventAsync(eventSettingsId, teamIds, ct);
+
+    public async Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
+        Guid eventSettingsId,
+        LocalDate? fromDate = null,
+        LocalDate? toDate = null,
+        CancellationToken ct = default)
+    {
+        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        if (es is null) return [];
+
+        var teamIdsWithRotas = await _repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
+        if (teamIdsWithRotas.Count == 0) return [];
+
+        // Brings rota-owning teams AND their parents into one lookup, so a
+        // non-promoted sub-team rota can find its parent without a second hop.
+        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsWithRotas, ct);
+
+        var allRotas = await _repo.GetRotasWithShiftsAndSignupsAsync(
+            eventSettingsId, teamIdsWithRotas.ToList(), ct);
+
+        // Pie-eligible teams = top-level departments + promoted sub-teams.
+        var pieTeams = teamLookup.Values.Where(t => t.IsInDirectory).ToList();
+        var pieTeamIds = pieTeams.Select(t => t.Id).ToHashSet();
+
+        var requested = new Dictionary<Guid, decimal>();
+        var filled = new Dictionary<Guid, decimal>();
+
+        foreach (var rota in allRotas.Where(r => r.IsVisibleToVolunteers))
+        {
+            if (!teamLookup.TryGetValue(rota.TeamId, out var rotaTeam)) continue;
+
+            // Bucket: own pie if eligible; otherwise nearest ancestor's pie.
+            Guid? bucketId = pieTeamIds.Contains(rotaTeam.Id)
+                ? rotaTeam.Id
+                : (rotaTeam.ParentTeamId is { } pid && pieTeamIds.Contains(pid) ? pid : null);
+            if (bucketId is null) continue;
+
+            foreach (var shift in rota.Shifts.Where(s => !s.AdminOnly))
+            {
+                if (fromDate is not null || toDate is not null)
+                {
+                    var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
+                    if (fromDate is { } from && shiftDate < from) continue;
+                    if (toDate is { } to && shiftDate > to) continue;
+                }
+
+                var hours = shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
+                requested[bucketId.Value] = requested.GetValueOrDefault(bucketId.Value)
+                    + hours * shift.MaxVolunteers;
+
+                var confirmed = shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed);
+                var capped = Math.Min(confirmed, shift.MaxVolunteers);
+                filled[bucketId.Value] = filled.GetValueOrDefault(bucketId.Value) + hours * capped;
+            }
+        }
+
+        // Natural name order. Display-layer ordering rule (sub-team next to
+        // parent) lives in the view-model assembly per
+        // memory/architecture/display-sort-in-controllers.
+        return pieTeams
+            .Where(t => requested.GetValueOrDefault(t.Id) > 0)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => new DepartmentCoveragePie(
+                TeamId: t.Id,
+                TeamName: t.Name,
+                TeamSlug: t.Slug,
+                IsSubTeam: t.ParentTeamId is not null,
+                ParentTeamId: t.ParentTeamId,
+                ParentTeamName: t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
+                    ? parent.Name
+                    : null,
+                RequestedHours: requested[t.Id],
+                FilledHours: filled.GetValueOrDefault(t.Id)))
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId)
@@ -1463,7 +1548,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
 
         var ticketsInWindow = await TicketQueryService.GetPaidOrderDatesInWindowAsync(startInstant, endInstant);
-        var loginsInWindow = UserService.GetAllUserInfos()
+        var loginsInWindow = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
             .Select(u => u.LastLoginAt!.Value)
             .ToList();
@@ -1501,18 +1586,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
 
-        var dayOffsets = new List<int>();
-        if (period is ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        else
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        // Caller restricts to Build or Strike up-front (see early return above),
+        // so BuildDayOffsetList only fills one of its two relevant branches.
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
@@ -1581,20 +1657,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
 
-        var dayOffsets = new List<int>();
-        if (period is null or ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Event)
-            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Strike)
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return empty;
 
         var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);

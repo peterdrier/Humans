@@ -88,10 +88,10 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .HasConversion(
                 v => v == null ? null : JsonSerializer.Serialize(v, JsonEnumOptions),
                 v => v == null ? null : JsonSerializer.Deserialize<List<CallToAction>>(v, JsonEnumOptions),
-                new ValueComparer<List<CallToAction>>(
+                new ValueComparer<List<CallToAction>?>(
                     (a, b) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual(b)),
                     v => v == null ? 0 : v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.Text, item.Url, item.Style)),
-                    v => v == null ? null! : v.Select(c => new CallToAction { Text = c.Text, Url = c.Url, Style = c.Style }).ToList()));
+                    v => v == null ? null : v.Select(c => new CallToAction { Text = c.Text, Url = c.Url, Style = c.Style }).ToList()));
 
         builder.Property(t => t.ParentTeamId);
 
@@ -116,10 +116,12 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
         // Restrict (not SetNull): GoogleResource.TeamId is non-nullable, so SetNull
         // would produce a NOT NULL violation on team delete. Teams should never be
         // hard-deleted if resources exist — the caller must unlink resources first.
+#pragma warning disable CS0618 // GoogleResource.Team is an obsolete cross-domain nav kept so EF FK constraint stays modelled.
         builder.HasMany<GoogleResource>()
             .WithOne(gr => gr.Team)
             .HasForeignKey(gr => gr.TeamId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
 
         builder.HasIndex(t => t.Slug)
             .IsUnique();

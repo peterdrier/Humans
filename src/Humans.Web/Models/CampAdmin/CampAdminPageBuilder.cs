@@ -46,8 +46,13 @@ public sealed class CampAdminPageBuilder
                 }))
             .ToList();
 
-        var activeStatuses = new[] { CampSeasonStatus.Active, CampSeasonStatus.Full };
-        var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(settings.PublicYear, activeStatuses);
+        // T-06: GetCampsForYearAsync always populates leads; filter by season
+        // status in-memory (was previously a repo-side filter via the now-
+        // deprecated GetCampsWithLeadsForYearAsync).
+        var activeStatuses = new HashSet<CampSeasonStatus> { CampSeasonStatus.Active, CampSeasonStatus.Full };
+        var campsWithLeads = (await _campService.GetCampsForYearAsync(settings.PublicYear))
+            .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
+            .ToList();
         var summaries = await BuildSummariesAsync(campsWithLeads);
 
         return new CampAdminViewModel
@@ -77,7 +82,7 @@ public sealed class CampAdminPageBuilder
     private async Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
     {
         var leadUserIds = campsWithLeads
-            .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
+            .SelectMany(c => c.Leads.Select(l => l.UserId))
             .Distinct()
             .ToList();
         var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -97,7 +102,7 @@ public sealed class CampAdminPageBuilder
                 YearsParticipating = c.TimesAtNowhere,
                 EeSlotCount = season?.EeSlotCount ?? 0,
                 EeGrantedCount = season?.EeGrantedCount ?? 0,
-                Leads = (c.Leads ?? [])
+                Leads = c.Leads
                     .Select(l => new CampLeadViewModel
                     {
                         LeadId = l.Id,

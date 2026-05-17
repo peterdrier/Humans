@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -17,6 +18,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>HumansDbContext</c> remains Scoped. Each method creates and disposes
 /// its own short-lived context.
 /// </remarks>
+[Section("Email")]
 public interface IEmailOutboxRepository : IRepository
 {
     // ==========================================================================

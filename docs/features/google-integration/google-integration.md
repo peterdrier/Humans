@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/GoogleIntegration/**
-  src/Humans.Application/Services/Teams/TeamResourceService.cs
   src/Humans.Web/Controllers/GoogleController.cs
   src/Humans.Web/Views/Google/**
   src/Humans.Domain/Entities/GoogleResource.cs

@@ -262,7 +262,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
             return new Dictionary<Guid, string>();
 
         var users = await _userService.GetUserInfosAsync(userIds, ct);
-        return users.ToDictionary(kv => kv.Key, kv => kv.Value.DisplayName ?? string.Empty);
+        return users.ToDictionary(kv => kv.Key, kv => kv.Value.DisplayName);
     }
 
     private static NotificationRowDto MapToRow(

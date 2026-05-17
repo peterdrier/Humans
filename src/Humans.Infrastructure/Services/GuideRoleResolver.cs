@@ -1,8 +1,9 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Models;
 using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Services;
 
@@ -23,11 +24,11 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         RoleNames.VolunteerCoordinator
     ];
 
-    private readonly ITeamRepository _teamRepository;
+    private readonly ITeamService _teamService;
 
-    public GuideRoleResolver(ITeamRepository teamRepository)
+    public GuideRoleResolver(ITeamService teamService)
     {
-        _teamRepository = teamRepository;
+        _teamService = teamService;
     }
 
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
@@ -52,7 +53,13 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         var isCoordinator = false;
         if (Guid.TryParse(userIdClaim, out var userId))
         {
-            isCoordinator = await _teamRepository.IsAnyActiveCoordinatorAsync(userId, cancellationToken);
+            // Answered from the cached TeamInfo snapshot: TeamInfo.Members only
+            // contains active (LeftAt is null) memberships, so we just look for
+            // any team where the user holds the Coordinator role. Mirrors the
+            // SQL filter UserId == userId && Role == Coordinator && LeftAt == null.
+            var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+            isCoordinator = teamsById.Values.Any(t =>
+                t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
         }
 
         return new GuideRoleContext(

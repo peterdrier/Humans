@@ -1,5 +1,6 @@
 using Humans.Application;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Web.Models;
 
@@ -26,7 +27,10 @@ public sealed record UserDebugRow(
     string DisplayName,
     string BurnerName,
     string LegalName,
-    bool? HasConsent)
+    bool? HasName,
+    bool? HasConsent,
+    Instant CreatedAt,
+    Instant? LastLoginAt)
 {
     public static UserDebugRow From(UserInfo info) => new(
         UserId: info.Id,
@@ -36,7 +40,10 @@ public sealed record UserDebugRow(
         DisplayName: info.DisplayName,
         BurnerName: info.Profile?.BurnerName ?? string.Empty,
         LegalName: info.Profile?.FullName ?? string.Empty,
+        HasName: info.Profile is null ? null : info.HasRequiredNameFields,
         HasConsent: info.Profile is null
             ? null
-            : info.Profile.ConsentCheckStatus == ConsentCheckStatus.Cleared);
+            : info.Profile.ConsentCheckStatus == ConsentCheckStatus.Cleared,
+        CreatedAt: info.CreatedAt,
+        LastLoginAt: info.LastLoginAt);
 }

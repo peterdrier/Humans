@@ -851,7 +851,7 @@ public class MembershipCalculatorTests
         user: new User
         {
             Id = profile.UserId,
-            DisplayName = profile.BurnerName ?? "",
+            DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
             GoogleEmailStatus = GoogleEmailStatus.Unknown,

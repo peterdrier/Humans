@@ -78,14 +78,14 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| LegalDocuments | /Admin/LegalDocuments | GET | List legal documents | OK |
-| CreateLegalDocument | /Admin/LegalDocuments/Create | GET | Create legal document form | OK |
-| CreateLegalDocument | /Admin/LegalDocuments/Create | POST | Submit new legal document | OK |
-| EditLegalDocument | /Admin/LegalDocuments/{id}/Edit | GET | Edit legal document form | OK |
-| EditLegalDocument | /Admin/LegalDocuments/{id}/Edit | POST | Submit legal document edits | OK |
-| ArchiveLegalDocument | /Admin/LegalDocuments/{id}/Archive | POST | Archive a legal document | OK |
-| SyncLegalDocument | /Admin/LegalDocuments/{id}/Sync | POST | Sync legal document from GitHub | OK |
-| UpdateVersionSummary | /Admin/LegalDocuments/{id}/Versions/{versionId}/Summary | POST | Update version change summary | OK |
+| LegalDocuments | /Legal/Admin/Documents | GET | List legal documents | OK |
+| CreateLegalDocument | /Legal/Admin/Documents/Create | GET | Create legal document form | OK |
+| CreateLegalDocument | /Legal/Admin/Documents/Create | POST | Submit new legal document | OK |
+| EditLegalDocument | /Legal/Admin/Documents/{id}/Edit | GET | Edit legal document form | OK |
+| EditLegalDocument | /Legal/Admin/Documents/{id}/Edit | POST | Submit legal document edits | OK |
+| ArchiveLegalDocument | /Legal/Admin/Documents/{id}/Archive | POST | Archive a legal document | OK |
+| SyncLegalDocument | /Legal/Admin/Documents/{id}/Sync | POST | Sync legal document from GitHub | OK |
+| UpdateVersionSummary | /Legal/Admin/Documents/{id}/Versions/{versionId}/Summary | POST | Update version change summary | OK |
 
 ## AdminMergeController
 

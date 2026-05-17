@@ -26,7 +26,7 @@ public class AgentMessageConfiguration : IEntityTypeConfiguration<AgentMessage>
                 v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>(),
                 new ValueComparer<string[]>(
                     (a, b) => ReferenceEquals(a, b) || (a != null && b != null && a.SequenceEqual(b, StringComparer.Ordinal)),
-                    v => v.Aggregate(0, (h, e) => HashCode.Combine(h, e == null ? 0 : StringComparer.Ordinal.GetHashCode(e))),
+                    v => v.Aggregate(0, (h, e) => HashCode.Combine(h, StringComparer.Ordinal.GetHashCode(e))),
                     v => v.ToArray()));
 
         // Same-section FK only: agent_messages → agent_conversations.

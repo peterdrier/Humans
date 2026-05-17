@@ -139,7 +139,7 @@ public class CampaignController : HumansControllerBase
     [HttpPost("{id:guid}/ImportCodes")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> ImportCodes(Guid id, IFormFile file)
+    public async Task<IActionResult> ImportCodes(Guid id, IFormFile? file)
     {
         if (file is null || file.Length == 0)
         {

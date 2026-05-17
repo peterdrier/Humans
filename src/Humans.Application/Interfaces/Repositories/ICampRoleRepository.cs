@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -15,6 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// context. Cross-domain navigation is not resolved here; the application
 /// service stitches display names from <see cref="Users.IUserService"/>.
 /// </remarks>
+[Section("Camps")]
 public interface ICampRoleRepository : IRepository
 {
     // Definitions

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
@@ -55,7 +56,8 @@ public class NotificationMeterProviderTests : IDisposable
     [HumansFact]
     public async Task GetMetersForUserAsync_Board_SeesOnboardingMeterMatchingNeedsConsentReview()
     {
-        _userService.GetAllUserInfos().Returns(MakeNeedsConsentReview(1));
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<User>)[]);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
@@ -74,7 +76,8 @@ public class NotificationMeterProviderTests : IDisposable
     [HumansFact]
     public async Task GetMetersForUserAsync_VolunteerCoordinator_SeesOnboardingMeter()
     {
-        _userService.GetAllUserInfos().Returns(MakeNeedsConsentReview(1));
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<User>)[]);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
@@ -91,7 +94,8 @@ public class NotificationMeterProviderTests : IDisposable
     [HumansFact]
     public async Task GetMetersForUserAsync_ConsentCoordinator_SeesConsentReviewsPending()
     {
-        _userService.GetAllUserInfos().Returns(MakeNeedsConsentReview(3));
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(MakeNeedsConsentReview(3)));
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<User>)[]);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
@@ -113,7 +117,8 @@ public class NotificationMeterProviderTests : IDisposable
             new User { Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0) },
             new User { Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 2, 0, 0) },
         };
-        _userService.GetAllUserInfos().Returns(usersForDeletion.Select(u => u.ToUserInfo()).ToList());
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(usersForDeletion.Select(u => u.ToUserInfo()).ToList()));
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<User>)usersForDeletion);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(5);
@@ -133,7 +138,8 @@ public class NotificationMeterProviderTests : IDisposable
     {
         var boardUserId = Guid.NewGuid();
 
-        _userService.GetAllUserInfos().Returns([]);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<User>)[]);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);

@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -9,6 +10,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// scoped Build-period signup read used by the gap detector. All methods
 /// return materialized lists / nullable rows — no IQueryable leaks.
 /// </summary>
+[Section("Shifts")]
 public interface IVolunteerTrackingRepository : IRepository
 {
     /// <summary>Fetch the row for (userId, eventSettingsId), or null.</summary>

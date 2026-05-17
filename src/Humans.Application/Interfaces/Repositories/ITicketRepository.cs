@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -31,6 +32,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// things that evolve on very different cadences.
 /// </para>
 /// </remarks>
+[Section("Tickets")]
 public interface ITicketRepository : IRepository
 {
     // ── TicketSyncState (singleton row, Id == 1) ─────────────────────────────

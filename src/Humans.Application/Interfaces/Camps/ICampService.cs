@@ -59,25 +59,32 @@ public interface ICampService : IApplicationService
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
     /// <summary>
-    /// Gets camps for a year without lead data.
+    /// Gets camps participating in a year — every camp that has any season
+    /// for the year, with the year-filtered season(s) and active leads
+    /// populated.
     /// </summary>
     /// <remarks>
-    /// <see cref="CampInfo.Leads"/> is always null; leads are not loaded by
-    /// the year-directory query. Use <see cref="GetCampsWithLeadsForYearAsync"/>
-    /// when lead data is needed.
+    /// T-06: <see cref="CampInfo.Leads"/> is always populated (non-null;
+    /// may be empty). The legacy "leads not loaded" branch was retired
+    /// when this method moved onto the <c>CachingCampService</c>
+    /// projection, which always carries leads.
     /// </remarks>
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     /// <summary>
-    /// Gets camps with their active leads (and lead user data) for a given year.
-    /// Optionally filters to specific season statuses.
+    /// Gets camps with their active leads for a given year. Optionally filters
+    /// to specific season statuses.
     /// </summary>
     /// <remarks>
-    /// <see cref="CampInfo.Leads"/> is always a non-null list for results from
-    /// this method.
+    /// T-06: deprecated alias of <see cref="GetCampsForYearAsync"/> with an
+    /// extra status filter. <see cref="CampInfo.Leads"/> is always populated
+    /// (non-null) on every code path now. New callers should use
+    /// <see cref="GetCampsForYearAsync"/> and filter on
+    /// <c>CampInfo.Seasons[].Status</c> in-memory.
     /// </remarks>
+    [Obsolete("T-06: GetCampsForYearAsync now always populates leads; filter by season Status in-memory.")]
     Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
@@ -265,6 +272,44 @@ public sealed record CampSeasonLookup(
     string Name,
     SoundZone? SoundZone);
 
+/// <summary>
+/// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per
+/// camp in the <c>CachingCampService</c> projection; year-keyed views like
+/// <see cref="ICampService.GetCampsForYearAsync"/> are filtered snapshots of
+/// this canonical per-camp cache, never separate cache entries.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Cache size budget.</b> At Nobodies' steady-state (~100 active camps,
+/// ≤5 leads/camp, ≤5 historical names/camp) the per-entry footprint is
+/// dominated by season blurbs (~2 KB/season) plus scalar fields. Warmup
+/// loads only the seasons referenced by <c>CampSettings.PublicYear</c> +
+/// <c>OpenSeasons</c> + the current real-world year — typically 1–3 seasons
+/// per camp, not full history. Worst-case ~50 KB/camp × 100 camps ≈ 5 MB —
+/// comfortably under the ~50 MB §15 budget for a 500-user-scale projection.
+/// </para>
+/// <para>
+/// <b>Leads invariant.</b> <see cref="Leads"/> is always non-null. The
+/// legacy "null means not loaded" semantic was retired in T-06 — the
+/// cached projection always carries leads. May still be empty when the
+/// camp genuinely has no active leads.
+/// </para>
+/// <para>
+/// <b>EeGrantedCount cross-table invariant.</b>
+/// <see cref="CampSeasonInfo.EeGrantedCount"/> is computed from
+/// <c>camp_members.HasEarlyEntry</c> WHERE <c>Status = Active</c>. The
+/// methods that flip those fields —
+/// <see cref="ICampService.SetEarlyEntryAsync"/>,
+/// <see cref="ICampService.RemoveCampMemberAsync"/>,
+/// <see cref="ICampService.LeaveCampMembershipAsync"/>, and the membership
+/// confirm/withdraw paths — invalidate the affected camp via
+/// <see cref="ICampInfoInvalidator"/> inside the decorator, so the cached
+/// projection rebuilds with the current count on the next read. No bypass
+/// is possible because only the inner <c>CampService</c> /
+/// <c>CampRoleService</c> may touch <c>ICampRepository</c>
+/// (pinned by <c>CampsArchitectureTests</c>).
+/// </para>
+/// </remarks>
 public sealed record CampInfo(
     Guid Id,
     string Slug,
@@ -273,12 +318,7 @@ public sealed record CampInfo(
     bool IsSwissCamp,
     int TimesAtNowhere,
     IReadOnlyList<CampSeasonInfo> Seasons,
-    /// <remarks>
-    /// Null means leads were not loaded by <see cref="ICampService.GetCampsForYearAsync"/>.
-    /// Results from <see cref="ICampService.GetCampsWithLeadsForYearAsync"/> always
-    /// provide a non-null list, which may be empty when the camp has no leads.
-    /// </remarks>
-    IReadOnlyList<CampLeadInfo>? Leads);
+    IReadOnlyList<CampLeadInfo> Leads);
 
 public sealed record CampSeasonInfo(
     Guid Id,

@@ -549,18 +549,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var now = _clock.GetCurrentInstant();
 
-        // Hydrate Team slices for every referenced team id in a single batch
-        // (ITeamService.GetByIdsWithParentsAsync returns both the team and any
-        // referenced parent so we can resolve department names and slugs).
+        // Resolve TeamInfo read-models cross-section via ITeamService cache.
+        // Downstream methods consume the dict directly — the obsolete
+        // cross-section nav on GoogleResource is never assigned or read.
         var teamIds2 = resources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetByIdsWithParentsAsync(teamIds2, cancellationToken);
-        foreach (var resource in resources)
-        {
-            if (teamsById.TryGetValue(resource.TeamId, out var team))
-            {
-                resource.Team = team;
-            }
-        }
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
 
         // Pre-load active members (primary team members) and child-team members
         // for the referenced team ids. Drive reconciliation uses the full
@@ -581,7 +574,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 allMembers[r.TeamId] = primaryMembersByTeam.GetValueOrDefault(r.TeamId, []).ToList();
                 allChildMembers[r.TeamId] = childMembersByParent.GetValueOrDefault(r.TeamId, []).ToList();
             }
-            diffs.Add(await SyncDriveResourceGroupAsync(list, action, now, allMembers, allChildMembers, cancellationToken));
+            diffs.Add(await SyncDriveResourceGroupAsync(list, teamsById, action, now, allMembers, allChildMembers, cancellationToken));
         }
 
         if (action == SyncAction.Execute)
@@ -603,7 +596,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 // Only deactivate when EVERY one of a soft-deleted team's resources
                 // of this type reconciled without error.
                 var softDeletedTeamIds = resources
-                    .Where(r => r.Team is { IsActive: false } && r.IsActive)
+                    .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && !t.IsActive && r.IsActive)
                     .GroupBy(r => r.TeamId)
                     .Where(g => g.All(r => !erroredGoogleIds.Contains(r.GoogleId)))
                     .Select(g => g.Key)
@@ -642,14 +635,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             };
         }
 
-        // Hydrate Team + any parent.
-        var teamsById = await _teamService.GetByIdsWithParentsAsync([resource.TeamId], cancellationToken);
-        string? teamGoogleGroupEmail = null;
-        if (teamsById.TryGetValue(resource.TeamId, out var team))
-        {
-            teamGoogleGroupEmail = team.GoogleGroupEmail;
-            resource.Team = team;
-        }
+        // Resolve TeamInfo for this resource's team (cross-section via cache).
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var teamGoogleGroupEmail = teamsById.TryGetValue(resource.TeamId, out var teamInfo)
+            ? teamInfo.GoogleGroupEmail
+            : null;
 
         var now = _clock.GetCurrentInstant();
 
@@ -669,18 +659,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var teamIds = allWithSameGoogleId.Select(r => r.TeamId).Distinct().ToList();
-        var teamDict = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
-        foreach (var r in allWithSameGoogleId)
-        {
-            if (teamDict.TryGetValue(r.TeamId, out var t)) r.Team = t;
-        }
 
         var primary = await LoadActiveMembersByTeamAsync(teamIds, cancellationToken);
         var childBy = await LoadChildMembersByParentAsync(teamIds, cancellationToken);
         var allMembers = teamIds.ToDictionary(id => id, id => primary.GetValueOrDefault(id, []).ToList());
         var allChildMembers = teamIds.ToDictionary(id => id, id => childBy.GetValueOrDefault(id, []).ToList());
 
-        return await SyncDriveResourceGroupAsync(allWithSameGoogleId, action, now, allMembers, allChildMembers, cancellationToken);
+        return await SyncDriveResourceGroupAsync(allWithSameGoogleId, teamsById, action, now, allMembers, allChildMembers, cancellationToken);
     }
 
     private async Task<ResourceSyncDiff> ReconcileGroupResourceAsync(
@@ -709,6 +694,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private async Task<ResourceSyncDiff> SyncDriveResourceGroupAsync(
         List<GoogleResource> resources,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
         SyncAction action,
         Instant now,
         Dictionary<Guid, List<TeamActiveMemberSnapshot>> membersByTeam,
@@ -721,7 +707,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var levelByTeamSlug = new Dictionary<string, DrivePermissionLevel>(StringComparer.Ordinal);
         foreach (var resource in resources)
         {
-            var slug = resource.Team.Slug;
+            var slug = teamsById[resource.TeamId].Slug;
             if (!levelByTeamSlug.TryGetValue(slug, out var existing) || resource.DrivePermissionLevel > existing)
                 levelByTeamSlug[slug] = resource.DrivePermissionLevel;
         }
@@ -745,7 +731,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
                     ? null : resource.DrivePermissionLevel.ToString();
-                var teamLink = new TeamLink(resource.Team.Name, resource.Team.Slug, level);
+                var resourceTeam = teamsById[resource.TeamId];
+                var teamLink = new TeamLink(resourceTeam.Name, resourceTeam.Slug, level);
 
                 var teamMembers = membersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var tm in teamMembers)
@@ -770,7 +757,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     var memberEmail = TryGetGoogleEmail(cm, emailsByUserId);
                     if (memberEmail is null) continue;
 
+                    // cm is a TeamMember (not obsolete); text-based ratchet false-positives on the property name.
+#pragma warning disable CS0618
                     var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug, level);
+#pragma warning restore CS0618
                     if (membersByEmail.TryGetValue(memberEmail, out var existing2))
                     {
                         if (!existing2.TeamLinks.Any(tl => string.Equals(tl.Name, childTeamLink.Name, StringComparison.Ordinal)))
@@ -783,8 +773,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
             }
 
-            var linkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug,
-                    r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString()))
+            var linkedTeams = resources.Select(r =>
+                {
+                    var t = teamsById[r.TeamId];
+                    return new TeamLink(t.Name, t.Slug,
+                        r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString());
+                })
                 .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList();
 
             // Current: Drive permissions.
@@ -964,8 +958,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
                 PermissionLevel = primary.DrivePermissionLevel.ToString(),
-                LinkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug,
-                        r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString()))
+                LinkedTeams = resources.Select(r =>
+                    {
+                        var t = teamsById[r.TeamId];
+                        return new TeamLink(t.Name, t.Slug,
+                            r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString());
+                    })
                     .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };
@@ -1137,25 +1135,20 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var groupResources = await GetActiveGroupResourcesAsync(cancellationToken);
 
-        // Filter to groups whose team is still active, and stitch Team data in.
-        var teamIds = groupResources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
-        var filtered = new List<GoogleResource>();
-        foreach (var r in groupResources)
-        {
-            if (teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
-            {
-                r.Team = t;
-                filtered.Add(r);
-            }
-        }
+        // Filter to groups whose team is still active. TeamInfo cache provides
+        // the read-model (Name/Slug/GoogleGroupPrefix/IsActive) cross-section
+        // so we never traverse the obsolete cross-section nav on GoogleResource.
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var filtered = groupResources
+            .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
+            .ToList();
 
         _logger.LogInformation("Checking group settings for {Count} active Google Groups", filtered.Count);
 
         var reports = new List<GroupSettingsDriftReport>();
         foreach (var resource in filtered)
         {
-            var groupEmail = resource.Team.GoogleGroupEmail;
+            var groupEmail = teamsById[resource.TeamId].GoogleGroupEmail;
             if (string.IsNullOrEmpty(groupEmail))
             {
                 var prefix = resource.Url?.Split("/g/").LastOrDefault();
@@ -1645,7 +1638,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             foreach (var member in team.Members.Where(m => m.LeftAt is null))
             {
+                // member is a TeamMember (not obsolete); text-based ratchet false-positives on the property name.
+#pragma warning disable CS0618
                 member.Team = team;
+#pragma warning restore CS0618
                 childMembersByParentId[team.ParentTeamId!.Value].Add(member);
             }
         }
@@ -1810,6 +1806,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 #pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
         var user = tm.User;
 #pragma warning restore CS0618
+        // §6b stitcher can miss: User nav is annotated non-null but populated in-memory
+        // by ITeamService — if the stitch didn't include this row, user is null at runtime.
         if (user is null)
             return null;
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)

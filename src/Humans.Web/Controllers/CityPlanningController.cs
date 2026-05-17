@@ -163,12 +163,12 @@ public class CityPlanningController : HumansControllerBase
 
     [HttpPost("BarrioMap/Admin/UploadLimitZone")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> UploadLimitZone(IFormFile file, CancellationToken cancellationToken) =>
+    public Task<IActionResult> UploadLimitZone(IFormFile? file, CancellationToken cancellationToken) =>
         UploadGeoJsonAsync(file, "Limit zone", _cityPlanningService.UpdateLimitZoneAsync, cancellationToken);
 
     [HttpPost("BarrioMap/Admin/UploadOfficialZones")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> UploadOfficialZones(IFormFile file, CancellationToken cancellationToken) =>
+    public Task<IActionResult> UploadOfficialZones(IFormFile? file, CancellationToken cancellationToken) =>
         UploadGeoJsonAsync(file, "Official zones", _cityPlanningService.UpdateOfficialZonesAsync, cancellationToken);
 
     [HttpGet("BarrioMap/Admin/DownloadLimitZone")]
@@ -226,7 +226,7 @@ public class CityPlanningController : HumansControllerBase
     /// JSON shape check, redirect target) is identical.
     /// </summary>
     private async Task<IActionResult> UploadGeoJsonAsync(
-        IFormFile file,
+        IFormFile? file,
         string namePretty,
         Func<string, Guid, CancellationToken, Task> updateAsync,
         CancellationToken ct)
@@ -318,9 +318,9 @@ public class CityPlanningController : HumansControllerBase
 
     private async Task<CampInfo?> FindUserLeadCampAsync(Guid userId, int year, CancellationToken ct)
     {
-        var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
-        return campsWithLeads.FirstOrDefault(c =>
-            c.Leads?.Any(l => l.UserId == userId) == true);
+        var camps = await _campService.GetCampsForYearAsync(year, ct);
+        return camps.FirstOrDefault(c =>
+            c.Leads.Any(l => l.UserId == userId));
     }
 
     private static (string Slug, string Name) LeadCampDisplay(bool isMapAdmin, CampInfo? userCamp, int year)

@@ -69,7 +69,7 @@ public sealed class MailerAdminController : HumansControllerBase
             mlError = FormatMailerLiteError(ex);
         }
 
-        var mlContacts = _users.GetAllUserInfos()
+        var mlContacts = (await _users.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Count(u => u.ContactSource == ContactSource.MailerLite);
         var optedIn = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
         var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
@@ -245,7 +245,15 @@ public sealed class MailerAdminController : HumansControllerBase
             if (isOptedOut) humansOutMlIn++;
         }
 
-        int? humansInMlAbsent = null; // TODO: cross-reference once IUserEmailService supports it
+        // The "Humans-opted-in / MailerLite-absent" half of the drift report
+        // requires enumerating every user whose marketing preference is opt-in
+        // and asking IMailerLite if they exist there. There's no existing
+        // IUserEmailService / ICommunicationPreferenceService surface that
+        // returns this set, and adding a new interface method for one admin
+        // page is durable debt per
+        // memory/architecture/interface-method-additions-are-debt.md. Left
+        // null until a cross-cut use case justifies it.
+        int? humansInMlAbsent = null;
 
         return new DriftReport(
             HumansOptedOutMlActive: humansOutMlIn,

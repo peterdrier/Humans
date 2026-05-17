@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
@@ -151,8 +152,8 @@ public class MailerAdminControllerTests
             .Returns(new MailerLiteAccountSummary(0, 0, 0, 0, 0));
         _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<MailerLiteGroup>)[]);
-        _userService.GetAllUserInfos()
-            .Returns([]);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(0);
@@ -193,10 +194,11 @@ public class MailerAdminControllerTests
                 statusCode: System.Net.HttpStatusCode.Unauthorized));
 
         // Humans-side dependencies still succeed — 7 users sourced from MailerLite.
-        _userService.GetAllUserInfos()
-            .Returns(Enumerable.Range(0, 7)
-                .Select(_ => MakeUserInfoWithContactSource(ContactSource.MailerLite))
-                .ToList());
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
+                Enumerable.Range(0, 7)
+                    .Select(_ => MakeUserInfoWithContactSource(ContactSource.MailerLite))
+                    .ToList<UserInfo>()));
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(3);
@@ -322,10 +324,10 @@ public class MailerAdminControllerTests
         await _importService.Received(1).ApplyAsync(freshPlan, 1, Arg.Any<CancellationToken>());
     }
 
-    private static Application.UserInfo MakeUserInfoWithContactSource(ContactSource source)
+    private static UserInfo MakeUserInfoWithContactSource(ContactSource source)
     {
         var userId = Guid.NewGuid();
-        return Application.UserInfo.Create(
+        return UserInfo.Create(
             user: new User
             {
                 Id = userId,

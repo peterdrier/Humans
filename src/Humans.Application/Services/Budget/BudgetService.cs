@@ -254,7 +254,30 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id)
     {
         var category = await _repository.GetCategoryByIdAsync(id);
-        return category is null ? null : ToCategorySnapshot(category);
+        if (category is null)
+            return null;
+
+        // Stitch responsible-team names cross-section via ITeamService (the
+        // repository no longer Includes the obsolete nav on BudgetLineItem).
+        var teamIds = category.LineItems
+            .Select(li => li.ResponsibleTeamId)
+            .Where(tid => tid.HasValue)
+            .Select(tid => tid!.Value)
+            .Distinct()
+            .ToList();
+
+        var teamNamesById = new Dictionary<Guid, string>();
+        if (teamIds.Count > 0)
+        {
+            var teams = await _teamService.GetTeamsAsync();
+            foreach (var teamId in teamIds)
+            {
+                if (teams.TryGetValue(teamId, out var team))
+                    teamNamesById[teamId] = team.Name;
+            }
+        }
+
+        return ToCategorySnapshot(category, teamNamesById);
     }
 
     public async Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(
@@ -278,7 +301,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
     }
 
-    private static BudgetCategorySnapshot ToCategorySnapshot(BudgetCategory category) =>
+    private static BudgetCategorySnapshot ToCategorySnapshot(
+        BudgetCategory category,
+        IReadOnlyDictionary<Guid, string> teamNamesById) =>
         new(
             category.Id,
             category.BudgetGroupId,
@@ -309,7 +334,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
                     item.Description,
                     item.Amount,
                     item.ResponsibleTeamId,
-                    item.ResponsibleTeam?.Name,
+                    item.ResponsibleTeamId is { } rtid && teamNamesById.TryGetValue(rtid, out var name) ? name : null,
                     item.Notes,
                     item.ExpectedDate,
                     item.VatRate,
@@ -556,7 +581,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
     public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)
     {
-        var budgetLineItems = groups
+        var groupsList = groups as IReadOnlyCollection<BudgetGroup> ?? groups.ToList();
+
+        var budgetLineItems = groupsList
             .SelectMany(g => g.Categories)
             .SelectMany(c => c.LineItems)
             .Where(li => !li.IsCashflowOnly)
@@ -582,7 +609,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         var netBalance = totalIncome + totalExpenses;
 
         // Build income slices.
-        var incomeCategories = groups
+        var incomeCategories = groupsList
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
             .Where(c => c.Total > 0)
@@ -603,7 +630,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             .ToList();
 
         // Build expense slices.
-        var expenseCategories = groups
+        var expenseCategories = groupsList
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
             .Where(c => c.Total > 0)

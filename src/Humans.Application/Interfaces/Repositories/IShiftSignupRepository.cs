@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -32,6 +33,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// (same Scoped <c>HumansDbContext</c> instance).
 /// </para>
 /// </remarks>
+[Section("Shifts")]
 public interface IShiftSignupRepository : IRepository
 {
     // ============================================================

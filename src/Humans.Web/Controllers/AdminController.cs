@@ -69,7 +69,7 @@ public class AdminController : HumansControllerBase
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
-        var snapshot = userService.GetAllUserInfos();
+        var snapshot = await userService.GetAllUserInfosAsync(ct);
         var totalUsers = snapshot.Count;
         var activeProfileUsers = snapshot.Count(u => u.IsActive);
         var activeEvent = await shifts.GetActiveAsync();
@@ -134,7 +134,7 @@ public class AdminController : HumansControllerBase
             return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
-        var displayName = user.DisplayName;
+        var displayName = user.BurnerName;
 
         _logger.LogWarning(
             "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
@@ -384,7 +384,8 @@ public class AdminController : HumansControllerBase
                         Entries = s.Entries,
                         Hits = s.Hits,
                         Misses = s.Misses,
-                        Invalidations = s.Invalidations,
+                        KeyRemovals = s.KeyRemovals,
+                        BulkInvalidations = s.BulkInvalidations,
                         HitRatePercent = s.HitRatePercent,
                     })
                     .ToList()

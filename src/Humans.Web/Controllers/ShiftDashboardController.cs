@@ -26,6 +26,7 @@ public class ShiftDashboardController : HumansControllerBase
 {
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
+    private readonly IShiftView _shiftView;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly UserManager<User> _userManager;
     private readonly ShiftDashboardPageBuilder _pageBuilder;
@@ -34,6 +35,7 @@ public class ShiftDashboardController : HumansControllerBase
     public ShiftDashboardController(
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
+        IShiftView shiftView,
         IGeneralAvailabilityService availabilityService,
         IUserService userService,
         UserManager<User> userManager,
@@ -43,6 +45,7 @@ public class ShiftDashboardController : HumansControllerBase
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
+        _shiftView = shiftView;
         _availabilityService = availabilityService;
         _userManager = userManager;
         _pageBuilder = pageBuilder;
@@ -124,7 +127,7 @@ public class ShiftDashboardController : HumansControllerBase
                 _shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
                 _userManager,
-                _shiftMgmt,
+                _shiftView,
                 _signupService,
                 _availabilityService);
             return ToVolunteerSearchActionResult(result);

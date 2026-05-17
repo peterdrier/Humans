@@ -98,7 +98,7 @@ Three controllers serve this section.
 |------------|-------------|------|
 | `LegalController` | `/Legal/{slug?}` | `[AllowAnonymous]` — Statutes page only |
 | `ConsentController` | `/Consent` (conventional) | `[Authorize]` |
-| `AdminLegalDocumentsController` | `/Admin/LegalDocuments` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
+| `AdminLegalDocumentsController` | `/Legal/Admin/Documents` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
 
 **Consent routes:**
 
@@ -112,14 +112,14 @@ Three controllers serve this section.
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/Admin/LegalDocuments` | GET | List all documents (optional `teamId` filter) |
-| `/Admin/LegalDocuments/Create` | GET | Create form |
-| `/Admin/LegalDocuments/Create` | POST | Create handler |
-| `/Admin/LegalDocuments/{id}/Edit` | GET | Edit form (includes version list) |
-| `/Admin/LegalDocuments/{id}/Edit` | POST | Update handler |
-| `/Admin/LegalDocuments/{id}/Archive` | POST | Soft-delete (`IsActive = false`) |
-| `/Admin/LegalDocuments/{id}/Sync` | POST | Trigger single-document sync |
-| `/Admin/LegalDocuments/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
+| `/Legal/Admin/Documents` | GET | List all documents (optional `teamId` filter) |
+| `/Legal/Admin/Documents/Create` | GET | Create form |
+| `/Legal/Admin/Documents/Create` | POST | Create handler |
+| `/Legal/Admin/Documents/{id}/Edit` | GET | Edit form (includes version list) |
+| `/Legal/Admin/Documents/{id}/Edit` | POST | Update handler |
+| `/Legal/Admin/Documents/{id}/Archive` | POST | Soft-delete (`IsActive = false`) |
+| `/Legal/Admin/Documents/{id}/Sync` | POST | Trigger single-document sync |
+| `/Legal/Admin/Documents/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
 
 ## Actors & Roles
 
@@ -129,7 +129,7 @@ Three controllers serve this section.
 | Any authenticated human | View own consent dashboard at `/Consent`. Sign or re-sign document versions. Accessible during onboarding (before becoming an active member) |
 | ConsentCoordinator, VolunteerCoordinator, Board, Admin | Read access to the onboarding review queue at `/OnboardingReview` (`PolicyNames.ReviewQueueAccess`) |
 | ConsentCoordinator, Board, Admin | Clear, Flag, or Reject consent checks (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
-| Board, Admin | Manage legal documents and document versions at `/Admin/LegalDocuments` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
+| Board, Admin | Manage legal documents and document versions at `/Legal/Admin/Documents` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
 
 ## Invariants
 
@@ -174,7 +174,11 @@ Three controllers serve this section.
 - Services live in `Humans.Application.Services.Legal/` and `Humans.Application.Services.Consent/` and never import `Microsoft.EntityFrameworkCore`.
 - `ILegalDocumentRepository` (impl `LegalDocumentRepository` in `Humans.Infrastructure/Repositories/Legal/`) is the only code path that touches `legal_documents` and `document_versions` via `DbContext`.
 - `IConsentRepository` (impl `ConsentRepository` in `Humans.Infrastructure/Repositories/Consent/`) is the only code path that touches `consent_records` via `DbContext`. Exposes `AddAsync` and `GetXxxAsync` only — no `UpdateAsync`/`DeleteAsync`.
-- **Decorator decision** — No caching decorators on either side. `LegalDocumentService` (Statutes page) uses `IMemoryCache` directly for the GitHub-fetched statutes content (zero DB access, pure I/O cache). `ConsentService` has no cache layer at all — append-only semantics and per-user reads do not justify one (`ConsentArchitectureTests.ConsentService_HasNoIMemoryCacheConstructorParameter`).
+- **Decorator decision (T-04, 2026-05-16)** — Two-layer cache landed:
+  - **Global** — `CachingLegalDocumentSyncService` (Singleton in Infrastructure) wraps `LegalDocumentSyncService` (inner, keyed Scoped). Holds the active+required document set as `LegalDocumentInfo[]` keyed by document id, plus a version-id → document-id index. Serves `GetActiveRequiredDocumentsForTeamsAsync`, `GetRequiredDocumentVersionsForTeamAsync`, `GetRequiredVersionsAsync`, `GetVersionByIdAsync` from cache. `LegalDocumentSaveChangesInterceptor` uses the dual-override pattern (snapshot affected entity state in `SavingChangesAsync`, consume in `SavedChangesAsync`, clear on failure) to flush the cache wholesale after any persisted write to `legal_documents` or `document_versions`. Eager warmup at startup: the decorator inherits `TrackedCache<Guid, LegalDocumentInfo>` with `warmOnStartup: true`, so its own `IHostedService.StartAsync` drives `WarmAllAsync` at boot (non-fatal); no separate warmup hosted service. Team names are stitched at warm time via `ITeamService.GetByIdsWithParentsAsync` so the cache build no longer walks the deprecated `LegalDocument.Team` cross-domain nav.
+  - **Per-user** — `CachingConsentService` (Singleton in Infrastructure) wraps `ConsentService` (inner, keyed Scoped). Holds `UserConsentInfo` (the user's explicitly consented version-id set, with the merge source-id chain unioned at warm time) keyed by user id. Serves `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, and `GetRequiredConsentRowsForUserAsync` from cache. Lazy per-user warm. **Synchronous invalidation on `SubmitConsentAsync`**: the decorator override evicts the user (and any merged-source-id tombstones) inline before returning, so the controller's next-page consent-banner check observes the fresh state. `AccountMergeService.FoldAsync` evicts both source and target post-commit so the surviving target's cached set rebuilds against the new chain.
+  - `LegalDocumentService` (Statutes page) keeps its own `IMemoryCache` for the GitHub-fetched anonymous statutes content (zero DB access, pure I/O cache; out of scope for T-04).
+  - Architecture tests pin both the inner-service IMemoryCache-free constraint and the decorator's dual-interface shape: `ConsentArchitectureTests.{ConsentService_HasNoIMemoryCacheConstructorParameter, LegalDocumentSyncService_HasNoIMemoryCacheConstructorParameter, CachingConsentService_ImplementsBothServiceAndInvalidator, CachingLegalDocumentSyncService_ImplementsBothServiceAndInvalidator, CachingConsentService_DeclaresSubmitConsentAsync}`.
 - **Cross-domain navs still declared (strip deferred):**
   - `LegalDocument.Team` (`LegalDocument.cs:30`) — walked by `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` (`.Include(d => d.Team)`, `LegalDocumentRepository.cs:101`) because `ConsentService.GetConsentDashboardAsync` groups by `g.First().Team`. Strip requires moving to a stitched DTO via `ITeamService`.
   - `Team.LegalDocuments` (`Team.cs:160`) — reverse collection on the Teams entity; not walked by this section. Strip follows the `LegalDocument.Team` strip.
@@ -186,7 +190,7 @@ Three controllers serve this section.
 
 ### Touch-and-clean guidance
 
-- `LegalDocumentRepository.cs:101` — `.Include(d => d.Team)` inside `GetActiveRequiredDocumentsForTeamsAsync`. When fixing, load team names via `ITeamService.GetTeamNamesByIdsAsync` in `ConsentService.GetConsentDashboardAsync` instead of relying on the nav. Then drop `LegalDocument.Team`, `Team.LegalDocuments`, and remove the Include.
+- `LegalDocumentRepository.cs:101` — `.Include(d => d.Team)` inside `GetActiveRequiredDocumentsForTeamsAsync`. T-04 sidesteps this path on the hot read (the cache stitches team names via `ITeamService` at warm time), but `LegalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync` still feeds the cache miss / fallback path and the `ConsentService.GetConsentDashboardAsync` dashboard view, both of which still read `Team.Name` off the included nav. Strip is still required to drop `LegalDocument.Team`, `Team.LegalDocuments`, and the Include — stitch via `ITeamService.GetTeamNamesByIdsAsync` in the remaining callers.
 - `ConsentRecord.User` (`ConsentRecord.cs:24`) — declared but unused. Can be stripped in isolation; no callers need updating.
 - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared but not navigated by any service. Can be stripped once confirmed no callers in views or tests depend on it.
 - `ConsentArchitectureTests.cs` summary comment (lines 28–32) says Legal services "remain in Infrastructure" — this is stale; all four services are in Application post-migration. Update or remove when next touching that file.

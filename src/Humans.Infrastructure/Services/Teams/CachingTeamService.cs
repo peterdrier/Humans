@@ -30,14 +30,12 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     private readonly ITeamRepository _teamRepository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingTeamService> _logger;
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
-    private volatile bool _isLoaded;
 
     public CachingTeamService(
         ITeamRepository teamRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingTeamService> logger)
-        : base("Team.TeamInfo")
+        : base("Team.TeamInfo", warmOnStartup: true)
     {
         _teamRepository = teamRepository;
         _scopeFactory = scopeFactory;
@@ -99,11 +97,153 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             cancellationToken);
     }
 
-    public Task<TeamDetailResult?> GetTeamDetailAsync(
+    public async Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,
         Guid? userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamDetailAsync(slug, userId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Cache-served team detail. Resolves team by slug (or custom slug) from
+        // the cached snapshot, walks ChildTeamIds for child links, and stitches
+        // members + role definitions from TeamInfo. The repository's
+        // GetBySlugWithRelationsAsync + GetRoleDefinitionsAsync — the previous
+        // every-render bypass — are NOT called on this path. Pending-request
+        // counts (per-user and per-team) remain real-time and route through
+        // the inner ITeamService.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var normalizedSlug = slug.ToLowerInvariant();
+        var team = teamsById.Values.FirstOrDefault(t =>
+            string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal) ||
+            (t.CustomSlug is not null && string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal)));
+        if (team is null)
+            return null;
+
+        TeamInfo? parent = team.ParentTeamId.HasValue
+            ? teamsById.GetValueOrDefault(team.ParentTeamId.Value)
+            : null;
+
+        if (!userId.HasValue)
+        {
+            var isAnonymouslyVisible = !team.IsHidden && !team.IsSystemTeam
+                && ((team.ParentTeamId is null && team.IsPublicPage)
+                    || (team.ParentTeamId is not null && team.IsPromotedToDirectory));
+            if (!isAnonymouslyVisible)
+                return null;
+
+            var coordinators = team.Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamDetailMemberSummary)
+                .ToList();
+
+            return new TeamDetailResult(
+                Team: MapTeamSummary(team, parent),
+                Members: coordinators,
+                ChildTeams: EnumerateChildren(team, teamsById)
+                    .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
+                    .OrderBy(c => c.Name, StringComparer.Ordinal)
+                    .Select(MapTeamLink)
+                    .ToList(),
+                RoleDefinitions: [],
+                IsAuthenticated: false,
+                IsCurrentUserMember: false,
+                IsCurrentUserCoordinator: false,
+                CanCurrentUserJoin: false,
+                CanCurrentUserLeave: false,
+                CanCurrentUserManage: false,
+                CanCurrentUserEditTeam: false,
+                CurrentUserPendingRequestId: null,
+                PendingRequestCount: 0);
+        }
+
+        var currentUserId = userId.Value;
+        var isCurrentUserMember = team.Members.Any(m => m.UserId == currentUserId);
+        var isCurrentUserCoordinator = IsUserCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
+
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamService>(InnerServiceKey);
+
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
+        var isAdmin = await roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
+        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
+        var canManage = isCurrentUserCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
+
+        if (team.IsHidden && !isBoardMember && !isAdmin && !isTeamsAdmin)
+            return null;
+
+        var pendingRequest = await inner.GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
+        var pendingRequestCount = canManage
+            ? (await inner.GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
+            : 0;
+
+        return new TeamDetailResult(
+            Team: MapTeamSummary(team, parent),
+            Members: team.Members
+                .OrderBy(m => m.Role)
+                .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamDetailMemberSummary)
+                .ToList(),
+            ChildTeams: EnumerateChildren(team, teamsById)
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name, StringComparer.Ordinal)
+                .Select(MapTeamLink)
+                .ToList(),
+            RoleDefinitions: team.RoleDefinitions ?? [],
+            IsAuthenticated: true,
+            IsCurrentUserMember: isCurrentUserMember,
+            IsCurrentUserCoordinator: isCurrentUserCoordinator,
+            CanCurrentUserJoin: !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
+            CanCurrentUserManage: canManage,
+            CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
+            CurrentUserPendingRequestId: pendingRequest?.Id,
+            PendingRequestCount: pendingRequestCount);
+    }
+
+    private static IEnumerable<TeamInfo> EnumerateChildren(
+        TeamInfo team,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById)
+    {
+        if (team.ChildTeamIds is null || team.ChildTeamIds.Count == 0)
+            yield break;
+        foreach (var childId in team.ChildTeamIds)
+        {
+            if (teamsById.TryGetValue(childId, out var child))
+                yield return child;
+        }
+    }
+
+    private static TeamPageTeamSummary MapTeamSummary(TeamInfo team, TeamInfo? parent) =>
+        TeamPageSummaryMapper.Map(
+            id: team.Id,
+            name: team.Name,
+            parentName: parent?.Name,
+            description: team.Description,
+            slug: team.Slug,
+            isActive: team.IsActive,
+            requiresApproval: team.RequiresApproval,
+            isSystemTeam: team.IsSystemTeam,
+            systemTeamType: team.SystemTeamType,
+            createdAt: team.CreatedAt,
+            isPublicPage: team.IsPublicPage,
+            showCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+            pageContent: team.PageContent,
+            callsToAction: team.CallsToAction is null ? [] : [.. team.CallsToAction],
+            pageContentUpdatedAt: team.PageContentUpdatedAt,
+            pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+            parentLink: parent is null ? null : new TeamPageTeamLink(parent.Id, parent.Name, parent.Slug));
+
+    private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
+        new(team.Id, team.Name, team.Slug);
+
+    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMemberInfo member) =>
+        new(
+            UserId: member.UserId,
+            DisplayName: member.DisplayName,
+            Email: member.Email,
+            ProfilePictureUrl: member.ProfilePictureUrl,
+            Role: member.Role,
+            JoinedAt: member.JoinedAt);
 
     public Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(
         Guid userId,
@@ -567,22 +707,14 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     public void InvalidateActiveTeamsCache() => InvalidateTeamsCache();
 
-    private void InvalidateTeamsCache()
-    {
-        // This API is sync because legacy invalidation callers only expose void.
-        // The lock is held for the in-memory clear only except when racing startup
-        // warmup; ASP.NET Core has no sync context, and the warm set is small.
-        _loadLock.Wait();
-        try
-        {
-            Clear();
-            _isLoaded = false;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
-    }
+    /// <summary>
+    /// Drop the cached team set and let the next read trigger a fresh
+    /// <see cref="WarmAllAsync"/>. The base's <see cref="TrackedCache{TKey,TValue}.Clear"/>
+    /// flips the warmed flag back to false; <see cref="GetTeamsByIdAsync"/>
+    /// observes that and re-warms via
+    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/>.
+    /// </summary>
+    private void InvalidateTeamsCache() => Clear();
 
     public async Task<int> RevokeAllMembershipsAsync(
         Guid userId,
@@ -639,50 +771,45 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
-        if (_isLoaded)
-            return AsReadOnlyDictionary;
-
-        await WarmAllAsync(ct);
+        await EnsureWarmedAsync(ct);
         return AsReadOnlyDictionary;
     }
 
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Bulk-loads every active team's projected <see cref="TeamInfo"/>. Called by
+    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup and
+    /// again on demand after <see cref="InvalidateTeamsCache"/> drops the dict
+    /// (post-write re-warm pattern). The base owns concurrency coalescing via
+    /// the warm semaphore, so this body is invoked at most once at a time.
+    /// </summary>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        if (_isLoaded)
-            return;
+        var teams = await _teamRepository.GetAllWithMembersAsync(ct);
+        var allUserIds = teams
+            .SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
+            .Distinct()
+            .ToList();
 
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            if (_isLoaded)
-                return;
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var users = allUserIds.Count == 0
+            ? new Dictionary<Guid, Application.UserInfo>()
+            : await userService.GetUserInfosAsync(allUserIds, ct);
+        var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+        var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
 
-            var teams = await _teamRepository.GetAllWithMembersAsync(ct);
-            var allUserIds = teams
-                .SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-                .Distinct()
-                .ToList();
+        // Build the child-team index once from the parent FK so each TeamInfo
+        // can cheaply enumerate its children without walking the whole map.
+        var childIdsByParent = teams
+            .Where(t => t.ParentTeamId.HasValue)
+            .GroupBy(t => t.ParentTeamId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
 
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-            var users = allUserIds.Count == 0
-                ? new Dictionary<Guid, Application.UserInfo>()
-                : await userService.GetUserInfosAsync(allUserIds, ct);
-            var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
-            var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
-
-            // No defensive Clear() — InvalidateTeamsCache already emptied the cache
-            // before flipping _isLoaded to false (or the cache is empty on first
-            // startup). Set is upsert, so any rare leftover entry is overwritten.
-            foreach (var team in teams)
-                Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam));
-
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
+        // No defensive Clear() — InvalidateTeamsCache already emptied the cache
+        // before flipping the warmed flag to false (or the cache is empty on first
+        // startup). Set is upsert, so any rare leftover entry is overwritten.
+        foreach (var team in teams)
+            Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam, childIdsByParent));
     }
 
     private bool IsUserCoordinatorOfActiveTeam(
@@ -712,7 +839,8 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         Team team,
         IReadOnlyDictionary<Guid, Application.UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
+        IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -750,7 +878,13 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
         RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
             ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
-            : null);
+            : null,
+        ChildTeamIds: childIdsByParent.TryGetValue(team.Id, out var childIds) ? childIds : null,
+        ShowCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+        PageContent: team.PageContent,
+        CallsToAction: team.CallsToAction,
+        PageContentUpdatedAt: team.PageContentUpdatedAt,
+        PageContentUpdatedByUserId: team.PageContentUpdatedByUserId);
 
     private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
         new(

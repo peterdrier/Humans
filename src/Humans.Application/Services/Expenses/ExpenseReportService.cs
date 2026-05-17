@@ -825,12 +825,21 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     // ─────────────────────── Coordinator Detection ───────────────────────────
 
     /// <inheritdoc/>
-    public Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
+    public async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
         Guid categoryId, CancellationToken ct = default)
     {
-        // TODO: Wire up real coordinator detection once ITeamService exposes TeamInfo with Coordinators.
-        // For now returns false — submitter→FinanceAdmin path is the only active workflow.
-        return Task.FromResult(false);
+        // True iff the category is scoped to a team that has at least one
+        // active Coordinator. Reads through ITeamService.GetTeamAsync, which
+        // serves from the TeamInfo cache (no DB hit on the hot path).
+        var category = await _budgetService.GetCategoryByIdAsync(categoryId);
+        if (category is null || category.TeamId is null)
+            return false;
+
+        var team = await _teamService.GetTeamAsync(category.TeamId.Value, ct);
+        if (team is null)
+            return false;
+
+        return team.Members.Any(m => m.Role == TeamMemberRole.Coordinator);
     }
 
     // ─────────────────────────── Holded Outbox ───────────────────────────────

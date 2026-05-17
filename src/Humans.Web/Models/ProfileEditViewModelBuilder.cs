@@ -41,14 +41,14 @@ public static class ProfileEditViewModelBuilder
             Id = profile?.Id ?? Guid.Empty,
             UserId = info.Id,
             Email = info.Email ?? string.Empty,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             ProfilePictureUrl = info.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = hasCustomPicture && profile is not null
                 ? customPictureUrl(profile)
                 : null,
             CanImportGooglePicture = canImportGooglePicture,
-            BurnerName = profile?.BurnerName ?? info.DisplayName,
+            BurnerName = profile?.BurnerName ?? info.BurnerName,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,
             City = profile?.City,

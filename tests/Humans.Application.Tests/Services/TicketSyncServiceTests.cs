@@ -14,7 +14,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -72,7 +71,7 @@ public class TicketSyncServiceTests : IDisposable
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             _userService,
             _campaignService,
             _shiftManagementService);
@@ -283,7 +282,7 @@ public class TicketSyncServiceTests : IDisposable
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IShiftManagementService>());

@@ -48,9 +48,9 @@ public sealed class WidgetGalleryController : HumansControllerBase
         var sampleVolunteerProfile = await TryGetVolunteerProfileAsync(currentUser.Id);
         var shifts = await ResolveShiftsSamplesAsync(currentUser.Id);
 
-        var displayName = string.IsNullOrEmpty(currentUser.DisplayName)
+        var displayName = string.IsNullOrEmpty(currentUser.BurnerName)
             ? "Current user"
-            : currentUser.DisplayName;
+            : currentUser.BurnerName;
 
         var model = new WidgetGalleryViewModel
         {

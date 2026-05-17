@@ -21,7 +21,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
     private readonly IConsentService _consents;
     private readonly IFeedbackService _feedback;
     private readonly ITicketQueryService _tickets;
-    private readonly IShiftSignupService _shiftSignups;
+    private readonly IShiftView _shiftView;
     private readonly IShiftManagementService _shiftManagement;
     private readonly IClock _clock;
 
@@ -32,7 +32,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
         IConsentService consents,
         IFeedbackService feedback,
         ITicketQueryService tickets,
-        IShiftSignupService shiftSignups,
+        IShiftView shiftView,
         IShiftManagementService shiftManagement,
         IClock clock)
     {
@@ -42,7 +42,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
         _consents = consents;
         _feedback = feedback;
         _tickets = tickets;
-        _shiftSignups = shiftSignups;
+        _shiftView = shiftView;
         _shiftManagement = shiftManagement;
         _clock = clock;
     }
@@ -83,14 +83,17 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
         if (activeEvent is null)
             return [];
 
-        var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
+        // T-09 (issue #720): read signups from the cached ShiftUserView
+        // rather than IShiftSignupService.GetByUserAsync. The view already
+        // filters Signups to the active event (see ShiftViewService).
+        var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
+        var signups = userView.Signups;
         if (signups.Count == 0)
             return [];
 
         var now = _clock.GetCurrentInstant();
         var upcoming = signups
-            .Where(s => s.Shift is not null
-                && s.Shift.GetAbsoluteEnd(activeEvent) > now
+            .Where(s => s.Shift.GetAbsoluteEnd(activeEvent) > now
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)

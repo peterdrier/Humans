@@ -123,7 +123,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 ## Triggers
 
 - Every mutation writes an `AuditLogEntry` via `IAuditLogService` (`CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`). Event-level mutations (create/update/delete) pass `relatedEntityId: ev.OwningTeamId` / `relatedEntityType: nameof(Team)` for team-scoped audit filtering; per-occurrence mutations (cancel/override) do not.
-- Every mutation invalidates the in-service short-TTL `IMemoryCache` entry `calendar:active-events` (§15f request-acceleration cache, not a canonical projection).
+- Every mutation invalidates the affected event's cached `CalendarEventInfo` entry on `CachingCalendarService` (decorator-mediated; the decorator re-fetches the row from `CalendarRepository` after each write, or removes the entry if the event is gone / soft-deleted). Per-occurrence mutations (cancel/override) evict the **parent event** entry — there is no separate exception cache row.
 
 ## Cross-Section Dependencies
 
@@ -133,16 +133,16 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Architecture
 
-**Owning services:** `CalendarService`
+**Owning services:** `CalendarService` (inner), `CachingCalendarService` (decorator)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i).
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added cache-migration plan task **T-08** (2026-05-16).
 
 - Service lives in `Humans.Application/Services/Calendar/CalendarService.cs` and never imports `Microsoft.EntityFrameworkCore` (enforced by the project's reference graph, design-rules §2b).
 - `ICalendarRepository` (impl in `Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions` via `DbContext`.
-- **Decorator decision** — no caching decorator. Rationale: low-traffic community calendar; the short-TTL `IMemoryCache` entry `calendar:active-events` stays in-service per §15f as a request-acceleration marker, not a canonical projection.
+- **Caching decorator** — `CachingCalendarService` (Singleton, in `Humans.Infrastructure/Services/Calendar/`) wraps the keyed Scoped inner `ICalendarService` and owns the `CalendarEventInfo` projection — every non-soft-deleted event row with its `Exceptions` collection embedded, keyed by event id. Window queries (`GetOccurrencesInWindowAsync`) are answered by snapshot-scanning the dict and delegating expansion to `CalendarOccurrenceExpander`. All five mutation paths (`Create`, `Update`, `Delete`, `CancelOccurrence`, `OverrideOccurrence`) flow through the decorator, which delegates to the inner and then re-fetches the affected event via `ICalendarRepository.GetEventByIdAsync` to refresh the single cache entry (or removes it if soft-deleted). **Per-occurrence writes (cancel/override) evict the PARENT event entry** — there is no separate cache row for `CalendarEventException`. Documented at the call site (`CachingCalendarService.InvalidateEventAsync` remarks) and on the projection record (`CalendarEventInfo` `<remarks>`). Surfaced on `/Admin/CacheStats` as `Calendar.CalendarEventInfo`. Eagerly warmed at startup by `CalendarCacheWarmupHostedService` (non-fatal).
 - **Cross-domain navs** — `CalendarEvent.OwningTeam` is `[Obsolete]`-marked per §6c; EF references it under `#pragma warning disable CS0618` in `CalendarEventConfiguration` solely to declare the FK + cascade. Display stitching routes through `ITeamService.GetTeamNamesByIdsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
 - **Cross-section calls** — public interfaces this section consumes: `ITeamService` (display names, team picker), `IAuditLogService` (mutation audit).
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/CalendarArchitectureTests.cs` pins the §15 shape.
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/CalendarArchitectureTests.cs` pins the §15 shape and the decorator invariants (CachingCalendarService is sealed, implements `ICalendarService`, surfaces `ICacheStats`).
 
 ### Touch-and-clean guidance
 

@@ -704,7 +704,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // service (design-rules §2c) instead of traversing user.UserEmails
             // cross-domain. The service returns row snapshots so this caller
             // can read per-row IsVerified / IsGoogle / Provider flags.
-            var allUsers = _userService.GetAllUserInfos();
+            var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
             var allUserIds = allUsers.Select(u => u.Id).ToList();
             var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
 
@@ -723,7 +723,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                             .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                             .Select(e => e.Email)
                             .FirstOrDefault();
-                    return new { u.Id, u.DisplayName, GoogleEmail = googleEmail };
+                    return new { u.Id, DisplayName = u.BurnerName, GoogleEmail = googleEmail };
                 })
                 .Where(x => x.GoogleEmail is not null &&
                     x.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
@@ -771,7 +771,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                         renames.Add(new EmailRenameInfo
                         {
                             UserId = user.Id,
-                            DisplayName = user.DisplayName ?? "Unknown",
+                            DisplayName = user.DisplayName,
                             OldEmail = user.GoogleEmail!,
                             NewEmail = account.PrimaryEmail,
                             AffectedResourceCount = affectedResources

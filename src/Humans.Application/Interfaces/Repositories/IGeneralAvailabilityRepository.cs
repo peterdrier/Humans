@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -24,6 +25,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>docs/sections/Shifts.md</c>.
 /// </para>
 /// </remarks>
+[Section("Shifts")]
 public interface IGeneralAvailabilityRepository : IRepository
 {
     /// <summary>

@@ -32,10 +32,10 @@ name: claude-review
 #               do NOT check out the PR head into the workspace root.
 #
 # Run cadence:
-#   Auto: ONCE on PR open (non-draft) and ONCE on draft → ready_for_review.
-#         We deliberately do NOT listen to 'synchronize' — review every push
-#         burns budget. Re-reviews are on-demand via `/review` comment, or
-#         by toggling draft → ready.
+#   Auto: on PR open (non-draft), draft → ready_for_review, AND every push
+#         ('synchronize'). 'synchronize' is normally OFF because review-every-
+#         push burns budget; it's enabled here while we have spare quota to
+#         burn. Revert by removing 'synchronize' from both trigger 'types'.
 #   On-demand: any OWNER/MEMBER/COLLABORATOR posting a comment starting with
 #              `/review` on the PR triggers a fresh run. The docs-only skip
 #              does NOT apply to comment-triggered runs (explicit ask wins).
@@ -58,9 +58,9 @@ name: claude-review
 
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened, ready_for_review, synchronize]
   pull_request_target:
-    types: [opened, ready_for_review]
+    types: [opened, ready_for_review, synchronize]
   issue_comment:
     types: [created]
   # Note: do NOT use trigger-level paths-ignore here. For pull_request /
@@ -71,7 +71,15 @@ on:
   # below, which checks the actual push delta via the compare API.
 
 concurrency:
-  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Include event_name so pull_request, pull_request_target, and issue_comment
+  # events get separate slots per PR. Workflow-level concurrency is evaluated
+  # BEFORE job-level `if:`, so without this split, every PR comment (which
+  # queues an issue_comment run that then skips) would cancel an in-flight
+  # review via cancel-in-progress. Trade-off: a `/review` comment posted
+  # while a pull_request review is still running won't cancel that review —
+  # both run to completion. Cancel-in-progress still consolidates repeats
+  # within the same event type.
+  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

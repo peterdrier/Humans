@@ -15,7 +15,7 @@ public static class ProfileSummaryViewModelBuilder
         return new ProfileSummaryViewModel
         {
             UserId = info.Id,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             ProfilePictureUrl = info.ProfilePictureUrl,
             PreferredLanguage = info.PreferredLanguage,
             HasProfile = false,
@@ -41,7 +41,7 @@ public static class ProfileSummaryViewModelBuilder
         return new ProfileSummaryViewModel
         {
             UserId = info.Id,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             Email = info.Email,
             ProfilePictureUrl = profile.HasCustomPicture
                 ? customPictureUrl(profile)

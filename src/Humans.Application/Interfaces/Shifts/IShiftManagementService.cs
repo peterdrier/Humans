@@ -17,16 +17,12 @@ public record ShiftTagPreferenceSummary(Guid Id, string Name);
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>48→49 — feat(shifts): department coverage pies on /Shifts (peterdrier#602). Added GetDepartmentCoveragePiesAsync. Authorized by Peter, 2026-05-16.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(48)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>49→48 — collapsed GetAllTagsAsync and SearchTagsAsync into one GetTagsAsync(query) method.</item>
-///   <item>50→49 — tech-debt interface consolidation: collapsed GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync into one GetShiftsSummaryAsync(eventId, teamIds) method.</item>
-///   <item>49→50 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against rotas must live in the owning section per design-rules §6.</item>
-///   <item>50→49 — account-merge fold final consolidation: removed ReassignProfilesAndTagPrefsToUserAsync from IShiftManagementService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
-///   <item>50→50 — account-merge fold redesign Phase 3.2: added ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync (zero production callers, zero tests — fully dead since the shift-management slice 1/2 plan that introduced it never wired it up; controllers use IsDeptCoordinatorAsync + role checks directly).</item>
-///   <item>+1 GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(48)]
+[SurfaceBudget(49)]
 public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
@@ -245,6 +241,23 @@ public interface IShiftManagementService : IApplicationService
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns one row per department pie shown above the /Shifts page.
+    /// Pie-eligible teams = top-level departments + promoted sub-teams
+    /// (<see cref="Team.IsInDirectory"/>). Non-promoted sub-team rotas roll
+    /// up to their parent's pie. AdminOnly shifts and hidden rotas are
+    /// excluded. Date filters are applied per-shift via
+    /// <c>EventSettings.GateOpeningDate + DayOffset</c>.
+    /// Rows are returned in natural <c>TeamName</c> order; the
+    /// "promoted sub-team next to its parent" display ordering is applied
+    /// in the view-model assembly layer.
+    /// </summary>
+    Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
+        Guid eventSettingsId,
+        LocalDate? fromDate = null,
+        LocalDate? toDate = null,
+        CancellationToken ct = default);
+
     // === Coordinator Dashboard ===
 
     /// <summary>
@@ -396,6 +409,37 @@ public record ShiftsSummaryData(
     int ConfirmedCount,
     int PendingCount,
     int UniqueVolunteerCount);
+
+/// <summary>
+/// One pie shown above the /Shifts page. Hours are decimal so callers can
+/// render an exact percentage; the ratio <c>FilledHours / RequestedHours</c>
+/// is the disc fill. <see cref="ParentTeamName"/> is non-null only for
+/// promoted sub-team rows and carries the parent's display name so the
+/// presentation layer can group sub-teams next to their parent without a
+/// second team lookup.
+/// </summary>
+public record DepartmentCoveragePie(
+    Guid TeamId,
+    string TeamName,
+    string TeamSlug,
+    bool IsSubTeam,
+    Guid? ParentTeamId,
+    string? ParentTeamName,
+    decimal RequestedHours,
+    decimal FilledHours)
+{
+    /// <summary>
+    /// Filled / requested as an integer 0..100. Single source of truth for
+    /// the disc fill — service caps the inputs so the ratio is bounded, but
+    /// we clamp here too in case a future contributor wires a different
+    /// input path.
+    /// </summary>
+    public int FillPercent => RequestedHours > 0
+        ? Math.Clamp(
+            (int)Math.Round(FilledHours / RequestedHours * 100m, MidpointRounding.AwayFromZero),
+            0, 100)
+        : 0;
+}
 
 /// <summary>
 /// Per-day staffing hours grouped by shift priority for volume visualization.

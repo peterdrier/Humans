@@ -136,7 +136,7 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// <c>IsSuspended</c> bool and the canonical
     /// <see cref="ProfileState"/> lifecycle marker (suspending →
     /// <see cref="ProfileState.Suspended"/>; unsuspending re-derives
-    /// Active vs Stub from <see cref="Profile.HasRequiredIdentityFields"/>).
+    /// Active vs Stub from BurnerName + FirstName + LastName all being set).
     /// Suspending also persists <paramref name="notes"/> as
     /// <c>AdminNotes</c>; unsuspending ignores notes. Error keys:
     /// <c>NotFound</c>.

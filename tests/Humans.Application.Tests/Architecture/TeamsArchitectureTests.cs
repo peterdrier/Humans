@@ -1,7 +1,9 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Teams;
+using Humans.Infrastructure.Services.Teams;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -82,5 +84,71 @@ public class TeamsArchitectureTests
         typeof(TeamRepository).Namespace
             .Should().Be("Humans.Infrastructure.Repositories.Teams",
                 because: "EF-backed repository implementations live in Humans.Infrastructure.Repositories.<Section> per design-rules §15b");
+    }
+
+    // ── ITeamRepository injection is Teams-section-only ──────────────────────
+
+    /// <summary>
+    /// Production code outside the Teams section namespace must not inject
+    /// <see cref="ITeamRepository"/> directly. Cross-section reads route through
+    /// the public <see cref="ITeamService"/> surface (decorated by
+    /// <see cref="CachingTeamService"/>) so they hit the cache instead of the DB
+    /// on every request. Repository injection inside the Teams section
+    /// (<c>TeamService</c>, <c>CachingTeamService</c>, and the EF impl itself) is
+    /// the intended layering and is allowed. Scans all three production
+    /// assemblies — Application, Infrastructure, and Web — so a future regression
+    /// where a controller, page handler, or filter takes <see cref="ITeamRepository"/>
+    /// directly fails this test.
+    /// </summary>
+    [HumansFact]
+    public void ITeamRepository_InjectedOnlyInsideTeamsSection()
+    {
+        var assembliesToScan = new[]
+        {
+            typeof(TeamService).Assembly,                                // Humans.Application
+            typeof(CachingTeamService).Assembly,                         // Humans.Infrastructure
+            typeof(Humans.Web.Controllers.HomeController).Assembly,      // Humans.Web
+        };
+
+        var violations = new List<string>();
+        foreach (var assembly in assembliesToScan)
+        {
+            foreach (var type in assembly.GetTypes()
+                         .Where(t => t.IsClass && !t.IsAbstract))
+            {
+                if (IsTeamsSectionType(type))
+                    continue;
+
+                foreach (var ctor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    foreach (var parameter in ctor.GetParameters())
+                    {
+                        if (parameter.ParameterType == typeof(ITeamRepository))
+                        {
+                            violations.Add($"{type.FullName}:{parameter.ParameterType.Name}");
+                        }
+                    }
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            because: "non-Teams sections must read teams via ITeamService (cache-backed), not ITeamRepository (DB-direct). " +
+                     "T-02 (docs/plans/2026-05-16-cache-migration.md) removes the last bypass; this test pins the rule.");
+    }
+
+    private static bool IsTeamsSectionType(Type type)
+    {
+        var ns = type.Namespace;
+        if (ns is null)
+            return false;
+
+        // Teams section homes for production code that legitimately injects ITeamRepository:
+        //   - Humans.Application.Services.Teams.*   (TeamService and helpers)
+        //   - Humans.Infrastructure.Services.Teams.* (CachingTeamService decorator)
+        //   - Humans.Infrastructure.Repositories.Teams.* (the EF impl itself)
+        return ns.StartsWith("Humans.Application.Services.Teams", StringComparison.Ordinal)
+            || ns.StartsWith("Humans.Infrastructure.Services.Teams", StringComparison.Ordinal)
+            || ns.StartsWith("Humans.Infrastructure.Repositories.Teams", StringComparison.Ordinal);
     }
 }

@@ -307,11 +307,7 @@ public sealed class OutboxEmailService : IEmailService
 
         // Generate unsubscribe headers and footer link for the CampaignCodes category
         var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(request.UserId, MessageCategory.CampaignCodes);
-        string? extraHeadersJson = null;
-        if (unsubHeaders is not null)
-        {
-            extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
-        }
+        var extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
         var unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(request.UserId, MessageCategory.CampaignCodes);
 
         var (wrappedHtml, plainText) = _bodyComposer.Compose(rendered.HtmlBody, unsubscribeUrl);

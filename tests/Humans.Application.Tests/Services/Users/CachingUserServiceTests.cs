@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -135,51 +136,42 @@ public class CachingUserServiceTests
         var userId = Guid.NewGuid();
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId)));
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId); // prime
 
-        await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
-
-        // Next read should miss the dict and delegate again.
+        // User has been deleted in the source; inner now returns null.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
-        (await sut.GetUserInfoAsync(userId)).Should().BeNull();
 
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+        await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
+
+        // Entry should be tombstoned by ReplaceAsync's null-load path.
+        (await sut.GetUserInfoAsync(userId)).Should().BeNull();
     }
 
     [HumansFact]
     public async Task InvalidateAsync_ExistingUser_ReloadsEntry()
     {
         var userId = Guid.NewGuid();
+        var stale = SampleUserInfo(userId, "Before");
+        var fresh = SampleUserInfo(userId, "After");
 
-        // Prime with a stale entry first.
+        // Prime with the stale entry.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, "Before")));
-
-        var freshUser = SampleUser(userId);
-        freshUser.DisplayName = "After";
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
-        _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _profileRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+            .Returns(new ValueTask<UserInfo?>(stale));
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId);
 
+        // Source row updated: inner now returns the fresh UserInfo.
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(fresh));
+
         await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
 
-        var fresh = await sut.GetUserInfoAsync(userId);
-        fresh!.DisplayName.Should().Be("After");
-        await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+        var hit = await sut.GetUserInfoAsync(userId);
+        hit!.DisplayName.Should().Be("After");
     }
 
     [HumansFact]
@@ -228,7 +220,7 @@ public class CachingUserServiceTests
             .Returns([]);
 
         var sut = CreateSut();
-        await sut.WarmAllAsync();
+        await ((IHostedService)sut).StartAsync(CancellationToken.None);
 
         await _userRepo.Received(1).GetEventParticipationsByUserIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
@@ -241,6 +233,54 @@ public class CachingUserServiceTests
         hitA.Should().NotBeNull();
         hitB.Should().NotBeNull();
         await _inner.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LoadAllReads_TriggerWarmupOnDemand_WhenCold()
+    {
+        var userA = SampleUser();
+        var userB = SampleUser();
+        _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { userA, userB });
+        _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _userRepo.GetExternalLoginsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
+        _userRepo.GetEventParticipationsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
+        _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var sut = CreateSut();
+
+        // No StartAsync — cache is cold. The first load-all read drives warmup.
+        var all = await sut.GetAllUserInfosAsync();
+        all.Should().HaveCount(2);
+
+        // Subsequent load-all reads do not re-drive warmup.
+        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        var again = await sut.GetAllUserInfosAsync();
+        again.Should().HaveCount(2);
+        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SingleKeyReads_StillWorkBeforeWarmup()
+    {
+        var userId = Guid.NewGuid();
+        var info = SampleUserInfo(userId);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+
+        var sut = CreateSut();
+
+        // Cache is cold — GetUserInfoAsync lazy-fills, no warmup gate.
+        var first = await sut.GetUserInfoAsync(userId);
+        first.Should().BeSameAs(info);
     }
 
     [HumansFact]
@@ -508,6 +548,11 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
         await sut.GetUserInfoAsync(info.Id);
+        // SearchUsersAsync / GetAllUserInfos / GetAllParticipationsForYearAsync /
+        // GetMergedSourceIdsAsync gate on IsWarmedUp — these search tests seed
+        // a single entry directly via GetUserInfoAsync instead of driving a
+        // full WarmAllAsync, so flip the flag manually here.
+        sut.MarkWarmedForTesting();
     }
 
     [HumansFact]

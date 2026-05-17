@@ -21,7 +21,8 @@ public class EmailProblemsServiceTests
 
     public EmailProblemsServiceTests()
     {
-        _userService.GetAllUserInfos().Returns(_ => _allInfos.ToArray());
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_allInfos.ToArray()));
     }
 
     private EmailProblemsService Sut => new(

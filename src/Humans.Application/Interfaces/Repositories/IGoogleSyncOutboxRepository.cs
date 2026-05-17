@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -29,6 +30,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Registered as Singleton via <c>IDbContextFactory&lt;HumansDbContext&gt;</c>
 /// per design-rules §15b.
 /// </remarks>
+[Section("GoogleIntegration")]
 public interface IGoogleSyncOutboxRepository : IRepository
 {
     // ==========================================================================

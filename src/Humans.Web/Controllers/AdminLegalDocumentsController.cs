@@ -14,7 +14,7 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-[Route("Admin")]
+[Route("Legal/Admin")]
 public class AdminLegalDocumentsController : HumansControllerBase
 {
     private readonly IAdminLegalDocumentService _adminLegalDocumentService;
@@ -36,7 +36,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         _logger = logger;
     }
 
-    [HttpGet("LegalDocuments")]
+    [HttpGet("Documents")]
     public async Task<IActionResult> LegalDocuments(Guid? teamId)
     {
         var documents = await _adminLegalDocumentService.GetLegalDocumentsAsync(teamId);
@@ -60,10 +60,10 @@ public class AdminLegalDocumentsController : HumansControllerBase
             }).ToList()
         };
 
-        return View("~/Views/Admin/LegalDocuments.cshtml", viewModel);
+        return View("~/Views/AdminLegalDocuments/LegalDocuments.cshtml", viewModel);
     }
 
-    [HttpGet("LegalDocuments/Create")]
+    [HttpGet("Documents/Create")]
     public async Task<IActionResult> CreateLegalDocument(Guid? teamId)
     {
         var viewModel = new LegalDocumentEditViewModel
@@ -72,10 +72,10 @@ public class AdminLegalDocumentsController : HumansControllerBase
             Teams = await GetTeamSelectItems()
         };
 
-        return View("~/Views/Admin/CreateLegalDocument.cshtml", viewModel);
+        return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", viewModel);
     }
 
-    [HttpPost("LegalDocuments/Create")]
+    [HttpPost("Documents/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateLegalDocument(LegalDocumentEditViewModel model)
     {
@@ -84,7 +84,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         if (!ModelState.IsValid)
         {
             model.Teams = await GetTeamSelectItems();
-            return View("~/Views/Admin/CreateLegalDocument.cshtml", model);
+            return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", model);
         }
 
         var result = await _adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
@@ -118,7 +118,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         return RedirectToAction(nameof(LegalDocuments));
     }
 
-    [HttpGet("LegalDocuments/{id}/Edit")]
+    [HttpGet("Documents/{id}/Edit")]
     public async Task<IActionResult> EditLegalDocument(Guid id)
     {
         var document = await _adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id);
@@ -163,10 +163,10 @@ public class AdminLegalDocumentsController : HumansControllerBase
                 .ToList()
         };
 
-        return View("~/Views/Admin/EditLegalDocument.cshtml", viewModel);
+        return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", viewModel);
     }
 
-    [HttpPost("LegalDocuments/{id}/Edit")]
+    [HttpPost("Documents/{id}/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditLegalDocument(Guid id, LegalDocumentEditViewModel model)
     {
@@ -180,7 +180,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         if (!ModelState.IsValid)
         {
             model.Teams = await GetTeamSelectItems();
-            return View("~/Views/Admin/EditLegalDocument.cshtml", model);
+            return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", model);
         }
 
         var document = await _adminLegalDocumentService.UpdateLegalDocumentAsync(
@@ -199,7 +199,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         return RedirectToAction(nameof(LegalDocuments));
     }
 
-    [HttpPost("LegalDocuments/{id}/Archive")]
+    [HttpPost("Documents/{id}/Archive")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ArchiveLegalDocument(Guid id)
     {
@@ -216,7 +216,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         return RedirectToAction(nameof(LegalDocuments));
     }
 
-    [HttpPost("LegalDocuments/{id}/Sync")]
+    [HttpPost("Documents/{id}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncLegalDocument(Guid id)
     {
@@ -237,7 +237,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         return RedirectToAction(nameof(EditLegalDocument), new { id });
     }
 
-    [HttpPost("LegalDocuments/{id}/Versions/{versionId}/Summary")]
+    [HttpPost("Documents/{id}/Versions/{versionId}/Summary")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string changesSummary)
     {

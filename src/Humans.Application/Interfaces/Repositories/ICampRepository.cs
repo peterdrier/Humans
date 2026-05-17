@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -19,6 +20,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// repository; the application service stitches display names from
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
+[Section("Camps")]
 public interface ICampRepository : IRepository
 {
     // ==========================================================================
