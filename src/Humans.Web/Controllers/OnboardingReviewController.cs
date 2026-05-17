@@ -67,7 +67,7 @@ public class OnboardingReviewController : HumansControllerBase
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = detailUser?.DisplayName ?? "Unknown",
+            DisplayName = detailUser?.BurnerName ?? "Unknown",
             ProfilePictureUrl = detailUser?.ProfilePictureUrl,
             Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,

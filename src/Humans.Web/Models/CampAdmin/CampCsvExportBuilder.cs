@@ -47,7 +47,7 @@ public sealed class CampCsvExportBuilder
                 .Select(l =>
                 {
                     var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;
-                    return $"{user?.DisplayName ?? string.Empty} <{user?.Email ?? string.Empty}>";
+                    return $"{user?.BurnerName ?? string.Empty} <{user?.Email ?? string.Empty}>";
                 }));
 
             var vibes = season.Vibes.Count > 0
