@@ -67,7 +67,7 @@ public sealed class CachingRoleAssignmentService
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var row in AsReadOnlyDictionary.Values)
         {
-            if (row.ValidFrom <= now && (row.ValidTo is null || row.ValidTo > now))
+            if (row.IsActiveAt(now))
             {
                 counts.TryGetValue(row.RoleName, out var c);
                 counts[row.RoleName] = c + 1;

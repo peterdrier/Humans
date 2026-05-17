@@ -12,4 +12,13 @@ public sealed record RoleAssignmentRow(
     Guid Id,
     string RoleName,
     Instant ValidFrom,
-    Instant? ValidTo);
+    Instant? ValidTo)
+{
+    /// <summary>
+    /// Canonical "is this assignment active at <paramref name="now"/>?" predicate.
+    /// Lives on the row record (design-rules §15d) so the caching decorator
+    /// doesn't reimplement the business rule inline.
+    /// </summary>
+    public bool IsActiveAt(Instant now) =>
+        ValidFrom <= now && (ValidTo is null || ValidTo > now);
+}
