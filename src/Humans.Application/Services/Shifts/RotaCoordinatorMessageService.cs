@@ -85,6 +85,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
 
         var queued = 0;
         var skipped = 0;
+        var failed = 0;
         foreach (var (userId, userSignups) in byUser)
         {
             if (!recipientInfos.TryGetValue(userId, out var recipient))
@@ -118,15 +119,33 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
                 ShiftLines: shiftLines,
                 Culture: recipient.PreferredLanguage);
 
-            await _emailService.SendCoordinatorRotaMessageAsync(request, ct);
-            queued++;
+            // Per-recipient enqueue is isolated: a transient outbox-write
+            // failure on one recipient must not unwind the loop and leave
+            // the audit row unwritten or earlier enqueues unaccounted for.
+            // Matches the fan-out pattern in AttendeeContactImportService.
+            try
+            {
+                await _emailService.SendCoordinatorRotaMessageAsync(request, ct);
+                queued++;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failed++;
+                _logger.LogError(ex,
+                    "Failed to enqueue rota email for recipient {UserId} on rota {RotaId}",
+                    userId, rotaId);
+            }
         }
+
+        var auditSuffix = string.Empty;
+        if (skipped > 0) auditSuffix += $" ({skipped} skipped: no email or missing user)";
+        if (failed > 0) auditSuffix += $" ({failed} failed: enqueue error)";
 
         await _auditLogService.LogAsync(
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
             $"Sent rota message '{Truncate(messageText, 120)}' to {queued} recipient(s) on '{rota.Name}'"
-                + (skipped > 0 ? $" ({skipped} skipped: no email or missing user)" : string.Empty),
+                + auditSuffix,
             senderUserId);
 
         return RotaMessageDispatchResult.Success(queued, rota.Name);
