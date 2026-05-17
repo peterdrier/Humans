@@ -45,7 +45,8 @@ public sealed class BurnSettingsService : IBurnSettingsService
         SetupWeekStartOffset: src.SetupWeekStartOffset,
         PreEventWeekStartOffset: src.PreEventWeekStartOffset,
         FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
-        EarlyEntryCapacity: src.EarlyEntryCapacity,
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation,
+        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
+            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose: src.EarlyEntryClose);
 }
