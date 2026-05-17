@@ -38,8 +38,13 @@
           handles are threaded through every Application-layer service entry
           point per issue #691. Kept visible as warnings (not hidden via
           NoWarn) so new render-path violations stay surfaced.
+        - HUM0019: read of Identity-derived User column from Application or
+          Web (issue nobodies-collective/Humans#506). Stays a warning while
+          legacy reads (computed-override projections of UserEmails) are
+          migrated through UserInfo / IUserEmailService. Promote to error
+          once all reads are gone (delete this entry).
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0017;HUM0018;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

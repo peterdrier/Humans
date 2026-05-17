@@ -330,7 +330,7 @@ public sealed class DevelopmentDashboardSeeder
                 if (!updateResult.Succeeded)
                 {
                     throw new InvalidOperationException(
-                        $"Failed to update LastLoginAt for seeded coord '{coord.Email}': {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
+                        $"Failed to update LastLoginAt for seeded coord '{coord.Id}': {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
                 }
 
                 try

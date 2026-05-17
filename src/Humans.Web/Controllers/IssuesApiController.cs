@@ -270,7 +270,9 @@ public class IssuesApiController : ControllerBase
         i.UserAgent,
         i.AdditionalContext,
         ReporterName = i.Reporter?.DisplayName,
-        ReporterEmail = i.Reporter?.Email,
+        // ReporterEmail dropped per issue nobodies-collective/Humans#506
+        // (no application reads of User.Email). Consumers needing email
+        // can resolve via a separate IUserService lookup.
         ReporterUserId = i.ReporterUserId,
         ReporterLanguage = i.Reporter?.PreferredLanguage,
         AssigneeUserId = i.AssigneeUserId,

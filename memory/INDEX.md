@@ -43,6 +43,8 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 
 - [`email-mutation-paths`](architecture/email-mutation-paths.md) — HARD RULE. `UserEmail.Email` is written only by the OAuth callback via `(Provider, ProviderKey)` match. `User.Email` is a vestigial Identity field — computed from the verified `IsPrimary` row, never written by application code.
 
+- [`no-identity-email-column-reads`](architecture/no-identity-email-column-reads.md) — HARD RULE. Application/Web code MUST NOT read `User.Email`/`NormalizedEmail`/`UserName`/`NormalizedUserName`. Use `UserInfo.Email` / `IUserEmailService` instead. Enforced by HUM0019.
+
 ## code/
 
 - [`admin-role-superset`](code/admin-role-superset.md) — Admin = global superset; TeamsAdmin/CampAdmin/TicketAdmin = supersets in their domain. Always include both.

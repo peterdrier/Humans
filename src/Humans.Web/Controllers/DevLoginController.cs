@@ -99,7 +99,7 @@ public class DevLoginController : Controller
         }
 
         await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
+        _logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
         return RedirectToLocalOrHome(returnUrl);
     }
@@ -168,7 +168,7 @@ public class DevLoginController : Controller
             return NotFound();
 
         await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
+        _logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
         return RedirectToLocalOrHome(returnUrl);
     }
@@ -204,7 +204,7 @@ public class DevLoginController : Controller
         }
 
         await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as fresh guest {Email} ({Id})", user.Email, user.Id);
+        _logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", user.Id);
         return RedirectToLocalOrHome(returnUrl);
     }
 

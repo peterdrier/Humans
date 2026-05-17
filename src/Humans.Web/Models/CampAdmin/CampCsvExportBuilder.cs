@@ -28,7 +28,7 @@ public sealed class CampCsvExportBuilder
             .SelectMany(c => c.Leads.Select(l => l.UserId))
             .Distinct()
             .ToList();
-        var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
+        var leadUsers = await _userService.GetUserInfosAsync(leadUserIds);
 
         var csv = new StringBuilder();
         csv.AppendCsvRow(
