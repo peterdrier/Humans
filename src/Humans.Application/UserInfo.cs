@@ -345,6 +345,13 @@ public sealed record UserInfo(
     public bool IsApproved => Profile?.IsApproved ?? false;
 
     /// <summary>
+    /// True when this user has a <see cref="ProfileInfo"/> row attached. Canonical
+    /// "does this user have a profile yet" predicate — callers should never have
+    /// to navigate <c>userInfo.Profile is not null</c> themselves.
+    /// </summary>
+    public bool HasProfile => Profile is not null;
+
+    /// <summary>
     /// True when the user has a profile and BurnerName + FirstName + LastName
     /// are all non-blank. Canonical "has a name" predicate — gates Stub→Active
     /// promotion, Consent Coordinator review queue inclusion, and any flow

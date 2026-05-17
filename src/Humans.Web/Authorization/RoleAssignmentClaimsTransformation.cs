@@ -104,7 +104,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         // the prior dbContext.Profiles.AnyAsync calls returning false.
         var userInfo = await _userService.GetUserInfoAsync(userId);
         var isSuspended = userInfo?.IsSuspended ?? false;
-        var hasProfile = userInfo?.Profile is not null;
+        var hasProfile = userInfo?.HasProfile ?? false;
 
         var activeRoles = await dbContext.RoleAssignments
             .AsNoTracking()
