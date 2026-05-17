@@ -425,6 +425,129 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetByIdsWithEmailsAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
+    {
+        // Issue #744. Warm cache + GetByIdsWithEmailsAsync(known ids) must
+        // never call the inner service (zero EF queries).
+        var userId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Cached",
+            PreferredLanguage = "es",
+            ProfilePictureUrl = "https://example.com/pic.png",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Valid,
+        };
+        var userEmail = new UserEmail
+        {
+            Id = emailId,
+            UserId = userId,
+            Email = "cached@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            IsGoogle = true,
+            Provider = "Google",
+            ProviderKey = "subj-1",
+        };
+        var info = UserInfo.Create(
+            user, [userEmail],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+
+        var sut = CreateSut();
+
+        // Prime the cache.
+        await sut.GetUserInfoAsync(userId);
+
+        // Warm-cache call should rehydrate locally, never delegate.
+        var result = await sut.GetByIdsWithEmailsAsync([userId]);
+
+        result.Should().ContainKey(userId);
+        var hit = result[userId];
+#pragma warning disable CS0618 // DisplayName legacy mirror — preservation is the point of this test.
+        hit.DisplayName.Should().Be("Cached");
+#pragma warning restore CS0618
+        hit.ProfilePictureUrl.Should().Be("https://example.com/pic.png");
+        hit.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
+        hit.UserEmails.Should().ContainSingle(e =>
+            e.Id == emailId && e.Email == "cached@example.com" && e.IsPrimary && e.IsGoogle && e.IsVerified);
+
+        await _inner.DidNotReceive().GetByIdsWithEmailsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetByIdsAsync_PartialHit_OnlyMissesDelegated()
+    {
+        // Issue #744. Warm hits served from dict, misses batched to inner.
+        var hitId = Guid.NewGuid();
+        var missId = Guid.NewGuid();
+
+        var info = SampleUserInfo(hitId, "Cached");
+        _inner.GetUserInfoAsync(hitId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+
+        var missUser = SampleUser(missId);
+#pragma warning disable CS0618
+        missUser.DisplayName = "Fresh";
+#pragma warning restore CS0618
+        _inner.GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(missId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [missId] = missUser });
+
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(hitId); // prime only the hit.
+
+        var result = await sut.GetByIdsAsync([hitId, missId]);
+
+        result.Should().HaveCount(2);
+#pragma warning disable CS0618
+        result[hitId].DisplayName.Should().Be("Cached");
+        result[missId].DisplayName.Should().Be("Fresh");
+#pragma warning restore CS0618
+
+        // Inner was called for the miss with only the missing id.
+        await _inner.Received(1).GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(missId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetByIdAsync_WarmCache_ServesFromDict_NoInnerCall()
+    {
+        var userId = Guid.NewGuid();
+        var info = SampleUserInfo(userId, "Cached");
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(userId); // prime
+
+        var user = await sut.GetByIdAsync(userId);
+
+        user.Should().NotBeNull();
+#pragma warning disable CS0618
+        user!.DisplayName.Should().Be("Cached");
+#pragma warning restore CS0618
+
+        // GetByIdAsync should not have been delegated.
+        await _inner.DidNotReceive().GetByIdAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task DeleteUsersAsync_EvictsAffectedEntries()
     {
         var u1 = Guid.NewGuid();
