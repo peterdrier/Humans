@@ -20,7 +20,9 @@ namespace Humans.Web.Authorization;
     "Auth claims transformation runs on every authenticated request and reads role_assignments via IRoleAssignmentRepository directly. Routing through IRoleAssignmentService drags in INotificationEmitter / ISystemTeamSync / IGoogleSyncService / Hangfire scheduler — wrong for the request-time auth hot path and unresolvable in the integration-test host. Team membership uses the cache-backed ITeamService. A thin Application-layer read-only interface is the proper home — tracked separately.",
     "2026-05-17",
     "nobodies-collective/Humans#750")]
+#pragma warning disable HUM0014 // Request-time auth hot path intentionally reads the repository; see Grandfathered rationale above.
 public class RoleAssignmentClaimsTransformation : IClaimsTransformation
+#pragma warning restore HUM0014
 {
     /// <summary>Active member of the Volunteers team.</summary>
     public const string ActiveMemberClaimType = "ActiveMember";
@@ -39,12 +41,14 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
 
+#pragma warning disable HUM0014 // Request-time auth hot path intentionally reads the repository; see Grandfathered rationale above.
     public RoleAssignmentClaimsTransformation(
         IRoleAssignmentRepository roleAssignments,
         ITeamService teams,
         IUserService userService,
         IClock clock,
         IMemoryCache cache)
+#pragma warning restore HUM0014
     {
         _roleAssignments = roleAssignments;
         _teams = teams;

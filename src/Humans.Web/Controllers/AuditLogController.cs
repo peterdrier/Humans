@@ -112,7 +112,7 @@ public class AuditLogController : HumansControllerBase
 
         var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
         var info = await _userService.GetUserInfoAsync(id);
-        var displayName = info?.BurnerName ?? user.DisplayName;
+        var displayName = info?.BurnerName ?? user.BurnerName;
         return GoogleSyncAuditView(
             $"Google Sync Audit: {displayName}",
             Url.Action(nameof(ProfileController.AdminDetail), "Profile", new { id }),

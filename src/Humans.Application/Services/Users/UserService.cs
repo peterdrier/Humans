@@ -323,8 +323,10 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         var shaped = new
         {
             user.Id,
+#pragma warning disable HUM0019, HUM_USER_DISPLAYNAME // GDPR export intentionally includes raw Identity personal-data columns.
             user.Email,
             user.DisplayName,
+#pragma warning restore HUM0019, HUM_USER_DISPLAYNAME
             user.PreferredLanguage,
             GoogleEmail = googleEmail,
             user.UnsubscribedFromCampaigns,

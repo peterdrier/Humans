@@ -361,8 +361,11 @@ public class ProfileControllerEmailGridTests
                 return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
             });
 
+        var targetUser = new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "es" };
         _userManager.FindByIdAsync(targetUserId.ToString())
-            .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "es" });
+            .Returns(targetUser);
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(targetUser.ToUserInfo());
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
             .Returns(new DTOs.AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
 

@@ -8,7 +8,6 @@ using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
@@ -26,7 +25,6 @@ public class ShiftAdminController : HumansTeamControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IShiftView _shiftView;
     private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ShiftAdminPageBuilder _pageBuilder;
     private readonly ILogger<ShiftAdminController> _logger;
@@ -40,7 +38,6 @@ public class ShiftAdminController : HumansTeamControllerBase
         IShiftView shiftView,
         IGeneralAvailabilityService availabilityService,
         IUserService userService,
-        UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
         ShiftAdminPageBuilder pageBuilder,
@@ -53,7 +50,6 @@ public class ShiftAdminController : HumansTeamControllerBase
         _signupService = signupService;
         _shiftView = shiftView;
         _availabilityService = availabilityService;
-        _userManager = userManager;
         _clock = clock;
         _pageBuilder = pageBuilder;
         _rotaMessenger = rotaMessenger;
@@ -640,7 +636,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                 query,
                 _shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
-                _userManager,
+                UserService,
                 _shiftView,
                 _signupService,
                 _availabilityService);

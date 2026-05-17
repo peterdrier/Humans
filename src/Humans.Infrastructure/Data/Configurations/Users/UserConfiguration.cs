@@ -9,9 +9,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
+#pragma warning disable HUM_USER_DISPLAYNAME // EF mapping for the legacy Identity column.
         builder.Property(u => u.DisplayName)
             .HasMaxLength(256)
             .IsRequired();
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         builder.Property(u => u.PreferredLanguage)
             .HasMaxLength(10)

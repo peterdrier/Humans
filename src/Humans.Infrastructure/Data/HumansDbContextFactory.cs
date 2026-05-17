@@ -15,7 +15,9 @@ namespace Humans.Infrastructure.Data;
     justification: "Design-time factory IS the persistence boundary — it constructs HumansDbContext for `dotnet ef migrations` tooling. There is no repository to route through. Follow-up to teach the analyzer about design-time-factory roles in #750.",
     since: "2026-05-17",
     issueRef: "nobodies-collective/Humans#750")]
+#pragma warning disable HUM0009 // Design-time EF factory is a persistence bootstrap boundary; see Grandfathered rationale above.
 internal sealed class HumansDbContextFactory : IDesignTimeDbContextFactory<HumansDbContext>
+#pragma warning restore HUM0009
 {
     public HumansDbContext CreateDbContext(string[] args)
     {

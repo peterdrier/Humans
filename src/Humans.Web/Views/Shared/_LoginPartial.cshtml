@@ -11,7 +11,7 @@
     {
         currentUser = await UserService.GetUserInfoAsync(currentUserId);
     }
-    var displayName = currentUser?.DisplayName ?? User.Identity?.Name;
+    var displayName = currentUser?.BurnerName ?? User.Identity?.Name;
     var email = currentUser?.Email;
     <div class="dropdown" data-testid="user-nav">
         <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2 text-decoration-none p-0"

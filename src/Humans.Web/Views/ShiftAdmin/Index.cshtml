@@ -376,7 +376,7 @@
                                     var shiftSignups = shift.ShiftSignups
                                         .Where(su => su.Status == SignupStatus.Confirmed || su.Status == SignupStatus.NoShow || su.Status == SignupStatus.Bailed)
                                         .OrderBy(su => su.Status)
-                                        .ThenBy(su => Model.Users.GetValueOrDefault(su.UserId)?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                        .ThenBy(su => Model.Users.GetValueOrDefault(su.UserId)?.BurnerName, StringComparer.OrdinalIgnoreCase)
                                         .ToList();
                                     <tr>
                                         <td>
@@ -422,7 +422,7 @@
                                         {
                                             var activeSignups = shift.ShiftSignups
                                                 .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.BurnerName, StringComparer.OrdinalIgnoreCase)
                                                 .ToList();
                                             <td class="small">
                                                 @if (rota.Period == RotaPeriod.Event)
@@ -442,7 +442,7 @@
                                                         @foreach (var ss in activeSignups)
                                                         {
                                                             var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
-                                                            <span title="@(ssUser?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                            <span title="@(ssUser?.BurnerName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                   style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@ss.UserId" layout="Avatar" size="26" css-class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
                                                         }
                                                     </div>
@@ -563,7 +563,7 @@
                                     {
                                         var manageSignups = shift.ShiftSignups
                                             .Where(ss => ss.Status == SignupStatus.Confirmed)
-                                            .OrderBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                            .OrderBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.BurnerName, StringComparer.OrdinalIgnoreCase)
                                             .ToList();
                                         if (manageSignups.Count > 0)
                                         {

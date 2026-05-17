@@ -70,8 +70,8 @@ public class IssuesApiController : ControllerBase
 
         var thread = await _issues.GetThreadAsync(id);
         // ReporterEmail sourced from UserInfo (not User.Email) — keeps shape parity with the list endpoint. See PR 618.
-        var reporter = await _users.GetUserInfoAsync(issue.ReporterUserId);
-        return Ok(MapDetail(issue, thread, reporter));
+        var displayUsers = await GetIssueDisplayUsersAsync(issue);
+        return Ok(MapDetail(issue, thread, displayUsers));
     }
 
     [HttpPost]
@@ -250,7 +250,7 @@ public class IssuesApiController : ControllerBase
         }
     }
 
-    private static object MapList(Issue i, UserInfo? reporter = null) => new
+    private static object MapList(Issue i, IReadOnlyDictionary<Guid, UserInfo>? displayUsers = null) => new
     {
         i.Id,
         Status = i.Status.ToString(),
@@ -261,13 +261,15 @@ public class IssuesApiController : ControllerBase
         i.PageUrl,
         i.UserAgent,
         i.AdditionalContext,
-        ReporterName = reporter?.BurnerName ?? i.Reporter?.DisplayName,
+        ReporterName = displayUsers?.GetValueOrDefault(i.ReporterUserId)?.BurnerName,
         // ReporterEmail from UserInfo (not User.Email) for shape parity with list endpoint.
-        ReporterEmail = reporter?.Email,
+        ReporterEmail = displayUsers?.GetValueOrDefault(i.ReporterUserId)?.Email,
         ReporterUserId = i.ReporterUserId,
-        ReporterLanguage = i.Reporter?.PreferredLanguage,
+        ReporterLanguage = displayUsers?.GetValueOrDefault(i.ReporterUserId)?.PreferredLanguage,
         AssigneeUserId = i.AssigneeUserId,
-        AssigneeName = i.Assignee?.DisplayName,
+        AssigneeName = i.AssigneeUserId is { } assigneeId
+            ? displayUsers?.GetValueOrDefault(assigneeId)?.BurnerName
+            : null,
         i.GitHubIssueNumber,
         i.DueDate,
         ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
@@ -303,9 +305,12 @@ public class IssuesApiController : ControllerBase
         i.CommentCount
     };
 
-    private static object MapDetail(Issue i, IReadOnlyList<IssueThreadEvent> thread, UserInfo? reporter) => new
+    private static object MapDetail(
+        Issue i,
+        IReadOnlyList<IssueThreadEvent> thread,
+        IReadOnlyDictionary<Guid, UserInfo> displayUsers) => new
     {
-        issue = MapList(i, reporter),
+        issue = MapList(i, displayUsers),
         thread = thread.Select(e => e switch
         {
             IssueCommentEvent c => (object)new
@@ -329,6 +334,17 @@ public class IssuesApiController : ControllerBase
             _ => throw new NotSupportedException()
         })
     };
+
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(Issue issue)
+    {
+        var ids = new HashSet<Guid> { issue.ReporterUserId };
+        if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
+        if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
+
+        return ids.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _users.GetUserInfosAsync(ids);
+    }
 }
 
 public class ApiCreateIssueModel

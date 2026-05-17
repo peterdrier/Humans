@@ -128,8 +128,8 @@ public sealed class TeamPageService : ITeamPageService
             return null;
         }
 
-        var user = await _userService.GetByIdAsync(userId.Value, cancellationToken);
-        return user?.DisplayName;
+        var user = await _userService.GetUserInfoAsync(userId.Value, cancellationToken);
+        return user?.BurnerName;
     }
 
     private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(

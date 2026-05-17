@@ -253,6 +253,7 @@ public class AccountController : HumansControllerBase
         }
 
         var newUserId = Guid.NewGuid();
+#pragma warning disable HUM_USER_DISPLAYNAME // OAuth account creation seeds the legacy Identity mirror before profile completion.
         var user = new User
         {
             Id = newUserId,
@@ -261,6 +262,7 @@ public class AccountController : HumansControllerBase
             CreatedAt = _clock.GetCurrentInstant(),
             LastLoginAt = _clock.GetCurrentInstant()
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var createResult = await _userManager.CreateAsync(user);
         if (!createResult.Succeeded)

@@ -1324,10 +1324,22 @@ public class ExpenseReportServiceTests
             []);
     private void SetupUserAndProfile(Guid userId, string displayName, string iban)
     {
+        var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var firstName = nameParts.Length > 0 ? nameParts[0] : displayName;
+        var lastName = nameParts.Length > 1 ? nameParts[1] : "Tester";
+
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = displayName });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = userId, Iban = iban }));
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = displayName,
+                FirstName = firstName,
+                LastName = lastName,
+                Iban = iban
+            }));
     }
 
     private static TeamInfo MakeTeamInfo(Guid teamId,
@@ -1404,4 +1416,3 @@ public class ExpenseReportServiceTests
         UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
     };
 }
-

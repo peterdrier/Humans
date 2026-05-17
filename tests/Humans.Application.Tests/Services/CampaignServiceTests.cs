@@ -122,6 +122,7 @@ public class CampaignServiceTests : IDisposable
                 return (IReadOnlyDictionary<Guid, User>)list.ToDictionary(u => u.Id);
             });
         _userService.StubGetUserInfosFromContext(_dbContext);
+        _userService.StubGetUserInfoFromContext(_dbContext);
 
         _userEmailService
             .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

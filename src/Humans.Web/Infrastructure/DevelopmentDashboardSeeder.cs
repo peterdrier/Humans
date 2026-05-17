@@ -292,6 +292,7 @@ public sealed class DevelopmentDashboardSeeder
             // Id.ToString(). Without an explicit Id, every loop iteration resolves
             // to UserName = Guid.Empty.ToString() and fails on the second insert.
             var userId = Guid.NewGuid();
+#pragma warning disable HUM_USER_DISPLAYNAME // Development dashboard seeding writes the legacy Identity mirror.
             var user = new User
             {
                 Id = userId,
@@ -299,6 +300,7 @@ public sealed class DevelopmentDashboardSeeder
                 CreatedAt = createdAt,
                 LastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23))),
             };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
             var createResult = await _userManager.CreateAsync(user);
             if (!createResult.Succeeded)

@@ -309,8 +309,11 @@ public class IssuesApiControllerTests
             profileLanguages: [],
             volunteerHistory: [],
             communicationPreferences: []);
-        _users.GetUserInfoAsync(issue.ReporterUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(reporterInfo));
+        _users.GetUserInfosAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(issue.ReporterUserId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [issue.ReporterUserId] = reporterInfo }));
 
         var result = await _sut.Get(issue.Id);
 

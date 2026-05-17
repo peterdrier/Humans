@@ -120,6 +120,7 @@ public sealed class DevPersonaSeeder
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
 
+#pragma warning disable HUM_USER_DISPLAYNAME // Dev persona seeding writes the legacy Identity mirror.
         var user = new User
         {
             Id = id,
@@ -127,6 +128,7 @@ public sealed class DevPersonaSeeder
             CreatedAt = now,
             LastLoginAt = now
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var result = await _userManager.CreateAsync(user);
         if (!result.Succeeded)
@@ -270,6 +272,7 @@ public sealed class DevPersonaSeeder
     /// </summary>
     private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
     {
+#pragma warning disable HUM_USER_DISPLAYNAME // Dev persona seeding writes the legacy Identity mirror.
         var user = new User
         {
             Id = id,
@@ -277,6 +280,7 @@ public sealed class DevPersonaSeeder
             CreatedAt = now,
             LastLoginAt = now
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var result = await _userManager.CreateAsync(user);
         if (!result.Succeeded)
@@ -547,9 +551,9 @@ public sealed class DevPersonaSeeder
 
         IReadOnlyList<(Guid Id, string DisplayName, string Email)> result = users
             .Where(u => !(u.Email ?? string.Empty).StartsWith("dev-guest-", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(u => u.DisplayName, StringComparer.Ordinal)
+            .OrderBy(u => u.BurnerName, StringComparer.Ordinal)
             .Take(100)
-            .Select(u => (u.Id, u.DisplayName, u.Email ?? string.Empty))
+            .Select(u => (u.Id, u.BurnerName, u.Email ?? string.Empty))
             .ToList();
         return result;
     }

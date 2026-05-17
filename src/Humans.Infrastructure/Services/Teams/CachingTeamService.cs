@@ -1079,7 +1079,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
                 return new TeamMemberInfo(
                     TeamMemberId: m.Id,
                     UserId: m.UserId,
-                    DisplayName: u?.DisplayName ?? string.Empty,
+                    DisplayName: u?.BurnerName ?? string.Empty,
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,

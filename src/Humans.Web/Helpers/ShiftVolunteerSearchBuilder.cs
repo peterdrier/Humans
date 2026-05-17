@@ -1,10 +1,10 @@
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Helpers;
 
@@ -43,7 +43,7 @@ public static class ShiftVolunteerSearchBuilder
         string? query,
         Func<Task<EventSettings?>> getActiveEventSettings,
         bool canViewMedical,
-        UserManager<User> userManager,
+        IUserService userService,
         IShiftView shiftView,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
@@ -63,7 +63,7 @@ public static class ShiftVolunteerSearchBuilder
             eventSettings,
             activeEvent,
             canViewMedical,
-            userManager,
+            userService,
             shiftView,
             signupService,
             availabilityService);
@@ -77,7 +77,7 @@ public static class ShiftVolunteerSearchBuilder
         EventSettings eventSettings,
         EventSettings? activeEvent,
         bool canViewMedical,
-        UserManager<User> userManager,
+        IUserService userService,
         IShiftView shiftView,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
@@ -85,11 +85,7 @@ public static class ShiftVolunteerSearchBuilder
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
-        var users = await userManager.Users
-            .Where(u => EF.Functions.ILike(u.DisplayName, "%" + query + "%"))
-            .OrderBy(u => u.DisplayName)
-            .Take(10)
-            .ToListAsync();
+        var users = await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: 10);
 
         var poolVolunteers = await availabilityService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
@@ -97,7 +93,7 @@ public static class ShiftVolunteerSearchBuilder
         // Bulk-fetch the cached view for every candidate user — replaces the
         // per-user GetShiftProfileAsync + GetByUserAsync round trips with one
         // cache-friendly call (T-09, issue #720).
-        var userIds = users.Select(u => u.Id).ToList();
+        var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds);
 
         // The cached ShiftUserView.Signups is scoped to the currently active
@@ -117,11 +113,11 @@ public static class ShiftVolunteerSearchBuilder
         var results = new List<VolunteerSearchResult>();
         foreach (var user in users)
         {
-            var view = views[user.Id];
+            var view = views[user.UserId];
             var profile = view.Profile;
             var signupsForEvent = targetIsActive
                 ? view.Signups
-                : targetEventSignups![user.Id];
+                : targetEventSignups![user.UserId];
             var confirmedSignups = signupsForEvent
                 .Where(s => s.Status == SignupStatus.Confirmed
                     && s.Shift?.Rota?.EventSettingsId == eventSettings.Id)
@@ -136,15 +132,15 @@ public static class ShiftVolunteerSearchBuilder
 
             results.Add(new VolunteerSearchResult
             {
-                UserId = user.Id,
-                DisplayName = user.DisplayName,
+                UserId = user.UserId,
+                DisplayName = user.BurnerName,
                 Skills = profile?.Skills ?? [],
                 Quirks = profile?.Quirks ?? [],
                 Languages = profile?.Languages ?? [],
                 DietaryPreference = profile?.DietaryPreference,
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
-                IsInPool = poolUserIds.Contains(user.Id),
+                IsInPool = poolUserIds.Contains(user.UserId),
                 // canViewMedical gates MedicalConditions here so the shared
                 // cached view's Profile is never mutated (would poison the cache).
                 MedicalConditions = canViewMedical ? profile?.MedicalConditions : null

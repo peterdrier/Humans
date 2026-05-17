@@ -82,6 +82,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
         var now = _clock.GetCurrentInstant();
 
         var newUserId = Guid.NewGuid();
+#pragma warning disable HUM_USER_DISPLAYNAME // Account creation writes the legacy Identity mirror; Profile.BurnerName is created separately.
         var newUser = new User
         {
             Id = newUserId,
@@ -89,6 +90,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             ContactSource = source,
             CreatedAt = now,
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var result = await _userManager.CreateAsync(newUser);
         if (!result.Succeeded)
@@ -145,6 +147,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
         }
 
         var now = _clock.GetCurrentInstant();
+#pragma warning disable HUM_USER_DISPLAYNAME // Magic-link signup seeds the legacy Identity mirror before profile completion.
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -152,6 +155,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             CreatedAt = now,
             LastLoginAt = now
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var createResult = await _userManager.CreateAsync(user);
         if (!createResult.Succeeded)
