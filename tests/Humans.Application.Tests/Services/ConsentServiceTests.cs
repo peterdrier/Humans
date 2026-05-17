@@ -74,16 +74,20 @@ public class ConsentServiceTests : IDisposable
                 if (teamIds.Count == 0)
                     return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)[];
 
-#pragma warning disable CS0618 // Test stub uses LegalDocument.Team to populate the snapshot's TeamName; production stitches via ITeamService.
                 var documents = await _dbContext.LegalDocuments
                     .AsNoTracking()
                     .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
-                    .Include(d => d.Team)
                     .Include(d => d.Versions)
                     .ToListAsync();
 
-                return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
-#pragma warning restore CS0618
+                var teamNames = await _dbContext.Teams
+                    .AsNoTracking()
+                    .Where(t => teamIds.Contains(t.Id))
+                    .ToDictionaryAsync(t => t.Id, t => t.Name);
+
+                return documents
+                    .Select(d => ToActiveRequiredDocumentSnapshot(d, teamNames.GetValueOrDefault(d.TeamId, "")))
+                    .ToList();
             });
 
         var factory = new TestDbContextFactory(options);
@@ -271,13 +275,12 @@ public class ConsentServiceTests : IDisposable
         });
     }
 
-#pragma warning disable CS0618 // Test stub mirrors the legacy Include(d => d.Team) read path; prod stitches via ITeamService.
-    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
+    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document, string teamName) =>
         new(
             document.Id,
             document.Name,
             document.TeamId,
-            document.Team.Name,
+            teamName,
             document.LastSyncedAt,
             document.Versions.Select(v => new LegalDocumentVersionSnapshot(
                 v.Id,
@@ -290,7 +293,6 @@ public class ConsentServiceTests : IDisposable
                 v.RequiresReConsent,
                 v.CreatedAt,
                 v.ChangesSummary)).ToList());
-#pragma warning restore CS0618
 
     [HumansFact]
     public async Task SubmitConsentAsync_RecordsMetric()
