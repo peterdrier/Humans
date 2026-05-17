@@ -1128,7 +1128,9 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to unlink provider {Provider} for user {UserId}", provider, user.Id);
+            _logger.LogWarning(
+                "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
+                provider, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -2527,9 +2529,17 @@ public class ProfileController : HumansControllerBase
             var logins = await _userManager.GetLoginsAsync(user);
             if (logins.Count > 0)
             {
-                var rowsByKey = (await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
-                    .Where(r => !string.IsNullOrEmpty(r.Provider) && !string.IsNullOrEmpty(r.ProviderKey))
-                    .ToDictionary(r => (r.Provider!, r.ProviderKey!), r => r);
+                // (Provider, ProviderKey) uniqueness is service-enforced, not
+                // DB-enforced — drift can produce duplicates. Build the lookup
+                // defensively (keep first row per key) so the dashboard
+                // degrades gracefully instead of 500'ing the whole page.
+                var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
+                foreach (var r in await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
+                {
+                    if (string.IsNullOrEmpty(r.Provider) || string.IsNullOrEmpty(r.ProviderKey))
+                        continue;
+                    rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
+                }
 
                 // Auth-method invariant: magic-link works on any verified email
                 // row, so the user retains the ability to sign in as long as
