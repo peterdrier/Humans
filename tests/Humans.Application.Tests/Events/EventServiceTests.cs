@@ -17,12 +17,12 @@ public sealed class EventServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
-    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IEventSettingsService _eventSettings = Substitute.For<IEventSettingsService>();
     private readonly EventService _service;
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _shiftManagement, _clock);
+        _service = new EventService(_repo, _eventSettings, _clock);
     }
 
     [HumansFact]
@@ -62,7 +62,7 @@ public sealed class EventServiceTests
     public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
     {
         var eventSettingsId = Guid.NewGuid();
-        _shiftManagement.GetByIdAsync(eventSettingsId).Returns(new EventSettings
+        _eventSettings.GetByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new EventSettings
         {
             Id = eventSettingsId,
             EventName = "Nowhere 2026",

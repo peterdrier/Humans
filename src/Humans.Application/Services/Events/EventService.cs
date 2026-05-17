@@ -15,16 +15,16 @@ public sealed class EventService : IEventService, IUserDataContributor
 {
     private readonly IEventRepository _repo;
     // EventSettings is owned by the Shifts section (event_settings table).
-    // Route reads through IShiftManagementService so the Events repo never
-    // touches a cross-section DbSet (memory/architecture/no-cross-section-ef-joins.md).
-    // Tracked: peterdrier#719.
-    private readonly IShiftManagementService _shiftManagement;
+    // Route reads through the read-only IEventSettingsService supplier API
+    // so the Events repo never touches a cross-section DbSet
+    // (memory/architecture/no-cross-section-ef-joins.md, issue nobodies-collective/Humans#719).
+    private readonly IEventSettingsService _eventSettings;
     private readonly IClock _clock;
 
-    public EventService(IEventRepository repo, IShiftManagementService shiftManagement, IClock clock)
+    public EventService(IEventRepository repo, IEventSettingsService eventSettings, IClock clock)
     {
         _repo = repo;
-        _shiftManagement = shiftManagement;
+        _eventSettings = eventSettings;
         _clock = clock;
     }
 
@@ -39,23 +39,18 @@ public sealed class EventService : IEventService, IUserDataContributor
         return settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
     }
 
-    public async Task<IReadOnlyList<EventSettings>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
-    {
-        // Invariant: at most one EventSettings.IsActive == true. The admin
-        // picker for the camp guide presents that single row when present.
-        var active = await _shiftManagement.GetActiveAsync();
-        return active is null ? [] : [active];
-    }
+    public Task<IReadOnlyList<EventSettings>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
+        => _eventSettings.GetActiveOptionsAsync(ct);
 
     public Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-        => _shiftManagement.GetByIdAsync(id);
+        => _eventSettings.GetByIdAsync(id, ct);
 
     public async Task SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default)
     {
-        var eventSettings = await _shiftManagement.GetByIdAsync(eventSettingsId)
+        var eventSettings = await _eventSettings.GetByIdAsync(eventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);

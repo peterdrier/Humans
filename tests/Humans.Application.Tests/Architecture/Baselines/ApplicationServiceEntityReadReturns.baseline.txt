@@ -33,6 +33,9 @@ Humans.Application.Interfaces.Events.IEventService.GetUserEventAsync:Humans.Doma
 Humans.Application.Interfaces.Events.IEventService.GetUserSubmissionsAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Events.IEventService.GetVenueAsync:Humans.Domain.Entities.EventVenue
 Humans.Application.Interfaces.Issues.IIssuesService.GetIssueByIdAsync:Humans.Domain.Entities.Issue
+Humans.Application.Interfaces.Shifts.IEventSettingsService.GetActiveAsync:Humans.Domain.Entities.EventSettings
+Humans.Application.Interfaces.Shifts.IEventSettingsService.GetActiveOptionsAsync:Humans.Domain.Entities.EventSettings
+Humans.Application.Interfaces.Shifts.IEventSettingsService.GetByIdAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetBrowseShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetByIdAsync:Humans.Domain.Entities.EventSettings

@@ -519,8 +519,9 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
         // Resolve TimeZoneId via the inner IEventService — EventSettings is
         // owned by the Shifts section and the inner service stitches it in via
-        // IShiftManagementService (peterdrier#719). Cached at warm/refresh time;
-        // stale-on-EventSettings-edit window is documented on EventGuideSettingsView.TimeZoneId.
+        // IEventSettingsService (nobodies-collective/Humans#719). Cached at
+        // warm/refresh time; stale-on-EventSettings-edit window is documented
+        // on EventGuideSettingsView.TimeZoneId.
         string? timeZoneId = null;
         try
         {
