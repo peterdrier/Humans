@@ -196,7 +196,7 @@ public class ProfileController : HumansControllerBase
             var byEmail = allUsers
                 .Where(u =>
                     (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    u.BurnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
                 .Select(u => u.Id);
 
             searchUserIds = searchResults
@@ -245,6 +245,10 @@ public class ProfileController : HumansControllerBase
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
             CampaignGrants = campaignGrants,
+            // Onsite chip — own profile, always visible. Issue
+            // nobodies-collective/Humans#736.
+            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
+            CanViewOnsiteChip = true,
         };
 
         // Tier app status (skip Withdrawn).
@@ -256,6 +260,19 @@ public class ProfileController : HumansControllerBase
         }
 
         return View("Index", viewModel);
+    }
+
+    /// <summary>
+    /// Returns the user's "onsite since" instant for the active event year, or
+    /// null if they are not yet checked in (or there is no active event). Reads
+    /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
+    /// nobodies-collective/Humans#736.
+    /// </summary>
+    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
+    {
+        var active = await _shiftMgmt.GetActiveAsync();
+        if (active is null || active.Year == 0) return null;
+        return info.OnsiteSinceForYear(active.Year);
     }
 
     [HttpGet("Me/Edit")]
@@ -620,9 +637,11 @@ public class ProfileController : HumansControllerBase
             new { userId = user.Id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
             Request.Scheme);
 
+        var info = await _userService.GetUserInfoAsync(user.Id);
+
         await _emailService.SendEmailVerificationAsync(
             trimmedEmail,
-            user.DisplayName,
+            info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
             user.PreferredLanguage);
@@ -1261,9 +1280,11 @@ public class ProfileController : HumansControllerBase
             new { userId, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
             Request.Scheme);
 
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+
         await _emailService.SendEmailVerificationAsync(
             trimmedEmail,
-            targetUser.DisplayName,
+            info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
             targetUser.PreferredLanguage,
@@ -1859,15 +1880,27 @@ public class ProfileController : HumansControllerBase
 
         var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
 
+        // Onsite chip visibility (#736): self always, plus the same admin/board
+        // policy that gates /Tickets/Admin/Onsite. Coordinators below board
+        // tier don't see the chip on other humans — wider visibility is a
+        // follow-up PR if needed.
+        var canViewOnsiteChip = isOwnProfile
+            || (await _authorizationService.AuthorizeAsync(
+                User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
+
         var viewModel = new ProfileViewModel
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profileInfo!.DisplayName,
+            DisplayName = profileInfo!.BurnerName,
             IsOwnProfile = isOwnProfile,
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
+            OnsiteSince = canViewOnsiteChip
+                ? await ResolveOnsiteSinceAsync(profileInfo, ct)
+                : null,
+            CanViewOnsiteChip = canViewOnsiteChip,
         };
 
         return View("Index", viewModel);
@@ -1924,7 +1957,7 @@ public class ProfileController : HumansControllerBase
                 ShiftLabel = s.ShiftLabel,
                 DepartmentName = noShowTeamNames.GetValueOrDefault(s.TeamId, ""),
                 ShiftDateLabel = zoned.ToDisplayShortDateTime(),
-                MarkedByName = reviewer?.DisplayName,
+                MarkedByName = reviewer?.BurnerName,
                 MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDisplayShortMonthDayTime()
             };
         }).ToList());
@@ -1944,11 +1977,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var memberships = await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct);
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(
-            info,
-            memberships,
-            p => Url.Action(nameof(Picture), "Profile",
-                new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships);
 
         return PartialView("_HumanPopover", vm);
     }
@@ -2101,9 +2130,9 @@ public class ProfileController : HumansControllerBase
         var userEmails = await _userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await _consentService.GetConsentRecordCountAsync(id, ct);
         var roleAssignments = await _roleAssignmentService.GetByUserIdAsync(id, ct);
-        var roleCreatorNamesByUserId = (await _userService.GetByIdsAsync(
+        var roleCreatorNamesByUserId = (await _userService.GetUserInfosAsync(
                 roleAssignments.Select(ra => ra.CreatedByUserId).Distinct().ToList(), ct))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
         var campaignGrants = await _campaignService.GetAllGrantsForUserAsync(id, ct);
         var outboxCount = await _emailOutboxService.GetMessageCountForUserAsync(id, ct);
         var revealedIban = TempData.TryGetValue("RevealedIban", out var revealed) && revealed is string value
@@ -2132,7 +2161,7 @@ public class ProfileController : HumansControllerBase
             return null;
 
         var rejectedByInfo = await _userService.GetUserInfoAsync(profile.RejectedByUserId.Value, ct);
-        return rejectedByInfo?.DisplayName;
+        return rejectedByInfo?.BurnerName;
     }
 
     // Reveals unmasked IBAN once (TempData) + audit. Admin-only.
@@ -2381,7 +2410,7 @@ public class ProfileController : HumansControllerBase
     {
         var emails = await _userEmailService.GetUserEmailsAsync(user.Id, ct);
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
-        var burnerName = info?.BurnerName ?? user.DisplayName;
+        var burnerName = info?.BurnerName ?? string.Empty;
 
         var canAdd = true;
         var minutesUntilResend = 0;
@@ -2528,8 +2557,6 @@ public class ProfileController : HumansControllerBase
     }
 
 }
-
-
 
 
 

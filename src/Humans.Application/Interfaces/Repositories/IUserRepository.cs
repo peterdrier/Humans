@@ -314,6 +314,13 @@ public interface IUserRepository : IRepository
     /// If no record exists, a new one is created with the provided values and
     /// persisted — returns the new row. The returned entity is detached
     /// (AsNoTracking semantics; the owning context is disposed before return).
+    /// <para>
+    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
+    /// instant carried from <see cref="ParticipationSource.TicketSync"/>. Set
+    /// on row creation, and on the no-existing-row → Attended path. NEVER
+    /// overwritten once non-null — Attended-permanence applies to the
+    /// timestamp as well (issue nobodies-collective/Humans#736).
+    /// </para>
     /// </summary>
     Task<EventParticipation?> UpsertParticipationAsync(
         Guid userId,
@@ -321,6 +328,7 @@ public interface IUserRepository : IRepository
         ParticipationStatus status,
         ParticipationSource source,
         Instant? declaredAt,
+        Instant? checkedInAt,
         CancellationToken ct = default);
 
     /// <summary>

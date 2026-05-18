@@ -85,7 +85,7 @@ public sealed class CampAdminPageBuilder
             .SelectMany(c => c.Leads.Select(l => l.UserId))
             .Distinct()
             .ToList();
-        var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
+        var leadUsers = await _userService.GetUserInfosAsync(leadUserIds);
 
         return campsWithLeads.Select(c =>
         {
@@ -107,7 +107,7 @@ public sealed class CampAdminPageBuilder
                     {
                         LeadId = l.Id,
                         UserId = l.UserId,
-                        DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.DisplayName : string.Empty
+                        DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.BurnerName : string.Empty
                     }).ToList()
             };
         }).ToList();

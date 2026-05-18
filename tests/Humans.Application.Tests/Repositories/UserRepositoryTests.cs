@@ -164,7 +164,8 @@ public sealed class UserRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
 
         var result = await _repo.UpsertParticipationAsync(
-            userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, now, default);
+            userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, now,
+            checkedInAt: null, default);
 
         result.Should().NotBeNull();
         result!.Status.Should().Be(ParticipationStatus.NotAttending);
@@ -192,12 +193,94 @@ public sealed class UserRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _repo.UpsertParticipationAsync(
-            userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null, default);
+            userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null,
+            checkedInAt: null, default);
 
         result.Should().NotBeNull();
         result!.Status.Should().Be(ParticipationStatus.Ticketed);
         result.Source.Should().Be(ParticipationSource.TicketSync);
         result.DeclaredAt.Should().BeNull();
+    }
+
+    // ==========================================================================
+    // CheckedInAt (#736)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpsertParticipationAsync_CreatesAttendedRow_WithCheckedInAt()
+    {
+        var userId = Guid.NewGuid();
+        var arrival = Instant.FromUtc(2026, 7, 8, 14, 30);
+
+        var result = await _repo.UpsertParticipationAsync(
+            userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
+            declaredAt: null, checkedInAt: arrival, default);
+
+        result.Should().NotBeNull();
+        result!.Status.Should().Be(ParticipationStatus.Attended);
+        result.CheckedInAt.Should().Be(arrival);
+
+        var persisted = await _dbContext.EventParticipations.AsNoTracking()
+            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
+        persisted.CheckedInAt.Should().Be(arrival);
+    }
+
+    [HumansFact]
+    public async Task UpsertParticipationAsync_NeverOverwritesNonNullCheckedInAt()
+    {
+        // Pre-existing Attended row with CheckedInAt set. Repo's Attended-is-
+        // permanent rule short-circuits the whole call to null. CheckedInAt
+        // therefore cannot be overwritten via this path.
+        var userId = Guid.NewGuid();
+        var originalArrival = Instant.FromUtc(2026, 7, 8, 9, 0);
+        _dbContext.EventParticipations.Add(new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.TicketSync,
+            CheckedInAt = originalArrival,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var laterArrival = Instant.FromUtc(2026, 7, 8, 18, 0);
+        var result = await _repo.UpsertParticipationAsync(
+            userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
+            declaredAt: null, checkedInAt: laterArrival, default);
+
+        result.Should().BeNull(); // Attended-is-permanent short-circuit
+        var persisted = await _dbContext.EventParticipations.AsNoTracking()
+            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
+        persisted.CheckedInAt.Should().Be(originalArrival);
+    }
+
+    [HumansFact]
+    public async Task UpsertParticipationAsync_FillsCheckedInAt_OnTicketedToAttendedUpgrade()
+    {
+        // Existing Ticketed row from earlier sync. Now a CheckedIn ticket
+        // arrives — repo upgrades the row to Attended and fills CheckedInAt
+        // (because it was null before).
+        var userId = Guid.NewGuid();
+        _dbContext.EventParticipations.Add(new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Ticketed,
+            Source = ParticipationSource.TicketSync,
+            CheckedInAt = null,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var arrival = Instant.FromUtc(2026, 7, 8, 12, 0);
+        var result = await _repo.UpsertParticipationAsync(
+            userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
+            declaredAt: null, checkedInAt: arrival, default);
+
+        result.Should().NotBeNull();
+        result!.Status.Should().Be(ParticipationStatus.Attended);
+        result.CheckedInAt.Should().Be(arrival);
     }
 
     [HumansFact]
@@ -217,7 +300,8 @@ public sealed class UserRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _repo.UpsertParticipationAsync(
-            userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, _clock.GetCurrentInstant(), default);
+            userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, _clock.GetCurrentInstant(),
+            checkedInAt: null, default);
 
         result.Should().BeNull();
         var persisted = await _dbContext.EventParticipations.AsNoTracking()

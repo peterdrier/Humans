@@ -40,7 +40,7 @@ public class LegalDocumentConfiguration : IEntityTypeConfiguration<LegalDocument
             .WithMany(t => t.LegalDocuments)
             .HasForeignKey(ld => ld.TeamId)
             .OnDelete(DeleteBehavior.Restrict);
-#pragma warning restore CS0618, HUM0010
+#pragma warning restore CS0618
 
         builder.HasMany(ld => ld.Versions)
             .WithOne(v => v.LegalDocument)

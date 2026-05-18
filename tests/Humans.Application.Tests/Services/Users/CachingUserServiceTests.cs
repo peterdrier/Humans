@@ -619,36 +619,12 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SetParticipationFromTicketSyncAsync_WhenCachedValueIsUnchanged_DoesNotHitInner()
+    public async Task SetParticipationFromTicketSyncAsync_DelegatesAndRefreshesParticipationSlice()
     {
-        var userId = Guid.NewGuid();
-        var participation = new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
-            DeclaredAt = null,
-        };
-
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [participation])));
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId);
-
-        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed);
-
-        await _inner.DidNotReceive().SetParticipationFromTicketSyncAsync(
-            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(), Arg.Any<CancellationToken>());
-        await _userRepo.DidNotReceive().GetEventParticipationsByUserIdAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SetParticipationFromTicketSyncAsync_WhenCachedValueDiffers_RefreshesOnlyParticipationSlice()
-    {
+        // Decorator forwards unconditionally — idempotency lives in the inner
+        // service / repository (Attended is terminal, identical TicketSync row
+        // is a no-op upsert). The decorator's only job is to delegate, then
+        // refresh the participation slice in the dict.
         var userId = Guid.NewGuid();
         var stale = new EventParticipation
         {
@@ -677,11 +653,12 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId);
 
-        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed);
+        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed, checkedInAt: null);
 
         await _inner.Received(1).SetParticipationFromTicketSyncAsync(
-            userId, 2026, ParticipationStatus.Ticketed, Arg.Any<CancellationToken>());
+            userId, 2026, ParticipationStatus.Ticketed, null, Arg.Any<CancellationToken>());
         await _userRepo.Received(1).GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>());
+        // Slice refresh — sibling slices and repos are not touched.
         await _userEmailRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
         await _profileRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
         await _contactFieldRepo.DidNotReceive().GetByProfileIdReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -690,6 +667,37 @@ public class CachingUserServiceTests
         var info = await sut.GetUserInfoAsync(userId);
         info!.EventParticipations.Should().ContainSingle(p =>
             p.Year == 2026 && p.Status == ParticipationStatus.Ticketed && p.Source == ParticipationSource.TicketSync);
+    }
+
+    [HumansFact]
+    public async Task RemoveTicketSyncParticipationAsync_DelegatesAndRefreshesParticipationSlice()
+    {
+        var userId = Guid.NewGuid();
+        var existing = new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Ticketed,
+            Source = ParticipationSource.TicketSync,
+            DeclaredAt = null,
+        };
+
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [existing])));
+        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(userId);
+
+        await sut.RemoveTicketSyncParticipationAsync(userId, 2026);
+
+        await _inner.Received(1).RemoveTicketSyncParticipationAsync(userId, 2026, Arg.Any<CancellationToken>());
+        await _userRepo.Received(1).GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>());
+
+        var info = await sut.GetUserInfoAsync(userId);
+        info!.EventParticipations.Should().BeEmpty();
     }
 
     // ==========================================================================

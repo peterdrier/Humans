@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -14,49 +13,17 @@ namespace Humans.Application.Interfaces.Users;
 /// affected entry from the 8 tables, preserving the fully-warm invariant.
 /// </summary>
 /// <remarks>
-/// Sole cache-staleness signal for the unified User+Profile cache. The legacy
-/// <c>IFullProfileInvalidator</c> was retired alongside the FullProfile delete;
-/// every external section that previously held it now holds this.
+/// Sole cross-section cache-staleness signal for the unified User+Profile
+/// cache (§15e). The legacy <c>IFullProfileInvalidator</c> was retired
+/// alongside the FullProfile delete; every external section that previously
+/// held it now holds this. Slice-level refresh entry points used by
+/// <c>UserInfoSaveChangesInterceptor</c> live on the Infrastructure-internal
+/// <c>IUserInfoSliceRefresher</c> — they are not part of the cross-section
+/// contract and must not be added here.
 /// </remarks>
 public interface IUserInfoInvalidator
 {
     Task InvalidateAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
-    Task RefreshUserFieldsAsync(
-        User user,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
-    Task RemoveAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
-    Task RefreshUserEmailsAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
-    Task RefreshEventParticipationsAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
-    Task RefreshExternalLoginsAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
-    Task RefreshCommunicationPreferencesAsync(
         Guid userId,
         CancellationToken ct = default,
         [CallerMemberName] string memberName = "",

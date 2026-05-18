@@ -161,7 +161,7 @@ public class BarrioEventsController : HumansCampControllerBase
             await _emailService.SendEventLifecycleNotificationAsync(
                 new EventLifecycleNotification(
                     NewStatus: EventStatus.Pending,
-                    UserName: userInfo?.DisplayName ?? userEmail,
+                    UserName: userInfo?.BurnerName ?? userEmail,
                     EventTitle: model.Title,
                     ActionUrl: viewUrl),
                 userEmail);

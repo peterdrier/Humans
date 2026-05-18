@@ -1,8 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
@@ -21,6 +23,7 @@ public class MagicLinkServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
@@ -40,6 +43,7 @@ public class MagicLinkServiceTests : IDisposable
             store, null, null, null, null, null, null, null, null);
 
         _userEmailService = Substitute.For<IUserEmailService>();
+        _userService = Substitute.For<IUserService>();
 
         // Default: no verified UserEmail row exists. Individual tests override
         // by stubbing the service with a UserEmailWithUser.
@@ -61,6 +65,7 @@ public class MagicLinkServiceTests : IDisposable
         _service = new MagicLinkService(
             _userManager,
             _userEmailService,
+            _userService,
             _emailService,
             _urlBuilder,
             _rateLimiter,
@@ -93,6 +98,8 @@ public class MagicLinkServiceTests : IDisposable
             .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
 
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(user));
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         await _service.SendMagicLinkAsync("alice@work.com", "/dashboard");
@@ -121,6 +128,8 @@ public class MagicLinkServiceTests : IDisposable
             .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
             .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(user));
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
@@ -146,6 +155,18 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
+
+    private static UserInfo CreateUserInfo(User user) =>
+        UserInfo.Create(
+            user,
+            [],
+            [],
+            [],
+            null,
+            [],
+            [],
+            [],
+            []);
 
     [HumansFact]
     public async Task SendMagicLinkAsync_RateLimited_DoesNotSendEmail()

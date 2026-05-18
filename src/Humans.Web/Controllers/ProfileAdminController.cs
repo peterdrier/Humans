@@ -62,7 +62,7 @@ public class ProfileAdminController : HumansControllerBase
             .OfType<Guid>()
             .Distinct()
             .ToList();
-        var users = await _users.GetByIdsAsync(allInvolvedUserIds, ct);
+        var users = await _users.GetUserInfosAsync(allInvolvedUserIds, ct);
 
         return View(EmailProblemsListViewModel.From(report, users));
     }
@@ -96,7 +96,7 @@ public class ProfileAdminController : HumansControllerBase
             .FirstOrDefault() ?? "(no exact match — see normalized)";
 
         CompareSide BuildSide(User user, UserInfo? info, int teamCount, int roleCount) =>
-            new(user.Id, user.DisplayName, user.ProfilePictureUrl,
+            new(user.Id, info?.BurnerName ?? string.Empty, user.ProfilePictureUrl,
                 Emails(info),
                 teamCount, roleCount,
                 user.LastLoginAt,

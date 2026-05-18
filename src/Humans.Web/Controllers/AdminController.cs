@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
@@ -63,6 +64,7 @@ public class AdminController : HumansControllerBase
         [FromServices] IAuditViewerService auditViewer,
         [FromServices] IAdminDashboardService adminDashboardService,
         [FromServices] IUserService userService,
+        [FromServices] IUserActivityTracker activityTracker,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -100,6 +102,9 @@ public class AdminController : HumansControllerBase
             ShiftFilledOf: total > 0 ? filled : null,
             ShiftTotalOf: total > 0 ? total : null,
             OpenFeedback: openFeedback,
+            OnlineNow: activityTracker.CountActiveWithin(Duration.FromMinutes(5)),
+            OnlineLastHour: activityTracker.CountActiveWithin(Duration.FromHours(1)),
+            OnlineLast24h: activityTracker.CountActiveWithin(Duration.FromHours(24)),
             StaffingByDepartment: staffing,
             RecentActivity: recent,
             AppStats: appStats,

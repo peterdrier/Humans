@@ -763,8 +763,8 @@ public class GoogleAdminServiceTests
     public async Task LinkAccountAsync_LinksEmailAndStampsIsGoogle()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = "Test User" });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, DisplayName = "Test User" }.ToUserInfo());
         _userEmailService.IsEmailLinkedToAnyUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
@@ -810,8 +810,8 @@ public class GoogleAdminServiceTests
     public async Task LinkAccountAsync_ReturnsErrorIfEmailConflict()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = "Test" });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, DisplayName = "Test" }.ToUserInfo());
         _userEmailService.IsEmailLinkedToAnyUserAsync(
                 "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(true);

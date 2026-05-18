@@ -11,17 +11,20 @@ namespace Humans.Application.Services.Users;
 public sealed class UnsubscribeService : IUnsubscribeService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
     private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IDataProtectionProvider _dataProtection;
     private readonly ILogger<UnsubscribeService> _logger;
 
     public UnsubscribeService(
         IUserRepository userRepository,
+        IUserService userService,
         ICommunicationPreferenceService preferenceService,
         IDataProtectionProvider dataProtection,
         ILogger<UnsubscribeService> logger)
     {
         _userRepository = userRepository;
+        _userService = userService;
         _preferenceService = preferenceService;
         _dataProtection = dataProtection;
         _logger = logger;
@@ -37,7 +40,8 @@ public sealed class UnsubscribeService : IUnsubscribeService
             if (user is null)
                 return UnsubscribeTokenResult.Invalid();
 
-            return UnsubscribeTokenResult.Valid(result.UserId, user.DisplayName, result.Category);
+            var info = await _userService.GetUserInfoAsync(result.UserId, ct);
+            return UnsubscribeTokenResult.Valid(result.UserId, info?.BurnerName ?? string.Empty, result.Category);
         }
 
         // Expired new-format — don't fall through to legacy.
@@ -86,6 +90,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
         if (user is null)
             return UnsubscribeTokenResult.Invalid();
 
-        return UnsubscribeTokenResult.Valid(userId, user.DisplayName, MessageCategory.Marketing, isLegacy: true);
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        return UnsubscribeTokenResult.Valid(userId, info?.BurnerName ?? string.Empty, MessageCategory.Marketing, isLegacy: true);
     }
 }

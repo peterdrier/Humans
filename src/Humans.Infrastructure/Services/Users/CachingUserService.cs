@@ -42,7 +42,12 @@ namespace Humans.Infrastructure.Services.Users;
 /// (<c>IDbContextFactory</c>-based).
 /// </para>
 /// </remarks>
-public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserService, IUserMerge, IUserInfoInvalidator
+public sealed class CachingUserService :
+    TrackedCache<Guid, UserInfo>,
+    IUserService,
+    IUserMerge,
+    IUserInfoInvalidator,
+    IUserInfoSliceRefresher
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
@@ -414,7 +419,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     }
 
     // ==========================================================================
-    // IUserInfoInvalidator
+    // IUserInfoInvalidator (cross-section) + IUserInfoSliceRefresher (interceptor)
     // ==========================================================================
 
     /// <inheritdoc cref="IUserInfoInvalidator.InvalidateAsync" />
@@ -574,7 +579,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         rows
             .OrderBy(p => p.Year)
             .Select(p => new EventParticipationInfo(
-                p.Id, p.Year, p.Status, p.Source, p.DeclaredAt))
+                p.Id, p.Year, p.Status, p.Source, p.DeclaredAt, p.CheckedInAt))
             .ToList();
 
     private static IReadOnlyList<UserExternalLoginInfo> ToExternalLoginInfos(
@@ -594,12 +599,12 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
 
     private static UserInfo WithUserFields(UserInfo current, User user)
     {
-#pragma warning disable CS0618 // DisplayName is part of the cached legacy user-column mirror.
+#pragma warning disable CS0618 // DisplayName / ProfilePictureUrl are part of the cached legacy user-column mirror.
         return current with
         {
             DisplayName = user.DisplayName,
             PreferredLanguage = user.PreferredLanguage,
-            ProfilePictureUrl = user.ProfilePictureUrl,
+            FallbackPictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt,
             LastConsentReminderSentAt = user.LastConsentReminderSentAt,
@@ -694,7 +699,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618 // DisplayName fallback is the legacy column we are mirroring.
+#pragma warning disable CS0618 // DisplayName is the legacy column this rehydration mirrors.
         var user = new User
         {
             Id = info.Id,
@@ -756,9 +761,24 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                     Year = p.Year,
                     Status = p.Status,
                     Source = p.Source,
-                    DeclaredAt = p.DeclaredAt
+                    DeclaredAt = p.DeclaredAt,
+                    CheckedInAt = p.CheckedInAt,
                 });
             }
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
+        int year, CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        var result = new List<OnsiteUserRow>();
+        foreach (var u in Values)
+        {
+            var onsiteSince = u.OnsiteSinceForYear(year);
+            if (onsiteSince is null) continue;
+            result.Add(new OnsiteUserRow(u.Id, u.BurnerName, onsiteSince));
         }
         return result;
     }
@@ -870,50 +890,15 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     }
 
     public async Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, CancellationToken ct = default)
+        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default)
     {
-        if (!TryGet(userId, out var current))
-        {
-            await EnsureWarmedAsync(ct).ConfigureAwait(false);
-            TryGet(userId, out current);
-        }
-
-        if (current is not null)
-        {
-            var existing = current.EventParticipations.FirstOrDefault(p => p.Year == year);
-            if (existing is not null &&
-                (existing.Status == ParticipationStatus.Attended ||
-                 (existing.Status == status &&
-                  existing.Source == ParticipationSource.TicketSync &&
-                  existing.DeclaredAt is null)))
-            {
-                return;
-            }
-        }
-
-        await WithInnerAsync(inner => inner.SetParticipationFromTicketSyncAsync(userId, year, status, ct));
+        await WithInnerAsync(inner =>
+            inner.SetParticipationFromTicketSyncAsync(userId, year, status, checkedInAt, ct));
         await RefreshEventParticipationsAsync(userId, ct);
     }
 
     public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default)
     {
-        if (!TryGet(userId, out var current))
-        {
-            await EnsureWarmedAsync(ct).ConfigureAwait(false);
-            TryGet(userId, out current);
-        }
-
-        if (current is not null)
-        {
-            var existing = current.EventParticipations.FirstOrDefault(p => p.Year == year);
-            if (existing is null ||
-                existing.Source != ParticipationSource.TicketSync ||
-                existing.Status == ParticipationStatus.Attended)
-            {
-                return;
-            }
-        }
-
         await WithInnerAsync(inner => inner.RemoveTicketSyncParticipationAsync(userId, year, ct));
         await RefreshEventParticipationsAsync(userId, ct);
     }

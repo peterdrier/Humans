@@ -142,7 +142,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     {
                         await _emailService.SendAccessSuspendedAsync(
                             effectiveEmail,
-                            user.DisplayName,
+                            user.BurnerName,
                             "Missing required document consent (grace period expired)",
                             user.PreferredLanguage,
                             cancellationToken);
@@ -199,7 +199,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 // 4. Audit log + cross-cutting cache invalidation.
                 await _auditLogService.LogAsync(
                     AuditAction.MemberSuspended, nameof(User), user.Id,
-                    $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
+                    $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
                 await _userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);

@@ -76,9 +76,6 @@ public interface IProfileService : IApplicationService, IUserMerge
     Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
-        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
-
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
     /// No-op if the user has no profile.

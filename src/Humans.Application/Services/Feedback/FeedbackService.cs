@@ -295,7 +295,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         var reportLink = $"/Feedback/{report.Id}";
 
-        var reporter = await _userService.GetByIdAsync(report.UserId, ct);
+        var reporter = await _userService.GetUserInfoAsync(report.UserId, ct);
         var emails = await _userEmailService.GetNotificationTargetEmailsAsync(
             [report.UserId], ct);
 
@@ -303,7 +303,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             !string.IsNullOrWhiteSpace(recipientEmail))
         {
             await _emailService.SendFeedbackResponseAsync(
-                recipientEmail, reporter.DisplayName,
+                recipientEmail, reporter.BurnerName,
                 report.Description, content, reportLink,
                 reporter.PreferredLanguage, ct);
         }
@@ -354,8 +354,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         if (report.AssignedToUserId != assignedToUserId && report.AssignedToUserId.HasValue)
         {
-            var old = await _userService.GetByIdAsync(report.AssignedToUserId.Value, cancellationToken);
-            oldAssigneeName = old?.DisplayName;
+            var old = await _userService.GetUserInfoAsync(report.AssignedToUserId.Value, cancellationToken);
+            oldAssigneeName = old?.BurnerName;
         }
 
         if (report.AssignedToTeamId != assignedToTeamId && report.AssignedToTeamId.HasValue)
@@ -370,8 +370,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             string toLabel = "Unassigned";
             if (assignedToUserId.HasValue)
             {
-                var newUser = await _userService.GetByIdAsync(assignedToUserId.Value, cancellationToken);
-                toLabel = newUser?.DisplayName ?? assignedToUserId.Value.ToString();
+                var newUser = await _userService.GetUserInfoAsync(assignedToUserId.Value, cancellationToken);
+                toLabel = newUser?.BurnerName ?? assignedToUserId.Value.ToString();
             }
             changes.Add($"Assignee: {fromLabel} → {toLabel}");
             report.AssignedToUserId = assignedToUserId;
@@ -429,12 +429,12 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             return [];
 
         var userIds = rows.Select(r => r.UserId).ToHashSet();
-        var displayNames = await BuildDisplayNamesAsync(userIds, cancellationToken);
+        var displayUsers = await BuildDisplayUsersAsync(userIds, cancellationToken);
 
         return rows
             .Select(r =>
             {
-                var name = displayNames.TryGetValue(r.UserId, out var dn) ? dn : r.UserId.ToString();
+                var name = displayUsers.TryGetValue(r.UserId, out var displayUser) ? displayUser.Name : r.UserId.ToString();
                 return (r.UserId, name, r.Count);
             })
             .OrderBy(r => r.name, StringComparer.OrdinalIgnoreCase)
@@ -488,10 +488,10 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     // Cross-domain nav stitching (design-rules §6b in-memory join).
 #pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
 
-    private async Task<IReadOnlyDictionary<Guid, string>> StitchCrossDomainNavsAsync(
+    private async Task<IReadOnlyDictionary<Guid, DisplayUser>> StitchCrossDomainNavsAsync(
         IReadOnlyList<FeedbackReport> reports, CancellationToken ct)
     {
-        if (reports.Count == 0) return EmptyDisplayNames;
+        if (reports.Count == 0) return EmptyDisplayUsers;
 
         var userIds = new HashSet<Guid>();
         var teamIds = new HashSet<Guid>();
@@ -537,32 +537,34 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             }
         }
 
-        return await BuildDisplayNamesAsync(userIds, ct);
+        return await BuildDisplayUsersAsync(userIds, ct);
     }
 
-    // Display names via UserInfo.BurnerName (memory/architecture/burnername-is-the-display-name.md).
-    private async Task<IReadOnlyDictionary<Guid, string>> BuildDisplayNamesAsync(
+    // Display/user-facing identity via UserInfo (memory/architecture/burnername-is-the-display-name.md).
+    private async Task<IReadOnlyDictionary<Guid, DisplayUser>> BuildDisplayUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct)
     {
-        if (userIds.Count == 0) return EmptyDisplayNames;
+        if (userIds.Count == 0) return EmptyDisplayUsers;
 
         var infos = await _userService.GetUserInfosAsync(userIds, ct);
-        var result = new Dictionary<Guid, string>(userIds.Count);
+        var result = new Dictionary<Guid, DisplayUser>(userIds.Count);
         foreach (var id in userIds)
         {
             if (infos.TryGetValue(id, out var info))
-                result[id] = info.BurnerName;
+                result[id] = new DisplayUser(info.BurnerName, info.Email, info.PreferredLanguage);
         }
         return result;
     }
 
-    private static readonly IReadOnlyDictionary<Guid, string> EmptyDisplayNames =
-        new Dictionary<Guid, string>();
+    private sealed record DisplayUser(string Name, string? Email, string PreferredLanguage);
+
+    private static readonly IReadOnlyDictionary<Guid, DisplayUser> EmptyDisplayUsers =
+        new Dictionary<Guid, DisplayUser>();
 
     private static FeedbackReportInfo CreateFeedbackReportInfo(
         FeedbackReport report,
-        IReadOnlyDictionary<Guid, string> displayNames) =>
+        IReadOnlyDictionary<Guid, DisplayUser> displayUsers) =>
         new(
             report.Id,
             report.UserId,
@@ -583,13 +585,13 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             report.ResolvedByUserId,
             report.AssignedToUserId,
             report.AssignedToTeamId,
-            displayNames.TryGetValue(report.UserId, out var reporterName) ? reporterName : report.UserId.ToString(),
-            report.User?.Email,
-            report.User?.PreferredLanguage ?? "en",
-            ResolveName(report.ResolvedByUserId, displayNames),
-            ResolveName(report.AssignedToUserId, displayNames),
+            displayUsers.TryGetValue(report.UserId, out var reporter) ? reporter.Name : report.UserId.ToString(),
+            reporter?.Email,
+            reporter?.PreferredLanguage ?? "en",
+            ResolveName(report.ResolvedByUserId, displayUsers),
+            ResolveName(report.AssignedToUserId, displayUsers),
             report.AssignedToTeam?.Name,
-            report.Messages.Select(m => CreateFeedbackMessageInfo(m, displayNames)).ToList());
+            report.Messages.Select(m => CreateFeedbackMessageInfo(m, displayUsers)).ToList());
 
     private static bool NeedsReply(FeedbackReport report) =>
         (report.LastReporterMessageAt.HasValue &&
@@ -598,17 +600,17 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
     private static FeedbackMessageInfo CreateFeedbackMessageInfo(
         FeedbackMessage message,
-        IReadOnlyDictionary<Guid, string> displayNames) =>
+        IReadOnlyDictionary<Guid, DisplayUser> displayUsers) =>
         new(
             message.Id,
             message.FeedbackReportId,
             message.SenderUserId,
-            ResolveName(message.SenderUserId, displayNames),
+            ResolveName(message.SenderUserId, displayUsers),
             message.Content,
             message.CreatedAt);
 
-    private static string? ResolveName(Guid? userId, IReadOnlyDictionary<Guid, string> displayNames)
-        => userId.HasValue && displayNames.TryGetValue(userId.Value, out var name) ? name : null;
+    private static string? ResolveName(Guid? userId, IReadOnlyDictionary<Guid, DisplayUser> displayUsers)
+        => userId.HasValue && displayUsers.TryGetValue(userId.Value, out var user) ? user.Name : null;
 
 #pragma warning restore CS0618
 }

@@ -547,9 +547,9 @@ public sealed class DevPersonaSeeder
 
         IReadOnlyList<(Guid Id, string DisplayName, string Email)> result = users
             .Where(u => !(u.Email ?? string.Empty).StartsWith("dev-guest-", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(u => u.DisplayName, StringComparer.Ordinal)
+            .OrderBy(u => u.BurnerName, StringComparer.Ordinal)
             .Take(100)
-            .Select(u => (u.Id, u.DisplayName, u.Email ?? string.Empty))
+            .Select(u => (u.Id, u.BurnerName, u.Email ?? string.Empty))
             .ToList();
         return result;
     }

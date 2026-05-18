@@ -547,7 +547,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var now = _clock.GetCurrentInstant();
         await _repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct);
 
-        var user = await _userService.GetByIdAsync(grant.UserId, ct)
+        var user = await _userService.GetUserInfoAsync(grant.UserId, ct)
             ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
         var emails = await _userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
         if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
@@ -626,7 +626,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             return;
 
         var userIds = failedGrants.Select(g => g.UserId).Distinct().ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
         var emails = await _userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
 
         var now = _clock.GetCurrentInstant();
@@ -706,14 +706,14 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string campaignTitle, string emailSubject, string emailBody, string? replyToAddress,
-        User user, string recipientEmail, string code, Guid grantId)
+        UserInfo user, string recipientEmail, string code, Guid grantId)
     {
         _ = campaignTitle; // kept for future rendering-context parameters; no-op today.
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
             RecipientEmail: recipientEmail,
-            RecipientName: user.DisplayName,
+            RecipientName: user.BurnerName,
             Subject: emailSubject,
             MarkdownBody: emailBody,
             Code: code,

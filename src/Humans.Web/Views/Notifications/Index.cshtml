@@ -152,25 +152,6 @@
 @section Scripts {
 <script>
 (function() {
-    // AJAX dismiss
-    document.querySelectorAll('[data-ajax-dismiss]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var form = btn.closest('form');
-            fetch(form.action, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: new FormData(form)
-            }).then(function(r) {
-                if (r.ok) {
-                    var wrapper = btn.closest('.notification-row-wrapper') || btn.closest('.notification-row');
-                    if (wrapper) wrapper.remove();
-                    updateBulkToolbar();
-                }
-            });
-        });
-    });
-
     // Bulk selection
     var toolbar = document.getElementById('bulkToolbar');
     var countEl = document.getElementById('bulkCount');

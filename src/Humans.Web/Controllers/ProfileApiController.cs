@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
-using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -57,12 +56,6 @@ public class ProfileApiController : ApiControllerBase
         var viewerUserId = viewer.Id;
 
         var results = await _userService.SearchUsersAsync(q, fields, MaxResults, ct);
-        var userIds = results.Select(r => r.UserId).ToList();
-        var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-            _profileService,
-            Url,
-            userIds,
-            ct);
 
         var response = new List<HumanLookupSearchResult>(results.Count);
         foreach (var result in results.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase))
@@ -77,7 +70,7 @@ public class ProfileApiController : ApiControllerBase
                 result.UserId,
                 result.BurnerName,
                 detail,
-                pictureUrls.GetValueOrDefault(result.UserId)));
+                result.ProfilePictureUrl));
         }
 
         // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
@@ -97,11 +90,6 @@ public class ProfileApiController : ApiControllerBase
         if (info?.Profile is null || info.Profile.RejectedAt is not null)
             return NotFound();
 
-        var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-            _profileService,
-            Url, [userId],
-            ct);
-
         var detail = await GetSharedDetailAsync(
             userId,
             info.Profile.Id,
@@ -112,7 +100,7 @@ public class ProfileApiController : ApiControllerBase
             userId,
             info.BurnerName,
             detail,
-            pictureUrls.GetValueOrDefault(userId)));
+            info.ProfilePictureUrl));
     }
 
     // Disambiguation: viewer-visible primary email → highest-priority visible contact field → null. Legal name omitted deliberately.

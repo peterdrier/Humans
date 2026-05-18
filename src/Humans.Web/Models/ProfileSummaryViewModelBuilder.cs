@@ -24,12 +24,10 @@ public static class ProfileSummaryViewModelBuilder
 
     public static ProfileSummaryViewModel BuildWithProfile(
         UserInfo info,
-        IReadOnlyList<TeamMembership> memberships,
-        Func<ProfileInfo, string?> customPictureUrl)
+        IReadOnlyList<TeamMembership> memberships)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(memberships);
-        ArgumentNullException.ThrowIfNull(customPictureUrl);
 
         var profile = info.Profile
             ?? throw new ArgumentException("UserInfo.Profile must be non-null.", nameof(info));
@@ -43,9 +41,7 @@ public static class ProfileSummaryViewModelBuilder
             UserId = info.Id,
             DisplayName = info.BurnerName,
             Email = info.Email,
-            ProfilePictureUrl = profile.HasCustomPicture
-                ? customPictureUrl(profile)
-                : info.ProfilePictureUrl,
+            ProfilePictureUrl = info.ProfilePictureUrl,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = profile.MembershipTier.ToString(),
             MembershipStatus = info.IsSuspended ? "Suspended"

@@ -19,6 +19,12 @@ public record VendorOrderDto(
     decimal DonationAmount = 0m);
 
 /// <summary>Vendor-agnostic issued ticket data.</summary>
+/// <param name="CheckedInAt">
+/// When the attendee was checked in at the gate, when the vendor exposes it
+/// (TicketTailor: <c>check_in.checked_in_at</c>, epoch seconds). Null when the
+/// vendor did not return a timestamp or the attendee is not checked in. Issue
+/// nobodies-collective/Humans#736.
+/// </param>
 public record VendorTicketDto(
     string VendorTicketId,
     string? VendorOrderId,
@@ -26,7 +32,8 @@ public record VendorTicketDto(
     string? AttendeeEmail,
     string TicketTypeName,
     decimal Price,
-    string Status);
+    string Status,
+    Instant? CheckedInAt = null);
 
 /// <summary>High-level event summary from vendor.</summary>
 public record VendorEventSummaryDto(

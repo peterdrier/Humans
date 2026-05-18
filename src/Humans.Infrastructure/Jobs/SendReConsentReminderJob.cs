@@ -104,7 +104,7 @@ public class SendReConsentReminderJob : IRecurringJob
                 {
                     await _emailService.SendReConsentReminderAsync(
                         effectiveEmail,
-                        user.DisplayName,
+                        user.BurnerName,
                         requiredDocNames,
                         daysBeforeSuspension,
                         user.PreferredLanguage,

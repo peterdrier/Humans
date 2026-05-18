@@ -255,7 +255,6 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         IReadOnlyDictionary<Guid, string> displayNames)
     {
         var n = nr.Notification;
-        var allRecipients = n.Recipients?.ToList() ?? [];
 
         string? resolvedByName = null;
         if (n.ResolvedByUserId is { } resolverId &&
@@ -268,34 +267,17 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         {
             Id = n.Id,
             Title = n.Title,
-            Body = n.Body,
             ActionUrl = n.ActionUrl,
             ActionLabel = n.ActionLabel,
             Priority = n.Priority,
             Source = n.Source,
             Class = n.Class,
-            TargetGroupName = n.TargetGroupName,
             CreatedAt = n.CreatedAt.ToDateTimeUtc(),
             IsRead = nr.ReadAt is not null,
             IsResolved = n.ResolvedAt is not null,
             ResolvedAt = n.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = resolvedByName,
-            RecipientInitials = allRecipients
-                .Take(3)
-                .Select(r => GetInitials(displayNames.TryGetValue(r.UserId, out var dn) ? dn : null))
-                .ToList(),
-            TotalRecipientCount = allRecipients.Count,
         };
-    }
-
-    private static string GetInitials(string? displayName)
-    {
-        if (string.IsNullOrWhiteSpace(displayName))
-            return "?";
-        var parts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 2
-            ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
-            : parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
     }
 
     private static NotificationActionResult ToActionResult(NotificationMutationOutcome outcome) =>

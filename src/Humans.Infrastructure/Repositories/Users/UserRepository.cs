@@ -622,6 +622,7 @@ internal sealed class UserRepository : IUserRepository
         ParticipationStatus status,
         ParticipationSource source,
         Instant? declaredAt,
+        Instant? checkedInAt,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -638,6 +639,11 @@ internal sealed class UserRepository : IUserRepository
             existing.Status = status;
             existing.Source = source;
             existing.DeclaredAt = declaredAt;
+            // CheckedInAt is set on the first transition into Attended and is
+            // permanent afterwards. Don't overwrite an already-non-null value
+            // (issue nobodies-collective/Humans#736).
+            if (existing.CheckedInAt is null)
+                existing.CheckedInAt = checkedInAt;
             persisted = existing;
         }
         else
@@ -650,6 +656,7 @@ internal sealed class UserRepository : IUserRepository
                 Status = status,
                 Source = source,
                 DeclaredAt = declaredAt,
+                CheckedInAt = checkedInAt,
             };
             ctx.EventParticipations.Add(persisted);
         }

@@ -175,8 +175,8 @@ public class AgentController : HumansControllerBase
         bool isAdmin, AgentConversationTranscriptSnapshot conv, CancellationToken ct)
     {
         if (!isAdmin) return null;
-        var owner = await _users.GetByIdAsync(conv.UserId, ct);
-        return owner?.DisplayName ?? conv.UserId.ToString();
+        var owner = await _users.GetUserInfoAsync(conv.UserId, ct);
+        return owner?.BurnerName ?? conv.UserId.ToString();
     }
 
     private async Task WriteSse(AgentTurnToken token, CancellationToken cancellationToken)

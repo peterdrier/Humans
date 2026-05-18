@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
+using Humans.Infrastructure.Services.Users;
 
 namespace Humans.Infrastructure.Data;
 
@@ -53,10 +53,10 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         if (eventData.Context is { } context && _pending.TryGetValue(context, out var affected))
         {
             _pending.Remove(context);
-            var invalidator = _services.GetService<IUserInfoInvalidator>();
-            if (invalidator is not null)
+            var refresher = _services.GetService<IUserInfoSliceRefresher>();
+            if (refresher is not null)
             {
-                await SafeApply(invalidator, affected, cancellationToken);
+                await ApplyAsync(refresher, affected, cancellationToken);
             }
         }
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
@@ -75,48 +75,53 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
-    private async Task SafeApply(
-        IUserInfoInvalidator invalidator,
+    private async Task ApplyAsync(
+        IUserInfoSliceRefresher refresher,
         PendingUserInfoInvalidations affected,
         CancellationToken ct)
     {
+        foreach (var userId in affected.DeletedUserIds)
+        {
+            await RunAsync("Remove", userId, () => refresher.RemoveAsync(userId, ct), ct);
+        }
+
+        foreach (var user in affected.Users.Values.Where(u => !affected.DeletedUserIds.Contains(u.Id)))
+        {
+            await RunAsync("RefreshUserFields", user.Id, () => refresher.RefreshUserFieldsAsync(user, ct), ct);
+        }
+
+        foreach (var userId in affected.UserEmailUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshUserEmails", userId, () => refresher.RefreshUserEmailsAsync(userId, ct), ct);
+        }
+
+        foreach (var userId in affected.EventParticipationUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshEventParticipations", userId, () => refresher.RefreshEventParticipationsAsync(userId, ct), ct);
+        }
+
+        foreach (var userId in affected.ExternalLoginUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct), ct);
+        }
+
+        foreach (var userId in affected.CommunicationPreferenceUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshCommunicationPreferences", userId, () => refresher.RefreshCommunicationPreferencesAsync(userId, ct), ct);
+        }
+    }
+
+    private async Task RunAsync(string operation, Guid userId, Func<Task> work, CancellationToken ct)
+    {
         try
         {
-            foreach (var userId in affected.DeletedUserIds)
-            {
-                await invalidator.RemoveAsync(userId, ct);
-            }
-
-            foreach (var user in affected.Users.Values.Where(u => !affected.DeletedUserIds.Contains(u.Id)))
-            {
-                await invalidator.RefreshUserFieldsAsync(user, ct);
-            }
-
-            foreach (var userId in affected.UserEmailUserIds.Except(affected.DeletedUserIds))
-            {
-                await invalidator.RefreshUserEmailsAsync(userId, ct);
-            }
-
-            foreach (var userId in affected.EventParticipationUserIds.Except(affected.DeletedUserIds))
-            {
-                await invalidator.RefreshEventParticipationsAsync(userId, ct);
-            }
-
-            foreach (var userId in affected.ExternalLoginUserIds.Except(affected.DeletedUserIds))
-            {
-                await invalidator.RefreshExternalLoginsAsync(userId, ct);
-            }
-
-            foreach (var userId in affected.CommunicationPreferenceUserIds.Except(affected.DeletedUserIds))
-            {
-                await invalidator.RefreshCommunicationPreferencesAsync(userId, ct);
-            }
+            await work();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(
-                "UserInfoSaveChangesInterceptor invalidation failed: {ExType}",
-                ex.GetType().Name);
+                "UserInfoSaveChangesInterceptor {Operation} failed for {UserId}: {ExType}",
+                operation, userId, ex.GetType().Name);
         }
     }
 

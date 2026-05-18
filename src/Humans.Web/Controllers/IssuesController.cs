@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Humans.Application;
 using Humans.Application.Interfaces.Issues;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
@@ -224,7 +225,8 @@ public class IssuesController : HumansControllerBase
         }
 
         var thread = await _issues.GetThreadAsync(id);
-        var vm = MapDetailViewModel(issue, thread, isHandler: canHandle, isReporter: isReporter);
+        var displayUsers = await GetIssueDisplayUsersAsync(issue);
+        var vm = MapDetailViewModel(issue, thread, displayUsers, isHandler: canHandle, isReporter: isReporter);
 
         if (canHandle)
         {
@@ -442,7 +444,11 @@ public class IssuesController : HumansControllerBase
     };
 
     private static IssueDetailViewModel MapDetailViewModel(
-        Issue i, IReadOnlyList<IssueThreadEvent> thread, bool isHandler, bool isReporter)
+        Issue i,
+        IReadOnlyList<IssueThreadEvent> thread,
+        IReadOnlyDictionary<Guid, UserInfo> displayUsers,
+        bool isHandler,
+        bool isReporter)
     {
         return new IssueDetailViewModel
         {
@@ -457,16 +463,20 @@ public class IssuesController : HumansControllerBase
             UserAgent = i.UserAgent,
             AdditionalContext = i.AdditionalContext,
             ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
-            ReporterName = i.Reporter?.DisplayName ?? "Unknown",
+            ReporterName = displayUsers.GetValueOrDefault(i.ReporterUserId)?.BurnerName ?? "Unknown",
             ReporterUserId = i.ReporterUserId,
-            AssigneeName = i.Assignee?.DisplayName,
+            AssigneeName = i.AssigneeUserId is { } assigneeId
+                ? displayUsers.GetValueOrDefault(assigneeId)?.BurnerName
+                : null,
             AssigneeUserId = i.AssigneeUserId,
             GitHubIssueNumber = i.GitHubIssueNumber,
             DueDate = i.DueDate,
             CreatedAt = i.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = i.ResolvedByUser?.DisplayName,
+            ResolvedByName = i.ResolvedByUserId is { } resolvedById
+                ? displayUsers.GetValueOrDefault(resolvedById)?.BurnerName
+                : null,
             IsHandler = isHandler,
             IsReporter = isReporter,
             Thread = thread.Select(e => e switch
@@ -491,5 +501,14 @@ public class IssuesController : HumansControllerBase
                 _ => throw new NotSupportedException($"Unknown thread event type {e.GetType().Name}")
             }).ToList()
         };
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(Issue issue)
+    {
+        var ids = new HashSet<Guid> { issue.ReporterUserId };
+        if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
+        if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
+
+        return await _users.GetUserInfosAsync(ids);
     }
 }

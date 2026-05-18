@@ -155,7 +155,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
             var codesRedeemed = await MatchDiscountCodesAsync(ct);
 
-            await SyncEventParticipationsAsync(ct);
+            await SyncEventParticipationsAsync(tickets, ct);
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
@@ -434,8 +434,20 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
     /// Derive EventParticipation records from current ticket data.
     /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.
     /// If user had Ticketed from TicketSync but now has 0 valid tickets → remove record.
+    /// <para>
+    /// <paramref name="vendorTicketsThisSync"/> carries the per-attendee
+    /// <see cref="VendorTicketDto.CheckedInAt"/> when the vendor returned one;
+    /// we min across this user's checked-in tickets and pass the result down to
+    /// <see cref="IUserService.SetParticipationFromTicketSyncAsync"/>. Older
+    /// checked-in tickets not in this delta won't have a timestamp here — that
+    /// is the graceful-null fallback (issue nobodies-collective/Humans#736);
+    /// the repo's "never overwrite non-null CheckedInAt" rule preserves prior
+    /// values.
+    /// </para>
     /// </summary>
-    private async Task SyncEventParticipationsAsync(CancellationToken ct)
+    private async Task SyncEventParticipationsAsync(
+        IReadOnlyList<VendorTicketDto> vendorTicketsThisSync,
+        CancellationToken ct)
     {
         var activeEvent = await _shiftManagementService.GetActiveAsync();
         if (activeEvent is null || activeEvent.Year == 0)
@@ -452,6 +464,28 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                 g => g.Key,
                 g => g.Select(a => a.Status).ToList());
 
+        // Per-user min(CheckedInAt) across the vendor tickets we just pulled,
+        // joined to matched-attendee rows by VendorTicketId so the user identity
+        // matches what the participation loop below uses (MatchedUserId). Using
+        // an email lookup here would drop users whose attendee was re-FKed via
+        // account-merge or matched through non-email paths.
+        // Vendor delta sync only returns *changed* tickets, so this populates
+        // timestamps for users whose check-in event was in THIS batch — which
+        // is exactly the moment we want to capture the timestamp.
+        var matchedUserByVendorTicketId = matchedAttendees
+            .ToDictionary(a => a.VendorTicketId, a => a.MatchedUserId, StringComparer.Ordinal);
+
+        var checkedInAtByUserId = vendorTicketsThisSync
+            .Where(t => t.CheckedInAt is not null)
+            .Select(t => (
+                UserId: matchedUserByVendorTicketId.TryGetValue(t.VendorTicketId, out var uid)
+                    ? (Guid?)uid
+                    : null,
+                CheckedInAt: t.CheckedInAt!.Value))
+            .Where(x => x.UserId is not null)
+            .GroupBy(x => x.UserId!.Value)
+            .ToDictionary(g => g.Key, g => g.Min(x => x.CheckedInAt));
+
         foreach (var (userId, statuses) in userTicketStatuses)
         {
             var hasCheckedIn = statuses.Any(s => s == TicketAttendeeStatus.CheckedIn);
@@ -460,13 +494,16 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
             if (hasCheckedIn)
             {
+                Instant? checkedInAt = checkedInAtByUserId.TryGetValue(userId, out var ts)
+                    ? ts
+                    : null;
                 await _userService.SetParticipationFromTicketSyncAsync(
-                    userId, year, ParticipationStatus.Attended, ct);
+                    userId, year, ParticipationStatus.Attended, checkedInAt, ct);
             }
             else if (hasValidTicket)
             {
                 await _userService.SetParticipationFromTicketSyncAsync(
-                    userId, year, ParticipationStatus.Ticketed, ct);
+                    userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
 

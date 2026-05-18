@@ -9,10 +9,10 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
-using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
@@ -152,9 +152,8 @@ public class TeamController : HumansControllerBase
             pageContentHtml = sanitizer.Sanitize(Markdig.Markdown.ToHtml(team.PageContent));
         }
 
-        var customPictureByUserId = BuildCustomPictureUrlsByUserId(teamPage.Members);
         var members = teamPage.Members
-            .Select(member => MapTeamMember(member, customPictureByUserId))
+            .Select(MapTeamMember)
             .ToList();
 
         var viewModel = new TeamDetailViewModel
@@ -216,6 +215,11 @@ public class TeamController : HumansControllerBase
                             m.GoogleEmailStatus, m.Role, m.JoinedAt))
                         .ToList());
 
+            var childUserIds = childMembersByTeam.Values.SelectMany(m => m).Select(m => m.UserId).Distinct().ToList();
+            var childUserInfos = childUserIds.Count > 0
+                ? await _userService.GetUserInfosAsync(childUserIds, ct)
+                : new Dictionary<Guid, UserInfo>();
+
             foreach (var child in teamPage.ChildTeams)
             {
                 if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
@@ -225,16 +229,15 @@ public class TeamController : HumansControllerBase
                 foreach (var cm in childMembers)
                 {
                     var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
+                    var pictureUrl = childUserInfos.GetValueOrDefault(cm.UserId)?.ProfilePictureUrl;
 
-                    // Add coordinators to the subteam leads list (allow duplicates across teams)
                     if (isCoordinator)
                     {
                         viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
                         {
                             UserId = cm.UserId,
                             DisplayName = cm.DisplayName,
-                            // Populated below via ProfilePictureUrlHelper (custom uploads only).
-                            ProfilePictureUrl = null,
+                            ProfilePictureUrl = pictureUrl,
                             ChildTeamName = child.Name,
                             ChildTeamSlug = child.Slug,
                             IsCoordinator = true,
@@ -249,8 +252,7 @@ public class TeamController : HumansControllerBase
                     {
                         UserId = cm.UserId,
                         DisplayName = cm.DisplayName,
-                        // Populated below via ProfilePictureUrlHelper (custom uploads only).
-                        ProfilePictureUrl = null,
+                        ProfilePictureUrl = pictureUrl,
                         ChildTeamName = child.Name,
                         ChildTeamSlug = child.Slug,
                         IsCoordinator = isCoordinator,
@@ -258,46 +260,9 @@ public class TeamController : HumansControllerBase
                     });
                 }
             }
-
-            var allChildUserEntries = viewModel.ChildTeamMembers
-                .Concat(viewModel.SubteamLeads)
-                .ToList();
-
-            if (allChildUserEntries.Count > 0)
-            {
-                var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-                    _profileService, Url,
-                    allChildUserEntries.Select(m => m.UserId));
-
-                foreach (var member in allChildUserEntries)
-                {
-                    if (effectiveUrls.TryGetValue(member.UserId, out var effectiveUrl))
-                        member.ProfilePictureUrl = effectiveUrl;
-                }
-            }
         }
 
         return View(viewModel);
-    }
-
-    private Dictionary<Guid, string> BuildCustomPictureUrlsByUserId(
-        IReadOnlyList<TeamPageMemberSummary> members)
-    {
-        var profileControllerName = nameof(ProfileController)
-            .Replace("Controller", string.Empty, StringComparison.Ordinal);
-
-        return members
-            .Where(member => member.CustomPicture is not null)
-            .ToDictionary(
-                member => member.UserId,
-                member => Url.Action(
-                    nameof(ProfileController.Picture),
-                    profileControllerName,
-                    new
-                    {
-                        id = member.CustomPicture!.ProfileId,
-                        v = member.CustomPicture.UpdatedAtTicks
-                    })!);
     }
 
     private static TeamResourceLinkViewModel MapTeamResource(TeamPageResourceSummary resource) => new()
@@ -314,20 +279,16 @@ public class TeamController : HumansControllerBase
         }
     };
 
-    private static TeamMemberViewModel MapTeamMember(
-        TeamPageMemberSummary member,
-        IReadOnlyDictionary<Guid, string> customPictureByUserId) => new()
-        {
-            UserId = member.UserId,
-            DisplayName = member.DisplayName,
-            Email = member.Email ?? string.Empty,
-            ProfilePictureUrl = member.ProfilePictureUrl,
-            HasCustomProfilePicture = customPictureByUserId.ContainsKey(member.UserId),
-            CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(member.UserId),
-            Role = member.Role,
-            JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
-            IsCoordinator = member.Role == TeamMemberRole.Coordinator
-        };
+    private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
+    {
+        UserId = member.UserId,
+        DisplayName = member.DisplayName,
+        Email = member.Email ?? string.Empty,
+        ProfilePictureUrl = member.ProfilePictureUrl,
+        Role = member.Role,
+        JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
+        IsCoordinator = member.Role == TeamMemberRole.Coordinator
+    };
 
     private ShiftsSummaryCardViewModel? MapShiftsSummary(TeamPageShiftsSummary? summary, string slug)
     {
@@ -397,10 +358,6 @@ public class TeamController : HumansControllerBase
 
         var monthName = new DateTime(2000, currentMonth, 1).ToString("MMMM", CultureInfo.CurrentCulture);
 
-        var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-            _profileService, Url,
-            profilesWithBirthdays.Select(p => p.UserId));
-
         var viewModel = new BirthdayCalendarViewModel
         {
             CurrentMonth = currentMonth,
@@ -409,7 +366,7 @@ public class TeamController : HumansControllerBase
             {
                 UserId = p.UserId,
                 DisplayName = p.DisplayName,
-                EffectiveProfilePictureUrl = effectiveUrls.GetValueOrDefault(p.UserId),
+                EffectiveProfilePictureUrl = p.ProfilePictureUrl,
                 DayOfMonth = p.Day,
                 Month = p.Month,
                 MonthName = monthName,
@@ -459,15 +416,11 @@ public class TeamController : HumansControllerBase
                 u.Profile.CountryCode))
             .ToList();
 
-        var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-            _profileService, Url,
-            profiles.Select(p => p.UserId));
-
         var markers = profiles.Select(p => new MapMarkerViewModel
         {
             UserId = p.UserId,
             DisplayName = p.DisplayName,
-            ProfilePictureUrl = effectiveUrls.GetValueOrDefault(p.UserId),
+            ProfilePictureUrl = p.ProfilePictureUrl,
             Latitude = p.Latitude,
             Longitude = p.Longitude,
             City = p.City,

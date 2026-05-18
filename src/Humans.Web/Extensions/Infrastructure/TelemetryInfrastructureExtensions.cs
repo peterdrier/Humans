@@ -16,6 +16,9 @@ internal static class TelemetryInfrastructureExtensions
 
         services.AddSingleton<IHumansMetrics, HumansMetricsService>();
 
+        // Process-local "who's online" registry — singleton so the dict survives across requests.
+        services.AddSingleton<IUserActivityTracker, UserActivityTracker>();
+
         // IMeters is a leaf singleton — only ILogger dep. Owns the
         // System.Diagnostics.Metrics.Meter("Humans.Metrics") instrument under which
         // every section-declared gauge is automatically exported via the existing
