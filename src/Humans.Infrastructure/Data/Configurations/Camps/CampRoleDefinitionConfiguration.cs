@@ -25,7 +25,11 @@ public class CampRoleDefinitionConfiguration : IEntityTypeConfiguration<CampRole
 
         builder.HasIndex(d => d.SortOrder);
 
-        builder.Property(d => d.IsSystem).HasDefaultValue(false);
+        // IsSystem: do NOT use HasDefaultValue(false) — EF Core would treat
+        // explicit false as the sentinel "unset" and send the default value.
+        // The CLR default is already false on the entity. The column-level
+        // default is only relevant for the migration's backfill on existing
+        // rows, which is handled directly in the migration's AddColumn call.
 
         builder.Ignore(d => d.IsActive);
     }

@@ -1139,9 +1139,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)");
 
                     b.Property<bool>("IsSystem")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<int>("MinimumRequired")
                         .HasColumnType("integer");
