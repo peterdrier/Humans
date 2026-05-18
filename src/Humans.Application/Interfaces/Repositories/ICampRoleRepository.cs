@@ -27,6 +27,48 @@ public interface ICampRoleRepository : IRepository
 
     Task<CampRoleDefinition?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default);
 
+    /// <summary>
+    /// Looks up a system role definition by exact (case-sensitive) <paramref name="name"/>
+    /// with <c>IsSystem = true</c>. Used by the Camp Lead retirement admin button
+    /// to find the seeded Camp Lead / Events Lead rows.
+    /// </summary>
+    Task<CampRoleDefinition?> GetSystemDefinitionByNameAsync(string name, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns true if the user holds a non-deactivated <see cref="CampRoleAssignment"/>
+    /// for any season of the given camp against any role definition with
+    /// <c>IsSystem = true</c> and <see cref="CampRoleDefinition.Name"/> equal to
+    /// <paramref name="systemRoleName"/>. Used by
+    /// <c>CampService.IsUserCampLeadAsync</c> after the Camp Lead retirement
+    /// data migration.
+    /// </summary>
+    Task<bool> IsUserSystemRoleHolderForCampAsync(
+        Guid userId, Guid campId, string systemRoleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the season id where the user holds an active assignment to the
+    /// system role <paramref name="systemRoleName"/> on a camp participating in
+    /// <paramref name="year"/>. Null if none.
+    /// </summary>
+    Task<Guid?> GetCampSystemRoleSeasonIdForYearAsync(
+        Guid userId, int year, string systemRoleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Counts pending camp-membership requests on camps where the user holds
+    /// the given system role on any open (Active/Full) season. Used by the
+    /// camp-lead-join-requests badge after the Camp Lead retirement.
+    /// </summary>
+    Task<int> CountPendingMembershipsForSystemRoleHolderAsync(
+        Guid userId, string systemRoleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of user ids that currently hold the given
+    /// system role on any season. Used by <c>SystemTeamSyncJob</c> to compute
+    /// Barrio Leads team membership after Camp Lead retirement.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetSystemRoleHolderUserIdsAsync(
+        string systemRoleName, CancellationToken ct = default);
+
     Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default);
 
     Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default);

@@ -78,6 +78,24 @@
             </div>
         </div>
     </div>
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-user-shield me-2"></i>Seed system roles</h5>
+                <p class="card-text">
+                    Idempotent: ensures the <strong>Camp Lead</strong> and <strong>Events Lead</strong> system roles exist,
+                    then migrates any remaining legacy <code>CampLead</code> rows into the unified role-assignment system.
+                    Safe to run repeatedly — the second run is a no-op for already-seeded definitions and already-migrated leads.
+                </p>
+                <form asp-action="SeedSystemRoles" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary" data-confirm="Seed system roles and migrate any remaining legacy camp leads?">
+                        Run seed
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @* Pending Approvals *@

@@ -37,6 +37,14 @@ public class CampRoleDefinition
     /// <summary>Soft-delete: deactivated roles preserve historical assignments but are hidden from new-assignment UI.</summary>
     public Instant? DeactivatedAt { get; set; }
 
+    /// <summary>
+    /// System-managed role definition. Seeded by the CampAdmin "Seed system roles"
+    /// action (e.g. Camp Lead, Events Lead). CampAdmin cannot rename, deactivate,
+    /// or delete a system role — only its <see cref="SlotCount"/> can be adjusted.
+    /// Enforced in <c>CampRoleService</c>.
+    /// </summary>
+    public bool IsSystem { get; set; }
+
     public ICollection<CampRoleAssignment> Assignments { get; } = new List<CampRoleAssignment>();
 
     public bool IsActive => DeactivatedAt is null;

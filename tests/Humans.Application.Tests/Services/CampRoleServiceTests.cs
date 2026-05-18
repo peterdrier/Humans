@@ -34,9 +34,11 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         _campService = Substitute.For<ICampService>();
 
         var repo = new CampRoleRepository(DbFactory);
+        var campRepo = new CampRepository(DbFactory);
 
         _service = new CampRoleService(
             repo,
+            campRepo,
             _campService,
             _userService,
             _userEmailService,

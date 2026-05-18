@@ -389,6 +389,16 @@ public sealed class CachingCampService(
         return result;
     }
 
+    public async Task<Guid> EnsureActiveMemberForMigrationAsync(
+        Guid campSeasonId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var memberId = await WithInner(inner => inner.EnsureActiveMemberForMigrationAsync(
+            campSeasonId, userId, actorUserId, cancellationToken));
+        await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+        return memberId;
+    }
+
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)

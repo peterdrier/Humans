@@ -1072,19 +1072,20 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampMembersAsync_IncludesLeadsAsActiveWithLeadBadge()
+    public async Task GetCampMembersAsync_NoLongerSynthesizesLeadRows_AfterCampLeadRetirement()
     {
+        // Issue nobodies-collective/Humans#753: the IsLead union into the
+        // active-members list was removed. Active members come only from
+        // CampMember rows. Leads now show up via the Roles panel.
         await SeedSettingsAsync();
         var leadUserId = Guid.NewGuid();
         await SeedUserAsync(leadUserId, "Lead Larry");
-        // Use the lead as the creator so they're registered as a CampLead.
         var camp = await _service.CreateCampAsync(
             leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
             null, null, false, 1, MakeSeasonData(), null, 2026);
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
 
-        // A separate human requests and is approved.
         var memberUserId = Guid.NewGuid();
         await SeedUserAsync(memberUserId, "Member Mary");
         var req = await _service.RequestCampMembershipAsync(camp.Id, memberUserId);
@@ -1092,18 +1093,12 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         var members = await _service.GetCampMembersAsync(season.Id);
 
-        // Lead appears without a CampMember row but with IsLead=true.
-        var leadRow = members.Active.Single(r => r.UserId == leadUserId);
-        leadRow.IsLead.Should().BeTrue();
-        leadRow.CampMemberId.Should().Be(Guid.Empty);
-
-        // Approved member appears normally.
-        var memberRow = members.Active.Single(r => r.UserId == memberUserId);
-        memberRow.IsLead.Should().BeFalse();
-        memberRow.CampMemberId.Should().Be(req.CampMemberId);
-
-        // Leads sort to the top.
-        members.Active[0].IsLead.Should().BeTrue();
+        // Only the approved member appears — the lead (who has no CampMember row)
+        // is no longer synthesized.
+        members.Active.Should().HaveCount(1);
+        members.Active[0].UserId.Should().Be(memberUserId);
+        members.Active[0].CampMemberId.Should().Be(req.CampMemberId);
+        members.Active.Should().NotContain(r => r.UserId == leadUserId);
     }
 
     [HumansFact]

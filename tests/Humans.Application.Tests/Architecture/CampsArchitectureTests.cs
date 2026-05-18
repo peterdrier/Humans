@@ -169,6 +169,14 @@ public class CampsArchitectureTests
             // Read-only consumer — uses GetActiveLeadUserIdsAsync /
             // IsLeadAnywhereAsync. Never writes through the repo.
             "Humans.Infrastructure.Jobs.SystemTeamSyncJob",
+            // CampLead retirement (issue nobodies-collective/Humans#753) —
+            // SeedSystemRolesAndMigrateLeadsAsync reads from the legacy
+            // camp_leads + camp_seasons + camp_members tables to migrate
+            // existing leads into CampRoleAssignment. Routed through
+            // ICampService.AddCampMemberToActiveSeasonAsLeadAsync via the
+            // decorator (which invalidates), so writes still pass through the
+            // decorator path. Read-only consumer here.
+            "Humans.Application.Services.Camps.CampRoleService",
         };
 
         var assemblies = new[]

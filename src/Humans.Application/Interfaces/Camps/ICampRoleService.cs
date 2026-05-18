@@ -60,6 +60,47 @@ public interface ICampRoleService : IApplicationService
     // Reporting
 
     Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Idempotent admin action: ensures the Camp Lead and Events Lead system role
+    /// definitions exist (matched by <see cref="CampSystemRoles"/> constants and
+    /// <c>IsSystem = true</c>), then walks the legacy <c>camp_leads</c> table and
+    /// creates a <see cref="CampRoleAssignment"/> for the Camp Lead role on the
+    /// camp's open (or most-recent-open) season, creating
+    /// <see cref="CampMember"/>(<c>Status = Active</c>) as needed. Camps with no
+    /// season are skipped and logged. Safe to run multiple times — the second
+    /// run is a no-op for already-seeded definitions and already-migrated leads.
+    /// </summary>
+    Task<SeedSystemRolesResult> SeedSystemRolesAndMigrateLeadsAsync(Guid actorUserId, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Well-known identifiers for system-managed camp role definitions.
+/// Names + slugs are the stable match key (rows are looked up by name + IsSystem,
+/// not by GUID, because seeding generates a fresh GUID per environment).
+/// </summary>
+public static class CampSystemRoles
+{
+    public const string CampLeadName = "Camp Lead";
+    public const string CampLeadSlug = "camp-lead";
+    public const int CampLeadSortOrder = 0;
+    public const int CampLeadSlotCount = 2;
+    public const int CampLeadMinimumRequired = 1;
+
+    public const string EventsLeadName = "Events Lead";
+    public const string EventsLeadSlug = "events-lead";
+    public const int EventsLeadSortOrder = 10;
+    public const int EventsLeadSlotCount = 2;
+    public const int EventsLeadMinimumRequired = 0;
+}
+
+public sealed record SeedSystemRolesResult(
+    int DefinitionsCreated,
+    int LeadsMigrated,
+    int LeadsAlreadyMigrated,
+    IReadOnlyList<string> SkippedCampSlugs)
+{
+    public int LeadsSkipped => SkippedCampSlugs.Count;
 }
 
 public sealed record CreateCampRoleDefinitionInput(
@@ -103,7 +144,8 @@ public sealed record CampRoleDefinitionInfo(
     int SortOrder,
     Instant CreatedAt,
     Instant UpdatedAt,
-    Instant? DeactivatedAt)
+    Instant? DeactivatedAt,
+    bool IsSystem)
 {
     public bool IsActive => DeactivatedAt is null;
 }

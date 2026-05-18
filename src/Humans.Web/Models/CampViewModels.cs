@@ -165,7 +165,6 @@ public class CampMemberRowViewModel
     public Guid UserId { get; set; }
     public NodaTime.Instant RequestedAt { get; set; }
     public NodaTime.Instant? ConfirmedAt { get; set; }
-    public bool IsLead { get; set; }
     public bool HasEarlyEntry { get; set; }
     public CampMemberStatus Status { get; set; }
 }

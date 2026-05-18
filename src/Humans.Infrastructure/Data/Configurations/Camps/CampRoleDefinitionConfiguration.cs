@@ -25,6 +25,8 @@ public class CampRoleDefinitionConfiguration : IEntityTypeConfiguration<CampRole
 
         builder.HasIndex(d => d.SortOrder);
 
+        builder.Property(d => d.IsSystem).HasDefaultValue(false);
+
         builder.Ignore(d => d.IsActive);
     }
 }

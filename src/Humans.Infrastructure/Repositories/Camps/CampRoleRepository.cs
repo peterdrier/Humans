@@ -33,6 +33,74 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 #pragma warning restore MA0011
     }
 
+    public async Task<CampRoleDefinition?> GetSystemDefinitionByNameAsync(string name, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleDefinitions.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.IsSystem && d.Name == name, ct);
+    }
+
+    public async Task<bool> IsUserSystemRoleHolderForCampAsync(
+        Guid userId, Guid campId, string systemRoleName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .AnyAsync(a => a.CampMember.UserId == userId
+                && a.CampSeason.CampId == campId
+                && a.Definition.IsSystem
+                && a.Definition.Name == systemRoleName
+                && a.Definition.DeactivatedAt == null, ct);
+    }
+
+    public async Task<Guid?> GetCampSystemRoleSeasonIdForYearAsync(
+        Guid userId, int year, string systemRoleName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .Where(a => a.CampMember.UserId == userId
+                && a.CampSeason.Year == year
+                && a.Definition.IsSystem
+                && a.Definition.Name == systemRoleName
+                && a.Definition.DeactivatedAt == null)
+            .OrderBy(a => a.CampSeasonId) // arch:db-sort-ok — top-1 deterministic pick
+            .Select(a => (Guid?)a.CampSeasonId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<int> CountPendingMembershipsForSystemRoleHolderAsync(
+        Guid userId, string systemRoleName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Camps where the user holds the named system role on any active season.
+        var leadCampIds = ctx.CampRoleAssignments.AsNoTracking()
+            .Where(a => a.CampMember.UserId == userId
+                && a.Definition.IsSystem
+                && a.Definition.Name == systemRoleName
+                && a.Definition.DeactivatedAt == null)
+            .Select(a => a.CampSeason.CampId)
+            .Distinct();
+
+        return await ctx.CampMembers.AsNoTracking()
+            .Where(m => m.Status == Humans.Domain.Enums.CampMemberStatus.Pending
+                && leadCampIds.Contains(m.CampSeason.CampId)
+                && (m.CampSeason.Status == Humans.Domain.Enums.CampSeasonStatus.Active
+                    || m.CampSeason.Status == Humans.Domain.Enums.CampSeasonStatus.Full))
+            .CountAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetSystemRoleHolderUserIdsAsync(
+        string systemRoleName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .Where(a => a.Definition.IsSystem
+                && a.Definition.Name == systemRoleName
+                && a.Definition.DeactivatedAt == null)
+            .Select(a => a.CampMember.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

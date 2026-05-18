@@ -16,6 +16,7 @@ namespace Humans.Application.Services.Camps;
 
 public sealed class CampRoleService(
     ICampRoleRepository repo,
+    ICampRepository campRepo,
     ICampService campService,
     IUserService userService,
     IUserEmailService userEmailService,
@@ -116,7 +117,8 @@ public sealed class CampRoleService(
             definition.SortOrder,
             definition.CreatedAt,
             definition.UpdatedAt,
-            definition.DeactivatedAt);
+            definition.DeactivatedAt,
+            definition.SpecialRole);
 
     private static CampRoleAssignmentInfo CreateCampRoleAssignmentInfo(CampRoleAssignment assignment) =>
         new(
@@ -129,6 +131,23 @@ public sealed class CampRoleService(
     {
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
         var slug = NormalizeAndValidateSlug(input.Slug);
+
+        var existing = await repo.GetDefinitionByIdAsync(id, ct);
+        if (existing is null) return UpdateCampRoleDefinitionResult.NotFound;
+
+        // Special role definitions (Camp Lead, Workshop Lead) are immutable except
+        // for SlotCount + Description.
+        if (existing.SpecialRole != CampSpecialRole.None)
+        {
+            if (!string.Equals(existing.Name, input.Name, StringComparison.Ordinal)
+                || !string.Equals(existing.Slug, slug, StringComparison.Ordinal)
+                || existing.SortOrder != input.SortOrder
+                || existing.MinimumRequired != input.MinimumRequired)
+            {
+                throw new InvalidOperationException(
+                    $"Camp role '{existing.Name}' is a system role; only SlotCount and Description can be changed.");
+            }
+        }
 
         if (await repo.DefinitionNameExistsAsync(input.Name, excludingId: id, ct))
             throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
@@ -162,6 +181,14 @@ public sealed class CampRoleService(
 
     public async Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
     {
+        var existing = await repo.GetDefinitionByIdAsync(id, ct);
+        if (existing is null) return false;
+        if (existing.SpecialRole != CampSpecialRole.None)
+        {
+            throw new InvalidOperationException(
+                $"Camp role '{existing.Name}' is a system role and cannot be deactivated.");
+        }
+
         var now = clock.GetCurrentInstant();
         var updated = await repo.UpdateDefinitionAsync(id, def =>
         {
@@ -357,6 +384,165 @@ public sealed class CampRoleService(
 
         return new CampRoleComplianceReport(year, rows);
     }
+
+    public async Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default)
+    {
+        var existing = await repo.GetExistingSpecialRolesAsync(ct);
+        var existingSet = new HashSet<CampSpecialRole>(existing);
+        return Enum.GetValues<CampSpecialRole>()
+            .Where(r => r != CampSpecialRole.None && !existingSet.Contains(r))
+            .ToList();
+    }
+
+    public async Task<SeedSystemRolesResult> SeedSystemRolesAndMigrateLeadsAsync(
+        Guid actorUserId, CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+
+        // (1) Idempotent seed across every non-None CampSpecialRole value. The
+        // enum is the source of truth — adding a new value automatically picks
+        // it up on the next seed-button click.
+        var definitionsCreated = 0;
+        CampRoleDefinition? campLead = null;
+        foreach (var specialRole in Enum.GetValues<CampSpecialRole>())
+        {
+            if (specialRole == CampSpecialRole.None) continue;
+            var defaults = GetSpecialRoleSeedDefaults(specialRole);
+            var ensured = await EnsureSpecialRoleAsync(
+                specialRole,
+                defaults.Name,
+                defaults.Slug,
+                defaults.SortOrder,
+                defaults.SlotCount,
+                defaults.MinimumRequired,
+                defaults.Description,
+                actorUserId, now, ct);
+            if (ensured.Created) definitionsCreated++;
+            if (specialRole == CampSpecialRole.Lead) campLead = ensured.Definition;
+        }
+
+        // (2) Walk legacy camp_leads → CampRoleAssignment against Camp Lead role.
+        if (campLead is null)
+            throw new InvalidOperationException("Camp Lead special role definition is missing after seed.");
+        var leadSnapshots = await campRepo.GetLeadMigrationSnapshotsAsync(ct);
+        var leadsMigrated = 0;
+        var leadsAlreadyMigrated = 0;
+        var skippedCampSlugs = new List<string>();
+
+        foreach (var lead in leadSnapshots)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Pick a target season for the migration.
+            var seasonId = await campRepo.GetCampSeasonForLeadMigrationAsync(lead.CampId, ct);
+            if (seasonId is null)
+            {
+                logger.LogWarning(
+                    "Camp Lead retirement: skipping legacy lead {LeadId} (user {UserId}) — camp {CampSlug} has no seasons",
+                    lead.LeadId, lead.UserId, lead.CampSlug);
+                skippedCampSlugs.Add(lead.CampSlug);
+                continue;
+            }
+
+            // Ensure CampMember(Active) exists. Idempotent — promotes Pending → Active
+            // or no-ops if already Active.
+            var memberId = await campService.EnsureActiveMemberForMigrationAsync(
+                seasonId.Value, lead.UserId, actorUserId, ct);
+
+            // Assign Camp Lead role (idempotent — AlreadyHoldsRole is a no-op).
+            var outcome = await AssignAsync(
+                seasonId.Value, campLead.Id, memberId, actorUserId, ct);
+            switch (outcome)
+            {
+                case AssignCampRoleOutcome.Assigned:
+                    leadsMigrated++;
+                    break;
+                case AssignCampRoleOutcome.AlreadyHoldsRole:
+                    leadsAlreadyMigrated++;
+                    break;
+                case AssignCampRoleOutcome.SlotCapReached:
+                    // Slot cap of 2 may have been reached because the camp had 3+ leads.
+                    // Log it but don't fail the whole migration; admin can bump the
+                    // slot count or unassign manually after the fact.
+                    logger.LogWarning(
+                        "Camp Lead retirement: slot cap reached for camp {CampSlug} season {SeasonId} when migrating lead {LeadId} (user {UserId})",
+                        lead.CampSlug, seasonId.Value, lead.LeadId, lead.UserId);
+                    skippedCampSlugs.Add($"{lead.CampSlug} (slot cap)");
+                    break;
+                default:
+                    logger.LogWarning(
+                        "Camp Lead retirement: AssignAsync returned {Outcome} for lead {LeadId} (user {UserId}) on camp {CampSlug} season {SeasonId}",
+                        outcome, lead.LeadId, lead.UserId, lead.CampSlug, seasonId.Value);
+                    skippedCampSlugs.Add($"{lead.CampSlug} ({outcome})");
+                    break;
+            }
+        }
+
+        return new SeedSystemRolesResult(
+            DefinitionsCreated: definitionsCreated,
+            LeadsMigrated: leadsMigrated,
+            LeadsAlreadyMigrated: leadsAlreadyMigrated,
+            SkippedCampSlugs: skippedCampSlugs);
+    }
+
+    private async Task<(CampRoleDefinition Definition, bool Created)> EnsureSpecialRoleAsync(
+        CampSpecialRole specialRole,
+        string name, string slug, int sortOrder, int slotCount, int minimumRequired,
+        string description, Guid actorUserId, Instant now, CancellationToken ct)
+    {
+        var existing = await repo.GetSpecialDefinitionAsync(specialRole, ct);
+        if (existing is not null) return (existing, false);
+
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            Slug = slug,
+            Description = description,
+            SlotCount = slotCount,
+            MinimumRequired = minimumRequired,
+            SortOrder = sortOrder,
+            SpecialRole = specialRole,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await repo.AddDefinitionAsync(def, ct);
+        await auditLog.LogAsync(
+            AuditAction.CampRoleDefinitionCreated,
+            nameof(CampRoleDefinition),
+            def.Id,
+            $"Seeded system camp role '{name}'.",
+            actorUserId);
+        return (def, true);
+    }
+
+    private static SpecialRoleSeedDefaults GetSpecialRoleSeedDefaults(CampSpecialRole specialRole) =>
+        specialRole switch
+        {
+            CampSpecialRole.Lead => new SpecialRoleSeedDefaults(
+                CampSystemRoles.CampLeadName,
+                CampSystemRoles.CampLeadSlug,
+                CampSystemRoles.CampLeadSortOrder,
+                CampSystemRoles.CampLeadSlotCount,
+                CampSystemRoles.CampLeadMinimumRequired,
+                "Authorizes camp-management actions (Edit, members, roles, leads) and camp-event submission. Sort-to-top of the camp's Roles panel."),
+            CampSpecialRole.Workshop => new SpecialRoleSeedDefaults(
+                CampSystemRoles.WorkshopLeadName,
+                CampSystemRoles.WorkshopLeadSlug,
+                CampSystemRoles.WorkshopLeadSortOrder,
+                CampSystemRoles.WorkshopLeadSlotCount,
+                CampSystemRoles.WorkshopLeadMinimumRequired,
+                "Authorizes camp-event submission alongside Camp Lead. Does not grant general camp-management authority."),
+            _ => throw new ArgumentOutOfRangeException(nameof(specialRole), specialRole, "No seed defaults for this special role."),
+        };
+
+    private sealed record SpecialRoleSeedDefaults(
+        string Name,
+        string Slug,
+        int SortOrder,
+        int SlotCount,
+        int MinimumRequired,
+        string Description);
 
     public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default)
     {

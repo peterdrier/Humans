@@ -508,6 +508,46 @@ internal sealed class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampLeads
+            .AsNoTracking()
+            .Where(l => l.LeftAt == null)
+            .Select(l => new { l.Id, l.CampId, l.UserId, CampSlug = l.Camp.Slug })
+            .ToListAsync(ct);
+        return rows
+            .Select(r => new LeadMigrationSnapshot(r.Id, r.CampId, r.UserId, r.CampSlug))
+            .ToList();
+    }
+
+    public async Task<Guid?> GetCampSeasonForLeadMigrationAsync(
+        Guid campId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Prefer the open (Pending/Active/Full) season with the latest year;
+        // fall back to the most-recent season of any status. Returns null when
+        // the camp has no seasons at all.
+        var openLatest = await ctx.CampSeasons
+            .AsNoTracking()
+            .Where(s => s.CampId == campId
+                && (s.Status == CampSeasonStatus.Pending
+                    || s.Status == CampSeasonStatus.Active
+                    || s.Status == CampSeasonStatus.Full))
+            .OrderByDescending(s => s.Year) // arch:db-sort-ok — picking single most-relevant season for one-shot lead migration
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+        if (openLatest is not null) return openLatest;
+
+        return await ctx.CampSeasons
+            .AsNoTracking()
+            .Where(s => s.CampId == campId)
+            .OrderByDescending(s => s.Year) // arch:db-sort-ok — picking single most-relevant season for one-shot lead migration
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+    }
+
     // Historical names
 
     public async Task AddHistoricalNameAsync(
