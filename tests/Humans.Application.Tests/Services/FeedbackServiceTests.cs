@@ -10,22 +10,18 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Feedback;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using FeedbackApplicationService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Services;
 
-public class FeedbackServiceTests : IDisposable
+public sealed class FeedbackServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
@@ -37,38 +33,14 @@ public class FeedbackServiceTests : IDisposable
     private readonly FeedbackApplicationService _service;
 
     public FeedbackServiceTests()
+        : base(Instant.FromUtc(2026, 3, 18, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 18, 12, 0));
         _emailService = Substitute.For<IEmailService>();
         _auditLog = Substitute.For<IAuditLogService>();
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(Path.GetTempPath());
 
-        _userService = Substitute.For<IUserService>();
-        _userService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                var dict = _dbContext.Users
-                    .AsNoTracking()
-                    .Where(u => ids.Contains(u.Id))
-                    .ToDictionary(u => u.Id);
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(dict);
-            });
-        _userService
-            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var id = (Guid)call[0]!;
-                return Task.FromResult(_dbContext.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
-            });
-        _userService.StubGetUserInfosFromContext(_dbContext);
-        _userService.StubGetUserInfoFromContext(_dbContext);
+        _userService = NewDbBackedUserService();
 
         _userEmailService = Substitute.For<IUserEmailService>();
         _userEmailService
@@ -76,7 +48,7 @@ public class FeedbackServiceTests : IDisposable
             .Returns(call =>
             {
                 var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, string> dict = _dbContext.Users
+                IReadOnlyDictionary<Guid, string> dict = Db.Users
                     .AsNoTracking()
                     .Where(u => ids.Contains(u.Id) && u.Email != null)
                     .ToDictionary(u => u.Id, u => u.Email!);
@@ -88,7 +60,7 @@ public class FeedbackServiceTests : IDisposable
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
-                var teams = _dbContext.Teams
+                var teams = Db.Teams
                     .Include(t => t.Members)
                     .AsNoTracking()
                     .ToList();
@@ -112,7 +84,7 @@ public class FeedbackServiceTests : IDisposable
             .Returns(call =>
             {
                 var id = call.ArgAt<Guid>(0);
-                var t = _dbContext.Teams
+                var t = Db.Teams
                     .Include(team => team.Members)
                     .AsNoTracking()
                     .FirstOrDefault(team => team.Id == id);
@@ -133,26 +105,20 @@ public class FeedbackServiceTests : IDisposable
         _notificationService = Substitute.For<INotificationService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
 
-        _repository = new FeedbackRepository(new TestDbContextFactory(options));
+        _repository = new FeedbackRepository(DbFactory);
 
         _service = new FeedbackApplicationService(
             _repository, _userService, _userEmailService, _teamService,
-            _emailService, _notificationService, _auditLog, _navBadge, _clock, env,
+            _emailService, _notificationService, _auditLog, _navBadge, Clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
     public async Task SubmitFeedbackAsync_CreatesReport()
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, DisplayName = "Test", Email = "t@t.com" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, DisplayName = "Test", Email = "t@t.com" });
+        await Db.SaveChangesAsync();
 
         var report = await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "Something broke",
@@ -171,8 +137,8 @@ public class FeedbackServiceTests : IDisposable
     public async Task SubmitFeedbackAsync_SetsAdditionalContext()
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
+        await Db.SaveChangesAsync();
 
         var report = await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "desc", "/page", "UA",
@@ -185,8 +151,8 @@ public class FeedbackServiceTests : IDisposable
     public async Task SubmitUserFeedbackAsync_BuildsSortedRoleContext()
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
+        await Db.SaveChangesAsync();
 
         var report = await _service.SubmitUserFeedbackAsync(
             userId, FeedbackCategory.Bug, "desc", "/page", "UA",
@@ -202,7 +168,7 @@ public class FeedbackServiceTests : IDisposable
 
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, Guid.NewGuid());
 
-        var updated = await _dbContext.FeedbackReports.AsNoTracking()
+        var updated = await Db.FeedbackReports.AsNoTracking()
             .FirstAsync(r => r.Id == report.Id);
         updated.Status.Should().Be(FeedbackStatus.Resolved);
         updated.ResolvedAt.Should().NotBeNull();
@@ -217,7 +183,7 @@ public class FeedbackServiceTests : IDisposable
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, actorId);
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Open, actorId);
 
-        var updated = await _dbContext.FeedbackReports.AsNoTracking()
+        var updated = await Db.FeedbackReports.AsNoTracking()
             .FirstAsync(r => r.Id == report.Id);
         updated.Status.Should().Be(FeedbackStatus.Open);
         updated.ResolvedAt.Should().BeNull();
@@ -240,8 +206,8 @@ public class FeedbackServiceTests : IDisposable
     public async Task GetFeedbackListAsync_ReturnsReporterInfo()
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, DisplayName = "Alice", Email = "a@a.com" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, DisplayName = "Alice", Email = "a@a.com" });
+        await Db.SaveChangesAsync();
 
         await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "a", "/a", null, null, null);
@@ -259,9 +225,9 @@ public class FeedbackServiceTests : IDisposable
         // BurnerName-is-the-display-name rule: when a Profile exists,
         // ReporterName must render the BurnerName, not the legacy User.DisplayName.
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, DisplayName = "Legal Name", Email = "a@a.com" });
-        _dbContext.Profiles.Add(new Profile { Id = Guid.NewGuid(), UserId = userId, BurnerName = "Sparkle" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, DisplayName = "Legal Name", Email = "a@a.com" });
+        Db.Profiles.Add(new Profile { Id = Guid.NewGuid(), UserId = userId, BurnerName = "Sparkle" });
+        await Db.SaveChangesAsync();
 
         await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "a", "/a", null, null, null);
@@ -283,7 +249,7 @@ public class FeedbackServiceTests : IDisposable
             DisplayName = "Reporter",
             PreferredLanguage = "en"
         };
-        _dbContext.Users.Add(user);
+        Db.Users.Add(user);
 
         var report = new FeedbackReport
         {
@@ -293,11 +259,11 @@ public class FeedbackServiceTests : IDisposable
             Description = "Test",
             PageUrl = "/test",
             Status = FeedbackStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.FeedbackReports.Add(report);
-        await _dbContext.SaveChangesAsync();
+        Db.FeedbackReports.Add(report);
+        await Db.SaveChangesAsync();
 
         var adminId = Guid.NewGuid();
         var message = await _service.PostMessageAsync(report.Id, adminId, "Looking into it", isAdmin: true);
@@ -305,7 +271,7 @@ public class FeedbackServiceTests : IDisposable
         message.Content.Should().Be("Looking into it");
         message.SenderUserId.Should().Be(adminId);
 
-        var updated = await _dbContext.FeedbackReports.AsNoTracking()
+        var updated = await Db.FeedbackReports.AsNoTracking()
             .FirstAsync(r => r.Id == report.Id);
         updated.LastAdminMessageAt.Should().NotBeNull();
         updated.LastReporterMessageAt.Should().BeNull();
@@ -319,13 +285,13 @@ public class FeedbackServiceTests : IDisposable
     public async Task GetFeedbackByIdForViewerAsync_NonReporter_ReturnsNull()
     {
         var reporterId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        Db.Users.Add(new User
         {
             Id = reporterId,
             Email = "reporter@test.com",
             DisplayName = "Reporter"
         });
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = reporterId,
@@ -333,13 +299,13 @@ public class FeedbackServiceTests : IDisposable
             Description = "Test",
             PageUrl = "/test",
             Status = FeedbackStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetFeedbackByIdForViewerAsync(
-            _dbContext.FeedbackReports.Single().Id,
+            Db.FeedbackReports.Single().Id,
             Guid.NewGuid(),
             isAdmin: false);
 
@@ -351,7 +317,7 @@ public class FeedbackServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, Email = "reporter@test.com", DisplayName = "Reporter" };
-        _dbContext.Users.Add(user);
+        Db.Users.Add(user);
 
         var report = new FeedbackReport
         {
@@ -361,16 +327,16 @@ public class FeedbackServiceTests : IDisposable
             Description = "Test",
             PageUrl = "/test",
             Status = FeedbackStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.FeedbackReports.Add(report);
-        await _dbContext.SaveChangesAsync();
+        Db.FeedbackReports.Add(report);
+        await Db.SaveChangesAsync();
 
         var message = await _service.PostMessageAsync(report.Id, userId, "More details", isAdmin: false);
 
         message.Content.Should().Be("More details");
-        var updated = await _dbContext.FeedbackReports.AsNoTracking()
+        var updated = await Db.FeedbackReports.AsNoTracking()
             .FirstAsync(r => r.Id == report.Id);
         updated.LastReporterMessageAt.Should().NotBeNull();
         updated.LastAdminMessageAt.Should().BeNull();
@@ -385,12 +351,12 @@ public class FeedbackServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, Email = "u@test.com", DisplayName = "U" };
-        _dbContext.Users.Add(user);
+        Db.Users.Add(user);
 
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
 
         // Open, no admin message -> actionable
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -403,7 +369,7 @@ public class FeedbackServiceTests : IDisposable
         });
 
         // Reporter replied after admin -> actionable
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -418,7 +384,7 @@ public class FeedbackServiceTests : IDisposable
         });
 
         // Resolved -> not actionable
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -431,7 +397,7 @@ public class FeedbackServiceTests : IDisposable
             ResolvedAt = now
         });
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var count = await _service.GetActionableCountAsync();
         count.Should().Be(2);
@@ -442,10 +408,10 @@ public class FeedbackServiceTests : IDisposable
     {
         var bobId = Guid.NewGuid();
         var aliceId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = bobId, DisplayName = "Bob", Email = "b@b.com" });
-        _dbContext.Users.Add(new User { Id = aliceId, DisplayName = "Alice", Email = "a@a.com" });
-        var now = _clock.GetCurrentInstant();
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.Users.Add(new User { Id = bobId, DisplayName = "Bob", Email = "b@b.com" });
+        Db.Users.Add(new User { Id = aliceId, DisplayName = "Alice", Email = "a@a.com" });
+        var now = Clock.GetCurrentInstant();
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = bobId,
@@ -456,7 +422,7 @@ public class FeedbackServiceTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         });
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = bobId,
@@ -467,7 +433,7 @@ public class FeedbackServiceTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         });
-        _dbContext.FeedbackReports.Add(new FeedbackReport
+        Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = aliceId,
@@ -478,7 +444,7 @@ public class FeedbackServiceTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var reporters = await _service.GetDistinctReportersAsync();
 
@@ -492,8 +458,8 @@ public class FeedbackServiceTests : IDisposable
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, DisplayName = "Test", Email = $"{userId}@test.com" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, DisplayName = "Test", Email = $"{userId}@test.com" });
+        await Db.SaveChangesAsync();
 
         var report = await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "Test bug", "/test", null, null, null);
