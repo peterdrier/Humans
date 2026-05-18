@@ -1,9 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Web.Controllers;
@@ -23,11 +20,9 @@ public class TicketsOnsiteAdminControllerTests
     private static TicketsOnsiteAdminController NewController(
         IUserService users,
         IShiftManagementService shifts,
-        ICampService camps,
-        ITeamService teams,
-        IRoleAssignmentService roles)
+        IOnsiteRosterService roster)
     {
-        var ctrl = new TicketsOnsiteAdminController(users, shifts, camps, teams, roles);
+        var ctrl = new TicketsOnsiteAdminController(users, shifts, roster);
 
         var services = new ServiceCollection();
         services.AddLogging();
@@ -43,16 +38,17 @@ public class TicketsOnsiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_NoActiveEvent_ReturnsEmptyRoster()
+    public async Task Index_NoActiveEvent_DispatchesYearZero_AndReturnsEmpty()
     {
         var users = Substitute.For<IUserService>();
         var shifts = Substitute.For<IShiftManagementService>();
         shifts.GetActiveAsync().Returns((EventSettings?)null);
 
-        var ctrl = NewController(users, shifts,
-            Substitute.For<ICampService>(),
-            Substitute.For<ITeamService>(),
-            Substitute.For<IRoleAssignmentService>());
+        var roster = Substitute.For<IOnsiteRosterService>();
+        roster.GetRosterAsync(0, null, null, null, Arg.Any<CancellationToken>())
+            .Returns(new OnsiteRosterResult([], [], [], []));
+
+        var ctrl = NewController(users, shifts, roster);
 
         var result = await ctrl.Index(camp: null, team: null, role: null, ct: default);
 
@@ -60,10 +56,12 @@ public class TicketsOnsiteAdminControllerTests
             .Model.Should().BeOfType<OnsiteRosterViewModel>().Subject;
         vm.Year.Should().Be(0);
         vm.Rows.Should().BeEmpty();
+
+        await roster.Received(1).GetRosterAsync(0, null, null, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Index_ReturnsOnsiteUsers_SortedMostRecentFirst()
+    public async Task Index_SortsRowsByCheckedInAt_Descending()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
@@ -71,82 +69,48 @@ public class TicketsOnsiteAdminControllerTests
         var later = Instant.FromUtc(2026, 7, 8, 18, 0);
 
         var users = Substitute.For<IUserService>();
-        users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow>
-            {
-                new(aliceId, "Alice", earlier),
-                new(bobId, "Bob", later),
-            });
-
         var shifts = Substitute.For<IShiftManagementService>();
         shifts.GetActiveAsync().Returns(new EventSettings { Year = 2026 });
 
-        var camps = Substitute.For<ICampService>();
-        camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<CampInfo>());
+        var roster = Substitute.For<IOnsiteRosterService>();
+        roster.GetRosterAsync(2026, null, null, null, Arg.Any<CancellationToken>())
+            .Returns(new OnsiteRosterResult(
+                Rows: new List<OnsiteRosterRow>
+                {
+                    new(aliceId, "Alice", earlier, [], [], []),
+                    new(bobId, "Bob", later, [], [], []),
+                },
+                AvailableCamps: [],
+                AvailableTeams: [],
+                AvailableRoles: []));
 
-        var teams = Substitute.For<ITeamService>();
-        teams.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
-
-        var roles = Substitute.For<IRoleAssignmentService>();
-        roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot>());
-
-        var ctrl = NewController(users, shifts, camps, teams, roles);
+        var ctrl = NewController(users, shifts, roster);
 
         var result = await ctrl.Index(camp: null, team: null, role: null, ct: default);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<OnsiteRosterViewModel>().Subject;
-        vm.Year.Should().Be(2026);
         vm.Rows.Should().HaveCount(2);
-        // Sorted by CheckedInAt descending.
         vm.Rows[0].UserId.Should().Be(bobId);
         vm.Rows[1].UserId.Should().Be(aliceId);
     }
 
     [HumansFact]
-    public async Task Index_RoleFilter_NarrowsToRoleHolders()
+    public async Task Index_ForwardsFilterParamsToService()
     {
-        var aliceId = Guid.NewGuid();
-        var bobId = Guid.NewGuid();
-        var ts = Instant.FromUtc(2026, 7, 8, 12, 0);
-
         var users = Substitute.For<IUserService>();
-        users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow>
-            {
-                new(aliceId, "Alice", ts),
-                new(bobId, "Bob", ts),
-            });
-
         var shifts = Substitute.For<IShiftManagementService>();
         shifts.GetActiveAsync().Returns(new EventSettings { Year = 2026 });
 
-        var camps = Substitute.For<ICampService>();
-        camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<CampInfo>());
+        var roster = Substitute.For<IOnsiteRosterService>();
+        roster.GetRosterAsync(2026, "Cosmic Camp", "Gate", "Board", Arg.Any<CancellationToken>())
+            .Returns(new OnsiteRosterResult([], [], [], []));
 
-        var teams = Substitute.For<ITeamService>();
-        teams.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+        var ctrl = NewController(users, shifts, roster);
 
-        var roles = Substitute.For<IRoleAssignmentService>();
-        roles.GetActiveForUserAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot> { new("Board", ValidTo: null) });
-        roles.GetActiveForUserAsync(bobId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot>()); // none
+        await ctrl.Index(camp: "Cosmic Camp", team: "Gate", role: "Board", ct: default);
 
-        var ctrl = NewController(users, shifts, camps, teams, roles);
-
-        var result = await ctrl.Index(camp: null, team: null, role: "Board", ct: default);
-
-        var vm = result.Should().BeOfType<ViewResult>().Subject
-            .Model.Should().BeOfType<OnsiteRosterViewModel>().Subject;
-        vm.Rows.Should().ContainSingle();
-        vm.Rows[0].UserId.Should().Be(aliceId);
-        vm.Rows[0].RoleNames.Should().Contain("Board");
-        vm.AvailableRoles.Should().Contain("Board");
+        await roster.Received(1).GetRosterAsync(
+            2026, "Cosmic Camp", "Gate", "Board", Arg.Any<CancellationToken>());
     }
 }
