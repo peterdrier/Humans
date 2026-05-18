@@ -8,7 +8,11 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
         <li class="breadcrumb-item"><a asp-action="AdminList">@Localizer["AdminHumans_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.UserId">@Model.UserDisplayName</a></li>
+        <li class="breadcrumb-item">
+            <a asp-action="AdminDetail" asp-route-id="@Model.UserId">
+                <vc:human user-id="@Model.UserId" link="None" popover="false" />
+            </a>
+        </li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminAddRole_Title"]</li>
     </ol>
 </nav>
@@ -17,7 +21,10 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0">@string.Format(Localizer["AdminAddRole_Heading"].Value, Model.UserDisplayName)</h4>
+                <h4 class="mb-0">
+                    @Localizer["AdminHuman_AddRole"]:
+                    <vc:human user-id="@Model.UserId" link="None" popover="false" />
+                </h4>
             </div>
             <div class="card-body">
                 <form asp-action="AddRole" asp-route-id="@Model.UserId" method="post">

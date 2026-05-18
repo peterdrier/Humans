@@ -180,9 +180,9 @@
                                 <td>@(slot.SlotIndex + 1)</td>
                                 <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
-                                    @if (slot.IsFilled)
+                                    @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                                     {
-                                        @slot.AssignedUserName
+                                        <vc:human user-id="@slot.AssignedUserId.Value" />
                                     }
                                     else
                                     {
@@ -206,9 +206,9 @@
                                             <div class="input-group input-group-sm" style="max-width: 300px; display: inline-flex !important;">
                                                 <select name="UserId" class="form-select form-select-sm" required>
                                                     <option value="">Select human...</option>
-                                                    @foreach (var member in Model.TeamMembers.Where(m => !role.AssignedUserIds.Contains(m.UserId)))
+                                                    @foreach (var member in Model.MemberOptions.Where(m => !role.AssignedUserIds.Contains(m.UserId)))
                                                     {
-                                                        <option value="@member.UserId">@member.DisplayName</option>
+                                                        <option value="@member.UserId">@member.BurnerName</option>
                                                     }
                                                 </select>
                                                 <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>

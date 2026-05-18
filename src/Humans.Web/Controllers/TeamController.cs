@@ -213,11 +213,6 @@ public class TeamController : HumansControllerBase
                             m.GoogleEmailStatus, m.Role, m.JoinedAt))
                         .ToList());
 
-            var childUserIds = childMembersByTeam.Values.SelectMany(m => m).Select(m => m.UserId).Distinct().ToList();
-            var childUserInfos = childUserIds.Count > 0
-                ? await _userService.GetUserInfosAsync(childUserIds, ct)
-                : new Dictionary<Guid, UserInfo>();
-
             foreach (var child in teamPage.ChildTeams)
             {
                 if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
@@ -227,15 +222,12 @@ public class TeamController : HumansControllerBase
                 foreach (var cm in childMembers)
                 {
                     var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
-                    var pictureUrl = childUserInfos.GetValueOrDefault(cm.UserId)?.ProfilePictureUrl;
 
                     if (isCoordinator)
                     {
                         viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
                         {
                             UserId = cm.UserId,
-                            DisplayName = cm.DisplayName,
-                            ProfilePictureUrl = pictureUrl,
                             ChildTeamName = child.Name,
                             ChildTeamSlug = child.Slug,
                             IsCoordinator = true,
@@ -249,8 +241,6 @@ public class TeamController : HumansControllerBase
                     viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
                     {
                         UserId = cm.UserId,
-                        DisplayName = cm.DisplayName,
-                        ProfilePictureUrl = pictureUrl,
                         ChildTeamName = child.Name,
                         ChildTeamSlug = child.Slug,
                         IsCoordinator = isCoordinator,
@@ -280,9 +270,7 @@ public class TeamController : HumansControllerBase
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        DisplayName = member.DisplayName,
         Email = member.Email ?? string.Empty,
-        ProfilePictureUrl = member.ProfilePictureUrl,
         Role = member.Role,
         JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
@@ -363,8 +351,6 @@ public class TeamController : HumansControllerBase
             Birthdays = profilesWithBirthdays.Select(p => new BirthdayEntryViewModel
             {
                 UserId = p.UserId,
-                DisplayName = p.DisplayName,
-                EffectiveProfilePictureUrl = p.ProfilePictureUrl,
                 DayOfMonth = p.Day,
                 Month = p.Month,
                 MonthName = monthName,

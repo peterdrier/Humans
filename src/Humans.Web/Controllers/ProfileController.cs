@@ -2274,7 +2274,6 @@ public class ProfileController : HumansControllerBase
         var viewModel = new CreateRoleAssignmentViewModel
         {
             UserId = id,
-            UserDisplayName = info.BurnerName,
             AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
         };
 
@@ -2295,7 +2294,7 @@ public class ProfileController : HumansControllerBase
         if (string.IsNullOrWhiteSpace(model.RoleName))
         {
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
-            PopulateRoleAssignmentForm(model, id, info.BurnerName);
+            PopulateRoleAssignmentForm(model, id);
             return View(model);
         }
 
@@ -2322,10 +2321,9 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
-    private void PopulateRoleAssignmentForm(CreateRoleAssignmentViewModel model, Guid userId, string userDisplayName)
+    private void PopulateRoleAssignmentForm(CreateRoleAssignmentViewModel model, Guid userId)
     {
         model.UserId = userId;
-        model.UserDisplayName = userDisplayName;
         model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
     }
 

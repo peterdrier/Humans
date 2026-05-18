@@ -42,10 +42,8 @@ public class AdminMergeController : HumansControllerBase
             {
                 Id = r.Id,
                 Email = r.Email,
-                PrimaryUserDisplayName = r.TargetUser.DisplayName,
                 PrimaryUserEmail = r.TargetUser.Email,
                 PrimaryUserId = r.TargetUser.Id,
-                DuplicateUserDisplayName = r.SourceUser.DisplayName,
                 DuplicateUserEmail = r.SourceUser.Email,
                 DuplicateUserId = r.SourceUser.Id,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc()

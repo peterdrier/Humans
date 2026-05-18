@@ -65,8 +65,6 @@ public class OnboardingReviewController : HumansControllerBase
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = detailUser?.BurnerName ?? "Unknown",
-            ProfilePictureUrl = detailUser?.ProfilePictureUrl,
             Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
@@ -240,9 +238,7 @@ public class OnboardingReviewController : HumansControllerBase
         return new OnboardingReviewItemViewModel
         {
             UserId = info.Id,
-            DisplayName = info.BurnerName,
             LegalName = profile.FullName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
             Email = info.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             MembershipTier = profile.MembershipTier,

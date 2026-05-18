@@ -162,7 +162,9 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <p>@string.Format(Localizer["TeamAdmin_RejectingFrom"].Value, request.UserDisplayName)</p>
+                            <p>
+                                Rejecting request from <vc:human user-id="@request.UserId" />
+                            </p>
                             <div class="mb-3">
                                 <label for="notes-@request.Id" class="form-label">@Localizer["TeamAdmin_RejectionReason"]</label>
                                 <textarea name="Notes" id="notes-@request.Id" class="form-control" rows="3" required></textarea>
@@ -239,7 +241,7 @@
                             @if (Model.CanProvisionEmails)
                             {
                                 <td>
-                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, displayName = member.DisplayName })
+                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug })
                                 </td>
                             }
                             <td>@member.JoinedAt.ToDisplayCompactDate()</td>

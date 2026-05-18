@@ -31,12 +31,10 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
     /// <param name="userId">The user to check.</param>
     /// <param name="mode">Display mode — see class doc.</param>
     /// <param name="teamSlug">Team slug for provisioning form (provision mode only).</param>
-    /// <param name="displayName">User display name for confirm dialog (provision mode only).</param>
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         string mode = "badge",
-        string? teamSlug = null,
-        string? displayName = null)
+        string? teamSlug = null)
     {
         var info = await _userService.GetUserInfoAsync(userId);
         var nobodies = info?.UserEmails.FirstOrDefault(e => e.IsVerified
@@ -48,7 +46,9 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
         ViewBag.IsPrimary = nobodies?.IsPrimary == true;
         ViewBag.Mode = mode;
         ViewBag.TeamSlug = teamSlug;
-        ViewBag.DisplayName = displayName;
+        ViewBag.DisplayName = string.Equals(mode, "provision", StringComparison.Ordinal) && nobodies is null
+            ? info?.BurnerName
+            : null;
 
         return View();
     }

@@ -1369,7 +1369,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                         userLookup.TryGetValue(c.UserId, out var user);
                         return new CoordinatorLogin(
                             c.UserId,
-                            user?.DisplayName ?? string.Empty,
                             user?.LastLoginAt);
                     })
                     .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
