@@ -5,22 +5,18 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
 
 namespace Humans.Application.Tests.Services;
 
-public class MagicLinkServiceTests : IDisposable
+public sealed class MagicLinkServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
@@ -30,14 +26,8 @@ public class MagicLinkServiceTests : IDisposable
     private readonly MagicLinkService _service;
 
     public MagicLinkServiceTests()
+        : base(Instant.FromUtc(2026, 3, 25, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 25, 12, 0));
-
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
@@ -69,15 +59,14 @@ public class MagicLinkServiceTests : IDisposable
             _emailService,
             _urlBuilder,
             _rateLimiter,
-            _clock,
+            Clock,
             NullLogger<MagicLinkService>.Instance);
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
-        _dbContext.Dispose();
         _userManager.Dispose();
-        GC.SuppressFinalize(this);
+        base.Dispose();
     }
 
     [HumansFact]
@@ -90,7 +79,7 @@ public class MagicLinkServiceTests : IDisposable
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -121,7 +110,7 @@ public class MagicLinkServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -178,8 +167,8 @@ public class MagicLinkServiceTests : IDisposable
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant(),
-            MagicLinkSentAt = _clock.GetCurrentInstant() - Duration.FromSeconds(30) // 30s ago
+            CreatedAt = Clock.GetCurrentInstant(),
+            MagicLinkSentAt = Clock.GetCurrentInstant() - Duration.FromSeconds(30) // 30s ago
         };
 
         _userEmailService
