@@ -18,10 +18,10 @@ using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,18 +29,14 @@ using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class DependencyCycleResolutionTests
+public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 {
     [HumansFact]
     public void IUserService_Resolves_WhenTeamServiceAndRoleAssignmentServiceAreRegistered()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
         var services = new ServiceCollection();
 
-        services.AddScoped(_ => new HumansDbContext(options));
+        services.AddScoped(_ => new HumansDbContext(DbOptions));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
@@ -93,14 +89,10 @@ public class DependencyCycleResolutionTests
     [HumansFact]
     public void IUserService_And_IEmailService_Resolve_WhenRealEmailChainIsRegistered()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
         var services = new ServiceCollection();
         var userStore = Substitute.For<IUserStore<User>>();
 
-        services.AddScoped(_ => new HumansDbContext(options));
+        services.AddScoped(_ => new HumansDbContext(DbOptions));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
