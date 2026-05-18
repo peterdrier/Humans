@@ -125,12 +125,13 @@ else
             <thead>
                 <tr>
                     <th style="cursor:pointer;" data-sort-col="0">Name <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="1" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="6" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="1" class="text-center">Warmed <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="6" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="7" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -146,6 +147,16 @@ else
                         };
                     <tr class="@rateClass">
                         <td>@entry.Name</td>
+                        <td class="text-center" data-sort-value="@(entry.IsWarmedUp ? 1 : 0)">
+                            @if (entry.IsWarmedUp)
+                            {
+                                <i class="fa-solid fa-check text-success" title="Warmed"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-xmark text-muted" title="Cold (lazy or awaiting warmup)"></i>
+                            }
+                        </td>
                         <td class="text-end">@entry.Entries.ToString("N0")</td>
                         <td class="text-end">@entry.Hits.ToString("N0")</td>
                         <td class="text-end">@entry.Misses.ToString("N0")</td>
@@ -175,8 +186,10 @@ else
                         const dir = sortDir[colIndex] ? 1 : -1;
 
                         rows.sort((a, b) => {
-                            const aVal = a.cells[colIndex].textContent.trim().replace(/[,%]/g, '');
-                            const bVal = b.cells[colIndex].textContent.trim().replace(/[,%]/g, '');
+                            const aCell = a.cells[colIndex];
+                            const bCell = b.cells[colIndex];
+                            const aVal = (aCell.dataset.sortValue ?? aCell.textContent).trim().replace(/[,%]/g, '');
+                            const bVal = (bCell.dataset.sortValue ?? bCell.textContent).trim().replace(/[,%]/g, '');
                             if (isNumeric) {
                                 return (parseFloat(aVal) - parseFloat(bVal)) * dir;
                             }
@@ -188,7 +201,7 @@ else
                 });
             }
             wireTable('cacheStatsTable', [2, 4, 5, 6]);
-            wireTable('decoratorCacheStatsTable', [1, 2, 3, 4, 5, 6]);
+            wireTable('decoratorCacheStatsTable', [1, 2, 3, 4, 5, 6, 7]);
         })();
     </script>
 }

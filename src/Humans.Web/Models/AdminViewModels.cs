@@ -325,6 +325,7 @@ public class DecoratorCacheStatEntryViewModel
     public long KeyRemovals { get; set; }
     public long BulkInvalidations { get; set; }
     public double HitRatePercent { get; set; }
+    public bool IsWarmedUp { get; set; }
 }
 
 public class DuplicateAccountListViewModel

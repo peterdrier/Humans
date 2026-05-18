@@ -21,6 +21,10 @@ public interface ICacheStats
     /// re-warm via <c>EnsureWarmed</c> / <c>EnsureWarmedAsync</c>.</summary>
     long BulkInvalidations { get; }
 
+    /// <summary>True once a warm-all pass has completed. For lazy caches
+    /// (<c>warmOnStartup: false</c>) with no warm-all model, stays false.</summary>
+    bool IsWarmedUp { get; }
+
     double HitRatePercent { get; }
     void ResetCounters();
 }
