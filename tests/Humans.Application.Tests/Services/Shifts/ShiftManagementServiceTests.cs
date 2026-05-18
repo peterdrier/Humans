@@ -10,21 +10,17 @@ using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public class ShiftManagementServiceTests : IDisposable
+public sealed class ShiftManagementServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
@@ -34,18 +30,13 @@ public class ShiftManagementServiceTests : IDisposable
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     public ShiftManagementServiceTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(TestNow);
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
-        // Default: users looked up by id resolve to the entities seeded in _dbContext
+        // Default: users looked up by id resolve to the entities seeded in Db
         // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
         // correct DisplayName.
         _userService.GetByIdsAsync(
@@ -54,12 +45,12 @@ public class ShiftManagementServiceTests : IDisposable
             {
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                    _dbContext.Users
+                    Db.Users
                         .Where(u => ids.Contains(u.Id))
                         .AsEnumerable()
                         .ToDictionary(u => u.Id));
             });
-        _userService.StubGetUserInfosFromContext(_dbContext);
+        _userService.StubGetUserInfosFromContext(Db);
 
         _teamService.GetByIdsWithParentsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -67,18 +58,18 @@ public class ShiftManagementServiceTests : IDisposable
             {
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(
-                    _dbContext.Teams
+                    Db.Teams
                         .Where(t => ids.Contains(t.Id))
                         .AsEnumerable()
                         .ToDictionary(t => t.Id));
             });
 
         _teamService.GetAllTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<Team>>(_dbContext.Teams.AsEnumerable().ToList()));
+            .Returns(_ => Task.FromResult<IReadOnlyList<Team>>(Db.Teams.AsEnumerable().ToList()));
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
-                _dbContext.Teams.AsEnumerable().ToDictionary(
+                Db.Teams.AsEnumerable().ToDictionary(
                     t => t.Id,
                     t => new TeamInfo(
                         t.Id, t.Name, t.Description, t.Slug,
@@ -92,7 +83,7 @@ public class ShiftManagementServiceTests : IDisposable
         serviceProvider.GetService(typeof(IUserService)).Returns(_userService);
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
 
-        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var repo = new ShiftManagementRepository(DbFactory);
 
         _auditLog = Substitute.For<IAuditLogService>();
         _service = new ShiftManagementService(
@@ -100,16 +91,10 @@ public class ShiftManagementServiceTests : IDisposable
             _auditLog,
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
+            Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ============================================================
@@ -142,7 +127,7 @@ public class ShiftManagementServiceTests : IDisposable
             Substitute.For<IServiceProvider>(),
             cache,
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
 
         var deleted = await service.DeleteEventAsync(eventId);
@@ -164,7 +149,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         // Arrange: rota with Period=Build, staffing grid for days -3 to -1
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var staffing = new List<DayStaffingInput>
         {
@@ -184,7 +169,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets.
         // StartTime/Duration are stored as the midnight/24h sentinel (don't-care for IsAllDay rows).
-        var shifts = await _dbContext.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
+        var shifts = await Db.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
         shifts.Should().HaveCount(3);
         shifts.Should().AllSatisfy(s =>
         {
@@ -199,7 +184,7 @@ public class ShiftManagementServiceTests : IDisposable
     public async Task CreateShiftAsync_CreatesShift_WhenInputMatchesRotaPeriodAndTeam()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CreateShiftAsync(new CreateShiftInput(
             rota.Id,
@@ -217,7 +202,7 @@ public class ShiftManagementServiceTests : IDisposable
         result.Message.Should().Be("Shift created.");
         result.ShiftId.Should().NotBeNull();
 
-        var shift = await _dbContext.Shifts.SingleAsync();
+        var shift = await Db.Shifts.SingleAsync();
         shift.Id.Should().Be(result.ShiftId.Value);
         shift.RotaId.Should().Be(rota.Id);
         shift.Description.Should().Be("Gate crew");
@@ -235,7 +220,7 @@ public class ShiftManagementServiceTests : IDisposable
     public async Task CreateShiftAsync_ReturnsFailure_WhenDayOffsetOutsideRotaPeriod()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CreateShiftAsync(new CreateShiftInput(
             rota.Id,
@@ -251,7 +236,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Shift date must fall within the rota's period.");
-        _dbContext.Shifts.Should().BeEmpty();
+        Db.Shifts.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -259,7 +244,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, -4);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
             shift.Id,
@@ -276,8 +261,8 @@ public class ShiftManagementServiceTests : IDisposable
         result.Message.Should().Be("Shift updated.");
         result.ShiftId.Should().Be(shift.Id);
 
-        _dbContext.ChangeTracker.Clear();
-        var updated = await _dbContext.Shifts.SingleAsync();
+        Db.ChangeTracker.Clear();
+        var updated = await Db.Shifts.SingleAsync();
         updated.Description.Should().Be("Updated gate crew");
         updated.DayOffset.Should().Be(-3);
         updated.StartTime.Should().Be(new LocalTime(9, 15));
@@ -293,7 +278,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, -4);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
             shift.Id,
@@ -309,8 +294,8 @@ public class ShiftManagementServiceTests : IDisposable
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Shift not found.");
 
-        _dbContext.ChangeTracker.Clear();
-        var unchanged = await _dbContext.Shifts.SingleAsync();
+        Db.ChangeTracker.Clear();
+        var unchanged = await Db.Shifts.SingleAsync();
         unchanged.Description.Should().BeNull();
         unchanged.DayOffset.Should().Be(-4);
     }
@@ -320,7 +305,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         // Arrange: staffing grid with varying min/max per day
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var staffing = new List<DayStaffingInput>
         {
@@ -338,7 +323,7 @@ public class ShiftManagementServiceTests : IDisposable
         result.Succeeded.Should().BeTrue();
 
         // Assert: each shift has the min/max from its corresponding day in the grid
-        var shifts = await _dbContext.Shifts
+        var shifts = await Db.Shifts
             .Where(s => s.RotaId == rota.Id)
             .OrderBy(s => s.DayOffset)
             .ToListAsync();
@@ -356,7 +341,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         // Arrange: rota with Period=Event
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var staffing = new List<DayStaffingInput>
         {
@@ -370,7 +355,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Build/strike shift generation is only for Build or Strike rotas.");
-        _dbContext.Shifts.Should().BeEmpty();
+        Db.Shifts.Should().BeEmpty();
     }
 
     // ============================================================
@@ -382,7 +367,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         // Arrange: event rota, days 0-2, slots [(08:00, 4h), (14:00, 4h)]
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var timeSlots = new List<ShiftTimeSlotInput>
         {
@@ -404,7 +389,7 @@ public class ShiftManagementServiceTests : IDisposable
         result.CreatedCount.Should().Be(6);
 
         // Assert: 6 shifts (3 days × 2 slots), none IsAllDay
-        var shifts = await _dbContext.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
+        var shifts = await Db.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
         shifts.Should().HaveCount(6);
         shifts.Should().AllSatisfy(s => s.IsAllDay.Should().BeFalse());
 
@@ -423,7 +408,7 @@ public class ShiftManagementServiceTests : IDisposable
     {
         // Arrange: rota with Period=Build
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var timeSlots = new List<ShiftTimeSlotInput>
         {
@@ -441,7 +426,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Event shift generation is only for Event-period rotas.");
-        _dbContext.Shifts.Should().BeEmpty();
+        Db.Shifts.Should().BeEmpty();
     }
 
     // ============================================================
@@ -454,14 +439,14 @@ public class ShiftManagementServiceTests : IDisposable
         // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var confirmedUser = SeedUser("Alice");
-        var pendingUser = SeedUser("Bob");
-        var bailedUser = SeedUser("Charlie");
+        var confirmedUser = SeedUserLocal("Alice");
+        var pendingUser = SeedUserLocal("Bob");
+        var bailedUser = SeedUserLocal("Charlie");
 
         SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
         SeedSignup(shift, bailedUser, SignupStatus.Bailed);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: true);
@@ -479,12 +464,12 @@ public class ShiftManagementServiceTests : IDisposable
         // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var confirmedUser = SeedUser("Zara");
-        var pendingUser = SeedUser("Alice");
+        var confirmedUser = SeedUserLocal("Zara");
+        var pendingUser = SeedUserLocal("Alice");
 
         SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: true);
@@ -504,9 +489,9 @@ public class ShiftManagementServiceTests : IDisposable
         // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var user = SeedUser("Alice");
+        var user = SeedUserLocal("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: false);
@@ -538,7 +523,7 @@ public class ShiftManagementServiceTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(importantRota);
+        Db.Rotas.Add(importantRota);
 
         var understaffedRota = new Rota
         {
@@ -553,22 +538,22 @@ public class ShiftManagementServiceTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(understaffedRota);
+        Db.Rotas.Add(understaffedRota);
 
         // Normal+staffed: MinVolunteers=2, two confirmed signups → meets minimum.
         var normalShift = SeedShift(normalStaffedRota, dayOffset: 1);
-        SeedSignup(normalShift, SeedUser("NormA"), SignupStatus.Confirmed);
-        SeedSignup(normalShift, SeedUser("NormB"), SignupStatus.Confirmed);
+        SeedSignup(normalShift, SeedUserLocal("NormA"), SignupStatus.Confirmed);
+        SeedSignup(normalShift, SeedUserLocal("NormB"), SignupStatus.Confirmed);
 
         // Important+staffed: still INCLUDED because of priority.
         var importantShift = SeedShift(importantRota, dayOffset: 1);
-        SeedSignup(importantShift, SeedUser("ImpA"), SignupStatus.Confirmed);
-        SeedSignup(importantShift, SeedUser("ImpB"), SignupStatus.Confirmed);
+        SeedSignup(importantShift, SeedUserLocal("ImpA"), SignupStatus.Confirmed);
+        SeedSignup(importantShift, SeedUserLocal("ImpB"), SignupStatus.Confirmed);
 
         // Normal+understaffed: zero confirmed signups, MinVolunteers=2 → understaffed → INCLUDED.
         var understaffedShift = SeedShift(understaffedRota, dayOffset: 1);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(es.Id, priorityOnly: true);
@@ -612,8 +597,8 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(unpromotedSubTeam);
-        _dbContext.Teams.Add(promotedSubTeam);
+        Db.Teams.Add(unpromotedSubTeam);
+        Db.Teams.Add(promotedSubTeam);
 
         var unpromotedRota = new Rota
         {
@@ -641,13 +626,13 @@ public class ShiftManagementServiceTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(unpromotedRota);
-        _dbContext.Rotas.Add(promotedRota);
+        Db.Rotas.Add(unpromotedRota);
+        Db.Rotas.Add(promotedRota);
 
         SeedShift(parentRota, dayOffset: 1);
         SeedShift(unpromotedRota, dayOffset: 1);
         SeedShift(promotedRota, dayOffset: 1);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var results = await _service.GetBrowseShiftsAsync(es.Id, departmentId: parentTeamId);
 
@@ -677,7 +662,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(promotedSubTeam);
+        Db.Teams.Add(promotedSubTeam);
 
         var promotedRota = new Rota
         {
@@ -692,11 +677,11 @@ public class ShiftManagementServiceTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(promotedRota);
+        Db.Rotas.Add(promotedRota);
 
         SeedShift(parentRota, dayOffset: 1);
         SeedShift(promotedRota, dayOffset: 1);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var results = await _service.GetBrowseShiftsAsync(es.Id, departmentId: promotedSubTeam.Id);
 
@@ -734,8 +719,8 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(unpromotedSubTeam);
-        _dbContext.Teams.Add(promotedSubTeam);
+        Db.Teams.Add(unpromotedSubTeam);
+        Db.Teams.Add(promotedSubTeam);
 
         var unpromotedRota = new Rota
         {
@@ -763,13 +748,13 @@ public class ShiftManagementServiceTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(unpromotedRota);
-        _dbContext.Rotas.Add(promotedRota);
+        Db.Rotas.Add(unpromotedRota);
+        Db.Rotas.Add(promotedRota);
 
         SeedShift(parentRota, dayOffset: 1);
         SeedShift(unpromotedRota, dayOffset: 1);
         SeedShift(promotedRota, dayOffset: 1);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var results = await _service.GetUrgentShiftsAsync(es.Id, departmentId: parentTeamId);
 
@@ -783,7 +768,7 @@ public class ShiftManagementServiceTests : IDisposable
     // Helpers
     // ============================================================
 
-    private User SeedUser(string displayName)
+    private User SeedUserLocal(string displayName)
     {
         var user = new User
         {
@@ -795,7 +780,7 @@ public class ShiftManagementServiceTests : IDisposable
             NormalizedUserName = $"{displayName.ToUpperInvariant()}@TEST.COM",
             CreatedAt = TestNow
         };
-        _dbContext.Users.Add(user);
+        Db.Users.Add(user);
         return user;
     }
 
@@ -813,7 +798,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 
@@ -828,7 +813,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.ShiftSignups.Add(signup);
+        Db.ShiftSignups.Add(signup);
     }
 
     private (EventSettings es, Rota rota) SeedRotaScenario(RotaPeriod period)
@@ -847,7 +832,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -859,7 +844,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(team);
+        Db.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -873,7 +858,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
 
         rota.EventSettings = es;
 
@@ -1010,13 +995,13 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         }).ToList();
-        _dbContext.Shifts.AddRange(shifts);
+        Db.Shifts.AddRange(shifts);
 
         // 7 confirmed signups on the first 7 shifts
         var userId = Guid.NewGuid();
         for (var i = 0; i < 7; i++)
         {
-            _dbContext.ShiftSignups.Add(new ShiftSignup
+            Db.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -1027,7 +1012,7 @@ public class ShiftManagementServiceTests : IDisposable
             });
         }
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Act
         var (filled, total, ratio) = await _service.GetOverallCoverageAsync();
@@ -1073,8 +1058,8 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(existing);
-        await _dbContext.SaveChangesAsync();
+        Db.EventSettings.Add(existing);
+        await Db.SaveChangesAsync();
 
         var second = new EventSettings
         {
@@ -1114,7 +1099,7 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(existing);
+        Db.EventSettings.Add(existing);
 
         var inactive = new EventSettings
         {
@@ -1129,8 +1114,8 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(inactive);
-        await _dbContext.SaveChangesAsync();
+        Db.EventSettings.Add(inactive);
+        await Db.SaveChangesAsync();
 
         // Act: flip the inactive row to IsActive=true
         inactive.IsActive = true;
@@ -1158,8 +1143,8 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.VolunteerEventProfiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        Db.VolunteerEventProfiles.Add(profile);
+        await Db.SaveChangesAsync();
 
         // Act
         var result = await _service.GetShiftProfileAsync(userId, includeMedical: false);
@@ -1182,8 +1167,8 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.VolunteerEventProfiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        Db.VolunteerEventProfiles.Add(profile);
+        await Db.SaveChangesAsync();
 
         // Act
         var result = await _service.GetShiftProfileAsync(userId, includeMedical: true);
@@ -1203,9 +1188,9 @@ public class ShiftManagementServiceTests : IDisposable
         // Arrange: rota with one Confirmed signup
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var user = SeedUser("Alice");
+        var user = SeedUserLocal("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Act + Assert
         var act = () => _service.DeleteRotaAsync(rota.Id);
@@ -1219,8 +1204,8 @@ public class ShiftManagementServiceTests : IDisposable
         // Arrange: rota with two Pending signups (no Confirmed)
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var user1 = SeedUser("Bob");
-        var user2 = SeedUser("Carol");
+        var user1 = SeedUserLocal("Bob");
+        var user2 = SeedUserLocal("Carol");
         var pending1 = new ShiftSignup
         {
             Id = Guid.NewGuid(),
@@ -1239,17 +1224,17 @@ public class ShiftManagementServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        await _dbContext.ShiftSignups.AddRangeAsync(pending1, pending2);
-        await _dbContext.SaveChangesAsync();
+        await Db.ShiftSignups.AddRangeAsync(pending1, pending2);
+        await Db.SaveChangesAsync();
 
         // Act
         await _service.DeleteRotaAsync(rota.Id);
 
         // Assert: rota gone, pending signups removed by cascade-delete. We query
         // through the service so we hit the same factory-managed context the
-        // delete used (the test's _dbContext caches the tracked rota).
+        // delete used (the test's Db caches the tracked rota).
         (await _service.GetRotaByIdAsync(rota.Id)).Should().BeNull();
-        (await _dbContext.ShiftSignups
+        (await Db.ShiftSignups
             .AsNoTracking()
             .Where(s => s.Id == pending1.Id || s.Id == pending2.Id)
             .ToListAsync())
@@ -1265,12 +1250,12 @@ public class ShiftManagementServiceTests : IDisposable
     {
         // Arrange: rota currently on team A, target team B (no parent).
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var targetTeamId = Guid.NewGuid();
         var actorUserId = Guid.NewGuid();
 
-        var sourceTeam = await _dbContext.Teams.FirstAsync(t => t.Id == rota.TeamId);
+        var sourceTeam = await Db.Teams.FirstAsync(t => t.Id == rota.TeamId);
         _teamService.GetTeamByIdAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(sourceTeam);
         _teamService.GetTeamByIdAsync(targetTeamId, Arg.Any<CancellationToken>())

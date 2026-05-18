@@ -8,32 +8,24 @@ using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public class ShiftManagementServiceCoveragePiesTests : IDisposable
+public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
     private readonly ITeamService _teamService;
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     public ShiftManagementServiceCoveragePiesTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
         _teamService = Substitute.For<ITeamService>();
 
         // Resolve teams (with their parents) directly from the in-memory DB —
@@ -43,11 +35,11 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             .Returns(ci =>
             {
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                var direct = _dbContext.Teams.Where(t => ids.Contains(t.Id)).AsEnumerable().ToList();
+                var direct = Db.Teams.Where(t => ids.Contains(t.Id)).AsEnumerable().ToList();
                 var parentIds = direct.Where(t => t.ParentTeamId.HasValue).Select(t => t.ParentTeamId!.Value).ToList();
                 var parents = parentIds.Count == 0
                     ? []
-                    : _dbContext.Teams.Where(t => parentIds.Contains(t.Id)).AsEnumerable().ToList();
+                    : Db.Teams.Where(t => parentIds.Contains(t.Id)).AsEnumerable().ToList();
                 var all = direct.Concat(parents).GroupBy(t => t.Id).Select(g => g.First());
                 return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(all.ToDictionary(t => t.Id));
             });
@@ -57,30 +49,24 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(Substitute.For<IRoleAssignmentService>());
         serviceProvider.GetService(typeof(IUserService)).Returns(Substitute.For<IUserService>());
 
-        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var repo = new ShiftManagementRepository(DbFactory);
 
         _service = new ShiftManagementService(
             repo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
+            Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            new FakeClock(TestNow),
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
     public async Task EmptyEvent_ReturnsEmptyList()
     {
         var (es, _, _) = SeedDeptScenario();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -94,7 +80,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         var rota = AddRota(es, art, RotaPeriod.Event);
         AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 2.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -114,7 +100,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -135,7 +121,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -154,7 +140,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
         AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -173,7 +159,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         var rota = AddRota(es, art, RotaPeriod.Event);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         AddConfirmedSignup(shift); // 1/3 → 33.3% → 33 (away from zero)
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -232,11 +218,11 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        await _dbContext.Teams.AddRangeAsync(mango, appleSlice, banana);
+        await Db.Teams.AddRangeAsync(mango, appleSlice, banana);
 
         foreach (var t in new[] { mango, appleSlice, banana })
             AddShift(AddRota(es, t, RotaPeriod.Event), dayOffset: 0, maxVolunteers: 1, durationHours: 4.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -258,7 +244,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0, adminOnly: true);
         AddShift(hiddenRota, dayOffset: 0, maxVolunteers: 10, durationHours: 4.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -273,7 +259,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         var rota = AddRota(es, art, RotaPeriod.Event);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         for (var i = 0; i < 7; i++) AddConfirmedSignup(shift);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -290,7 +276,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -299,7 +285,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         });
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -308,7 +294,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -325,7 +311,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         shift.Duration = Duration.FromHours(24);
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
@@ -342,7 +328,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         AddShift(rota, dayOffset: -7, maxVolunteers: 1, durationHours: 4.0);
         AddShift(rota, dayOffset: 2, maxVolunteers: 1, durationHours: 4.0);
         AddShift(rota, dayOffset: 8, maxVolunteers: 1, durationHours: 4.0);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(
             es.Id,
@@ -370,7 +356,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
 
         var art = new Team
         {
@@ -383,7 +369,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(art);
+        Db.Teams.Add(art);
 
         Team? lighting = null;
         if (withSubteam)
@@ -400,7 +386,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
                 CreatedAt = TestNow,
                 UpdatedAt = TestNow
             };
-            _dbContext.Teams.Add(lighting);
+            Db.Teams.Add(lighting);
         }
 
         return (es, art, lighting);
@@ -422,7 +408,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
         return rota;
     }
 
@@ -444,7 +430,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 
@@ -459,7 +445,7 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.ShiftSignups.Add(s);
+        Db.ShiftSignups.Add(s);
         return s;
     }
 }
