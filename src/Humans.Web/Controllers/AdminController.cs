@@ -381,6 +381,7 @@ public class AdminController : HumansControllerBase
                         KeyRemovals = s.KeyRemovals,
                         BulkInvalidations = s.BulkInvalidations,
                         HitRatePercent = s.HitRatePercent,
+                        IsWarmedUp = s.IsWarmedUp,
                     })
                     .ToList()
             };
