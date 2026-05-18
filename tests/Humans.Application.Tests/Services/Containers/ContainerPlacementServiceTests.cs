@@ -5,59 +5,45 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Containers;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Containers;
 
-public class ContainerPlacementServiceTests : IDisposable
+public sealed class ContainerPlacementServiceTests : ServiceTestHarness
 {
     private const int Year = 2026;
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000002");
     private static readonly Guid ActorUserId = Guid.Parse("00000000-0000-0000-0099-000000000003");
 
-    private readonly DbContextOptions<HumansDbContext> _dbOptions;
-    private readonly FakeClock _clock;
     private readonly ContainerService _sut;
-    private readonly Instant _startTime = Instant.FromUtc(2026, 4, 26, 10, 0, 0);
 
     public ContainerPlacementServiceTests()
+        : base(Instant.FromUtc(2026, 4, 26, 10, 0))
     {
-        _dbOptions = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _clock = new FakeClock(_startTime);
-        var repo = new ContainerRepository(new TestDbContextFactory(_dbOptions));
+        var repo = new ContainerRepository(DbFactory);
         _sut = new ContainerService(
             repo,
             Substitute.For<IFileStorage>(),
             Substitute.For<ICampService>(),
             Substitute.For<IAuditLogService>(),
-            _clock);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
+            Clock);
     }
 
     private async Task<Container> SeedContainerAsync()
     {
-        await using var ctx = new HumansDbContext(_dbOptions);
+        var now = Clock.GetCurrentInstant();
         var container = new Container
         {
             Id = Guid.NewGuid(),
             CampId = CampId,
             Name = "Container A",
-            CreatedAt = _startTime,
-            UpdatedAt = _startTime,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
-        ctx.Containers.Add(container);
-        await ctx.SaveChangesAsync();
+        Db.Containers.Add(container);
+        await Db.SaveChangesAsync();
         return container;
     }
 
@@ -66,12 +52,12 @@ public class ContainerPlacementServiceTests : IDisposable
     {
         var container = await SeedContainerAsync();
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
-        _clock.AdvanceSeconds(60);
+        Clock.AdvanceSeconds(60);
 
         var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
 
         result.LocationGeoJson.Should().Be(geoJson);
-        result.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        result.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
         result.Year.Should().Be(Year);
     }
 

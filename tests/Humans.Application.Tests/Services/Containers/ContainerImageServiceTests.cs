@@ -8,41 +8,28 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Containers;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Containers;
 
-public class ContainerImageServiceTests : IDisposable
+public sealed class ContainerImageServiceTests : ServiceTestHarness
 {
-    private readonly DbContextOptions<HumansDbContext> _dbOptions;
-    private readonly FakeClock _clock;
     private readonly IFileStorage _fileStorage;
     private readonly ContainerService _sut;
-    private readonly Instant _startTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
+    private static readonly Instant StartTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
 
-    public ContainerImageServiceTests()
+    public ContainerImageServiceTests() : base(StartTime)
     {
-        _dbOptions = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _clock = new FakeClock(_startTime);
         _fileStorage = Substitute.For<IFileStorage>();
-        var repo = new ContainerRepository(new TestDbContextFactory(_dbOptions));
+        var repo = new ContainerRepository(DbFactory);
         _sut = new ContainerService(
             repo,
             _fileStorage,
             Substitute.For<ICampService>(),
             Substitute.For<IAuditLogService>(),
-            _clock);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
+            Clock);
     }
 
     private static ContainerImageUpload FakeImage(string kind = "main") =>
@@ -50,7 +37,7 @@ public class ContainerImageServiceTests : IDisposable
 
     private async Task<Container> SeedContainerAsync(string? imagePath = null)
     {
-        await using var ctx = new HumansDbContext(_dbOptions);
+        await using var ctx = new HumansDbContext(DbOptions);
         var container = new Container
         {
             Id = Guid.NewGuid(),
@@ -59,8 +46,8 @@ public class ContainerImageServiceTests : IDisposable
             ImageStoragePath = imagePath,
             ImageContentType = imagePath is not null ? "image/jpeg" : null,
             ImageFileName = imagePath is not null ? "main.jpg" : null,
-            CreatedAt = _startTime,
-            UpdatedAt = _startTime,
+            CreatedAt = StartTime,
+            UpdatedAt = StartTime,
         };
         ctx.Containers.Add(container);
         await ctx.SaveChangesAsync();

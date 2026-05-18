@@ -2,39 +2,26 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public class GeneralAvailabilityServiceTests : IDisposable
+public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
     private readonly GeneralAvailabilityRepository _repo;
     private readonly GeneralAvailabilityService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     public GeneralAvailabilityServiceTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _repo = new GeneralAvailabilityRepository(new TestDbContextFactory(options));
-        _service = new GeneralAvailabilityService(_repo, Substitute.For<IShiftViewInvalidator>(), new FakeClock(TestNow));
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        _repo = new GeneralAvailabilityRepository(DbFactory);
+        _service = new GeneralAvailabilityService(_repo, Substitute.For<IShiftViewInvalidator>(), Clock);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -42,11 +29,11 @@ public class GeneralAvailabilityServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2, -1]);
 
-        var record = await _dbContext.GeneralAvailability
+        var record = await Db.GeneralAvailability
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
         record.Should().NotBeNull();
@@ -58,7 +45,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // First set
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
@@ -66,7 +53,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         // Update
         await _service.SetAvailabilityAsync(userId, esId, [0, 1, 2]);
 
-        var records = await _dbContext.GeneralAvailability
+        var records = await Db.GeneralAvailability
             .AsNoTracking()
             .Where(g => g.UserId == userId && g.EventSettingsId == esId)
             .ToListAsync();
@@ -81,7 +68,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         var user2Id = Guid.NewGuid();
         var user3Id = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SetAvailabilityAsync(user1Id, esId, [-3, -2, -1]);
         await _service.SetAvailabilityAsync(user2Id, esId, [-2, 0, 1]);
@@ -105,12 +92,12 @@ public class GeneralAvailabilityServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SetAvailabilityAsync(userId, esId, [0, 1]);
         await _service.DeleteAsync(userId, esId);
 
-        var after = await _dbContext.GeneralAvailability
+        var after = await Db.GeneralAvailability
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
         after.Should().BeNull();
@@ -138,7 +125,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
         return es.Id;
     }
 }
