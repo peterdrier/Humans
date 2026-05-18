@@ -20,7 +20,7 @@ This is a horizontal — it doesn't belong to one section. Parent issue is `sect
 Each phase is one or more independent PRs off `main` (this is not `one-branch-for-phased-plans` — these are independently shippable; some span months). Order matters for P0–P3; P4 batches in parallel after P3.
 
 ### P0 — Fix the 53 existing integration test failures
-**Value: high · Effort: medium · Risk: low. Tracking: TBD-link-after-issue-created.**
+**Value: high · Effort: medium · Risk: low. Tracking: nobodies-collective/Humans#762.**
 
 Before turning anything on in CI, the existing failure backlog gets triaged. Each failure either:
 - gets a fix PR (bucketed by cluster: Hangfire init, container race, schema drift, fixture state, etc.) — one PR per cluster, all linked to the P0 issue, **or**
@@ -104,7 +104,20 @@ Bump `longRunningTestSeconds` in `tests/xunit.runner.json` to 10 (or remove). Th
 
 ## Tracking
 
-Parent: `nobodies-collective/Humans#<TBD>` — one issue per phase, all linked from the parent's checklist. Each phase issue carries `section:infra` (or the relevant section label for P4 batches).
+Parent: nobodies-collective/Humans#761. Phase issues:
+
+| Phase | Issue |
+|-------|-------|
+| P0 — Fix 53 integration failures | nobodies-collective/Humans#762 |
+| P1 — Integration in CI | nobodies-collective/Humans#763 |
+| P2 — Shared container fixture | nobodies-collective/Humans#764 |
+| P3 — Hangfire abstraction | nobodies-collective/Humans#765 |
+| P4 — EF In-Memory migration | nobodies-collective/Humans#766 |
+| P5 — Quarantine discipline | nobodies-collective/Humans#767 |
+| P6 — Diagnostic noise | nobodies-collective/Humans#768 |
+| P7 — Fixture mutation hygiene | nobodies-collective/Humans#769 |
+
+Each phase issue carries `section:infra`. P4 sub-issues (per section batch) carry the relevant section label.
 
 ## Out of scope
 
