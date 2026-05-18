@@ -9,14 +9,15 @@ namespace Humans.Application.Interfaces.Profiles;
 public interface IContactFieldService : IApplicationService
 {
     /// <summary>
-    /// Gets contact fields visible to the viewer for a given profile.
+    /// Gets contact fields visible to the viewer for a given profile owner.
+    /// Reads from the cached <c>UserInfo</c> projection — no DB round-trip on a warm cache.
     /// </summary>
-    /// <param name="profileId">The profile to get contact fields for.</param>
+    /// <param name="userId">The owner of the profile.</param>
     /// <param name="viewerUserId">The user viewing the profile.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Contact fields filtered by visibility level.</returns>
     Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         Guid viewerUserId,
         CancellationToken cancellationToken = default);
 

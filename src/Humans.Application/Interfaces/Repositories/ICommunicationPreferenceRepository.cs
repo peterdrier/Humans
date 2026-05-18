@@ -44,7 +44,8 @@ public interface ICommunicationPreferenceRepository : IRepository
         IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all preferences for a user, read-only. Used by GDPR export.
+    /// Returns all preferences for a user, read-only. Used by the
+    /// <see cref="UserInfo"/> cache rebuild path and GDPR export.
     /// </summary>
     Task<IReadOnlyList<CommunicationPreference>> GetByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default);

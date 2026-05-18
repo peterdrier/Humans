@@ -3,10 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -33,7 +31,6 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -47,7 +44,6 @@ public class TeamAdminController : HumansTeamControllerBase
         INotificationService notificationService,
         IAuthorizationService authorizationService,
         ISystemTeamSync systemTeamSyncJob,
-        IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
         : base(userService, teamService, authorizationService)
@@ -60,7 +56,6 @@ public class TeamAdminController : HumansTeamControllerBase
         _emailProvisioningService = emailProvisioningService;
         _notificationService = notificationService;
         _systemTeamSyncJob = systemTeamSyncJob;
-        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -329,7 +324,6 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         else
         {
-            _cache.InvalidateNobodiesTeamEmails();
 
             if (result.RecoveryEmail is not null)
             {

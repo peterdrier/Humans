@@ -26,7 +26,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -90,7 +89,6 @@ public class ProfileControllerPopoverTests
             _teamService,
             Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),
-            new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _authorizationService,
             Substitute.For<IConsentService>(),

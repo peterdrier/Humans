@@ -69,7 +69,7 @@ public class ProfileCardViewComponent : ViewComponent
         }
 
         var contactFields = profile is not null
-            ? await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, viewerUserId)
+            ? await _contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId)
             : [];
 
         // Get visible user emails based on access level

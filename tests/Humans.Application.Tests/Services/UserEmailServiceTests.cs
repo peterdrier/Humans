@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profiles;
@@ -42,6 +43,33 @@ public class UserEmailServiceTests
             _auditLogService,
             _serviceProvider,
             NullLogger<UserEmailService>.Instance);
+    }
+
+#pragma warning disable HUM_USERINFO_DISPLAYNAME
+    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<UserEmail> emails) =>
+        new(
+            Id: userId, DisplayName: "test-" + userId.ToString("N")[..6], PreferredLanguage: "en",
+            FallbackPictureUrl: null,
+            CreatedAt: Instant.MinValue, LastLoginAt: null, LastConsentReminderSentAt: null,
+            DeletionRequestedAt: null, DeletionScheduledFor: null, DeletionEligibleAfter: null,
+            UnsubscribedFromCampaigns: false, ICalToken: null, SuppressScheduleChangeEmails: false,
+            MagicLinkSentAt: null, GoogleEmailStatus: default, ContactSource: null, ExternalSourceId: null,
+            MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
+            UserEmails: emails.Select(e => new UserEmailInfo(
+                e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
+                e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
+                e.CreatedAt, e.UpdatedAt)).ToList(),
+            EventParticipations: [], ExternalLogins: [], Profile: null, CommunicationPreferences: []);
+#pragma warning restore HUM_USERINFO_DISPLAYNAME
+
+    // Stub IUserService to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
+    private void StubAllUserInfosFromRows(IReadOnlyList<UserEmail> rows)
+    {
+        var infos = rows.GroupBy(r => r.UserId)
+            .Select(g => BuildStubUserInfo(g.Key, g.ToList()))
+            .ToList();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyCollection<UserInfo>)infos);
     }
 
     [HumansFact]
@@ -665,11 +693,7 @@ public class UserEmailServiceTests
             new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "h@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
         };
 
-        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rows);
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        StubAllUserInfosFromRows(rows);
 
         var violations = await _service.GetEmailFlagViolationsAsync();
 
@@ -701,11 +725,7 @@ public class UserEmailServiceTests
         {
             new() { Id = Guid.NewGuid(), UserId = userId, Email = "a@x.test", IsVerified = false, IsGoogle = false, IsPrimary = false },
         };
-        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rows);
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        StubAllUserInfosFromRows(rows);
 
         var violations = await _service.GetEmailFlagViolationsAsync();
 

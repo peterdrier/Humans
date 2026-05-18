@@ -19,7 +19,6 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
@@ -68,7 +67,6 @@ public class ProfileController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ICampaignService _campaignService;
     private readonly IEmailOutboxService _emailOutboxService;
-    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
@@ -129,7 +127,6 @@ public class ProfileController : HumansControllerBase
         ITeamService teamService,
         ICampaignService campaignService,
         IEmailOutboxService emailOutboxService,
-        IMemoryCache cache,
         IClock clock,
         IAuthorizationService authorizationService,
         IConsentService consentService,
@@ -163,7 +160,6 @@ public class ProfileController : HumansControllerBase
         _teamService = teamService;
         _campaignService = campaignService;
         _emailOutboxService = emailOutboxService;
-        _cache = cache;
         _clock = clock;
         _authorizationService = authorizationService;
         _userService = userService;
@@ -656,7 +652,6 @@ public class ProfileController : HumansControllerBase
         {
             var decodedToken = HttpUtility.UrlDecode(token);
             var result = await _userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
-            _cache.InvalidateNobodiesTeamEmails();
 
             return VerifyEmailSuccess(userId, result);
         }
@@ -715,7 +710,6 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
-            _cache.InvalidateNobodiesTeamEmails();
             // Self audit at controller — SetPrimaryAsync doesn't take actorUserId.
             await _auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
@@ -796,7 +790,6 @@ public class ProfileController : HumansControllerBase
             var deleted = await _userEmailService.DeleteEmailAsync(user.Id, emailId);
             if (deleted)
             {
-                _cache.InvalidateNobodiesTeamEmails();
                 await LogSelfEmailDeletedAsync(user.Id, emailId);
                 SetSuccess(_localizer["Profile_EmailDeleted"].Value);
             }
@@ -852,7 +845,6 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["EmailGrid_GoogleServiceUpdated"].Value);
             return;
         }
@@ -890,7 +882,6 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["EmailGrid_GoogleFlagCleared"].Value);
             return;
         }
@@ -928,7 +919,6 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["EmailGrid_PrimaryFlagCleared"].Value);
             return;
         }
@@ -986,7 +976,6 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
             return;
         }
@@ -1137,7 +1126,6 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetPrimaryAsync(id, emailId, ct);
-            _cache.InvalidateNobodiesTeamEmails();
             // Audit at controller — SetPrimaryAsync has no actorUserId.
             await _auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
@@ -1340,7 +1328,6 @@ public class ProfileController : HumansControllerBase
             return;
         }
 
-        _cache.InvalidateNobodiesTeamEmails();
 
         await _auditLogService.LogAsync(
             AuditAction.UserEmailAdded,
@@ -1363,7 +1350,6 @@ public class ProfileController : HumansControllerBase
         try
         {
             var result = await _userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
-            _cache.InvalidateNobodiesTeamEmails();
             if (result.MergeRequestCreated)
             {
                 SetSuccess(_localizer["EmailGrid_AdminVerifyMergeRequested"].Value);
@@ -1444,7 +1430,6 @@ public class ProfileController : HumansControllerBase
             return;
         }
 
-        _cache.InvalidateNobodiesTeamEmails();
         await _auditLogService.LogAsync(
             AuditAction.UserEmailDeleted,
             nameof(User), userId,

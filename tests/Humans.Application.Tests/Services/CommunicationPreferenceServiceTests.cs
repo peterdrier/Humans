@@ -1,6 +1,9 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
+using NSubstitute;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
@@ -95,13 +98,45 @@ public class CommunicationPreferenceServiceTests : IDisposable
             dataProtectionProvider, emailSettings,
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
+        // The service now reads preferences through IUserService.GetUserInfoAsync (the cache layer).
+        // For these tests, project the in-memory db state into UserInfo on each read so the
+        // write-then-read semantics that this suite verifies still hold end-to-end.
+        var userService = Substitute.For<IUserService>();
+        userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var prefs = _dbContext.CommunicationPreferences
+                    .Where(cp => cp.UserId == userId)
+                    .Select(cp => new CommunicationPreferenceInfo(
+                        cp.Id, cp.Category, cp.OptedOut, cp.InboxEnabled,
+                        cp.UpdatedAt, cp.UpdateSource, cp.SubscribedAt))
+                    .ToList();
+                return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, prefs));
+            });
+
         _service = new CommunicationPreferenceService(
             repository,
+            userService,
             tokenProvider,
             _clock,
             new StubAuditLogService(),
             NullLogger<CommunicationPreferenceService>.Instance);
     }
+
+#pragma warning disable HUM_USERINFO_DISPLAYNAME
+    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreferenceInfo> prefs) =>
+        new(
+            Id: userId, DisplayName: "", PreferredLanguage: "en", FallbackPictureUrl: null,
+            CreatedAt: Instant.MinValue, LastLoginAt: null, LastConsentReminderSentAt: null,
+            DeletionRequestedAt: null, DeletionScheduledFor: null, DeletionEligibleAfter: null,
+            UnsubscribedFromCampaigns: false, ICalToken: null, SuppressScheduleChangeEmails: false,
+            MagicLinkSentAt: null, GoogleEmailStatus: default, ContactSource: null, ExternalSourceId: null,
+            MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
+            UserEmails: [], EventParticipations: [], ExternalLogins: [],
+            Profile: null,
+            CommunicationPreferences: prefs);
+#pragma warning restore HUM_USERINFO_DISPLAYNAME
 
     public void Dispose()
     {

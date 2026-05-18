@@ -18,6 +18,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
 {
     private readonly IContactFieldRepository _repository;
     private readonly IProfileRepository _profileRepository;
+    private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IUserInfoInvalidator _userInfoInvalidator;
@@ -32,6 +33,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     public ContactFieldService(
         IContactFieldRepository repository,
         IProfileRepository profileRepository,
+        IUserService userService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IUserInfoInvalidator userInfoInvalidator,
@@ -40,6 +42,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     {
         _repository = repository;
         _profileRepository = profileRepository;
+        _userService = userService;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _userInfoInvalidator = userInfoInvalidator;
@@ -48,28 +51,27 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     }
 
     public async Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         Guid viewerUserId,
         CancellationToken cancellationToken = default)
     {
-        var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
-        if (ownerUserId is null)
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info?.Profile is null)
             return [];
 
         var accessLevel = await GetViewerAccessLevelAsync(
-            ownerUserId.Value, viewerUserId, cancellationToken);
+            userId, viewerUserId, cancellationToken);
         var allowedVisibilities = GetAllowedVisibilities(accessLevel);
 
-        var fields = await _repository.GetVisibleByProfileIdAsync(
-            profileId, allowedVisibilities, cancellationToken);
-
-        return fields.Select(cf => new ContactFieldDto(
-            cf.Id,
-            cf.FieldType,
-            cf.DisplayLabel,
-            cf.Value,
-            cf.Visibility
-        )).ToList();
+        return info.Profile.ContactFields
+            .Where(cf => allowedVisibilities.Contains(cf.Visibility))
+            .Select(cf => new ContactFieldDto(
+                cf.Id,
+                cf.FieldType,
+                cf.FieldType == ContactFieldType.Other ? cf.CustomLabel ?? "Other" : cf.FieldType.ToString(),
+                cf.Value,
+                cf.Visibility))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(

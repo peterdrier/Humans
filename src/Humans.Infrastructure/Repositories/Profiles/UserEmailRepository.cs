@@ -122,16 +122,6 @@ internal sealed class UserEmailRepository : IUserEmailRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.IsVerified && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

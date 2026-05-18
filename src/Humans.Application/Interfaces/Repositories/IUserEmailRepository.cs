@@ -64,13 +64,6 @@ public interface IUserEmailRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all verified @nobodies.team emails across all users.
-    /// Used as a bulk load to support in-memory filtering by callers.
-    /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Bulk-moves <c>user_emails</c> rows from <paramref name="sourceUserId"/>
     /// to <paramref name="targetUserId"/> for the account-merge fold flow.
     /// Conflict rule per the fold spec: when source and target both have a
