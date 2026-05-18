@@ -237,7 +237,8 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var now = _clock.GetCurrentInstant();
         var persisted = await _repo.UpsertParticipationAsync(
-            userId, year, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, now, ct);
+            userId, year, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
+            declaredAt: now, checkedInAt: null, ct);
 
         if (persisted is null)
         {
@@ -284,9 +285,18 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     }
 
     public Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, CancellationToken ct = default) =>
-        // Attended-is-permanent and source-override semantics live in repo upsert.
-        _repo.UpsertParticipationAsync(userId, year, status, ParticipationSource.TicketSync, declaredAt: null, ct);
+        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default) =>
+        // Attended-is-permanent, source-override and CheckedInAt-never-overwrite
+        // semantics live in repo upsert.
+        _repo.UpsertParticipationAsync(
+            userId, year, status, ParticipationSource.TicketSync,
+            declaredAt: null, checkedInAt: checkedInAt, ct);
+
+    public Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(int year, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "GetOnsiteUsersAsync is only meaningful through CachingUserService — it projects " +
+            "Attended+CheckedInAt rows from the cached UserInfo snapshot. Hitting the inner " +
+            "UserService indicates a DI registration mistake.");
 
     public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
         _repo.RemoveParticipationAsync(userId, year, ParticipationSource.TicketSync, ct);

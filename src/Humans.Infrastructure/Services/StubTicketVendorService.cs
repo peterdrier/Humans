@@ -172,6 +172,20 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 // Every 5th ticket is checked in for realistic event summary stats
                 var status = (orderIndex * 10 + t) % 5 == 0 ? "checked_in" : "valid";
 
+                // Stub a gate-arrival time for checked-in tickets so dev /
+                // preview environments can exercise the "Who's onsite" view
+                // (#736). Spreads arrivals across the gate-day window.
+                Instant? checkedInAt = null;
+                if (string.Equals(status, "checked_in", StringComparison.Ordinal))
+                {
+                    var gateDay = new LocalDate(2026, 7, 8);
+                    var hour = 9 + ((orderIndex * 10 + t) % 12); // 09:00–20:00
+                    checkedInAt = gateDay
+                        .At(new LocalTime(hour, (orderIndex * 7 + t * 13) % 60))
+                        .InUtc()
+                        .ToInstant();
+                }
+
                 var ticketDto = new VendorTicketDto(
                     VendorTicketId: vendorTicketId,
                     VendorOrderId: vendorOrderId,
@@ -179,7 +193,8 @@ public sealed class StubTicketVendorService : ITicketVendorService
                     AttendeeEmail: attendee.Email,
                     TicketTypeName: ticket.Type,
                     Price: ticket.Price,
-                    Status: status);
+                    Status: status,
+                    CheckedInAt: checkedInAt);
 
                 vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);

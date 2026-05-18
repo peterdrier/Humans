@@ -1,5 +1,6 @@
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
+@using Humans.Web.Extensions
 @inject IAuthorizationService AuthService
 @model Humans.Web.Models.ProfileViewModel
 @{
@@ -17,6 +18,14 @@
                 </a>
             </div>
         </div>
+
+        @if (Model.CanViewOnsiteChip && Model.OnsiteSince is not null)
+        {
+            <span class="badge text-bg-success mb-2" title="Checked in at the gate">
+                <i class="fa-solid fa-circle-check"></i>
+                Onsite since @Model.OnsiteSince.Value.ToDisplayDateTime()
+            </span>
+        }
 
         @if (Model.IsOwnProfile)
         {

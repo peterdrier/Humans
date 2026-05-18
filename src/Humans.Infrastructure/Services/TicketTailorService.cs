@@ -142,7 +142,10 @@ public class TicketTailorService : ITicketVendorService
                     AttendeeEmail: ResolveAttendeeEmail(ticket),
                     TicketTypeName: ticket.Description ?? "Unknown",
                     Price: (ticket.ListedPrice ?? 0) / 100m,
-                    Status: ticket.Status ?? "valid"));
+                    Status: ticket.Status ?? "valid",
+                    CheckedInAt: ticket.CheckIn?.CheckedInAt is long epoch and > 0
+                        ? Instant.FromUnixTimeSeconds(epoch)
+                        : null));
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
@@ -352,7 +355,14 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("listed_price")] int? ListedPrice,
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("order_id")] string? OrderId,
-        [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions);
+        [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
+        [property: JsonPropertyName("check_in")] TtCheckIn? CheckIn = null);
+
+    // TicketTailor returns `check_in` as a nested object on issued_tickets when
+    // a ticket has been scanned at the gate. `checked_in_at` is epoch seconds.
+    // Absent / null when not checked in. Issue nobodies-collective/Humans#736.
+    internal sealed record TtCheckIn(
+        [property: JsonPropertyName("checked_in_at")] long? CheckedInAt);
 
     internal sealed record TtCustomQuestion(
         [property: JsonPropertyName("question")] string? Question,

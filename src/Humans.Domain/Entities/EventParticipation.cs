@@ -32,6 +32,18 @@ public class EventParticipation
     public Instant? DeclaredAt { get; set; }
 
     /// <summary>
+    /// When the user was first checked in at the event gate (from the
+    /// TicketTailor <c>check_in.checked_in_at</c> field). Populated only when
+    /// <see cref="Status"/> becomes <see cref="ParticipationStatus.Attended"/>
+    /// via <see cref="ParticipationSource.TicketSync"/>. Once set it is never
+    /// cleared or overwritten — matches the existing invariant that
+    /// <see cref="ParticipationStatus.Attended"/> rows are permanent and not
+    /// removed by sync. May be null if the vendor did not return a timestamp
+    /// when the status flipped (graceful fallback).
+    /// </summary>
+    public Instant? CheckedInAt { get; set; }
+
+    /// <summary>
     /// How the status was set.
     /// </summary>
     public ParticipationSource Source { get; set; }
