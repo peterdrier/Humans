@@ -9,20 +9,16 @@ using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class CampServiceEarlyEntryTests : IDisposable
+public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CampService _service;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
@@ -31,32 +27,15 @@ public class CampServiceEarlyEntryTests : IDisposable
     private readonly ICampRoleService _campRoleService;
 
     public CampServiceEarlyEntryTests()
+        : base(Instant.FromUtc(2026, 3, 13, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 13, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
         _fileStorage = new InMemoryFileStorage();
 
-        var factory = new TestDbContextFactory(options);
-        var repo = new CampRepository(factory);
-        var roleRepo = new CampRoleRepository(factory);
+        var repo = new CampRepository(DbFactory);
+        var roleRepo = new CampRoleRepository(DbFactory);
 
-        // IUserService substitute — returns seeded users from the shared in-memory db.
-        _userService = Substitute.For<IUserService>();
-        _userService.GetByIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
-                using var ctx = new HumansDbContext(options);
-                var users = ctx.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                    users.ToDictionary(u => u.Id));
-            });
-        _userService.StubGetUserInfosFromDb(options);
+        _userService = NewDbBackedUserService();
 
         _notificationEmitter = Substitute.For<INotificationEmitter>();
 
@@ -74,14 +53,8 @@ public class CampServiceEarlyEntryTests : IDisposable
             _notificationEmitter,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
-            _clock,
+            Clock,
             NullLogger<CampService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================
@@ -120,7 +93,7 @@ public class CampServiceEarlyEntryTests : IDisposable
 
         await _service.SetCampSeasonEeSlotCountAsync(season.Id, 13, actor);
 
-        var reloaded = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        var reloaded = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
         reloaded.EeSlotCount.Should().Be(13);
 
         await _auditLog.Received(1).LogAsync(
@@ -142,11 +115,11 @@ public class CampServiceEarlyEntryTests : IDisposable
         var actor = Guid.NewGuid();
         await _service.SetCampSeasonEeSlotCountAsync(season.Id, 3, actor);
 
-        var reloaded = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        var reloaded = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
         reloaded.EeSlotCount.Should().Be(3);
 
         // Existing grants persist — no auto-revoke.
-        var grantedCount = await _dbContext.CampMembers
+        var grantedCount = await Db.CampMembers
             .CountAsync(m => m.CampSeasonId == season.Id
                           && m.HasEarlyEntry
                           && m.Status == CampMemberStatus.Active);
@@ -159,15 +132,15 @@ public class CampServiceEarlyEntryTests : IDisposable
 
     private async Task SeedSettingsAsync()
     {
-        if (!await _dbContext.CampSettings.AnyAsync())
+        if (!await Db.CampSettings.AnyAsync())
         {
-            _dbContext.CampSettings.Add(new CampSettings
+            Db.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = 2026,
                 OpenSeasons = [2026]
             });
-            await _dbContext.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
     }
 
@@ -180,8 +153,8 @@ public class CampServiceEarlyEntryTests : IDisposable
             ContactEmail = "test@camp.com",
             ContactPhone = "+34600000000",
             CreatedByUserId = Guid.NewGuid(),
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
         var season = new CampSeason
         {
@@ -205,12 +178,12 @@ public class CampServiceEarlyEntryTests : IDisposable
             SpaceRequirement = SpaceSize.Sqm600,
             SoundZone = SoundZone.Yellow,
             ElectricalGrid = ElectricalGrid.Yellow,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
         return (camp, season);
     }
 
@@ -222,12 +195,12 @@ public class CampServiceEarlyEntryTests : IDisposable
             CampSeasonId = campSeasonId,
             UserId = Guid.NewGuid(),
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             HasEarlyEntry = true,
         };
-        _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
         return member;
     }
 
@@ -239,12 +212,12 @@ public class CampServiceEarlyEntryTests : IDisposable
             CampSeasonId = campSeasonId,
             UserId = Guid.NewGuid(),
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             HasEarlyEntry = false,
         };
-        _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
         return member;
     }
 
@@ -263,7 +236,7 @@ public class CampServiceEarlyEntryTests : IDisposable
         var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, actor);
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
-        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeTrue();
 
         await _auditLog.Received(1).LogAsync(
@@ -284,7 +257,7 @@ public class CampServiceEarlyEntryTests : IDisposable
         var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: false, actor);
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
-        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
 
         await _auditLog.Received(1).LogAsync(
@@ -307,7 +280,7 @@ public class CampServiceEarlyEntryTests : IDisposable
 
         outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
 
-        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == newMember.Id);
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == newMember.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
 
         await _auditLog.DidNotReceive().LogAsync(
@@ -328,16 +301,16 @@ public class CampServiceEarlyEntryTests : IDisposable
             CampSeasonId = season.Id,
             UserId = Guid.NewGuid(),
             Status = CampMemberStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
 
         var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, Guid.NewGuid());
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotActive);
 
-        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
@@ -373,7 +346,7 @@ public class CampServiceEarlyEntryTests : IDisposable
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotFound);
 
-        var reloaded = await _dbContext.CampMembers.AsNoTracking()
+        var reloaded = await Db.CampMembers.AsNoTracking()
             .FirstAsync(m => m.Id == memberInB.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
@@ -391,7 +364,7 @@ public class CampServiceEarlyEntryTests : IDisposable
 
         await _service.RemoveCampMemberAsync(camp.Id, member.Id, Guid.NewGuid());
 
-        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
         reloaded.Status.Should().Be(CampMemberStatus.Removed);
     }
@@ -407,7 +380,7 @@ public class CampServiceEarlyEntryTests : IDisposable
 
         result.Succeeded.Should().BeTrue();
 
-        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 }

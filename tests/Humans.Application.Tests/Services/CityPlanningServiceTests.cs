@@ -7,21 +7,17 @@ using Humans.Application.Services.CityPlanning;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.CityPlanning;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class CityPlanningServiceTests : IDisposable
+public sealed class CityPlanningServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly ICampService _campService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
@@ -29,18 +25,14 @@ public class CityPlanningServiceTests : IDisposable
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
 
     public CityPlanningServiceTests()
+        : base(Instant.FromUtc(2026, 3, 15, 12, 0, 0))
     {
-        var dbOptions = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(dbOptions);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 15, 12, 0, 0));
         _campService = Substitute.For<ICampService>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
-        var repo = new CityPlanningRepository(new TestDbContextFactory(dbOptions));
+        var repo = new CityPlanningRepository(DbFactory);
         _sut = new CityPlanningService(
-            repo, _clock, Options.Create(_options),
+            repo, Clock, Options.Create(_options),
             _campService, _teamService, _userService);
     }
 
@@ -62,12 +54,6 @@ public class CityPlanningServiceTests : IDisposable
         volunteerHistory: [],
         communicationPreferences: []);
 
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
     // --- Helpers ---
 
     private void SetupCampSettings(int publicYear = 2026)
@@ -83,10 +69,10 @@ public class CityPlanningServiceTests : IDisposable
         {
             Year = year,
             IsPlacementOpen = placementOpen,
-            UpdatedAt = _clock.GetCurrentInstant()
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.CityPlanningSettings.Add(settings);
-        await _dbContext.SaveChangesAsync();
+        Db.CityPlanningSettings.Add(settings);
+        await Db.SaveChangesAsync();
         return settings;
     }
 
@@ -109,13 +95,13 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 500.0, userId);
 
-        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
-        var history = await _dbContext.CampPolygonHistories.AsNoTracking().SingleAsync(h => h.CampSeasonId == campSeasonId);
+        var polygon = await Db.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
+        var history = await Db.CampPolygonHistories.AsNoTracking().SingleAsync(h => h.CampSeasonId == campSeasonId);
 
         polygon.GeoJson.Should().Be(geoJson);
         polygon.AreaSqm.Should().Be(500.0);
         history.Note.Should().Be("Saved");
-        history.ModifiedAt.Should().Be(_clock.GetCurrentInstant());
+        history.ModifiedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -129,9 +115,9 @@ public class CityPlanningServiceTests : IDisposable
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId);
 
-        var polygonCount = await _dbContext.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId);
-        var historyCount = await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId);
-        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
+        var polygonCount = await Db.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId);
+        var historyCount = await Db.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId);
+        var polygon = await Db.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
 
         polygonCount.Should().Be(1);
         historyCount.Should().Be(2);
@@ -157,7 +143,7 @@ public class CityPlanningServiceTests : IDisposable
         var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45");
 
         result.Success.Should().BeTrue();
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.PlacementOpensAt.Should().Be(new LocalDateTime(2026, 6, 1, 8, 30));
         settings.PlacementClosesAt.Should().Be(new LocalDateTime(2026, 6, 2, 18, 45));
     }
@@ -180,7 +166,7 @@ public class CityPlanningServiceTests : IDisposable
         var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId());
 
         result.Success.Should().BeTrue();
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.LimitZoneGeoJson.Should().Be("""{"type":"FeatureCollection","features":[]}""");
     }
 
@@ -204,7 +190,7 @@ public class CityPlanningServiceTests : IDisposable
         var result = await _sut.UpdateOfficialZonesFromUploadAsync(file, NewUserId());
 
         result.Success.Should().BeTrue();
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.OfficialZonesGeoJson.Should().Be("""{"type":"FeatureCollection","features":[]}""");
     }
 
@@ -216,14 +202,14 @@ public class CityPlanningServiceTests : IDisposable
         const string originalGeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
         var (_, historyEntry) = await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId);
-        _clock.Advance(Duration.FromSeconds(1));
+        Clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[5,0],[5,5],[0,0]]]}}""", 999.0, userId);
-        _clock.Advance(Duration.FromSeconds(1));
+        Clock.Advance(Duration.FromSeconds(1));
 
         await _sut.RestoreCampPolygonVersionAsync(campSeasonId, historyEntry.Id, userId);
 
-        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
-        var latestHistory = await _dbContext.CampPolygonHistories.AsNoTracking()
+        var polygon = await Db.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
+        var latestHistory = await Db.CampPolygonHistories.AsNoTracking()
             .OrderByDescending(h => h.ModifiedAt).FirstAsync(h => h.CampSeasonId == campSeasonId);
 
         polygon.GeoJson.Should().Be(originalGeoJson);
@@ -372,7 +358,7 @@ public class CityPlanningServiceTests : IDisposable
 
         settings.Year.Should().Be(2026);
         settings.IsPlacementOpen.Should().BeFalse();
-        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync()).Should().Be(1);
+        (await Db.CityPlanningSettings.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
     [HumansFact]
@@ -384,7 +370,7 @@ public class CityPlanningServiceTests : IDisposable
 
         result.Id.Should().Be(existing.Id);
         result.IsPlacementOpen.Should().BeTrue();
-        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync()).Should().Be(1);
+        (await Db.CityPlanningSettings.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
     [HumansFact]
@@ -395,9 +381,9 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.OpenPlacementAsync(adminId);
 
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.IsPlacementOpen.Should().BeTrue();
-        settings.OpenedAt.Should().Be(_clock.GetCurrentInstant());
+        settings.OpenedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -408,9 +394,9 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.ClosePlacementAsync(adminId);
 
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.IsPlacementOpen.Should().BeFalse();
-        settings.ClosedAt.Should().Be(_clock.GetCurrentInstant());
+        settings.ClosedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -501,9 +487,9 @@ public class CityPlanningServiceTests : IDisposable
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
 
-        _clock.Advance(Duration.FromSeconds(1));
+        Clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
-        _clock.Advance(Duration.FromSeconds(1));
+        Clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 200.0, userId);
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId);
@@ -589,7 +575,7 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.UpdatePlacementDatesAsync(opens, closes);
 
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.PlacementOpensAt.Should().Be(opens);
         settings.PlacementClosesAt.Should().Be(closes);
     }
@@ -598,15 +584,15 @@ public class CityPlanningServiceTests : IDisposable
     public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
     {
         await SeedMapSettingsAsync();
-        var seeded = await _dbContext.CityPlanningSettings.SingleAsync();
+        var seeded = await Db.CityPlanningSettings.SingleAsync();
         seeded.PlacementOpensAt = new LocalDateTime(2026, 4, 10, 18, 0);
         seeded.PlacementClosesAt = new LocalDateTime(2026, 4, 20, 23, 59);
-        await _dbContext.SaveChangesAsync();
-        _dbContext.Entry(seeded).State = EntityState.Detached;
+        await Db.SaveChangesAsync();
+        Db.Entry(seeded).State = EntityState.Detached;
 
         await _sut.UpdatePlacementDatesAsync(null, (LocalDateTime?)null);
 
-        var updated = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var updated = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.PlacementOpensAt.Should().BeNull();
         updated.PlacementClosesAt.Should().BeNull();
     }
@@ -621,25 +607,25 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.UpdateOfficialZonesAsync(geoJson, Guid.NewGuid());
 
-        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.OfficialZonesGeoJson.Should().Be(geoJson);
-        settings.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        settings.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
     public async Task DeleteOfficialZonesAsync_SetsNull()
     {
         await SeedMapSettingsAsync();
-        var seeded = await _dbContext.CityPlanningSettings.SingleAsync();
+        var seeded = await Db.CityPlanningSettings.SingleAsync();
         seeded.OfficialZonesGeoJson = """{"type":"FeatureCollection","features":[]}""";
-        await _dbContext.SaveChangesAsync();
-        _dbContext.Entry(seeded).State = EntityState.Detached;
+        await Db.SaveChangesAsync();
+        Db.Entry(seeded).State = EntityState.Detached;
 
         await _sut.DeleteOfficialZonesAsync(Guid.NewGuid());
 
-        var updated = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        var updated = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.OfficialZonesGeoJson.Should().BeNull();
-        updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]

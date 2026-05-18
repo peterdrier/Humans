@@ -9,22 +9,17 @@ using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class CampRoleServiceTests : IDisposable
+public sealed class CampRoleServiceTests : ServiceTestHarness
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CampRoleService _service;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
@@ -34,20 +29,15 @@ public class CampRoleServiceTests : IDisposable
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
+        : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(_options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 26, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
         _notificationEmitter = Substitute.For<INotificationEmitter>();
         _campService = Substitute.For<ICampService>();
 
-        var factory = new TestDbContextFactory(_options);
-        var repo = new CampRoleRepository(factory);
+        var repo = new CampRoleRepository(DbFactory);
 
         _service = new CampRoleService(
             repo,
@@ -57,14 +47,8 @@ public class CampRoleServiceTests : IDisposable
             _auditLog,
             _notificationEmitter,
             Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
-            _clock,
+            Clock,
             NullLogger<CampRoleService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -266,7 +250,7 @@ public class CampRoleServiceTests : IDisposable
 
         outcome.Should().Be(AssignCampRoleOutcome.Assigned);
 
-        var assignments = await _dbContext.CampRoleAssignments.AsNoTracking().ToListAsync();
+        var assignments = await Db.CampRoleAssignments.AsNoTracking().ToListAsync();
         assignments.Should().HaveCount(1);
         assignments[0].CampMemberId.Should().Be(member.Id);
 
@@ -298,7 +282,7 @@ public class CampRoleServiceTests : IDisposable
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
 
         outcome.Should().Be(AssignCampRoleOutcome.MemberNotActive);
-        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+        (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
     }
 
     [HumansFact]
@@ -382,12 +366,12 @@ public class CampRoleServiceTests : IDisposable
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
-        var assignment = await _dbContext.CampRoleAssignments.FirstAsync();
+        var assignment = await Db.CampRoleAssignments.FirstAsync();
 
         var ok = await _service.UnassignAsync(assignment.Id, _actorUserId);
 
         ok.Should().BeTrue();
-        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+        (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CampRoleUnassigned, nameof(CampRoleAssignment),
@@ -410,17 +394,17 @@ public class CampRoleServiceTests : IDisposable
         var member1 = await SeedActiveMemberAsync(season.Id);
         var member2 = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(
+        Db.CampRoleAssignments.Add(
             new CampRoleAssignment
             {
                 Id = Guid.NewGuid(),
                 CampSeasonId = season.Id,
                 CampRoleDefinitionId = def1.Id,
                 CampMemberId = member1.Id,
-                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedAt = Clock.GetCurrentInstant(),
                 AssignedByUserId = _actorUserId
             });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var users = new Dictionary<Guid, User>
         {
@@ -455,10 +439,10 @@ public class CampRoleServiceTests : IDisposable
         var m1 = await SeedActiveMemberAsync(season.Id);
         var m2 = await SeedActiveMemberAsync(season.Id);
 
-        await _dbContext.CampRoleAssignments.AddRangeAsync(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m1.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m2.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await _dbContext.SaveChangesAsync();
+        await Db.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m1.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m2.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
 
         var users = new Dictionary<Guid, User>
         {
@@ -487,9 +471,9 @@ public class CampRoleServiceTests : IDisposable
         var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleAssignments.Add(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
 
         _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
@@ -541,15 +525,15 @@ public class CampRoleServiceTests : IDisposable
         var def2 = await SeedDefinitionAsync("LNT");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        await _dbContext.CampRoleAssignments.AddRangeAsync(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await _dbContext.SaveChangesAsync();
+        await Db.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
 
         var deletedCount = await _service.RemoveAllForMemberAsync(member.Id, _actorUserId);
 
         deletedCount.Should().Be(2);
-        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+        (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
     }
 
     // ==========================================================================
@@ -563,16 +547,16 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
             CampRoleDefinitionId = def.Id,
             CampMemberId = member.Id,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -594,16 +578,16 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync("Old", slug: "old", deactivated: true);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
             CampRoleDefinitionId = def.Id,
             CampMemberId = member.Id,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -627,16 +611,16 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync("No Slug Yet", slug: "");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
             CampRoleDefinitionId = def.Id,
             CampMemberId = member.Id,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -664,21 +648,21 @@ public class CampRoleServiceTests : IDisposable
             CampSeasonId = season.Id,
             UserId = Guid.NewGuid(),
             Status = CampMemberStatus.Removed,
-            RequestedAt = _clock.GetCurrentInstant(),
-            RemovedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            RemovedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.CampMembers.Add(inactiveMember);
+        Db.CampMembers.Add(inactiveMember);
 
         var activeMember = await SeedActiveMemberAsync(season.Id);
 
-        await _dbContext.CampRoleAssignments.AddRangeAsync(
+        await Db.CampRoleAssignments.AddRangeAsync(
             new CampRoleAssignment
             {
                 Id = Guid.NewGuid(),
                 CampSeasonId = season.Id,
                 CampRoleDefinitionId = def.Id,
                 CampMemberId = inactiveMember.Id,
-                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedAt = Clock.GetCurrentInstant(),
                 AssignedByUserId = _actorUserId,
             },
             new CampRoleAssignment
@@ -687,10 +671,10 @@ public class CampRoleServiceTests : IDisposable
                 CampSeasonId = season.Id,
                 CampRoleDefinitionId = def.Id,
                 CampMemberId = activeMember.Id,
-                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedAt = Clock.GetCurrentInstant(),
                 AssignedByUserId = _actorUserId,
             });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -721,12 +705,12 @@ public class CampRoleServiceTests : IDisposable
             Slug = slug ?? Humans.Application.Helpers.SlugHelper.GenerateSlug(name) + "-" + Guid.NewGuid().ToString("N").Substring(0, 6),
             SlotCount = slotCount,
             MinimumRequired = minimumRequired,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-            DeactivatedAt = deactivated ? _clock.GetCurrentInstant() : null,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+            DeactivatedAt = deactivated ? Clock.GetCurrentInstant() : null,
         };
-        _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
         return def;
     }
 
@@ -745,9 +729,9 @@ public class CampRoleServiceTests : IDisposable
             Name = "Test Camp",
             Status = CampSeasonStatus.Active,
         };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
         return (camp, season);
     }
 
@@ -759,12 +743,12 @@ public class CampRoleServiceTests : IDisposable
             CampSeasonId = seasonId,
             UserId = userId ?? Guid.NewGuid(),
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             ConfirmedByUserId = _actorUserId,
         };
-        _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
         return member;
     }
 }
