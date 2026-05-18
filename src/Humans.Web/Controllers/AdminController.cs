@@ -103,7 +103,8 @@ public class AdminController : HumansControllerBase
             StaffingByDepartment: staffing,
             RecentActivity: recent,
             AppStats: appStats,
-            LanguageDistribution: languages);
+            LanguageDistribution: languages,
+            SetMembership: dashboardData.SetMembership);
         return View(vm);
     }
 

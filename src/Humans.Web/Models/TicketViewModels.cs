@@ -32,37 +32,6 @@ public class TicketDashboardViewModel
     public bool IsConfigured { get; set; }
 
     public int WhoHasntBoughtCount { get; set; }
-
-    // Set membership across UserInfo cache for the Venn + UpSet diagrams.
-    // Three subsets: Profile (IsActive), Ticket (active event year),
-    // Shift (active signup in active event). Each user falls into exactly
-    // one of the eight (P, T, S) buckets.
-    public UserSetMembership? SetMembership { get; set; }
-}
-
-/// <summary>
-/// User-set bucketing for the Tickets dashboard Venn + UpSet diagrams. The
-/// cached <c>UserInfo</c> set is the universe; <c>Profile</c>, <c>Ticket</c>,
-/// and <c>Shift</c> are three subsets over it. Each user falls into exactly
-/// one of the eight disjoint buckets defined here.
-/// </summary>
-public sealed record UserSetMembership(
-    int None,            // !P && !T && !S
-    int ProfileOnly,     //  P && !T && !S
-    int TicketOnly,      // !P &&  T && !S
-    int ShiftOnly,       // !P && !T &&  S
-    int ProfileTicket,   //  P &&  T && !S
-    int ProfileShift,    //  P && !T &&  S
-    int TicketShift,     // !P &&  T &&  S
-    int All)             //  P &&  T &&  S
-{
-    public int TotalUsers =>
-        None + ProfileOnly + TicketOnly + ShiftOnly
-        + ProfileTicket + ProfileShift + TicketShift + All;
-
-    public int ProfilesCount => ProfileOnly + ProfileTicket + ProfileShift + All;
-    public int TicketsCount => TicketOnly + ProfileTicket + TicketShift + All;
-    public int ShiftsCount => ShiftOnly + ProfileShift + TicketShift + All;
 }
 
 public class PaymentMethodFeeBreakdown
