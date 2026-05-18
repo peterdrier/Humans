@@ -58,7 +58,9 @@ internal static class ShiftsSectionExtensions
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
 
-        // IHostedService for symmetry with sibling caches; StartAsync is a no-op today.
+        // IHostedService — bulk-warms the user cache at startup so /Admin first-hit doesn't
+        // pay the per-user N+1 fan-out across volunteer_event_profiles / volunteer_tag_preferences
+        // / general_availability / volunteer_build_statuses / shift_signups / event_settings.
         services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();

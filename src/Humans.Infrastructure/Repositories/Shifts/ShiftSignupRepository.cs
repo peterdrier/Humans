@@ -222,6 +222,22 @@ internal sealed class ShiftSignupRepository(HumansDbContext dbContext, IClock cl
             .Where(vtp => vtp.UserId == userId)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<VolunteerTagPreference>> GetAllVolunteerTagPreferencesAsync(
+        CancellationToken ct = default) =>
+        await dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Include(vtp => vtp.ShiftTag)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetAllByEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default) =>
+        await dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId)
+            .OrderBy(d => d.Shift.DayOffset).ThenBy(d => d.Shift.StartTime)
+            .ToListAsync(ct);
+
     // ============================================================
     // Writes — ShiftSignup
     // ============================================================
