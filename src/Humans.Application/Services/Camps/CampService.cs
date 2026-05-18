@@ -483,6 +483,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season.EeSlotCount,
             includeEarlyEntryGrantCount
                 ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
+                : null,
+            includeEarlyEntryGrantCount
+                ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
                 : null);
     }
 

@@ -687,6 +687,9 @@ public sealed class CachingCampService :
         season.EeSlotCount,
         season.Members is { Count: > 0 }
             ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
+            : 0,
+        season.Members is { Count: > 0 }
+            ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
             : 0);
 
     private static CampInfo FilterToYear(CampInfo camp, int year) =>

@@ -327,13 +327,20 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> Roles(CancellationToken ct)
     {
         var defs = await _campRoleService.ListDefinitionsAsync(includeDeactivated: true, ct);
+        var settings = await _campService.GetSettingsAsync(ct);
+        var year = settings.PublicYear;
+        CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
+            new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive,
+                string.IsNullOrWhiteSpace(d.Slug) ? null : _campRoleService.BuildGroupKey(year, d.Slug));
         var active = defs.Where(d => d.IsActive).Select(MapRow).ToList();
         var deactivated = defs.Where(d => !d.IsActive).Select(MapRow).ToList();
-        return View(new CampRoleDefinitionListViewModel { Active = active, Deactivated = deactivated });
+        return View(new CampRoleDefinitionListViewModel
+        {
+            Active = active,
+            Deactivated = deactivated,
+            PublicYear = year,
+        });
     }
-
-    private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
-        new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
 
     [HttpGet("Roles/{slug}")]
     public async Task<IActionResult> RolesDrillDown(string slug, int? year, CancellationToken ct)
@@ -377,8 +384,7 @@ public class CampAdminController : HumansControllerBase
                     r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
                     r.Assignees
                         .OrderBy(a => a.AssignedAt)
-                        .Select(a => new CampRoleDrillDownAssigneeViewModel(
-                            a.UserId, a.GoogleEmail))
+                        .Select(a => new CampRoleDrillDownAssigneeViewModel(a.UserId))
                         .ToList()))
                 .ToList(),
         };

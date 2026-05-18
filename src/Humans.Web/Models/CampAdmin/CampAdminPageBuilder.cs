@@ -102,6 +102,7 @@ public sealed class CampAdminPageBuilder
                 YearsParticipating = c.TimesAtNowhere,
                 EeSlotCount = season?.EeSlotCount ?? 0,
                 EeGrantedCount = season?.EeGrantedCount ?? 0,
+                JoinedMemberCount = season?.JoinedMemberCount ?? 0,
                 Leads = c.Leads
                     .Select(l => new CampLeadViewModel
                     {

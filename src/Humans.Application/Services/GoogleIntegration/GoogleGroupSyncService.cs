@@ -190,9 +190,11 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         var lookup = await _provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
 
         // Provisioning: a claim references a group key that doesn't exist in Google.
-        // Cloud Identity returns HTTP 404 (or sometimes 403) when the group is
-        // not found. Best-effort create-then-retry-lookup; on failure we fall
-        // through to the existing error path.
+        // Cloud Identity returns HTTP 404 — or HTTP 403 with a "permission
+        // denied" body, because Google won't confirm/deny existence to a
+        // caller without access. See IsGroupNotFound. Best-effort
+        // create-then-retry-lookup; on failure we fall through to the existing
+        // error path.
         if (lookup.GroupNumericId is null
             && IsGroupNotFound(lookup.Error)
             && action == SyncAction.Execute)
@@ -682,12 +684,17 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         $"{prefix} (HTTP {error?.StatusCode ?? 0}): {error?.RawMessage}";
 
     /// <summary>
-    /// Cloud Identity returns HTTP 404 when a Group lookup misses. Other
-    /// status codes (403 caller permission, 5xx backend, etc.) are real
-    /// failures and must not trigger auto-provisioning.
+    /// Cloud Identity returns HTTP 404 when a Group lookup misses — and, in
+    /// practice, sometimes HTTP 403 with a "Permission denied" / "caller does
+    /// not have permission" message, because Google declines to confirm or
+    /// deny the existence of a group the caller can't see. Both are treated as
+    /// "group not found" so we attempt auto-provision. If the 403 actually
+    /// reflects a real caller-permission problem, the subsequent CreateGroup
+    /// call will fail the same way and we fall through to the normal error
+    /// path. 5xx and other status codes remain real failures.
     /// </summary>
     private static bool IsGroupNotFound(GoogleClientError? error)
-        => error is { StatusCode: 404 };
+        => error is { StatusCode: 404 } || error is { StatusCode: 403 };
 
     private sealed record GroupClaim(string GroupKey, int ClaimCount, string[] SourceNames, Guid[] UserIds)
     {

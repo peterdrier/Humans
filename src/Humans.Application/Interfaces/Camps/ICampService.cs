@@ -339,7 +339,8 @@ public sealed record CampSeasonInfo(
     SpaceSize? SpaceRequirement,
     ElectricalGrid? ElectricalGrid,
     int EeSlotCount,
-    int? EeGrantedCount);
+    int? EeGrantedCount,
+    int? JoinedMemberCount);
 
 // CampLookup / CampInfo.Leads is populated only from camp loads that apply the
 // filtered Include `.Include(c => c.Leads.Where(l => l.LeftAt == null))`, so

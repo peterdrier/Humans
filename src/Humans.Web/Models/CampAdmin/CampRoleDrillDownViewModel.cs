@@ -27,5 +27,4 @@ public sealed record CampRoleDrillDownCampRowViewModel(
     IReadOnlyList<CampRoleDrillDownAssigneeViewModel> Assignees);
 
 public sealed record CampRoleDrillDownAssigneeViewModel(
-    Guid UserId,
-    string? GoogleEmail);
+    Guid UserId);

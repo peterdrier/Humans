@@ -15,6 +15,12 @@ public interface ICampRoleService : IApplicationService
     Task<CampRoleDefinitionInfo?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default);
 
     /// <summary>
+    /// Builds the deterministic Google Group key for a (role-definition slug, season year) pair:
+    /// <c>barrios-{year}-{slug}@{domain}</c>. Caller is responsible for guarding empty slugs.
+    /// </summary>
+    string BuildGroupKey(int year, string slug);
+
+    /// <summary>
     /// Builds the cross-camp roster for one role definition in a given year. One row per
     /// camp-season participating in <paramref name="year"/>, with assignees (name + Google email)
     /// or an empty state. Read-only; caller authorizes.

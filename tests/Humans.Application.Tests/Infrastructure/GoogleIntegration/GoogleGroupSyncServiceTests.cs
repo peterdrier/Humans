@@ -505,6 +505,42 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_GroupLookup403_AutoProvisionsAndReconciles()
+    {
+        // Cloud Identity sometimes returns HTTP 403 (instead of 404) when the
+        // target group does not exist, because Google won't confirm/deny the
+        // existence of a group the caller can't see. The orchestrator must
+        // treat that as "not found" and attempt auto-provision.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("new-group@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+
+        _provisioningClient.LookupGroupIdAsync("new-group@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(
+                new GroupLookupIdResult(null, new GoogleClientError(403, "permission denied")),
+                new GroupLookupIdResult("group-new", null));
+        _provisioningClient.CreateGroupAsync(
+                "new-group@nobodies.team",
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new GroupCreateResult("group-new", null));
+        _membershipClient.ListMembershipsAsync("group-new", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipListResult([], null));
+        _membershipClient.CreateMembershipAsync("group-new", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute);
+
+        diff.ErrorMessage.Should().BeNull();
+        await _provisioningClient.Received(1).CreateGroupAsync(
+            "new-group@nobodies.team",
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_GroupNotFoundButCreateFails_RecordsErrorAndSchedulesRetry()
     {
         // When auto-provisioning fails (e.g. backend 503), the reconcile path

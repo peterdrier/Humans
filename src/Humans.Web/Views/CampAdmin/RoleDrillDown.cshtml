@@ -2,12 +2,6 @@
 @model CampRoleDrillDownViewModel
 @{
     ViewData["Title"] = $"{Model.RoleName} — {Model.Year}";
-    var allAssigneeEmails = Model.Camps
-        .SelectMany(c => c.Assignees)
-        .Where(a => !string.IsNullOrWhiteSpace(a.GoogleEmail))
-        .Select(a => a.GoogleEmail!)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToList();
 }
 
 <nav aria-label="breadcrumb">
@@ -64,20 +58,9 @@
                     <span class="small text-muted me-2">Group email:</span>
                     <code>@Model.GroupEmail</code>
                 </div>
-                @if (allAssigneeEmails.Count > 0)
-                {
-                    var mailto = "mailto:" + Model.GroupEmail
-                        + "?bcc=" + string.Join(",", allAssigneeEmails);
-                    <a href="@mailto" class="btn btn-outline-primary btn-sm">
-                        <i class="fa-regular fa-envelope me-1"></i>Email assignees (@allAssigneeEmails.Count)
-                    </a>
-                }
-                else
-                {
-                    <a href="@("mailto:" + Model.GroupEmail)" class="btn btn-outline-secondary btn-sm">
-                        <i class="fa-regular fa-envelope me-1"></i>Email group
-                    </a>
-                }
+                <a href="@("mailto:" + Model.GroupEmail)" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-regular fa-envelope me-1"></i>Email group
+                </a>
             </div>
         }
     </div>
@@ -124,18 +107,12 @@
                                 }
                                 else
                                 {
-                                    <ul class="list-unstyled mb-0">
+                                    <div class="d-flex flex-wrap gap-3 align-items-center">
                                         @foreach (var a in row.Assignees)
                                         {
-                                            <li class="mb-2">
-                                                <vc:human user-id="@a.UserId" layout="AvatarName" size="60" />
-                                                @if (!string.IsNullOrWhiteSpace(a.GoogleEmail))
-                                                {
-                                                    <span class="text-muted small ms-1">&lt;@a.GoogleEmail&gt;</span>
-                                                }
-                                            </li>
+                                            <vc:human user-id="@a.UserId" layout="AvatarName" size="40" />
                                         }
-                                    </ul>
+                                    </div>
                                 }
                             </td>
                         </tr>

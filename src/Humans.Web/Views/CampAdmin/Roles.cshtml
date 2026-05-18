@@ -54,8 +54,10 @@
                             <td>@row.SortOrder</td>
                             <td>
                                 <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(row.Slug) ? row.Id.ToString() : row.Slug)"><strong>@row.Name</strong></a>
-                                <br />
-                                <small class="text-muted"><code>@row.Slug</code></small>
+                                @if (!string.IsNullOrWhiteSpace(row.GroupEmail))
+                                {
+                                    <small class="text-muted ms-2"><code>@row.GroupEmail</code></small>
+                                }
                                 @if (!string.IsNullOrWhiteSpace(row.Description))
                                 {
                                     <br />

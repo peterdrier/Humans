@@ -307,6 +307,17 @@
             var totalGranted = Model.AllCampSummaries.Sum(c => c.EeGrantedCount);
         }
         <p class="mb-2">
+            EE start date:
+            @if (Model.EeStartDate.HasValue)
+            {
+                <strong>@Model.EeStartDate.Value.ToDisplayDate()</strong>
+            }
+            else
+            {
+                <span class="text-muted">not set</span>
+            }
+        </p>
+        <p class="mb-2">
             <strong>@totalGranted granted</strong> across <strong>@totalSlots configured slots</strong>
             @if (totalGranted > totalSlots)
             {
@@ -315,7 +326,7 @@
         </p>
         <form method="post" asp-controller="CampAdmin" asp-action="SetEeStartDate" class="d-flex align-items-center gap-2">
             @Html.AntiForgeryToken()
-            <label class="form-label mb-0">EE start date:</label>
+            <label class="form-label mb-0">Set EE start date:</label>
             <input type="date" name="eeStartDate" class="form-control form-control-sm" style="max-width:180px;"
                    value="@(Model.EeStartDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
             <button type="submit" class="btn btn-sm btn-primary text-nowrap">Save</button>
@@ -336,7 +347,8 @@
                     <tr>
                         <th>Camp Name</th>
                         <th>Accepting</th>
-                        <th class="text-end">Humans</th>
+                        <th class="text-end" title="Headcount the camp declared on its season">Humans</th>
+                        <th class="text-end" title="Active CampMember rows — humans who joined in-app">Joined</th>
                         <th>Zone</th>
                         <th>Space</th>
                         <th class="text-end">Years</th>
@@ -353,6 +365,7 @@
                             </td>
                             <td>@camp.AcceptingMembers</td>
                             <td class="text-end">@camp.MemberCount</td>
+                            <td class="text-end">@camp.JoinedMemberCount</td>
                             <td>@camp.Zone</td>
                             <td>@camp.SpaceRequirement</td>
                             <td class="text-end">@camp.YearsParticipating</td>
@@ -391,6 +404,25 @@
                         </tr>
                     }
                 </tbody>
+                @{
+                    var totalHumans = Model.AllCampSummaries.Sum(c => c.MemberCount);
+                    var totalJoined = Model.AllCampSummaries.Sum(c => c.JoinedMemberCount);
+                    var totalEeSlotsRow = Model.AllCampSummaries.Sum(c => c.EeSlotCount);
+                    var totalEeGrantedRow = Model.AllCampSummaries.Sum(c => c.EeGrantedCount);
+                }
+                <tfoot>
+                    <tr class="table-light fw-semibold">
+                        <td>Totals</td>
+                        <td></td>
+                        <td class="text-end">@totalHumans</td>
+                        <td class="text-end">@totalJoined</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>@totalEeGrantedRow / @totalEeSlotsRow</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
