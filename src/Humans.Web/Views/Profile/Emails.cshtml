@@ -362,13 +362,12 @@
             <div class="card mb-4 border-danger" id="userinfo-emails">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i><code>UserInfo</code> derived emails <small class="ms-2 opacity-75">(Admin only)</small></h5>
-                    <small class="text-white-50">What the cached read-model returns when callers ask for this user's email. Drives outbound mail, Google identity resolution, and the legacy <code>User.Email</code> override. Compare against the raw <code>user_emails</code> rows below.</small>
                 </div>
                 <div class="card-body p-0">
                     <table class="table mb-0">
                         <tbody>
                             <tr>
-                                <th style="width: 16rem;"><code>UserInfo.Email</code><div class="small fw-normal text-muted">Effective — mail sender + <code>User.Email</code> override</div></th>
+                                <th style="width: 16rem;"><code>UserInfo.Email</code></th>
                                 <td>
                                     @if (!string.IsNullOrEmpty(Model.UserInfoEmails.EffectiveEmail))
                                     {
@@ -381,7 +380,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th><code>UserInfo.PrimaryEmail</code><div class="small fw-normal text-muted">First verified row with <code>IsPrimary</code></div></th>
+                                <th><code>UserInfo.PrimaryEmail</code></th>
                                 <td>
                                     @if (!string.IsNullOrEmpty(Model.UserInfoEmails.PrimaryEmail))
                                     {
@@ -394,7 +393,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th><code>UserInfo.GoogleEmail</code><div class="small fw-normal text-muted">First verified row with <code>IsGoogle</code> — Workspace identity</div></th>
+                                <th><code>UserInfo.GoogleEmail</code></th>
                                 <td>
                                     @if (!string.IsNullOrEmpty(Model.UserInfoEmails.GoogleEmail))
                                     {
