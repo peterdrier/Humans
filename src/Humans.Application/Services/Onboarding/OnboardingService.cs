@@ -193,13 +193,13 @@ public sealed class OnboardingService : IOnboardingService
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
-        var rejectUser = await _userService.GetByIdAsync(userId, ct);
+        var rejectUser = await _userService.GetUserInfoAsync(userId, ct);
 
         try
         {
             await _emailService.SendSignupRejectedAsync(
                 rejectUser?.Email ?? string.Empty,
-                rejectUser?.DisplayName ?? string.Empty,
+                rejectUser?.BurnerName ?? string.Empty,
                 reason,
                 rejectUser?.PreferredLanguage ?? "en");
         }

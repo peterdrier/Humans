@@ -472,8 +472,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
         if (string.IsNullOrWhiteSpace(legalName))
         {
-            var user = await _userService.GetByIdAsync(submitterUserId, ct);
-            legalName = user?.DisplayName ?? "";
+            throw new InvalidOperationException("Submitter must have first and last name set on their profile.");
         }
         var payeeName = legalName;
         var payeeIban = profile.Iban;

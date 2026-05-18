@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -42,8 +43,8 @@ public sealed class ShiftAdminPageBuilder
         var allUserIds = GetRelevantUserIds(rotas, staffing.PendingSignups);
         var profileDict = await LoadProfilesAsync(allUserIds, request.CanViewMedical);
         var userLookup = allUserIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(allUserIds);
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(allUserIds);
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department);
         var allTags = await _shiftManagement.GetTagsAsync();
         var staffingData = await _shiftManagement.GetStaffingDataAsync(request.EventSettings.Id, request.Department.Id);

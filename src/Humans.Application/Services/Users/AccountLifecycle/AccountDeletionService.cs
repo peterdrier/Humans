@@ -111,12 +111,13 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
         // 5. Send deletion confirmation email.
         var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
+        var userInfo = await _userService.GetUserInfoAsync(userId, ct);
+        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? userInfo?.Email;
         if (notificationEmail is not null)
         {
             await _emailService.SendAccountDeletionRequestedAsync(
                 notificationEmail,
-                user.DisplayName,
+                userInfo?.BurnerName ?? string.Empty,
                 deletionDate.ToDateTimeUtc(),
                 user.PreferredLanguage,
                 ct);
@@ -195,8 +196,9 @@ public sealed class AccountDeletionService : IAccountDeletionService
         if (user is null)
             return null;
 
-        var originalEmail = user.Email;
-        var originalDisplayName = user.DisplayName;
+        var originalInfo = await _userService.GetUserInfoAsync(userId, ct);
+        var originalEmail = originalInfo?.Email;
+        var originalDisplayName = originalInfo?.BurnerName ?? string.Empty;
         var preferredLanguage = user.PreferredLanguage;
 
         // Cross-section cleanup BEFORE identity collapse — deletion markers stay set so a failure retries tomorrow.

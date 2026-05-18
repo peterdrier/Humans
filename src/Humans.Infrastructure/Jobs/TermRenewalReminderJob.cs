@@ -126,7 +126,7 @@ public class TermRenewalReminderJob : IRecurringJob
 
                     await _emailService.SendTermRenewalReminderAsync(
                         email,
-                        applicant.DisplayName,
+                        applicant.BurnerName,
                         application.MembershipTier.ToString(),
                         expiresFormatted,
                         applicant.PreferredLanguage,

@@ -121,7 +121,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        if (EmailNormalization.EmailsMatch(email, user.Email))
+        var primaryEmail = await GetPrimaryEmailAsync(userId, cancellationToken);
+        if (EmailNormalization.EmailsMatch(email, primaryEmail))
             throw new ValidationException("This is already your sign-in email.");
 
         var now = _clock.GetCurrentInstant();
@@ -520,7 +521,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (primary is not null) return primary.Email;
         var anyVerified = emails.FirstOrDefault(e => e.IsVerified);
         if (anyVerified is not null) return anyVerified.Email;
-        var user = await _userService.GetByIdAsync(userId, ct);
+        var user = await _userService.GetUserInfoAsync(userId, ct);
         return user?.Email;
     }
 

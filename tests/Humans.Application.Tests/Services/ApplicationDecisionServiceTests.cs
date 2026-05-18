@@ -395,7 +395,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = "alice@test.com",
             PreferredLanguage = "en"
         };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -424,7 +424,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = null,
             PreferredLanguage = "en"
         };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())

@@ -34,9 +34,9 @@ public static class FacilitatedMessageRequestBuilder
 
         return new FacilitatedMessageRequest(
             recipient.Email,
-            recipient.DisplayName,
+            recipient.BurnerName,
             sender.Email,
-            sender.DisplayName,
+            sender.BurnerName,
             cleanMessage,
             model.IncludeContactInfo,
             recipient.PreferredLanguage);

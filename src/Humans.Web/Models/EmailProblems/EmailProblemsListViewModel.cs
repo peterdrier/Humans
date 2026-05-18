@@ -1,4 +1,5 @@
 using Humans.Application.DTOs.EmailProblems;
+using Humans.Application;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -17,10 +18,10 @@ public sealed class EmailProblemsListViewModel
 
     public static EmailProblemsListViewModel From(
         EmailProblemsReport report,
-        IReadOnlyDictionary<Guid, User> users)
+        IReadOnlyDictionary<Guid, UserInfo> users)
     {
         string DisplayName(Guid? id) =>
-            id is Guid g && users.TryGetValue(g, out var u) ? u.DisplayName : "(unknown)";
+            id is Guid g && users.TryGetValue(g, out var u) ? u.BurnerName : "(unknown)";
 
         var crossUser = new List<CrossUserConflictRow>();
         var singleUserMap = new Dictionary<Guid, List<string>>();

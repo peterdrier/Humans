@@ -56,12 +56,6 @@ public class ProfileApiControllerTests
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
-
-        // Picture URLs are not the focus here — return an empty dictionary so the
-        // helper returns null URLs for every result row.
-        _profileService
-            .GetCustomPictureInfoByUserIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([]);
     }
 
     private ProfileApiController BuildSut(User? currentUser)

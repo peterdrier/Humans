@@ -384,7 +384,7 @@ internal sealed class ShiftManagementRepository : IShiftManagementRepository
 
     public async Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -394,8 +394,8 @@ internal sealed class ShiftManagementRepository : IShiftManagementRepository
                 .ThenInclude(r => r.EventSettings)
             .Where(s => s.Rota.EventSettingsId == eventSettingsId);
 
-        if (departmentId.HasValue)
-            query = query.Where(s => s.Rota.TeamId == departmentId.Value);
+        if (departmentTeamIds is { Count: > 0 })
+            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
 
         return await query.ToListAsync(ct);
     }
@@ -416,7 +416,7 @@ internal sealed class ShiftManagementRepository : IShiftManagementRepository
 
     public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         bool includeAdminOnly,
         bool includeHidden,
         int? fromDayOffset,
@@ -451,8 +451,8 @@ internal sealed class ShiftManagementRepository : IShiftManagementRepository
         if (!includeHidden)
             query = query.Where(s => s.Rota.IsVisibleToVolunteers);
 
-        if (departmentId.HasValue)
-            query = query.Where(s => s.Rota.TeamId == departmentId.Value);
+        if (departmentTeamIds is { Count: > 0 })
+            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
 
         if (fromDayOffset.HasValue)
         {
@@ -471,7 +471,7 @@ internal sealed class ShiftManagementRepository : IShiftManagementRepository
 
     public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         int? minDayOffset,
         int? maxDayOffset,
         CancellationToken ct = default)
@@ -485,8 +485,8 @@ internal sealed class ShiftManagementRepository : IShiftManagementRepository
             .Include(s => s.ShiftSignups)
             .Where(s => s.Rota.EventSettingsId == eventSettingsId);
 
-        if (departmentId.HasValue)
-            query = query.Where(s => s.Rota.TeamId == departmentId.Value);
+        if (departmentTeamIds is { Count: > 0 })
+            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
 
         if (minDayOffset.HasValue)
         {

@@ -164,11 +164,16 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
             if (byOAuthAndEmail is not null) return byOAuthAndEmail;
         }
 
-        // 2. Row matching the User.Email override (resolved via UserEmails by the override).
-        if (!string.IsNullOrWhiteSpace(user.Email))
+        // 2. Row matching the canonical verified email, without reading the Identity Email override.
+        var primaryEmail = user.UserEmails
+            .Where(e => e.IsVerified)
+            .OrderByDescending(e => e.IsPrimary)
+            .Select(e => e.Email)
+            .FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(primaryEmail))
         {
             var byUserEmail = emails.FirstOrDefault(e =>
-                string.Equals(e.Email, user.Email, StringComparison.OrdinalIgnoreCase));
+                string.Equals(e.Email, primaryEmail, StringComparison.OrdinalIgnoreCase));
             if (byUserEmail is not null) return byUserEmail;
         }
 

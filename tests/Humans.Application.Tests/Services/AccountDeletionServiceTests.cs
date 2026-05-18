@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -106,6 +107,7 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        StubUserInfo(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
         _userEmailService.GetNotificationTargetEmailsAsync(
@@ -147,6 +149,7 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "primary@example.com");
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        StubUserInfo(user);
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -349,6 +352,7 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "gone@example.com", displayName: "Gone");
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        StubUserInfo(user);
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns((ExpiredDeletionAnonymizationResult?)null);
 
@@ -412,4 +416,8 @@ public class AccountDeletionServiceTests
         }
         return user;
     }
+
+    private void StubUserInfo(User user) =>
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(user.ToUserInfo());
 }

@@ -507,7 +507,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618 // DisplayName fallback is the legacy column we are mirroring.
+#pragma warning disable CS0618 // DisplayName is the legacy column this rehydration mirrors.
         var user = new User
         {
             Id = info.Id,

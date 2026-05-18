@@ -277,13 +277,16 @@ public class IssuesServiceTests : IDisposable
     public async Task PostCommentAsync_handler_sends_email_and_notification_to_reporter()
     {
         var reporterId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        var reporter = new User
         {
             Id = reporterId,
             Email = "reporter@test.com",
             DisplayName = "Reporter",
             PreferredLanguage = "en"
-        });
+        };
+        _dbContext.Users.Add(reporter);
+        _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
+            .Returns(reporter.ToUserInfo());
         await _dbContext.SaveChangesAsync();
 
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Report Title");
