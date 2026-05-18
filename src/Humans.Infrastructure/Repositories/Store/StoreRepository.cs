@@ -115,6 +115,21 @@ internal sealed class StoreRepository : IStoreRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<StoreOrder>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        IReadOnlyCollection<Guid> campSeasonIds,
+        CancellationToken ct = default)
+    {
+        if (campSeasonIds.Count == 0)
+            return Array.Empty<StoreOrder>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.StoreOrders.AsNoTracking()
+            .Where(o => campSeasonIds.Contains(o.CampSeasonId))
+            .Include(o => o.Lines)
+            .Include(o => o.Payments)
+            .ToListAsync(ct);
+    }
+
     public async Task AddOrderAsync(StoreOrder order, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
