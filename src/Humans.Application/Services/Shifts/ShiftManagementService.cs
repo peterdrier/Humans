@@ -623,8 +623,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 : null;
         }
 
+        var urgencyTeamIds = departmentId is { } urgentId ? new[] { urgentId } : null;
         var shifts = await _repo.GetShiftsWithSignupsForUrgencyAsync(
-            eventSettingsId, departmentId, minDayOffset, maxDayOffset);
+            eventSettingsId, urgencyTeamIds, minDayOffset, maxDayOffset);
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
@@ -667,8 +668,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             ? Period.Between(es.GateOpeningDate, toDate.Value, PeriodUnits.Days).Days
             : null;
 
+        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
+
         IReadOnlyList<Shift> shifts = await _repo.GetShiftsWithSignupsForEventAsync(
-            eventSettingsId, departmentId, includeAdminOnly, includeHidden,
+            eventSettingsId, departmentTeamIds, includeAdminOnly, includeHidden,
             fromOffset, toOffset, includeRotaTags: true);
 
         // priorityOnly: rota is Important/Essential OR any sibling shift is understaffed (rota-wide test).
@@ -728,6 +731,22 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             })
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
+    }
+
+    // Mirrors the pie bucketing in GetDepartmentCoveragePiesAsync: filtering by a
+    // department includes its non-promoted sub-teams (which roll up into the parent's
+    // pie) but excludes promoted sub-teams (which have their own pie and filter).
+    private async Task<IReadOnlyCollection<Guid>?> ResolveDepartmentTeamIdsAsync(Guid? departmentId)
+    {
+        if (!departmentId.HasValue) return null;
+        var allTeams = await TeamService.GetAllTeamsAsync();
+        var ids = new HashSet<Guid> { departmentId.Value };
+        foreach (var team in allTeams)
+        {
+            if (team.ParentTeamId == departmentId.Value && !team.IsPromotedToDirectory)
+                ids.Add(team.Id);
+        }
+        return ids;
     }
 
     public double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
