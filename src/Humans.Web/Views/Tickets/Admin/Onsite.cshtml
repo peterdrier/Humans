@@ -75,7 +75,7 @@ else
                 {
                     <tr>
                         <td>
-                            <a asp-controller="Profile" asp-action="Index" asp-route-userId="@row.UserId">@row.DisplayName</a>
+                            <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.UserId">@row.DisplayName</a>
                         </td>
                         <td>@row.CheckedInAt.ToDisplayDateTime()</td>
                         <td>@(row.CampNames.Count == 0 ? "—" : string.Join(", ", row.CampNames))</td>

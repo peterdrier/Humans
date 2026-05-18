@@ -155,7 +155,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
             var codesRedeemed = await MatchDiscountCodesAsync(ct);
 
-            await SyncEventParticipationsAsync(tickets, emailLookup, ct);
+            await SyncEventParticipationsAsync(tickets, ct);
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
@@ -447,7 +447,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
     /// </summary>
     private async Task SyncEventParticipationsAsync(
         IReadOnlyList<VendorTicketDto> vendorTicketsThisSync,
-        Dictionary<string, Guid> emailLookup,
         CancellationToken ct)
     {
         var activeEvent = await _shiftManagementService.GetActiveAsync();
@@ -465,15 +464,23 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                 g => g.Key,
                 g => g.Select(a => a.Status).ToList());
 
-        // Per-user min(CheckedInAt) across the vendor tickets we just pulled.
-        // Vendor delta sync only returns *changed* tickets, so this only
-        // populates timestamps for users whose check-in event was in THIS batch
-        // — which is exactly the moment we want to capture the timestamp.
+        // Per-user min(CheckedInAt) across the vendor tickets we just pulled,
+        // joined to matched-attendee rows by VendorTicketId so the user identity
+        // matches what the participation loop below uses (MatchedUserId). Using
+        // an email lookup here would drop users whose attendee was re-FKed via
+        // account-merge or matched through non-email paths.
+        // Vendor delta sync only returns *changed* tickets, so this populates
+        // timestamps for users whose check-in event was in THIS batch — which
+        // is exactly the moment we want to capture the timestamp.
+        var matchedUserByVendorTicketId = matchedAttendees
+            .ToDictionary(a => a.VendorTicketId, a => a.MatchedUserId, StringComparer.Ordinal);
+
         var checkedInAtByUserId = vendorTicketsThisSync
-            .Where(t => t.CheckedInAt is not null
-                && t.AttendeeEmail is not null)
+            .Where(t => t.CheckedInAt is not null)
             .Select(t => (
-                UserId: LookupUserId(emailLookup, t.AttendeeEmail),
+                UserId: matchedUserByVendorTicketId.TryGetValue(t.VendorTicketId, out var uid)
+                    ? (Guid?)uid
+                    : null,
                 CheckedInAt: t.CheckedInAt!.Value))
             .Where(x => x.UserId is not null)
             .GroupBy(x => x.UserId!.Value)
