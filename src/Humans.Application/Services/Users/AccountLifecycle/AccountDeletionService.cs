@@ -72,7 +72,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
     public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _userService.GetByIdAsync(userId, ct);
+        var user = await _userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return new DeletionRequestResult(false, "NotFound");
 
@@ -111,13 +111,12 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
         // 5. Send deletion confirmation email.
         var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        var userInfo = await _userService.GetUserInfoAsync(userId, ct);
-        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? userInfo?.Email;
+        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
         {
             await _emailService.SendAccountDeletionRequestedAsync(
                 notificationEmail,
-                userInfo?.BurnerName ?? string.Empty,
+                user.BurnerName,
                 deletionDate.ToDateTimeUtc(),
                 user.PreferredLanguage,
                 ct);
@@ -135,7 +134,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _userService.GetByIdAsync(userId, ct);
+        var user = await _userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return new OnboardingResult(false, "NotFound");
 
@@ -192,13 +191,12 @@ public sealed class AccountDeletionService : IAccountDeletionService
         Guid userId, CancellationToken ct = default)
     {
         // Capture identity slice BEFORE any writes — caller still needs it if the final step throws.
-        var user = await _userService.GetByIdAsync(userId, ct);
+        var user = await _userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return null;
 
-        var originalInfo = await _userService.GetUserInfoAsync(userId, ct);
-        var originalEmail = originalInfo?.Email;
-        var originalDisplayName = originalInfo?.BurnerName ?? string.Empty;
+        var originalEmail = user.Email;
+        var originalDisplayName = user.BurnerName;
         var preferredLanguage = user.PreferredLanguage;
 
         // Cross-section cleanup BEFORE identity collapse — deletion markers stay set so a failure retries tomorrow.

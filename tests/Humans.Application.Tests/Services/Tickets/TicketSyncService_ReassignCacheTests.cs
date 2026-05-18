@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;

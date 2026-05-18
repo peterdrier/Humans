@@ -15,19 +15,17 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profiles;
 
-public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
+public sealed class ProfileService(IProfileRepository profileRepository,
+    IUserService userService,
+    IUserEmailRepository userEmailRepository,
+    IContactFieldRepository contactFieldRepository,
+    ICommunicationPreferenceRepository communicationPreferenceRepository,
+    IAuditLogService auditLogService,
+    IFileStorage fileStorage,
+    IUserInfoInvalidator userInfoInvalidator,
+    IClock clock,
+    ILogger<ProfileService> logger) : IProfileService, IUserDataContributor, IUserMerge
 {
-    private readonly IProfileRepository _profileRepository;
-    private readonly IUserService _userService;
-    private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IContactFieldRepository _contactFieldRepository;
-    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IFileStorage _fileStorage;
-    private readonly IUserInfoInvalidator _userInfoInvalidator;
-    private readonly IClock _clock;
-    private readonly ILogger<ProfileService> _logger;
-
     // Striped process-local semaphore serializes create-or-update per userId (single-server; avoids profiles.UserId 23505 race).
     private static readonly SemaphoreSlim[] _userLocks = CreateUserLocks(32);
     private static SemaphoreSlim[] CreateUserLocks(int count)
@@ -39,45 +37,21 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private static SemaphoreSlim LockFor(Guid userId)
         => _userLocks[(uint)userId.GetHashCode() % (uint)_userLocks.Length];
 
-    public ProfileService(
-        IProfileRepository profileRepository,
-        IUserService userService,
-        IUserEmailRepository userEmailRepository,
-        IContactFieldRepository contactFieldRepository,
-        ICommunicationPreferenceRepository communicationPreferenceRepository,
-        IAuditLogService auditLogService,
-        IFileStorage fileStorage,
-        IUserInfoInvalidator userInfoInvalidator,
-        IClock clock,
-        ILogger<ProfileService> logger)
-    {
-        _profileRepository = profileRepository;
-        _userService = userService;
-        _userEmailRepository = userEmailRepository;
-        _contactFieldRepository = contactFieldRepository;
-        _communicationPreferenceRepository = communicationPreferenceRepository;
-        _auditLogService = auditLogService;
-        _fileStorage = fileStorage;
-        _userInfoInvalidator = userInfoInvalidator;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task SetMembershipTierAsync(
         Guid userId, MembershipTier tier, CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cannot set membership tier for user {UserId} — no profile exists", userId);
             return;
         }
 
         profile.MembershipTier = tier;
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        profile.UpdatedAt = clock.GetCurrentInstant();
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
@@ -86,10 +60,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var existing = await _profileRepository.GetByUserIdAsync(userId, ct);
+            var existing = await profileRepository.GetByUserIdAsync(userId, ct);
             if (existing is not null) return;
 
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
             var profile = new Profile
             {
                 Id = Guid.NewGuid(),
@@ -98,8 +72,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 UpdatedAt = now,
                 State = ProfileState.Stub,
             };
-            await _profileRepository.AddAsync(profile, ct);
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await profileRepository.AddAsync(profile, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         }
         finally
         {
@@ -119,19 +93,19 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             throw new ArgumentException("Content type must not be empty", nameof(contentType));
         }
 
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cannot set profile picture for user {UserId} — no profile exists", userId);
             return;
         }
 
         var oldContentType = profile.ProfilePictureContentType;
         profile.ProfilePictureContentType = contentType;
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        profile.UpdatedAt = clock.GetCurrentInstant();
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
         try
         {
@@ -139,14 +113,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             if (oldContentType is not null &&
                 !string.Equals(oldContentType, contentType, StringComparison.Ordinal))
             {
-                await _fileStorage.DeleteAsync(
+                await fileStorage.DeleteAsync(
                     ProfilePictureKey(profile.Id, oldContentType), ct);
             }
-            await _fileStorage.SaveAsync(ProfilePictureKey(profile.Id, contentType), pictureData, ct);
+            await fileStorage.SaveAsync(ProfilePictureKey(profile.Id, contentType), pictureData, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing — picture will not render",
                 profile.Id);
         }
@@ -157,34 +131,34 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         Guid profileId, CancellationToken ct = default)
     {
         // GDPR gate: content-type column is the source of truth — don't serve from disk if cleared.
-        var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
+        var dbContentType = await profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
         if (string.IsNullOrEmpty(dbContentType))
         {
             return null;
         }
 
         var key = ProfilePictureKey(profileId, dbContentType);
-        var fsBytes = await _fileStorage.TryReadAsync(key, ct);
+        var fsBytes = await fileStorage.TryReadAsync(key, ct);
         return fsBytes is not null ? (fsBytes, dbContentType) : null;
     }
 
     public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
         CancellationToken ct = default)
     {
-        var rows = await _profileRepository.GetCustomPictureRowsAsync(ct);
+        var rows = await profileRepository.GetCustomPictureRowsAsync(ct);
         if (rows.Count == 0)
         {
             return new ProfilePictureMigrationSnapshot(0, 0, []);
         }
 
-        var users = await _userService.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
+        var users = await userService.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
 
         var onFs = 0;
         var dbOnly = new List<ProfilePictureMigrationRow>();
         foreach (var (profileId, userId, burnerName, contentType, updatedAt) in rows)
         {
             var key = ProfilePictureKey(profileId, contentType);
-            var bytes = await _fileStorage.TryReadAsync(key, ct);
+            var bytes = await fileStorage.TryReadAsync(key, ct);
             if (bytes is not null)
             {
                 onFs++;
@@ -222,9 +196,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         Guid userId, string displayName, ProfileSaveRequest request, string language,
         CancellationToken ct)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
 
         if (profile is null)
         {
@@ -237,7 +211,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 UpdatedAt = now,
                 State = ProfileState.Stub,
             };
-            await _profileRepository.AddAsync(profile, ct);
+            await profileRepository.AddAsync(profile, ct);
         }
 
         profile.BurnerName = request.BurnerName;
@@ -284,11 +258,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             {
                 try
                 {
-                    await _fileStorage.DeleteAsync(ProfilePictureKey(profile.Id, oldContentType), ct);
+                    await fileStorage.DeleteAsync(ProfilePictureKey(profile.Id, oldContentType), ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogWarning(ex,
+                    logger.LogWarning(ex,
                         "Failed to delete profile picture from filesystem for {ProfileId}; content-type column has been cleared so the file will not be served",
                         profile.Id);
                 }
@@ -306,16 +280,16 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 if (oldContentType is not null &&
                     !string.Equals(oldContentType, request.ProfilePictureContentType, StringComparison.Ordinal))
                 {
-                    await _fileStorage.DeleteAsync(ProfilePictureKey(profile.Id, oldContentType), ct);
+                    await fileStorage.DeleteAsync(ProfilePictureKey(profile.Id, oldContentType), ct);
                 }
-                await _fileStorage.SaveAsync(
+                await fileStorage.SaveAsync(
                     ProfilePictureKey(profile.Id, request.ProfilePictureContentType),
                     request.ProfilePictureData,
                     ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex,
+                logger.LogWarning(ex,
                     "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing — picture will not render",
                     profile.Id);
             }
@@ -331,13 +305,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             profile.State = hasNames ? ProfileState.Active : ProfileState.Stub;
         }
 
-        await _profileRepository.UpdateAsync(profile, ct);
+        await profileRepository.UpdateAsync(profile, ct);
 
-        await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
+        await userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        _logger.LogInformation("User {UserId} updated their profile", userId);
+        logger.LogInformation("User {UserId} updated their profile", userId);
 
         return profile.Id;
     }
@@ -345,8 +319,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var pendingRecord = await _userEmailRepository.GetByIdReadOnlyAsync(pendingEmailId, ct);
+        var now = clock.GetCurrentInstant();
+        var pendingRecord = await userEmailRepository.GetByIdReadOnlyAsync(pendingEmailId, ct);
 
         if (pendingRecord?.VerificationSentAt.HasValue == true)
         {
@@ -363,17 +337,17 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null) return;
 
-        await _profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task<IReadOnlyList<ProfileLanguageSnapshot>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        var languages = await _profileRepository.GetLanguagesAsync(profileId, ct);
+        var languages = await profileRepository.GetLanguagesAsync(profileId, ct);
         return languages.Select(l => new ProfileLanguageSnapshot(
             l.Id,
             l.ProfileId,
@@ -383,23 +357,23 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
-        await _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
-        var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, ct);
+        await profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
+        var ownerUserId = await profileRepository.GetOwnerUserIdAsync(profileId, ct);
         if (ownerUserId is { } userId)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     // --- GDPR Export — Profile-section slices ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
 
         var contactFields = profile is not null
-            ? await _contactFieldRepository.GetByProfileIdReadOnlyAsync(profile.Id, ct)
+            ? await contactFieldRepository.GetByProfileIdReadOnlyAsync(profile.Id, ct)
             : [];
 
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var userEmails = await userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
 
         var volunteerHistory = profile?.VolunteerHistory
             .OrderByDescending(v => v.Date)
@@ -407,10 +381,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
 
         var profileLanguages = profile is not null
-            ? await _profileRepository.GetLanguagesAsync(profile.Id, ct)
+            ? await profileRepository.GetLanguagesAsync(profile.Id, ct)
             : [];
 
-        var communicationPreferences = await _communicationPreferenceRepository
+        var communicationPreferences = await communicationPreferenceRepository
             .GetByUserIdReadOnlyAsync(userId, ct);
 
         var profileSlice = profile is null
@@ -512,7 +486,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 nameof(result));
         }
 
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
@@ -521,7 +495,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (cleared && profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         profile.ConsentCheckStatus = result;
         profile.ConsentCheckAt = now;
@@ -530,16 +504,16 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.IsApproved = cleared;
         profile.UpdatedAt = now;
 
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
             nameof(Profile), userId,
             cleared ? "Consent check cleared" : $"Consent check flagged: {notes}",
             reviewerId);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Consent check {Status} for user {UserId} by {ReviewerId}",
             cleared ? "cleared" : "flagged", userId, reviewerId);
 
@@ -549,14 +523,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
         if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         profile.RejectionReason = reason;
         profile.RejectedAt = now;
@@ -564,15 +538,15 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);
 
-        _logger.LogInformation("Signup rejected for user {UserId} by {ReviewerId}", userId, reviewerId);
+        logger.LogInformation("Signup rejected for user {UserId} by {ReviewerId}", userId, reviewerId);
 
         return new OnboardingResult(true);
     }
@@ -580,24 +554,24 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public async Task<OnboardingResult> ApproveVolunteerAsync(
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         profile.IsApproved = true;
         profile.UpdatedAt = now;
 
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
             "Approved as volunteer",
             adminId);
 
-        _logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
+        logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
 
         return new OnboardingResult(true);
     }
@@ -606,7 +580,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         Guid userId, Guid adminId, bool suspended, string? notes,
         CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
@@ -630,12 +604,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         if (suspended)
             profile.AdminNotes = notes;
-        profile.UpdatedAt = _clock.GetCurrentInstant();
+        profile.UpdatedAt = clock.GetCurrentInstant();
 
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             suspended ? AuditAction.MemberSuspended : AuditAction.MemberUnsuspended,
             nameof(User), userId,
             suspended
@@ -643,7 +617,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 : "Unsuspended",
             adminId);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Admin {AdminId} {Verb} human {HumanId}",
             adminId, suspended ? "suspended" : "unsuspended", userId);
 
@@ -652,16 +626,16 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task<bool> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return false;
 
         profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        profile.UpdatedAt = clock.GetCurrentInstant();
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
 
         return true;
@@ -670,20 +644,20 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
     {
         // Clear content-type column (GDPR read-gate) then best-effort delete file; log on FS failure for manual cleanup.
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var anonymized = await profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
         if (anonymized)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         if (anonymized && profile?.ProfilePictureContentType is not null)
         {
             try
             {
-                await _fileStorage.DeleteAsync(
+                await fileStorage.DeleteAsync(
                     ProfilePictureKey(profile.Id, profile.ProfilePictureContentType), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Failed to delete filesystem profile picture during anonymization for {ProfileId}; " +
                     "DB has been cleared so the read-path gate prevents the stale file from being served, " +
                     "but the file should be removed manually to complete GDPR data deletion",
@@ -710,9 +684,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         Instant now,
         CancellationToken ct = default)
     {
-        var mutated = await _profileRepository.SuspendManyAsync(userIds, now, ct);
+        var mutated = await profileRepository.SuspendManyAsync(userIds, now, ct);
         foreach (var id in mutated)
-            await _userInfoInvalidator.InvalidateAsync(id, ct);
+            await userInfoInvalidator.InvalidateAsync(id, ct);
         return mutated;
     }
 
@@ -724,24 +698,24 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             Instant now,
             CancellationToken ct = default)
     {
-        var downgrades = await _profileRepository.DowngradeTierForExpiredAsync(
+        var downgrades = await profileRepository.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
         foreach (var (userId, _) in downgrades)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         return downgrades;
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        await _userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
-        await _userInfoInvalidator.InvalidateAsync(targetUserId, ct);
+        await profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
+        await userInfoInvalidator.InvalidateAsync(targetUserId, ct);
     }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        var profile = await profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return false;
 
@@ -750,17 +724,17 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var isClearing = normalized is null;
 
         profile.Iban = normalized;
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-        await _profileRepository.UpdateAsync(profile, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        profile.UpdatedAt = clock.GetCurrentInstant();
+        await profileRepository.UpdateAsync(profile, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
             nameof(Profile), userId,
             isClearing ? "IBAN removed" : "IBAN set",
             userId);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "IBAN {Action} for user {UserId}", isClearing ? "removed" : "set", userId);
 
         return true;

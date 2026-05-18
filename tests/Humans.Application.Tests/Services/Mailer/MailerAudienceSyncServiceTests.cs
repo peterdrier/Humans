@@ -207,14 +207,14 @@ public class MailerAudienceSyncServiceTests
         var dict = mapping.ToDictionary(x => x.UserId, x => x.Email);
         _emails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, string>)dict);
+            .Returns(dict);
     }
 
     private void SetupEmailsEmpty()
     {
         _emails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>());
+            .Returns(new Dictionary<Guid, string>());
     }
 
     private void SetupGroups(params MailerLiteGroup[] groups)

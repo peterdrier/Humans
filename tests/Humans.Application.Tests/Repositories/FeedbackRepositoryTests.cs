@@ -67,7 +67,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var result = await _repo.GetByIdAsync(reportId);
 
         result.Should().NotBeNull();
-        result!.Messages.Should().HaveCount(2);
+        result.Messages.Should().HaveCount(2);
         result.Messages.First().Content.Should().Be("first");
         result.Messages.Last().Content.Should().Be("second");
     }
@@ -94,7 +94,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
 
         result.Should().NotBeNull();
         // Mutate and save through the repository.
-        result!.Status = FeedbackStatus.Resolved;
+        result.Status = FeedbackStatus.Resolved;
         await _repo.SaveTrackedReportAsync(result);
 
         var reloaded = await _dbContext.FeedbackReports.AsNoTracking()
@@ -294,7 +294,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var tracked = await _repo.FindForMutationAsync(reportId);
         tracked.Should().NotBeNull();
 
-        tracked!.LastAdminMessageAt = now + Duration.FromMinutes(1);
+        tracked.LastAdminMessageAt = now + Duration.FromMinutes(1);
         tracked.UpdatedAt = now + Duration.FromMinutes(1);
 
         var msg = new FeedbackMessage

@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
+using Humans.Infrastructure.Services.Users;
 
 namespace Humans.Infrastructure.Data;
 
@@ -21,7 +21,7 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
     private readonly ILogger<UserInfoSaveChangesInterceptor> _logger;
 
     // Snapshot collected pre-commit (Deleted still tracked) and consumed post-commit.
-    private readonly ConditionalWeakTable<DbContext, HashSet<Guid>> _pending = new();
+    private readonly ConditionalWeakTable<DbContext, PendingUserInfoInvalidations> _pending = new();
 
     public UserInfoSaveChangesInterceptor(
         IServiceProvider services,
@@ -38,8 +38,8 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is { } context)
         {
-            var affected = CollectAffectedUserIds(context);
-            if (affected.Count > 0)
+            var affected = CollectAffected(context);
+            if (affected.HasWork)
             {
                 _pending.AddOrUpdate(context, affected);
             }
@@ -53,13 +53,10 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         if (eventData.Context is { } context && _pending.TryGetValue(context, out var affected))
         {
             _pending.Remove(context);
-            var invalidator = _services.GetService<IUserInfoInvalidator>();
-            if (invalidator is not null)
+            var refresher = _services.GetService<IUserInfoSliceRefresher>();
+            if (refresher is not null)
             {
-                foreach (var userId in affected)
-                {
-                    await SafeInvalidate(invalidator, userId, cancellationToken);
-                }
+                await ApplyAsync(refresher, affected, cancellationToken);
             }
         }
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
@@ -78,23 +75,59 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
-    private async Task SafeInvalidate(IUserInfoInvalidator invalidator, Guid userId, CancellationToken ct)
+    private async Task ApplyAsync(
+        IUserInfoSliceRefresher refresher,
+        PendingUserInfoInvalidations affected,
+        CancellationToken ct)
+    {
+        foreach (var userId in affected.DeletedUserIds)
+        {
+            await RunAsync("Remove", userId, () => refresher.RemoveAsync(userId, ct), ct);
+        }
+
+        foreach (var user in affected.Users.Values.Where(u => !affected.DeletedUserIds.Contains(u.Id)))
+        {
+            await RunAsync("RefreshUserFields", user.Id, () => refresher.RefreshUserFieldsAsync(user, ct), ct);
+        }
+
+        foreach (var userId in affected.UserEmailUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshUserEmails", userId, () => refresher.RefreshUserEmailsAsync(userId, ct), ct);
+        }
+
+        foreach (var userId in affected.EventParticipationUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshEventParticipations", userId, () => refresher.RefreshEventParticipationsAsync(userId, ct), ct);
+        }
+
+        foreach (var userId in affected.ExternalLoginUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct), ct);
+        }
+
+        foreach (var userId in affected.CommunicationPreferenceUserIds.Except(affected.DeletedUserIds))
+        {
+            await RunAsync("RefreshCommunicationPreferences", userId, () => refresher.RefreshCommunicationPreferencesAsync(userId, ct), ct);
+        }
+    }
+
+    private async Task RunAsync(string operation, Guid userId, Func<Task> work, CancellationToken ct)
     {
         try
         {
-            await invalidator.InvalidateAsync(userId, ct);
+            await work();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(
-                "UserInfoSaveChangesInterceptor invalidation failed for {UserId}: {ExType}",
-                userId, ex.GetType().Name);
+                "UserInfoSaveChangesInterceptor {Operation} failed for {UserId}: {ExType}",
+                operation, userId, ex.GetType().Name);
         }
     }
 
-    private static HashSet<Guid> CollectAffectedUserIds(DbContext context)
+    private static PendingUserInfoInvalidations CollectAffected(DbContext context)
     {
-        var affected = new HashSet<Guid>();
+        var affected = new PendingUserInfoInvalidations();
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
@@ -104,22 +137,76 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
             switch (entry.Entity)
             {
                 case User u:
-                    affected.Add(u.Id);
+                    if (entry.State == EntityState.Deleted)
+                    {
+                        affected.DeletedUserIds.Add(u.Id);
+                    }
+                    else
+                    {
+                        affected.Users[u.Id] = CloneUserInfoFields(u);
+                    }
                     break;
                 case UserEmail ue:
-                    affected.Add(ue.UserId);
+                    affected.UserEmailUserIds.Add(ue.UserId);
                     break;
                 case EventParticipation ep:
-                    affected.Add(ep.UserId);
+                    affected.EventParticipationUserIds.Add(ep.UserId);
                     break;
                 case IdentityUserLogin<Guid> uil:
-                    affected.Add(uil.UserId);
+                    affected.ExternalLoginUserIds.Add(uil.UserId);
                     break;
                 case CommunicationPreference cp:
-                    affected.Add(cp.UserId);
+                    affected.CommunicationPreferenceUserIds.Add(cp.UserId);
                     break;
             }
         }
         return affected;
+    }
+
+    private static User CloneUserInfoFields(User user)
+    {
+#pragma warning disable CS0618 // DisplayName is part of the cached legacy user-column mirror.
+        return new User
+        {
+            Id = user.Id,
+            DisplayName = user.DisplayName,
+            PreferredLanguage = user.PreferredLanguage,
+            ProfilePictureUrl = user.ProfilePictureUrl,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt,
+            LastConsentReminderSentAt = user.LastConsentReminderSentAt,
+            DeletionRequestedAt = user.DeletionRequestedAt,
+            DeletionScheduledFor = user.DeletionScheduledFor,
+            DeletionEligibleAfter = user.DeletionEligibleAfter,
+            UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
+            ICalToken = user.ICalToken,
+            SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
+            MagicLinkSentAt = user.MagicLinkSentAt,
+            GoogleEmailStatus = user.GoogleEmailStatus,
+            ContactSource = user.ContactSource,
+            ExternalSourceId = user.ExternalSourceId,
+            MergedToUserId = user.MergedToUserId,
+            MergedAt = user.MergedAt,
+            Email = user.IdentityEmailColumn,
+        };
+#pragma warning restore CS0618
+    }
+
+    private sealed class PendingUserInfoInvalidations
+    {
+        public Dictionary<Guid, User> Users { get; } = new();
+        public HashSet<Guid> DeletedUserIds { get; } = [];
+        public HashSet<Guid> UserEmailUserIds { get; } = [];
+        public HashSet<Guid> EventParticipationUserIds { get; } = [];
+        public HashSet<Guid> ExternalLoginUserIds { get; } = [];
+        public HashSet<Guid> CommunicationPreferenceUserIds { get; } = [];
+
+        public bool HasWork =>
+            Users.Count > 0 ||
+            DeletedUserIds.Count > 0 ||
+            UserEmailUserIds.Count > 0 ||
+            EventParticipationUserIds.Count > 0 ||
+            ExternalLoginUserIds.Count > 0 ||
+            CommunicationPreferenceUserIds.Count > 0;
     }
 }

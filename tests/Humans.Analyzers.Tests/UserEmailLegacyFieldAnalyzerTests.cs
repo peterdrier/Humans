@@ -162,7 +162,7 @@ public class UserEmailLegacyFieldAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0001(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0001).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -184,6 +184,6 @@ public class UserEmailLegacyFieldAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0001(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0001).Should().BeEmpty();
     }
 }

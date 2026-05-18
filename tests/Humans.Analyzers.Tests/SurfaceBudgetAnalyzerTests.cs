@@ -80,7 +80,7 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0015(d));
-        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0016).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -107,7 +107,7 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0016(d));
-        diagnostics.Where(d => IsHum0015(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0015).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -273,7 +273,7 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0015(d));
-        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0016).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -332,6 +332,6 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0015(d));
-        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0016).Should().BeEmpty();
     }
 }

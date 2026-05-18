@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces.Governance;
@@ -11,7 +10,6 @@ using Humans.Application.Interfaces.Auth;
 #pragma warning disable CS0618 // RoleAssignment.User/CreatedByUser — stitched in-memory by RoleAssignmentService (§15i).
 
 using Humans.Application.Interfaces.Users;
-using Humans.Application;
 
 namespace Humans.Web.Controllers;
 

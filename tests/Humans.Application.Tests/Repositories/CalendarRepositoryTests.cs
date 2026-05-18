@@ -65,7 +65,7 @@ public sealed class CalendarRepositoryTests : IDisposable
 
         var fetched = await _repo.GetEventByIdAsync(ev.Id);
         fetched.Should().NotBeNull();
-        fetched!.Exceptions.Should().ContainSingle(x => x.IsCancelled);
+        fetched.Exceptions.Should().ContainSingle(x => x.IsCancelled);
     }
 
     [HumansFact]
@@ -84,7 +84,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         var fetched = await _repo.GetEventByIdAsync(ev.Id);
         fetched.Should().NotBeNull();
 #pragma warning disable CS0618 // accessing the [Obsolete] nav intentionally in the assertion
-        fetched!.OwningTeam.Should().BeNull(
+        fetched.OwningTeam.Should().BeNull(
             because: "CalendarRepository must not .Include(OwningTeam) — cross-domain nav resolved via ITeamService (design-rules §6c)");
 #pragma warning restore CS0618
     }
@@ -189,7 +189,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         updated.Should().BeTrue();
         var persisted = await _repo.GetEventByIdAsync(ev.Id);
         persisted.Should().NotBeNull();
-        persisted!.Title.Should().Be("Updated title");
+        persisted.Title.Should().Be("Updated title");
     }
 
     [HumansFact]
@@ -213,7 +213,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         var result = await _repo.SoftDeleteAsync(ev.Id, now);
 
         result.Should().NotBeNull();
-        result!.Value.OwningTeamId.Should().Be(ev.OwningTeamId);
+        result.Value.OwningTeamId.Should().Be(ev.OwningTeamId);
         result.Value.Title.Should().Be(ev.Title);
 
         var deletedRow = await _dbContext.CalendarEvents

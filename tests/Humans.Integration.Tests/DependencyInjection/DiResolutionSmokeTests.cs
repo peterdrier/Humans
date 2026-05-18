@@ -6,28 +6,21 @@ using Xunit;
 
 namespace Humans.Integration.Tests.DependencyInjection;
 
-public class DiResolutionSmokeTests : IClassFixture<HumansWebApplicationFactory>
+public class DiResolutionSmokeTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
 {
     private static readonly HashSet<Type> RuntimeBootstrappedServiceTypes =
     [
         typeof(IImmediateOutboxProcessor)
     ];
 
-    private readonly HumansWebApplicationFactory _factory;
-
-    public DiResolutionSmokeTests(HumansWebApplicationFactory factory)
-    {
-        _factory = factory;
-    }
-
     [HumansFact(Timeout = 60000)]
     public async Task All_application_registrations_resolve_from_a_real_app_scope()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
 
         var failures = new List<string>();
 
-        foreach (var group in _factory.RegisteredServices
+        foreach (var group in factory.RegisteredServices
                      .Where(IsResolvableApplicationRegistration)
                      .GroupBy(d => d.ServiceType)
                      .OrderBy(g => g.Key.FullName, StringComparer.Ordinal))

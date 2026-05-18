@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
@@ -148,7 +147,7 @@ public class EventsArchitectureTests
         var sectionExtensionsType = typeof(EventsController).Assembly
             .GetType("Humans.Web.Extensions.Sections.EventsSectionExtensions", throwOnError: true)!;
         var addMethod = sectionExtensionsType.GetMethod("AddEventsSection",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+            BindingFlags.NonPublic | BindingFlags.Static)!;
         addMethod.Invoke(null, [services]);
 
         var descriptor = services.Single(d => d.ServiceType == typeof(EventsFeatureFilter));
@@ -272,7 +271,7 @@ public class EventsArchitectureTests
 
         field.Should().NotBeNull(
             because: "§15d — the decorator must publish the keyed DI key it uses to resolve the inner service");
-        field!.GetValue(null).Should().Be("event-inner",
+        field.GetValue(null).Should().Be("event-inner",
             because: "convention: <section>-inner");
     }
 

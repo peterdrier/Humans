@@ -37,7 +37,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         userService
             .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Application.UserInfo>());
+            .Returns(new Dictionary<Guid, UserInfo>());
 
         // WarmAllAsync needs these three reads; return empty maps so warmup
         // proceeds without DB. The team set itself is supplied per-test.
@@ -74,7 +74,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var result = await _service.GetTeamDetailAsync("public", userId: null);
 
         result.Should().NotBeNull();
-        result!.Team.Slug.Should().Be("public");
+        result.Team.Slug.Should().Be("public");
         await AssertNoBypassedReadsAsync();
     }
 
@@ -115,7 +115,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var result = await _service.GetTeamDetailAsync("alpha", memberId);
 
         result.Should().NotBeNull();
-        result!.IsAuthenticated.Should().BeTrue();
+        result.IsAuthenticated.Should().BeTrue();
         result.IsCurrentUserMember.Should().BeTrue();
         result.CanCurrentUserLeave.Should().BeTrue();
         result.CanCurrentUserJoin.Should().BeFalse();
@@ -132,7 +132,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var result = await _service.GetTeamDetailAsync("Branded", userId: null);
 
         result.Should().NotBeNull();
-        result!.Team.Slug.Should().Be("original");
+        result.Team.Slug.Should().Be("original");
         await AssertNoBypassedReadsAsync();
     }
 
@@ -155,7 +155,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var result = await _service.GetTeamDetailAsync("department", viewerId);
 
         result.Should().NotBeNull();
-        result!.ChildTeams.Should().ContainSingle(c => c.Id == child.Id);
+        result.ChildTeams.Should().ContainSingle(c => c.Id == child.Id);
         await AssertNoBypassedReadsAsync();
     }
 
@@ -174,7 +174,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var result = await _service.GetTeamDetailAsync("dept", userId: null);
 
         result.Should().NotBeNull();
-        result!.ChildTeams.Select(c => c.Id).Should().BeEquivalentTo(new[] { publicChild.Id });
+        result.ChildTeams.Select(c => c.Id).Should().BeEquivalentTo([publicChild.Id]);
         await AssertNoBypassedReadsAsync();
     }
 
@@ -192,7 +192,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     {
         _teamRepository
             .GetAllWithMembersAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<Team>)teams.ToList());
+            .Returns(teams.ToList());
     }
 
     private static Team MakeTeam(string name, bool isPublicPage = false, bool isHidden = false)

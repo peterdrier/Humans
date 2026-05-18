@@ -117,7 +117,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
             newPermissionLevel: DrivePermissionLevel.Manager);
 
         updated.Should().NotBeNull();
-        updated!.IsActive.Should().BeTrue();
+        updated.IsActive.Should().BeTrue();
         updated.ErrorMessage.Should().BeNull();
         updated.Name.Should().Be("fresh");
         updated.Url.Should().Be("https://example.com/fresh");
@@ -187,7 +187,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
 
         deactivated.Select(r => r.Id).Should().BeEquivalentTo([drive.Id]);
 
-        using var check = new HumansDbContext(_options);
+        await using var check = new HumansDbContext(_options);
         (await check.GoogleResources.FindAsync(drive.Id))!.IsActive.Should().BeFalse();
         (await check.GoogleResources.FindAsync(group.Id))!.IsActive.Should().BeTrue();
     }
@@ -228,15 +228,12 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     /// production Singleton-plus-factory shape (§15b) without requiring a
     /// real provider.
     /// </summary>
-    private sealed class SingleContextFactory : IDbContextFactory<HumansDbContext>
+    private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
+        : IDbContextFactory<HumansDbContext>
     {
-        private readonly DbContextOptions<HumansDbContext> _options;
-
-        public SingleContextFactory(DbContextOptions<HumansDbContext> options) => _options = options;
-
-        public HumansDbContext CreateDbContext() => new(_options);
+        public HumansDbContext CreateDbContext() => new(options);
 
         public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(_options));
+            Task.FromResult(new HumansDbContext(options));
     }
 }

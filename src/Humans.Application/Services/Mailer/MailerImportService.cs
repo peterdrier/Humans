@@ -132,7 +132,7 @@ public sealed class MailerImportService : IMailerImportService
         var current = userId;
         while (true)
         {
-            var user = await _users.GetByIdAsync(current, ct);
+            var user = await _users.GetUserInfoAsync(current, ct);
             if (user?.MergedToUserId is not Guid next) return current;
             if (!visited.Add(next)) return current;
             current = next;

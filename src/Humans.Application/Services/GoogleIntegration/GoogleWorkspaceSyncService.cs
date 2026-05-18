@@ -384,7 +384,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Issue #635 (§15i): read UserEmails through the owning section
         // service (design-rules §2c) instead of traversing user.UserEmails
         // cross-domain.
-        var user = await _userService.GetByIdAsync(userId, cancellationToken);
+        var user = await _userService.GetUserInfoAsync(userId, cancellationToken);
 
         // Merge-fold redirect (issue peterdrier/Humans#646): if the source
         // user has been folded into a target via AccountMergeService, the
@@ -401,7 +401,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 "Following merge-fold redirect for AddUserToTeamResources: source {SourceUserId} → target {TargetUserId} (team {TeamId})",
                 userId, targetUserId, teamId);
             userId = targetUserId;
-            user = await _userService.GetByIdAsync(userId, cancellationToken);
+            user = await _userService.GetUserInfoAsync(userId, cancellationToken);
             hops++;
         }
 

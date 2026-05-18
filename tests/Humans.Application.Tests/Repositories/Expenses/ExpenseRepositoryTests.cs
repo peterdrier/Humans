@@ -42,7 +42,7 @@ public class ExpenseRepositoryTests
 
         var got = await _sut.GetByIdAsync(id);
         got.Should().NotBeNull();
-        got!.Id.Should().Be(id);
+        got.Id.Should().Be(id);
     }
 
     [HumansFact]
@@ -78,7 +78,7 @@ public class ExpenseRepositoryTests
 
         var loaded = await _sut.GetByIdAsync(report.Id);
         loaded.Should().NotBeNull();
-        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.Status.Should().Be(ExpenseReportStatus.Draft);
     }
 
     [HumansFact]

@@ -1079,7 +1079,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
 
         var shifts = period is null
-            ? (IReadOnlyList<Shift>)allShifts
+            ? allShifts
             : allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
 
         if (period == ShiftPeriod.Build && subPeriod is not null)
@@ -1119,7 +1119,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var engagedUserIds = await _repo.GetEngagedUserIdsForShiftsAsync(shiftIds);
         var engaged = engagedUserIds.ToHashSet();
 
-        var ticketHoldersEngaged = engaged.Count(u => ticketHolders.Contains(u));
+        var ticketHoldersEngaged = engaged.Count(ticketHolders.Contains);
         var nonTicketSignups = engaged.Count(u => !ticketHolders.Contains(u));
 
         var staleThreshold = _clock.GetCurrentInstant().Minus(Duration.FromDays(3));
@@ -1473,7 +1473,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var signupsByDay = signupsInWindow.GroupBy(ToLocalDate).ToDictionary(g => g.Key, g => g.Count());
         var ticketsByDay = ticketsInWindow.GroupBy(ToLocalDate).ToDictionary(g => g.Key, g => g.Count());
         var loginCountsByDay = loginsInWindow
-            .GroupBy(i => ToLocalDate(i))
+            .GroupBy(ToLocalDate)
             .ToDictionary(g => g.Key, g => g.Count());
 
         var points = new List<DashboardTrendPoint>();

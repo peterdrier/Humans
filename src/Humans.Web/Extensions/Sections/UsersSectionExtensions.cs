@@ -36,6 +36,11 @@ internal static class UsersSectionExtensions
         services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingUserService>());
 
+        // Infrastructure-internal slice-refresh signal consumed by UserInfoSaveChangesInterceptor.
+        // Not part of the cross-section §15e contract; same Singleton instance as IUserInfoInvalidator.
+        services.AddSingleton<IUserInfoSliceRefresher>(sp =>
+            sp.GetRequiredService<CachingUserService>());
+
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingUserService>());
 
         // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail). Singleton — added to both DbContext + DbContextFactory pipelines.

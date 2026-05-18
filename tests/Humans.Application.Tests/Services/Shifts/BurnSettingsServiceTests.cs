@@ -4,7 +4,6 @@ using Humans.Application.Services.Shifts;
 using Humans.Domain.Entities;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -28,7 +27,7 @@ public sealed class BurnSettingsServiceTests
         var result = await _service.GetByIdAsync(id);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(id);
+        result.Id.Should().Be(id);
         result.EventName.Should().Be(entity.EventName);
         result.TimeZoneId.Should().Be(entity.TimeZoneId);
         result.GateOpeningDate.Should().Be(entity.GateOpeningDate);
@@ -55,7 +54,7 @@ public sealed class BurnSettingsServiceTests
         var result = await _service.GetActiveAsync();
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(entity.Id);
+        result.Id.Should().Be(entity.Id);
         await _repo.Received(1).GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
     }
 
@@ -80,7 +79,7 @@ public sealed class BurnSettingsServiceTests
         var result = await _service.GetActiveAsync();
 
         result.Should().NotBeNull();
-        result!.GetEarlyEntryCapacityForDay(-11).Should().Be(0);
+        result.GetEarlyEntryCapacityForDay(-11).Should().Be(0);
         result.GetEarlyEntryCapacityForDay(-10).Should().Be(5);
         result.GetEarlyEntryCapacityForDay(-7).Should().Be(5);
         result.GetEarlyEntryCapacityForDay(-5).Should().Be(12);

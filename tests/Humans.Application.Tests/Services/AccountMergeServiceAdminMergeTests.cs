@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -36,10 +37,10 @@ public class AccountMergeServiceAdminMergeTests
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
-        _userService.GetByIdAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = sourceId, MergedToUserId = sourceTombstoned ? targetId : (Guid?)null });
-        _userService.GetByIdAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = targetId });
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = sourceId, MergedToUserId = sourceTombstoned ? targetId : (Guid?)null }.ToUserInfo());
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = targetId }.ToUserInfo());
     }
 
     [HumansFact]
@@ -72,9 +73,9 @@ public class AccountMergeServiceAdminMergeTests
     public async Task AdminMergeAsync_SourceMissing_Throws()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
-        _userService.GetByIdAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt });
-        // source returns null by default — Substitute.For<>'s default for Task<User?> is null
+        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = tgt }, [], [], [], null, [], [], [], []));
+        // source returns null by default — Substitute.For<>'s default for ValueTask<UserInfo?> is null
         var act = () => BuildSut().AdminMergeAsync(src, tgt, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>();
     }

@@ -436,7 +436,7 @@ public class AccountProvisioningServiceTests
         // Verify UserEmail was created
         var userEmail = _userEmailFake.All.FirstOrDefault(ue => ue.UserId == result.User.Id);
         userEmail.Should().NotBeNull();
-        userEmail!.Email.Should().Be("alice@example.com");
+        userEmail.Email.Should().Be("alice@example.com");
         userEmail.IsPrimary.Should().BeTrue();
         userEmail.IsVerified.Should().BeTrue();
     }

@@ -68,14 +68,14 @@ public class VolunteerTrackingControllerTests
             _userService.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                     currentUser,
-                    Array.Empty<UserEmail>(),
-                    Array.Empty<EventParticipation>(),
-                    Array.Empty<(string, string)>(),
+                    [],
+                    [],
+                    [],
                     profile: null,
-                    Array.Empty<ContactField>(),
-                    Array.Empty<ProfileLanguage>(),
-                    Array.Empty<VolunteerHistoryEntry>(),
-                    Array.Empty<CommunicationPreference>())));
+                    [],
+                    [],
+                    [],
+                    [])));
         }
 
         var ctrl = new VolunteerTrackingController(
@@ -123,7 +123,7 @@ public class VolunteerTrackingControllerTests
         var attr = typeof(VolunteerTrackingController)
             .GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull("class-level [Authorize] gates anonymous reads");
-        attr!.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
+        attr.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
     }
 
     [HumansTheory]
@@ -138,7 +138,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, actionName, StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull($"{actionName} must require VolunteerTrackingWrite");
-        attr!.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
 
     [HumansTheory]

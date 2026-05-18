@@ -203,7 +203,7 @@ public class EmailProvisioningServiceTests
             Members: [],
             GoogleGroupPrefix: "comms");
         f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
+            .Returns(new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "comms", userId);
 

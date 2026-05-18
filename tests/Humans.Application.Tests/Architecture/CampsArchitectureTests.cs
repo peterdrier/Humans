@@ -265,12 +265,11 @@ public class CampsArchitectureTests
                         && !t.IsInterface
                         && typeof(IGoogleGroupMembershipSource).IsAssignableFrom(t)
                         && (t.Namespace ?? string.Empty).StartsWith(
-                            "Humans.Application.Services.Camps", System.StringComparison.Ordinal))
+                            "Humans.Application.Services.Camps", StringComparison.Ordinal))
             .Select(t => t.FullName ?? t.Name)
             .ToList();
 
-        campsClaimants.Should().BeEquivalentTo(
-            new[] { typeof(CampRoleService).FullName! },
+        campsClaimants.Should().BeEquivalentTo([typeof(CampRoleService).FullName!],
             because: "CampRoleService is the only Camps-side IGoogleGroupMembershipSource claimant; new Camps groups must route through this service so the orchestrator's collision check sees one Camps voice per group key (issue nobodies-collective/Humans#740)");
     }
 

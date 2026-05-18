@@ -69,7 +69,7 @@ public class GuideRoleResolverTests
         var byId = teams.ToDictionary(t => t.Id);
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)byId);
+            .Returns(byId);
     }
 
     [HumansFact]

@@ -104,7 +104,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
-            default, default, default, default!, default!);
+            default, default, default, null!, null!);
         _metrics.DidNotReceive().RecordMemberSuspended(Arg.Any<string>());
     }
 
@@ -144,7 +144,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _notificationInboxService.DidNotReceiveWithAnyArgs()
-            .ResolveBySourceAsync(default, default, default);
+            .ResolveBySourceAsync(Guid.Empty, default, CancellationToken.None);
     }
 
     [HumansFact]

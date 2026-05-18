@@ -35,17 +35,17 @@ public abstract class HumansControllerBase : Controller
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User)> RequireCurrentUserAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => NotFound(), ct);
+        return await ResolveCurrentUserAsync(NotFound, ct);
     }
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrChallengeAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => Challenge(), ct);
+        return await ResolveCurrentUserAsync(Challenge, ct);
     }
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrUnauthorizedAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => Unauthorized(), ct);
+        return await ResolveCurrentUserAsync(Unauthorized, ct);
     }
 
     private async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing, CancellationToken ct)

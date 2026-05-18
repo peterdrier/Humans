@@ -163,12 +163,12 @@ public class TicketQueryArchitectureTests
             var method = typeof(TicketQueryService).GetMethod(name);
             method.Should().NotBeNull(because: $"{name} is on the ITicketQueryService surface");
 
-            var body = method!.GetMethodBody();
+            var body = method.GetMethodBody();
             body.Should().NotBeNull(because: $"{name} is a concrete method on the inner");
 
-            var il = body!.GetILAsByteArray();
+            var il = body.GetILAsByteArray();
             il.Should().NotBeNull();
-            il!.Should().OnlyContain(b => b == Nop || b == Ret,
+            il.Should().OnlyContain(b => b == Nop || b == Ret,
                 because: $"TicketQueryService.{name} must remain a no-op (only nop/ret opcodes) — the decorator owns invalidation; any non-empty body implies hidden inner cache state");
         }
     }
@@ -187,10 +187,10 @@ public class TicketQueryArchitectureTests
             .GetMethod(nameof(CachingTicketQueryService.HasCurrentEventTicketAsync));
         method.Should().NotBeNull();
 
-        var body = method!.GetMethodBody();
+        var body = method.GetMethodBody();
         body.Should().NotBeNull();
 
-        var il = body!.GetILAsByteArray()!;
+        var il = body.GetILAsByteArray()!;
         var module = method.Module;
 
         // Walk the IL collecting any method-token references. Tokens for

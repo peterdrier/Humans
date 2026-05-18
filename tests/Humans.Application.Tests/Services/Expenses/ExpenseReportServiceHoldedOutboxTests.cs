@@ -124,9 +124,9 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .CreatePurchaseDocumentAsync(default!, default);
+            .CreatePurchaseDocumentAsync(null!, CancellationToken.None);
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UpdatePurchaseDocumentTagsAsync(default!, default!, default);
+            .UpdatePurchaseDocumentTagsAsync(null!, null!, CancellationToken.None);
     }
 
     // ─── CreateIncomingDoc happy path ──────────────────────────────────────────
@@ -276,7 +276,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UploadAttachmentAsync(default!, default!, default);
+            .UploadAttachmentAsync(null!, null!, CancellationToken.None);
         await _repo.Received(1).SetHoldedDocIdAsync(
             report.Id, "doc-no-att", Now, Arg.Any<CancellationToken>());
         await _repo.Received(1).MarkOutboxProcessedAsync(
@@ -322,9 +322,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             .WithMessage("*could not be read from storage*");
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UploadAttachmentAsync(default!, default!, default);
+            .UploadAttachmentAsync(null!, null!, CancellationToken.None);
         await _repo.DidNotReceiveWithAnyArgs()
-            .MarkOutboxProcessedAsync(default, default, default);
+            .MarkOutboxProcessedAsync(Guid.Empty, default, CancellationToken.None);
     }
 
     [HumansFact]
@@ -344,9 +344,9 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .CreatePurchaseDocumentAsync(default!, default);
+            .CreatePurchaseDocumentAsync(null!, CancellationToken.None);
         await _repo.DidNotReceiveWithAnyArgs()
-            .SetHoldedDocIdAsync(default, default!, default, default);
+            .SetHoldedDocIdAsync(Guid.Empty, null!, default, CancellationToken.None);
         await _repo.Received(1).MarkOutboxProcessedAsync(
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
@@ -375,7 +375,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .CreatePurchaseDocumentAsync(default!, default);
+            .CreatePurchaseDocumentAsync(null!, CancellationToken.None);
     }
 
     // ─── Transient error ──────────────────────────────────────────────────────
@@ -397,10 +397,10 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _repo.Received(1).IncrementOutboxRetryAsync(
             outboxEvent.Id, "timeout", Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(default, default!, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, CancellationToken.None);
         await _repo.DidNotReceiveWithAnyArgs()
-            .MarkOutboxFailedPermanentlyAsync(default, default!, default, default);
+            .MarkOutboxFailedPermanentlyAsync(Guid.Empty, null!, default, CancellationToken.None);
     }
 
     // ─── Permanent error ──────────────────────────────────────────────────────
@@ -425,9 +425,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<string>(),
             Now,
             Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(default, default!, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(default, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(Guid.Empty, null!, CancellationToken.None);
     }
 
     // ─── IBAN never logged ────────────────────────────────────────────────────

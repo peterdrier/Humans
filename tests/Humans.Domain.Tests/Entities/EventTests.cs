@@ -9,12 +9,7 @@ namespace Humans.Domain.Tests.Entities;
 
 public class EventTests
 {
-    private readonly FakeClock _clock;
-
-    public EventTests()
-    {
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 18, 12, 0));
-    }
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 18, 12, 0));
 
     [HumansTheory]
     [InlineData(EventStatus.Draft)]

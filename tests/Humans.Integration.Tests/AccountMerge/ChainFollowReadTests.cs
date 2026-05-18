@@ -28,12 +28,8 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// <c>IUserService.AnonymizeForMergeAsync</c>), then queries the read path
 /// for the target and asserts the source-attributed row surfaces.
 /// </summary>
-public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
+public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
 {
-    private readonly HumansWebApplicationFactory _factory;
-
-    public ChainFollowReadTests(HumansWebApplicationFactory factory) => _factory = factory;
-
     // ==================================================================
     // AuditLog — chain-follow GetByUserAsync (Phase 4.1)
     // ==================================================================
@@ -45,18 +41,18 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
         // seeded by other tests in the same shared-DB class fixture.
         var description = $"chain-follow-audit-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, description);
         });
-        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
         // Act: query the AuditLog read path for the TARGET — chain-follow
         // should union the source-tombstone id and surface source's row.
-        await using var assertScope = _factory.Services.CreateAsyncScope();
+        await using var assertScope = factory.Services.CreateAsyncScope();
         var auditService = assertScope.ServiceProvider.GetRequiredService<IAuditLogService>();
         var entries = await auditService.GetByUserAsync(targetId, count: 100);
 
@@ -76,9 +72,9 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
     {
         Guid versionId = Guid.Empty;
 
-        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             versionId = builder.SeedDocumentVersionNow($"ChainFollowDoc-{Guid.NewGuid():N}".Substring(0, 24));
@@ -86,14 +82,14 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
             await builder.SaveAllAsync();
         }
 
-        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
         // Act: per-user consent read for the TARGET should surface source's
         // append-only consent record via the chain-follow union.
-        await using var assertScope = _factory.Services.CreateAsyncScope();
+        await using var assertScope = factory.Services.CreateAsyncScope();
         var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentService>();
         var records = await consentService.GetUserConsentRecordsAsync(targetId);
 
@@ -114,9 +110,9 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
     {
         var description = $"chain-follow-budget-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             var budgetYearId = builder.SeedBudgetYearNow($"BY-{Guid.NewGuid():N}".Substring(0, 6));
@@ -124,7 +120,7 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
             await builder.SaveAllAsync();
         }
 
-        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
@@ -134,7 +130,7 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
         // both IBudgetService and IUserDataContributor; resolve the former
         // (single DI registration to that ID) and cast for the contributor
         // method.
-        await using var assertScope = _factory.Services.CreateAsyncScope();
+        await using var assertScope = factory.Services.CreateAsyncScope();
         var budgetService = assertScope.ServiceProvider.GetRequiredService<IBudgetService>();
         var contributor = (IUserDataContributor)budgetService;
         var slices = await contributor.ContributeForUserAsync(targetId, TestContext.Current.CancellationToken);
@@ -164,7 +160,7 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
         // and ActorUserId = adminUserId on the audit row, both FK'd to AspNetUsers.
         // It also calls TeamService.RemoveMemberAsync for non-system team folds,
         // which requires the actor to be Admin / Board / TeamsAdmin.
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -202,7 +198,7 @@ public class ChainFollowReadTests : IClassFixture<HumansWebApplicationFactory>
 
     private async Task AcceptAsync(Guid requestId, Guid adminUserId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
         await mergeService.AcceptAsync(requestId, adminUserId);
     }

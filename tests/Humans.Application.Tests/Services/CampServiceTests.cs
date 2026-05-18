@@ -107,14 +107,14 @@ public class CampServiceTests : IDisposable
         var season = await _dbContext.CampSeasons
             .FirstOrDefaultAsync(s => s.CampId == camp.Id);
         season.Should().NotBeNull();
-        season!.Status.Should().Be(CampSeasonStatus.Pending);
+        season.Status.Should().Be(CampSeasonStatus.Pending);
         season.Year.Should().Be(2026);
         season.Name.Should().Be("Camp Funhouse");
 
         var lead = await _dbContext.CampLeads
             .FirstOrDefaultAsync(l => l.CampId == camp.Id);
         lead.Should().NotBeNull();
-        lead!.UserId.Should().Be(userId);
+        lead.UserId.Should().Be(userId);
         lead.Role.Should().Be(CampLeadRole.CoLead);
     }
 
@@ -468,7 +468,7 @@ public class CampServiceTests : IDisposable
         var detail = await _service.BuildCampDetailDataBySlugAsync(camp.Slug);
 
         detail.Should().NotBeNull();
-        detail!.Name.Should().Be("Fallback Camp");
+        detail.Name.Should().Be("Fallback Camp");
         detail.Links.Should().ContainSingle(link => link.Url == "https://example.com/fallback");
         detail.HistoricalNames.Should().Contain("Old Fallback");
         detail.ImageUrls.Should().ContainSingle("/uploads/camps/fallback.jpg");
@@ -579,7 +579,7 @@ public class CampServiceTests : IDisposable
             .AsNoTracking()
             .FirstOrDefaultAsync(h => h.CampId == camp.Id && h.Source == CampNameSource.NameChange);
         historical.Should().NotBeNull();
-        historical!.Name.Should().Be("Test Camp");
+        historical.Name.Should().Be("Test Camp");
     }
 
     [HumansFact]

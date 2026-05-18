@@ -2033,7 +2033,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         string eventType,
         CancellationToken ct)
     {
-        var user = await UserService.GetByIdAsync(userId, ct);
+        var user = await UserService.GetUserInfoAsync(userId, ct);
         if (user?.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
             _logger.LogDebug(

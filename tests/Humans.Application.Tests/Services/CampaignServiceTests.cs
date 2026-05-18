@@ -187,7 +187,7 @@ public class CampaignServiceTests : IDisposable
 
         var inDb = await _dbContext.Campaigns.FindAsync(result.Campaign.Id);
         inDb.Should().NotBeNull();
-        inDb!.Status.Should().Be(CampaignStatus.Draft);
+        inDb.Status.Should().Be(CampaignStatus.Draft);
     }
 
     [HumansFact]
@@ -332,7 +332,7 @@ public class CampaignServiceTests : IDisposable
 
         var refreshed = await _dbContext.Campaigns.FindAsync(campaign.Id);
         refreshed.Should().NotBeNull();
-        refreshed!.Title.Should().Be("Updated Campaign");
+        refreshed.Title.Should().Be("Updated Campaign");
         refreshed.Description.Should().Be("Updated description");
         refreshed.EmailSubject.Should().Be("Updated subject");
         refreshed.EmailBodyTemplate.Should().Be("Updated body");
@@ -379,7 +379,7 @@ public class CampaignServiceTests : IDisposable
         var page = await _service.GetDetailPageAsync(campaign.Id);
 
         page.Should().NotBeNull();
-        page!.Campaign.Id.Should().Be(campaign.Id);
+        page.Campaign.Id.Should().Be(campaign.Id);
         page.Stats.TotalCodes.Should().Be(3);
         page.Stats.AvailableCodes.Should().Be(2);
         page.Stats.FailedCount.Should().Be(1);
@@ -401,7 +401,7 @@ public class CampaignServiceTests : IDisposable
         var page = await _service.GetSendWavePageAsync(campaign.Id, alpha.Id);
 
         page.Should().NotBeNull();
-        page!.Campaign.Id.Should().Be(campaign.Id);
+        page.Campaign.Id.Should().Be(campaign.Id);
         page.SelectedTeamId.Should().Be(alpha.Id);
         page.Preview.Should().NotBeNull();
         page.Preview!.EligibleCount.Should().Be(1);

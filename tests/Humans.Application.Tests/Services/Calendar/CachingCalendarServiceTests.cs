@@ -74,7 +74,7 @@ public class CachingCalendarServiceTests
             Title = title,
             OwningTeamId = teamId ?? Guid.NewGuid(),
             StartUtc = s,
-            EndUtc = end ?? s.Plus(NodaTime.Duration.FromHours(1)),
+            EndUtc = end ?? s.Plus(Duration.FromHours(1)),
             IsAllDay = isAllDay,
             CreatedByUserId = Guid.NewGuid(),
             CreatedAt = s,
@@ -112,7 +112,7 @@ public class CachingCalendarServiceTests
         var detail = await sut.GetEventByIdAsync(ev.Id);
 
         detail.Should().NotBeNull();
-        detail!.Id.Should().Be(ev.Id);
+        detail.Id.Should().Be(ev.Id);
         detail.Title.Should().Be("Cached event");
         // Hot path: cache hit — inner is not consulted.
         await _inner.DidNotReceive().GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -161,8 +161,7 @@ public class CachingCalendarServiceTests
             .Returns(new List<CalendarEvent> { inWindow, outsideWindow });
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, Application.Interfaces.Teams.TeamInfo>)
-                new Dictionary<Guid, Application.Interfaces.Teams.TeamInfo>());
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         var sut = CreateSut();
 
@@ -373,7 +372,7 @@ public class CachingCalendarServiceTests
         // foreach reached this key).
         var stale = BuildEvent(
             id: sharedId, teamId: teamId, title: "Stale (snapshot)",
-            start: staleStart, end: staleStart.Plus(NodaTime.Duration.FromHours(1)));
+            start: staleStart, end: staleStart.Plus(Duration.FromHours(1)));
         _repo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(new List<CalendarEvent> { stale });
 
@@ -386,7 +385,7 @@ public class CachingCalendarServiceTests
         var fresh = Humans.Application.Services.Calendar.CalendarOccurrenceExpander.ToInfo(
             BuildEvent(
                 id: sharedId, teamId: teamId, title: "Fresh (write winner)",
-                start: freshStart, end: freshStart.Plus(NodaTime.Duration.FromHours(1))));
+                start: freshStart, end: freshStart.Plus(Duration.FromHours(1))));
         sut.Set(sharedId, fresh);
 
         // Warmup runs. Without the guard it would Set(sharedId, stale) and

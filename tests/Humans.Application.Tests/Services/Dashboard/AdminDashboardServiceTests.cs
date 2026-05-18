@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Dashboard;
 using Humans.Domain.Entities;
@@ -22,9 +24,26 @@ public class AdminDashboardServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+
+    public AdminDashboardServiceTests()
+    {
+        // Default stubs: no active event, empty shift view. Per-test overrides allowed.
+        _shiftManagement.GetActiveAsync().Returns((EventSettings?)null);
+        _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = (IEnumerable<Guid>)ci[0];
+                IReadOnlyDictionary<Guid, ShiftUserView> dict =
+                    ids.ToDictionary(id => id, id => ShiftUserView.Empty(id));
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(dict);
+            });
+    }
 
     private AdminDashboardService BuildSut() =>
-        new(_userService, _membershipCalculator, _applicationDecisionService);
+        new(_userService, _membershipCalculator, _applicationDecisionService,
+            _shiftManagement, _shiftView);
 
     [HumansFact]
     public async Task GetAdminDashboardAsync_AggregatesPartitionAppStatsAndLanguageDistribution()

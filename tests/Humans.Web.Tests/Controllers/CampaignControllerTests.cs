@@ -24,7 +24,7 @@ public class CampaignControllerTests
     {
         var routeAttr = typeof(CampaignController).GetCustomAttribute<RouteAttribute>();
         routeAttr.Should().NotBeNull();
-        routeAttr!.Template.Should().Be("Admin/Campaigns");
+        routeAttr.Template.Should().Be("Admin/Campaigns");
     }
 
     [HumansFact]
@@ -87,7 +87,7 @@ public class CampaignControllerTests
         var method = GetAction(actionName, httpMethodAttributeType);
         var auth = method.GetCustomAttribute<AuthorizeAttribute>();
         auth.Should().NotBeNull($"{actionName} ({httpMethodAttributeType.Name}) requires [Authorize]");
-        auth!.Policy.Should().Be(policy,
+        auth.Policy.Should().Be(policy,
             because: $"{actionName} ({httpMethodAttributeType.Name}) must use {policy}");
     }
 

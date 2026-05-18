@@ -107,7 +107,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var result = await _repo.GetByIdAsync(doc.Id);
 
         result.Should().NotBeNull();
-        result!.Versions.Should().ContainSingle();
+        result.Versions.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -170,7 +170,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var result = await _repo.GetVersionByIdAsync(version.Id);
 
         result.Should().NotBeNull();
-        result!.LegalDocument.Should().NotBeNull();
+        result.LegalDocument.Should().NotBeNull();
         result.LegalDocument.Name.Should().Be("Privacy");
     }
 
@@ -217,7 +217,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var result = await _repo.ArchiveAsync(doc.Id);
 
         result.Should().NotBeNull();
-        result!.IsActive.Should().BeFalse();
+        result.IsActive.Should().BeFalse();
     }
 
     [HumansFact]

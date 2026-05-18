@@ -3,10 +3,8 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests;
 
-public class SecurityHeaderTests : IntegrationTestBase
+public class SecurityHeaderTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public SecurityHeaderTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact]
     public async Task Response_ContainsXFrameOptionsDeny()
     {

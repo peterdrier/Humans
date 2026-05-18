@@ -200,7 +200,7 @@ public class ConsentArchitectureTests
 
         method.Should().NotBeNull(
             because: "the decorator must own SubmitConsentAsync so it can synchronously invalidate the user cache before returning to the controller");
-        method!.DeclaringType.Should().Be(
+        method.DeclaringType.Should().Be(
             typeof(CachingConsentService),
             because: "synchronous invalidation belongs on the decorator, not inherited or delegated");
     }

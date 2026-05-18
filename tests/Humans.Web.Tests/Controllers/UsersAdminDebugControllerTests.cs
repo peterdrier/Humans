@@ -79,7 +79,7 @@ public class UsersAdminDebugControllerTests
         var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc") as ViewResult;
 
         result.Should().NotBeNull();
-        var vm = result!.Model.Should().BeOfType<UsersDebugViewModel>().Subject;
+        var vm = result.Model.Should().BeOfType<UsersDebugViewModel>().Subject;
         vm.TotalCount.Should().Be(60);
         vm.Rows.Should().HaveCount(50);
         vm.TotalPages.Should().Be(2);

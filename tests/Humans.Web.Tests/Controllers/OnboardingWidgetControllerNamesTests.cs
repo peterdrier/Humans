@@ -133,7 +133,7 @@ public class OnboardingWidgetControllerNamesTests
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
 
         await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            default, default!, default!, default!, default);
+            Guid.Empty, null!, null!, null!, CancellationToken.None);
     }
 
     [HumansFact]
@@ -148,6 +148,6 @@ public class OnboardingWidgetControllerNamesTests
         Assert.Equal(nameof(OnboardingWidgetController.Names), view.ViewName ?? nameof(OnboardingWidgetController.Names));
 
         await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            default, default!, default!, default!, default);
+            Guid.Empty, null!, null!, null!, CancellationToken.None);
     }
 }

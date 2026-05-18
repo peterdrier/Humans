@@ -54,7 +54,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _teamService = Substitute.For<ITeamService>();
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
+            .Returns(new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = TestMetrics.Create();
@@ -157,15 +157,12 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         return outboxEvent;
     }
 
-    private sealed class SingleContextFactory : IDbContextFactory<HumansDbContext>
+    private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
+        : IDbContextFactory<HumansDbContext>
     {
-        private readonly DbContextOptions<HumansDbContext> _options;
-
-        public SingleContextFactory(DbContextOptions<HumansDbContext> options) => _options = options;
-
-        public HumansDbContext CreateDbContext() => new(_options);
+        public HumansDbContext CreateDbContext() => new(options);
 
         public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(_options));
+            Task.FromResult(new HumansDbContext(options));
     }
 }

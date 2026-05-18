@@ -38,7 +38,7 @@ public class BudgetServiceTests : IAsyncLifetime
         _teamService = Substitute.For<ITeamService>();
         var userService = Substitute.For<IUserService>();
         userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+            .Returns(new HashSet<Guid>());
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 31, 12, 0));
 
         _service = new BudgetServiceImpl(
@@ -217,7 +217,7 @@ public class BudgetServiceTests : IAsyncLifetime
     public async Task GetCoordinatorBudgetViewDataAsync_LoadsActiveYearForFinanceAdmin()
     {
         _teamService.GetTeamsAsync().Returns(
-            (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
+            new Dictionary<Guid, TeamInfo>());
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
         await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
 
@@ -240,7 +240,7 @@ public class BudgetServiceTests : IAsyncLifetime
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: []);
         _teamService.GetTeamsAsync().Returns(
-            (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
+            new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
 
         var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: true);
 
@@ -285,7 +285,7 @@ public class BudgetServiceTests : IAsyncLifetime
                 Members: [],
                 HasBudget: true),
         };
-        _teamService.GetTeamsAsync().Returns((IReadOnlyDictionary<Guid, TeamInfo>)teams);
+        _teamService.GetTeamsAsync().Returns(teams);
 
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
 

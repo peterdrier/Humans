@@ -50,7 +50,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
         record.Should().NotBeNull();
-        record!.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
+        record.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
     }
 
     [HumansFact]

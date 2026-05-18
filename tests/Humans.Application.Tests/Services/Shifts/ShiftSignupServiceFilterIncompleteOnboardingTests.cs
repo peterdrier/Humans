@@ -88,7 +88,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
 
         result.Should().BeEmpty();
         await _membership.DidNotReceiveWithAnyArgs()
-            .GetUsersWithAllRequiredConsentsForTeamAsync(default!, default, default);
+            .GetUsersWithAllRequiredConsentsForTeamAsync(null!, Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]

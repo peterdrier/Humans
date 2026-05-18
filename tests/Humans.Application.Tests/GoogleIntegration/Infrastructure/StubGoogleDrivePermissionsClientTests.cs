@@ -106,7 +106,7 @@ public class StubGoogleDrivePermissionsClientTests
         var result = await _client.DeletePermissionAsync(folder.Folder!.Id!, "nope");
 
         result.Should().NotBeNull();
-        result!.StatusCode.Should().Be(404);
+        result.StatusCode.Should().Be(404);
     }
 
     [HumansFact]

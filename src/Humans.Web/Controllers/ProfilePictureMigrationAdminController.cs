@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 
 using Humans.Application.Interfaces.Users;

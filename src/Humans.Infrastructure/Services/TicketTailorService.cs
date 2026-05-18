@@ -27,7 +27,6 @@ public class TicketTailorService : ITicketVendorService
     private readonly HttpClient _httpClient;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTailorService> _logger;
-    private readonly TicketVendorSettings _settings;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,10 +42,10 @@ public class TicketTailorService : ITicketVendorService
     {
         _httpClient = httpClient;
         _cache = cache;
-        _settings = settings.Value;
+        var settings1 = settings.Value;
         _logger = logger;
 
-        var apiKey = _settings.ApiKey;
+        var apiKey = settings1.ApiKey;
         if (!string.IsNullOrEmpty(apiKey))
         {
             var authBytes = Encoding.ASCII.GetBytes($"{apiKey}:");

@@ -101,6 +101,10 @@ internal static class UserInfoStubHelpers
         return userService;
     }
 
+    /// <summary>
+    /// Stubs the singular GetUserInfoAsync to read from a long-lived DbContext, mirroring
+    /// <see cref="StubGetUserInfosFromContext"/>. Returns null for unknown ids.
+    /// </summary>
     public static IUserService StubGetUserInfoFromContext(this IUserService userService, HumansDbContext dbContext)
     {
         userService
@@ -113,7 +117,6 @@ internal static class UserInfoStubHelpers
                     .FirstOrDefault(u => u.Id == id);
                 if (user is null)
                     return new ValueTask<UserInfo?>((UserInfo?)null);
-
                 var profile = dbContext.Profiles.AsNoTracking()
                     .FirstOrDefault(p => p.UserId == id);
                 return new ValueTask<UserInfo?>(user.ToUserInfo(user.UserEmails.ToList(), profile));

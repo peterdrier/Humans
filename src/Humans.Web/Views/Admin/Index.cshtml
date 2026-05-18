@@ -1,6 +1,9 @@
 @model Humans.Web.Models.AdminDashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
+    var sm = Model.SetMembership;
+    var bucketsJson = System.Text.Json.JsonSerializer.Serialize(
+        sm.CountsByMask.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value));
 }
 
 <div class="page-head">
@@ -13,6 +16,50 @@
 </div>
 
 <partial name="_DashboardStats" model="Model" />
+
+@if (sm.TotalUsers > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-chart-pie"></i> User set membership
+            <small class="text-muted">
+                @sm.TotalUsers total users ·
+                @sm.ProfilesCount with profile (named) ·
+                @sm.TicketsCount with ticket ·
+                @sm.ShiftsCount with shift ·
+                @sm.MarketingOptInsCount marketing opt-in
+            </small>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-center">Proportional Venn</h6>
+                    <div id="userVenn"
+                         data-profile="@sm.ProfilesCount"
+                         data-ticket="@sm.TicketsCount"
+                         data-shift="@sm.ShiftsCount"
+                         data-profile-ticket="@sm.ProfileTicketIntersection"
+                         data-profile-shift="@sm.ProfileShiftIntersection"
+                         data-ticket-shift="@sm.TicketShiftIntersection"
+                         data-all="@sm.ProfileTicketShiftIntersection"
+                         style="height: 500px; width: 100%;"></div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-center">UpSet plot</h6>
+                    <div id="userUpset"
+                         data-buckets='@Html.Raw(bucketsJson)'
+                         style="height: 500px; width: 100%;"></div>
+                </div>
+            </div>
+            <p class="text-muted small mt-2 mb-0">
+                Profile = has required name fields (BurnerName + FirstName + LastName).
+                Ticket = Ticketed/Attended in active event year.
+                Shift = active signup (Pending/Confirmed) in active event.
+                Marketing = explicit opt-in (<code>MarketingOptedOut == false</code>).
+            </p>
+        </div>
+    </div>
+}
 
 <partial name="_DashboardStaffing" model="Model" />
 
@@ -83,3 +130,72 @@
         <partial name="_DashboardActivity" model="Model.RecentActivity" />
     </div>
 </div>
+
+@if (sm.TotalUsers > 0)
+{
+    @* Scoped npm paths use &#64; (HTML entity) — NonceTagHelper claims every <script>,
+       and the Razor tag-helper attribute parser mangles @@ inside src= attributes.
+       See memory/code/razor-script-src-at-escape.md. *@
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/&#64;upsetjs/venn.js@1.4.2/build/venn.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/&#64;upsetjs/bundle@1.11.0/dist/upsetjs.umd.production.min.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ---- Venn: 3 sets (Profile / Ticket / Shift), marginalized over Marketing ----
+            var venn = document.getElementById('userVenn');
+            if (venn && window.venn && window.d3) {
+                var d = venn.dataset;
+                var sets = [
+                    { sets: ['Profile'], size: +d.profile, label: 'Profile (' + d.profile + ')' },
+                    { sets: ['Ticket'],  size: +d.ticket,  label: 'Ticket (' + d.ticket + ')' },
+                    { sets: ['Shift'],   size: +d.shift,   label: 'Shift (' + d.shift + ')' },
+                    { sets: ['Profile', 'Ticket'], size: +d.profileTicket },
+                    { sets: ['Profile', 'Shift'],  size: +d.profileShift },
+                    { sets: ['Ticket', 'Shift'],   size: +d.ticketShift },
+                    { sets: ['Profile', 'Ticket', 'Shift'], size: +d.all }
+                ];
+                var chart = window.venn.VennDiagram().width(400).height(360);
+                window.d3.select('#userVenn').datum(sets).call(chart);
+            }
+
+            // ---- UpSet: 4 sets (Profile / Ticket / Shift / Marketing), 16 buckets ----
+            var upset = document.getElementById('userUpset');
+            if (upset && window.UpSetJS) {
+                var buckets = JSON.parse(upset.dataset.buckets);
+                var dims = ['Profile', 'Ticket', 'Shift', 'Marketing'];
+                var elems = [];
+                Object.keys(buckets).forEach(function (k) {
+                    var mask = +k;
+                    var count = buckets[k];
+                    if (mask === 0 || count === 0) return; // skip the "none of the sets" bucket
+                    var elemSets = [];
+                    for (var b = 0; b < dims.length; b++) {
+                        if (mask & (1 << b)) elemSets.push(dims[b]);
+                    }
+                    for (var i = 0; i < count; i++) {
+                        elems.push({ name: 'm' + mask + '_' + i, sets: elemSets });
+                    }
+                });
+                // Build sets explicitly so all 4 dimensions render even when a set is empty
+                // (extractSets would drop sets with zero members).
+                var sets = window.UpSetJS.asSets(dims.map(function (name) {
+                    return {
+                        name: name,
+                        elems: elems.filter(function (e) { return e.sets.indexOf(name) >= 0; })
+                    };
+                }));
+                var combinations = window.UpSetJS.generateCombinations(sets);
+                var props = {
+                    sets: sets,
+                    combinations: combinations,
+                    width: 400,
+                    height: 360,
+                    selection: null
+                };
+                function rerender() { window.UpSetJS.render(upset, props); }
+                props.onHover = function (s) { props.selection = s; rerender(); };
+                rerender();
+            }
+        });
+    </script>
+}

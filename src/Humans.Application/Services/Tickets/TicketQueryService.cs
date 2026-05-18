@@ -68,7 +68,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             return 0;
 
         var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return attendeeEmails.Count(e => verifiedSet.Contains(e));
+        return attendeeEmails.Count(verifiedSet.Contains);
     }
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
@@ -248,7 +248,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 : decimal.ToInt32(remainingTicketCount);
         }
 
-        var breakEvenTarget = (long)ticketsSold + remainingTicketsToSell;
+        var breakEvenTarget = ticketsSold + remainingTicketsToSell;
         var target = breakEvenTarget > int.MaxValue ? int.MaxValue : (int)breakEvenTarget;
 
         var detail = canAccessFinance

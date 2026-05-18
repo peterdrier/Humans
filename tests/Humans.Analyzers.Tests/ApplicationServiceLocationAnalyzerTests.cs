@@ -40,7 +40,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0012(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0012).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -59,7 +59,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0012(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0012).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -120,7 +120,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0012(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0012).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -139,7 +139,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0012(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0012).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -162,7 +162,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0012(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0012).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -209,7 +209,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0012(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0012).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -271,7 +271,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        var hum0012 = diagnostics.Where(d => IsHum0012(d)).ToList();
+        var hum0012 = diagnostics.Where(IsHum0012).ToList();
         hum0012.Should().ContainSingle();
         hum0012[0].Severity.Should().Be(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
     }
@@ -302,7 +302,7 @@ public class ApplicationServiceLocationAnalyzerTests
             "Humans.Application",
             source);
 
-        var hum0012 = diagnostics.Where(d => IsHum0012(d)).ToList();
+        var hum0012 = diagnostics.Where(IsHum0012).ToList();
         hum0012.Should().ContainSingle();
         hum0012[0].Severity.Should().Be(Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
     }

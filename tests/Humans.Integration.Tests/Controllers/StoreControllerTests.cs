@@ -9,10 +9,8 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class StoreControllerTests : IntegrationTestBase
+public class StoreControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public StoreControllerTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 30000)]
     public async Task Anonymous_GET_Store_redirects_to_login()
     {

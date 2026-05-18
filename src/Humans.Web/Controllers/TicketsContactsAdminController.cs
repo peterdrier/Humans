@@ -1,10 +1,8 @@
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Tickets.Dtos;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.Application.Interfaces.Users;

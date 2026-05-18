@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models.Agent;

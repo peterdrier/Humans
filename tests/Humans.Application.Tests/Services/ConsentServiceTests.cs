@@ -92,7 +92,7 @@ public class ConsentServiceTests : IDisposable
         // Default: no merge tombstones — chain-follow short-circuits to the
         // single-id repo path.
         _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+            .Returns(new HashSet<Guid>());
 
         // Default: requesting any user returns a UserInfo carrying an Active
         // profile with all required identity fields populated. Tests that need
@@ -583,7 +583,7 @@ public class ConsentServiceTests : IDisposable
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
         detail.Should().NotBeNull();
-        detail!.DocumentName.Should().Be("Test Doc");
+        detail.DocumentName.Should().Be("Test Doc");
         detail.HasAlreadyConsented.Should().BeTrue();
         detail.UserFullName.Should().Be("Jane Doe");
     }
@@ -610,7 +610,7 @@ public class ConsentServiceTests : IDisposable
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
         detail.Should().NotBeNull();
-        detail!.HasAlreadyConsented.Should().BeFalse();
+        detail.HasAlreadyConsented.Should().BeFalse();
         detail.UserFullName.Should().Be("Jane Doe");
     }
 
@@ -633,7 +633,7 @@ public class ConsentServiceTests : IDisposable
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
         detail.Should().NotBeNull();
-        detail!.HasAlreadyConsented.Should().BeFalse();
+        detail.HasAlreadyConsented.Should().BeFalse();
         detail.UserFullName.Should().BeNull();
     }
 
@@ -655,12 +655,12 @@ public class ConsentServiceTests : IDisposable
 
         // Target's chain-follow set includes the source.
         _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { sourceId });
+            .Returns(new HashSet<Guid> { sourceId });
         // Source tombstone has no further sources.
         _userService.GetMergedSourceIdsAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+            .Returns(new HashSet<Guid>());
         _userService.GetMergedSourceIdsAsync(unrelatedId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+            .Returns(new HashSet<Guid>());
 
         // Input contains both source and target — duplicate-id risk path.
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId]);

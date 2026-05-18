@@ -38,23 +38,19 @@ public class GuestControllerTests
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
-    public GuestControllerTests()
-    {
-    }
-
     private GuestController BuildSut(User user)
     {
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 user,
-                Array.Empty<UserEmail>(),
-                Array.Empty<EventParticipation>(),
-                Array.Empty<(string, string)>(),
+                [],
+                [],
+                [],
                 profile: null,
-                Array.Empty<ContactField>(),
-                Array.Empty<ProfileLanguage>(),
-                Array.Empty<VolunteerHistoryEntry>(),
-                Array.Empty<CommunicationPreference>())));
+                [],
+                [],
+                [],
+                [])));
 
         var ctrl = new GuestController(
             _userService,

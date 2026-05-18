@@ -114,7 +114,7 @@ public class ShiftViewServiceTests
         view.Signups.Should().BeSameAs(scoped);
         await _signups.Received(1).GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>());
         await _signups.DidNotReceive().GetByUserAsync(
-            userId, (Guid?)null, Arg.Any<CancellationToken>());
+            userId, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

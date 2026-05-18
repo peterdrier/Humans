@@ -37,9 +37,9 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("required", "blank body must surface a clear error");
-        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorRotaMessageAsync(default!);
+        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorRotaMessageAsync(null!);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(Guid));
+            default, null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]
@@ -53,7 +53,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("not found");
-        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorRotaMessageAsync(default!);
+        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorRotaMessageAsync(null!);
     }
 
     [HumansFact]
@@ -62,7 +62,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rota = MakeRota(out var eventSettings);
         _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ShiftSignup>());
+            .Returns([]);
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello");
 
@@ -85,12 +85,11 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         // userA has two signups (same shift twice + another shift), userB has one.
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(new ShiftSignup[]
-            {
+            .Returns([
                 MakeSignup(userA, shift1),
                 MakeSignup(userA, shift2),
-                MakeSignup(userB, shift1),
-            });
+                MakeSignup(userB, shift1)
+            ]);
 
         StubUsers(sender, userA, userB);
 
@@ -119,12 +118,11 @@ public sealed class RotaCoordinatorMessageServiceTests
         var midShift = MakeShift(rota.Id, dayOffset: 2, startHour: 12);
 
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(new ShiftSignup[]
-            {
+            .Returns([
                 MakeSignup(userA, lateShift),  // userA: late + early (should sort)
                 MakeSignup(userA, earlyShift),
-                MakeSignup(userB, midShift),   // userB: only midShift
-            });
+                MakeSignup(userB, midShift) // userB: only midShift
+            ]);
 
         StubUsers(sender, userA, userB);
 
@@ -161,7 +159,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(new ShiftSignup[] { MakeSignup(userA, shift) });
+            .Returns([MakeSignup(userA, shift)]);
 
         StubUsers(sender, userA);
 
@@ -193,11 +191,10 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(new ShiftSignup[]
-            {
+            .Returns([
                 MakeSignup(withEmail, shift),
-                MakeSignup(noEmail, shift),
-            });
+                MakeSignup(noEmail, shift)
+            ]);
 
         // sender + withEmail have addresses; noEmail's UserInfo has an empty email.
         var dict = new Dictionary<Guid, UserInfo>
@@ -240,11 +237,10 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(new ShiftSignup[]
-            {
+            .Returns([
                 MakeSignup(userA, shift),
-                MakeSignup(userB, shift),
-            });
+                MakeSignup(userB, shift)
+            ]);
 
         StubUsers(sender, userA, userB);
 
@@ -287,11 +283,10 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
         _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
-            .Returns(new ShiftSignup[]
-            {
+            .Returns([
                 MakeSignup(userA, shift),
-                MakeSignup(userB, shift),
-            });
+                MakeSignup(userB, shift)
+            ]);
 
         StubUsers(sender, userA, userB);
 
@@ -417,7 +412,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 new Dictionary<Guid, UserInfo> { [sender] = senderInfo }));
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => recipients.All(r => c.Contains(r))),
+            Arg.Is<IReadOnlyCollection<Guid>>(c => recipients.All(c.Contains)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(recipientInfos));
     }

@@ -52,8 +52,10 @@ public class AttendeeContactImportServicePlanTests
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
             .Returns([userId]);
-        harness.Users.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, MergedToUserId = null });
+        harness.Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                new User { Id = userId, MergedToUserId = null },
+                [], [], [], null, [], [], [], []));
 
         var plan = await harness.Service.BuildPlanAsync();
 
@@ -79,10 +81,14 @@ public class AttendeeContactImportServicePlanTests
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
             .Returns([deadId]);
-        harness.Users.GetByIdAsync(deadId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = deadId, MergedToUserId = liveId });
-        harness.Users.GetByIdAsync(liveId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = liveId, MergedToUserId = null });
+        harness.Users.GetUserInfoAsync(deadId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                new User { Id = deadId, MergedToUserId = liveId },
+                [], [], [], null, [], [], [], []));
+        harness.Users.GetUserInfoAsync(liveId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                new User { Id = liveId, MergedToUserId = null },
+                [], [], [], null, [], [], [], []));
 
         var plan = await harness.Service.BuildPlanAsync();
 
@@ -183,7 +189,7 @@ public class AttendeeContactImportServicePlanTests
         var d = plan.Decisions[0];
         d.Outcome.Should().Be(AttendeeImportOutcome.CreateNewUser);
         d.AttendeeId.Should().Be(leadId);
-        d.AdditionalAttendeeIds.Should().BeEquivalentTo(new[] { extra1, extra2 });
+        d.AdditionalAttendeeIds.Should().BeEquivalentTo([extra1, extra2]);
         d.ObservedNames.Should().BeEquivalentTo(new[] { "Sara Smith", "Sara S." });
         plan.TotalUnmatched.Should().Be(3);
     }

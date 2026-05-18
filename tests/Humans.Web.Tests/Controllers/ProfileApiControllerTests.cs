@@ -114,14 +114,14 @@ public class ProfileApiControllerTests
     private static UserInfo MakeViewerUserInfo(User user) =>
         UserInfo.Create(
             user: user,
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: null,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 
     private static UserInfo MakeUserInfo(
         Guid userId,
@@ -139,7 +139,7 @@ public class ProfileApiControllerTests
             IsApproved = true,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            RejectedAt = isRejected ? Instant.FromUtc(2026, 2, 1, 0, 0) : (Instant?)null,
+            RejectedAt = isRejected ? Instant.FromUtc(2026, 2, 1, 0, 0) : null,
         };
         var user = new User
         {

@@ -93,7 +93,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
                     TeamMemberRole.Member, Instant.MinValue))
                 .ToList());
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
+            .Returns(new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
         return team;
     }
 
@@ -144,7 +144,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         _userService.GetByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
+            .Returns(new Dictionary<Guid, User>());
         _userService.GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));

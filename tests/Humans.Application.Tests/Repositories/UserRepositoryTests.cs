@@ -54,7 +54,7 @@ public sealed class UserRepositoryTests : IDisposable
 
     private async Task<string?> ReadLegacyGoogleEmailAsync(Guid userId)
     {
-        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], default);
+        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], CancellationToken.None);
         return lookup.TryGetValue(userId, out var v) ? v : null;
     }
 
@@ -66,7 +66,7 @@ public sealed class UserRepositoryTests : IDisposable
     public async Task TrySetGoogleEmailAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
         var result = await _repo.TrySetGoogleEmailAsync(
-            Guid.NewGuid(), "new@example.com", default);
+            Guid.NewGuid(), "new@example.com", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -76,7 +76,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync(googleEmail: null);
 
-        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", default);
+        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", CancellationToken.None);
 
         result.Should().BeTrue();
         (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("new@nobodies.team");
@@ -87,7 +87,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync(googleEmail: "existing@nobodies.team");
 
-        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", default);
+        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", CancellationToken.None);
 
         result.Should().BeFalse();
         (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("existing@nobodies.team");
@@ -100,7 +100,7 @@ public sealed class UserRepositoryTests : IDisposable
     [HumansFact]
     public async Task UpdateDisplayNameAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
-        var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", default);
+        var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", CancellationToken.None);
         result.Should().BeFalse();
     }
 
@@ -109,7 +109,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var result = await _repo.UpdateDisplayNameAsync(user.Id, "Renamed Person", default);
+        var result = await _repo.UpdateDisplayNameAsync(user.Id, "Renamed Person", CancellationToken.None);
 
         result.Should().BeTrue();
         var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
@@ -127,7 +127,7 @@ public sealed class UserRepositoryTests : IDisposable
         var requested = Instant.FromUtc(2026, 4, 1, 0, 0);
         var scheduled = Instant.FromUtc(2026, 5, 1, 0, 0);
 
-        var result = await _repo.SetDeletionPendingAsync(user.Id, requested, scheduled, default);
+        var result = await _repo.SetDeletionPendingAsync(user.Id, requested, scheduled, null);
 
         result.Should().BeTrue();
         var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
@@ -144,7 +144,7 @@ public sealed class UserRepositoryTests : IDisposable
         user.DeletionEligibleAfter = Instant.FromUtc(2026, 6, 1, 0, 0);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _repo.ClearDeletionAsync(user.Id, default);
+        var result = await _repo.ClearDeletionAsync(user.Id, CancellationToken.None);
 
         result.Should().BeTrue();
         var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
@@ -168,7 +168,7 @@ public sealed class UserRepositoryTests : IDisposable
             checkedInAt: null, default);
 
         result.Should().NotBeNull();
-        result!.Status.Should().Be(ParticipationStatus.NotAttending);
+        result.Status.Should().Be(ParticipationStatus.NotAttending);
         result.Source.Should().Be(ParticipationSource.UserDeclared);
         result.DeclaredAt.Should().Be(now);
 
@@ -197,7 +197,7 @@ public sealed class UserRepositoryTests : IDisposable
             checkedInAt: null, default);
 
         result.Should().NotBeNull();
-        result!.Status.Should().Be(ParticipationStatus.Ticketed);
+        result.Status.Should().Be(ParticipationStatus.Ticketed);
         result.Source.Should().Be(ParticipationSource.TicketSync);
         result.DeclaredAt.Should().BeNull();
     }
@@ -329,7 +329,7 @@ public sealed class UserRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _repo.RemoveParticipationAsync(
-            userId, 2026, ParticipationSource.TicketSync, default);
+            userId, 2026, ParticipationSource.TicketSync, CancellationToken.None);
 
         result.Should().BeTrue();
         var remaining = await _dbContext.EventParticipations.AsNoTracking()
@@ -352,7 +352,7 @@ public sealed class UserRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _repo.RemoveParticipationAsync(
-            userId, 2026, ParticipationSource.TicketSync, default);
+            userId, 2026, ParticipationSource.TicketSync, CancellationToken.None);
 
         result.Should().BeFalse();
         var remaining = await _dbContext.EventParticipations.AsNoTracking()
@@ -375,7 +375,7 @@ public sealed class UserRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _repo.RemoveParticipationAsync(
-            userId, 2026, ParticipationSource.TicketSync, default);
+            userId, 2026, ParticipationSource.TicketSync, CancellationToken.None);
 
         result.Should().BeFalse();
         var remaining = await _dbContext.EventParticipations.AsNoTracking()
@@ -420,7 +420,7 @@ public sealed class UserRepositoryTests : IDisposable
             (userAttendedId, ParticipationStatus.NotAttending),
         };
 
-        var count = await _repo.BackfillParticipationsAsync(2025, entries, default);
+        var count = await _repo.BackfillParticipationsAsync(2025, entries, CancellationToken.None);
 
         count.Should().Be(3);
 
@@ -461,7 +461,7 @@ public sealed class UserRepositoryTests : IDisposable
         AddLogin(other.Id, "Google", "other-google-sub");
         await _dbContext.SaveChangesAsync();
 
-        var displayName = await _repo.PurgeAsync(user.Id, default);
+        var displayName = await _repo.PurgeAsync(user.Id, CancellationToken.None);
 
         displayName.Should().NotBeNull();
         var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync();
@@ -474,7 +474,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var displayName = await _repo.PurgeAsync(user.Id, default);
+        var displayName = await _repo.PurgeAsync(user.Id, CancellationToken.None);
 
         displayName.Should().Be("Seeded User");
     }
@@ -493,7 +493,7 @@ public sealed class UserRepositoryTests : IDisposable
         AddLogin(other.Id, "Google", "other-google-sub");
         await _dbContext.SaveChangesAsync();
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, default);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
 
         result.Should().NotBeNull();
         var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync();
@@ -506,10 +506,10 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, default);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
 
         result.Should().NotBeNull();
-        result!.OriginalDisplayName.Should().Be("Seeded User");
+        result.OriginalDisplayName.Should().Be("Seeded User");
     }
 
     private void AddLogin(Guid userId, string loginProvider, string providerKey)

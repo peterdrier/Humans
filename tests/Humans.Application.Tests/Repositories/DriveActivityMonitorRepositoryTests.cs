@@ -115,7 +115,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == entry.Id);
         savedEntry.Should().NotBeNull();
-        savedEntry!.Action.Should().Be(AuditAction.AnomalousPermissionDetected);
+        savedEntry.Action.Should().Be(AuditAction.AnomalousPermissionDetected);
 
         var marker2 = await _repository.GetLastRunTimestampAsync();
         marker2.Should().Be(marker);

@@ -80,6 +80,7 @@ public class IssuesServiceTests : IDisposable
                 return Task.FromResult(_dbContext.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
             });
         _userService.StubGetUserInfosFromContext(_dbContext);
+        _userService.StubGetUserInfoFromContext(_dbContext);
 
         _userEmailService = Substitute.For<IUserEmailService>();
         _userEmailService
@@ -879,7 +880,7 @@ public class IssuesServiceTests : IDisposable
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's second");
         await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
 
-        var slices = await _service.ContributeForUserAsync(aliceId, default);
+        var slices = await _service.ContributeForUserAsync(aliceId, CancellationToken.None);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be("Issues");

@@ -39,7 +39,7 @@ public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
                 v => JsonSerializer.Deserialize<List<CampVibe>>(v, JsonEnumOptions) ?? new(),
                 new ValueComparer<List<CampVibe>>(
                     (a, b) => a != null && b != null && a.SequenceEqual(b),
-                    v => v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+                    v => v.Aggregate(0, HashCode.Combine),
                     v => v.ToList()));
 
         builder.Property(s => s.AdultPlayspace).HasConversion<string>().HasMaxLength(50);

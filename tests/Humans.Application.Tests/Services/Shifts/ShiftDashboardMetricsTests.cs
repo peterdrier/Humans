@@ -544,7 +544,7 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         var dayRow = result.SingleOrDefault(r => r.Date == es.GateOpeningDate.PlusDays(-3));
         dayRow.Should().NotBeNull();
-        dayRow!.Departments.Should().ContainSingle(d => string.Equals(d.DepartmentName, "Build", StringComparison.Ordinal))
+        dayRow.Departments.Should().ContainSingle(d => string.Equals(d.DepartmentName, "Build", StringComparison.Ordinal))
             .Which.ConfirmedCount.Should().Be(2);
     }
 
@@ -952,14 +952,11 @@ public class ShiftDashboardMetricsTests : IDisposable
     // so the test seed helpers (_dbContext.*.Add) drive results end-to-end.
     // ================================================================
 
-    private sealed class FakeTicketQueryService : ITicketQueryService
+    private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketQueryService
     {
-        private readonly HumansDbContext _db;
-        public FakeTicketQueryService(HumansDbContext db) => _db = db;
-
         public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
         {
-            return await _db.TicketOrders
+            return await db.TicketOrders
                 .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
                 .Select(o => o.MatchedUserId!.Value)
                 .Distinct()
@@ -968,7 +965,7 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
         {
-            return await _db.TicketOrders
+            return await db.TicketOrders
                 .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
                             && o.PurchasedAt >= fromInclusive
                             && o.PurchasedAt < toExclusive)
@@ -1005,11 +1002,8 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
-    private sealed class FakeUserService : IUserService
+    private sealed class FakeUserService(HumansDbContext db) : IUserService
     {
-        private readonly HumansDbContext _db;
-        public FakeUserService(HumansDbContext db) => _db = db;
-
         public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
@@ -1018,7 +1012,7 @@ public class ShiftDashboardMetricsTests : IDisposable
             // Build a UserInfo snapshot from the in-memory DB so dashboard-metrics
             // tests that drive ComputeDashboardTrendsAsync (which now filters
             // LastLoginAt off the cached snapshot) can observe the fake's data.
-            var users = _db.Users.ToList();
+            var users = db.Users.ToList();
             IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfo.Create(
                 u,
                 userEmails: [],
@@ -1037,12 +1031,12 @@ public class ShiftDashboardMetricsTests : IDisposable
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
-            => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            => await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
         {
             if (userIds.Count == 0) return new Dictionary<Guid, User>();
-            var users = await _db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
+            var users = await db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
             return users.ToDictionary(u => u.Id);
         }
 
@@ -1059,7 +1053,7 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
         {
-            return await _db.Users
+            return await db.Users
                 .Where(u => u.LastLoginAt != null && u.LastLoginAt >= fromInclusive && u.LastLoginAt < toExclusive)
                 .Select(u => u.LastLoginAt!.Value)
                 .ToListAsync(ct);
@@ -1103,15 +1097,12 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) => throw new NotSupportedException();
     }
 
-    private sealed class FakeTeamService : ITeamService
+    private sealed class FakeTeamService(HumansDbContext db) : ITeamService
     {
-        private readonly HumansDbContext _db;
-        public FakeTeamService(HumansDbContext db) => _db = db;
-
         public async Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
         {
             if (teamIds.Count == 0) return new Dictionary<Guid, Team>();
-            var requested = await _db.Teams.Where(t => teamIds.Contains(t.Id)).ToListAsync(cancellationToken);
+            var requested = await db.Teams.Where(t => teamIds.Contains(t.Id)).ToListAsync(cancellationToken);
             var parentIds = requested
                 .Where(t => t.ParentTeamId.HasValue)
                 .Select(t => t.ParentTeamId!.Value)
@@ -1120,7 +1111,7 @@ public class ShiftDashboardMetricsTests : IDisposable
                 .ToList();
             var parents = parentIds.Count == 0
                 ? []
-                : await _db.Teams.Where(t => parentIds.Contains(t.Id)).ToListAsync(cancellationToken);
+                : await db.Teams.Where(t => parentIds.Contains(t.Id)).ToListAsync(cancellationToken);
             var dict = new Dictionary<Guid, Team>();
             foreach (var t in requested) dict[t.Id] = t;
             foreach (var t in parents) dict[t.Id] = t;
@@ -1129,7 +1120,7 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default)
         {
-            var teams = await _db.Teams
+            var teams = await db.Teams
                 .Include(t => t.Members)
                 .ToListAsync(cancellationToken);
             return teams.ToDictionary(

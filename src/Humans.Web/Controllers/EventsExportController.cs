@@ -7,7 +7,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Web.Helpers.EventsLookupHelpers;

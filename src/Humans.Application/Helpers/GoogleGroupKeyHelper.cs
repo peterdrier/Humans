@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Helpers;
