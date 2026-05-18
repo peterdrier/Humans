@@ -1720,6 +1720,7 @@ public class ProfileController : HumansControllerBase
     // ─── Shared (Profile Picture) ────────────────────────────────────
 
     [HttpGet("Picture")]
+    [AllowAnonymous]
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
