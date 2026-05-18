@@ -73,10 +73,12 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-rename-serialized-fields`](code/no-rename-serialized-fields.md) — never rename properties on JSON-serialized classes; existing data expects current names
 - [`no-system-subfolder`](code/no-system-subfolder.md) — never create `System/` subfolder; shadows BCL `System`. Use `SystemSettings/`/`Platform/`/`Infra/`.
 - [`nodatime-for-dates`](code/nodatime-for-dates.md) — `Instant`/`LocalDate`/`ZonedDateTime` not `DateTime`; server-side ALWAYS UTC
+- [`nsubstitute-no-nested-substitute-factories`](code/nsubstitute-no-nested-substitute-factories.md) — a helper that creates and configures an NSubstitute mock must not be called inline as the argument of another `.Returns(...)` — capture to a local first
 - [`profiles-section-plural`](code/profiles-section-plural.md) — `Humans.*.Services.Profiles` (plural); singular collides with the `Profile` entity
 - [`razor-script-src-at-escape`](code/razor-script-src-at-escape.md) — in `<script src>` URLs, use `&#64;` for npm scopes (`@turf` etc.); `@@` gets mangled because `NonceTagHelper` claims every `<script>`
 - [`sanitized-markdown-rendering`](code/sanitized-markdown-rendering.md) — `@Html.SanitizedMarkdown(...)`; no inline `HtmlSanitizer`/`Markdig.Markdown.ToHtml`
 - [`search-endpoint-response-shape`](code/search-endpoint-response-shape.md) — search/autocomplete endpoints return typed DTOs/records, not anonymous objects
+- [`service-test-harness`](code/service-test-harness.md) — service tests in `Humans.Application.Tests` inherit `ServiceTestHarness` (Db, DbFactory, Clock, Cache, NewDbBackedUserService, common Seed helpers); drop hand-rolled per-class scaffolding
 - [`string-comparisons-explicit`](code/string-comparisons-explicit.md) — `StringComparison.Ordinal`/`OrdinalIgnoreCase`; user search uses shared `Humans.Web.Extensions` helpers
 - [`stripe-restricted-keys`](code/stripe-restricted-keys.md) — HARD RULE. Production Stripe env vars hold `rk_live_*` RAKs with minimum scopes; never `sk_live_*`. Test mode `sk_test_*` is fine for dev.
 - [`surface-budget-history-trim`](code/surface-budget-history-trim.md) — when bumping `[SurfaceBudget(N)]`, keep ONLY the 3 newest history bullets above the interface; each ≤50 tokens. Older entries dropped (git log is the long-term record).

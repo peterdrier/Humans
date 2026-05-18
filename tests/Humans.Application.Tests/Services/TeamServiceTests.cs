@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -19,7 +18,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
@@ -35,25 +33,17 @@ using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
 
-public class TeamServiceTests : IDisposable
+public sealed class TeamServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly TeamService _service;
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(new TestDbContextFactory(options)),
+            new RoleAssignmentRepository(DbFactory),
             Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
@@ -61,31 +51,27 @@ public class TeamServiceTests : IDisposable
             Substitute.For<INavBadgeCacheInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<RoleAssignmentService>.Instance);
         var serviceProvider = Substitute.For<IServiceProvider>();
-        var emailService = Substitute.For<IEmailService>();
-        var systemTeamSync = Substitute.For<ISystemTeamSync>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
-        serviceProvider.GetService(typeof(IEmailService)).Returns(emailService);
-        serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(systemTeamSync);
+        serviceProvider.GetService(typeof(IEmailService)).Returns(Substitute.For<IEmailService>());
+        serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(Substitute.For<ISystemTeamSync>());
         _teamResourceService = Substitute.For<ITeamResourceService>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
         serviceProvider.GetService(typeof(ITeamResourceService)).Returns(_teamResourceService);
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
         var shiftManagementService = new ShiftManagementService(
-            shiftRepo,
+            new ShiftManagementRepository(DbFactory),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
-            _cache,
+            Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
-        var teamRepo = new TeamRepository(new TestDbContextFactory(options));
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
         // (backed by ShiftManagementService in DI). In tests we redirect it to the
@@ -94,63 +80,15 @@ public class TeamServiceTests : IDisposable
         _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _shiftAuthInvalidator
             .When(s => s.Invalidate(Arg.Any<Guid>()))
-            .Do(ci => _cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
+            .Do(ci => Cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
 
-        // Provide a test IUserService that reads from the same in-memory DB so
-        // cross-domain User stitching (design-rules §6b) behaves correctly when
-        // the service under test calls GetByIdsAsync during team reads.
-        var testUserService = Substitute.For<IUserService>();
-        testUserService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
-                using var db = new HumansDbContext(options);
-                var users = db.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .Where(u => ids.Contains(u.Id))
-                    .ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
-            });
-        testUserService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                        new Dictionary<Guid, UserInfo>());
-                using var db = new HumansDbContext(options);
-                var users = db.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .Where(u => ids.Contains(u.Id))
-                    .ToList();
-                IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
-                    u => u.Id,
-                    u => UserInfo.Create(
-                        u, u.UserEmails.ToList(),
-                        [],
-                        [],
-                        profile: null,
-                        [],
-                        [],
-                        [],
-                        []));
-                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
-            });
-        testUserService
-            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var id = callInfo.Arg<Guid>();
-                using var db = new HumansDbContext(options);
-                return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
-            });
-        serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
+        // Build the user service before wiring it into the locator — NSubstitute
+        // can't attach an outer .Returns() to a factory that itself configures
+        // substitute calls.
+        var userService = NewDbBackedUserService();
+        serviceProvider.GetService(typeof(IUserService)).Returns(userService);
         _service = new TeamService(
-            teamRepo,
+            new TeamRepository(DbFactory),
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
             shiftManagementService,
@@ -158,15 +96,8 @@ public class TeamServiceTests : IDisposable
             _shiftAuthInvalidator,
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
-            _clock,
+            Clock,
             NullLogger<TeamService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _cache.Dispose();
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================
@@ -178,8 +109,8 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
@@ -190,7 +121,7 @@ public class TeamServiceTests : IDisposable
     public async Task IsUserAdminAsync_NoRoleAssignment_ReturnsFalse()
     {
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
@@ -202,9 +133,9 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(30),
-            _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(30),
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
@@ -216,8 +147,8 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() + Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() + Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
@@ -229,8 +160,8 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
@@ -246,8 +177,8 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
@@ -258,7 +189,7 @@ public class TeamServiceTests : IDisposable
     public async Task IsUserBoardMemberAsync_NoRoleAssignment_ReturnsFalse()
     {
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
@@ -270,9 +201,9 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(30),
-            _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(30),
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
@@ -284,8 +215,8 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
+        await Db.SaveChangesAsync();
 
         var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
@@ -302,7 +233,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
@@ -315,7 +246,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
@@ -328,8 +259,8 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
@@ -343,7 +274,7 @@ public class TeamServiceTests : IDisposable
         var teamA = SeedTeam("Alpha");
         var teamB = SeedTeam("Beta");
         SeedTeamMember(teamA.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(teamB.Id, user.Id);
 
@@ -358,7 +289,7 @@ public class TeamServiceTests : IDisposable
         var child = SeedTeam("SubTeam");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -373,7 +304,7 @@ public class TeamServiceTests : IDisposable
         var child = SeedTeam("SubTeam");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -390,7 +321,7 @@ public class TeamServiceTests : IDisposable
         var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
         var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
         SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -409,7 +340,7 @@ public class TeamServiceTests : IDisposable
         var member = SeedTeamMember(childA.Id, user.Id, TeamMemberRole.Coordinator);
         var roleDef = SeedTeamRoleDefinition(childA.Id, isManagement: true);
         SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(childB.Id, user.Id);
 
@@ -426,7 +357,7 @@ public class TeamServiceTests : IDisposable
         var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
         var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
         SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(parent.Id, user.Id);
 
@@ -443,8 +374,8 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
+        await Db.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
 
@@ -457,8 +388,8 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
+        await Db.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
 
@@ -471,7 +402,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
 
@@ -486,7 +417,7 @@ public class TeamServiceTests : IDisposable
         var child = SeedTeam("SubTeam");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(child.Id, user.Id);
 
@@ -499,7 +430,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
 
@@ -511,7 +442,7 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
 
@@ -523,7 +454,7 @@ public class TeamServiceTests : IDisposable
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.UpdateTeamPageContentAsync(
             team.Id,
@@ -537,7 +468,7 @@ public class TeamServiceTests : IDisposable
 
         result.Succeeded.Should().BeTrue();
 
-        var stored = await _dbContext.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
         stored.PageContent.Should().Be("Welcome");
         stored.CallsToAction.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new CallToAction
@@ -561,8 +492,8 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
         SeedTeamMember(team.Id, SeedUser(displayName: "Left User").Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamBySlugAsync("alpha");
 
@@ -574,7 +505,7 @@ public class TeamServiceTests : IDisposable
     [HumansFact]
     public async Task GetTeamBySlugAsync_NonExistentSlug_ReturnsNull()
     {
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamBySlugAsync("non-existent");
 
@@ -587,7 +518,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser(displayName: "Alice");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamBySlugAsync("alpha");
 
@@ -606,8 +537,8 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
         SeedTeamMember(team.Id, SeedUser(displayName: "Left User").Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamByIdAsync(team.Id);
 
@@ -632,7 +563,7 @@ public class TeamServiceTests : IDisposable
     {
         SeedTeam("Active");
         SeedTeam("Inactive", isActive: false);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAllTeamsAsync();
 
@@ -646,7 +577,7 @@ public class TeamServiceTests : IDisposable
         SeedTeam("Charlie");
         SeedTeam("Alpha");
         SeedTeam("Bravo");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAllTeamsAsync();
 
@@ -661,8 +592,8 @@ public class TeamServiceTests : IDisposable
         var left = SeedUser(displayName: "Left");
         SeedTeamMember(team.Id, active.Id);
         SeedTeamMember(team.Id, left.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAllTeamsAsync();
 
@@ -689,8 +620,8 @@ public class TeamServiceTests : IDisposable
         var teamB = SeedTeam("Beta");
         SeedTeamMember(teamA.Id, user.Id);
         SeedTeamMember(teamB.Id, user.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -704,7 +635,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -716,7 +647,7 @@ public class TeamServiceTests : IDisposable
     public async Task GetUserTeamsAsync_NoMemberships_ReturnsEmpty()
     {
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -737,7 +668,7 @@ public class TeamServiceTests : IDisposable
         SeedTeamMember(systemTeam.Id, user.Id, TeamMemberRole.Coordinator);
         SeedJoinRequest(managedTeam.Id, SeedUser(displayName: "Requester A").Id);
         SeedJoinRequest(systemTeam.Id, SeedUser(displayName: "Requester B").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -755,11 +686,11 @@ public class TeamServiceTests : IDisposable
         SeedRoleAssignment(
             user.Id,
             RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
         var team = SeedTeam("Alpha", requiresApproval: true);
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
         SeedJoinRequest(team.Id, SeedUser(displayName: "Requester").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -790,7 +721,7 @@ public class TeamServiceTests : IDisposable
         privateChild.ParentTeamId = team.Id;
         privateChild.IsPublicPage = false;
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamDetailAsync(team.Slug, userId: null);
 
@@ -818,7 +749,7 @@ public class TeamServiceTests : IDisposable
         var pendingRequest = SeedJoinRequest(team.Id, requester.Id);
         var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamDetailAsync(team.Slug, coordinator.Id);
 
@@ -851,7 +782,7 @@ public class TeamServiceTests : IDisposable
         var u2 = SeedUser(displayName: "U2");
         SeedJoinRequest(team.Id, u1.Id);
         SeedJoinRequest(team.Id, u2.Id, TeamJoinRequestStatus.Rejected);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestsForTeamAsync(team.Id);
 
@@ -863,7 +794,7 @@ public class TeamServiceTests : IDisposable
     public async Task GetPendingRequestsForTeamAsync_NoRequests_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestsForTeamAsync(team.Id);
 
@@ -883,19 +814,19 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = u1.Id,
             Status = TeamJoinRequestStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant() - Duration.FromHours(2)
+            RequestedAt = Clock.GetCurrentInstant() - Duration.FromHours(2)
         };
-        _dbContext.TeamJoinRequests.Add(earlier);
+        Db.TeamJoinRequests.Add(earlier);
         var later = new TeamJoinRequest
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
             UserId = u2.Id,
             Status = TeamJoinRequestStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant() - Duration.FromHours(1)
+            RequestedAt = Clock.GetCurrentInstant() - Duration.FromHours(1)
         };
-        _dbContext.TeamJoinRequests.Add(later);
-        await _dbContext.SaveChangesAsync();
+        Db.TeamJoinRequests.Add(later);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestsForTeamAsync(team.Id);
 
@@ -913,7 +844,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var user = SeedUser();
         SeedJoinRequest(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
@@ -926,7 +857,7 @@ public class TeamServiceTests : IDisposable
     {
         var team = SeedTeam("Alpha");
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
@@ -939,7 +870,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var user = SeedUser();
         SeedJoinRequest(team.Id, user.Id, TeamJoinRequestStatus.Approved);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
@@ -958,8 +889,8 @@ public class TeamServiceTests : IDisposable
         var left = SeedUser(displayName: "Left");
         SeedTeamMember(team.Id, active.Id);
         SeedTeamMember(team.Id, left.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
@@ -982,7 +913,7 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = coordinator.Id,
             Role = TeamMemberRole.Coordinator,
-            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(5)
+            JoinedAt = Clock.GetCurrentInstant() - Duration.FromDays(5)
         };
         var m2 = new TeamMember
         {
@@ -990,7 +921,7 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = memberEarly.Id,
             Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(3)
+            JoinedAt = Clock.GetCurrentInstant() - Duration.FromDays(3)
         };
         var m3 = new TeamMember
         {
@@ -998,10 +929,10 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = memberLate.Id,
             Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(1)
+            JoinedAt = Clock.GetCurrentInstant() - Duration.FromDays(1)
         };
-        await _dbContext.TeamMembers.AddRangeAsync(m1, m2, m3);
-        await _dbContext.SaveChangesAsync();
+        await Db.TeamMembers.AddRangeAsync(m1, m2, m3);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
@@ -1018,7 +949,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var user = SeedUser(displayName: "Alice");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
@@ -1030,7 +961,7 @@ public class TeamServiceTests : IDisposable
     public async Task GetTeamAsync_NoMembers_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
@@ -1053,7 +984,7 @@ public class TeamServiceTests : IDisposable
         SeedJoinRequest(teamA.Id, u1.Id);
         SeedJoinRequest(teamA.Id, u2.Id);
         SeedJoinRequest(teamB.Id, u3.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestCountsByTeamIdsAsync([teamA.Id, teamB.Id]);
 
@@ -1069,7 +1000,7 @@ public class TeamServiceTests : IDisposable
         var u2 = SeedUser(displayName: "U2");
         SeedJoinRequest(team.Id, u1.Id);
         SeedJoinRequest(team.Id, u2.Id, TeamJoinRequestStatus.Approved);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
 
@@ -1088,7 +1019,7 @@ public class TeamServiceTests : IDisposable
     public async Task GetPendingRequestCountsByTeamIdsAsync_TeamWithNoPending_ReturnsZero()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
 
@@ -1105,7 +1036,7 @@ public class TeamServiceTests : IDisposable
         SeedTeam("Alpha");
         SeedTeam("Beta");
         SeedTeam("Charlie");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 2);
 
@@ -1119,7 +1050,7 @@ public class TeamServiceTests : IDisposable
         SeedTeam("Alpha");
         SeedTeam("Beta");
         SeedTeam("Charlie");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(2, 2);
 
@@ -1133,7 +1064,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var active = SeedUser(displayName: "Active");
         SeedTeamMember(team.Id, active.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 10);
 
@@ -1146,7 +1077,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var u1 = SeedUser(displayName: "U1");
         SeedJoinRequest(team.Id, u1.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 10);
 
@@ -1158,7 +1089,7 @@ public class TeamServiceTests : IDisposable
     {
         SeedTeam("Active");
         SeedTeam("Inactive", isActive: false);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 10);
 
@@ -1171,7 +1102,7 @@ public class TeamServiceTests : IDisposable
     {
         SeedTeam("Zebra");
         SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 10);
 
@@ -1190,7 +1121,7 @@ public class TeamServiceTests : IDisposable
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id);
 
@@ -1200,7 +1131,7 @@ public class TeamServiceTests : IDisposable
         result.Role.Should().Be(TeamMemberRole.Member);
         result.LeftAt.Should().BeNull();
 
-        var memberInDb = await _dbContext.TeamMembers
+        var memberInDb = await Db.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == target.Id && tm.LeftAt == null);
         memberInDb.Should().NotBeNull();
     }
@@ -1212,7 +1143,7 @@ public class TeamServiceTests : IDisposable
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, target.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var act = () => _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id);
 
@@ -1226,7 +1157,7 @@ public class TeamServiceTests : IDisposable
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var act = () => _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id);
 
@@ -1242,13 +1173,13 @@ public class TeamServiceTests : IDisposable
         var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
         var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
         SeedTeamRoleAssignment(roleDefinition.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
-        _cache.Set(CacheKeys.ShiftAuthorization(user.Id), new[] { team.Id });
+        await Db.SaveChangesAsync();
+        Cache.Set(CacheKeys.ShiftAuthorization(user.Id), new[] { team.Id });
 
         var result = await _service.LeaveTeamAsync(team.Id, user.Id);
 
         result.Should().BeTrue();
-        _cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
+        Cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
     }
 
     [HumansFact]
@@ -1269,8 +1200,8 @@ public class TeamServiceTests : IDisposable
             Priorities = [SlotPriority.Important, SlotPriority.None],
             SortOrder = 0,
             Period = RolePeriod.YearRound,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         alphaDefinition.Assignments.Add(new TeamRoleAssignment
         {
@@ -1279,7 +1210,7 @@ public class TeamServiceTests : IDisposable
             TeamMemberId = alphaTeamMember.Id,
             TeamMember = alphaTeamMember,
             SlotIndex = 0,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = Guid.NewGuid()
         });
 
@@ -1293,12 +1224,12 @@ public class TeamServiceTests : IDisposable
             Priorities = [SlotPriority.Critical],
             SortOrder = 0,
             Period = RolePeriod.Event,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
 
-        await _dbContext.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
-        await _dbContext.SaveChangesAsync();
+        await Db.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetRosterAsync(priority: null, status: null, period: null);
 
@@ -1333,8 +1264,8 @@ public class TeamServiceTests : IDisposable
             Priorities = [SlotPriority.Critical, SlotPriority.Important, SlotPriority.Important],
             SortOrder = 0,
             Period = RolePeriod.Event,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         definition.Assignments.Add(new TeamRoleAssignment
         {
@@ -1343,12 +1274,12 @@ public class TeamServiceTests : IDisposable
             TeamMemberId = assignedTeamMember.Id,
             TeamMember = assignedTeamMember,
             SlotIndex = 1,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = Guid.NewGuid()
         });
 
-        _dbContext.TeamRoleDefinitions.Add(definition);
-        await _dbContext.SaveChangesAsync();
+        Db.TeamRoleDefinitions.Add(definition);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetRosterAsync(
             priority: nameof(SlotPriority.Important),
@@ -1388,7 +1319,7 @@ public class TeamServiceTests : IDisposable
         var oldShift = SeedShift(oldRota.Id);
         SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 500);
 
@@ -1408,7 +1339,7 @@ public class TeamServiceTests : IDisposable
         var shift = SeedShift(rota.Id);
         SeedShiftSignup(shift.Id, user.Id, SignupStatus.Pending);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 500);
 
@@ -1431,34 +1362,34 @@ public class TeamServiceTests : IDisposable
         SeedTeamMember(team.Id, bob.Id);
         // Previously-left member should NOT be touched.
         var ghost = SeedUser(displayName: "Ghost");
-        SeedTeamMember(team.Id, ghost.Id, leftAt: _clock.GetCurrentInstant() - Duration.FromDays(30));
-        await _dbContext.SaveChangesAsync();
+        SeedTeamMember(team.Id, ghost.Id, leftAt: Clock.GetCurrentInstant() - Duration.FromDays(30));
+        await Db.SaveChangesAsync();
 
         // Act
         await _service.DeleteTeamAsync(team.Id);
 
         // Service uses its own DbContext; detach trackers so assertions re-read
         // from the store rather than returning stale tracked entities.
-        _dbContext.ChangeTracker.Clear();
+        Db.ChangeTracker.Clear();
 
         // Assert — team soft-deleted
-        var reloaded = await _dbContext.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
+        var reloaded = await Db.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
         // All previously-active memberships now have LeftAt set.
-        var aliceMember = await _dbContext.TeamMembers.AsNoTracking()
+        var aliceMember = await Db.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == alice.Id);
-        var bobMember = await _dbContext.TeamMembers.AsNoTracking()
+        var bobMember = await Db.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == bob.Id);
         aliceMember.LeftAt.Should().NotBeNull();
         bobMember.LeftAt.Should().NotBeNull();
-        aliceMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
-        bobMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
+        aliceMember.LeftAt.Should().Be(Clock.GetCurrentInstant());
+        bobMember.LeftAt.Should().Be(Clock.GetCurrentInstant());
 
         // Previously-left membership is unchanged (still has its original LeftAt).
-        var ghostMember = await _dbContext.TeamMembers.AsNoTracking()
+        var ghostMember = await Db.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id);
-        ghostMember.LeftAt.Should().Be(_clock.GetCurrentInstant() - Duration.FromDays(30));
+        ghostMember.LeftAt.Should().Be(Clock.GetCurrentInstant() - Duration.FromDays(30));
 
         // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
         // flipping GoogleResource.IsActive here would make the next reconciliation tick
@@ -1472,13 +1403,13 @@ public class TeamServiceTests : IDisposable
     public async Task DeleteTeamAsync_NoActiveMembers_StillSoftDeletes()
     {
         var team = SeedTeam("Empty Team");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.DeleteTeamAsync(team.Id);
 
-        _dbContext.ChangeTracker.Clear();
+        Db.ChangeTracker.Clear();
 
-        var reloaded = await _dbContext.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
+        var reloaded = await Db.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
@@ -1496,7 +1427,7 @@ public class TeamServiceTests : IDisposable
         second.GoogleGroupPrefix = "shared";
         SeedTeamMember(first.Id, alice.Id);
         SeedTeamMember(second.Id, bob.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetExpectedAsync();
 
@@ -1504,85 +1435,6 @@ public class TeamServiceTests : IDisposable
     }
 
     // --- Helpers ---
-
-    private User SeedUser(Guid? id = null, string displayName = "Test User")
-    {
-        var userId = id ?? Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        _dbContext.Users.Add(user);
-        return user;
-    }
-
-    private Team SeedTeam(string name, SystemTeamType type = SystemTeamType.None, Guid? id = null, bool isActive = true, bool requiresApproval = false)
-    {
-        var team = new Team
-        {
-            Id = id ?? Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(" ", "-"),
-            SystemTeamType = type,
-            IsActive = isActive,
-            RequiresApproval = requiresApproval,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Teams.Add(team);
-        return team;
-    }
-
-    private TeamMember SeedTeamMember(Guid teamId, Guid userId, TeamMemberRole role = TeamMemberRole.Member, Instant? leftAt = null)
-    {
-        var member = new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            Team = _dbContext.Teams.Local.Single(t => t.Id == teamId),
-            UserId = userId,
-            User = _dbContext.Users.Local.Single(u => u.Id == userId),
-            Role = role,
-            JoinedAt = _clock.GetCurrentInstant(),
-            LeftAt = leftAt
-        };
-        _dbContext.TeamMembers.Add(member);
-        return member;
-    }
-
-    private RoleAssignment SeedRoleAssignment(Guid userId, string roleName, Instant validFrom, Instant? validTo = null)
-    {
-        var ra = new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            RoleName = roleName,
-            ValidFrom = validFrom,
-            ValidTo = validTo,
-            CreatedAt = _clock.GetCurrentInstant(),
-            CreatedByUserId = Guid.NewGuid()
-        };
-        _dbContext.RoleAssignments.Add(ra);
-        return ra;
-    }
-
-    private TeamJoinRequest SeedJoinRequest(Guid teamId, Guid userId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
-    {
-        var request = new TeamJoinRequest
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Status = status,
-            RequestedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.TeamJoinRequests.Add(request);
-        return request;
-    }
 
     private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)
     {
@@ -1594,10 +1446,10 @@ public class TeamServiceTests : IDisposable
             IsManagement = isManagement,
             SlotCount = 1,
             SortOrder = 0,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.TeamRoleDefinitions.Add(definition);
+        Db.TeamRoleDefinitions.Add(definition);
         return definition;
     }
 
@@ -1609,10 +1461,10 @@ public class TeamServiceTests : IDisposable
             TeamRoleDefinitionId = roleDefinitionId,
             TeamMemberId = teamMemberId,
             SlotIndex = 0,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = Guid.NewGuid()
         };
-        _dbContext.TeamRoleAssignments.Add(assignment);
+        Db.TeamRoleAssignments.Add(assignment);
         return assignment;
     }
 
@@ -1628,10 +1480,10 @@ public class TeamServiceTests : IDisposable
             EventEndOffset = 5,
             StrikeEndOffset = 7,
             IsActive = isActive,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
         return es;
     }
 
@@ -1643,10 +1495,10 @@ public class TeamServiceTests : IDisposable
             TeamId = teamId,
             EventSettingsId = eventSettingsId,
             Name = name,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
         return rota;
     }
 
@@ -1661,10 +1513,10 @@ public class TeamServiceTests : IDisposable
             Duration = Duration.FromHours(4),
             MinVolunteers = 1,
             MaxVolunteers = 5,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 
@@ -1676,10 +1528,10 @@ public class TeamServiceTests : IDisposable
             ShiftId = shiftId,
             UserId = userId,
             Status = status,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.ShiftSignups.Add(signup);
+        Db.ShiftSignups.Add(signup);
         return signup;
     }
 }
