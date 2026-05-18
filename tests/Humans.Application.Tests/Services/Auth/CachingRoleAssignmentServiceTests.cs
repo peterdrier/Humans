@@ -11,11 +11,12 @@ using NSubstitute;
 namespace Humans.Application.Tests.Services.Auth;
 
 /// <summary>
-/// Exercises <see cref="CachingRoleAssignmentService"/>'s cache-served path
-/// (<c>GetActiveCountsByRoleAsync</c>) and wholesale invalidation. Pass-
-/// through methods are not tested here — the build verifies they satisfy
-/// <see cref="IRoleAssignmentService"/>; their behavior is the inner
-/// service's behavior, covered by <c>RoleAssignmentServiceTests</c>.
+/// Exercises <see cref="CachingRoleAssignmentService"/>'s cache-served paths
+/// (<c>GetActiveCountsByRoleAsync</c>, <c>GetActiveForUserAsync</c>) and
+/// wholesale invalidation. Pass-through methods are not tested here — the
+/// build verifies they satisfy <see cref="IRoleAssignmentService"/>; their
+/// behavior is the inner service's behavior, covered by
+/// <c>RoleAssignmentServiceTests</c>.
 /// </summary>
 public class CachingRoleAssignmentServiceTests
 {
@@ -139,6 +140,48 @@ public class CachingRoleAssignmentServiceTests
         afterExpiry.Should().NotContainKey("Board");
     }
 
+    [HumansFact]
+    public async Task GetActiveForUserAsync_ReturnsOnlyActiveRolesForUser_OrderedByRoleName()
+    {
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignment>
+            {
+                ActiveFor(userA, "Coordinator", now),
+                ActiveFor(userA, "Board", now),
+                ExpiredFor(userA, "Admin", now),         // past — excluded
+                ActiveFor(userB, "Board", now),          // other user — excluded
+            });
+
+        var service = BuildService(repository, clock);
+
+        var roles = await service.GetActiveForUserAsync(userA);
+
+        roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
+    }
+
+    [HumansFact]
+    public async Task GetActiveForUserAsync_SecondCall_DoesNotReQueryRepository()
+    {
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+        var userId = Guid.NewGuid();
+        var repository = Substitute.For<IRoleAssignmentRepository>();
+        repository.GetAllRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<RoleAssignment> { ActiveFor(userId, "Board", now) });
+
+        var service = BuildService(repository, clock);
+
+        await service.GetActiveForUserAsync(userId);
+        await service.GetActiveForUserAsync(userId);
+
+        await repository.Received(1).GetAllRowsForCacheAsync(Arg.Any<CancellationToken>());
+    }
+
     private static CachingRoleAssignmentService BuildService(
         IRoleAssignmentRepository repository,
         IClock clock) =>
@@ -173,5 +216,25 @@ public class CachingRoleAssignmentServiceTests
             RoleName = role,
             ValidFrom = now + Duration.FromDays(1),
             ValidTo = null,
+        };
+
+    private static RoleAssignment ActiveFor(Guid userId, string role, Instant now) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RoleName = role,
+            ValidFrom = now - Duration.FromDays(30),
+            ValidTo = now + Duration.FromDays(30),
+        };
+
+    private static RoleAssignment ExpiredFor(Guid userId, string role, Instant now) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RoleName = role,
+            ValidFrom = now - Duration.FromDays(60),
+            ValidTo = now - Duration.FromDays(1),
         };
 }

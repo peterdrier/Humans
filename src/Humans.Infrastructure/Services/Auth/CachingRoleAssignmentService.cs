@@ -19,13 +19,13 @@ namespace Humans.Infrastructure.Services.Auth;
 /// <remarks>
 /// Mirrors <c>CachingLegalDocumentSyncService</c>: warmed on startup via the
 /// <see cref="TrackedCache{TKey,TValue}"/> base, wholesale flush on writes,
-/// stats exposed via <c>/Admin/CacheStats</c>. Today only
-/// <see cref="GetActiveCountsByRoleAsync"/> is served from cache; every other
-/// surface method passes through to the inner service via a freshly
-/// resolved scope. Other read methods can be migrated to cached derivations
-/// incrementally as new callers arrive — the cache shape
-/// (<see cref="RoleAssignmentRow"/>) already holds enough to answer
-/// "active-at-now" predicates.
+/// stats exposed via <c>/Admin/CacheStats</c>. Reads served from cache:
+/// <see cref="GetActiveCountsByRoleAsync"/>,
+/// <see cref="GetActiveForUserAsync"/>. Every other surface method passes
+/// through to the inner service via a freshly resolved scope. Other read
+/// methods can be migrated to cached derivations incrementally as new
+/// callers arrive — the cache shape (<see cref="RoleAssignmentRow"/>) holds
+/// the fields needed to answer "active-at-now" predicates by user or role.
 /// </remarks>
 public sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
@@ -90,7 +90,7 @@ public sealed class CachingRoleAssignmentService
     {
         var entities = await _repository.GetAllRowsForCacheAsync(ct);
         foreach (var ra in entities)
-            Set(ra.Id, new RoleAssignmentRow(ra.Id, ra.RoleName, ra.ValidFrom, ra.ValidTo));
+            Set(ra.Id, new RoleAssignmentRow(ra.Id, ra.UserId, ra.RoleName, ra.ValidFrom, ra.ValidTo));
     }
 
     // ==========================================================================
@@ -147,8 +147,16 @@ public sealed class CachingRoleAssignmentService
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(string roleName, CancellationToken ct = default) =>
         WithInner(inner => inner.GetActiveUserIdsInRoleAsync(roleName, ct));
 
-    public Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetActiveForUserAsync(userId, ct));
+    public async Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct);
+        var now = _clock.GetCurrentInstant();
+        return AsReadOnlyDictionary.Values
+            .Where(row => row.UserId == userId && row.IsActiveAt(now))
+            .OrderBy(row => row.RoleName, StringComparer.Ordinal)
+            .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
+            .ToList();
+    }
 
     public void InvalidateClaimsCacheForUser(Guid userId)
     {

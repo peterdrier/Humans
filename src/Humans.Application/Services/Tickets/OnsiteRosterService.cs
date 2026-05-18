@@ -95,11 +95,12 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
     {
         var result = new Dictionary<Guid, SortedSet<string>>();
         var camps = await _camps.GetCampsForYearAsync(year, ct);
+        var membersByCampSeason = await _camps.GetCampMembersByYearAsync(year, ct);
         foreach (var camp in camps)
         {
             foreach (var season in camp.Seasons)
             {
-                var members = await _camps.GetSeasonMembersAsync(season.Id, ct);
+                if (!membersByCampSeason.TryGetValue(season.Id, out var members)) continue;
                 foreach (var m in members)
                 {
                     if (!onsiteIds.Contains(m.UserId)) continue;

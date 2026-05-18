@@ -87,31 +87,6 @@ public sealed class CachingCampService :
         return snapshot is not null && snapshot.Contains(year);
     }
 
-#pragma warning disable CS0618
-    public async Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(
-        int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null,
-        CancellationToken cancellationToken = default)
-    {
-        // Deprecated alias: filter in-memory by season status.
-        await EnsureWarmedAsync(cancellationToken);
-        if (!IsWarmYear(year))
-        {
-            return await WithInner(inner => inner.GetCampsWithLeadsForYearAsync(year, statusFilter, cancellationToken));
-        }
-        var snapshot = Values;
-        var result = new List<CampInfo>(snapshot.Count);
-        foreach (var camp in snapshot)
-        {
-            var seasonsThisYear = camp.Seasons.Where(s => s.Year == year).ToList();
-            if (seasonsThisYear.Count == 0) continue;
-            if (statusFilter is { Count: > 0 } && !seasonsThisYear.Any(s => statusFilter.Contains(s.Status)))
-                continue;
-            result.Add(FilterToYear(camp, year));
-        }
-        return result;
-    }
-#pragma warning restore CS0618
-
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var snapshot = _settings;
@@ -201,6 +176,10 @@ public sealed class CachingCampService :
     public Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetSeasonMembersAsync(campSeasonId, cancellationToken));
+
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
+        int year, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetCampMembersByYearAsync(year, cancellationToken));
 
     public Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default) =>

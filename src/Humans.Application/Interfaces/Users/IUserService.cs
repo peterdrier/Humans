@@ -141,6 +141,14 @@ public interface IUserService : IApplicationService, IUserMerge
     /// camp / team / governance-role names via the owning section services and
     /// applies filters. Issue nobodies-collective/Humans#736.
     /// </summary>
+    /// <remarks>
+    /// Implemented on the caching decorator only — the inner
+    /// <c>UserService</c> derives this from the cached <c>UserInfo</c>
+    /// snapshot and the inner implementation throws
+    /// <see cref="NotSupportedException"/>. Any DI registration that resolves
+    /// the inner service directly (test doubles aside) will hit that throw on
+    /// first call.
+    /// </remarks>
     Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
         int year, CancellationToken ct = default);
 
