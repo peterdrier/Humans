@@ -60,10 +60,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>(),
-            Substitute.For<IUserActivityTracker>());
+        _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
         _job = new ProcessGoogleSyncOutboxJob(

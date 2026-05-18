@@ -36,10 +36,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>(),
-            Substitute.For<IUserActivityTracker>());
+        _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<CleanupEmailOutboxJob>>();
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });
         var repo = new EmailOutboxRepository(new TestDbContextFactory(options));

@@ -55,10 +55,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>(),
-            Substitute.For<IUserActivityTracker>());
+        _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests

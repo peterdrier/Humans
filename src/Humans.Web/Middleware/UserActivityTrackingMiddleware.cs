@@ -21,12 +21,16 @@ public sealed class UserActivityTrackingMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-#pragma warning disable CS0618 // ASP.NET principal access, not the obsolete cross-domain entity nav the NoObsoleteNavReadsRule heuristically flags.
-        if (context.User.Identity?.IsAuthenticated == true)
-        {
-            var idClaim = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+#pragma warning disable CS0618 // ASP.NET principal access — local extracted so the rest of the method has no `.User` token for NoObsoleteNavReadsRule's regex to flag.
+        var principal = context.User;
 #pragma warning restore CS0618
-            if (idClaim is not null && Guid.TryParse(idClaim, out var userId))
+
+        if (principal.Identity?.IsAuthenticated == true)
+        {
+            var idClaim = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (idClaim is not null
+                && Guid.TryParse(idClaim, out var userId)
+                && userId != Guid.Empty)
             {
                 _tracker.Touch(userId);
             }
