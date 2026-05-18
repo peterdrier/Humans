@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Hangfire;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
@@ -30,6 +31,14 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
     /// <summary>Stub IStripeService for integration tests (replaces real Stripe network calls).</summary>
     public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
+
+    /// <summary>
+    /// Stub IBackgroundJobClient for integration tests. Program.cs skips
+    /// AddHangfire entirely in Testing (see comment there), so anything in
+    /// src/ that injects IBackgroundJobClient gets this no-op substitute.
+    /// Tests can assert against ReceivedCalls() to verify enqueue behavior.
+    /// </summary>
+    public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
@@ -106,6 +115,11 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
             if (stripeDescriptor != null) services.Remove(stripeDescriptor);
             services.AddScoped(_ => StripeServiceStub);
+
+            // Bind IBackgroundJobClient — Hangfire's own registration is skipped in
+            // Testing (Program.cs), so injecting consumers like
+            // HangfireImmediateOutboxProcessor need this stub or DI graph build fails.
+            services.AddSingleton(BackgroundJobClientStub);
 
             RegisteredServices = services.ToList();
 
