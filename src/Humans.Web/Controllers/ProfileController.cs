@@ -2538,10 +2538,9 @@ public class ProfileController : HumansControllerBase
                 && User.IsInRole(Domain.Constants.RoleNames.Admin)
                 ? user.IdentityEmailColumn
                 : null,
-            UserInfoEmails = isAdminContext
+            TargetUserInfo = isAdminContext
                 && User.IsInRole(Domain.Constants.RoleNames.Admin)
-                && info is not null
-                    ? new UserInfoEmailDiagnostic(info.Email, info.PrimaryEmail, info.GoogleEmail)
+                    ? info
                     : null,
         };
     }

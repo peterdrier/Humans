@@ -357,7 +357,7 @@
         </div>
 
         @* Admin UserInfo derived-email diagnostic — what callers across the app actually see *@
-        @if (Model.IsAdminContext && Model.UserInfoEmails is not null)
+        @if (Model.IsAdminContext && Model.TargetUserInfo is not null)
         {
             <div class="card mb-4 border-danger" id="userinfo-emails">
                 <div class="card-header bg-danger text-white">
@@ -369,9 +369,9 @@
                             <tr>
                                 <th style="width: 16rem;"><code>UserInfo.Email</code></th>
                                 <td>
-                                    @if (!string.IsNullOrEmpty(Model.UserInfoEmails.EffectiveEmail))
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.Email))
                                     {
-                                        <code>@Model.UserInfoEmails.EffectiveEmail</code>
+                                        <code>@Model.TargetUserInfo.Email</code>
                                     }
                                     else
                                     {
@@ -382,9 +382,9 @@
                             <tr>
                                 <th><code>UserInfo.PrimaryEmail</code></th>
                                 <td>
-                                    @if (!string.IsNullOrEmpty(Model.UserInfoEmails.PrimaryEmail))
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.PrimaryEmail))
                                     {
-                                        <code>@Model.UserInfoEmails.PrimaryEmail</code>
+                                        <code>@Model.TargetUserInfo.PrimaryEmail</code>
                                     }
                                     else
                                     {
@@ -395,9 +395,9 @@
                             <tr>
                                 <th><code>UserInfo.GoogleEmail</code></th>
                                 <td>
-                                    @if (!string.IsNullOrEmpty(Model.UserInfoEmails.GoogleEmail))
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.GoogleEmail))
                                     {
-                                        <code>@Model.UserInfoEmails.GoogleEmail</code>
+                                        <code>@Model.TargetUserInfo.GoogleEmail</code>
                                     }
                                     else
                                     {

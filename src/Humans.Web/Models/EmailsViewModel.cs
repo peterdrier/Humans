@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -77,14 +78,13 @@ public class EmailsViewModel
     public string? LegacyIdentityEmailColumn { get; set; }
 
     /// <summary>
-    /// Admin-only diagnostic: the derived email fields read from the cached
-    /// <c>UserInfo</c> for this target user. These are what the rest of the
-    /// app actually consumes — what we send mail to, what we resolve as the
-    /// Google identity. Used to spot drift between the cached read-model and
-    /// the underlying <c>UserEmails</c> rows after detached-provider or
-    /// account-merge scenarios. Null in self contexts and for non-Admin actors.
+    /// Admin-only diagnostic: the cached <c>UserInfo</c> for the target user.
+    /// The view reads <c>Email</c>/<c>PrimaryEmail</c>/<c>GoogleEmail</c>
+    /// directly — these are what the rest of the app actually consumes
+    /// (outbound mail, Google identity, the legacy <c>User.Email</c>
+    /// override). Null in self contexts and for non-Admin actors.
     /// </summary>
-    public UserInfoEmailDiagnostic? UserInfoEmails { get; init; }
+    public UserInfo? TargetUserInfo { get; init; }
 
     /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace
@@ -226,14 +226,3 @@ public class EmailRowViewModel
     /// </summary>
     public bool HasOrphanProviderTag { get; init; }
 }
-
-/// <summary>
-/// Admin-only diagnostic snapshot of <c>UserInfo</c>'s derived email fields.
-/// These are what callers across the app see when they ask the cached
-/// read-model for a user's email — used to compare against the raw
-/// <c>UserEmails</c> rows above and the legacy <c>User.Email</c> column.
-/// </summary>
-public sealed record UserInfoEmailDiagnostic(
-    string? EffectiveEmail,
-    string? PrimaryEmail,
-    string? GoogleEmail);
