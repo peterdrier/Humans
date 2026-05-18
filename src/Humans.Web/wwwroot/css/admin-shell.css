@@ -95,22 +95,15 @@ body.admin-shell .m-nav .exit-admin:hover {
     border-color: rgba(201,169,110,0.4);
 }
 
-body.admin-shell .m-nav .topbar-user .avatar-trigger {
+/* Profile dropdown trigger (shared _LoginPartial) — recolor for dark topbar. */
+body.admin-shell .m-nav .dropdown > .btn-link,
+body.admin-shell .m-nav .profile-dropdown-name {
     color: var(--h-parchment);
 }
 
-body.admin-shell .m-nav .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--h-sepia);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--h-parchment);
-    font-family: var(--h-font-display);
-    font-weight: 700;
-    font-size: 0.78rem;
+body.admin-shell .m-nav .dropdown > .btn-link:hover,
+body.admin-shell .m-nav .dropdown > .btn-link:focus {
+    color: var(--h-gold);
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
@@ -476,7 +469,6 @@ body.admin-shell .split-panels {
     body.admin-shell .m-nav .right { gap: 10px; }
     body.admin-shell .m-nav .exit-admin span { display: none; }
     body.admin-shell .m-nav .exit-admin { padding: 6px 8px; }
-    body.admin-shell .m-nav .avatar { width: 28px; height: 28px; font-size: 0.74rem; }
 
     body.admin-shell .sidebar {
         padding: 0;
