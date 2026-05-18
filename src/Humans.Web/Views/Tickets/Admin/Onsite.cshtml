@@ -24,7 +24,7 @@ else
                 <option value="">All camps</option>
                 @foreach (var c in Model.AvailableCamps)
                 {
-                    <option value="@c" selected="@(string.Equals(c, Model.CampFilter, StringComparison.OrdinalIgnoreCase))">@c</option>
+                    <option value="@c" selected="@(string.Equals(c, Model.CampFilter, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@c</option>
                 }
             </select>
         </div>
@@ -34,7 +34,7 @@ else
                 <option value="">All teams</option>
                 @foreach (var t in Model.AvailableTeams)
                 {
-                    <option value="@t" selected="@(string.Equals(t, Model.TeamFilter, StringComparison.OrdinalIgnoreCase))">@t</option>
+                    <option value="@t" selected="@(string.Equals(t, Model.TeamFilter, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@t</option>
                 }
             </select>
         </div>
@@ -44,7 +44,7 @@ else
                 <option value="">All roles</option>
                 @foreach (var r in Model.AvailableRoles)
                 {
-                    <option value="@r" selected="@(string.Equals(r, Model.RoleFilter, StringComparison.OrdinalIgnoreCase))">@r</option>
+                    <option value="@r" selected="@(string.Equals(r, Model.RoleFilter, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@r</option>
                 }
             </select>
         </div>

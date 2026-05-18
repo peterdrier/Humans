@@ -43,8 +43,7 @@ public sealed class CampAdminPageBuilder
             .ToList();
 
         // T-06: GetCampsForYearAsync always populates leads; filter by season
-        // status in-memory (was previously a repo-side filter via the now-
-        // deprecated GetCampsWithLeadsForYearAsync).
+        // status in-memory.
         var activeStatuses = new HashSet<CampSeasonStatus> { CampSeasonStatus.Active, CampSeasonStatus.Full };
         var campsWithLeads = (await _campService.GetCampsForYearAsync(settings.PublicYear))
             .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
