@@ -309,31 +309,31 @@ public class IssuesApiController : ControllerBase
         Issue i,
         IReadOnlyList<IssueThreadEvent> thread,
         IReadOnlyDictionary<Guid, UserInfo> displayUsers) => new
-    {
-        issue = MapList(i, displayUsers),
-        thread = thread.Select(e => e switch
         {
-            IssueCommentEvent c => (object)new
+            issue = MapList(i, displayUsers),
+            thread = thread.Select(e => e switch
             {
-                type = "comment",
-                at = c.At.ToDateTimeUtc(),
-                actorUserId = c.ActorUserId,
-                actorName = c.ActorDisplayName,
-                actorIsReporter = c.ActorIsReporter,
-                content = c.Content
-            },
-            IssueAuditEvent a => new
-            {
-                type = "audit",
-                at = a.At.ToDateTimeUtc(),
-                actorUserId = a.ActorUserId,
-                actorName = a.ActorDisplayName,
-                action = a.Action.ToString(),
-                description = a.Description
-            },
-            _ => throw new NotSupportedException()
-        })
-    };
+                IssueCommentEvent c => (object)new
+                {
+                    type = "comment",
+                    at = c.At.ToDateTimeUtc(),
+                    actorUserId = c.ActorUserId,
+                    actorName = c.ActorDisplayName,
+                    actorIsReporter = c.ActorIsReporter,
+                    content = c.Content
+                },
+                IssueAuditEvent a => new
+                {
+                    type = "audit",
+                    at = a.At.ToDateTimeUtc(),
+                    actorUserId = a.ActorUserId,
+                    actorName = a.ActorDisplayName,
+                    action = a.Action.ToString(),
+                    description = a.Description
+                },
+                _ => throw new NotSupportedException()
+            })
+        };
 
     private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(Issue issue)
     {
@@ -341,9 +341,7 @@ public class IssuesApiController : ControllerBase
         if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
         if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
 
-        return ids.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await _users.GetUserInfosAsync(ids);
+        return await _users.GetUserInfosAsync(ids);
     }
 }
 

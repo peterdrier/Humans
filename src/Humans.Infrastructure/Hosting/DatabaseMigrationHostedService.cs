@@ -16,9 +16,7 @@ namespace Humans.Infrastructure.Hosting;
     justification: "Persistence-boundary bootstrap. The migration runner is part of HumansDbContext's wiring, not a consumer of it — it cannot route through a repository because it operates on the schema itself. Follow-up to teach the analyzer about hosted-service / design-time-factory roles in #750.",
     since: "2026-05-17",
     issueRef: "nobodies-collective/Humans#750")]
-#pragma warning disable HUM0009 // Migration hosted service is a persistence bootstrap boundary; see Grandfathered rationale above.
 internal sealed class DatabaseMigrationHostedService : IHostedLifecycleService
-#pragma warning restore HUM0009
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
@@ -50,9 +48,7 @@ internal sealed class DatabaseMigrationHostedService : IHostedLifecycleService
 
     public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-#pragma warning disable HUM0009 // Migration bootstrap operates directly on schema metadata.
     private async Task MigrateAsync(HumansDbContext dbContext, string dbName, CancellationToken cancellationToken)
-#pragma warning restore HUM0009
     {
         try
         {

@@ -507,7 +507,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618, HUM_USER_DISPLAYNAME, HUM_USERINFO_DISPLAYNAME // DisplayName is the legacy column this rehydration mirrors.
+#pragma warning disable CS0618 // DisplayName is the legacy column this rehydration mirrors.
         var user = new User
         {
             Id = info.Id,
@@ -531,7 +531,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
             MergedAt = info.MergedAt,
             Email = info.IdentityEmailColumn,
         };
-#pragma warning restore CS0618, HUM_USER_DISPLAYNAME, HUM_USERINFO_DISPLAYNAME
+#pragma warning restore CS0618
 
         foreach (var e in info.UserEmails)
         {

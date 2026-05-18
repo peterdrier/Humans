@@ -400,9 +400,7 @@ public class TeamRoleDefinitionViewModel
                 },
                 IsFilled = assignment is not null,
                 AssignedUserId = assignment?.TeamMember?.UserId,
-#pragma warning disable HUM_USER_DISPLAYNAME // Legacy entity mapper; normal team screens use TeamMemberInfo.DisplayName from UserInfo.
                 AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
-#pragma warning restore HUM_USER_DISPLAYNAME
                 TeamMemberId = assignment?.TeamMemberId
             });
 

@@ -85,7 +85,16 @@ public static class ShiftVolunteerSearchBuilder
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
-        var users = await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: 10);
+        // SearchUsersAsync iterates the in-memory cache and short-circuits at
+        // `limit`, so passing limit: 10 directly returns an arbitrary 10 (cache
+        // order is non-deterministic). Request the full match set and sort
+        // before capping to preserve the prior OrderBy(DisplayName).Take(10)
+        // semantics (Codex P2, PR #638). Cache is ~500 users, so the full sort
+        // is cheap.
+        var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue))
+            .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .ToList();
 
         var poolVolunteers = await availabilityService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();

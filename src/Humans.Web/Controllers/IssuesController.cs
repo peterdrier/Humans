@@ -509,8 +509,6 @@ public class IssuesController : HumansControllerBase
         if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
         if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
 
-        return ids.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await _users.GetUserInfosAsync(ids);
+        return await _users.GetUserInfosAsync(ids);
     }
 }

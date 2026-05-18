@@ -343,7 +343,6 @@ public sealed record UserInfo(
                 c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
             .ToList();
 
-#pragma warning disable HUM_USER_DISPLAYNAME // UserInfo is the canonical bridge from the legacy column to BurnerName.
         return new UserInfo(
             Id: user.Id,
             DisplayName: user.DisplayName,
@@ -370,6 +369,5 @@ public sealed record UserInfo(
             ExternalLogins: loginInfos,
             Profile: profileInfo,
             CommunicationPreferences: communicationPreferenceInfos);
-#pragma warning restore HUM_USER_DISPLAYNAME
     }
 }

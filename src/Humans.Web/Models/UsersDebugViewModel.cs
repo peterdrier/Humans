@@ -32,7 +32,6 @@ public sealed record UserDebugRow(
     Instant CreatedAt,
     Instant? LastLoginAt)
 {
-#pragma warning disable HUM_USERINFO_DISPLAYNAME // Debug screen intentionally exposes the raw legacy mirror beside BurnerName.
     public static UserDebugRow From(UserInfo info) => new(
         UserId: info.Id,
         HasProfile: info.Profile is not null,
@@ -47,5 +46,4 @@ public sealed record UserDebugRow(
             : info.Profile.ConsentCheckStatus == ConsentCheckStatus.Cleared,
         CreatedAt: info.CreatedAt,
         LastLoginAt: info.LastLoginAt);
-#pragma warning restore HUM_USERINFO_DISPLAYNAME
 }

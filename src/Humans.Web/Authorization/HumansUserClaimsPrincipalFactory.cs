@@ -28,7 +28,6 @@ public sealed class HumansUserClaimsPrincipalFactory : UserClaimsPrincipalFactor
     {
         var identity = await base.GenerateClaimsAsync(user);
 
-#pragma warning disable HUM_USER_DISPLAYNAME // Identity claims are a documented legitimate legacy-column consumer.
         if (!string.IsNullOrWhiteSpace(user.DisplayName))
         {
             var nameClaimType = Options.ClaimsIdentity.UserNameClaimType;
@@ -39,7 +38,6 @@ public sealed class HumansUserClaimsPrincipalFactory : UserClaimsPrincipalFactor
             }
             identity.AddClaim(new Claim(nameClaimType, user.DisplayName));
         }
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         return identity;
     }
