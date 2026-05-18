@@ -6,43 +6,24 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public sealed class CachingTeamServiceTests : IDisposable
+public sealed class CachingTeamServiceTests : ServiceTestHarness
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly ServiceProvider _serviceProvider;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly CachingTeamService _service;
 
     public CachingTeamServiceTests()
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(_options);
-
-        var userService = Substitute.For<IUserService>();
-        userService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                return Task.FromResult(LoadUsers(ids));
-            });
-        userService.StubGetUserInfosFromDb(_options);
+        var userService = NewDbBackedUserService();
 
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _roleAssignmentService
@@ -57,9 +38,8 @@ public sealed class CachingTeamServiceTests : IDisposable
             (_, _) => Substitute.For<ITeamService>());
         _serviceProvider = services.BuildServiceProvider();
 
-        ITeamRepository teamRepository = new TeamRepository(new TestDbContextFactory(_options));
         _service = new CachingTeamService(
-            teamRepository,
+            new TeamRepository(DbFactory),
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
     }
@@ -70,7 +50,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var user = SeedUser();
         var inactiveTeam = SeedTeam("Inactive", isActive: false);
         SeedTeamMember(inactiveTeam.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(inactiveTeam.Id, user.Id);
 
@@ -85,7 +65,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var child = SeedTeam("Child");
         child.ParentTeamId = inactiveParent.Id;
         SeedTeamMember(inactiveParent.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -97,36 +77,24 @@ public sealed class CachingTeamServiceTests : IDisposable
     {
         var user = SeedUser("Alice");
         user.Email = null;
-        _dbContext.UserEmails.Add(new UserEmail
+        Db.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
             Email = "alice@example.test",
             IsVerified = true,
             IsPrimary = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         });
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
         var member = result!.Members.Should().ContainSingle().Subject;
         member.Email.Should().Be("alice@example.test");
-    }
-
-    private IReadOnlyDictionary<Guid, User> LoadUsers(IReadOnlyCollection<Guid> ids)
-    {
-        if (ids.Count == 0)
-            return new Dictionary<Guid, User>();
-
-        using var db = new HumansDbContext(_options);
-        return db.Users.AsNoTracking()
-            .Include(u => u.UserEmails)
-            .Where(u => ids.Contains(u.Id))
-            .ToDictionary(u => u.Id);
     }
 
     private User SeedUser(string displayName = "Test User")
@@ -140,7 +108,7 @@ public sealed class CachingTeamServiceTests : IDisposable
             Email = $"test-{userId}@test.com",
             PreferredLanguage = "en"
         };
-        _dbContext.Users.Add(user);
+        Db.Users.Add(user);
         return user;
     }
 
@@ -152,10 +120,10 @@ public sealed class CachingTeamServiceTests : IDisposable
             Name = name,
             Slug = name.ToLowerInvariant().Replace(" ", "-"),
             IsActive = isActive,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Teams.Add(team);
+        Db.Teams.Add(team);
         return team;
     }
 
@@ -167,9 +135,9 @@ public sealed class CachingTeamServiceTests : IDisposable
             TeamId = teamId,
             UserId = userId,
             Role = role,
-            JoinedAt = _clock.GetCurrentInstant()
+            JoinedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.TeamMembers.Add(member);
+        Db.TeamMembers.Add(member);
         return member;
     }
 
@@ -181,7 +149,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var team2 = SeedTeam("Beta");
         SeedTeamMember(team1.Id, user.Id, TeamMemberRole.Member);
         SeedTeamMember(team2.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -197,8 +165,8 @@ public sealed class CachingTeamServiceTests : IDisposable
         var user = SeedUser("Alice");
         var team = SeedTeam("Alpha");
         var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        member.LeftAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync();
+        member.LeftAt = Clock.GetCurrentInstant();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -213,7 +181,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var child = SeedTeam("Logo");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -232,7 +200,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var user = SeedUser("Alice");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Warm the cache + inverse index.
         var before = await _service.GetUserTeamsAsync(user.Id);
@@ -242,7 +210,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         // real path where mutation methods call InvalidateTeamsCache().
         var team2 = SeedTeam("Beta");
         SeedTeamMember(team2.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         _service.InvalidateActiveTeamsCache();
 
         var after = await _service.GetUserTeamsAsync(user.Id);
@@ -264,7 +232,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         SeedTeamMember(t1.Id, bob.Id, TeamMemberRole.Member);
         SeedTeamMember(t2.Id, alice.Id, TeamMemberRole.Coordinator);
         SeedTeamMember(t3.Id, carol.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var aliceTeams = (await _service.GetUserTeamsAsync(alice.Id))
             .Select(m => m.TeamId).ToHashSet();
@@ -284,7 +252,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var user = SeedUser("Alice");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // First call drives warmup (which uses repository, not inner service).
         await _service.GetUserTeamsAsync(user.Id);
@@ -304,7 +272,7 @@ public sealed class CachingTeamServiceTests : IDisposable
     public async Task GetUserTeamsAsync_UnknownUser_ReturnsEmptyWithoutInnerCall()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(Guid.NewGuid());
 
@@ -329,7 +297,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         SeedTeamMember(systemTeam.Id, user.Id, TeamMemberRole.Coordinator);
         SeedJoinRequest(managedTeam.Id, SeedUser("Requester A").Id);
         SeedJoinRequest(systemTeam.Id, SeedUser("Requester B").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -350,7 +318,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
         SeedJoinRequest(team.Id, SeedUser("Requester").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -370,7 +338,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         SeedJoinRequest(department.Id, SeedUser("Direct Requester").Id);
         SeedJoinRequest(child.Id, SeedUser("Child Requester A").Id);
         SeedJoinRequest(child.Id, SeedUser("Child Requester B").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -393,7 +361,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
         SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
         SeedJoinRequest(child.Id, SeedUser("Child Requester").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -409,7 +377,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
         SeedJoinRequest(team.Id, SeedUser("Requester").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -425,7 +393,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var child = SeedTeam("Logo");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -440,7 +408,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
         SeedJoinRequest(team.Id, SeedUser("Requester").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Drive a first call to warm the cache (which uses the repository, not
         // the inner service).
@@ -468,7 +436,7 @@ public sealed class CachingTeamServiceTests : IDisposable
     public async Task RequestToJoinTeamAsync_InvalidatesCache()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Warm the cache so we can observe invalidation by counter.
         await _service.GetTeamAsync(team.Id);
@@ -483,7 +451,7 @@ public sealed class CachingTeamServiceTests : IDisposable
     public async Task WithdrawJoinRequestAsync_InvalidatesCache()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         await _service.GetTeamAsync(team.Id);
         var before = _service.BulkInvalidations;
 
@@ -496,7 +464,7 @@ public sealed class CachingTeamServiceTests : IDisposable
     public async Task RejectJoinRequestAsync_InvalidatesCache()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         await _service.GetTeamAsync(team.Id);
         var before = _service.BulkInvalidations;
 
@@ -509,7 +477,7 @@ public sealed class CachingTeamServiceTests : IDisposable
     public async Task ApproveJoinRequestAsync_InvalidatesCache()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         await _service.GetTeamAsync(team.Id);
         var before = _service.BulkInvalidations;
 
@@ -526,7 +494,7 @@ public sealed class CachingTeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedJoinRequest(team.Id, SeedUser("Requester A").Id);
         SeedJoinRequest(team.Id, SeedUser("Requester B").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var info = await _service.GetTeamAsync(team.Id);
 
@@ -542,15 +510,15 @@ public sealed class CachingTeamServiceTests : IDisposable
             TeamId = teamId,
             UserId = userId,
             Status = TeamJoinRequestStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant()
+            RequestedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.TeamJoinRequests.Add(request);
+        Db.TeamJoinRequests.Add(request);
         return request;
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
-        _dbContext.Dispose();
         _serviceProvider.Dispose();
+        base.Dispose();
     }
 }
