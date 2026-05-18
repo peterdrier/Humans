@@ -77,6 +77,16 @@ public class EmailsViewModel
     public string? LegacyIdentityEmailColumn { get; set; }
 
     /// <summary>
+    /// Admin-only diagnostic: the derived email fields read from the cached
+    /// <c>UserInfo</c> for this target user. These are what the rest of the
+    /// app actually consumes — what we send mail to, what we resolve as the
+    /// Google identity. Used to spot drift between the cached read-model and
+    /// the underlying <c>UserEmails</c> rows after detached-provider or
+    /// account-merge scenarios. Null in self contexts and for non-Admin actors.
+    /// </summary>
+    public UserInfoEmailDiagnostic? UserInfoEmails { get; init; }
+
+    /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace
     /// canonical identity (Provider=Google + email on the configured Workspace
     /// domain). While set, the view locks Primary and Google radios across the
@@ -216,3 +226,14 @@ public class EmailRowViewModel
     /// </summary>
     public bool HasOrphanProviderTag { get; init; }
 }
+
+/// <summary>
+/// Admin-only diagnostic snapshot of <c>UserInfo</c>'s derived email fields.
+/// These are what callers across the app see when they ask the cached
+/// read-model for a user's email — used to compare against the raw
+/// <c>UserEmails</c> rows above and the legacy <c>User.Email</c> column.
+/// </summary>
+public sealed record UserInfoEmailDiagnostic(
+    string? EffectiveEmail,
+    string? PrimaryEmail,
+    string? GoogleEmail);
