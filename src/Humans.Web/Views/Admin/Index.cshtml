@@ -133,9 +133,12 @@
 
 @if (sm.TotalUsers > 0)
 {
+    @* Scoped npm paths use &#64; (HTML entity) — NonceTagHelper claims every <script>,
+       and the Razor tag-helper attribute parser mangles @@ inside src= attributes.
+       See memory/code/razor-script-src-at-escape.md. *@
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/venn.js@1.4.2/build/venn.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/bundle@1.11.0/dist/upsetjs.umd.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/&#64;upsetjs/venn.js@1.4.2/build/venn.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/&#64;upsetjs/bundle@1.11.0/dist/upsetjs.umd.production.min.js" crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // ---- Venn: 3 sets (Profile / Ticket / Shift), marginalized over Marketing ----
@@ -165,15 +168,22 @@
                     var mask = +k;
                     var count = buckets[k];
                     if (mask === 0 || count === 0) return; // skip the "none of the sets" bucket
-                    var sets = [];
+                    var elemSets = [];
                     for (var b = 0; b < dims.length; b++) {
-                        if (mask & (1 << b)) sets.push(dims[b]);
+                        if (mask & (1 << b)) elemSets.push(dims[b]);
                     }
                     for (var i = 0; i < count; i++) {
-                        elems.push({ name: 'm' + mask + '_' + i, sets: sets });
+                        elems.push({ name: 'm' + mask + '_' + i, sets: elemSets });
                     }
                 });
-                var sets = window.UpSetJS.extractSets(elems);
+                // Build sets explicitly so all 4 dimensions render even when a set is empty
+                // (extractSets would drop sets with zero members).
+                var sets = window.UpSetJS.asSets(dims.map(function (name) {
+                    return {
+                        name: name,
+                        elems: elems.filter(function (e) { return e.sets.indexOf(name) >= 0; })
+                    };
+                }));
                 var combinations = window.UpSetJS.generateCombinations(sets);
                 var props = {
                     sets: sets,
