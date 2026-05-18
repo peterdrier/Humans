@@ -76,6 +76,17 @@ public class ShiftManagementServiceTests : IDisposable
         _teamService.GetAllTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<Team>>(_dbContext.Teams.AsEnumerable().ToList()));
 
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                _dbContext.Teams.AsEnumerable().ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory, t.CreatedAt,
+                        Members: [],
+                        ParentTeamId: t.ParentTeamId))));
+
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(_teamService);
         serviceProvider.GetService(typeof(IUserService)).Returns(_userService);
@@ -690,6 +701,82 @@ public class ShiftManagementServiceTests : IDisposable
         var results = await _service.GetBrowseShiftsAsync(es.Id, departmentId: promotedSubTeam.Id);
 
         results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo([promotedRota.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetUrgentShifts_DepartmentFilter_IncludesUnpromotedSubTeamRotas()
+    {
+        // Mirrors the browse-page rollup: filtering urgent shifts by a parent department
+        // must include non-promoted sub-team rotas (which roll up into the parent's pie)
+        // but exclude promoted sub-teams (which have their own filter).
+        var (es, parentRota) = SeedRotaScenario(RotaPeriod.Event);
+        var parentTeamId = parentRota.TeamId;
+
+        var unpromotedSubTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Sober Camp",
+            Slug = "sober-camp",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = parentTeamId,
+            IsPromotedToDirectory = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        var promotedSubTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Interpreters",
+            Slug = "interpreters",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = parentTeamId,
+            IsPromotedToDirectory = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.Teams.Add(unpromotedSubTeam);
+        _dbContext.Teams.Add(promotedSubTeam);
+
+        var unpromotedRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = unpromotedSubTeam.Id,
+            Name = "Sober Camp Rota",
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+            EventSettings = es
+        };
+        var promotedRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = promotedSubTeam.Id,
+            Name = "Interpreters Rota",
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+            EventSettings = es
+        };
+        _dbContext.Rotas.Add(unpromotedRota);
+        _dbContext.Rotas.Add(promotedRota);
+
+        SeedShift(parentRota, dayOffset: 1);
+        SeedShift(unpromotedRota, dayOffset: 1);
+        SeedShift(promotedRota, dayOffset: 1);
+        await _dbContext.SaveChangesAsync();
+
+        var results = await _service.GetUrgentShiftsAsync(es.Id, departmentId: parentTeamId);
+
+        results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo([
+            parentRota.Id,
+            unpromotedRota.Id
+        ]);
     }
 
     // ============================================================

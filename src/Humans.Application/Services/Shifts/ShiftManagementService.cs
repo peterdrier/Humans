@@ -623,7 +623,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 : null;
         }
 
-        var urgencyTeamIds = departmentId is { } urgentId ? new[] { urgentId } : null;
+        var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
         var shifts = await _repo.GetShiftsWithSignupsForUrgencyAsync(
             eventSettingsId, urgencyTeamIds, minDayOffset, maxDayOffset);
 
@@ -736,12 +736,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Mirrors the pie bucketing in GetDepartmentCoveragePiesAsync: filtering by a
     // department includes its non-promoted sub-teams (which roll up into the parent's
     // pie) but excludes promoted sub-teams (which have their own pie and filter).
+    // Uses the warm in-process team cache (GetTeamsAsync) rather than a fresh DB scope.
     private async Task<IReadOnlyCollection<Guid>?> ResolveDepartmentTeamIdsAsync(Guid? departmentId)
     {
         if (!departmentId.HasValue) return null;
-        var allTeams = await TeamService.GetAllTeamsAsync();
+        var allTeams = await TeamService.GetTeamsAsync();
         var ids = new HashSet<Guid> { departmentId.Value };
-        foreach (var team in allTeams)
+        foreach (var team in allTeams.Values)
         {
             if (team.ParentTeamId == departmentId.Value && !team.IsPromotedToDirectory)
                 ids.Add(team.Id);
@@ -817,7 +818,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
-        var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
+        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
+        var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
 
         // Need signup counts per shift (confirmed).
         var shiftIds = shifts.Select(s => s.Id).ToList();
@@ -863,7 +865,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
-        var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
+        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
+        var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
         var results = new List<DailyStaffingHours>();
 
         foreach (var dayOffset in dayOffsets)

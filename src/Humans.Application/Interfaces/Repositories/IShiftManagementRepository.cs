@@ -201,7 +201,7 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         CancellationToken ct = default);
 
     /// <summary>
