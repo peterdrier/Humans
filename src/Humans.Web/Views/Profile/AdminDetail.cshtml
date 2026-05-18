@@ -9,7 +9,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="AdminList">Humans</a></li>
-        <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.UserId">@Model.DisplayName</a></li>
+        <li class="breadcrumb-item"><vc:human user-id="@Model.UserId" layout="Text" link="Public" /></li>
         <li class="breadcrumb-item active" aria-current="page">Admin</li>
     </ol>
 </nav>

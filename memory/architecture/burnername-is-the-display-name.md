@@ -14,10 +14,23 @@ Canonical resolved accessors:
 
 **How to apply:**
 
-- Render via `<vc:human>`, `UserInfo.BurnerName`, or `FullProfile.DisplayName` — all three already resolve correctly.
+- Render via `<vc:human>` (text/avatar/avatar-name/card), `<vc:profile-card>`, or `<vc:human-summary>`. These three are the only sanctioned UI paths — they call `IUserService.GetUserInfoAsync(userId)` through the cache and resolve BurnerName correctly. Anything else (raw `@x.DisplayName` in a `.cshtml`, hand-built `<a href="/Profile/ViewProfile/{id}">{name}</a>`, avatar `<div>` + name `<span>` flex containers) is a violation.
 - `UserInfo.BurnerName` is `Profile is not null && !string.IsNullOrWhiteSpace(Profile.BurnerName) ? Profile.BurnerName : DisplayName`. `FullProfile.Create` (both overloads) does the same resolution. Don't undo either.
 - Don't read `UserInfo.DisplayName` directly for rendering — it's the raw legacy column mirror. The only legitimate consumers of the raw `UserInfo.DisplayName` / `user.DisplayName` field are: (1) the resolved-accessor implementations above, (2) debug screens (`/Users/Admin/Debug`), (3) infrastructure mutations (merge / purge / delete labels in `UserRepository`).
 - Search-results, team rosters, audit-log labels, etc., must NOT pass an explicit `display-name`/override — let the VC fetch.
+
+**DTO anti-pattern — don't copy the name into a ViewModel.**
+
+A Web ViewModel that carries `Guid UserId` (or `MemberId`, `OrganizerId`, `ReporterUserId`, `AssigneeUserId`, etc.) MUST NOT also carry that user's name as a string property next to it (`DisplayName`, `BurnerName`, `UserDisplayName`, `MemberName`, `ReporterName`, …). Pass the `UserId` to the view, render via `<vc:human user-id="@Model.UserId">`.
+
+Copying the string into the VM:
+
+1. Bypasses the `IUserService.GetUserInfoAsync` cache (every page hand-joins names).
+2. Bypasses the BurnerName resolver (whatever the VM populator chose — often `User.DisplayName` or `Profile.FirstName + LastName` — leaks straight to the UI).
+3. Goes stale the instant the user renames their Profile.
+4. Tempts the next caller to render `@Model.Foo` directly in the `.cshtml` because the string is right there.
+
+Exception — audit-log historical snapshots (`RejectedByName`, `ResolvedByName`, etc. with no paired `*UserId`) intentionally freeze a name at the time of an action; those are correct as strings. SEPA / Holded financial records are the legal-identity carve-out above.
 
 **Carve-outs (legal/financial identity, NOT display):**
 
