@@ -538,6 +538,10 @@ public sealed class GoogleGroupSyncServiceTests
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
+        await _provisioningClient.Received(2).LookupGroupIdAsync(
+            "new-group@nobodies.team", Arg.Any<CancellationToken>());
+        await _membershipClient.Received(1).CreateMembershipAsync(
+            "group-new", "alice@nobodies.team", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
