@@ -2,13 +2,11 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Xunit;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
@@ -18,10 +16,8 @@ using Humans.Infrastructure.Repositories.Profiles;
 
 namespace Humans.Application.Tests.Services;
 
-public class ProfileServiceTests : IDisposable
+public sealed class ProfileServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly ProfileService _service;
     private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -38,18 +34,10 @@ public class ProfileServiceTests : IDisposable
 
     public ProfileServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
-        var factory = new TestDbContextFactory(options);
-        _profileRepository = new ProfileRepository(factory, _clock);
-        _userEmailRepository = new UserEmailRepository(factory);
-        _contactFieldRepository = new ContactFieldRepository(factory);
+        _profileRepository = new ProfileRepository(DbFactory, Clock);
+        _userEmailRepository = new UserEmailRepository(DbFactory);
+        _contactFieldRepository = new ContactFieldRepository(DbFactory);
 
         _service = new ProfileService(
             _profileRepository, _userService,
@@ -58,16 +46,10 @@ public class ProfileServiceTests : IDisposable
             _auditLogService,
             _fileStorage,
             Substitute.For<IUserInfoInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ProfileService>.Instance);
 
-        _userService.StubGetUserInfosFromContext(_dbContext);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        _userService.StubGetUserInfosFromContext(Db);
     }
 
     // --- Profile save flow ---
@@ -82,7 +64,7 @@ public class ProfileServiceTests : IDisposable
         var profileId = await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
 
         profileId.Should().NotBe(Guid.Empty);
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("Flame");
         profile.FirstName.Should().Be("Jane");
         profile.LastName.Should().Be("Doe");
@@ -103,7 +85,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Active);
     }
 
@@ -120,7 +102,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Stub", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Stub);
     }
 
@@ -133,10 +115,10 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Updated Person", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("NewName");
         profile.FirstName.Should().Be("Updated");
-        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -160,7 +142,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
     }
 
@@ -173,7 +155,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().BeNull();
     }
 
@@ -190,7 +172,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         // Content-type column is the "has picture" marker + extension source.
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
         // Bytes live on the file share, keyed under uploads/profile-pictures/.
@@ -208,7 +190,7 @@ public class ProfileServiceTests : IDisposable
         var request = MakeRequest(removeProfilePicture: true);
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureContentType.Should().BeNull();
         _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
     }
@@ -229,7 +211,7 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -243,7 +225,7 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: false);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -267,7 +249,7 @@ public class ProfileServiceTests : IDisposable
         // when the DB content-type column says a picture exists.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         var fsPayload = new byte[] { 9, 9, 9, 9 };
         await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload);
@@ -287,7 +269,7 @@ public class ProfileServiceTests : IDisposable
         // the file share is now the only source of truth.)
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"));
 
@@ -304,12 +286,12 @@ public class ProfileServiceTests : IDisposable
         // the read path MUST NOT serve it. The content-type column is the gate.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         // Clear the gate as if anonymization had run.
-        var tracked = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var tracked = await Db.Profiles.FirstAsync(p => p.UserId == userId);
         tracked.ProfilePictureContentType = null;
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Confirm the stale file is still on disk to make the gate meaningful.
         _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
@@ -339,14 +321,14 @@ public class ProfileServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var emailId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new UserEmail
+        Db.UserEmails.Add(new UserEmail
         {
             Id = emailId,
             UserId = userId,
             Email = "test@test.com",
-            VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2),
+            VerificationSentAt = Clock.GetCurrentInstant() - Duration.FromMinutes(2),
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (canAdd, minutesUntilResend, pendingEmailId) = await _service.GetEmailCooldownInfoAsync(emailId);
 
@@ -361,14 +343,14 @@ public class ProfileServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var emailId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new UserEmail
+        Db.UserEmails.Add(new UserEmail
         {
             Id = emailId,
             UserId = userId,
             Email = "test@test.com",
-            VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6),
+            VerificationSentAt = Clock.GetCurrentInstant() - Duration.FromMinutes(6),
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (canAdd, minutesUntilResend, pendingEmailId) = await _service.GetEmailCooldownInfoAsync(emailId);
 
@@ -383,14 +365,14 @@ public class ProfileServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var emailId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new UserEmail
+        Db.UserEmails.Add(new UserEmail
         {
             Id = emailId,
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = null,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (canAdd, minutesUntilResend, pendingEmailId) = await _service.GetEmailCooldownInfoAsync(emailId);
 
@@ -417,8 +399,8 @@ public class ProfileServiceTests : IDisposable
         {
             Id = profileId,
             UserId = userId,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         mockRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
 
@@ -468,7 +450,7 @@ public class ProfileServiceTests : IDisposable
         _auditLogService,
         _fileStorage,
         Substitute.For<IUserInfoInvalidator>(),
-        _clock,
+        Clock,
         NullLogger<ProfileService>.Instance);
 
     // --- Helpers ---
@@ -485,8 +467,8 @@ public class ProfileServiceTests : IDisposable
             ProfilePictureUrl = profilePictureUrl,
             PreferredLanguage = "en"
         };
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(user);
+        await Db.SaveChangesAsync();
         return user;
     }
 
@@ -502,15 +484,15 @@ public class ProfileServiceTests : IDisposable
             FirstName = "Old",
             LastName = "User",
             IsApproved = isApproved,
-            CreatedAt = _clock.GetCurrentInstant() - Duration.FromDays(1),
-            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromDays(1)
+            CreatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
+            UpdatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1)
         };
         if (withPicture)
         {
             profile.ProfilePictureContentType = "image/png";
         }
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        Db.Profiles.Add(profile);
+        await Db.SaveChangesAsync();
         if (withPicture)
         {
             await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [1, 2, 3]);
@@ -549,8 +531,8 @@ public class ProfileServiceTests : IDisposable
             MembershipTier = tier,
             IsApproved = isApproved,
             IsSuspended = isSuspended,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
     }
 
@@ -569,7 +551,7 @@ public class ProfileServiceTests : IDisposable
         // which proves the source is Provider, not IsGoogle.
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
-        _dbContext.UserEmails.Add(new UserEmail
+        Db.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -580,7 +562,7 @@ public class ProfileServiceTests : IDisposable
             ProviderKey = "sub-1",
             IsGoogle = false,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
 
@@ -618,7 +600,7 @@ public class ProfileServiceTests : IDisposable
             _auditLogService,
             _fileStorage,
             Substitute.For<IUserInfoInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ProfileService>.Instance);
 
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
@@ -643,13 +625,13 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
-        _clock.Advance(Duration.FromHours(1));
+        Clock.Advance(Duration.FromHours(1));
 
         await _service.SetMembershipTierAsync(userId, MembershipTier.Colaborador);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.MembershipTier.Should().Be(MembershipTier.Colaborador);
-        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -660,7 +642,7 @@ public class ProfileServiceTests : IDisposable
         // No throw, no profile created — just a logged warning.
         await _service.SetMembershipTierAsync(unknownUserId, MembershipTier.Asociado);
 
-        var profileExists = await _dbContext.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId);
+        var profileExists = await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId);
         profileExists.Should().BeFalse();
     }
 
@@ -675,10 +657,10 @@ public class ProfileServiceTests : IDisposable
             userId, reviewerId, ConsentCheckStatus.Cleared, "Looks good");
 
         result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
         profile.IsApproved.Should().BeTrue();
-        profile.ConsentCheckAt.Should().Be(_clock.GetCurrentInstant());
+        profile.ConsentCheckAt.Should().Be(Clock.GetCurrentInstant());
         profile.ConsentCheckedByUserId.Should().Be(reviewerId);
         profile.ConsentCheckNotes.Should().Be("Looks good");
     }
@@ -694,7 +676,7 @@ public class ProfileServiceTests : IDisposable
             userId, reviewerId, ConsentCheckStatus.Flagged, "Concern X");
 
         result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Flagged);
         profile.IsApproved.Should().BeFalse();
     }
@@ -716,9 +698,9 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
-        profile.RejectedAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync();
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
+        profile.RejectedAt = Clock.GetCurrentInstant();
+        await Db.SaveChangesAsync();
 
         var result = await _service.RecordConsentCheckAsync(
             userId, Guid.NewGuid(), ConsentCheckStatus.Cleared, null);
@@ -749,8 +731,8 @@ public class ProfileServiceTests : IDisposable
         var result = await _service.RejectSignupAsync(userId, reviewerId, "Spam account");
 
         result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.RejectedAt.Should().Be(_clock.GetCurrentInstant());
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.RejectedAt.Should().Be(Clock.GetCurrentInstant());
         profile.RejectedByUserId.Should().Be(reviewerId);
         profile.RejectionReason.Should().Be("Spam account");
         profile.IsApproved.Should().BeFalse();
@@ -761,9 +743,9 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
-        profile.RejectedAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync();
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
+        profile.RejectedAt = Clock.GetCurrentInstant();
+        await Db.SaveChangesAsync();
 
         var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), null);
 
@@ -789,9 +771,9 @@ public class ProfileServiceTests : IDisposable
         var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid());
 
         result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.IsApproved.Should().BeTrue();
-        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -812,7 +794,7 @@ public class ProfileServiceTests : IDisposable
         var result = await _service.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: true, "Disruptive");
 
         result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         profile.IsSuspended.Should().BeTrue();
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
@@ -825,18 +807,18 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         profile.IsSuspended = true;
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
         profile.State = ProfileState.Suspended;
         // SeedUserWithProfileAsync seeds BurnerName/FirstName/LastName, so identity is complete.
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: false, notes: null);
 
         result.Success.Should().BeTrue();
-        var fresh = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var fresh = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         fresh.IsSuspended.Should().BeFalse();
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
@@ -862,7 +844,7 @@ public class ProfileServiceTests : IDisposable
         var set = await _service.SetConsentCheckPendingAsync(userId);
 
         set.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Pending);
     }
 

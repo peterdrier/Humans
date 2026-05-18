@@ -12,24 +12,19 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Issues;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using IssuesApplicationService = Humans.Application.Services.Issues.IssuesService;
 
 namespace Humans.Application.Tests.Services;
 
-public class IssuesServiceTests : IDisposable
+public sealed class IssuesServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
@@ -38,17 +33,12 @@ public class IssuesServiceTests : IDisposable
     private readonly INotificationService _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
-    private readonly IMemoryCache _cache;
     private readonly IIssuesRepository _repository;
     private readonly IssuesApplicationService _service;
 
     public IssuesServiceTests()
+        : base(Instant.FromUtc(2026, 4, 29, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 29, 12, 0));
         _emailService = Substitute.For<IEmailService>();
         _auditLog = Substitute.For<IAuditLogService>();
         _auditLog
@@ -60,27 +50,7 @@ public class IssuesServiceTests : IDisposable
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(Path.GetTempPath());
 
-        _userService = Substitute.For<IUserService>();
-        _userService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                var dict = _dbContext.Users
-                    .AsNoTracking()
-                    .Where(u => ids.Contains(u.Id))
-                    .ToDictionary(u => u.Id);
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(dict);
-            });
-        _userService
-            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var id = (Guid)call[0]!;
-                return Task.FromResult(_dbContext.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
-            });
-        _userService.StubGetUserInfosFromContext(_dbContext);
-        _userService.StubGetUserInfoFromContext(_dbContext);
+        _userService = NewDbBackedUserService();
 
         _userEmailService = Substitute.For<IUserEmailService>();
         _userEmailService
@@ -88,7 +58,7 @@ public class IssuesServiceTests : IDisposable
             .Returns(call =>
             {
                 var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, string> dict = _dbContext.Users
+                IReadOnlyDictionary<Guid, string> dict = Db.Users
                     .AsNoTracking()
                     .Where(u => ids.Contains(u.Id) && u.Email != null)
                     .ToDictionary(u => u.Id, u => u.Email!);
@@ -103,21 +73,14 @@ public class IssuesServiceTests : IDisposable
         _notificationService = Substitute.For<INotificationService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _issuesBadge = Substitute.For<IIssuesBadgeCacheInvalidator>();
-        _cache = new MemoryCache(new MemoryCacheOptions());
 
-        _repository = new IssuesRepository(new TestDbContextFactory(options));
+        _repository = new IssuesRepository(DbFactory);
 
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
-            _issuesBadge, _cache,
-            _clock, env, NullLogger<IssuesApplicationService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+            _issuesBadge, Cache,
+            Clock, env, NullLogger<IssuesApplicationService>.Instance);
     }
 
     // ==========================================================================
@@ -128,8 +91,8 @@ public class IssuesServiceTests : IDisposable
     public async Task SubmitIssueAsync_lands_in_Triage_and_invalidates_nav_badge()
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = userId, Email = "u@u.com", DisplayName = "U" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = userId, Email = "u@u.com", DisplayName = "U" });
+        await Db.SaveChangesAsync();
 
         var issue = await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
@@ -142,7 +105,7 @@ public class IssuesServiceTests : IDisposable
         issue.Section.Should().Be(IssueSectionRouting.Tickets);
         _navBadge.Received(1).Invalidate();
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id);
         stored.Status.Should().Be(IssueStatus.Triage);
     }
 
@@ -152,8 +115,8 @@ public class IssuesServiceTests : IDisposable
         var reporterId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = reporterId, Email = "r@x", DisplayName = "R" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = reporterId, Email = "r@x", DisplayName = "R" });
+        await Db.SaveChangesAsync();
 
         _roleService
             .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
@@ -247,7 +210,7 @@ public class IssuesServiceTests : IDisposable
 
         await _service.PostCommentAsync(issueId, reporterId, "Still broken", senderIsReporter: true);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Status.Should().Be(IssueStatus.Open);
     }
 
@@ -258,7 +221,7 @@ public class IssuesServiceTests : IDisposable
 
         await _service.PostCommentAsync(issueId, reporterId, "Reopen please", senderIsReporter: true);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.ResolvedAt.Should().BeNull();
         stored.ResolvedByUserId.Should().BeNull();
     }
@@ -270,7 +233,7 @@ public class IssuesServiceTests : IDisposable
 
         await _service.PostCommentAsync(issueId, reporterId, "Update", senderIsReporter: true);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Status.Should().Be(IssueStatus.Open);
     }
 
@@ -285,10 +248,10 @@ public class IssuesServiceTests : IDisposable
             DisplayName = "Reporter",
             PreferredLanguage = "en"
         };
-        _dbContext.Users.Add(reporter);
+        Db.Users.Add(reporter);
         _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
             .Returns(reporter.ToUserInfo());
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Report Title");
         var adminId = Guid.NewGuid();
@@ -343,7 +306,7 @@ public class IssuesServiceTests : IDisposable
             senderIsReporter: false,
             resolveOnPost: true);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedByUserId.Should().Be(actorId);
     }
@@ -360,7 +323,7 @@ public class IssuesServiceTests : IDisposable
 
         await _service.UpdateStatusAsync(issueId, IssueStatus.Resolved, actorId);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedAt.Should().NotBeNull();
         stored.ResolvedByUserId.Should().Be(actorId);
@@ -375,7 +338,7 @@ public class IssuesServiceTests : IDisposable
         await _service.UpdateStatusAsync(issueId, IssueStatus.Resolved, actorId);
         await _service.UpdateStatusAsync(issueId, IssueStatus.Open, actorId);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Status.Should().Be(IssueStatus.Open);
         stored.ResolvedAt.Should().BeNull();
         stored.ResolvedByUserId.Should().BeNull();
@@ -403,8 +366,8 @@ public class IssuesServiceTests : IDisposable
         // Stamp an assignee on the issue so the dispatch helper has somebody
         // to notify alongside the reporter.
         var assigneeId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = assigneeId, Email = "ass@x.com", DisplayName = "Assignee" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = assigneeId, Email = "ass@x.com", DisplayName = "Assignee" });
+        await Db.SaveChangesAsync();
         await _service.UpdateAssigneeAsync(issueId, assigneeId, Guid.NewGuid());
         _notificationService.ClearReceivedCalls();
 
@@ -459,7 +422,7 @@ public class IssuesServiceTests : IDisposable
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedByUserId.Should().Be(actorId);
     }
@@ -484,9 +447,9 @@ public class IssuesServiceTests : IDisposable
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var oldAssignee = new User { Id = Guid.NewGuid(), DisplayName = "Old Person", Email = "old@x.com" };
         var newAssignee = new User { Id = Guid.NewGuid(), DisplayName = "New Person", Email = "new@x.com" };
-        _dbContext.Users.Add(oldAssignee);
-        _dbContext.Users.Add(newAssignee);
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(oldAssignee);
+        Db.Users.Add(newAssignee);
+        await Db.SaveChangesAsync();
 
         var actorId = Guid.NewGuid();
         await _service.UpdateAssigneeAsync(issueId, oldAssignee.Id, actorId);
@@ -508,8 +471,8 @@ public class IssuesServiceTests : IDisposable
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var newAssigneeId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = newAssigneeId, Email = "a@a.com", DisplayName = "Assignee" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = newAssigneeId, Email = "a@a.com", DisplayName = "Assignee" });
+        await Db.SaveChangesAsync();
 
         await _service.UpdateAssigneeAsync(issueId, newAssigneeId, Guid.NewGuid());
 
@@ -531,8 +494,8 @@ public class IssuesServiceTests : IDisposable
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = actorId, Email = "self@x.com", DisplayName = "Self" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = actorId, Email = "self@x.com", DisplayName = "Self" });
+        await Db.SaveChangesAsync();
 
         await _service.UpdateAssigneeAsync(issueId, actorId, actorId);
 
@@ -554,15 +517,15 @@ public class IssuesServiceTests : IDisposable
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var assigneeId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = assigneeId, Email = "assignee@x.com", DisplayName = "Assignee" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = assigneeId, Email = "assignee@x.com", DisplayName = "Assignee" });
+        await Db.SaveChangesAsync();
 
         var result = await _service.UpdateAssigneeWithResultAsync(issueId, assigneeId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.AssigneeUserId.Should().Be(assigneeId);
     }
 
@@ -589,7 +552,7 @@ public class IssuesServiceTests : IDisposable
 
         await _service.UpdateSectionAsync(issueId, IssueSectionRouting.Teams, actorId);
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Section.Should().Be(IssueSectionRouting.Teams);
 
         _navBadge.Received(1).Invalidate();
@@ -615,7 +578,7 @@ public class IssuesServiceTests : IDisposable
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.Section.Should().Be(IssueSectionRouting.Teams);
     }
 
@@ -641,7 +604,7 @@ public class IssuesServiceTests : IDisposable
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
 
-        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        var stored = await Db.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
         stored.GitHubIssueNumber.Should().Be(1234);
     }
 
@@ -675,8 +638,8 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
-            _issuesBadge, _cache,
-            _clock, env, NullLogger<IssuesApplicationService>.Instance);
+            _issuesBadge, Cache,
+            Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetIssueListAsync(new IssueListFilter(), Guid.NewGuid(), [], viewerIsAdmin: true);
 
@@ -703,8 +666,8 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
-            _issuesBadge, _cache,
-            _clock, env, NullLogger<IssuesApplicationService>.Instance);
+            _issuesBadge, Cache,
+            Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
         await svc.GetIssueListAsync(
@@ -735,8 +698,8 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
-            _issuesBadge, _cache,
-            _clock, env, NullLogger<IssuesApplicationService>.Instance);
+            _issuesBadge, Cache,
+            Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
         await svc.GetIssueListAsync(
@@ -755,7 +718,7 @@ public class IssuesServiceTests : IDisposable
     public async Task GetIssueListAsync_applies_updated_descending_limit()
     {
         var reporterId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        Db.Users.Add(new User
         {
             Id = reporterId,
             Email = "reporter@example.org",
@@ -770,8 +733,8 @@ public class IssuesServiceTests : IDisposable
             Title = "Older",
             Description = "Description",
             Status = IssueStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromHours(2)
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant() - Duration.FromHours(2)
         };
         var newer = new Issue
         {
@@ -781,8 +744,8 @@ public class IssuesServiceTests : IDisposable
             Title = "Newer",
             Description = "Description",
             Status = IssueStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         var middle = new Issue
         {
@@ -792,11 +755,11 @@ public class IssuesServiceTests : IDisposable
             Title = "Middle",
             Description = "Description",
             Status = IssueStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromHours(1)
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant() - Duration.FromHours(1)
         };
-        await _dbContext.Issues.AddRangeAsync(older, newer, middle);
-        await _dbContext.SaveChangesAsync();
+        await Db.Issues.AddRangeAsync(older, newer, middle);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetIssueListAsync(
             new IssueListFilter(Limit: 2), reporterId, viewerRoles: [], viewerIsAdmin: true);
@@ -823,8 +786,8 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
-            _issuesBadge, _cache,
-            _clock, env, NullLogger<IssuesApplicationService>.Instance);
+            _issuesBadge, Cache,
+            Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetActionableCountForViewerAsync(
             Guid.NewGuid(), [], viewerIsAdmin: true);
@@ -850,8 +813,8 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
-            _issuesBadge, _cache,
-            _clock, env, NullLogger<IssuesApplicationService>.Instance);
+            _issuesBadge, Cache,
+            Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
         await svc.GetActionableCountForViewerAsync(
@@ -872,9 +835,9 @@ public class IssuesServiceTests : IDisposable
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
-        _dbContext.Users.Add(new User { Id = aliceId, Email = "a@a.com", DisplayName = "Alice" });
-        _dbContext.Users.Add(new User { Id = bobId, Email = "b@b.com", DisplayName = "Bob" });
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(new User { Id = aliceId, Email = "a@a.com", DisplayName = "Alice" });
+        Db.Users.Add(new User { Id = bobId, Email = "b@b.com", DisplayName = "Bob" });
+        await Db.SaveChangesAsync();
 
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's second");
@@ -898,16 +861,16 @@ public class IssuesServiceTests : IDisposable
         string? section = null)
     {
         var reporterId = Guid.NewGuid();
-        if (!_dbContext.Users.Any(u => u.Id == reporterId))
+        if (!Db.Users.Any(u => u.Id == reporterId))
         {
-            _dbContext.Users.Add(new User
+            Db.Users.Add(new User
             {
                 Id = reporterId,
                 Email = $"{reporterId}@test.com",
                 DisplayName = "Reporter",
                 PreferredLanguage = "en"
             });
-            await _dbContext.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
 
         var issueId = await SeedIssueRowAsync(reporterId, status, "Title", section, withResolvedFields);
@@ -921,7 +884,7 @@ public class IssuesServiceTests : IDisposable
         string? section = null,
         bool withResolvedFields = false)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         var issue = new Issue
         {
             Id = Guid.NewGuid(),
@@ -936,8 +899,8 @@ public class IssuesServiceTests : IDisposable
             ResolvedAt = withResolvedFields ? now : null,
             ResolvedByUserId = withResolvedFields ? Guid.NewGuid() : null
         };
-        _dbContext.Issues.Add(issue);
-        await _dbContext.SaveChangesAsync();
+        Db.Issues.Add(issue);
+        await Db.SaveChangesAsync();
         return issue.Id;
     }
 
@@ -945,7 +908,7 @@ public class IssuesServiceTests : IDisposable
         IssueStatus status, Instant resolvedAt, string? screenshotPath = null)
     {
         var reporterId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        Db.Users.Add(new User
         {
             Id = reporterId,
             Email = $"{reporterId}@test.com",
@@ -965,8 +928,8 @@ public class IssuesServiceTests : IDisposable
             ResolvedAt = status.IsTerminal() ? resolvedAt : null,
             ScreenshotStoragePath = screenshotPath
         };
-        _dbContext.Issues.Add(issue);
-        await _dbContext.SaveChangesAsync();
+        Db.Issues.Add(issue);
+        await Db.SaveChangesAsync();
         return issue.Id;
     }
 
@@ -977,7 +940,7 @@ public class IssuesServiceTests : IDisposable
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesTerminalIssuesOlderThanSixMonths()
     {
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         var oldResolved = now - Duration.FromDays(181);
 
         var toPurge = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, oldResolved);
@@ -987,15 +950,15 @@ public class IssuesServiceTests : IDisposable
         var deleted = await _service.PurgeExpiredAsync();
 
         deleted.Should().Be(3);
-        _dbContext.Issues.Any(i => i.Id == toPurge).Should().BeFalse();
-        _dbContext.Issues.Any(i => i.Id == alsoPurgeWontFix).Should().BeFalse();
-        _dbContext.Issues.Any(i => i.Id == alsoPurgeDuplicate).Should().BeFalse();
+        Db.Issues.Any(i => i.Id == toPurge).Should().BeFalse();
+        Db.Issues.Any(i => i.Id == alsoPurgeWontFix).Should().BeFalse();
+        Db.Issues.Any(i => i.Id == alsoPurgeDuplicate).Should().BeFalse();
     }
 
     [HumansFact]
     public async Task PurgeExpiredAsync_KeepsTerminalIssuesYoungerThanSixMonths()
     {
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         var recentResolved = now - Duration.FromDays(179);
 
         var keep = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, recentResolved);
@@ -1003,13 +966,13 @@ public class IssuesServiceTests : IDisposable
         var deleted = await _service.PurgeExpiredAsync();
 
         deleted.Should().Be(0);
-        _dbContext.Issues.Any(i => i.Id == keep).Should().BeTrue();
+        Db.Issues.Any(i => i.Id == keep).Should().BeTrue();
     }
 
     [HumansFact]
     public async Task PurgeExpiredAsync_NeverDeletesNonTerminalIssuesEvenWhenAncient()
     {
-        var ancient = _clock.GetCurrentInstant() - Duration.FromDays(365 * 5);
+        var ancient = Clock.GetCurrentInstant() - Duration.FromDays(365 * 5);
 
         var keepOpen = await SeedIssueWithResolvedAtAsync(IssueStatus.Open, ancient);
         var keepInProgress = await SeedIssueWithResolvedAtAsync(IssueStatus.InProgress, ancient);
@@ -1018,15 +981,15 @@ public class IssuesServiceTests : IDisposable
         var deleted = await _service.PurgeExpiredAsync();
 
         deleted.Should().Be(0);
-        _dbContext.Issues.Any(i => i.Id == keepOpen).Should().BeTrue();
-        _dbContext.Issues.Any(i => i.Id == keepInProgress).Should().BeTrue();
-        _dbContext.Issues.Any(i => i.Id == keepTriage).Should().BeTrue();
+        Db.Issues.Any(i => i.Id == keepOpen).Should().BeTrue();
+        Db.Issues.Any(i => i.Id == keepInProgress).Should().BeTrue();
+        Db.Issues.Any(i => i.Id == keepTriage).Should().BeTrue();
     }
 
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesScreenshotDirectory()
     {
-        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
+        var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
 
         var issueId = Guid.NewGuid();
         var screenshotDir = Path.Combine(
@@ -1038,14 +1001,14 @@ public class IssuesServiceTests : IDisposable
         try
         {
             var reporterId = Guid.NewGuid();
-            _dbContext.Users.Add(new User
+            Db.Users.Add(new User
             {
                 Id = reporterId,
                 Email = $"{reporterId}@test.com",
                 DisplayName = "Reporter",
                 PreferredLanguage = "en"
             });
-            _dbContext.Issues.Add(new Issue
+            Db.Issues.Add(new Issue
             {
                 Id = issueId,
                 ReporterUserId = reporterId,
@@ -1058,7 +1021,7 @@ public class IssuesServiceTests : IDisposable
                 ResolvedAt = oldResolved,
                 ScreenshotStoragePath = $"uploads/issues/{issueId}/shot.png"
             });
-            await _dbContext.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
             var deleted = await _service.PurgeExpiredAsync();
 
@@ -1078,10 +1041,10 @@ public class IssuesServiceTests : IDisposable
         // Issue claims a screenshot path but the directory was already removed
         // (e.g. wiped manually, prior partial sweep). The DB delete must still
         // succeed.
-        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
+        var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
 
         var reporterId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        Db.Users.Add(new User
         {
             Id = reporterId,
             Email = $"{reporterId}@test.com",
@@ -1089,7 +1052,7 @@ public class IssuesServiceTests : IDisposable
             PreferredLanguage = "en"
         });
         var issueId = Guid.NewGuid();
-        _dbContext.Issues.Add(new Issue
+        Db.Issues.Add(new Issue
         {
             Id = issueId,
             ReporterUserId = reporterId,
@@ -1102,18 +1065,18 @@ public class IssuesServiceTests : IDisposable
             ResolvedAt = oldResolved,
             ScreenshotStoragePath = $"uploads/issues/{issueId}/missing.png"
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var deleted = await _service.PurgeExpiredAsync();
 
         deleted.Should().Be(1);
-        _dbContext.Issues.Any(i => i.Id == issueId).Should().BeFalse();
+        Db.Issues.Any(i => i.Id == issueId).Should().BeFalse();
     }
 
     [HumansFact]
     public async Task PurgeExpiredAsync_InvalidatesNavBadge()
     {
-        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
+        var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
         await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, oldResolved);
 
         await _service.PurgeExpiredAsync();
