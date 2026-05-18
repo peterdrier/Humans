@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -20,6 +21,42 @@ namespace Humans.Application.Interfaces.Users;
 public interface IUserInfoInvalidator
 {
     Task InvalidateAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
+    Task RefreshUserFieldsAsync(
+        User user,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
+    Task RemoveAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
+    Task RefreshUserEmailsAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
+    Task RefreshEventParticipationsAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
+    Task RefreshExternalLoginsAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
+    Task RefreshCommunicationPreferencesAsync(
         Guid userId,
         CancellationToken ct = default,
         [CallerMemberName] string memberName = "",

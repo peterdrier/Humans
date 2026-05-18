@@ -433,6 +433,193 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
+    public async Task RefreshUserFieldsAsync(
+        User user,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "")
+    {
+        _logger.LogDebug(
+            "UserInfo refresh user fields userId={UserId} caller={CallerMember} file={CallerFile}",
+            user.Id, memberName, Path.GetFileName(filePath));
+
+        if (TryGet(user.Id, out var current))
+        {
+            Replace(user.Id, WithUserFields(current, user));
+            return;
+        }
+
+        if (!IsWarmedUp)
+        {
+            await ReplaceAsync(user.Id, ct).ConfigureAwait(false);
+            return;
+        }
+
+        Set(user.Id, UserInfo.Create(
+            user,
+            user.UserEmails.ToList(),
+            user.EventParticipations.ToList(),
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []));
+    }
+
+    public Task RemoveAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "")
+    {
+        _logger.LogDebug(
+            "UserInfo remove userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, Path.GetFileName(filePath));
+        DeleteKey(userId);
+        return Task.CompletedTask;
+    }
+
+    public async Task RefreshUserEmailsAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "")
+    {
+        _logger.LogDebug(
+            "UserInfo refresh user-emails userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, Path.GetFileName(filePath));
+
+        if (!TryGet(userId, out var current))
+        {
+            await ReplaceAsync(userId, ct).ConfigureAwait(false);
+            return;
+        }
+
+        var rows = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        Replace(userId, current with { UserEmails = ToUserEmailInfos(rows) });
+    }
+
+    public async Task RefreshEventParticipationsAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "")
+    {
+        _logger.LogDebug(
+            "UserInfo refresh event-participations userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, Path.GetFileName(filePath));
+
+        if (!TryGet(userId, out var current))
+        {
+            await ReplaceAsync(userId, ct).ConfigureAwait(false);
+            return;
+        }
+
+        var rows = await _userRepository.GetEventParticipationsByUserIdAsync(userId, ct);
+        Replace(userId, current with { EventParticipations = ToEventParticipationInfos(rows) });
+    }
+
+    public async Task RefreshExternalLoginsAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "")
+    {
+        _logger.LogDebug(
+            "UserInfo refresh external-logins userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, Path.GetFileName(filePath));
+
+        if (!TryGet(userId, out var current))
+        {
+            await ReplaceAsync(userId, ct).ConfigureAwait(false);
+            return;
+        }
+
+        var loginsByUser = await _userRepository.GetExternalLoginsByUserIdsAsync([userId], ct);
+        var rows = loginsByUser.TryGetValue(userId, out var logins) ? logins : [];
+        Replace(userId, current with { ExternalLogins = ToExternalLoginInfos(rows) });
+    }
+
+    public async Task RefreshCommunicationPreferencesAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "")
+    {
+        _logger.LogDebug(
+            "UserInfo refresh communication-preferences userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, Path.GetFileName(filePath));
+
+        if (!TryGet(userId, out var current))
+        {
+            await ReplaceAsync(userId, ct).ConfigureAwait(false);
+            return;
+        }
+
+        var rows = await _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        Replace(userId, current with { CommunicationPreferences = ToCommunicationPreferenceInfos(rows) });
+    }
+
+    private static IReadOnlyList<UserEmailInfo> ToUserEmailInfos(IEnumerable<UserEmail> rows) =>
+        rows
+            .OrderByDescending(e => e.IsPrimary)
+            .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new UserEmailInfo(
+                e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
+                e.Provider, e.ProviderKey, e.Visibility))
+            .ToList();
+
+    private static IReadOnlyList<EventParticipationInfo> ToEventParticipationInfos(IEnumerable<EventParticipation> rows) =>
+        rows
+            .OrderBy(p => p.Year)
+            .Select(p => new EventParticipationInfo(
+                p.Id, p.Year, p.Status, p.Source, p.DeclaredAt))
+            .ToList();
+
+    private static IReadOnlyList<UserExternalLoginInfo> ToExternalLoginInfos(
+        IEnumerable<(string Provider, string ProviderKey)> rows) =>
+        rows
+            .Select(l => new UserExternalLoginInfo(l.Provider, l.ProviderKey))
+            .ToList();
+
+    private static IReadOnlyList<CommunicationPreferenceInfo> ToCommunicationPreferenceInfos(
+        IEnumerable<CommunicationPreference> rows) =>
+        rows
+            .OrderBy(c => c.Category)
+            .Select(c => new CommunicationPreferenceInfo(
+                c.Id, c.Category, c.OptedOut, c.InboxEnabled,
+                c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
+            .ToList();
+
+    private static UserInfo WithUserFields(UserInfo current, User user)
+    {
+#pragma warning disable CS0618 // DisplayName is part of the cached legacy user-column mirror.
+        return current with
+        {
+            DisplayName = user.DisplayName,
+            PreferredLanguage = user.PreferredLanguage,
+            ProfilePictureUrl = user.ProfilePictureUrl,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt,
+            LastConsentReminderSentAt = user.LastConsentReminderSentAt,
+            DeletionRequestedAt = user.DeletionRequestedAt,
+            DeletionScheduledFor = user.DeletionScheduledFor,
+            DeletionEligibleAfter = user.DeletionEligibleAfter,
+            UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
+            ICalToken = user.ICalToken,
+            SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
+            MagicLinkSentAt = user.MagicLinkSentAt,
+            GoogleEmailStatus = user.GoogleEmailStatus,
+            ContactSource = user.ContactSource,
+            ExternalSourceId = user.ExternalSourceId,
+            MergedToUserId = user.MergedToUserId,
+            MergedAt = user.MergedAt,
+            IdentityEmailColumn = user.IdentityEmailColumn,
+        };
+#pragma warning restore CS0618
+    }
+
     // ==========================================================================
     // Inner delegation — every other IUserService method passes through and
     // refreshes the affected entry on writes.
@@ -685,14 +872,50 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public async Task SetParticipationFromTicketSyncAsync(
         Guid userId, int year, ParticipationStatus status, CancellationToken ct = default)
     {
+        if (!TryGet(userId, out var current))
+        {
+            await EnsureWarmedAsync(ct).ConfigureAwait(false);
+            TryGet(userId, out current);
+        }
+
+        if (current is not null)
+        {
+            var existing = current.EventParticipations.FirstOrDefault(p => p.Year == year);
+            if (existing is not null &&
+                (existing.Status == ParticipationStatus.Attended ||
+                 (existing.Status == status &&
+                  existing.Source == ParticipationSource.TicketSync &&
+                  existing.DeclaredAt is null)))
+            {
+                return;
+            }
+        }
+
         await WithInnerAsync(inner => inner.SetParticipationFromTicketSyncAsync(userId, year, status, ct));
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEventParticipationsAsync(userId, ct);
     }
 
     public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default)
     {
+        if (!TryGet(userId, out var current))
+        {
+            await EnsureWarmedAsync(ct).ConfigureAwait(false);
+            TryGet(userId, out current);
+        }
+
+        if (current is not null)
+        {
+            var existing = current.EventParticipations.FirstOrDefault(p => p.Year == year);
+            if (existing is null ||
+                existing.Source != ParticipationSource.TicketSync ||
+                existing.Status == ParticipationStatus.Attended)
+            {
+                return;
+            }
+        }
+
         await WithInnerAsync(inner => inner.RemoveTicketSyncParticipationAsync(userId, year, ct));
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEventParticipationsAsync(userId, ct);
     }
 
     public async Task<int> BackfillParticipationsAsync(
@@ -701,7 +924,8 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         CancellationToken ct = default)
     {
         var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, ct));
-        foreach (var (userId, _) in entries) await RefreshEntryAsync(userId, ct);
+        foreach (var userId in entries.Select(e => e.UserId).Distinct())
+            await RefreshEventParticipationsAsync(userId, ct);
         return count;
     }
 

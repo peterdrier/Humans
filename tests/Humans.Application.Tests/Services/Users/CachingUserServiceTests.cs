@@ -46,11 +46,14 @@ public class CachingUserServiceTests
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
 
-    private static UserInfo SampleUserInfo(Guid userId, string displayName = "Alice") =>
+    private static UserInfo SampleUserInfo(
+        Guid userId,
+        string displayName = "Alice",
+        IReadOnlyList<EventParticipation>? eventParticipations = null) =>
         UserInfo.Create(
             new User { Id = userId, DisplayName = displayName, PreferredLanguage = "en" },
             userEmails: [],
-            eventParticipations: [],
+            eventParticipations: eventParticipations ?? [],
             externalLogins: [],
             profile: null,
             contactFields: [],
@@ -613,6 +616,80 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
         (await sut.GetUserInfoAsync(u1)).Should().BeNull();
         (await sut.GetUserInfoAsync(u2)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SetParticipationFromTicketSyncAsync_WhenCachedValueIsUnchanged_DoesNotHitInner()
+    {
+        var userId = Guid.NewGuid();
+        var participation = new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Ticketed,
+            Source = ParticipationSource.TicketSync,
+            DeclaredAt = null,
+        };
+
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [participation])));
+
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(userId);
+
+        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed);
+
+        await _inner.DidNotReceive().SetParticipationFromTicketSyncAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(), Arg.Any<CancellationToken>());
+        await _userRepo.DidNotReceive().GetEventParticipationsByUserIdAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetParticipationFromTicketSyncAsync_WhenCachedValueDiffers_RefreshesOnlyParticipationSlice()
+    {
+        var userId = Guid.NewGuid();
+        var stale = new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.NotAttending,
+            Source = ParticipationSource.UserDeclared,
+            DeclaredAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+        var fresh = new EventParticipation
+        {
+            Id = stale.Id,
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Ticketed,
+            Source = ParticipationSource.TicketSync,
+            DeclaredAt = null,
+        };
+
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [stale])));
+        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([fresh]);
+
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(userId);
+
+        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed);
+
+        await _inner.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Ticketed, Arg.Any<CancellationToken>());
+        await _userRepo.Received(1).GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>());
+        await _userEmailRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+        await _profileRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+        await _contactFieldRepo.DidNotReceive().GetByProfileIdReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _communicationPreferenceRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+
+        var info = await sut.GetUserInfoAsync(userId);
+        info!.EventParticipations.Should().ContainSingle(p =>
+            p.Year == 2026 && p.Status == ParticipationStatus.Ticketed && p.Source == ParticipationSource.TicketSync);
     }
 
     // ==========================================================================
