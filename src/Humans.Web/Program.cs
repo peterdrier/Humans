@@ -576,10 +576,11 @@ app.UseCors();
 app.UseRateLimiter();
 
 app.UseAuthentication();
-app.UseAuthorization();
 
-// Feeds humans.active_users gauges and the /Admin active-users tile. Must run after UseAuthentication so the request principal is populated.
+// Between Authentication and Authorization so the principal is populated AND denied-but-authenticated requests (403s short-circuited by UseAuthorization) still count toward humans.active_users.
 app.UseMiddleware<UserActivityTrackingMiddleware>();
+
+app.UseAuthorization();
 
 app.UseSession();
 
