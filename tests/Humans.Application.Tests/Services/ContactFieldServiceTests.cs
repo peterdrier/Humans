@@ -1,14 +1,13 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
@@ -18,42 +17,28 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Application.Tests.Services;
 
-public class ContactFieldServiceTests : IDisposable
+public sealed class ContactFieldServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService;
-    private readonly FakeClock _clock;
     private readonly ContactFieldService _service;
 
     public ContactFieldServiceTests()
+        : base(Instant.FromUtc(2024, 1, 15, 12, 0, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
         _teamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _userService = Substitute.For<IUserService>();
-        _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
 
-        var factory = new Infrastructure.TestDbContextFactory(options);
-        var repository = new ContactFieldRepository(factory);
-        _profileRepository = new ProfileRepository(factory, _clock);
+        var repository = new ContactFieldRepository(DbFactory);
+        _profileRepository = new ProfileRepository(DbFactory, Clock);
 
         _service = new ContactFieldService(
             repository, _profileRepository, _userService, _teamService, _roleAssignmentService,
             Substitute.For<IUserInfoInvalidator>(),
-            _clock, NullLogger<ContactFieldService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+            Clock, NullLogger<ContactFieldService>.Instance);
     }
 
     #region GetViewerAccessLevelAsync Tests
@@ -277,7 +262,7 @@ public class ContactFieldServiceTests : IDisposable
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
         // Assert
-        var savedFields = await _dbContext.ContactFields
+        var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync();
         savedFields.Should().HaveCount(2);
@@ -296,11 +281,11 @@ public class ContactFieldServiceTests : IDisposable
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
             DisplayOrder = 0,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.ContactFields.Add(existingField);
-        await _dbContext.SaveChangesAsync();
+        Db.ContactFields.Add(existingField);
+        await Db.SaveChangesAsync();
 
         var fields = new List<ContactFieldEditDto>
         {
@@ -311,7 +296,7 @@ public class ContactFieldServiceTests : IDisposable
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
         // Assert
-        var savedField = await _dbContext.ContactFields.AsNoTracking()
+        var savedField = await Db.ContactFields.AsNoTracking()
             .FirstOrDefaultAsync(cf => cf.Id == existingField.Id);
         savedField!.Value.Should().Be("+34 698765432");
         savedField.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
@@ -330,17 +315,17 @@ public class ContactFieldServiceTests : IDisposable
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
             DisplayOrder = 0,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.ContactFields.Add(existingField);
-        await _dbContext.SaveChangesAsync();
+        Db.ContactFields.Add(existingField);
+        await Db.SaveChangesAsync();
 
         // Save empty list (delete all)
         await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>());
 
         // Assert
-        var remainingFields = await _dbContext.ContactFields
+        var remainingFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync();
         remainingFields.Should().BeEmpty();
@@ -358,7 +343,7 @@ public class ContactFieldServiceTests : IDisposable
 
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
-        var savedFields = await _dbContext.ContactFields
+        var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync();
         savedFields.Should().HaveCount(1);
@@ -371,7 +356,7 @@ public class ContactFieldServiceTests : IDisposable
     // Stub IUserService.GetUserInfoAsync to return a UserInfo carrying the profile's ContactFields.
     private void StubUserInfo(Guid userId, Profile profile)
     {
-        var fields = _dbContext.ContactFields
+        var fields = Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .OrderBy(cf => cf.DisplayOrder)
             .ToList();
@@ -404,15 +389,15 @@ public class ContactFieldServiceTests : IDisposable
             TeamId = actualTeamId,
             UserId = userId,
             Role = role,
-            JoinedAt = _clock.GetCurrentInstant(),
+            JoinedAt = Clock.GetCurrentInstant(),
             Team = new Team
             {
                 Id = actualTeamId,
                 Name = "Test Team",
                 Slug = "test-team",
                 SystemTeamType = systemTeamType,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant()
             }
         };
     }
@@ -425,11 +410,11 @@ public class ContactFieldServiceTests : IDisposable
             UserId = userId,
             FirstName = "Test",
             LastName = "User",
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        Db.Profiles.Add(profile);
+        await Db.SaveChangesAsync();
 
         // No store to populate — GetVisibleContactFieldsAsync now resolves profileId → userId
         // via IProfileRepository.GetOwnerUserIdAsync (scalar DB query).
@@ -440,7 +425,7 @@ public class ContactFieldServiceTests : IDisposable
     private async Task<Profile> CreateProfileWithFields(Guid userId)
     {
         var profile = await CreateProfile(userId);
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
 
         var fields = new List<ContactField>
         {
@@ -490,8 +475,8 @@ public class ContactFieldServiceTests : IDisposable
             }
         };
 
-        _dbContext.ContactFields.AddRange(fields);
-        await _dbContext.SaveChangesAsync();
+        Db.ContactFields.AddRange(fields);
+        await Db.SaveChangesAsync();
 
         return profile;
     }
