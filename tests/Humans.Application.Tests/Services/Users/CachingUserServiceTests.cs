@@ -841,25 +841,25 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_ExcludesSuspended()
+    public async Task SearchUsersAsync_PublicAll_IncludesSuspended()
     {
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isSuspended: true));
 
         var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll);
 
-        results.Should().BeEmpty();
+        results.Should().HaveCount(1);
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_ExcludesUnapproved()
+    public async Task SearchUsersAsync_PublicAll_IncludesUnapproved()
     {
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isApproved: false));
 
         var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll);
 
-        results.Should().BeEmpty();
+        results.Should().HaveCount(1);
     }
 
     [HumansFact]
@@ -921,7 +921,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_GuidDoesNotShortCircuitById()
+    public async Task SearchUsersAsync_PublicAll_GuidShortCircuitsById()
     {
         var userId = Guid.NewGuid();
         var sut = CreateSut();
@@ -929,7 +929,9 @@ public class CachingUserServiceTests
 
         var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll);
 
-        results.Should().BeEmpty();
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(userId);
+        results[0].MatchField.Should().Be("User ID");
     }
 
     [HumansFact]

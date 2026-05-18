@@ -370,6 +370,15 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var settings = await GetSettingsAsync(cancellationToken);
         var year = settings.PublicYear;
+
+        if (Guid.TryParse(query, out var id))
+        {
+            var camp = await _repo.GetByIdAsync(id, cancellationToken);
+            if (camp is null) return [];
+            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+            return [new CampSearchHit(camp.Slug, season?.Name ?? camp.Slug)];
+        }
+
         var camps = await _repo.SearchForYearAsync(
             query, year, onlyPublicStatus: true, max, cancellationToken);
 

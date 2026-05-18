@@ -154,12 +154,9 @@ public sealed class CachingUserService :
 
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
-        var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
-
-        // Admin-only exact-UserId lookup. Lets an admin paste a UserId from
-        // logs / audit trails / URLs and jump straight to that human. Public
-        // callers fall through to text matching so they can't enumerate IDs.
-        if (includeAdmin && Guid.TryParse(query, out var idGuid))
+        // Exact-UserId lookup. Lets anyone paste a UserId from logs / audit
+        // trails / URLs and jump straight to that human.
+        if (Guid.TryParse(query, out var idGuid))
         {
             if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
             {
@@ -180,18 +177,8 @@ public sealed class CachingUserService :
         var results = new List<HumanSearchResult>();
         foreach (var u in Values)
         {
-            // Must have a profile and not be rejected to be searchable.
             if (u.Profile is null) continue;
             if (u.Profile.RejectedAt is not null) continue;
-
-            // Public-only callers never see suspended humans. Admin callers
-            // do, because admin search is the primary tool for finding a
-            // suspended person to lift suspension etc.
-            if (!includeAdmin && u.IsSuspended) continue;
-
-            // Public-only: only approved profiles surface. Admin: pre-approval
-            // / consent-pending profiles are valid search targets.
-            if (!includeAdmin && !u.Profile.IsApproved) continue;
 
             var match = TryMatchBuckets(u, query, fields);
             if (match is null) continue;

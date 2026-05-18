@@ -274,6 +274,15 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         string query, int max,
         CancellationToken cancellationToken = default)
     {
+        if (Guid.TryParse(query, out var id))
+        {
+            var rota = await _repo.GetRotaByIdWithShiftsAsync(id);
+            if (rota is null) return [];
+            var teams = await TeamService.GetTeamsAsync(cancellationToken);
+            var teamName = teams.TryGetValue(rota.TeamId, out var t) ? t.Name : string.Empty;
+            return [new RotaSearchHit(rota.Name, rota.TeamId, teamName)];
+        }
+
         var settings = await _repo.GetActiveEventSettingsAsync(cancellationToken);
         if (settings is null) return [];
 

@@ -186,6 +186,12 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         string query, int max,
         CancellationToken cancellationToken = default)
     {
+        if (Guid.TryParse(query, out var id))
+        {
+            var team = await _repo.GetByIdAsync(id, cancellationToken);
+            return team is null ? [] : [new TeamSearchHit(team.Name, team.Slug)];
+        }
+
         var teams = await _repo.SearchAsync(
             query, includeHidden: false, max, cancellationToken);
         return teams
