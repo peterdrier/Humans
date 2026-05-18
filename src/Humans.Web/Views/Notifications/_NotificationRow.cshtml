@@ -1,5 +1,6 @@
 @model Humans.Web.Models.NotificationRowViewModel
 @inject IStringLocalizer<SharedResource> Localizer
+@inject NodaTime.IClock Clock
 
 @{
     var borderClass = Model switch
@@ -52,9 +53,11 @@
 </div>
 
 @functions {
-    static string TimeAgo(DateTime utcTime, IStringLocalizer localizer)
+    string TimeAgo(DateTime utcTime, IStringLocalizer localizer)
     {
-        var span = DateTime.UtcNow - utcTime;
+        var now = Clock.GetCurrentInstant();
+        var then = NodaTime.Instant.FromDateTimeUtc(DateTime.SpecifyKind(utcTime, DateTimeKind.Utc));
+        var span = (now - then).ToTimeSpan();
         if (span.TotalMinutes < 1) return localizer["Notification_TimeAgo_JustNow"].Value;
         if (span.TotalMinutes < 60) return string.Format(localizer["Notification_TimeAgo_Minutes"].Value, (int)span.TotalMinutes);
         if (span.TotalHours < 24) return string.Format(localizer["Notification_TimeAgo_Hours"].Value, (int)span.TotalHours);

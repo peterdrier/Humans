@@ -190,7 +190,9 @@ public class NotificationsController : HumansControllerBase
 
         var url = await _inboxService.ClickThroughAsync(id, userId.Value);
 
-        if (!string.IsNullOrEmpty(url) && Url.IsLocalUrl(url))
+        if (url is null) return NotFound();
+
+        if (Url.IsLocalUrl(url))
             return LocalRedirect(url);
 
         return RedirectToAction(nameof(Index));
@@ -202,20 +204,16 @@ public class NotificationsController : HumansControllerBase
         {
             Id = dto.Id,
             Title = dto.Title,
-            Body = dto.Body,
             ActionUrl = dto.ActionUrl,
             ActionLabel = dto.ActionLabel ?? defaultActionLabel,
             Priority = dto.Priority,
             Source = dto.Source,
             Class = dto.Class,
-            TargetGroupName = dto.TargetGroupName,
             CreatedAt = dto.CreatedAt,
             IsRead = dto.IsRead,
             IsResolved = dto.IsResolved,
             ResolvedAt = dto.ResolvedAt,
             ResolvedByName = dto.ResolvedByName,
-            RecipientInitials = dto.RecipientInitials,
-            TotalRecipientCount = dto.TotalRecipientCount,
         };
     }
 }

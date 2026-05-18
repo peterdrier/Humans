@@ -1535,17 +1535,6 @@ a.notification-row-line:hover .notification-title {
     .notification-filter-pill {
         flex-shrink: 0;
     }
-
-    .notification-row-bottom {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .notification-actions {
-        width: 100%;
-        justify-content: flex-end;
-        margin-top: 0.25rem;
-    }
 }
 
 /* ─── Guest Dashboard ─── */
