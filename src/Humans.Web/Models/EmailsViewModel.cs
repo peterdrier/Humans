@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -75,6 +76,15 @@ public class EmailsViewModel
     /// rollout. Null in self contexts and for non-Admin actors.
     /// </summary>
     public string? LegacyIdentityEmailColumn { get; set; }
+
+    /// <summary>
+    /// Admin-only diagnostic: the cached <c>UserInfo</c> for the target user.
+    /// The view reads <c>Email</c>/<c>PrimaryEmail</c>/<c>GoogleEmail</c>
+    /// directly — these are what the rest of the app actually consumes
+    /// (outbound mail, Google identity, the legacy <c>User.Email</c>
+    /// override). Null in self contexts and for non-Admin actors.
+    /// </summary>
+    public UserInfo? TargetUserInfo { get; init; }
 
     /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace

@@ -356,6 +356,61 @@
             </div>
         </div>
 
+        @* Admin UserInfo derived-email diagnostic — what callers across the app actually see *@
+        @if (Model.IsAdminContext && Model.TargetUserInfo is not null)
+        {
+            <div class="card mb-4 border-danger" id="userinfo-emails">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i><code>UserInfo</code> derived emails <small class="ms-2 opacity-75">(Admin only)</small></h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                            <tr>
+                                <th style="width: 16rem;"><code>UserInfo.Email</code></th>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.Email))
+                                    {
+                                        <code>@Model.TargetUserInfo.Email</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(null)</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><code>UserInfo.PrimaryEmail</code></th>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.PrimaryEmail))
+                                    {
+                                        <code>@Model.TargetUserInfo.PrimaryEmail</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(null)</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><code>UserInfo.GoogleEmail</code></th>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.GoogleEmail))
+                                    {
+                                        <code>@Model.TargetUserInfo.GoogleEmail</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(null)</span>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
         @* see nobodies-collective/Humans#697 — admin AspNetUserLogins snapshot + disagreement flags *@
         @if (Model.IsAdminContext)
         {

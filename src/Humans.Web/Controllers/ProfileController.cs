@@ -2539,6 +2539,10 @@ public class ProfileController : HumansControllerBase
                 && User.IsInRole(Domain.Constants.RoleNames.Admin)
                 ? user.IdentityEmailColumn
                 : null,
+            TargetUserInfo = isAdminContext
+                && User.IsInRole(Domain.Constants.RoleNames.Admin)
+                    ? info
+                    : null,
         };
     }
 
