@@ -81,13 +81,14 @@ public sealed class SearchService : ISearchService
         string query, int limit, CancellationToken ct)
     {
         var hits = await _teamService.SearchAsync(query, limit, ct);
+        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(t => new GlobalSearchResult(
                 Type: SearchResultType.Team,
                 Title: t.Name,
                 Subtitle: t.Slug,
                 Url: $"/Teams/{t.Slug}",
-                Score: ScoreNameField(t.Name, query)))
+                Score: isGuidQuery ? ScoreExactName : ScoreNameField(t.Name, query)))
             .Where(r => r.Score > 0)
             .ToList();
     }
@@ -96,13 +97,14 @@ public sealed class SearchService : ISearchService
         string query, int limit, CancellationToken ct)
     {
         var hits = await _campService.SearchAsync(query, limit, ct);
+        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(c => new GlobalSearchResult(
                 Type: SearchResultType.Camp,
                 Title: c.Name,
                 Subtitle: c.Slug,
                 Url: $"/Camps/{c.Slug}",
-                Score: ScoreNameField(c.Name, query)))
+                Score: isGuidQuery ? ScoreExactName : ScoreNameField(c.Name, query)))
             .Where(r => r.Score > 0)
             .ToList();
     }
@@ -112,13 +114,14 @@ public sealed class SearchService : ISearchService
     {
         // Hits are Rotas (named shift groupings), not individual Shift rows (which have no title).
         var hits = await _shiftService.SearchAsync(query, limit, ct);
+        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(r => new GlobalSearchResult(
                 Type: SearchResultType.Shift,
                 Title: r.Name,
                 Subtitle: r.TeamName,
                 Url: $"/Shifts?departmentId={r.TeamId}",
-                Score: ScoreNameField(r.Name, query)))
+                Score: isGuidQuery ? ScoreExactName : ScoreNameField(r.Name, query)))
             .Where(r => r.Score > 0)
             .ToList();
     }
