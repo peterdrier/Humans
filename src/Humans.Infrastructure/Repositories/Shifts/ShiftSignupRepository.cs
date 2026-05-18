@@ -222,21 +222,29 @@ internal sealed class ShiftSignupRepository(HumansDbContext dbContext, IClock cl
             .Where(vtp => vtp.UserId == userId)
             .ToListAsync(ct);
 
-    public async Task<IReadOnlyList<VolunteerTagPreference>> GetAllVolunteerTagPreferencesAsync(
-        CancellationToken ct = default) =>
-        await dbContext.VolunteerTagPreferences
+    public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        return await dbContext.VolunteerTagPreferences
             .AsNoTracking()
             .Include(vtp => vtp.ShiftTag)
+            .Where(vtp => userIds.Contains(vtp.UserId))
             .ToListAsync(ct);
+    }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetAllByEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default) =>
-        await dbContext.ShiftSignups
+    public async Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        // No OrderBy: bulk loader splits results into per-user groups and the
+        // presentation layer (or per-user GetByUserAsync) handles display sort.
+        return await dbContext.ShiftSignups
             .AsNoTracking()
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId)
-            .OrderBy(d => d.Shift.DayOffset).ThenBy(d => d.Shift.StartTime)
+            .Where(d => userIds.Contains(d.UserId) && d.Shift.Rota.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
+    }
 
     // ============================================================
     // Writes — ShiftSignup

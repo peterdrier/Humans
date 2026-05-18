@@ -33,6 +33,16 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
             .Where(x => x.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        return await db.VolunteerBuildStatuses
+            .AsNoTracking()
+            .Where(x => x.EventSettingsId == eventSettingsId && userIds.Contains(x.UserId))
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<int>> UpsertCampSetupAsync(
         Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
         string? notes, Guid? setByUserId, Instant? setAt,

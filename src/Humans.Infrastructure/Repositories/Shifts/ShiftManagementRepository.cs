@@ -761,12 +761,14 @@ internal sealed class ShiftManagementRepository(IDbContextFactory<HumansDbContex
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
     }
 
-    public async Task<IReadOnlyList<VolunteerEventProfile>> GetAllVolunteerEventProfilesAsync(
-        CancellationToken ct = default)
+    public async Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
+        if (userIds.Count == 0) return [];
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.VolunteerEventProfiles
             .AsNoTracking()
+            .Where(p => userIds.Contains(p.UserId))
             .ToListAsync(ct);
     }
 

@@ -1,8 +1,6 @@
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,21 +17,20 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// <see cref="IServiceScopeFactory"/> and lazily populate the cache.
 /// </summary>
 /// <remarks>
-/// This decorator owns two caches with different value types, so it composes
-/// <see cref="TrackedCache{TKey,TValue}"/> rather than inheriting it. The two
-/// caches are exposed via <see cref="UserCacheStats"/> / <see cref="RotaCacheStats"/>
-/// and registered as <see cref="ICacheStats"/> in DI so /Admin/CacheStats can
-/// surface their counters.
-///
+/// This decorator only ever talks to its inner <see cref="IShiftView"/>; it
+/// never reaches sideways into repositories or sibling services. Single-id
+/// misses delegate to <see cref="IShiftView.GetUserAsync"/>; batch reads
+/// gather all cache-misses into one <see cref="IShiftView.GetUsersAsync"/>
+/// call so a cold /Admin first-hit collapses to one inner round-trip per
+/// surface, not N (issue #720).
 /// <para>
-/// User cache is bulk-warmed at startup via <see cref="IHostedService.StartAsync"/>:
-/// six bulk repository reads materialize a <see cref="ShiftUserView"/> for every
-/// known user up-front, collapsing the previous /Admin first-hit N+1 fan-out
-/// (≈6 queries × ~500 users) into a fixed handful of bulk reads (issue #720).
-/// Rota cache stays lazy-per-key — rotas are read one at a time on demand.
+/// The two caches are exposed via <see cref="UserCacheStats"/> /
+/// <see cref="RotaCacheStats"/> and registered as <see cref="ICacheStats"/>
+/// in DI so /Admin/CacheStats can surface their counters.
 /// </para>
 /// </remarks>
-public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator, IHostedService
+public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)
+    : IShiftView, IShiftViewInvalidator, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IShiftView"/>
@@ -43,20 +40,10 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
     /// </summary>
     public const string InnerServiceKey = "shift-view-inner";
 
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<CachingShiftViewService> _logger;
-    private readonly UserViewCache _userCache;
-    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache;
+    private readonly ILogger<CachingShiftViewService> _logger = logger;
 
-    public CachingShiftViewService(
-        IServiceScopeFactory scopeFactory,
-        ILogger<CachingShiftViewService> logger)
-    {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-        _userCache = new UserViewCache(this, logger);
-        _rotaCache = new TrackedCache<Guid, ShiftRotaView>("ShiftView.RotaView", warmOnStartup: false, logger);
-    }
+    private readonly TrackedCache<Guid, ShiftUserView> _userCache = new("ShiftView.UserView", warmOnStartup: false, logger);
+    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache = new("ShiftView.RotaView", warmOnStartup: false, logger);
 
     public ICacheStats UserCacheStats => _userCache;
     public ICacheStats RotaCacheStats => _rotaCache;
@@ -72,16 +59,42 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
         return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, ct));
     }
 
+    /// <summary>
+    /// Batches all cache-misses into a single <see cref="IShiftView.GetUsersAsync"/>
+    /// call on the inner — the inner is responsible for bulk-loading every
+    /// contributing table in one round-trip per table. This is the hot path
+    /// for /Admin first-hit (set-membership across ~500 users); a per-id
+    /// fan-out here is what made the page slow before issue #720.
+    /// </summary>
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         var ids = userIds as IList<Guid> ?? userIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, ShiftUserView>();
+
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
+        List<Guid>? misses = null;
         foreach (var id in ids)
         {
-            if (!result.ContainsKey(id))
-                result[id] = await GetUserAsync(id, ct).ConfigureAwait(false);
+            if (_userCache.TryGet(id, out var hit))
+                result[id] = hit;
+            else
+                (misses ??= []).Add(id);
         }
+
+        if (misses is not null)
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
+            var loaded = await inner.GetUsersAsync(misses, ct).ConfigureAwait(false);
+            foreach (var (id, view) in loaded)
+            {
+                _userCache.Set(id, view);
+                result[id] = view;
+            }
+        }
+
         return result;
     }
 
@@ -107,7 +120,7 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
 
     private async Task<ShiftUserView> LoadAndCacheUserAsync(Guid userId, CancellationToken ct)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
         var view = await inner.GetUserAsync(userId, ct).ConfigureAwait(false);
         _userCache.Set(userId, view);
@@ -116,7 +129,7 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
 
     private async Task<ShiftRotaView> LoadAndCacheRotaAsync(Guid rotaId, CancellationToken ct)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
         var view = await inner.GetRotaAsync(rotaId, ct).ConfigureAwait(false);
         _rotaCache.Set(rotaId, view);
@@ -173,114 +186,13 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator,
     }
 
     // ==========================================================================
-    // IHostedService — user cache is bulk-warmed at startup; rota cache stays
-    // lazy. Warmup failure is logged and swallowed (no-startup-guards), and
-    // the lazy on-demand path re-triggers warmup via EnsureWarmedAsync.
+    // IHostedService — composition forces the decorator to own this directly
+    // (can't multi-inherit TrackedCache). No startup warm-up: misses go through
+    // the inner's batch path, which collapses a cold /Admin first-hit to a
+    // fixed number of bulk inner reads.
     // ==========================================================================
 
-    Task IHostedService.StartAsync(CancellationToken ct) => StartupWarmAsync(ct);
+    Task IHostedService.StartAsync(CancellationToken ct) => Task.CompletedTask;
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
-
-    private async Task StartupWarmAsync(CancellationToken ct)
-    {
-        try
-        {
-            await _userCache.EnsureWarmedAsync(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                "CachingShiftViewService startup warmup failed; falling back to lazy per-key on misses. {ExceptionType}: {ExceptionMessage}",
-                ex.GetType().Name,
-                ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Bulk-populates <see cref="_userCache"/> with a <see cref="ShiftUserView"/>
-    /// for every known user. Issues a fixed handful of bulk reads (active event,
-    /// user ids, volunteer-event-profiles, tag-preferences, and — when an event
-    /// is active — general-availability, build-status, and shift-signups) and
-    /// indexes each by user id so per-user materialization is allocation-only.
-    /// Trivial at ~500-user scale and replaces the 6×N per-user fan-out that
-    /// dominated /Admin first-hit cost.
-    /// </summary>
-    private async Task WarmUsersAsync(CancellationToken ct)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var sp = scope.ServiceProvider;
-        var management = sp.GetRequiredService<IShiftManagementRepository>();
-        var signups = sp.GetRequiredService<IShiftSignupRepository>();
-        var availability = sp.GetRequiredService<IGeneralAvailabilityRepository>();
-        var tracking = sp.GetRequiredService<IVolunteerTrackingRepository>();
-        var users = sp.GetRequiredService<IUserRepository>();
-
-        var activeEvent = await management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
-
-        var allUsers = await users.GetAllAsync(ct).ConfigureAwait(false);
-        if (allUsers.Count == 0) return;
-
-        var profiles = await management.GetAllVolunteerEventProfilesAsync(ct).ConfigureAwait(false);
-        var profileByUser = profiles.ToDictionary(p => p.UserId);
-
-        var tagPrefs = await signups.GetAllVolunteerTagPreferencesAsync(ct).ConfigureAwait(false);
-        var tagPrefsByUser = tagPrefs
-            .GroupBy(t => t.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<VolunteerTagPreference>)g.ToList());
-
-        Dictionary<Guid, GeneralAvailability> availabilityByUser = [];
-        Dictionary<Guid, VolunteerBuildStatus> buildStatusByUser = [];
-        Dictionary<Guid, IReadOnlyList<ShiftSignup>> signupsByUser = [];
-
-        if (activeEvent is not null)
-        {
-            var avail = await availability.GetByEventAsync(activeEvent.Id, ct).ConfigureAwait(false);
-            availabilityByUser = avail.ToDictionary(a => a.UserId);
-
-            var builds = await tracking.GetByEventAsync(activeEvent.Id, ct).ConfigureAwait(false);
-            buildStatusByUser = builds.ToDictionary(b => b.UserId);
-
-            var allSignups = await signups.GetAllByEventAsync(activeEvent.Id, ct).ConfigureAwait(false);
-            signupsByUser = allSignups
-                .GroupBy(s => s.UserId)
-                .ToDictionary(g => g.Key, g => (IReadOnlyList<ShiftSignup>)g.ToList());
-        }
-
-        foreach (var user in allUsers)
-        {
-            var view = new ShiftUserView(
-                user.Id,
-                Profile: profileByUser.GetValueOrDefault(user.Id),
-                Availability: availabilityByUser.GetValueOrDefault(user.Id),
-                BuildStatus: buildStatusByUser.GetValueOrDefault(user.Id),
-                TagPreferences: tagPrefsByUser.GetValueOrDefault(user.Id) ?? [],
-                Signups: signupsByUser.GetValueOrDefault(user.Id) ?? []);
-            _userCache.Set(user.Id, view);
-        }
-    }
-
-    /// <summary>
-    /// Private subclass of <see cref="TrackedCache{TKey,TValue}"/> that routes
-    /// <c>WarmAllAsync</c> back to the outer decorator so the composed cache
-    /// participates in the same idempotent / semaphore-coalesced warm-up
-    /// protocol as inherited <see cref="TrackedCache{TKey,TValue}"/> subclasses
-    /// (CachingUserService, CachingTeamService). <c>warmOnStartup: false</c>
-    /// because the outer's <see cref="IHostedService.StartAsync"/> is the one
-    /// registered with DI — this inner cache is not a hosted service itself,
-    /// so the outer drives <see cref="EnsureWarmedAsync"/> directly.
-    /// </summary>
-    private sealed class UserViewCache(CachingShiftViewService outer, ILogger logger)
-        : TrackedCache<Guid, ShiftUserView>("ShiftView.UserView", warmOnStartup: false, logger)
-    {
-        protected override Task WarmAllAsync(CancellationToken ct) => outer.WarmUsersAsync(ct);
-
-        // Expose the base's protected EnsureWarmedAsync to the outer composer so
-        // it can drive warm-up from its IHostedService.StartAsync.
-        public new Task EnsureWarmedAsync(CancellationToken ct) => base.EnsureWarmedAsync(ct);
-    }
 }

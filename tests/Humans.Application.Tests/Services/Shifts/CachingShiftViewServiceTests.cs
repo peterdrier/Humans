@@ -1,11 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Shifts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -13,8 +11,8 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 /// <summary>
 /// Tests for <see cref="CachingShiftViewService"/> — Singleton decorator over a
-/// keyed Scoped inner. Covers dict-cache hit / miss, invalidation, empty view
-/// behavior, and that cache-hit reads never resolve the inner. Issue #720.
+/// keyed Scoped inner. Covers dict-cache hit / miss, batch-miss fan-in,
+/// invalidation, and that cache-hit reads never resolve the inner. Issue #720.
 /// </summary>
 public class CachingShiftViewServiceTests
 {
@@ -83,14 +81,12 @@ public class CachingShiftViewServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        var v1 = new ShiftUserView(u1, null, null, null,
-            [], []);
-        var v2 = new ShiftUserView(u2, null, null, null,
-            [], []);
-        _inner.GetUserAsync(u1, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(v1));
-        _inner.GetUserAsync(u2, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(v2));
+        var v1 = new ShiftUserView(u1, null, null, null, [], []);
+        var v2 = new ShiftUserView(u2, null, null, null, [], []);
+
+        _inner.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(
+                new Dictionary<Guid, ShiftUserView> { [u1] = v1, [u2] = v2 }));
 
         var sut = CreateSut();
 
@@ -102,8 +98,43 @@ public class CachingShiftViewServiceTests
         (await sut.GetUserAsync(u1)).Should().BeSameAs(v1);
         (await sut.GetUserAsync(u2)).Should().BeSameAs(v2);
 
-        await _inner.Received(1).GetUserAsync(u1, Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserAsync(u2, Arg.Any<CancellationToken>());
+        // The whole point: batch reads collapse to ONE call into the inner, not N.
+        await _inner.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetUsersAsync_PartialCacheHit_OnlyFetchesMissesFromInner()
+    {
+        var cached = Guid.NewGuid();
+        var miss1 = Guid.NewGuid();
+        var miss2 = Guid.NewGuid();
+        var cachedView = new ShiftUserView(cached, null, null, null, [], []);
+        var miss1View = new ShiftUserView(miss1, null, null, null, [], []);
+        var miss2View = new ShiftUserView(miss2, null, null, null, [], []);
+
+        _inner.GetUserAsync(cached, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(cachedView));
+        _inner.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var requested = ((IEnumerable<Guid>)ci[0]).ToList();
+                requested.Should().BeEquivalentTo(new[] { miss1, miss2 });
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(
+                    new Dictionary<Guid, ShiftUserView> { [miss1] = miss1View, [miss2] = miss2View });
+            });
+
+        var sut = CreateSut();
+        await sut.GetUserAsync(cached); // prime
+
+        var batch = await sut.GetUsersAsync([cached, miss1, miss2]);
+        batch.Should().HaveCount(3);
+        batch[cached].Should().BeSameAs(cachedView);
+        batch[miss1].Should().BeSameAs(miss1View);
+        batch[miss2].Should().BeSameAs(miss2View);
+
+        // Inner.GetUsersAsync called once with ONLY the misses.
+        await _inner.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     // ── GetRotaAsync ────────────────────────────────────────────────────────
@@ -257,151 +288,5 @@ public class CachingShiftViewServiceTests
         await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
         await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserAsync(unrelatedUserId, Arg.Any<CancellationToken>());
-    }
-
-    // ── Startup warmup ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task StartAsync_BulkLoadsRepos_PopulatesUserCacheForEveryKnownUser_NoInnerFallback()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid(); // user with no shift data anywhere — gets an empty view from warmup
-        var eventId = Guid.NewGuid();
-        var activeEvent = new EventSettings { Id = eventId, IsActive = true, Year = 2026, EventName = "Test" };
-        var u1Profile = new VolunteerEventProfile { Id = Guid.NewGuid(), UserId = u1 };
-        var u1Avail = new GeneralAvailability { Id = Guid.NewGuid(), UserId = u1, EventSettingsId = eventId };
-        var u2Build = new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = u2, EventSettingsId = eventId };
-        var u1Signup = new ShiftSignup { Id = Guid.NewGuid(), UserId = u1, ShiftId = Guid.NewGuid() };
-        var u1Tag = new VolunteerTagPreference { Id = Guid.NewGuid(), UserId = u1, ShiftTagId = Guid.NewGuid() };
-
-        var users = Substitute.For<IUserRepository>();
-        users.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<User>)[
-                new User { Id = u1 }, new User { Id = u2 }, new User { Id = u3 }]);
-
-        var management = Substitute.For<IShiftManagementRepository>();
-        management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
-        management.GetAllVolunteerEventProfilesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<VolunteerEventProfile>)[u1Profile]);
-
-        var signups = Substitute.For<IShiftSignupRepository>();
-        signups.GetAllVolunteerTagPreferencesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<VolunteerTagPreference>)[u1Tag]);
-        signups.GetAllByEventAsync(eventId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<ShiftSignup>)[u1Signup]);
-
-        var availability = Substitute.For<IGeneralAvailabilityRepository>();
-        availability.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<GeneralAvailability>)[u1Avail]);
-
-        var tracking = Substitute.For<IVolunteerTrackingRepository>();
-        tracking.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<VolunteerBuildStatus>)[u2Build]);
-
-        var services = new ServiceCollection();
-        services.AddKeyedScoped<IShiftView>(CachingShiftViewService.InnerServiceKey, (_, _) => _inner);
-        services.AddSingleton(users);
-        services.AddSingleton(management);
-        services.AddSingleton(signups);
-        services.AddSingleton(availability);
-        services.AddSingleton(tracking);
-        var provider = services.BuildServiceProvider();
-
-        var sut = new CachingShiftViewService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingShiftViewService>.Instance);
-
-        await ((IHostedService)sut).StartAsync(CancellationToken.None);
-
-        // u1: profile + availability + signup + tag
-        var v1 = await sut.GetUserAsync(u1);
-        v1.Profile.Should().BeSameAs(u1Profile);
-        v1.Availability.Should().BeSameAs(u1Avail);
-        v1.BuildStatus.Should().BeNull();
-        v1.Signups.Should().ContainSingle().Which.Should().BeSameAs(u1Signup);
-        v1.TagPreferences.Should().ContainSingle().Which.Should().BeSameAs(u1Tag);
-
-        // u2: only build status
-        var v2 = await sut.GetUserAsync(u2);
-        v2.Profile.Should().BeNull();
-        v2.BuildStatus.Should().BeSameAs(u2Build);
-        v2.Signups.Should().BeEmpty();
-        v2.TagPreferences.Should().BeEmpty();
-
-        // u3: empty view, still served from cache — never hits the inner
-        var v3 = await sut.GetUserAsync(u3);
-        v3.Profile.Should().BeNull();
-        v3.Availability.Should().BeNull();
-        v3.BuildStatus.Should().BeNull();
-        v3.Signups.Should().BeEmpty();
-        v3.TagPreferences.Should().BeEmpty();
-
-        // The whole point: warmup eliminated the per-user fan-out.
-        await _inner.DidNotReceive().GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        sut.UserCacheStats.IsWarmedUp.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task StartAsync_NoActiveEvent_SkipsEventScopedReads_StillPopulatesCacheWithProfilesAndTags()
-    {
-        var u1 = Guid.NewGuid();
-        var u1Profile = new VolunteerEventProfile { Id = Guid.NewGuid(), UserId = u1 };
-
-        var users = Substitute.For<IUserRepository>();
-        users.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<User>)[new User { Id = u1 }]);
-
-        var management = Substitute.For<IShiftManagementRepository>();
-        management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
-        management.GetAllVolunteerEventProfilesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<VolunteerEventProfile>)[u1Profile]);
-
-        var signups = Substitute.For<IShiftSignupRepository>();
-        signups.GetAllVolunteerTagPreferencesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<VolunteerTagPreference>)[]);
-
-        var availability = Substitute.For<IGeneralAvailabilityRepository>();
-        var tracking = Substitute.For<IVolunteerTrackingRepository>();
-
-        var services = new ServiceCollection();
-        services.AddKeyedScoped<IShiftView>(CachingShiftViewService.InnerServiceKey, (_, _) => _inner);
-        services.AddSingleton(users);
-        services.AddSingleton(management);
-        services.AddSingleton(signups);
-        services.AddSingleton(availability);
-        services.AddSingleton(tracking);
-        var provider = services.BuildServiceProvider();
-
-        var sut = new CachingShiftViewService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingShiftViewService>.Instance);
-
-        await ((IHostedService)sut).StartAsync(CancellationToken.None);
-
-        var view = await sut.GetUserAsync(u1);
-        view.Profile.Should().BeSameAs(u1Profile);
-        view.Availability.Should().BeNull();
-
-        await availability.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await tracking.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await signups.DidNotReceive().GetAllByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task StartAsync_WarmupFailure_IsSwallowed_LazyPathStillWorks()
-    {
-        // Empty scope — repo resolution throws inside warmup, but StartAsync must complete
-        // and the lazy per-key fallback must still serve reads (no-startup-guards rule).
-        var sut = CreateSut();
-        await ((IHostedService)sut).StartAsync(CancellationToken.None);
-
-        var userId = Guid.NewGuid();
-        var view = new ShiftUserView(userId, null, null, null, [], []);
-        _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(view));
-
-        (await sut.GetUserAsync(userId)).Should().BeSameAs(view);
-        sut.UserCacheStats.IsWarmedUp.Should().BeFalse();
     }
 }

@@ -206,22 +206,22 @@ public interface IShiftSignupRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads every <see cref="VolunteerTagPreference"/> row with
-    /// <c>ShiftTag</c> included (read-only). Used by
-    /// <c>CachingShiftViewService</c> warmup to fan-in per-user lookups into
-    /// one bulk query.
+    /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
+    /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
+    /// bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
     /// </summary>
-    Task<IReadOnlyList<VolunteerTagPreference>> GetAllVolunteerTagPreferencesAsync(
-        CancellationToken ct = default);
+    Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads every <see cref="ShiftSignup"/> for the given event with
-    /// <c>Shift.Rota.EventSettings</c> included (read-only). Used by
-    /// <c>CachingShiftViewService</c> warmup to fan-in per-user signup lookups
-    /// into one bulk query.
+    /// Loads <see cref="ShiftSignup"/> rows for the supplied user ids in the
+    /// given event in one query, with <c>Shift.Rota.EventSettings</c> included
+    /// (read-only). Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
     /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetAllByEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
+    Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
 
     // ============================================================
     // Writes — ShiftSignup
