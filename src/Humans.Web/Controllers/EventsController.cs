@@ -161,7 +161,7 @@ public class EventsController : HumansControllerBase
             await _emailService.SendEventLifecycleNotificationAsync(
                 new EventLifecycleNotification(
                     NewStatus: EventStatus.Pending,
-                    UserName: userInfo?.DisplayName ?? userEmail,
+                    UserName: userInfo?.BurnerName ?? userEmail,
                     EventTitle: model.Title,
                     ActionUrl: viewUrl),
                 userEmail);
@@ -410,7 +410,7 @@ public class EventsController : HumansControllerBase
             var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
             var campName = seasonName ?? camp?.Slug;
             var submitterName = e.CampId == null
-                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.DisplayName
+                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
                 : null;
 
             foreach (var startInstant in e.GetOccurrenceInstants())

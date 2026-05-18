@@ -5,6 +5,7 @@ using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Auth;
 
@@ -16,6 +17,7 @@ public sealed class MagicLinkService : IMagicLinkService
 
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
@@ -25,6 +27,7 @@ public sealed class MagicLinkService : IMagicLinkService
     public MagicLinkService(
         UserManager<User> userManager,
         IUserEmailService userEmailService,
+        IUserService userService,
         IEmailService emailService,
         IMagicLinkUrlBuilder urlBuilder,
         IMagicLinkRateLimiter rateLimiter,
@@ -33,6 +36,7 @@ public sealed class MagicLinkService : IMagicLinkService
     {
         _userManager = userManager;
         _userEmailService = userEmailService;
+        _userService = userService;
         _emailService = emailService;
         _urlBuilder = urlBuilder;
         _rateLimiter = rateLimiter;
@@ -123,7 +127,8 @@ public sealed class MagicLinkService : IMagicLinkService
 
         var magicLinkUrl = _urlBuilder.BuildLoginUrl(user.Id, returnUrl);
 
-        var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? sendToEmail : user.DisplayName;
+        var userInfo = await _userService.GetUserInfoAsync(user.Id, ct);
+        var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
 
         await _emailService.SendMagicLinkLoginAsync(
             sendToEmail, displayName, magicLinkUrl, ct: ct);

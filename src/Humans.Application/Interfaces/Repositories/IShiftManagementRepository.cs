@@ -201,7 +201,7 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         CancellationToken ct = default);
 
     /// <summary>
@@ -218,7 +218,7 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         bool includeAdminOnly,
         bool includeHidden,
         int? fromDayOffset,
@@ -228,11 +228,11 @@ public interface IShiftManagementRepository : IRepository
 
     /// <summary>
     /// Loads shifts (with signups) for urgency scoring. Filters by event,
-    /// optional department, and optional day-offset bounds (inclusive).
+    /// optional department team-id set, and optional day-offset bounds (inclusive).
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         int? minDayOffset,
         int? maxDayOffset,
         CancellationToken ct = default);

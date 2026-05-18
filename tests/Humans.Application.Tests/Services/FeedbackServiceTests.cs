@@ -68,6 +68,7 @@ public class FeedbackServiceTests : IDisposable
                 return Task.FromResult(_dbContext.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
             });
         _userService.StubGetUserInfosFromContext(_dbContext);
+        _userService.StubGetUserInfoFromContext(_dbContext);
 
         _userEmailService = Substitute.For<IUserEmailService>();
         _userEmailService

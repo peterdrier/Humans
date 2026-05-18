@@ -163,7 +163,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         {
             changes.Add((member.TeamMemberId, TeamMemberRole.Coordinator));
             var userName = userNamesById.TryGetValue(member.UserId, out var u)
-                ? u.DisplayName : member.UserId.ToString();
+                ? u.BurnerName : member.UserId.ToString();
             var teamName = member.TeamName;
             step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {teamName}");
             _logger.LogInformation(
@@ -175,7 +175,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         {
             changes.Add((member.TeamMemberId, TeamMemberRole.Member));
             var userName = userNamesById.TryGetValue(member.UserId, out var u)
-                ? u.DisplayName : member.UserId.ToString();
+                ? u.BurnerName : member.UserId.ToString();
             var teamName = member.TeamName;
             step.Fixed(member.UserId, userName, $"Demoted to Member on {teamName} (no IsManagement role)");
             _logger.LogInformation(
@@ -359,7 +359,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             foreach (var (downgradeUserId, newTier) in downgrades)
             {
                 var displayName = downgradeUsersById.TryGetValue(downgradeUserId, out var u)
-                    ? u.DisplayName : "Unknown";
+                    ? u.BurnerName : "Unknown";
                 await _auditLogService.LogAsync(
                     AuditAction.TierDowngraded, nameof(Profile), downgradeUserId,
                     $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
@@ -566,7 +566,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var affectedUserIds = toAdd.Concat(toRemove).ToList();
         var usersById = await _userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
-        var userNames = usersById.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+        var userNames = usersById.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
 
         await _teamService.ApplySystemTeamMembershipDeltaAsync(
             team.Id, toAdd, toRemove, now, cancellationToken);
@@ -635,7 +635,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 {
                     var email = user.Email!;
                     await _emailService.SendAddedToTeamAsync(
-                        email, user.DisplayName, team.Name, team.Slug,
+                        email, user.BurnerName, team.Name, team.Slug,
                         resourceTuples, user.PreferredLanguage, cancellationToken);
                 }
                 catch (Exception ex)

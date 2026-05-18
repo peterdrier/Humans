@@ -50,7 +50,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
         string emailPrefix,
         Guid provisionedByUserId)
     {
-        var user = await _userService.GetByIdAsync(userId);
+        var user = await _userService.GetUserInfoAsync(userId);
         if (user is null)
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
 
@@ -96,7 +96,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
             // Real name from profile, not display/burner name.
-            var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
+            var profile = user.Profile;
             var firstName = profile?.FirstName;
             var lastName = profile?.LastName;
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
@@ -145,7 +145,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
                 await _emailService.SendWorkspaceCredentialsAsync(
-                    recoveryEmail, user.DisplayName, fullEmail, tempPassword,
+                    recoveryEmail, user.BurnerName, fullEmail, tempPassword,
                     user.PreferredLanguage);
             }
 

@@ -507,7 +507,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618 // DisplayName fallback is the legacy column we are mirroring.
+#pragma warning disable CS0618 // DisplayName is the legacy column this rehydration mirrors.
         var user = new User
         {
             Id = info.Id,
@@ -569,9 +569,24 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                     Year = p.Year,
                     Status = p.Status,
                     Source = p.Source,
-                    DeclaredAt = p.DeclaredAt
+                    DeclaredAt = p.DeclaredAt,
+                    CheckedInAt = p.CheckedInAt,
                 });
             }
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
+        int year, CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        var result = new List<OnsiteUserRow>();
+        foreach (var u in Values)
+        {
+            var onsiteSince = u.OnsiteSinceForYear(year);
+            if (onsiteSince is null) continue;
+            result.Add(new OnsiteUserRow(u.Id, u.BurnerName, onsiteSince));
         }
         return result;
     }
@@ -683,9 +698,10 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     }
 
     public async Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, CancellationToken ct = default)
+        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default)
     {
-        await WithInnerAsync(inner => inner.SetParticipationFromTicketSyncAsync(userId, year, status, ct));
+        await WithInnerAsync(inner =>
+            inner.SetParticipationFromTicketSyncAsync(userId, year, status, checkedInAt, ct));
         await RefreshEntryAsync(userId, ct);
     }
 

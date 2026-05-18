@@ -167,7 +167,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
 
             await _emailService.SendReConsentsRequiredAsync(
                 effectiveEmail,
-                user.DisplayName,
+                user.BurnerName,
                 documentNames,
                 user.PreferredLanguage,
                 cancellationToken);

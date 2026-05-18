@@ -63,7 +63,7 @@ public class EventsExportController : HumansControllerBase
             if (e.CampId == null)
             {
                 var submitter = await _users.GetUserInfoAsync(e.SubmitterUserId);
-                submitterName = submitter?.DisplayName ?? "";
+                submitterName = submitter?.BurnerName ?? "";
             }
 
             foreach (var (date, time) in GetOccurrences(e, tz))

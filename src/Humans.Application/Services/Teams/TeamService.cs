@@ -768,8 +768,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private async Task<string> GetDisplayNameAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var user = await UserService.GetByIdAsync(userId, cancellationToken);
-        return user?.DisplayName ?? "Someone";
+        var user = await UserService.GetUserInfoAsync(userId, cancellationToken);
+        return user?.BurnerName ?? "Someone";
     }
 
     private async Task<bool> TryAddMemberOnlyAsync(TeamMember member, CancellationToken ct)
@@ -1504,7 +1504,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                     assignment is not null,
                     assignment?.AssignedUserId,
                     assignment?.AssignedUserId is Guid assignedUserId
-                        ? usersById.GetValueOrDefault(assignedUserId)?.DisplayName
+                        ? usersById.GetValueOrDefault(assignedUserId)?.BurnerName
                         : null));
             }
         }
@@ -1872,7 +1872,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 return new TeamMemberInfo(
                     TeamMemberId: m.Id,
                     UserId: m.UserId,
-                    DisplayName: u?.DisplayName ?? string.Empty,
+                    DisplayName: u?.BurnerName ?? string.Empty,
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
@@ -1990,17 +1990,17 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         }
     }
 
-    private async Task<IReadOnlyDictionary<Guid, User>> GetJoinRequestUsersByIdAsync(
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetJoinRequestUsersByIdAsync(
         IReadOnlyList<TeamJoinRequest> requests,
         CancellationToken ct)
     {
         if (requests.Count == 0)
-            return new Dictionary<Guid, User>();
+            return new Dictionary<Guid, UserInfo>();
 
         var userIds = requests.Select(request => request.UserId)
             .Distinct()
             .ToList();
-        return await UserService.GetByIdsAsync(userIds, ct);
+        return await UserService.GetUserInfosAsync(userIds, ct);
     }
 
     private async Task StitchRoleAssignmentUserSlicesAsync(
@@ -2213,7 +2213,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
         TeamJoinRequest request,
-        IReadOnlyDictionary<Guid, User> usersById)
+        IReadOnlyDictionary<Guid, UserInfo> usersById)
     {
         usersById.TryGetValue(request.UserId, out var user);
         return new TeamJoinRequestSnapshot(
@@ -2221,7 +2221,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             request.TeamId,
             request.Team?.Name,
             request.UserId,
-            user?.DisplayName,
+            user?.BurnerName,
             user?.Email,
             user?.ProfilePictureUrl,
             request.Status,
@@ -2235,7 +2235,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     private static string GetMemberDisplayName(
         TeamMember member,
         IReadOnlyDictionary<Guid, UserInfo> usersById) =>
-        usersById.GetValueOrDefault(member.UserId)?.DisplayName ?? string.Empty;
+        usersById.GetValueOrDefault(member.UserId)?.BurnerName ?? string.Empty;
 
     private static string GetPriorityBadgeClass(SlotPriority priority) =>
         priority switch

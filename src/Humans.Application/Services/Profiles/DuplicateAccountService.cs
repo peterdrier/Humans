@@ -180,9 +180,12 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
         var now = _clock.GetCurrentInstant();
 
+        var sourceInfo = await _userService.GetUserInfoAsync(sourceUserId, ct);
+        var targetInfo = await _userService.GetUserInfoAsync(targetUserId, ct);
+
         _logger.LogInformation(
             "Admin {AdminId} resolving duplicate: archiving {SourceUserId} ({SourceName}), keeping {TargetUserId} ({TargetName})",
-            adminUserId, sourceUserId, sourceUser.DisplayName, targetUserId, targetUser.DisplayName);
+            adminUserId, sourceUserId, sourceInfo?.BurnerName, targetUserId, targetInfo?.BurnerName);
 
         try
         {

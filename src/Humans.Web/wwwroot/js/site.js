@@ -78,29 +78,6 @@ document.addEventListener('click', function (e) {
 
     var isOpen = false;
 
-    function updateBellBadge() {
-        // Count remaining rows in the popup by class
-        var actionableRows = popup.querySelectorAll('.notification-row-actionable');
-        var informationalRows = popup.querySelectorAll('.notification-row-informational');
-        var badge = btn.querySelector('.notification-badge');
-        var actionableCount = actionableRows.length;
-        var informationalCount = informationalRows.length;
-
-        // Remove existing badge
-        if (badge) badge.remove();
-
-        if (actionableCount > 0) {
-            var newBadge = document.createElement('span');
-            newBadge.className = 'notification-badge notification-badge-danger';
-            newBadge.textContent = actionableCount > 9 ? '9+' : actionableCount.toString();
-            btn.appendChild(newBadge);
-        } else if (informationalCount > 0) {
-            var dot = document.createElement('span');
-            dot.className = 'notification-badge notification-badge-dot';
-            btn.appendChild(dot);
-        }
-    }
-
     function openPopup() {
         popup.style.display = 'block';
         btn.setAttribute('aria-expanded', 'true');
@@ -115,7 +92,6 @@ document.addEventListener('click', function (e) {
             .then(function (html) {
                 if (content) content.innerHTML = html;
                 bindPopupClose();
-                bindPopupDismiss();
                 bindPopupMarkAllRead();
                 trapFocus();
             })
@@ -136,26 +112,6 @@ document.addEventListener('click', function (e) {
         if (closeBtn) {
             closeBtn.addEventListener('click', closePopup);
         }
-    }
-
-    function bindPopupDismiss() {
-        popup.querySelectorAll('[data-ajax-dismiss]').forEach(function (dismissBtn) {
-            dismissBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                var form = dismissBtn.closest('form');
-                fetch(form.action, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: new FormData(form)
-                }).then(function (r) {
-                    if (r.ok) {
-                        var row = dismissBtn.closest('.notification-row');
-                        if (row) row.remove();
-                        updateBellBadge();
-                    }
-                });
-            });
-        });
     }
 
     function bindPopupMarkAllRead() {

@@ -536,7 +536,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var user = await _userService.GetByIdAsync(userId, ct);
+            var user = await _userService.GetUserInfoAsync(userId, ct);
             if (user is null)
             {
                 return new WorkspaceAccountActionResult(false,
@@ -567,7 +567,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 actorUserId);
 
             return new WorkspaceAccountActionResult(true,
-                Message: $"Linked {email} to {user.DisplayName}.");
+                Message: $"Linked {email} to {user.BurnerName}.");
         }
         catch (Exception ex)
         {

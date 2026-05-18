@@ -45,22 +45,24 @@ public class UserEmailServiceTests
             NullLogger<UserEmailService>.Instance);
     }
 
-#pragma warning disable HUM_USERINFO_DISPLAYNAME
     private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<UserEmail> emails) =>
-        new(
-            Id: userId, DisplayName: "test-" + userId.ToString("N")[..6], PreferredLanguage: "en",
-            FallbackPictureUrl: null,
-            CreatedAt: Instant.MinValue, LastLoginAt: null, LastConsentReminderSentAt: null,
-            DeletionRequestedAt: null, DeletionScheduledFor: null, DeletionEligibleAfter: null,
-            UnsubscribedFromCampaigns: false, ICalToken: null, SuppressScheduleChangeEmails: false,
-            MagicLinkSentAt: null, GoogleEmailStatus: default, ContactSource: null, ExternalSourceId: null,
-            MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
-            UserEmails: emails.Select(e => new UserEmailInfo(
-                e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
-                e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
-                e.CreatedAt, e.UpdatedAt)).ToList(),
-            EventParticipations: [], ExternalLogins: [], Profile: null, CommunicationPreferences: []);
-#pragma warning restore HUM_USERINFO_DISPLAYNAME
+        UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "test-" + userId.ToString("N")[..6],
+                PreferredLanguage = "en",
+                CreatedAt = Instant.MinValue,
+                GoogleEmailStatus = default,
+            },
+            userEmails: emails,
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 
     // Stub IUserService to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
     private void StubAllUserInfosFromRows(IReadOnlyList<UserEmail> rows)

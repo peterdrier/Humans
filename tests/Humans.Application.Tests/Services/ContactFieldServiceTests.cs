@@ -374,35 +374,24 @@ public class ContactFieldServiceTests : IDisposable
         var fields = _dbContext.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .OrderBy(cf => cf.DisplayOrder)
-            .Select(cf => new ContactFieldInfo(cf.Id, cf.FieldType, cf.CustomLabel, cf.Value, cf.Visibility, cf.DisplayOrder))
             .ToList();
-        var profileInfo = new ProfileInfo(
-            Id: profile.Id, BurnerName: "", FirstName: profile.FirstName, LastName: profile.LastName,
-            City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
-            Bio: null, Pronouns: null, BirthdayDay: null, BirthdayMonth: null,
-            EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
-            HasCustomPicture: false, ProfilePictureContentType: null,
-            CreatedAt: profile.CreatedAt, UpdatedAt: profile.UpdatedAt,
-            AdminNotes: null, ContributionInterests: null, BoardNotes: null, Iban: null,
-            State: null, IsApproved: false, MembershipTier: default,
-            ConsentCheckStatus: null, ConsentCheckAt: null, ConsentCheckedByUserId: null, ConsentCheckNotes: null,
-            RejectionReason: null, RejectedAt: null, RejectedByUserId: null,
-            NoPriorBurnExperience: false,
-            ContactFields: fields,
-            Languages: [],
-            VolunteerHistory: []);
-#pragma warning disable HUM_USERINFO_DISPLAYNAME
-        var info = new UserInfo(
-            Id: userId, DisplayName: "", PreferredLanguage: "en", FallbackPictureUrl: null,
-            CreatedAt: profile.CreatedAt, LastLoginAt: null, LastConsentReminderSentAt: null,
-            DeletionRequestedAt: null, DeletionScheduledFor: null, DeletionEligibleAfter: null,
-            UnsubscribedFromCampaigns: false, ICalToken: null, SuppressScheduleChangeEmails: false,
-            MagicLinkSentAt: null, GoogleEmailStatus: default, ContactSource: null, ExternalSourceId: null,
-            MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
-            UserEmails: [], EventParticipations: [], ExternalLogins: [],
-            Profile: profileInfo,
-            CommunicationPreferences: []);
-#pragma warning restore HUM_USERINFO_DISPLAYNAME
+        var info = UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = profile.CreatedAt,
+                GoogleEmailStatus = default,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            contactFields: fields,
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 

@@ -77,11 +77,11 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         var assignment = await _repository.GetByIdAsync(assignmentId, ct);
         if (assignment is null) return null;
 
-        var user = await _userService.GetByIdAsync(assignment.UserId, ct);
+        var user = await _userService.GetUserInfoAsync(assignment.UserId, ct);
         return new RoleAssignmentDetailSnapshot(
             assignment.UserId,
             assignment.RoleName,
-            user?.DisplayName ?? "Unknown");
+            user?.BurnerName ?? "Unknown");
     }
 
     public async Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
@@ -111,13 +111,13 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             assignment.Id,
             assignment.UserId,
             user?.Email,
-            user?.DisplayName ?? "Unknown",
+            user?.BurnerName ?? "Unknown",
             assignment.RoleName,
             assignment.ValidFrom,
             assignment.ValidTo,
             assignment.Notes,
             assignment.CreatedByUserId,
-            creator?.DisplayName,
+            creator?.BurnerName,
             assignment.CreatedAt);
         }).ToList();
     }
@@ -358,4 +358,3 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
 #pragma warning restore CS0618
 }
-

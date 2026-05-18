@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using NSubstitute;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
@@ -108,9 +109,6 @@ public class CommunicationPreferenceServiceTests : IDisposable
                 var userId = ci.Arg<Guid>();
                 var prefs = _dbContext.CommunicationPreferences
                     .Where(cp => cp.UserId == userId)
-                    .Select(cp => new CommunicationPreferenceInfo(
-                        cp.Id, cp.Category, cp.OptedOut, cp.InboxEnabled,
-                        cp.UpdatedAt, cp.UpdateSource, cp.SubscribedAt))
                     .ToList();
                 return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, prefs));
             });
@@ -124,19 +122,24 @@ public class CommunicationPreferenceServiceTests : IDisposable
             NullLogger<CommunicationPreferenceService>.Instance);
     }
 
-#pragma warning disable HUM_USERINFO_DISPLAYNAME
-    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreferenceInfo> prefs) =>
-        new(
-            Id: userId, DisplayName: "", PreferredLanguage: "en", FallbackPictureUrl: null,
-            CreatedAt: Instant.MinValue, LastLoginAt: null, LastConsentReminderSentAt: null,
-            DeletionRequestedAt: null, DeletionScheduledFor: null, DeletionEligibleAfter: null,
-            UnsubscribedFromCampaigns: false, ICalToken: null, SuppressScheduleChangeEmails: false,
-            MagicLinkSentAt: null, GoogleEmailStatus: default, ContactSource: null, ExternalSourceId: null,
-            MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
-            UserEmails: [], EventParticipations: [], ExternalLogins: [],
-            Profile: null,
-            CommunicationPreferences: prefs);
-#pragma warning restore HUM_USERINFO_DISPLAYNAME
+    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreference> prefs) =>
+        UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.MinValue,
+                GoogleEmailStatus = default,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: prefs);
 
     public void Dispose()
     {

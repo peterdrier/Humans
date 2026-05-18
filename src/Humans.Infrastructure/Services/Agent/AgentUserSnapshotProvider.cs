@@ -64,7 +64,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
 
         return new AgentUserSnapshot(
             UserId: userId,
-            DisplayName: user?.DisplayName ?? string.Empty,
+            DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: profile?.MembershipTier.ToString() ?? "Volunteer",
             IsApproved: profile?.IsApproved ?? false,

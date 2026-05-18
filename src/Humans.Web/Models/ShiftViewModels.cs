@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
@@ -319,12 +320,12 @@ public class ShiftAdminViewModel
     public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
 
     /// <summary>
-    /// User display data (DisplayName, ProfilePictureUrl) keyed by UserId for every signup
+    /// User display data (BurnerName, ProfilePictureUrl) keyed by UserId for every signup
     /// in <see cref="Rotas"/> and <see cref="PendingSignups"/>. Resolved by the controller via
-    /// <c>IUserService.GetByIdsAsync</c>; the view reads from this dictionary instead of
+    /// <c>IUserService.GetUserInfosAsync</c>; the view reads from this dictionary instead of
     /// navigating <c>ShiftSignup.User</c> (cross-domain nav, removed per design-rules §6c).
     /// </summary>
-    public IReadOnlyDictionary<Guid, User> Users { get; set; } = new Dictionary<Guid, User>();
+    public IReadOnlyDictionary<Guid, UserInfo> Users { get; set; } = new Dictionary<Guid, UserInfo>();
 
     public bool CanViewMedical { get; set; }
     public List<DailyStaffingData> StaffingData { get; set; } = [];

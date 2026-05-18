@@ -114,11 +114,34 @@ public interface IUserService : IApplicationService, IUserMerge
 
     /// <summary>
     /// Set participation status from ticket sync. Handles the lifecycle rules:
-    /// - Valid ticket → Ticketed
+    /// - Valid ticket → Ticketed (<paramref name="checkedInAt"/> ignored)
     /// - Checked in → Attended (permanent)
     /// - Ticket purchase overrides NotAttending
+    /// <para>
+    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
+    /// instant. Stored on <see cref="EventParticipation.CheckedInAt"/> when an
+    /// Attended row is being created or upgraded. Never overwritten once
+    /// non-null — matches the "Attended is permanent" invariant (issue
+    /// nobodies-collective/Humans#736).
+    /// </para>
     /// </summary>
-    Task SetParticipationFromTicketSyncAsync(Guid userId, int year, ParticipationStatus status, CancellationToken ct = default);
+    Task SetParticipationFromTicketSyncAsync(
+        Guid userId,
+        int year,
+        ParticipationStatus status,
+        Instant? checkedInAt,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a flat list of every user currently on-site — that is, whose
+    /// <see cref="EventParticipation"/> for <paramref name="year"/> has
+    /// <see cref="ParticipationStatus.Attended"/> with a non-null
+    /// <see cref="EventParticipation.CheckedInAt"/>. Caller (Web layer) joins in
+    /// camp / team / governance-role names via the owning section services and
+    /// applies filters. Issue nobodies-collective/Humans#736.
+    /// </summary>
+    Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
+        int year, CancellationToken ct = default);
 
     /// <summary>
     /// Remove a TicketSync-sourced participation record when a user no longer has valid tickets.
@@ -339,3 +362,14 @@ public record AnonymizedAccountSummary(
     string OriginalDisplayName,
     string PreferredLanguage,
     IReadOnlyList<(Guid SignupId, Guid ShiftId)> CancelledSignupIds);
+
+/// <summary>
+/// Per-user row returned from <see cref="IUserService.GetOnsiteUsersAsync"/>.
+/// Names of camps / teams / governance roles are not stitched in here; the Web
+/// layer joins them via the owning section services before rendering. Issue
+/// nobodies-collective/Humans#736.
+/// </summary>
+public sealed record OnsiteUserRow(
+    Guid UserId,
+    string DisplayName,
+    NodaTime.Instant? CheckedInAt);

@@ -193,13 +193,13 @@ public sealed class OnboardingService : IOnboardingService
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
-        var rejectUser = await _userService.GetByIdAsync(userId, ct);
+        var rejectUser = await _userService.GetUserInfoAsync(userId, ct);
 
         try
         {
             await _emailService.SendSignupRejectedAsync(
                 rejectUser?.Email ?? string.Empty,
-                rejectUser?.DisplayName ?? string.Empty,
+                rejectUser?.BurnerName ?? string.Empty,
                 reason,
                 rejectUser?.PreferredLanguage ?? "en");
         }
@@ -281,24 +281,6 @@ public sealed class OnboardingService : IOnboardingService
         var set = await _profileService.SetConsentCheckPendingAsync(userId, ct);
         if (!set)
             return false;
-
-        try
-        {
-            await _notificationService.SendToRoleAsync(
-                NotificationSource.ConsentReviewNeeded,
-                NotificationClass.Actionable,
-                NotificationPriority.High,
-                "New consent review needed",
-                RoleNames.ConsentCoordinator,
-                body: "A human has completed all required consents and needs review.",
-                actionUrl: "/OnboardingReview",
-                actionLabel: "Review →",
-                cancellationToken: ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
-        }
 
         return true;
     }

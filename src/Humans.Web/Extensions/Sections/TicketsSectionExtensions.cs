@@ -45,6 +45,9 @@ internal static class TicketsSectionExtensions
         services.AddScoped<IAttendeeContactImportService, AttendeeContactImportService>();
         services.AddScoped<TicketDashboardPageBuilder>();
 
+        // "Who's onsite" roster orchestrator (#736).
+        services.AddScoped<IOnsiteRosterService, OnsiteRosterService>();
+
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
 
         services.AddScoped<TicketSyncJob>();

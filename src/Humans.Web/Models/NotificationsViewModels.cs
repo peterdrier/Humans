@@ -7,23 +7,17 @@ public class NotificationRowViewModel
 {
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
-    public string? Body { get; init; }
     public string? ActionUrl { get; init; }
     public string ActionLabel { get; init; } = "View \u2192";
     public NotificationPriority Priority { get; init; }
     public NotificationSource Source { get; init; }
     public NotificationClass Class { get; init; }
-    public string? TargetGroupName { get; init; }
     public DateTime CreatedAt { get; init; }
     public bool IsRead { get; init; }
 
     public bool IsResolved { get; init; }
     public DateTime? ResolvedAt { get; init; }
     public string? ResolvedByName { get; init; }
-
-    // Group avatar cluster data
-    public List<string> RecipientInitials { get; init; } = [];
-    public int TotalRecipientCount { get; init; }
 }
 
 public class NotificationPopupViewModel

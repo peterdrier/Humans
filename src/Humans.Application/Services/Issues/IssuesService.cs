@@ -263,7 +263,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             issue.UserAgent,
             issue.AdditionalContext,
             issue.ReporterUserId,
-            users.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.DisplayName : null,
+            users.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.BurnerName : null,
             reporter?.Email,
             reporter?.PreferredLanguage,
             issue.CreatedAt,
@@ -274,7 +274,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             issue.Comments.Count,
             issue.AssigneeUserId,
             issue.AssigneeUserId.HasValue && users.TryGetValue(issue.AssigneeUserId.Value, out var assignee)
-                ? assignee.DisplayName
+                ? assignee.BurnerName
                 : null,
             issue.GitHubIssueNumber)).ToList();
     }
@@ -304,21 +304,22 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         var actorIds = auditEntries
             .Where(a => a.ActorUserId.HasValue)
             .Select(a => a.ActorUserId!.Value)
+            .Concat(issue.Comments.Where(c => c.SenderUserId.HasValue).Select(c => c.SenderUserId!.Value))
             .Distinct()
             .ToList();
         IReadOnlyDictionary<Guid, UserInfo> actorUsers = actorIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await _users.GetUserInfosAsync(actorIds, ct);
 
-#pragma warning disable CS0618
         var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
             c.Id,
             c.CreatedAt,
             c.SenderUserId,
-            c.SenderUser?.DisplayName,
+            c.SenderUserId.HasValue && actorUsers.TryGetValue(c.SenderUserId.Value, out var sender)
+                ? sender.BurnerName
+                : null,
             ActorIsReporter: c.SenderUserId.HasValue && c.SenderUserId == issue.ReporterUserId,
             c.Content));
-#pragma warning restore CS0618
 
         var auditEvents = auditEntries.Select(a => (IssueThreadEvent)new IssueAuditEvent(
             a.OccurredAt,
@@ -815,7 +816,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     private async Task SendCommentEmailAsync(Issue issue, IssueComment comment, CancellationToken ct)
     {
-        var reporter = await _users.GetByIdAsync(issue.ReporterUserId, ct);
+        var reporter = await _users.GetUserInfoAsync(issue.ReporterUserId, ct);
         var emails = await _userEmails.GetNotificationTargetEmailsAsync(
             [issue.ReporterUserId], ct);
 
@@ -825,7 +826,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         {
             await _email.SendIssueCommentAsync(
                 to,
-                reporter.DisplayName,
+                reporter.BurnerName,
                 issue.Title,
                 comment.Content,
                 $"/Issues/{issue.Id}",

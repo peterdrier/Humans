@@ -576,6 +576,10 @@ app.UseCors();
 app.UseRateLimiter();
 
 app.UseAuthentication();
+
+// Between Authentication and Authorization so the principal is populated AND denied-but-authenticated requests (403s short-circuited by UseAuthorization) still count toward humans.active_users.
+app.UseMiddleware<UserActivityTrackingMiddleware>();
+
 app.UseAuthorization();
 
 app.UseSession();

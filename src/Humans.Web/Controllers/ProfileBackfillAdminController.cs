@@ -67,7 +67,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
             .Select(u => new MissingProfileRow(
                 u.Id,
                 u.Email ?? string.Empty,
-                u.DisplayName,
+                u.BurnerName,
                 u.CreatedAt,
                 u.ContactSource))
             .OrderByDescending(r => r.CreatedAt)
