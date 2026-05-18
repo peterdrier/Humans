@@ -194,7 +194,7 @@ internal sealed class TicketRepository : ITicketRepository
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null && a.VendorEventId == vendorEventId)
-            .Select(a => new MatchedAttendeeRow(a.MatchedUserId!.Value, a.Status))
+            .Select(a => new MatchedAttendeeRow(a.VendorTicketId, a.MatchedUserId!.Value, a.Status))
             .ToListAsync(ct);
     }
 

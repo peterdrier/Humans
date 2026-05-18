@@ -232,7 +232,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             foreach (var userId in newlyMatchedUserIds)
             {
                 await _users.SetParticipationFromTicketSyncAsync(
-                    userId, active.Year, ParticipationStatus.Ticketed, ct);
+                    userId, active.Year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
 

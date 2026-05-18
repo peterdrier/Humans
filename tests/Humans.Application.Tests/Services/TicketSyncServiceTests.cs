@@ -433,6 +433,129 @@ public class TicketSyncServiceTests : IDisposable
     }
 
     // ==========================================================================
+    // EventParticipation.CheckedInAt threading (#736)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SyncEventParticipations_PassesVendorCheckedInAt_ForCheckedInAttendees()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await _dbContext.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_chk", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: checkInInstant)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            checkInInstant, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_TakesMinCheckedInAt_AcrossUsersCheckedInAttendees()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await _dbContext.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        var earlier = Instant.FromUtc(2026, 7, 8, 10, 0);
+        var later = Instant.FromUtc(2026, 7, 8, 18, 0);
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_two", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_a", "ord_two", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: later),
+                MakeTicketDto("tkt_b", "ord_two", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: earlier),
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            earlier, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_PassesNullCheckedInAt_WhenVendorDidntReturnTimestamp()
+    {
+        // Graceful fallback: vendor returned status=checked_in but no
+        // check_in.checked_in_at — sync still flips to Attended but with null
+        // timestamp. Repo's "never overwrite non-null" rule preserves a prior
+        // timestamp if one already exists.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await _dbContext.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_x", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_x", "ord_x", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: null)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            (Instant?)null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_PassesNullCheckedInAt_ForTicketedOnlyAttendees()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await _dbContext.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_v", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_v", "ord_v", "Alice", "alice@example.com",
+                    status: "valid", checkedInAt: null)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Ticketed,
+            (Instant?)null, Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 
@@ -498,7 +621,8 @@ public class TicketSyncServiceTests : IDisposable
         string attendeeName,
         string? attendeeEmail,
         decimal price = 50m,
-        string status = "valid")
+        string status = "valid",
+        Instant? checkedInAt = null)
     {
         return new VendorTicketDto(
             VendorTicketId: vendorTicketId,
@@ -507,6 +631,7 @@ public class TicketSyncServiceTests : IDisposable
             AttendeeEmail: attendeeEmail,
             TicketTypeName: "Full Week",
             Price: price,
-            Status: status);
+            Status: status,
+            CheckedInAt: checkedInAt);
     }
 }

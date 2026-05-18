@@ -1,0 +1,89 @@
+@using Humans.Web.Extensions
+@model Humans.Web.Models.Tickets.OnsiteRosterViewModel
+@{
+    ViewData["Title"] = "Who's Onsite";
+}
+
+<h1>Who's Onsite</h1>
+
+@if (Model.Year == 0)
+{
+    <p class="text-muted">No active event configured.</p>
+}
+else
+{
+    <p class="text-muted">
+        @Model.Rows.Count human@(Model.Rows.Count == 1 ? "" : "s") currently checked in for the @Model.Year event.
+        Sorted by most-recent arrival first.
+    </p>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-auto">
+            <label for="camp-filter" class="form-label small mb-0">Camp</label>
+            <select id="camp-filter" name="camp" class="form-select form-select-sm">
+                <option value="">All camps</option>
+                @foreach (var c in Model.AvailableCamps)
+                {
+                    <option value="@c" selected="@(string.Equals(c, Model.CampFilter, StringComparison.OrdinalIgnoreCase))">@c</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="team-filter" class="form-label small mb-0">Team</label>
+            <select id="team-filter" name="team" class="form-select form-select-sm">
+                <option value="">All teams</option>
+                @foreach (var t in Model.AvailableTeams)
+                {
+                    <option value="@t" selected="@(string.Equals(t, Model.TeamFilter, StringComparison.OrdinalIgnoreCase))">@t</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="role-filter" class="form-label small mb-0">Governance role</label>
+            <select id="role-filter" name="role" class="form-select form-select-sm">
+                <option value="">All roles</option>
+                @foreach (var r in Model.AvailableRoles)
+                {
+                    <option value="@r" selected="@(string.Equals(r, Model.RoleFilter, StringComparison.OrdinalIgnoreCase))">@r</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Index")">Reset</a>
+        </div>
+    </form>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <p class="text-muted">No humans currently onsite matching the selected filters.</p>
+    }
+    else
+    {
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Human</th>
+                    <th>Checked in at</th>
+                    <th>Camps</th>
+                    <th>Teams</th>
+                    <th>Governance roles</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.UserId">@row.DisplayName</a>
+                        </td>
+                        <td>@row.CheckedInAt.ToDisplayDateTime()</td>
+                        <td>@(row.CampNames.Count == 0 ? "—" : string.Join(", ", row.CampNames))</td>
+                        <td>@(row.TeamNames.Count == 0 ? "—" : string.Join(", ", row.TeamNames))</td>
+                        <td>@(row.RoleNames.Count == 0 ? "—" : string.Join(", ", row.RoleNames))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}

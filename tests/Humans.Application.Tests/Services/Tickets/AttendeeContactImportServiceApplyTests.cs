@@ -60,7 +60,8 @@ public class AttendeeContactImportServiceApplyTests
                 l => l.Count == 1 && l[0].Id == attendeeId), Arg.Any<CancellationToken>());
 
         await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
-            targetUserId, 2026, ParticipationStatus.Ticketed, Arg.Any<CancellationToken>());
+            targetUserId, 2026, ParticipationStatus.Ticketed,
+            (Instant?)null, Arg.Any<CancellationToken>());
 
         harness.TicketQuery.Received(1).InvalidateAfterContactImport();
 
@@ -109,7 +110,8 @@ public class AttendeeContactImportServiceApplyTests
             "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
 
         await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
-            newUserId, 2026, ParticipationStatus.Ticketed, Arg.Any<CancellationToken>());
+            newUserId, 2026, ParticipationStatus.Ticketed,
+            (Instant?)null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -311,7 +313,8 @@ public class AttendeeContactImportServiceApplyTests
 
         // Participation flips once for the single user, not twice.
         await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
-            targetUserId, 2026, ParticipationStatus.Ticketed, Arg.Any<CancellationToken>());
+            targetUserId, 2026, ParticipationStatus.Ticketed,
+            (Instant?)null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

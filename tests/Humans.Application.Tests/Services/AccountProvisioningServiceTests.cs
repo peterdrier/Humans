@@ -171,7 +171,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<EventParticipation?> UpsertParticipationAsync(
             Guid userId, int year, ParticipationStatus status,
-            ParticipationSource source, Instant? declaredAt, CancellationToken ct = default) =>
+            ParticipationSource source, Instant? declaredAt, Instant? checkedInAt,
+            CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> RemoveParticipationAsync(
             Guid userId, int year, ParticipationSource requiredSource, CancellationToken ct = default) =>

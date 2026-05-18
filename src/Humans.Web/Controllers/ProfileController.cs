@@ -245,6 +245,10 @@ public class ProfileController : HumansControllerBase
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
             CampaignGrants = campaignGrants,
+            // Onsite chip — own profile, always visible. Issue
+            // nobodies-collective/Humans#736.
+            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
+            CanViewOnsiteChip = true,
         };
 
         // Tier app status (skip Withdrawn).
@@ -256,6 +260,19 @@ public class ProfileController : HumansControllerBase
         }
 
         return View("Index", viewModel);
+    }
+
+    /// <summary>
+    /// Returns the user's "onsite since" instant for the active event year, or
+    /// null if they are not yet checked in (or there is no active event). Reads
+    /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
+    /// nobodies-collective/Humans#736.
+    /// </summary>
+    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
+    {
+        var active = await _shiftMgmt.GetActiveAsync();
+        if (active is null || active.Year == 0) return null;
+        return info.OnsiteSinceForYear(active.Year);
     }
 
     [HttpGet("Me/Edit")]
@@ -1863,6 +1880,14 @@ public class ProfileController : HumansControllerBase
 
         var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
 
+        // Onsite chip visibility (#736): self always, plus the same admin/board
+        // policy that gates /Tickets/Admin/Onsite. Coordinators below board
+        // tier don't see the chip on other humans — wider visibility is a
+        // follow-up PR if needed.
+        var canViewOnsiteChip = isOwnProfile
+            || (await _authorizationService.AuthorizeAsync(
+                User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
+
         var viewModel = new ProfileViewModel
         {
             Id = profile.Id,
@@ -1872,6 +1897,10 @@ public class ProfileController : HumansControllerBase
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
+            OnsiteSince = canViewOnsiteChip
+                ? await ResolveOnsiteSinceAsync(profileInfo, ct)
+                : null,
+            CanViewOnsiteChip = canViewOnsiteChip,
         };
 
         return View("Index", viewModel);
