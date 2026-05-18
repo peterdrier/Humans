@@ -10,13 +10,11 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Shifts;
@@ -30,24 +28,17 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// Lives in its own file so the notification mock can be captured as a field
 /// without disturbing the monster-sized <see cref="ShiftSignupServiceTests"/>.
 /// </summary>
-public class ShiftSignupServiceCoverageGapTests : IDisposable
+public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly INotificationService _notificationService;
     private readonly ITeamService _teamService;
     private readonly ShiftSignupService _service;
 
     public ShiftSignupServiceCoverageGapTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(TestNow);
         _notificationService = Substitute.For<INotificationService>();
         _teamService = Substitute.For<ITeamService>();
         var auditLog = Substitute.For<IAuditLogService>();
@@ -57,7 +48,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         serviceProvider.GetService(typeof(ITeamService)).Returns(_teamService);
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
 
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var shiftRepo = new ShiftManagementRepository(DbFactory);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             auditLog,
@@ -65,10 +56,10 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        var signupRepo = new ShiftSignupRepository(_dbContext, _clock);
+        var signupRepo = new ShiftSignupRepository(Db, Clock);
         var membership = Substitute.For<IMembershipCalculator>();
         membership.HasAllRequiredConsentsForTeamAsync(
                 Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
@@ -83,14 +74,8 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
-            _clock,
+            Clock,
             NullLogger<ShiftSignupService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -104,7 +89,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
 
-        var signupA = await _dbContext.ShiftSignups.FirstAsync(s => s.UserId == userA);
+        var signupA = await Db.ShiftSignups.FirstAsync(s => s.UserId == userA);
 
         // Act
         var result = await _service.BailAsync(signupA.Id, userA, reason: null);
@@ -136,7 +121,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
 
-        var signupA = await _dbContext.ShiftSignups.FirstAsync(s => s.UserId == userA);
+        var signupA = await Db.ShiftSignups.FirstAsync(s => s.UserId == userA);
 
         // Act
         var result = await _service.BailAsync(signupA.Id, userA, reason: null);
@@ -173,7 +158,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -185,7 +170,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(team);
+        Db.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -200,7 +185,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
 
         var shift = new Shift
         {
@@ -215,11 +200,11 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             UpdatedAt = TestNow,
             Rota = rota
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -228,7 +213,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         });
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -238,7 +223,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             UpdatedAt = TestNow
         });
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         return (es, rota, shift, userA, userB);
     }
 

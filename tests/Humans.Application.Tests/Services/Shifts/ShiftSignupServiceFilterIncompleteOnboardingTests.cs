@@ -10,13 +10,10 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Shifts;
@@ -25,22 +22,16 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// Tests for <see cref="ShiftSignupService.FilterToIncompleteOnboardingAsync"/> —
 /// the coordinator-side Pending-list "Incomplete onboarding" filter chip helper.
 /// </summary>
-public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
+public sealed class ShiftSignupServiceFilterIncompleteOnboardingTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membership;
     private readonly ShiftSignupService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     public ShiftSignupServiceFilterIncompleteOnboardingTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        var clock = new FakeClock(TestNow);
         var auditLog = Substitute.For<IAuditLogService>();
         _membership = Substitute.For<IMembershipCalculator>();
 
@@ -50,7 +41,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
         serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
 
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var shiftRepo = new ShiftManagementRepository(DbFactory);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             auditLog,
@@ -58,10 +49,10 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
-            clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        var repo = new ShiftSignupRepository(_dbContext, clock);
+        var repo = new ShiftSignupRepository(Db, Clock);
         _service = new ShiftSignupService(
             repo,
             shiftMgmt,
@@ -71,14 +62,8 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
-            clock,
+            Clock,
             NullLogger<ShiftSignupService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
