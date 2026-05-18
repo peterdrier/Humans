@@ -9,22 +9,18 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public class ShiftSignupServiceForcePendingTests : IDisposable
+public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly IAuditLogService _auditLog;
     private readonly IMembershipCalculator _membership;
     private readonly ShiftManagementService _shiftMgmt;
@@ -36,13 +32,8 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
     private readonly Guid _userId = Guid.NewGuid();
 
     public ShiftSignupServiceForcePendingTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(TestNow);
         _auditLog = Substitute.For<IAuditLogService>();
         _membership = Substitute.For<IMembershipCalculator>();
 
@@ -52,7 +43,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
         serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
 
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var shiftRepo = new ShiftManagementRepository(DbFactory);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -61,10 +52,10 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftSignupRepository(_dbContext, _clock);
+        _repo = new ShiftSignupRepository(Db, Clock);
         _service = new ShiftSignupService(
             _repo,
             _shiftMgmt,
@@ -74,14 +65,8 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
-            _clock,
+            Clock,
             NullLogger<ShiftSignupService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -89,7 +74,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
     {
         SetUserConsents(false);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -102,7 +87,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
     {
         SetUserConsents(true);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -115,7 +100,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
     {
         SetUserConsents(false);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -133,12 +118,12 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
         {
             SeedAllDayShift(rota, day);
         }
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.SignUpRangeAsync(_userId, rota.Id, -3, -1, _userId);
 
         Assert.True(result.Success);
-        var blockSignups = await _dbContext.ShiftSignups
+        var blockSignups = await Db.ShiftSignups
             .Where(s => s.UserId == _userId)
             .ToListAsync();
         Assert.Equal(3, blockSignups.Count);
@@ -170,7 +155,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -182,7 +167,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(team);
+        Db.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -197,7 +182,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
 
         var shift = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
         return (es, rota, shift);
@@ -218,7 +203,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             UpdatedAt = TestNow,
             Rota = rota
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 
@@ -238,7 +223,7 @@ public class ShiftSignupServiceForcePendingTests : IDisposable
             UpdatedAt = TestNow,
             Rota = rota
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 }
