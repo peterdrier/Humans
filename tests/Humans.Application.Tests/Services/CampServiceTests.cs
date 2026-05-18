@@ -10,20 +10,16 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class CampServiceTests : IDisposable
+public sealed class CampServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CampService _service;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
@@ -32,32 +28,15 @@ public class CampServiceTests : IDisposable
     private readonly ICampRoleService _campRoleService;
 
     public CampServiceTests()
+        : base(Instant.FromUtc(2026, 3, 13, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 13, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
         _fileStorage = new InMemoryFileStorage();
 
-        var factory = new TestDbContextFactory(options);
-        var repo = new CampRepository(factory);
-        var roleRepo = new CampRoleRepository(factory);
+        var repo = new CampRepository(DbFactory);
+        var roleRepo = new CampRoleRepository(DbFactory);
 
-        // IUserService substitute — returns seeded users from the shared in-memory db.
-        _userService = Substitute.For<IUserService>();
-        _userService.GetByIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
-                using var ctx = new HumansDbContext(options);
-                var users = ctx.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                    users.ToDictionary(u => u.Id));
-            });
-        _userService.StubGetUserInfosFromDb(options);
+        _userService = NewDbBackedUserService();
 
         _notificationEmitter = Substitute.For<INotificationEmitter>();
 
@@ -75,14 +54,8 @@ public class CampServiceTests : IDisposable
             _notificationEmitter,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
-            _clock,
+            Clock,
             NullLogger<CampService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================
@@ -104,14 +77,14 @@ public class CampServiceTests : IDisposable
         camp.Slug.Should().Be("camp-funhouse");
         camp.CreatedByUserId.Should().Be(userId);
 
-        var season = await _dbContext.CampSeasons
+        var season = await Db.CampSeasons
             .FirstOrDefaultAsync(s => s.CampId == camp.Id);
         season.Should().NotBeNull();
         season.Status.Should().Be(CampSeasonStatus.Pending);
         season.Year.Should().Be(2026);
         season.Name.Should().Be("Camp Funhouse");
 
-        var lead = await _dbContext.CampLeads
+        var lead = await Db.CampLeads
             .FirstOrDefaultAsync(l => l.CampId == camp.Id);
         lead.Should().NotBeNull();
         lead.UserId.Should().Be(userId);
@@ -141,12 +114,12 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
         var adminId = Guid.NewGuid();
 
         await _service.ApproveSeasonAsync(season.Id, adminId, "Looks good");
 
-        var updated = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        var updated = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
         updated.Status.Should().Be(CampSeasonStatus.Active);
         updated.ReviewedByUserId.Should().Be(adminId);
         updated.ReviewNotes.Should().Be("Looks good");
@@ -162,11 +135,11 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
 
         await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "Not a real camp");
 
-        var updated = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        var updated = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
         updated.Status.Should().Be(CampSeasonStatus.Rejected);
         updated.ReviewNotes.Should().Be("Not a real camp");
     }
@@ -180,13 +153,13 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null);
 
         // Open 2027 season in settings
-        var settings = await _dbContext.CampSettings.FirstAsync();
+        var settings = await Db.CampSettings.FirstAsync();
         settings.OpenSeasons = [2026, 2027];
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var newSeason = await _service.OptInToSeasonAsync(camp.Id, 2027);
 
@@ -200,12 +173,12 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
         await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "nope");
 
-        var settings = await _dbContext.CampSettings.FirstAsync();
+        var settings = await Db.CampSettings.FirstAsync();
         settings.OpenSeasons = [2026, 2027];
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var newSeason = await _service.OptInToSeasonAsync(camp.Id, 2027);
 
@@ -219,9 +192,9 @@ public class CampServiceTests : IDisposable
         var camp = await CreateTestCamp();
         // Don't approve or reject — season stays Pending
 
-        var settings = await _dbContext.CampSettings.FirstAsync();
+        var settings = await Db.CampSettings.FirstAsync();
         settings.OpenSeasons = [2026, 2027];
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var newSeason = await _service.OptInToSeasonAsync(camp.Id, 2027);
 
@@ -262,7 +235,7 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var lead = await _dbContext.CampLeads.FirstAsync(l => l.CampId == camp.Id);
+        var lead = await Db.CampLeads.FirstAsync(l => l.CampId == camp.Id);
 
         var act = () => _service.RemoveLeadAsync(lead.Id);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*last lead*");
@@ -346,15 +319,15 @@ public class CampServiceTests : IDisposable
         await ApproveLatestSeasonAsync(zebraCamp.Id);
         await ApproveLatestSeasonAsync(alphaCamp.Id);
 
-        _dbContext.CampImages.Add(new CampImage
+        Db.CampImages.Add(new CampImage
         {
             Id = Guid.NewGuid(),
             CampId = zebraCamp.Id,
             StoragePath = "uploads/camps/zebra.jpg",
             SortOrder = 1,
-            UploadedAt = _clock.GetCurrentInstant()
+            UploadedAt = Clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var summaries = await _service.GetCampPublicSummariesForYearAsync(2026);
 
@@ -449,21 +422,21 @@ public class CampServiceTests : IDisposable
 
         await ApproveLatestSeasonAsync(camp.Id);
 
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
         season.NameLockDate = new LocalDate(2026, 3, 1);
 
-        _dbContext.CampImages.Add(new CampImage
+        Db.CampImages.Add(new CampImage
         {
             Id = Guid.NewGuid(),
             CampId = camp.Id,
             StoragePath = "uploads/camps/fallback.jpg",
             SortOrder = 1,
-            UploadedAt = _clock.GetCurrentInstant()
+            UploadedAt = Clock.GetCurrentInstant()
         });
 
-        var settings = await _dbContext.CampSettings.FirstAsync();
+        var settings = await Db.CampSettings.FirstAsync();
         settings.PublicYear = 2027;
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var detail = await _service.BuildCampDetailDataBySlugAsync(camp.Slug);
 
@@ -567,15 +540,15 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null);
 
         await _service.ChangeSeasonNameAsync(season.Id, "New Name");
 
-        var updated = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        var updated = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
         updated.Name.Should().Be("New Name");
 
-        var historical = await _dbContext.CampHistoricalNames
+        var historical = await Db.CampHistoricalNames
             .AsNoTracking()
             .FirstOrDefaultAsync(h => h.CampId == camp.Id && h.Source == CampNameSource.NameChange);
         historical.Should().NotBeNull();
@@ -587,12 +560,12 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null);
 
         // Set lock date in the past
         season.NameLockDate = new LocalDate(2026, 3, 1);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var act = () => _service.ChangeSeasonNameAsync(season.Id, "Too Late");
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*locked*");
@@ -615,7 +588,7 @@ public class CampServiceTests : IDisposable
 
         result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
         result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Success);
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Pending);
         member.UserId.Should().Be(userId);
     }
@@ -633,7 +606,7 @@ public class CampServiceTests : IDisposable
         result.Outcome.Should().Be(CampMemberRequestOutcome.NoOpenSeason);
         result.Message.Should().Be("Camp is not open for membership this year.");
         result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Error);
-        (await _dbContext.CampMembers.AsNoTracking().AnyAsync()).Should().BeFalse();
+        (await Db.CampMembers.AsNoTracking().AnyAsync()).Should().BeFalse();
     }
 
     [HumansFact]
@@ -651,7 +624,7 @@ public class CampServiceTests : IDisposable
         second.Outcome.Should().Be(CampMemberRequestOutcome.AlreadyPending);
         second.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Info);
         second.CampMemberId.Should().Be(first.CampMemberId);
-        (await _dbContext.CampMembers.AsNoTracking().CountAsync()).Should().Be(1);
+        (await Db.CampMembers.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
     [HumansFact]
@@ -667,7 +640,7 @@ public class CampServiceTests : IDisposable
 
         await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, approverId);
 
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Active);
         member.ConfirmedByUserId.Should().Be(approverId);
         member.ConfirmedAt.Should().NotBeNull();
@@ -706,7 +679,7 @@ public class CampServiceTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
 
         // Camp B's pending row is untouched.
-        var memberB = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId);
+        var memberB = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId);
         memberB.Status.Should().Be(CampMemberStatus.Pending);
     }
 
@@ -722,7 +695,7 @@ public class CampServiceTests : IDisposable
 
         await _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
 
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Removed);
         member.RemovedAt.Should().NotBeNull();
 
@@ -768,7 +741,7 @@ public class CampServiceTests : IDisposable
 
         await _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, userId);
 
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Removed);
     }
 
@@ -801,7 +774,7 @@ public class CampServiceTests : IDisposable
 
         result.Succeeded.Should().BeTrue();
 
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Removed);
     }
 
@@ -818,7 +791,7 @@ public class CampServiceTests : IDisposable
 
         await _service.RemoveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
 
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Removed);
     }
 
@@ -830,14 +803,14 @@ public class CampServiceTests : IDisposable
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
         var leadUserId = Guid.NewGuid();
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
 
         var memberId = await _service.AddCampMemberAsLeadAsync(season.Id, targetUserId, leadUserId);
 
         memberId.Should().NotBe(Guid.Empty);
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == memberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == memberId);
         member.UserId.Should().Be(targetUserId);
         member.Status.Should().Be(CampMemberStatus.Active);
         member.ConfirmedByUserId.Should().Be(leadUserId);
@@ -860,14 +833,14 @@ public class CampServiceTests : IDisposable
             CampSeasonId = season.Id,
             UserId = userId,
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             ConfirmedByUserId = Guid.NewGuid(),
         };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        _dbContext.CampMembers.Add(existing);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        Db.CampMembers.Add(existing);
+        await Db.SaveChangesAsync();
 
         var leadId = Guid.NewGuid();
         var memberId = await _service.AddCampMemberAsLeadAsync(season.Id, userId, leadId);
@@ -887,15 +860,15 @@ public class CampServiceTests : IDisposable
         var activeSeason = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
         var leadUserId = Guid.NewGuid();
-        _dbContext.Camps.Add(camp);
-        await _dbContext.CampSeasons.AddRangeAsync(inactiveSeason, activeSeason);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        await Db.CampSeasons.AddRangeAsync(inactiveSeason, activeSeason);
+        await Db.SaveChangesAsync();
 
         var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, targetUserId, leadUserId);
 
         result.Outcome.Should().Be(AddCampMemberAsLeadOutcome.Added);
         result.CampMemberId.Should().NotBeNull();
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId);
         member.CampSeasonId.Should().Be(activeSeason.Id);
     }
 
@@ -904,15 +877,15 @@ public class CampServiceTests : IDisposable
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "inactive-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Pending };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
 
         var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(
             camp.Id, Guid.NewGuid(), Guid.NewGuid());
 
         result.Outcome.Should().Be(AddCampMemberAsLeadOutcome.NoActiveSeason);
-        (await _dbContext.CampMembers.CountAsync()).Should().Be(0);
+        (await Db.CampMembers.CountAsync()).Should().Be(0);
     }
 
     [HumansFact]
@@ -920,9 +893,9 @@ public class CampServiceTests : IDisposable
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "inactive-role-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Pending };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
 
         var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
             camp.Id, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
@@ -942,12 +915,12 @@ public class CampServiceTests : IDisposable
             CampSeasonId = season.Id,
             UserId = userId,
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             ConfirmedByUserId = Guid.NewGuid(),
         };
-        _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp); Db.CampSeasons.Add(season); Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
 
         var result = await _service.LeaveCampAsync(member.Id, userId);
 
@@ -969,10 +942,10 @@ public class CampServiceTests : IDisposable
             CampSeasonId = season.Id,
             UserId = userId,
             Status = CampMemberStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp); Db.CampSeasons.Add(season); Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
 
         await _service.WithdrawCampMembershipRequestAsync(member.Id, userId);
 
@@ -995,12 +968,12 @@ public class CampServiceTests : IDisposable
             CampSeasonId = season.Id,
             UserId = Guid.NewGuid(),
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             ConfirmedByUserId = Guid.NewGuid(),
         };
-        _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp); Db.CampSeasons.Add(season); Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
 
         await _service.RemoveCampMemberAsync(camp.Id, memberId, Guid.NewGuid());
 
@@ -1018,12 +991,12 @@ public class CampServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
         var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
-        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
         _notificationEmitter.ClearReceivedCalls();
 
         await _service.WithdrawSeasonAsync(season.Id);
 
-        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Pending);
 
         await _notificationEmitter.Received(1).SendAsync(
@@ -1092,13 +1065,13 @@ public class CampServiceTests : IDisposable
         (await _service.GetPendingMembershipCountForLeadAsync(Guid.NewGuid())).Should().Be(0);
 
         // Approve one; count drops to 1.
-        var aliceReq = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.UserId == alice);
+        var aliceReq = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.UserId == alice);
         await _service.ApproveCampMemberAsync(camp.Id, aliceReq.Id, leadUserId);
         (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(1);
 
         // Withdraw the season; count drops to 0 (pending rows remain, but meter
         // filters to Active/Full seasons only).
-        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
         await _service.WithdrawSeasonAsync(season.Id);
         (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(0);
     }
@@ -1114,7 +1087,7 @@ public class CampServiceTests : IDisposable
             leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
             null, null, false, 1, MakeSeasonData(), null, 2026);
         await ApproveLatestSeasonAsync(camp.Id);
-        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
 
         // A separate human requests and is approved.
         var memberUserId = Guid.NewGuid();
@@ -1186,7 +1159,7 @@ public class CampServiceTests : IDisposable
 
     private async Task ApproveLatestSeasonAsync(Guid campId)
     {
-        var season = await _dbContext.CampSeasons
+        var season = await Db.CampSeasons
             .Where(s => s.CampId == campId)
             .OrderByDescending(s => s.Year)
             .FirstAsync();
@@ -1196,21 +1169,21 @@ public class CampServiceTests : IDisposable
 
     private async Task SeedSettingsAsync()
     {
-        if (!await _dbContext.CampSettings.AnyAsync())
+        if (!await Db.CampSettings.AnyAsync())
         {
-            _dbContext.CampSettings.Add(new CampSettings
+            Db.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = 2026,
                 OpenSeasons = [2026]
             });
-            await _dbContext.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
     }
 
     private async Task SeedUserAsync(Guid userId, string displayName)
     {
-        _dbContext.Users.Add(new User
+        Db.Users.Add(new User
         {
             Id = userId,
             UserName = $"{displayName.Replace(" ", string.Empty, StringComparison.Ordinal)}@example.com",
@@ -1218,6 +1191,6 @@ public class CampServiceTests : IDisposable
             DisplayName = displayName
         });
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 }
