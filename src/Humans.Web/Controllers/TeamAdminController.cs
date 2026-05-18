@@ -139,16 +139,11 @@ public class TeamAdminController : HumansTeamControllerBase
             .Take(pageSize)
             .ToList();
 
-        var memberUserIds = pagedMembers.Select(m => m.UserId).ToList();
-        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
-
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 Email = m.Email ?? "",
-                ProfilePictureUrl = memberInfos.GetValueOrDefault(m.UserId)?.ProfilePictureUrl,
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator
@@ -162,9 +157,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 TeamId = r.TeamId,
                 TeamName = team.Name,
                 UserId = r.UserId,
-                UserDisplayName = r.UserDisplayName ?? "",
                 UserEmail = r.UserEmail ?? "",
-                UserProfilePictureUrl = r.UserProfilePictureUrl,
                 Status = r.Status,
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
@@ -702,13 +695,20 @@ public class TeamAdminController : HumansTeamControllerBase
         var teamMembers = members.Select(m => new TeamMemberViewModel
         {
             UserId = m.UserId,
-            DisplayName = m.DisplayName,
             Email = m.Email ?? "",
-            ProfilePictureUrl = memberInfos.GetValueOrDefault(m.UserId)?.ProfilePictureUrl,
             Role = m.Role,
             JoinedAt = m.JoinedAt.ToDateTimeUtc(),
             IsCoordinator = m.Role == TeamMemberRole.Coordinator
         }).ToList();
+
+        var memberOptions = members
+            .Select(m => new TeamMemberDropdownItem
+            {
+                UserId = m.UserId,
+                BurnerName = memberInfos.TryGetValue(m.UserId, out var info) ? info.BurnerName : string.Empty
+            })
+            .OrderBy(o => o.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var viewModel = new RoleManagementViewModel
         {
@@ -720,7 +720,8 @@ public class TeamAdminController : HumansTeamControllerBase
             CanManage = true,
             CanToggleManagement = canToggleManagement,
             RoleDefinitions = definitions.Select(d => TeamRoleDefinitionViewModel.FromSnapshot(d, teamMembers)).ToList(),
-            TeamMembers = teamMembers
+            TeamMembers = teamMembers,
+            MemberOptions = memberOptions
         };
 
         return View(viewModel);

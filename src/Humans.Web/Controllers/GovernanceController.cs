@@ -76,7 +76,6 @@ public class GovernanceController : HumansControllerBase
                 Id = ra.Id,
                 UserId = ra.UserId,
                 UserEmail = ra.UserEmail ?? string.Empty,
-                UserDisplayName = ra.UserDisplayName,
                 RoleName = ra.RoleName,
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),

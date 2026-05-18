@@ -61,9 +61,9 @@
                                 <td>@(slot.SlotIndex + 1)</td>
                                 <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
-                                    @if (slot.IsFilled)
+                                    @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                                     {
-                                        @slot.AssignedUserName
+                                        <vc:human user-id="@slot.AssignedUserId.Value" />
                                     }
                                     else
                                     {

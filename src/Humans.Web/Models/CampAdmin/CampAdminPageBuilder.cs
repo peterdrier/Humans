@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models.CampAdmin;
@@ -9,16 +8,13 @@ public sealed class CampAdminPageBuilder
 {
     private readonly ICampService _campService;
     private readonly ICityPlanningService _cityPlanningService;
-    private readonly IUserService _userService;
 
     public CampAdminPageBuilder(
         ICampService campService,
-        ICityPlanningService cityPlanningService,
-        IUserService userService)
+        ICityPlanningService cityPlanningService)
     {
         _campService = campService;
         _cityPlanningService = cityPlanningService;
-        _userService = userService;
     }
 
     public async Task<CampAdminViewModel> BuildAsync()
@@ -79,15 +75,9 @@ public sealed class CampAdminPageBuilder
         };
     }
 
-    private async Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
+    private Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
     {
-        var leadUserIds = campsWithLeads
-            .SelectMany(c => c.Leads.Select(l => l.UserId))
-            .Distinct()
-            .ToList();
-        var leadUsers = await _userService.GetUserInfosAsync(leadUserIds);
-
-        return campsWithLeads.Select(c =>
+        return Task.FromResult(campsWithLeads.Select(c =>
         {
             var season = c.Seasons.FirstOrDefault();
             return new CampSummaryRowViewModel
@@ -106,10 +96,9 @@ public sealed class CampAdminPageBuilder
                     .Select(l => new CampLeadViewModel
                     {
                         LeadId = l.Id,
-                        UserId = l.UserId,
-                        DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.BurnerName : string.Empty
+                        UserId = l.UserId
                     }).ToList()
             };
-        }).ToList();
+        }).ToList());
     }
 }

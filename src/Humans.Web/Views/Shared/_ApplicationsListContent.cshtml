@@ -66,8 +66,8 @@
                     {
                         <tr>
                             <td>
-                                <div>@app.UserDisplayName</div>
-                                <small class="text-muted">@app.UserEmail</small>
+                                <vc:human user-id="@app.UserId" />
+                                <div><small class="text-muted">@app.UserEmail</small></div>
                             </td>
                             <td><span class="badge bg-info">@app.MembershipTier</span></td>
                             <td>@app.SubmittedAt.ToDisplayDate()</td>

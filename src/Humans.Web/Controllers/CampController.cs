@@ -445,7 +445,6 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead,
@@ -458,7 +457,6 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead,
@@ -1157,8 +1155,7 @@ public class CampController : HumansCampControllerBase
             .Select(lead => new CampLeadViewModel
             {
                 LeadId = lead.LeadId,
-                UserId = lead.UserId,
-                DisplayName = lead.DisplayName
+                UserId = lead.UserId
             })
             .ToList();
         model.Images = editData.Images
@@ -1206,8 +1203,7 @@ public class CampController : HumansCampControllerBase
                 .Select(lead => new CampLeadViewModel
                 {
                     LeadId = lead.LeadId,
-                    UserId = lead.UserId,
-                    DisplayName = lead.DisplayName
+                    UserId = lead.UserId
                 }).ToList(),
             Images = editData.Images
                 .Select(image => new CampImageViewModel
@@ -1245,8 +1241,7 @@ public class CampController : HumansCampControllerBase
             .Select(lead => new CampLeadViewModel
             {
                 LeadId = lead.LeadId,
-                UserId = lead.UserId,
-                DisplayName = lead.DisplayName
+                UserId = lead.UserId
             }).ToList(),
             CurrentSeason = campDetail.CurrentSeason is null
             ? null

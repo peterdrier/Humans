@@ -18,14 +18,7 @@
                 </div>
                 <div class="text-muted small mt-2">
                     @Localizer["Issue_OpenedBy"]
-                    @if (Model.IsHandler)
-                    {
-                        <vc:human user-id="@Model.ReporterUserId" link="Admin" />
-                    }
-                    else
-                    {
-                        @Model.ReporterName
-                    }
+                    <vc:human user-id="@Model.ReporterUserId" link="@(Model.IsHandler ? HumanLink.Admin : HumanLink.Public)" />
                     · @Model.CreatedAt.ToDisplayDateTime()
                 </div>
 
@@ -203,13 +196,13 @@
                             </select>
                         </form>
                     }
-                    else if (string.IsNullOrEmpty(Model.AssigneeName))
+                    else if (!Model.AssigneeUserId.HasValue)
                     {
                         <span class="text-muted">@Localizer["Issue_Unassigned"]</span>
                     }
                     else
                     {
-                        <vc:human user-id="@Model.AssigneeUserId.GetValueOrDefault()" />
+                        <vc:human user-id="@Model.AssigneeUserId.Value" />
                     }
                 </dd>
 

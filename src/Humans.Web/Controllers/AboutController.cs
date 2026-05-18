@@ -60,13 +60,13 @@ public class AboutController : HumansControllerBase
             {
                 var holders = assignments
                     .Where(ra => string.Equals(ra.RoleName, roleDef.RoleName, StringComparison.Ordinal))
-                    .Select(ra => new StaffRoleHolderViewModel
+                    .Select(ra => new
                     {
-                        UserId = ra.UserId,
-                        DisplayName = ra.UserDisplayName,
-                        ProfilePictureUrl = assigneeInfos.GetValueOrDefault(ra.UserId)?.ProfilePictureUrl
+                        Holder = new StaffRoleHolderViewModel { UserId = ra.UserId },
+                        SortKey = assigneeInfos.GetValueOrDefault(ra.UserId)?.BurnerName ?? string.Empty
                     })
-                    .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(h => h.SortKey, StringComparer.OrdinalIgnoreCase)
+                    .Select(h => h.Holder)
                     .ToList();
 
                 if (holders.Count > 0)

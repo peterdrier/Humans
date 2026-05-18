@@ -1,5 +1,6 @@
 using Humans.Application;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -19,15 +20,18 @@ namespace Humans.Web.ViewComponents;
 public class NobodiesEmailBadgeViewComponent : ViewComponent
 {
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserService _userService;
     private readonly IMemoryCache _cache;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(2);
 
     public NobodiesEmailBadgeViewComponent(
         IUserEmailService userEmailService,
+        IUserService userService,
         IMemoryCache cache)
     {
         _userEmailService = userEmailService;
+        _userService = userService;
         _cache = cache;
     }
 
@@ -37,12 +41,10 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
     /// <param name="userId">The user to check.</param>
     /// <param name="mode">Display mode — see class doc.</param>
     /// <param name="teamSlug">Team slug for provisioning form (provision mode only).</param>
-    /// <param name="displayName">User display name for confirm dialog (provision mode only).</param>
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         string mode = "badge",
-        string? teamSlug = null,
-        string? displayName = null)
+        string? teamSlug = null)
     {
         var allStatuses = await GetCachedStatusesAsync();
 
@@ -54,7 +56,16 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
         ViewBag.IsPrimary = hasEmail && info.IsPrimary;
         ViewBag.Mode = mode;
         ViewBag.TeamSlug = teamSlug;
-        ViewBag.DisplayName = displayName;
+
+        if (string.Equals(mode, "provision", StringComparison.Ordinal) && !hasEmail)
+        {
+            var userInfo = await _userService.GetUserInfoAsync(userId);
+            ViewBag.DisplayName = userInfo?.BurnerName;
+        }
+        else
+        {
+            ViewBag.DisplayName = null;
+        }
 
         return View();
     }

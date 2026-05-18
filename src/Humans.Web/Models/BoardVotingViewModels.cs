@@ -12,8 +12,6 @@ public class BoardVotingApplicationViewModel
 {
     public Guid ApplicationId { get; set; }
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public string ApplicationMotivation { get; set; } = string.Empty;
     public DateTime SubmittedAt { get; set; }
@@ -30,15 +28,12 @@ public class BoardVoteCellViewModel
 public class BoardVoteMemberViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
 }
 
 public class BoardVotingDetailViewModel
 {
     public Guid ApplicationId { get; set; }
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
     public string Email { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -60,7 +55,6 @@ public class BoardVotingDetailViewModel
 public class BoardVoteDetailItemViewModel
 {
     public Guid BoardMemberUserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
     public VoteChoice Vote { get; set; }
     public string? Note { get; set; }
     public DateTime VotedAt { get; set; }

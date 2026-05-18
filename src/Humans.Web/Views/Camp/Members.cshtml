@@ -242,7 +242,7 @@
                             <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead"
-                                        data-confirm="Remove @lead.DisplayName as a lead?">
+                                        data-confirm="Remove this lead?">
                                     <i class="fa-solid fa-user-minus"></i>
                                 </button>
                             </form>

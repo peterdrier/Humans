@@ -264,10 +264,11 @@ public class IssuesController : HumansControllerBase
         if (vm.AssigneeUserId.HasValue &&
             vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
         {
+            var inactiveInfo = await _users.GetUserInfoAsync(vm.AssigneeUserId.Value);
             vm.AssigneeOptions.Insert(0, new AssigneeOption
             {
                 Id = vm.AssigneeUserId.Value,
-                DisplayName = (vm.AssigneeName ?? "Unknown") + " (inactive)"
+                DisplayName = (inactiveInfo?.BurnerName ?? "Unknown") + " (inactive)"
             });
         }
     }
@@ -433,12 +434,10 @@ public class IssuesController : HumansControllerBase
         Section = i.Section,
         AreaLabel = AreaLabelMap.LabelFor(i.Section),
         Title = i.Title,
-        ReporterName = i.ReporterDisplayName ?? "Unknown",
         ReporterUserId = i.ReporterUserId,
         LastUpdate = i.UpdatedAt.ToDateTimeUtc(),
         CommentCount = i.CommentCount,
         AssigneeUserId = i.AssigneeUserId,
-        AssigneeName = i.AssigneeDisplayName,
         GitHubIssueNumber = i.GitHubIssueNumber
     };
 
@@ -462,11 +461,7 @@ public class IssuesController : HumansControllerBase
             UserAgent = i.UserAgent,
             AdditionalContext = i.AdditionalContext,
             ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
-            ReporterName = displayUsers.GetValueOrDefault(i.ReporterUserId)?.BurnerName ?? "Unknown",
             ReporterUserId = i.ReporterUserId,
-            AssigneeName = i.AssigneeUserId is { } assigneeId
-                ? displayUsers.GetValueOrDefault(assigneeId)?.BurnerName
-                : null,
             AssigneeUserId = i.AssigneeUserId,
             GitHubIssueNumber = i.GitHubIssueNumber,
             DueDate = i.DueDate,

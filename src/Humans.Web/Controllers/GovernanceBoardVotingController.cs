@@ -41,8 +41,7 @@ public class GovernanceBoardVotingController : HumansControllerBase
             BoardMembers = boardMembers
                 .Select(m => new BoardVoteMemberViewModel
                 {
-                    UserId = m.UserId,
-                    DisplayName = m.DisplayName
+                    UserId = m.UserId
                 })
                 .ToList(),
             Applications = applications.Select(a =>
@@ -51,8 +50,6 @@ public class GovernanceBoardVotingController : HumansControllerBase
                 {
                     ApplicationId = a.ApplicationId,
                     UserId = a.UserId,
-                    DisplayName = a.UserDisplayName,
-                    ProfilePictureUrl = a.UserProfilePictureUrl,
                     MembershipTier = a.MembershipTier,
                     ApplicationMotivation = a.ApplicationMotivation,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
@@ -91,8 +88,6 @@ public class GovernanceBoardVotingController : HumansControllerBase
         {
             ApplicationId = application.ApplicationId,
             UserId = application.UserId,
-            DisplayName = application.DisplayName,
-            ProfilePictureUrl = application.ProfilePictureUrl,
             Email = application.Email,
             FirstName = application.FirstName,
             LastName = application.LastName,
@@ -109,12 +104,11 @@ public class GovernanceBoardVotingController : HumansControllerBase
                 .Select(v => new BoardVoteDetailItemViewModel
                 {
                     BoardMemberUserId = v.BoardMemberUserId,
-                    DisplayName = v.BoardMemberDisplayName ?? string.Empty,
                     Vote = v.Vote,
                     Note = v.Note,
                     VotedAt = v.VotedAt.ToDateTimeUtc()
                 })
-                .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(v => v.VotedAt)
                 .ToList(),
             CurrentUserVote = currentVote?.Vote,
             CurrentUserNote = currentVote?.Note,
