@@ -1,14 +1,13 @@
-using Humans.Application;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.ViewComponents;
 
 /// <summary>
 /// Renders a nobodies.team email badge or status indicator for a user.
-/// Uses IMemoryCache with short TTL to prevent N+1 queries on list pages.
+///
+/// Reads from the cached <c>UserInfo</c> projection — no local IMemoryCache is needed
+/// since the underlying read is already cache-served by <see cref="IUserService"/>.
 ///
 /// Modes:
 ///   "badge"     — icon badge (ProfileCard)
@@ -19,20 +18,11 @@ namespace Humans.Web.ViewComponents;
 /// </summary>
 public class NobodiesEmailBadgeViewComponent : ViewComponent
 {
-    private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
-    private readonly IMemoryCache _cache;
 
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(2);
-
-    public NobodiesEmailBadgeViewComponent(
-        IUserEmailService userEmailService,
-        IUserService userService,
-        IMemoryCache cache)
+    public NobodiesEmailBadgeViewComponent(IUserService userService)
     {
-        _userEmailService = userEmailService;
         _userService = userService;
-        _cache = cache;
     }
 
     /// <summary>
@@ -46,54 +36,20 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
         string mode = "badge",
         string? teamSlug = null)
     {
-        var allStatuses = await GetCachedStatusesAsync();
-
-        var hasEmail = allStatuses.TryGetValue(userId, out var info);
+        var info = await _userService.GetUserInfoAsync(userId);
+        var nobodies = info?.UserEmails.FirstOrDefault(e => e.IsVerified
+            && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
         ViewBag.UserId = userId;
-        ViewBag.HasEmail = hasEmail;
-        ViewBag.Email = hasEmail ? info.Email : null;
-        ViewBag.IsPrimary = hasEmail && info.IsPrimary;
+        ViewBag.HasEmail = nobodies is not null;
+        ViewBag.Email = nobodies?.Email;
+        ViewBag.IsPrimary = nobodies?.IsPrimary == true;
         ViewBag.Mode = mode;
         ViewBag.TeamSlug = teamSlug;
-
-        if (string.Equals(mode, "provision", StringComparison.Ordinal) && !hasEmail)
-        {
-            var userInfo = await _userService.GetUserInfoAsync(userId);
-            ViewBag.DisplayName = userInfo?.BurnerName;
-        }
-        else
-        {
-            ViewBag.DisplayName = null;
-        }
+        ViewBag.DisplayName = string.Equals(mode, "provision", StringComparison.Ordinal) && nobodies is null
+            ? info?.BurnerName
+            : null;
 
         return View();
-    }
-
-    private async Task<Dictionary<Guid, (string Email, bool IsPrimary)>> GetCachedStatusesAsync()
-    {
-        if (_cache.TryGetValue(CacheKeys.NobodiesTeamEmails, out Dictionary<Guid, (string Email, bool IsPrimary)>? cached) && cached is not null)
-            return cached;
-
-        // Load all nobodies.team email statuses at once — fine at ~500 users
-        var statusByUser = await _userEmailService.GetNobodiesTeamEmailStatusByUserAsync();
-
-        // Also load actual email addresses for users who have them
-        var userIds = statusByUser.Keys.ToList();
-        var emailsByUser = userIds.Count > 0
-            ? await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(userIds)
-            : new Dictionary<Guid, string>();
-
-        var result = new Dictionary<Guid, (string Email, bool IsPrimary)>();
-        foreach (var (uid, isPrimary) in statusByUser)
-        {
-            if (emailsByUser.TryGetValue(uid, out var email))
-            {
-                result[uid] = (email, isPrimary);
-            }
-        }
-
-        _cache.Set(CacheKeys.NobodiesTeamEmails, result, CacheTtl);
-        return result;
     }
 }

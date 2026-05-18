@@ -1,6 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
+using NSubstitute;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
@@ -95,13 +99,47 @@ public class CommunicationPreferenceServiceTests : IDisposable
             dataProtectionProvider, emailSettings,
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
+        // The service now reads preferences through IUserService.GetUserInfoAsync (the cache layer).
+        // For these tests, project the in-memory db state into UserInfo on each read so the
+        // write-then-read semantics that this suite verifies still hold end-to-end.
+        var userService = Substitute.For<IUserService>();
+        userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var prefs = _dbContext.CommunicationPreferences
+                    .Where(cp => cp.UserId == userId)
+                    .ToList();
+                return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, prefs));
+            });
+
         _service = new CommunicationPreferenceService(
             repository,
+            userService,
             tokenProvider,
             _clock,
             new StubAuditLogService(),
             NullLogger<CommunicationPreferenceService>.Instance);
     }
+
+    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreference> prefs) =>
+        UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.MinValue,
+                GoogleEmailStatus = default,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: prefs);
 
     public void Dispose()
     {

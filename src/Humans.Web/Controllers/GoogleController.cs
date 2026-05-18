@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
@@ -26,7 +26,6 @@ public class GoogleController : HumansControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly IGoogleAdminService _googleAdminService;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<GoogleController> _logger;
 
     public GoogleController(
@@ -37,7 +36,6 @@ public class GoogleController : HumansControllerBase
         ITeamResourceService teamResourceService,
         IEmailProvisioningService emailProvisioningService,
         IGoogleAdminService googleAdminService,
-        IMemoryCache cache,
         ILogger<GoogleController> logger)
         : base(userService)
     {
@@ -47,7 +45,6 @@ public class GoogleController : HumansControllerBase
         _teamResourceService = teamResourceService;
         _emailProvisioningService = emailProvisioningService;
         _googleAdminService = googleAdminService;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -407,9 +404,6 @@ public class GoogleController : HumansControllerBase
         }
         else
         {
-            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
-            _cache.InvalidateNobodiesTeamEmails();
-
             if (result.RecoveryEmail is not null)
             {
                 SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
@@ -632,7 +626,6 @@ public class GoogleController : HumansControllerBase
 
         if (result.Success)
         {
-            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(result.Message!);
         }
         else

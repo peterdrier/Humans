@@ -53,12 +53,13 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info is null) return [];
 
-        var emailIds = emails.Select(e => e.Id).ToList();
+        var emailIds = info.UserEmails.Select(e => e.Id).ToList();
         var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
 
-        return emails.Select(e => new UserEmailEditDto(
+        return info.UserEmails.Select(e => new UserEmailEditDto(
             e.Id,
             e.Email,
             e.IsVerified,
@@ -76,14 +77,13 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         Guid userId, ContactFieldVisibility accessLevel,
         CancellationToken cancellationToken = default)
     {
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info is null) return [];
+
         var allowed = GetAllowedVisibilities(accessLevel);
-        var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
 
-        var visible = allEmails
+        return info.UserEmails
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
-            .ToList();
-
-        return visible
             .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailDto(
                 e.Id,
@@ -407,15 +407,19 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
-        return all.FirstOrDefault(e => e.UserId == userId)?.Email;
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        return info?.UserEmails
+            .FirstOrDefault(e => e.IsVerified
+                && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+            ?.Email;
     }
 
     public async Task<bool> HasNobodiesTeamEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
-        return all.Any(e => e.UserId == userId);
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        return info?.UserEmails.Any(e => e.IsVerified
+            && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)) ?? false;
     }
 
     public Task<string?> GetVerifiedEmailAddressAsync(
@@ -425,12 +429,18 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
         CancellationToken cancellationToken = default)
     {
-        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
-        return all
-            .GroupBy(e => e.UserId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Any(e => e.IsPrimary));
+        var infos = await _userService.GetAllUserInfosAsync(cancellationToken);
+        var result = new Dictionary<Guid, bool>();
+        foreach (var info in infos)
+        {
+            var nobodies = info.UserEmails
+                .Where(e => e.IsVerified
+                    && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (nobodies.Count == 0) continue;
+            result[info.Id] = nobodies.Any(e => e.IsPrimary);
+        }
+        return result;
     }
 
     public async Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
@@ -440,15 +450,21 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (userIdSet.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
-        return all
-            .Where(e => userIdSet.Contains(e.UserId))
-            .GroupBy(e => e.UserId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderByDescending(e => e.IsPrimary)
-                    .ThenBy(e => e.CreatedAt)
-                    .First().Email);
+        var infos = await _userService.GetUserInfosAsync(userIdSet.ToList(), cancellationToken);
+        var result = new Dictionary<Guid, string>();
+        foreach (var (uid, info) in infos)
+        {
+            // Primary-first then any verified — same ordering as the prior repo-driven query (IsPrimary desc, CreatedAt asc).
+            var pick = info.UserEmails
+                .Where(e => e.IsVerified
+                    && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(e => e.IsPrimary)
+                .Select(e => e.Email)
+                .FirstOrDefault();
+            if (pick is not null)
+                result[uid] = pick;
+        }
+        return result;
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
@@ -516,36 +532,39 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
     public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)
     {
-        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, ct);
-        var primary = emails.FirstOrDefault(e => e.IsVerified && e.IsPrimary);
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        if (info is null) return null;
+        var primary = info.UserEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary);
         if (primary is not null) return primary.Email;
-        var anyVerified = emails.FirstOrDefault(e => e.IsVerified);
+        var anyVerified = info.UserEmails.FirstOrDefault(e => e.IsVerified);
         if (anyVerified is not null) return anyVerified.Email;
-        var user = await _userService.GetUserInfoAsync(userId, ct);
-        return user?.Email;
+        return info.IdentityEmailColumn;
     }
 
 
     public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
-        return emails
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info is null) return [];
+        return info.UserEmails
             .Where(e => e.IsVerified)
             .Select(e => e.Email)
             .ToList();
     }
 
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        (await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken))
-            .Select(ToSnapshot)
-            .ToList();
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info is null) return [];
+        return info.UserEmails.Select(e => ToSnapshot(userId, e)).ToList();
+    }
 
-    private static UserEmailRowSnapshot ToSnapshot(UserEmail email) =>
+    private static UserEmailRowSnapshot ToSnapshot(Guid userId, UserEmailInfo email) =>
         new(
             email.Id,
-            email.UserId,
+            userId,
             email.Email,
             email.IsVerified,
             email.Provider,
@@ -563,12 +582,14 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>();
 
-        var allEmails = await _repository.GetAllAsync(cancellationToken);
-        var idSet = new HashSet<Guid>(userIds);
-        return allEmails
-            .Where(e => idSet.Contains(e.UserId))
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmailRowSnapshot>)g.Select(ToSnapshot).ToList());
+        var infos = await _userService.GetUserInfosAsync(userIds, cancellationToken);
+        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(infos.Count);
+        foreach (var (uid, info) in infos)
+        {
+            if (info.UserEmails.Count == 0) continue;
+            result[uid] = info.UserEmails.Select(e => ToSnapshot(uid, e)).ToList();
+        }
+        return result;
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
@@ -868,55 +889,43 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
         CancellationToken cancellationToken = default)
     {
-        var allEmails = await _repository.GetAllAsync(cancellationToken);
+        var infos = await _userService.GetAllUserInfosAsync(cancellationToken);
 
-        var perUser = allEmails
-            .GroupBy(e => e.UserId)
-            .Select(g =>
-            {
-                var verified = g.Where(e => e.IsVerified).ToList();
-                var isGoogleCount = g.Count(e => e.IsGoogle);
-                var verifiedIsGoogleCount = verified.Count(e => e.IsGoogle);
-                var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
-                var hasMultipleGoogle = isGoogleCount > 1;
-                // Zero-check filters to verified rows — an unverified IsGoogle row is itself a violation.
-                var hasZeroGoogle = verified.Count > 0 && verifiedIsGoogleCount == 0;
-                var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
-                return (
-                    UserId: g.Key,
-                    IsGoogleCount: isGoogleCount,
-                    VerifiedCount: verified.Count,
-                    VerifiedPrimaryCount: verifiedPrimaryCount,
-                    HasMultipleGoogle: hasMultipleGoogle,
-                    HasZeroGoogle: hasZeroGoogle,
-                    HasPrimaryProblem: hasPrimaryProblem);
-            })
-            .Where(x => x.HasMultipleGoogle || x.HasZeroGoogle || x.HasPrimaryProblem)
-            .ToList();
+        var violations = new List<UserEmailFlagViolation>();
+        foreach (var info in infos)
+        {
+            if (info.UserEmails.Count == 0) continue;
 
-        if (perUser.Count == 0)
-            return [];
+            var verified = info.UserEmails.Where(e => e.IsVerified).ToList();
+            var isGoogleCount = info.UserEmails.Count(e => e.IsGoogle);
+            var verifiedIsGoogleCount = verified.Count(e => e.IsGoogle);
+            var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
+            var hasMultipleGoogle = isGoogleCount > 1;
+            // Zero-check filters to verified rows — an unverified IsGoogle row is itself a violation.
+            var hasZeroGoogle = verified.Count > 0 && verifiedIsGoogleCount == 0;
+            var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
 
-        var users = await _userService.GetUserInfosAsync(
-            perUser.Select(x => x.UserId).ToList(),
-            cancellationToken);
+            if (!hasMultipleGoogle && !hasZeroGoogle && !hasPrimaryProblem) continue;
 
-        return perUser
-            .Select(x => new UserEmailFlagViolation(
-                x.UserId,
-                users.TryGetValue(x.UserId, out var user) ? user.BurnerName : null,
-                x.IsGoogleCount,
-                x.VerifiedCount,
-                x.VerifiedPrimaryCount,
-                x.HasMultipleGoogle,
-                x.HasZeroGoogle,
-                x.HasPrimaryProblem))
-            .ToList();
+            violations.Add(new UserEmailFlagViolation(
+                info.Id,
+                info.BurnerName,
+                isGoogleCount,
+                verified.Count,
+                verifiedPrimaryCount,
+                hasMultipleGoogle,
+                hasZeroGoogle,
+                hasPrimaryProblem));
+        }
+
+        return violations;
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
     {
+        // Orphans are UserEmail rows whose UserId is missing or merged. Iterating UserInfo can't find rows for
+        // non-existent users, so the repo's full-table scan is still required here.
         var allEmails = await _repository.GetAllAsync(ct);
         var liveUserIds = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.MergedToUserId is null)

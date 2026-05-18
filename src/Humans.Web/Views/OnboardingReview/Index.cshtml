@@ -40,20 +40,20 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select human" />
+                                           value="@item.UserId" aria-label="Select @item.LegalName" />
                                 }
                                 else
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <vc:human user-id="@item.UserId" layout="AvatarName" size="40" />
+                                <vc:human user-id="@item.UserId" layout="AvatarName" link="Public" size="40" />
                                 @if (hasLegalName)
                                 {
-                                    <span class="fw-normal text-muted ms-2">- @item.LegalName</span>
+                                    <span class="ms-2 text-muted"> - @item.LegalName</span>
                                 }
                                 else if (!string.IsNullOrWhiteSpace(item.Email))
                                 {
-                                    <small class="text-muted ms-2">@item.Email</small>
+                                    <small class="ms-2 text-muted">@item.Email</small>
                                 }
                             </div>
                             <div class="text-end">
@@ -97,20 +97,20 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select human" />
+                                           value="@item.UserId" aria-label="Select @item.LegalName" />
                                 }
                                 else
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <vc:human user-id="@item.UserId" layout="AvatarName" size="40" />
+                                <vc:human user-id="@item.UserId" layout="AvatarName" link="Public" size="40" />
                                 @if (hasLegalName)
                                 {
-                                    <span class="fw-normal text-muted ms-2">- @item.LegalName</span>
+                                    <span class="ms-2 text-muted"> - @item.LegalName</span>
                                 }
                                 else if (!string.IsNullOrWhiteSpace(item.Email))
                                 {
-                                    <small class="text-muted ms-2">@item.Email</small>
+                                    <small class="ms-2 text-muted">@item.Email</small>
                                 }
                             </div>
                             <div class="text-end">

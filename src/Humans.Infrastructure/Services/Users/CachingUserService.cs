@@ -572,7 +572,8 @@ public sealed class CachingUserService :
             .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailInfo(
                 e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
-                e.Provider, e.ProviderKey, e.Visibility))
+                e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
+                e.CreatedAt, e.UpdatedAt))
             .ToList();
 
     private static IReadOnlyList<EventParticipationInfo> ToEventParticipationInfos(IEnumerable<EventParticipation> rows) =>

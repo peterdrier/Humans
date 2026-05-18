@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Interfaces.Users;
 using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services.Profiles;
@@ -46,6 +47,7 @@ public class CommunicationPreferenceSubscribedAtTests : IDisposable
 
         _service = new CommunicationPreferenceService(
             repository,
+            Substitute.For<IUserService>(),
             tokenProvider,
             _clock,
             auditLog,

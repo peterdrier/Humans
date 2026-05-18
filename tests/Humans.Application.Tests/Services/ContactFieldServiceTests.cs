@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -23,6 +24,7 @@ public class ContactFieldServiceTests : IDisposable
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IProfileRepository _profileRepository;
+    private readonly IUserService _userService;
     private readonly FakeClock _clock;
     private readonly ContactFieldService _service;
 
@@ -35,6 +37,7 @@ public class ContactFieldServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _teamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        _userService = Substitute.For<IUserService>();
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
 
         var factory = new Infrastructure.TestDbContextFactory(options);
@@ -42,7 +45,7 @@ public class ContactFieldServiceTests : IDisposable
         _profileRepository = new ProfileRepository(factory, _clock);
 
         _service = new ContactFieldService(
-            repository, _profileRepository, _teamService, _roleAssignmentService,
+            repository, _profileRepository, _userService, _teamService, _roleAssignmentService,
             Substitute.For<IUserInfoInvalidator>(),
             _clock, NullLogger<ContactFieldService>.Instance);
     }
@@ -222,6 +225,7 @@ public class ContactFieldServiceTests : IDisposable
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
         var profile = await CreateProfileWithFields(ownerId);
+        StubUserInfo(ownerId, profile);
 
         // Viewer is just a regular member (no shared teams)
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
@@ -232,7 +236,7 @@ public class ContactFieldServiceTests : IDisposable
             .Returns(new List<TeamMember>());
 
         // Act
-        var result = await _service.GetVisibleContactFieldsAsync(profile.Id, viewerId);
+        var result = await _service.GetVisibleContactFieldsAsync(ownerId, viewerId);
 
         // Assert - should only see AllActiveProfiles field
         result.Should().HaveCount(1);
@@ -245,9 +249,10 @@ public class ContactFieldServiceTests : IDisposable
         // Arrange
         var ownerId = Guid.NewGuid();
         var profile = await CreateProfileWithFields(ownerId);
+        StubUserInfo(ownerId, profile);
 
         // Act
-        var result = await _service.GetVisibleContactFieldsAsync(profile.Id, ownerId);
+        var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId);
 
         // Assert - should see all 4 fields
         result.Should().HaveCount(4);
@@ -362,6 +367,33 @@ public class ContactFieldServiceTests : IDisposable
     #endregion
 
     #region Helper Methods
+
+    // Stub IUserService.GetUserInfoAsync to return a UserInfo carrying the profile's ContactFields.
+    private void StubUserInfo(Guid userId, Profile profile)
+    {
+        var fields = _dbContext.ContactFields
+            .Where(cf => cf.ProfileId == profile.Id)
+            .OrderBy(cf => cf.DisplayOrder)
+            .ToList();
+        var info = UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = profile.CreatedAt,
+                GoogleEmailStatus = default,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            contactFields: fields,
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
+    }
 
     private TeamMember CreateTeamMember(Guid userId, TeamMemberRole role, Guid? teamId = null, SystemTeamType systemTeamType = SystemTeamType.None)
     {

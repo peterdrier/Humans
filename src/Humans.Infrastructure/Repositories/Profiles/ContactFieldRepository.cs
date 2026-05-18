@@ -43,19 +43,6 @@ internal sealed class ContactFieldRepository : IContactFieldRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ContactField>> GetVisibleByProfileIdAsync(
-        Guid profileId, IReadOnlyList<ContactFieldVisibility> allowedVisibilities,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ContactFields
-            .AsNoTracking()
-            .Where(cf => cf.ProfileId == profileId && allowedVisibilities.Contains(cf.Visibility))
-            .OrderBy(cf => cf.DisplayOrder)
-            .ThenBy(cf => cf.CreatedAt)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
         Guid profileId, CancellationToken ct = default)
     {

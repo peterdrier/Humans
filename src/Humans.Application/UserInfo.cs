@@ -13,7 +13,10 @@ public sealed record UserEmailInfo(
     bool IsGoogle,
     string? Provider,
     string? ProviderKey,
-    ContactFieldVisibility? Visibility);
+    ContactFieldVisibility? Visibility,
+    Instant? VerificationSentAt,
+    Instant CreatedAt,
+    Instant UpdatedAt);
 
 /// <summary>Compact projection of <see cref="ContactField"/> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
@@ -287,7 +290,8 @@ public sealed record UserInfo(
             .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailInfo(
                 e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
-                e.Provider, e.ProviderKey, e.Visibility))
+                e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
+                e.CreatedAt, e.UpdatedAt))
             .ToList();
 
         var participationInfos = eventParticipations

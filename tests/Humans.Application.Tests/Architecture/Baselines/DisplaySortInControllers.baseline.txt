@@ -80,9 +80,7 @@ src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:O
 src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:ThenBy#1
-src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Profiles/ProfileRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Profiles/ProfileRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Profiles/UserEmailRepository.cs:OrderBy#1

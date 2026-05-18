@@ -207,15 +207,21 @@ builder.Services.AddHttpClient("GoogleAvatar", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-builder.Services.AddHangfire((sp, config) =>
+// Skip Hangfire entirely in Testing — AddHangfire registers IBackgroundJobClient
+// with a factory that reads JobStorage.Current at resolution time. Without storage
+// configured, every DI-graph build that transitively touches IBackgroundJobClient
+// (e.g. HangfireImmediateOutboxProcessor → IImmediateOutboxProcessor →
+// OutboxEmailService) throws InvalidOperationException, failing every integration
+// test. HumansWebApplicationFactory binds a substitute IBackgroundJobClient in
+// Testing — see docs/features/test-system-reliability.md (P0/#762).
+if (!builder.Environment.IsEnvironment("Testing"))
 {
-    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-        .UseSimpleAssemblyNameTypeSerializer()
-        .UseRecommendedSerializerSettings();
-
-    // Skip in Testing — Hangfire's per-AppDomain static state conflicts with parallel WebApplicationFactory + Testcontainers.
-    if (!sp.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing"))
+    builder.Services.AddHangfire((sp, config) =>
     {
+        config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings();
+
         config.UsePostgreSqlStorage(options =>
             options.UseNpgsqlConnection(
                 sp.GetRequiredService<IConfiguration>()
@@ -224,11 +230,8 @@ builder.Services.AddHangfire((sp, config) =>
             {
                 DistributedLockTimeout = TimeSpan.FromSeconds(5)
             });
-    }
-});
+    });
 
-if (!builder.Environment.IsEnvironment("Testing"))
-{
     builder.Services.AddHangfireServer();
 }
 
@@ -260,14 +263,20 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
-builder.Services.AddHealthChecks()
+var healthChecks = builder.Services.AddHealthChecks()
     .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
-    .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire")
     .AddCheck<ConfigurationHealthCheck>("configuration")
     .AddCheck<SmtpHealthCheck>("smtp")
     .AddCheck<GitHubHealthCheck>("github")
     .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace")
     .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable");
+
+// Hangfire health check reads JobStorage.Current; only register it when
+// the rest of the Hangfire stack is wired (i.e. outside Testing).
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    healthChecks.AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire");
+}
 
 builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 

@@ -236,7 +236,7 @@ public class ProfileApiControllerTests
             .Returns([]);
 
         // Mix of types — Phone must win over Signal regardless of insert order.
-        _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
+        _contactFieldService.GetVisibleContactFieldsAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns([
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Signal, "Signal", "signal-handle",
                     ContactFieldVisibility.AllActiveProfiles),
@@ -268,7 +268,7 @@ public class ProfileApiControllerTests
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
+        _contactFieldService.GetVisibleContactFieldsAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = BuildSut(viewer);
@@ -297,7 +297,7 @@ public class ProfileApiControllerTests
             .Returns([]);
 
 #pragma warning disable CS0618 // Verifying the controller skips the obsolete Email enum value.
-        _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
+        _contactFieldService.GetVisibleContactFieldsAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns([
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Email, "Email", "obsolete@example.com",
                     ContactFieldVisibility.AllActiveProfiles),

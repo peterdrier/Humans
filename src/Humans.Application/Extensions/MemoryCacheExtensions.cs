@@ -75,9 +75,6 @@ public static class MemoryCacheExtensions
     // ValidAttendeeEmails, TicketDashboardStats) remain on CacheKeys; the
     // decorator pokes them directly via cache.Remove.
 
-    public static void InvalidateNobodiesTeamEmails(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.NobodiesTeamEmails);
-
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 

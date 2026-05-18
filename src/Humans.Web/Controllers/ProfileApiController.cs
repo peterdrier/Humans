@@ -62,7 +62,6 @@ public class ProfileApiController : ApiControllerBase
         {
             var detail = await GetSharedDetailAsync(
                 result.UserId,
-                result.ProfileId,
                 viewerUserId,
                 ct);
 
@@ -92,7 +91,6 @@ public class ProfileApiController : ApiControllerBase
 
         var detail = await GetSharedDetailAsync(
             userId,
-            info.Profile.Id,
             viewerUserId,
             ct);
 
@@ -106,7 +104,6 @@ public class ProfileApiController : ApiControllerBase
     // Disambiguation: viewer-visible primary email → highest-priority visible contact field → null. Legal name omitted deliberately.
     private async Task<string?> GetSharedDetailAsync(
         Guid userId,
-        Guid profileId,
         Guid viewerUserId,
         CancellationToken ct)
     {
@@ -125,7 +122,7 @@ public class ProfileApiController : ApiControllerBase
             return visibleEmail;
 
         var visibleContactFields = await _contactFieldService.GetVisibleContactFieldsAsync(
-            profileId,
+            userId,
             viewerUserId,
             ct);
 
