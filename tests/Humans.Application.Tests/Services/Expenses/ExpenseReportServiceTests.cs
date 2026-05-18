@@ -11,21 +11,17 @@ using Humans.Application.Services.Expenses;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Expenses;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Expenses;
 
-public class ExpenseReportServiceTests
+public sealed class ExpenseReportServiceTests : ServiceTestHarness
 {
     private static readonly Instant FakeNow = Instant.FromUtc(2026, 5, 10, 12, 0);
 
-    private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
@@ -36,12 +32,9 @@ public class ExpenseReportServiceTests
     private readonly ExpenseReportService _sut;
 
     public ExpenseReportServiceTests()
+        : base(FakeNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _factory = new TestDbContextFactory(options);
-        _expenseRepo = new ExpenseRepository(_factory, NullLogger<ExpenseRepository>.Instance);
+        _expenseRepo = new ExpenseRepository(DbFactory, NullLogger<ExpenseRepository>.Instance);
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
@@ -59,7 +52,7 @@ public class ExpenseReportServiceTests
             _profileService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),
-            new FakeClock(FakeNow),
+            Clock,
             NullLogger<ExpenseReportService>.Instance);
     }
 
@@ -1398,7 +1391,7 @@ public class ExpenseReportServiceTests
             CreatedAt = now,
             UpdatedAt = now
         };
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         ctx.ExpenseReports.Add(report);
         await ctx.SaveChangesAsync();
     }

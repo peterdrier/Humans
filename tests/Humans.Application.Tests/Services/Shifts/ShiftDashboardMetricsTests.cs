@@ -15,57 +15,43 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public class ShiftDashboardMetricsTests : IDisposable
+public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 7, 1, 12, 0);
 
-    private readonly HumansDbContext _dbContext;
     private readonly ShiftManagementService _service;
-    private readonly FakeClock _clock = new(TestNow);
 
     public ShiftDashboardMetricsTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-
         // The dashboard compute methods now reach cross-domain data through
         // ITicketQueryService / ITeamService / IUserService. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
         var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(new FakeTeamService(_dbContext));
-        serviceProvider.GetService(typeof(ITicketQueryService)).Returns(new FakeTicketQueryService(_dbContext));
-        serviceProvider.GetService(typeof(IUserService)).Returns(new FakeUserService(_dbContext));
+        serviceProvider.GetService(typeof(ITeamService)).Returns(new FakeTeamService(Db));
+        serviceProvider.GetService(typeof(ITicketQueryService)).Returns(new FakeTicketQueryService(Db));
+        serviceProvider.GetService(typeof(IUserService)).Returns(new FakeUserService(Db));
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(Substitute.For<IRoleAssignmentService>());
 
-        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var repo = new ShiftManagementRepository(DbFactory);
 
         _service = new ShiftManagementService(
             repo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
+            Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -232,8 +218,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow.Minus(Duration.FromDays(3)),
             UpdatedAt = TestNow,
         };
-        _dbContext.ShiftSignups.Add(signup);
-        await _dbContext.SaveChangesAsync();
+        Db.ShiftSignups.Add(signup);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
 
@@ -258,8 +244,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow.Minus(Duration.FromDays(3)).Minus(Duration.FromMinutes(1)),
             UpdatedAt = TestNow,
         };
-        _dbContext.ShiftSignups.Add(signup);
-        await _dbContext.SaveChangesAsync();
+        Db.ShiftSignups.Add(signup);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
 
@@ -402,7 +388,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         for (var day = -5; day <= -1; day++)
         {
             var shift = await SeedShiftAsync(buildRota, dayOffset: day, min: 1, max: 3);
-            _dbContext.ShiftSignups.Add(new ShiftSignup
+            Db.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 ShiftId = shift.Id,
@@ -413,7 +399,7 @@ public class ShiftDashboardMetricsTests : IDisposable
                 UpdatedAt = TestNow,
             });
         }
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var coord = await SeedUserAsync("coord", TestNow.Minus(Duration.FromDays(2)));
         await SeedCoordinatorAsync(build, coord);
@@ -476,7 +462,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         var shift = await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
         var user = await SeedUserAsync("u");
 
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -485,7 +471,7 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetDashboardTrendsAsync(es.Id, TrendWindow.Last7Days);
 
@@ -759,8 +745,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow.Minus(Duration.FromDays(60)),
             UpdatedAt = TestNow,
         };
-        _dbContext.EventSettings.Add(es);
-        await _dbContext.SaveChangesAsync();
+        Db.EventSettings.Add(es);
+        await Db.SaveChangesAsync();
         return es;
     }
 
@@ -777,8 +763,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        _dbContext.Teams.Add(team);
-        await _dbContext.SaveChangesAsync();
+        Db.Teams.Add(team);
+        await Db.SaveChangesAsync();
         return team;
     }
 
@@ -797,8 +783,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        _dbContext.Rotas.Add(rota);
-        await _dbContext.SaveChangesAsync();
+        Db.Rotas.Add(rota);
+        await Db.SaveChangesAsync();
         return rota;
     }
 
@@ -817,8 +803,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        _dbContext.Shifts.Add(shift);
-        await _dbContext.SaveChangesAsync();
+        Db.Shifts.Add(shift);
+        await Db.SaveChangesAsync();
         return shift;
     }
 
@@ -837,8 +823,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        _dbContext.Shifts.Add(shift);
-        await _dbContext.SaveChangesAsync();
+        Db.Shifts.Add(shift);
+        await Db.SaveChangesAsync();
         return shift;
     }
 
@@ -857,8 +843,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        _dbContext.Shifts.Add(shift);
-        await _dbContext.SaveChangesAsync();
+        Db.Shifts.Add(shift);
+        await Db.SaveChangesAsync();
         return shift;
     }
 
@@ -876,8 +862,8 @@ public class ShiftDashboardMetricsTests : IDisposable
             SecurityStamp = Guid.NewGuid().ToString(),
             CreatedAt = TestNow,
         };
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(user);
+        await Db.SaveChangesAsync();
         return user;
     }
 
@@ -886,7 +872,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         for (var i = 0; i < count; i++)
         {
             var user = await SeedUserAsync($"u-{shift.Id:N}-{i}");
-            _dbContext.ShiftSignups.Add(new ShiftSignup
+            Db.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 ShiftId = shift.Id,
@@ -896,12 +882,12 @@ public class ShiftDashboardMetricsTests : IDisposable
                 UpdatedAt = TestNow,
             });
         }
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 
     private async Task SeedOneSignupAsync(Shift shift, Guid userId, SignupStatus status)
     {
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -910,12 +896,12 @@ public class ShiftDashboardMetricsTests : IDisposable
             CreatedAt = TestNow.Minus(Duration.FromHours(1)),
             UpdatedAt = TestNow,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 
     private async Task SeedTicketOrderAsync(Guid userId, TicketPaymentStatus status)
     {
-        _dbContext.TicketOrders.Add(new TicketOrder
+        Db.TicketOrders.Add(new TicketOrder
         {
             Id = Guid.NewGuid(),
             VendorOrderId = Guid.NewGuid().ToString("N"),
@@ -928,12 +914,12 @@ public class ShiftDashboardMetricsTests : IDisposable
             PurchasedAt = TestNow.Minus(Duration.FromDays(10)),
             SyncedAt = TestNow,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 
     private async Task SeedCoordinatorAsync(Team team, User user)
     {
-        _dbContext.TeamMembers.Add(new TeamMember
+        Db.TeamMembers.Add(new TeamMember
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
@@ -941,14 +927,14 @@ public class ShiftDashboardMetricsTests : IDisposable
             Role = TeamMemberRole.Coordinator,
             JoinedAt = TestNow.Minus(Duration.FromDays(30)),
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 
     // ================================================================
     // Thin fakes for cross-domain service interfaces. Each method covers
     // only the service surface used by ShiftManagementService's dashboard
     // compute paths. All reads go through the same in-memory DbContext
-    // so the test seed helpers (_dbContext.*.Add) drive results end-to-end.
+    // so the test seed helpers (Db.*.Add) drive results end-to-end.
     // ================================================================
 
     private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketQueryService
