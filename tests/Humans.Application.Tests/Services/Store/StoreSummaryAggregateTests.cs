@@ -1,0 +1,271 @@
+using AwesomeAssertions;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Store;
+using Humans.Application.Services.Store;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+using Xunit;
+
+namespace Humans.Application.Tests.Services.Store;
+
+public class StoreSummaryAggregateTests
+{
+    private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IStripeService _stripe = Substitute.For<IStripeService>();
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
+    private readonly StoreService _service;
+
+    public StoreSummaryAggregateTests()
+    {
+        _service = new StoreService(_repo, _audit, _camps, _clock, _shifts, _stripe, NullLogger<StoreService>.Instance);
+    }
+
+    [HumansFact]
+    public async Task Empty_year_returns_empty_projections()
+    {
+        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, CampSeasonDisplayData>());
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        result.Year.Should().Be(2026);
+        result.ByCamp.Should().BeEmpty();
+        result.ByItem.Should().BeEmpty();
+        result.CrossTab.Products.Should().BeEmpty();
+        result.CrossTab.Camps.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Single_order_single_line_projects_to_all_three_views()
+    {
+        var seasonId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+
+        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+            {
+                [seasonId] = new("Camp Alpha", "alpha", null, null, Guid.NewGuid())
+            });
+
+        var product = new StoreProduct
+        {
+            Id = productId,
+            Year = 2026,
+            Name = "Tent",
+            Description = "x",
+            UnitPriceEur = 10m,
+            VatRatePercent = 21m,
+            DepositAmountEur = null,
+            OrderableUntil = new LocalDate(2026, 12, 31),
+            IsActive = true
+        };
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([product]);
+
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = seasonId,
+            State = StoreOrderState.Open,
+            Lines =
+            {
+                new StoreOrderLine
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = orderId,
+                    ProductId = productId,
+                    Qty = 3,
+                    UnitPriceSnapshot = 10m,
+                    VatRateSnapshot = 21m,
+                    DepositAmountSnapshot = null
+                }
+            },
+            Payments =
+            {
+                new StorePayment
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = orderId,
+                    AmountEur = 20m,
+                    Method = StorePaymentMethod.Manual,
+                    ReceivedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
+                }
+            }
+        };
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(seasonId)),
+                Arg.Any<CancellationToken>())
+            .Returns([order]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        // By-camp
+        result.ByCamp.Should().HaveCount(1);
+        var camp = result.ByCamp[0];
+        camp.OrderId.Should().Be(orderId);
+        camp.CampName.Should().Be("Camp Alpha");
+        camp.TotalDueEur.Should().Be(36.30m); // 3 * 10 + VAT 6.30
+        camp.PaymentsTotalEur.Should().Be(20m);
+        camp.BalanceEur.Should().Be(16.30m);
+
+        // By-item
+        result.ByItem.Should().HaveCount(1);
+        result.ByItem[0].ProductId.Should().Be(productId);
+        result.ByItem[0].TotalQty.Should().Be(3);
+        result.ByItem[0].TotalRevenueEur.Should().Be(36.30m);
+
+        // Cross-tab
+        result.CrossTab.Products.Should().HaveCount(1);
+        result.CrossTab.Products[0].TotalQty.Should().Be(3);
+        result.CrossTab.Camps.Should().HaveCount(1);
+        result.CrossTab.Camps[0].CampName.Should().Be("Camp Alpha");
+        result.CrossTab.Camps[0].TotalQty.Should().Be(3);
+        result.CrossTab.Camps[0].QtyByProduct[productId].Should().Be(3);
+    }
+
+    [HumansFact]
+    public async Task Multiple_camps_and_products_produce_consistent_totals()
+    {
+        var (seasonA, seasonB) = (Guid.NewGuid(), Guid.NewGuid());
+        var (productX, productY) = (Guid.NewGuid(), Guid.NewGuid());
+
+        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+            {
+                [seasonA] = new("Camp Alpha", "alpha", null, null, Guid.NewGuid()),
+                [seasonB] = new("Camp Bravo", "bravo", null, null, Guid.NewGuid())
+            });
+
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+            new StoreProduct { Id = productX, Year = 2026, Name = "X", Description = "x",
+                UnitPriceEur = 5m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = true },
+            new StoreProduct { Id = productY, Year = 2026, Name = "Y", Description = "y",
+                UnitPriceEur = 7m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
+        ]);
+
+        StoreOrder Order(Guid id, Guid season, params (Guid pid, int qty, decimal price)[] lines)
+            => new()
+            {
+                Id = id,
+                CampSeasonId = season,
+                State = StoreOrderState.Open,
+                Lines = [.. lines.Select(l => new StoreOrderLine
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = id,
+                    ProductId = l.pid,
+                    Qty = l.qty,
+                    UnitPriceSnapshot = l.price,
+                    VatRateSnapshot = 0m,
+                    DepositAmountSnapshot = null
+                })]
+            };
+
+        var orderA = Order(Guid.NewGuid(), seasonA, (productX, 2, 5m), (productY, 1, 7m));
+        var orderB = Order(Guid.NewGuid(), seasonB, (productX, 4, 5m));
+
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([orderA, orderB]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        // By-item totals
+        result.ByItem.Single(i => i.ProductId == productX).TotalQty.Should().Be(6);
+        result.ByItem.Single(i => i.ProductId == productY).TotalQty.Should().Be(1);
+
+        // Cross-tab column totals match by-item
+        var colX = result.CrossTab.Products.Single(c => c.ProductId == productX);
+        var colY = result.CrossTab.Products.Single(c => c.ProductId == productY);
+        colX.TotalQty.Should().Be(6);
+        colY.TotalQty.Should().Be(1);
+
+        // Cross-tab row totals
+        result.CrossTab.Camps.Single(r => string.Equals(r.CampName, "Camp Alpha", StringComparison.Ordinal)).TotalQty.Should().Be(3);
+        result.CrossTab.Camps.Single(r => string.Equals(r.CampName, "Camp Bravo", StringComparison.Ordinal)).TotalQty.Should().Be(4);
+
+        // Sum of all cells == sum of column totals == sum of row totals
+        var cellSum = result.CrossTab.Camps.Sum(r => r.QtyByProduct.Values.Sum());
+        cellSum.Should().Be(result.CrossTab.Products.Sum(c => c.TotalQty));
+        cellSum.Should().Be(result.CrossTab.Camps.Sum(r => r.TotalQty));
+    }
+
+    [HumansFact]
+    public async Task Deactivated_product_with_lines_still_appears()
+    {
+        var seasonId = Guid.NewGuid();
+        var deadProductId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+
+        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+            {
+                [seasonId] = new("Camp Z", "z", null, null, Guid.NewGuid())
+            });
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+            new StoreProduct { Id = deadProductId, Year = 2026, Name = "Retired", Description = "x",
+                UnitPriceEur = 1m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = false }
+        ]);
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new StoreOrder
+                {
+                    Id = orderId, CampSeasonId = seasonId, State = StoreOrderState.Open,
+                    Lines =
+                    {
+                        new StoreOrderLine
+                        {
+                            Id = Guid.NewGuid(), OrderId = orderId, ProductId = deadProductId,
+                            Qty = 2, UnitPriceSnapshot = 1m, VatRateSnapshot = 0m
+                        }
+                    }
+                }
+            ]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        result.ByItem.Should().ContainSingle(i => i.ProductId == deadProductId && i.TotalQty == 2);
+        result.CrossTab.Products.Should().ContainSingle(p => p.ProductId == deadProductId);
+    }
+
+    [HumansFact]
+    public async Task Order_for_camp_season_not_in_year_is_excluded()
+    {
+        // Camp service returns ONE season for 2026; the repo gets that season's id.
+        // If the repo somehow returns an order for a different season, we still
+        // exclude it (defence-in-depth — the repo filter is the primary gate).
+        var inYear = Guid.NewGuid();
+        var outOfYear = Guid.NewGuid();
+        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+            {
+                [inYear] = new("InYear", "iy", null, null, Guid.NewGuid())
+            });
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new StoreOrder { Id = Guid.NewGuid(), CampSeasonId = outOfYear, State = StoreOrderState.Open }
+            ]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        result.ByCamp.Should().BeEmpty();
+        result.CrossTab.Camps.Should().BeEmpty();
+    }
+}

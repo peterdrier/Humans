@@ -563,8 +563,89 @@ public class StoreService : IStoreService
     public Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
 
-    public Task<IReadOnlyList<OrderSummaryDto>> GetAllOrderSummariesAsync(int year, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 5");
+    public async Task<StoreSummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default)
+    {
+        var seasonsForYear = await _campService.GetCampSeasonDisplayDataForYearAsync(year, ct);
+        var products = await _repo.GetAllProductsForYearAsync(year, ct);
+
+        var orders = seasonsForYear.Count == 0
+            ? (IReadOnlyList<StoreOrder>)Array.Empty<StoreOrder>()
+            : await _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                seasonsForYear.Keys.ToList(), ct);
+
+        var ordersInYear = orders
+            .Where(o => seasonsForYear.ContainsKey(o.CampSeasonId))
+            .ToList();
+
+        var productNames = products.ToDictionary(p => p.Id, p => p.Name);
+
+        var byCamp = ordersInYear
+            .Select(o =>
+            {
+                var totals = BalanceCalculator.Compute(o);
+                var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
+                var campName = seasonsForYear[o.CampSeasonId].Name;
+                return new OrderSummaryDto(
+                    o.Id,
+                    o.CampSeasonId,
+                    campName,
+                    o.Label,
+                    o.State,
+                    totalDue,
+                    totals.PaymentsTotalEur,
+                    totals.BalanceEur);
+            })
+            .OrderBy(s => s.CampName, StringComparer.Ordinal)
+            .ToList();
+
+        var byItem = ordersInYear
+            .SelectMany(o => o.Lines.Select(l => new
+            {
+                l.ProductId,
+                l.Qty,
+                Subtotal = l.Qty * l.UnitPriceSnapshot,
+                Vat = Math.Round(l.Qty * l.UnitPriceSnapshot * l.VatRateSnapshot / 100m, 2, MidpointRounding.AwayFromZero),
+                Deposit = l.DepositAmountSnapshot is { } d ? l.Qty * d : 0m
+            }))
+            .GroupBy(x => x.ProductId)
+            .Select(g => new ProductAggregateDto(
+                g.Key,
+                productNames.TryGetValue(g.Key, out var n) ? n : "(unknown)",
+                g.Sum(x => x.Qty),
+                g.Sum(x => x.Subtotal + x.Vat + x.Deposit)))
+            .OrderByDescending(p => p.TotalQty)
+            .ThenBy(p => p.ProductName, StringComparer.Ordinal)
+            .ToList();
+
+        var productColumns = byItem
+            .Select(p => new StoreCrossTabColumn(p.ProductId, p.ProductName, p.TotalQty))
+            .OrderBy(c => c.ProductName, StringComparer.Ordinal)
+            .ToList();
+
+        var campRows = ordersInYear
+            .GroupBy(o => o.CampSeasonId)
+            .Select(g =>
+            {
+                var perProduct = g
+                    .SelectMany(o => o.Lines)
+                    .GroupBy(l => l.ProductId)
+                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+                var total = perProduct.Values.Sum();
+                return new StoreCrossTabRow(
+                    g.Key,
+                    seasonsForYear[g.Key].Name,
+                    total,
+                    perProduct);
+            })
+            .OrderBy(r => r.CampName, StringComparer.Ordinal)
+            .ToList();
+
+        return new StoreSummaryDto(
+            year,
+            byCamp,
+            byItem,
+            new StoreCrossTabDto(productColumns, campRows));
+    }
 
     private static ProductDto MapProduct(StoreProduct p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
