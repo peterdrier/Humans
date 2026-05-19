@@ -40,12 +40,12 @@
             <table class="table table-sm mb-0" id="by-camp-table">
                 <thead>
                     <tr>
-                        <th>Camp</th>
-                        <th>Label</th>
-                        <th>State</th>
-                        <th class="text-end">Total due (€)</th>
-                        <th class="text-end">Paid (€)</th>
-                        <th class="text-end">Balance (€)</th>
+                        <th class="sortable" data-sort-key="camp" data-sort-type="text" role="button">Camp <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable" data-sort-key="label" data-sort-type="text" role="button">Label <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable" data-sort-key="state" data-sort-type="text" role="button">State <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable text-end" data-sort-key="due" data-sort-type="number" role="button">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable text-end" data-sort-key="paid" data-sort-type="number" role="button">Paid (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable text-end" data-sort-key="balance" data-sort-type="number" role="button">Balance (€) <span class="sort-indicator" aria-hidden="true"></span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,7 +54,13 @@
                     string paidClass =
                         row.BalanceEur <= 0m ? "paid" :
                         row.PaymentsTotalEur > 0m ? "partial" : "unpaid";
-                    <tr data-paid-status="@paidClass">
+                    <tr data-paid-status="@paidClass"
+                        data-camp="@row.CampName"
+                        data-label="@row.Label"
+                        data-state="@row.State"
+                        data-due="@row.TotalDueEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        data-paid="@row.PaymentsTotalEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        data-balance="@row.BalanceEur.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                         <td>
                             <a asp-controller="Store" asp-action="Order" asp-route-id="@row.OrderId">
                                 @row.CampName
@@ -156,15 +162,52 @@
     </div>
 </section>
 
-<script>
-    (function () {
-        const select = document.getElementById('paid-filter');
-        if (!select) return;
-        select.addEventListener('change', function () {
-            const v = select.value;
-            document.querySelectorAll('#by-camp-table tbody tr').forEach(tr => {
-                tr.style.display = (v === 'all' || tr.dataset.paidStatus === v) ? '' : 'none';
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        (function () {
+            const table = document.getElementById('by-camp-table');
+            if (!table) return;
+            const tbody = table.tBodies[0];
+
+            const select = document.getElementById('paid-filter');
+            if (select) {
+                select.addEventListener('change', function () {
+                    const v = select.value;
+                    tbody.querySelectorAll('tr').forEach(tr => {
+                        tr.style.display = (v === 'all' || tr.dataset.paidStatus === v) ? '' : 'none';
+                    });
+                });
+            }
+
+            let sortKey = null;
+            let sortDir = 1;
+            table.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', function () {
+                    const key = th.dataset.sortKey;
+                    const type = th.dataset.sortType;
+                    if (sortKey === key) {
+                        sortDir = -sortDir;
+                    } else {
+                        sortKey = key;
+                        sortDir = 1;
+                    }
+                    table.querySelectorAll('th.sortable .sort-indicator').forEach(i => { i.textContent = ''; });
+                    th.querySelector('.sort-indicator').textContent = sortDir === 1 ? ' ▲' : ' ▼';
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort(function (a, b) {
+                        const av = a.dataset[key] || '';
+                        const bv = b.dataset[key] || '';
+                        let cmp;
+                        if (type === 'number') {
+                            cmp = parseFloat(av) - parseFloat(bv);
+                        } else {
+                            cmp = av.localeCompare(bv);
+                        }
+                        return cmp * sortDir;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                });
             });
-        });
-    })();
-</script>
+        })();
+    </script>
+}

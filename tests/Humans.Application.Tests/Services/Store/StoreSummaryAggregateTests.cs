@@ -244,6 +244,75 @@ public class StoreSummaryAggregateTests
     }
 
     [HumansFact]
+    public async Task ByCamp_balance_reflects_paid_partial_unpaid_states()
+    {
+        // Three camps × three payment states. BalanceEur is what drives the
+        // view's paid/partial/unpaid classification dropdown — keep it honest.
+        var (seasonPaid, seasonPartial, seasonUnpaid) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var (orderPaid, orderPartial, orderUnpaid) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var productId = Guid.NewGuid();
+
+        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+            {
+                [seasonPaid] = new("Paid", "p", null, null, Guid.NewGuid()),
+                [seasonPartial] = new("Partial", "pa", null, null, Guid.NewGuid()),
+                [seasonUnpaid] = new("Unpaid", "u", null, null, Guid.NewGuid())
+            });
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+            new StoreProduct { Id = productId, Year = 2026, Name = "P", Description = "x",
+                UnitPriceEur = 10m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
+        ]);
+
+        StoreOrder Order(Guid id, Guid season, int qty, decimal paid) => new()
+        {
+            Id = id,
+            CampSeasonId = season,
+            State = StoreOrderState.Open,
+            Lines =
+            {
+                new StoreOrderLine
+                {
+                    Id = Guid.NewGuid(), OrderId = id, ProductId = productId,
+                    Qty = qty, UnitPriceSnapshot = 10m, VatRateSnapshot = 0m
+                }
+            },
+            Payments = paid == 0m
+                ? new List<StorePayment>()
+                : new List<StorePayment>
+                {
+                    new() { Id = Guid.NewGuid(), OrderId = id, AmountEur = paid,
+                        Method = StorePaymentMethod.Manual, ReceivedAt = Instant.FromUtc(2026, 5, 1, 0, 0) }
+                }
+        };
+
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                Order(orderPaid, seasonPaid, qty: 2, paid: 20m),      // due 20, paid 20  → balance  0  (paid)
+                Order(orderPartial, seasonPartial, qty: 3, paid: 10m), // due 30, paid 10  → balance 20  (partial)
+                Order(orderUnpaid, seasonUnpaid, qty: 1, paid: 0m)    // due 10, paid  0  → balance 10  (unpaid)
+            ]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        var paidRow = result.ByCamp.Single(r => r.OrderId == orderPaid);
+        paidRow.TotalDueEur.Should().Be(20m);
+        paidRow.PaymentsTotalEur.Should().Be(20m);
+        paidRow.BalanceEur.Should().Be(0m);
+
+        var partialRow = result.ByCamp.Single(r => r.OrderId == orderPartial);
+        partialRow.TotalDueEur.Should().Be(30m);
+        partialRow.PaymentsTotalEur.Should().Be(10m);
+        partialRow.BalanceEur.Should().Be(20m);
+
+        var unpaidRow = result.ByCamp.Single(r => r.OrderId == orderUnpaid);
+        unpaidRow.TotalDueEur.Should().Be(10m);
+        unpaidRow.PaymentsTotalEur.Should().Be(0m);
+        unpaidRow.BalanceEur.Should().Be(10m);
+    }
+
+    [HumansFact]
     public async Task Order_for_camp_season_not_in_year_is_excluded()
     {
         // Camp service returns ONE season for 2026; the repo gets that season's id.
