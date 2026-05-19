@@ -21,20 +21,16 @@ namespace Humans.Application.Tests.Services;
 public sealed class CampRoleServiceTests : ServiceTestHarness
 {
     private readonly CampRoleService _service;
-    private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
-    private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampService _campService;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _auditLog = Substitute.For<IAuditLogService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
-        _notificationEmitter = Substitute.For<INotificationEmitter>();
         _campService = Substitute.For<ICampService>();
 
         var repo = new CampRoleRepository(DbFactory);
@@ -44,8 +40,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             _campService,
             _userService,
             _userEmailService,
-            _auditLog,
-            _notificationEmitter,
+            AuditLog,
+            Notifier,
             Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
             Clock,
             NullLogger<CampRoleService>.Instance);
@@ -107,7 +103,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         result.MinimumRequired.Should().Be(0);
 
         // Audit happens AFTER save (I1 fix)
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
             result.Id,
@@ -160,7 +156,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         updated.SlotCount.Should().Be(2);
         updated.MinimumRequired.Should().Be(0);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionUpdated,
             nameof(CampRoleDefinition),
             def.Id,
@@ -208,7 +204,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
         reloaded!.DeactivatedAt.Should().NotBeNull();
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
     }
@@ -231,7 +227,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
         reloaded!.DeactivatedAt.Should().BeNull();
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
     }
@@ -254,12 +250,12 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         assignments.Should().HaveCount(1);
         assignments[0].CampMemberId.Should().Be(member.Id);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleAssigned, nameof(CampRoleAssignment),
             Arg.Any<Guid>(), Arg.Any<string>(), _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
-        await _notificationEmitter.Received(1).SendAsync(
+        await Notifier.Received(1).SendAsync(
             NotificationSource.CampRoleAssigned,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
@@ -373,7 +369,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         ok.Should().BeTrue();
         (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleUnassigned, nameof(CampRoleAssignment),
             assignment.Id, Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
