@@ -1,0 +1,63 @@
+name: Feature / change request
+description: A new capability, change to existing behavior, or refactor.
+title: "[feat] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, skim `memory/INDEX.md` and the section doc under `docs/sections/` for the area you're touching —
+        sometimes the answer is already a rule or an invariant.
+
+  - type: dropdown
+    id: section
+    attributes:
+      label: Section
+      description: Which area of the app does this belong to? See `docs/sections/` for the full list.
+      options:
+        - Camps
+        - Teams
+        - Legal
+        - Shifts
+        - Tickets
+        - Board
+        - Onboarding
+        - Admin
+        - Governance
+        - Profile / Account
+        - Auth / Sign-in
+        - Infrastructure / Build / CI
+        - Cross-section / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What's the underlying problem? Who hits it? Skip the proposed solution here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: The shape of the change. Leave open ends for the implementer to decide where genuine.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know this is done? Bullet list of testable outcomes.
+      placeholder: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope / non-goals
+      description: Anything intentionally NOT being done here. Helps prevent scope creep.
