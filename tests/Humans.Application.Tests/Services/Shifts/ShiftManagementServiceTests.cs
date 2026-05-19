@@ -107,7 +107,6 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var repo = Substitute.For<IShiftManagementRepository>();
         repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(1);
-        var adminAuthorization = Substitute.For<IAdminAuthorizationService>();
         using var cache = new MemoryCache(new MemoryCacheOptions());
 
         var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>()).ToList();
@@ -122,7 +121,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var service = new ShiftManagementService(
             repo,
             AuditLog,
-            adminAuthorization,
+            AdminAuthorization,
             new ServiceLocatorBuilder().Build(),
             cache,
             Substitute.For<IShiftViewInvalidator>(),
@@ -132,7 +131,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var deleted = await service.DeleteEventAsync(eventId);
 
         deleted.Should().Be(1);
-        await adminAuthorization.Received(1)
+        await AdminAuthorization.Received(1)
             .RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
         foreach (var period in periods)
         {
