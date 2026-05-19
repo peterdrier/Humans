@@ -181,32 +181,45 @@ public sealed class GoogleGroupSyncService(
 
                     // Apply enforced settings. Non-fatal: the group exists
                     // either way; drift detection will catch any failed
-                    // application on the next /AllGroups sweep.
-                    var settingsError = await provisioningClient.UpdateGroupSettingsAsync(
-                        claim.GroupKey,
-                        new GroupSettingsExpected(
-                            WhoCanJoin: _options.Groups.WhoCanJoin,
-                            WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
-                            WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
-                            WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
-                            WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
-                            WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
-                            AllowExternalMembers: _options.Groups.AllowExternalMembers,
-                            IsArchived: true,
-                            MembersCanPostAsTheGroup: true,
-                            IncludeInGlobalAddressList: true,
-                            AllowWebPosting: true,
-                            MessageModerationLevel: "MODERATE_NONE",
-                            SpamModerationLevel: "MODERATE",
-                            EnableCollaborativeInbox: true),
-                        ct);
-                    if (settingsError is not null)
+                    // application on the next /AllGroups sweep. Isolated in
+                    // its own try/catch so a thrown transport/credential
+                    // failure here doesn't skip the follow-up lookup +
+                    // membership reconcile below.
+                    try
+                    {
+                        var settingsError = await provisioningClient.UpdateGroupSettingsAsync(
+                            claim.GroupKey,
+                            new GroupSettingsExpected(
+                                WhoCanJoin: _options.Groups.WhoCanJoin,
+                                WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
+                                WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
+                                WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
+                                WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
+                                WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
+                                AllowExternalMembers: _options.Groups.AllowExternalMembers,
+                                IsArchived: true,
+                                MembersCanPostAsTheGroup: true,
+                                IncludeInGlobalAddressList: true,
+                                AllowWebPosting: true,
+                                MessageModerationLevel: "MODERATE_NONE",
+                                SpamModerationLevel: "MODERATE",
+                                EnableCollaborativeInbox: true),
+                            ct);
+                        if (settingsError is not null)
+                        {
+                            logger.LogWarning(
+                                "Failed to apply group settings to auto-provisioned {GroupKey} (HTTP {StatusCode}): {Message}. Group was created with Google defaults",
+                                claim.GroupKey,
+                                settingsError.StatusCode,
+                                settingsError.RawMessage);
+                        }
+                    }
+                    catch (Exception settingsEx)
                     {
                         logger.LogWarning(
-                            "Failed to apply group settings to auto-provisioned {GroupKey} (HTTP {StatusCode}): {Message}. Group was created with Google defaults",
+                            "Error applying group settings to auto-provisioned {GroupKey}; continuing with membership reconcile: {Error}",
                             claim.GroupKey,
-                            settingsError.StatusCode,
-                            settingsError.RawMessage);
+                            settingsEx.Message);
                     }
 
                     lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
