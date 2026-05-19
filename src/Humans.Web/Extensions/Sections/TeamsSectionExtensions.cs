@@ -29,6 +29,7 @@ internal static class TeamsSectionExtensions
 
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());

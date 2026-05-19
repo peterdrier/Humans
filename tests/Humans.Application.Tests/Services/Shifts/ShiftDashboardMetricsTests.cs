@@ -1126,7 +1126,8 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 
         // Members below are unused by the dashboard compute paths under test.
         public Task<Team> CreateTeamAsync(string name, string? description, bool requiresApproval, Guid? parentTeamId = null, string? googleGroupPrefix = null, bool isHidden = false, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();

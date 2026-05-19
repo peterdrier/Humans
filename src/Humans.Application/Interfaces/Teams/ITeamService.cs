@@ -219,6 +219,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>51→48 — ITeamServiceRead split: <c>GetTeamsAsync</c>, <c>GetTeamAsync</c>, <c>SearchAsync</c>, and new <c>GetTeamBySlugAsync(TeamInfo)</c> moved onto <c>ITeamServiceRead</c> (inherited members do not count); existing entity-returning slug method renamed to <c>GetTeamEntityBySlugAsync</c> (stays on full surface).</item>
 ///   <item>54→51 — ITeamServiceRead split prep: removed <c>GetPendingRequestCountsByTeamIdsAsync</c> (fully dead, only CachingTeamService delegated); made <c>CanUserApproveRequestsForTeamAsync</c> and <c>GetAllRoleDefinitionsAsync</c> private (interface-surface-dead, internal callers only).</item>
 ///   <item>54→54 — added <c>TeamInfo.ManagementRoleHolderUserIds</c> + <c>TeamInfo.RoleDefinitions</c> projections; drained 6 readers off DB onto the team cache (<c>IsUserCoordinatorOfTeamAsync</c>, <c>GetUserCoordinatedTeamIdsAsync</c>, <c>GetEffectiveBudgetCoordinatorTeamIdsAsync</c>, <c>GetRoleDefinitionsAsync</c>, <c>GetAllRoleDefinitionsAsync</c>, <c>GetManagementRoleNamesByTeamIdsAsync</c>). Surface unchanged (external boundaries kept).</item>
 ///   <item>56→54 — drained GetSystemTeamWithActiveMembersAsync + GetActiveMembersForTeamsAsync onto TeamInfo cache.</item>
@@ -234,8 +235,8 @@ public record TeamActiveMemberSnapshot(
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(51)]
-public interface ITeamService : IApplicationService
+[SurfaceBudget(48)]
+public interface ITeamService : ITeamServiceRead, IApplicationService
 {
     /// <summary>
     /// Creates a new team.
@@ -250,9 +251,11 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets a team by its slug.
+    /// Gets a team entity by its slug (Teams-internal use; external sections
+    /// should use <see cref="ITeamServiceRead.GetTeamBySlugAsync"/> for the
+    /// <see cref="TeamInfo"/> projection).
     /// </summary>
-    Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default);
+    Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a team by its ID.
@@ -260,31 +263,9 @@ public interface ITeamService : IApplicationService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the team read model by ID, including active members.
-    /// </summary>
-    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets team read models keyed by ID, including active members.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Active, non-hidden teams whose <c>Name</c> contains
-    /// <paramref name="query"/> (case-insensitive). Capped at
-    /// <paramref name="max"/>; returned in unspecified order — the global
-    /// search orchestrator scores and ranks. Used by the global /Search
-    /// page (<c>SearchService</c>); every caller sees the public surface
-    /// regardless of role.
-    /// </summary>
-    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
-        string query, int max,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.

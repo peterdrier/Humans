@@ -71,8 +71,8 @@ public sealed class CachingTeamService(
         return result;
     }
 
-    public Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamBySlugAsync(slug, cancellationToken));
+    public Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetTeamEntityBySlugAsync(slug, cancellationToken));
 
     public Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetTeamByIdAsync(teamId, cancellationToken));
@@ -83,6 +83,17 @@ public sealed class CachingTeamService(
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         return teamsById.GetValueOrDefault(teamId);
+    }
+
+    public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        // Cache walk — no repo hit on cache hit. Matches the slug-resolution
+        // semantics inner.GetTeamDetailAsync uses (canonical Slug OR CustomSlug).
+        var normalizedSlug = slug.ToLowerInvariant();
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        return teamsById.Values.FirstOrDefault(t =>
+            string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
+            || (t.CustomSlug is not null && string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal)));
     }
 
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(

@@ -234,7 +234,7 @@ public sealed class DevelopmentBudgetSeeder(
 
         foreach (var teamSeed in TeamSeeds)
         {
-            var team = await teamService.GetTeamBySlugAsync(teamSeed.Slug, cancellationToken)
+            var team = await teamService.GetTeamEntityBySlugAsync(teamSeed.Slug, cancellationToken)
                 ?? throw new InvalidOperationException($"Team with slug '{teamSeed.Slug}' not found after seeding");
 
             var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
@@ -314,7 +314,7 @@ public sealed class DevelopmentBudgetSeeder(
         Action onCreated,
         Action onUpdated)
     {
-        var existing = await teamService.GetTeamBySlugAsync(seed.Slug, cancellationToken);
+        var existing = await teamService.GetTeamEntityBySlugAsync(seed.Slug, cancellationToken);
 
         if (existing is null)
         {

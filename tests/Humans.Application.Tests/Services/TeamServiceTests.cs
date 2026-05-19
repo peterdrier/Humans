@@ -1266,11 +1266,11 @@ public sealed class TeamServiceTests : ServiceTestHarness
     // EF provider used in this harness does not support transactions. Cover it in Integration tests.
 
     // ==========================================================================
-    // GetTeamBySlugAsync
+    // GetTeamEntityBySlugAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
+    public async Task GetTeamEntityBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
@@ -1279,11 +1279,57 @@ public sealed class TeamServiceTests : ServiceTestHarness
             leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
         await Db.SaveChangesAsync();
 
-        var result = await _service.GetTeamBySlugAsync("alpha");
+        var result = await _service.GetTeamEntityBySlugAsync("alpha");
 
         result.Should().NotBeNull();
         result.Name.Should().Be("Alpha");
         result.Members.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task GetTeamEntityBySlugAsync_NonExistentSlug_ReturnsNull()
+    {
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetTeamEntityBySlugAsync("non-existent");
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetTeamEntityBySlugAsync_IncludesUserNavigation()
+    {
+        var user = SeedUser(displayName: "Alice");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetTeamEntityBySlugAsync("alpha");
+
+        result!.Members.Single().User.Should().NotBeNull();
+        result.Members.Single().User.DisplayName.Should().Be("Alice");
+    }
+
+    // ==========================================================================
+    // GetTeamBySlugAsync (TeamInfo? — ITeamServiceRead surface)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsSameTeamAsEntityVersion()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var info = await _service.GetTeamBySlugAsync("alpha");
+        var entity = await _service.GetTeamEntityBySlugAsync("alpha");
+
+        info.Should().NotBeNull();
+        entity.Should().NotBeNull();
+        info!.Id.Should().Be(entity!.Id);
+        info.Slug.Should().Be(entity.Slug);
+        info.Name.Should().Be(entity.Name);
     }
 
     [HumansFact]
@@ -1294,20 +1340,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var result = await _service.GetTeamBySlugAsync("non-existent");
 
         result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetTeamBySlugAsync_IncludesUserNavigation()
-    {
-        var user = SeedUser(displayName: "Alice");
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.GetTeamBySlugAsync("alpha");
-
-        result!.Members.Single().User.Should().NotBeNull();
-        result.Members.Single().User.DisplayName.Should().Be("Alice");
     }
 
     // ==========================================================================

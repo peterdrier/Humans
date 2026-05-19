@@ -47,7 +47,7 @@ Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByUserAsync:Humans.D
 Humans.Application.Interfaces.Teams.ITeamService.GetAllTeamsAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetByIdsWithParentsAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetTeamByIdAsync:Humans.Domain.Entities.Team
-Humans.Application.Interfaces.Teams.ITeamService.GetTeamBySlugAsync:Humans.Domain.Entities.Team
+Humans.Application.Interfaces.Teams.ITeamService.GetTeamEntityBySlugAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetUserTeamsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Users.IAccountProvisioningService.FindOrCreateUserByEmailAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetAllParticipationsForYearAsync:Humans.Domain.Entities.EventParticipation

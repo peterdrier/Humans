@@ -401,7 +401,7 @@ public sealed class DevPersonaSeeder(
         var now = clock.GetCurrentInstant();
         var changed = false;
 
-        var department = await teamService.GetTeamBySlugAsync("dev-test-department");
+        var department = await teamService.GetTeamEntityBySlugAsync("dev-test-department");
         if (department is null)
         {
             department = await teamService.CreateTeamAsync(
@@ -412,7 +412,7 @@ public sealed class DevPersonaSeeder(
             changed = true;
         }
 
-        var subTeam = await teamService.GetTeamBySlugAsync("dev-test-subteam");
+        var subTeam = await teamService.GetTeamEntityBySlugAsync("dev-test-subteam");
         if (subTeam is null)
         {
             subTeam = await teamService.CreateTeamAsync(
@@ -473,7 +473,7 @@ public sealed class DevPersonaSeeder(
         }
 
         var changed = false;
-        var team = await teamService.GetTeamBySlugAsync(teamSlug);
+        var team = await teamService.GetTeamEntityBySlugAsync(teamSlug);
         if (team is null)
         {
             if (!string.Equals(teamSlug, "city-planning", StringComparison.OrdinalIgnoreCase))

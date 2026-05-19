@@ -4,6 +4,9 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -150,5 +153,47 @@ public class TeamsArchitectureTests
         return ns.StartsWith("Humans.Application.Services.Teams", StringComparison.Ordinal)
             || ns.StartsWith("Humans.Infrastructure.Services.Teams", StringComparison.Ordinal)
             || ns.StartsWith("Humans.Infrastructure.Repositories.Teams", StringComparison.Ordinal);
+    }
+
+    // ── ITeamServiceRead split (memory/architecture/section-read-write-split.md) ──
+
+    [HumansFact]
+    public void ITeamService_InheritsITeamServiceRead()
+    {
+        typeof(ITeamServiceRead).IsAssignableFrom(typeof(ITeamService))
+            .Should().BeTrue(
+                because: "ITeamService is the full Teams surface; external sections inject the narrow ITeamServiceRead. " +
+                         "See memory/architecture/section-read-write-split.md.");
+    }
+
+    [HumansFact]
+    public void CachingTeamService_ImplementsITeamServiceRead()
+    {
+        typeof(ITeamServiceRead).IsAssignableFrom(typeof(CachingTeamService))
+            .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void ITeamService_And_ITeamServiceRead_ResolveToSameSingleton()
+    {
+        // Mirrors the Teams-section DI shape: the same CachingTeamService
+        // singleton is exposed under both interface keys.
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<ITeamRepository>());
+        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
+        services.AddSingleton(Substitute.For<ILogger<CachingTeamService>>());
+
+        services.AddSingleton<CachingTeamService>();
+        services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromFull = provider.GetRequiredService<ITeamService>();
+        var fromRead = provider.GetRequiredService<ITeamServiceRead>();
+        var concrete = provider.GetRequiredService<CachingTeamService>();
+
+        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromRead, concrete).Should().BeTrue();
     }
 }

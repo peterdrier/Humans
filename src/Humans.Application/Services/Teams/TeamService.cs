@@ -118,7 +118,7 @@ public sealed class TeamService(
         throw new InvalidOperationException($"Could not generate unique slug for team '{name}' after 10 attempts");
     }
 
-    public async Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    public async Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var normalizedSlug = slug.ToLowerInvariant();
         var team = await repo.GetBySlugWithRelationsAsync(normalizedSlug, cancellationToken);
@@ -127,6 +127,15 @@ public sealed class TeamService(
 
         await StitchMemberUserSlicesAsync(team.Members.Where(m => m.LeftAt is null), cancellationToken);
         return team;
+    }
+
+    public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        var normalizedSlug = slug.ToLowerInvariant();
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return teamsById.Values.FirstOrDefault(t =>
+            string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
+            || (t.CustomSlug is not null && string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal)));
     }
 
     public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default)
@@ -211,7 +220,7 @@ public sealed class TeamService(
         Guid? userId,
         CancellationToken cancellationToken = default)
     {
-        var team = await GetTeamBySlugAsync(slug, cancellationToken);
+        var team = await GetTeamEntityBySlugAsync(slug, cancellationToken);
         if (team is null)
             return null;
 
