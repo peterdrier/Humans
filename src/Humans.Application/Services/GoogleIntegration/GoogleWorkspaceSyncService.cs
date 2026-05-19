@@ -96,67 +96,6 @@ public sealed class GoogleWorkspaceSyncService(
         return resource;
     }
 
-    private async Task<GoogleResource> ProvisionTeamGroupAsync(
-        Guid teamId,
-        string groupEmail,
-        string groupName,
-        CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("Provisioning Google Group '{GroupEmail}' for team {TeamId}", groupEmail, teamId);
-
-        var create = await groupProvisioning.CreateGroupAsync(
-            groupEmail,
-            groupName,
-            $"Mailing list for {groupName} team",
-            cancellationToken);
-
-        if (create.GroupNumericId is null)
-        {
-            var err = create.Error;
-            throw new InvalidOperationException(
-                $"Google Group create failed for {groupEmail} (HTTP {err?.StatusCode}): {err?.RawMessage}");
-        }
-
-        // Apply configured group settings — non-fatal on failure (group was created).
-        var settingsError = await groupProvisioning.UpdateGroupSettingsAsync(
-            groupEmail, BuildExpectedGroupSettings(), cancellationToken);
-
-        if (settingsError is not null)
-        {
-            logger.LogWarning(
-                "Failed to apply group settings to '{GroupEmail}' (HTTP {Code}: {Message}). Group was created with Google defaults",
-                groupEmail, settingsError.StatusCode, settingsError.RawMessage);
-        }
-        else
-        {
-            logger.LogInformation("Applied group settings to '{GroupEmail}'", groupEmail);
-        }
-
-        var now = clock.GetCurrentInstant();
-        var resource = new GoogleResource
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            ResourceType = GoogleResourceType.Group,
-            GoogleId = create.GroupNumericId,
-            Name = groupName,
-            Url = $"https://groups.google.com/a/{_options.Domain}/g/{groupEmail.Split('@')[0]}",
-            ProvisionedAt = now,
-            LastSyncedAt = now,
-            IsActive = true
-        };
-
-        await resourceRepository.AddAsync(resource, cancellationToken);
-
-        await auditLogService.LogAsync(
-            AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
-            $"Provisioned Google Group '{groupName}' ({groupEmail}) for team",
-            nameof(GoogleWorkspaceSyncService),
-            relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-        return resource;
-    }
-
     // ─── Gateway — add/remove per user per resource ───
 
     /// <summary>GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None. <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.</summary>
@@ -1044,38 +983,39 @@ public sealed class GoogleWorkspaceSyncService(
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
         }
 
-        // Try to find an existing Google Group via Cloud Identity; if not, create it.
-        var lookup = await groupProvisioning.LookupGroupIdAsync(email, cancellationToken);
-        if (lookup.GroupNumericId is not null)
+        // Delegate to the central recon path. ReconcileOneAsync looks up the
+        // group, auto-provisions it (with enforced settings) when missing, and
+        // syncs membership. Returns a diff carrying the Google numeric id on
+        // success — we use it to write the team-side GoogleResource row.
+        var diff = await googleGroupSync.ReconcileOneAsync(email, SyncAction.Execute, cancellationToken, scheduleRetries: false);
+        if (string.IsNullOrEmpty(diff.GoogleId))
         {
-            var resource = new GoogleResource
-            {
-                Id = Guid.NewGuid(),
-                TeamId = teamId,
-                ResourceType = GoogleResourceType.Group,
-                GoogleId = lookup.GroupNumericId,
-                Name = team.Name,
-                Url = expectedUrl,
-                ProvisionedAt = now,
-                LastSyncedAt = now,
-                IsActive = true
-            };
-
-            await resourceRepository.AddAsync(resource, cancellationToken);
-
-            await auditLogService.LogAsync(
-                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
-                $"Linked existing Google Group '{team.Name}' ({email}) for team",
-                nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: nameof(Team));
+            logger.LogWarning(
+                "Failed to ensure Google Group '{Email}' for team {TeamId} via recon: {Error}",
+                email, teamId, diff.ErrorMessage);
+            return GroupLinkResult.Error(diff.ErrorMessage ?? $"Failed to ensure Google Group {email}");
         }
-        else
+
+        var resource = new GoogleResource
         {
-            var code = lookup.Error?.StatusCode ?? 0;
-            logger.LogInformation("Google Group '{Email}' not found (HTTP {Code}), creating for team {TeamId}",
-                email, code, teamId);
-            await ProvisionTeamGroupAsync(teamId, email, team.Name, cancellationToken);
-        }
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            ResourceType = GoogleResourceType.Group,
+            GoogleId = diff.GoogleId,
+            Name = team.Name,
+            Url = expectedUrl,
+            ProvisionedAt = now,
+            LastSyncedAt = now,
+            IsActive = true
+        };
+
+        await resourceRepository.AddAsync(resource, cancellationToken);
+
+        await auditLogService.LogAsync(
+            AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
+            $"Linked Google Group '{team.Name}' ({email}) for team",
+            nameof(GoogleWorkspaceSyncService),
+            relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
         return GroupLinkResult.Ok();
     }
@@ -1881,21 +1821,8 @@ public sealed class GoogleWorkspaceSyncService(
     // Group settings helpers
     // ==========================================================================
 
-    private GroupSettingsExpected BuildExpectedGroupSettings() => new(
-        WhoCanJoin: _options.Groups.WhoCanJoin,
-        WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
-        WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
-        WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
-        WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
-        WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
-        AllowExternalMembers: _options.Groups.AllowExternalMembers,
-        IsArchived: true,
-        MembersCanPostAsTheGroup: true,
-        IncludeInGlobalAddressList: true,
-        AllowWebPosting: true,
-        MessageModerationLevel: "MODERATE_NONE",
-        SpamModerationLevel: "MODERATE",
-        EnableCollaborativeInbox: true);
+    private GroupSettingsExpected BuildExpectedGroupSettings() =>
+        GroupSettingsPolicy.BuildExpected(_options.Groups);
 
     private Dictionary<string, string> BuildExpectedSettingsDictionary()
     {

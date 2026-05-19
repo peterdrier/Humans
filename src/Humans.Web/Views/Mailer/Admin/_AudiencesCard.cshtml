@@ -26,9 +26,14 @@
                                 }
                             </div>
                         </div>
-                        <form asp-action="SyncAudience" asp-route-key="@row.Key" method="post" class="m-0">
-                            <button type="submit" class="btn btn-sm btn-outline-primary">Push Now</button>
-                        </form>
+                        <div class="d-flex gap-2 align-items-center">
+                            <a href="/Mailer/Admin/Audiences/@row.Key/Debug" class="btn btn-sm btn-outline-secondary">
+                                <i class="fa-solid fa-magnifying-glass me-1"></i>Debug
+                            </a>
+                            <form asp-action="SyncAudience" asp-route-key="@row.Key" method="post" class="m-0">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Push Now</button>
+                            </form>
+                        </div>
                     </li>
                 }
             </ul>

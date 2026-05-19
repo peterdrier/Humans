@@ -159,9 +159,7 @@ public sealed class CommunicationPreferenceService(
             await repository.UpdateAsync(pref, cancellationToken);
         }
 
-        var description = optedOut
-            ? $"{category} opted out via {source}"
-            : $"{category} opted in via {source}";
+        var description = $"{category} set to {!optedOut} via {source}";
 
         await auditLog.LogAsync(
             AuditAction.CommunicationPreferenceChanged,
@@ -216,7 +214,7 @@ public sealed class CommunicationPreferenceService(
             await repository.UpdateAsync(pref, cancellationToken);
         }
 
-        var description = $"{category} set to OptedOut={optedOut}, InboxEnabled={inboxEnabled} via {source}";
+        var description = $"{category} set to {!optedOut}, Inbox set to {inboxEnabled} via {source}";
 
         await auditLog.LogAsync(
             AuditAction.CommunicationPreferenceChanged,

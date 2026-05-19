@@ -55,5 +55,6 @@ public interface IGoogleGroupSync
         string groupKey,
         SyncAction action,
         CancellationToken ct = default,
-        int retryAttempt = 0);
+        int retryAttempt = 0,
+        bool scheduleRetries = true);
 }
