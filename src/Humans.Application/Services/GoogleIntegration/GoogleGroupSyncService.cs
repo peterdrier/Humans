@@ -179,14 +179,26 @@ public sealed class GoogleGroupSyncService(
                         "Auto-provisioned Google Group for {GroupKey}",
                         claim.GroupKey);
 
-                    // Apply enforced settings — mirrors the Teams provisioning
-                    // path so auto-provisioned groups (e.g. Camp role groups)
-                    // don't sit on Google's defaults until manual remediation.
-                    // Non-fatal: the group exists either way; drift detection
-                    // will catch any failed application.
+                    // Apply enforced settings. Non-fatal: the group exists
+                    // either way; drift detection will catch any failed
+                    // application on the next /AllGroups sweep.
                     var settingsError = await provisioningClient.UpdateGroupSettingsAsync(
                         claim.GroupKey,
-                        GroupSettingsPolicy.BuildExpected(_options.Groups),
+                        new GroupSettingsExpected(
+                            WhoCanJoin: _options.Groups.WhoCanJoin,
+                            WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
+                            WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
+                            WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
+                            WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
+                            WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
+                            AllowExternalMembers: _options.Groups.AllowExternalMembers,
+                            IsArchived: true,
+                            MembersCanPostAsTheGroup: true,
+                            IncludeInGlobalAddressList: true,
+                            AllowWebPosting: true,
+                            MessageModerationLevel: "MODERATE_NONE",
+                            SpamModerationLevel: "MODERATE",
+                            EnableCollaborativeInbox: true),
                         ct);
                     if (settingsError is not null)
                     {
