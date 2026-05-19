@@ -24,7 +24,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
     // Delegate to the production helper (made internal for test access)
@@ -43,7 +42,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _profileRepository, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _auditLogService,
+            AuditLog,
             _fileStorage,
             Substitute.For<IUserInfoInvalidator>(),
             Clock,
@@ -447,7 +446,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         profileRepository, _userService,
         _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
-        _auditLogService,
+        AuditLog,
         _fileStorage,
         Substitute.For<IUserInfoInvalidator>(),
         Clock,
@@ -597,7 +596,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             fakeRepo, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _auditLogService,
+            AuditLog,
             _fileStorage,
             Substitute.For<IUserInfoInvalidator>(),
             Clock,

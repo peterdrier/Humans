@@ -30,14 +30,12 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
             dataProtectionProvider, emailSettings,
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
-        var auditLog = Substitute.For<IAuditLogService>();
-
         _service = new CommunicationPreferenceService(
             repository,
             Substitute.For<IUserService>(),
             tokenProvider,
             Clock,
-            auditLog,
+            AuditLog,
             NullLogger<CommunicationPreferenceService>.Instance);
     }
 

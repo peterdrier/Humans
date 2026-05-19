@@ -27,7 +27,7 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
             repo,
             Substitute.For<IFileStorage>(),
             Substitute.For<ICampService>(),
-            Substitute.For<IAuditLogService>(),
+            AuditLog,
             Clock);
     }
 

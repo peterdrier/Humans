@@ -23,7 +23,6 @@ namespace Humans.Application.Tests.Services;
 public sealed class FeedbackServiceTests : ServiceTestHarness
 {
     private readonly IEmailService _emailService;
-    private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
@@ -36,7 +35,6 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
         : base(Instant.FromUtc(2026, 3, 18, 12, 0))
     {
         _emailService = Substitute.For<IEmailService>();
-        _auditLog = Substitute.For<IAuditLogService>();
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(Path.GetTempPath());
 
@@ -109,7 +107,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
 
         _service = new FeedbackApplicationService(
             _repository, _userService, _userEmailService, _teamService,
-            _emailService, _notificationService, _auditLog, _navBadge, Clock, env,
+            _emailService, _notificationService, AuditLog, _navBadge, Clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
     }
 

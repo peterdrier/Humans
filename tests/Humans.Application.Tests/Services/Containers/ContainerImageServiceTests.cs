@@ -28,7 +28,7 @@ public sealed class ContainerImageServiceTests : ServiceTestHarness
             repo,
             _fileStorage,
             Substitute.For<ICampService>(),
-            Substitute.For<IAuditLogService>(),
+            AuditLog,
             Clock);
     }
 
