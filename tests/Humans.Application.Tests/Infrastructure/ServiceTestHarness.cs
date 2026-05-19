@@ -1,3 +1,7 @@
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -25,6 +29,18 @@ public abstract class ServiceTestHarness : IDisposable
     private protected TestDbContextFactory DbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
+
+    // ----- Shared NSubstitute stubs -----------------------------------------
+    // Bare substitutes for the four interfaces that ~30 service tests stub
+    // identically. xUnit creates a fresh test class instance per test, so
+    // these are per-test-fresh — no state leak across tests. Override behavior
+    // in a derived ctor via `.When(...).Do(...)` or `.Returns(...)` if needed
+    // (e.g., TeamServiceTests redirects ShiftAuthInvalidator to Cache).
+
+    private protected IAuditLogService AuditLog { get; } = Substitute.For<IAuditLogService>();
+    private protected INotificationEmitter Notifier { get; } = Substitute.For<INotificationEmitter>();
+    private protected IShiftAuthorizationInvalidator ShiftAuthInvalidator { get; } = Substitute.For<IShiftAuthorizationInvalidator>();
+    private protected IAdminAuthorizationService AdminAuthorization { get; } = Substitute.For<IAdminAuthorizationService>();
 
     protected ServiceTestHarness(Instant? now = null)
     {
@@ -103,6 +119,19 @@ public abstract class ServiceTestHarness : IDisposable
         Db.Users.Add(user);
         return user;
     }
+
+    /// <summary>
+    /// Positional-displayName overload — absorbs <c>SeedUser("Alice")</c> call sites
+    /// without forcing migration to named args.
+    /// </summary>
+    protected User SeedUser(string displayName) => SeedUser(null, displayName);
+
+    /// <summary>
+    /// Id-first overload — absorbs <c>SeedTeam(teamId, "name")</c> call sites that
+    /// pre-existing local helpers used.
+    /// </summary>
+    protected Team SeedTeam(Guid teamId, string name) =>
+        SeedTeam(name, SystemTeamType.None, teamId);
 
     protected Team SeedTeam(
         string name,
