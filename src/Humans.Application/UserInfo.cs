@@ -202,16 +202,23 @@ public sealed record UserInfo(
     public const string GdprAnonymizedDisplayName = "Deleted User";
 
     /// <summary>
-    /// True when the user row is a tombstone — either a merge-source
-    /// (<see cref="MergedAt"/> set) or a GDPR-anonymized record (DisplayName
+    /// True when the user row is a tombstone — a merge-source
+    /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (DisplayName
     /// rewritten to <see cref="GdprAnonymizedDisplayName"/> by
-    /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>).
+    /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>),
+    /// or a legacy tombstone whose <see cref="Email"/> still ends in the
+    /// sentinel <c>.local</c> suffix (pre-<c>MergedAt</c>-column merges and
+    /// historic purges wrote <c>@merged.local</c> / <c>@deleted.local</c>
+    /// addresses — those rows survive in production with neither
+    /// <see cref="MergedAt"/> nor the <see cref="GdprAnonymizedDisplayName"/>
+    /// marker set).
     /// Callers that materialize new per-user rows (Stub Profile, etc.) MUST
     /// short-circuit on this so they don't resurrect the tombstone.
     /// </summary>
     public bool IsTombstone =>
         MergedAt is not null
-        || string.Equals(DisplayName, GdprAnonymizedDisplayName, StringComparison.Ordinal);
+        || string.Equals(DisplayName, GdprAnonymizedDisplayName, StringComparison.Ordinal)
+        || (Email is { } email && email.EndsWith(".local", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>First verified primary email; null when none loaded.</summary>
     public string? PrimaryEmail => UserEmails

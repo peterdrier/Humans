@@ -638,6 +638,32 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task EnsureStubProfileAsync_LegacyMergedLocalEmail_NoOps()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        user.Email = $"legacy-{userId}@merged.local";
+        await Db.SaveChangesAsync();
+
+        await _service.EnsureStubProfileAsync(userId);
+
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task EnsureStubProfileAsync_LegacyDeletedLocalEmail_NoOps()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        user.Email = $"purged-{userId}@deleted.local";
+        await Db.SaveChangesAsync();
+
+        await _service.EnsureStubProfileAsync(userId);
+
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
+    }
+
     // ==========================================================================
     // Issue #474 — phase 5 service-ownership: every profile state mutation now
     // routes through ProfileService so the §15 caching decorator can keep the
