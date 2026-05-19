@@ -85,7 +85,8 @@ public sealed class GoogleGroupSyncService(
         string groupKey,
         SyncAction action,
         CancellationToken ct = default,
-        int retryAttempt = 0)
+        int retryAttempt = 0,
+        bool scheduleRetries = true)
     {
         var claims = await LoadClaimsAsync(groupKey, ct);
         var claim = claims.SingleOrDefault(c =>
@@ -111,7 +112,7 @@ public sealed class GoogleGroupSyncService(
             claim,
             action,
             resourcesByGroup.GetValueOrDefault(claim.GroupKey),
-            scheduleRetryOnFailure: action == SyncAction.Execute && retryAttempt < MaxScopedRetryAttempts,
+            scheduleRetryOnFailure: action == SyncAction.Execute && retryAttempt < MaxScopedRetryAttempts && scheduleRetries,
             nextRetryAttempt: retryAttempt + 1,
             expectedMembersByUserId: null,
             ct);
@@ -178,6 +179,36 @@ public sealed class GoogleGroupSyncService(
                     logger.LogInformation(
                         "Auto-provisioned Google Group for {GroupKey}",
                         claim.GroupKey);
+
+                    // Apply enforced settings. Non-fatal: the group exists
+                    // either way; drift detection will catch any failed
+                    // application on the next /AllGroups sweep. Isolated in
+                    // its own try/catch so a thrown transport/credential
+                    // failure here doesn't skip the follow-up lookup +
+                    // membership reconcile below.
+                    try
+                    {
+                        var settingsError = await provisioningClient.UpdateGroupSettingsAsync(
+                            claim.GroupKey,
+                            GroupSettingsPolicy.BuildExpected(_options.Groups),
+                            ct);
+                        if (settingsError is not null)
+                        {
+                            logger.LogWarning(
+                                "Failed to apply group settings to auto-provisioned {GroupKey} (HTTP {StatusCode}): {Message}. Group was created with Google defaults",
+                                claim.GroupKey,
+                                settingsError.StatusCode,
+                                settingsError.RawMessage);
+                        }
+                    }
+                    catch (Exception settingsEx)
+                    {
+                        logger.LogWarning(
+                            "Error applying group settings to auto-provisioned {GroupKey}; continuing with membership reconcile: {Error}",
+                            claim.GroupKey,
+                            settingsEx.Message);
+                    }
+
                     lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
                 }
                 else
