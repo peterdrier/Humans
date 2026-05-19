@@ -531,12 +531,6 @@ public sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetUserPendingRequestAsync(teamId, userId, cancellationToken));
 
-    public Task<bool> CanUserApproveRequestsForTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.CanUserApproveRequestsForTeamAsync(teamId, userId, cancellationToken));
-
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
         Guid userId,
@@ -557,11 +551,6 @@ public sealed class CachingTeamService(
         InvalidateTeamsCache();
         return result;
     }
-
-    public Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingRequestCountsByTeamIdsAsync(teamIds, cancellationToken));
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
@@ -722,21 +711,6 @@ public sealed class CachingTeamService(
         if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
             return [];
         return team.RoleDefinitions;
-    }
-
-    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        // Mirrors TeamRepository.GetAllRoleDefinitionsAsync: active non-system
-        // teams' role definitions, ordered by Team.Name → SortOrder → Name.
-        // Cache projection pre-sorts each team's definitions; we add the
-        // outer Team.Name sort here.
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        return teamsById.Values
-            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None)
-            .OrderBy(t => t.Name, StringComparer.Ordinal) // arch:db-sort-ok — preserves repo ordering
-            .SelectMany(t => t.RoleDefinitions ?? Array.Empty<TeamRoleDefinitionSnapshot>())
-            .ToList();
     }
 
     public async Task<TeamRoleAssignment> AssignToRoleAsync(

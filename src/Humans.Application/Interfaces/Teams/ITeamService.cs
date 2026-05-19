@@ -219,6 +219,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>54→51 — ITeamServiceRead split prep: removed <c>GetPendingRequestCountsByTeamIdsAsync</c> (fully dead, only CachingTeamService delegated); made <c>CanUserApproveRequestsForTeamAsync</c> and <c>GetAllRoleDefinitionsAsync</c> private (interface-surface-dead, internal callers only).</item>
 ///   <item>54→54 — added <c>TeamInfo.ManagementRoleHolderUserIds</c> + <c>TeamInfo.RoleDefinitions</c> projections; drained 6 readers off DB onto the team cache (<c>IsUserCoordinatorOfTeamAsync</c>, <c>GetUserCoordinatedTeamIdsAsync</c>, <c>GetEffectiveBudgetCoordinatorTeamIdsAsync</c>, <c>GetRoleDefinitionsAsync</c>, <c>GetAllRoleDefinitionsAsync</c>, <c>GetManagementRoleNamesByTeamIdsAsync</c>). Surface unchanged (external boundaries kept).</item>
 ///   <item>56→54 — drained GetSystemTeamWithActiveMembersAsync + GetActiveMembersForTeamsAsync onto TeamInfo cache.</item>
 ///   <item>61→56 — drained 5 name-lookup readers (GetTeamNameByGoogleGroupPrefixAsync, GetTeamNamesByIdsAsync, GetNonSystemTeamNamesByUserIdsAsync, GetActiveNonSystemTeamNamesByUserIdsAsync, IsUserMemberOfTeamAsync) onto TeamInfo cache.</item>
@@ -233,7 +234,7 @@ public record TeamActiveMemberSnapshot(
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(54)]
+[SurfaceBudget(51)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -398,14 +399,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user can approve requests for a team.
-    /// </summary>
-    Task<bool> CanUserApproveRequestsForTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Checks if a user is a coordinator of a team.
     /// </summary>
     Task<bool> IsUserCoordinatorOfTeamAsync(
@@ -420,16 +413,6 @@ public interface ITeamService : IApplicationService
         Guid teamId,
         Guid userId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets pending request counts for multiple teams in a single query.
-    /// </summary>
-    /// <param name="teamIds">The team IDs to check.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Dictionary mapping team ID to pending request count.</returns>
-    Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -551,12 +534,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all role definitions across active non-system teams.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Team Role Assignments

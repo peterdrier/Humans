@@ -975,7 +975,7 @@ public sealed class TeamService(
         return request is null ? null : ToJoinRequestSnapshot(request);
     }
 
-    public async Task<bool> CanUserApproveRequestsForTeamAsync(
+    private async Task<bool> CanUserApproveRequestsForTeamAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default)
@@ -1413,7 +1413,7 @@ public sealed class TeamService(
         return definitions.Select(definition => ToRoleDefinitionSnapshot(definition)).ToList();
     }
 
-    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
+    private async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
         CancellationToken cancellationToken = default)
     {
         var definitions = await repo.GetAllRoleDefinitionsAsync(cancellationToken);
@@ -1700,11 +1700,6 @@ public sealed class TeamService(
 
         return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
     }
-
-    public Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        repo.GetPendingCountsByTeamIdsAsync(teamIds.ToList(), cancellationToken);
 
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         repo.GetTotalPendingCountAsync(cancellationToken);
