@@ -89,8 +89,8 @@
   </ItemGroup>
 
   <!--
-    NuGet audit suppressions for Magick.NET-Q8-AnyCPU 14.13.0.
-    14.13.0 is the latest published version; these are upstream ImageMagick
+    NuGet audit suppressions for Magick.NET-Q8-AnyCPU 14.12.0.
+    14.12.0 is the latest published version; these are upstream ImageMagick
     native-library CVEs awaiting a new Magick.NET release. Revisit on each
     Magick.NET bump and prune entries that are no longer reported.
   -->
@@ -101,18 +101,6 @@
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-q8h3-jv9v-57qx" />
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-w54j-7wpm-crhj" />
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-x928-4434-crqj" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-36wm-hprc-mcf5" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-533m-3wf6-c33v" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-5r4x-w6p5-222q" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-7gg8-qqx7-92g5" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-7wff-wpr6-vmhm" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-cr6r-hmj8-pr7r" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-cwpj-h54c-xjpx" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-g5mf-wqq5-vwg6" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jcqp-6r6f-3mfx" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-pfvh-m9xv-8966" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rcr6-g7jc-f57g" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-vhrh-72hq-w8m7" />
   </ItemGroup>
 
   <!-- Analyzers -->
