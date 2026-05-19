@@ -57,4 +57,18 @@ public interface IGoogleGroupSync
         CancellationToken ct = default,
         int retryAttempt = 0,
         bool scheduleRetries = true);
+
+    // Hangfire serializes the exact MethodInfo at enqueue time; adding a
+    // parameter (even an optional one) to the method above leaves in-flight
+    // jobs unable to resolve. This 4-param overload preserves the pre-#663
+    // signature so jobs queued before that deploy can still deserialize.
+    // Overload resolution picks this for the unnamed-arg call sites in
+    // HangfireGoogleGroupSyncScheduler, so new jobs are also serialized
+    // against this signature. Do not remove without first draining queued
+    // ReconcileOneAsync jobs.
+    Task<ResourceSyncDiff> ReconcileOneAsync(
+        string groupKey,
+        SyncAction action,
+        CancellationToken ct,
+        int retryAttempt);
 }

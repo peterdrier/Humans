@@ -81,6 +81,13 @@ public sealed class GoogleGroupSyncService(
         return new SyncPreviewResult { Diffs = diffs };
     }
 
+    public Task<ResourceSyncDiff> ReconcileOneAsync(
+        string groupKey,
+        SyncAction action,
+        CancellationToken ct,
+        int retryAttempt)
+        => ReconcileOneAsync(groupKey, action, ct, retryAttempt, scheduleRetries: true);
+
     public async Task<ResourceSyncDiff> ReconcileOneAsync(
         string groupKey,
         SyncAction action,

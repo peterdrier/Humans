@@ -56,6 +56,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — reusable views/components inject `IAuthorizationService` and resolve their own gates; don't pre-compute `Can…` bools on view models
 - [`controller-base-conventions`](code/controller-base-conventions.md) — inherit `HumansControllerBase`; use `GetCurrentUserAsync`/`SetSuccess`/`SetError`. No raw `_userManager` or `TempData["..."]`.
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
+- [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — methods invoked through Hangfire need a frozen serialization signature; pin the call site to a no-defaults overload and never add/reorder/change params on it (PR #663 incident — orphaned in-flight jobs after adding an optional `bool`)
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
 - [`datetime-display-formatting`](code/datetime-display-formatting.md) — use `ToDisplayDate`/`ToDisplayDateTime`/`ToAuditTimestamp`; no inline format strings
 - [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — IBAN output to logs / audit / errors must go through IbanFormatter.Mask
