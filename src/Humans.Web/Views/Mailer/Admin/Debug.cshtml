@@ -1,7 +1,7 @@
 @using Humans.Web.Models.Mailer
 @model MailerAudienceDebugViewModel
 @{
-    ViewData["Title"] = $"Audience Debug — {Model.SelectedDisplayName}";
+    ViewData["Title"] = $"Audience Debug — {Model.SelectedGroupName}";
 
     static string SortToken(DebugSortColumn s) => s switch
     {
@@ -65,10 +65,10 @@
                     data-debug-nav="/Mailer/Admin/Audiences/{key}/Debug">
                 @foreach (var a in Model.AvailableAudiences)
                 {
-                    <option value="@a.Key" selected="@(a.Key == Model.SelectedKey)">@a.DisplayName</option>
+                    <option value="@a.Key" selected="@(a.Key == Model.SelectedKey)">@a.GroupName</option>
                 }
             </select>
-            <span class="text-muted small ms-2">→ <code>@Model.SelectedGroupName</code></span>
+            <span class="text-muted small ms-2">→ <code>@Model.SelectedMailerLiteGroupName</code></span>
             @if (!Model.GroupExists)
             {
                 <span class="badge bg-warning text-dark ms-2">Group not yet in MailerLite</span>

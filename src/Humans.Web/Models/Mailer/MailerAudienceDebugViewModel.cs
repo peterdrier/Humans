@@ -16,8 +16,8 @@ namespace Humans.Web.Models.Mailer;
 /// </summary>
 public sealed record MailerAudienceDebugViewModel(
     string SelectedKey,
-    string SelectedDisplayName,
     string SelectedGroupName,
+    string SelectedMailerLiteGroupName,
     IReadOnlyList<MailerAudienceListItem> AvailableAudiences,
     bool GroupExists,
     string? MlError,
@@ -29,7 +29,7 @@ public sealed record MailerAudienceDebugViewModel(
     DebugTableOptions Options);
 
 /// <summary>Dropdown entry — every DI-registered <c>IMailerAudience</c>.</summary>
-public sealed record MailerAudienceListItem(string Key, string DisplayName);
+public sealed record MailerAudienceListItem(string Key, string GroupName);
 
 /// <summary>Paged + sorted slice of one section's rows. <see cref="Total"/> is the unfiltered row count.</summary>
 public sealed record DebugSection<TRow>(

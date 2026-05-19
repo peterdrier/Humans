@@ -124,8 +124,8 @@ public sealed class MailerAdminController(
         var options = new DebugTableOptions(PageSizes: [50, 100, 200], DefaultPageSize: 50);
         var vm = new MailerAudienceDebugViewModel(
             SelectedKey: audience.Key,
-            SelectedDisplayName: audience.DisplayName,
-            SelectedGroupName: audience.MailerLiteGroupName,
+            SelectedGroupName: audience.DisplayName,
+            SelectedMailerLiteGroupName: audience.MailerLiteGroupName,
             AvailableAudiences: available,
             GroupExists: snapshot.GroupExists,
             MlError: snapshot.MlError,
