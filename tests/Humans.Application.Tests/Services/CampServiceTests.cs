@@ -21,24 +21,19 @@ namespace Humans.Application.Tests.Services;
 public sealed class CampServiceTests : ServiceTestHarness
 {
     private readonly CampService _service;
-    private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
     private readonly InMemoryFileStorage _fileStorage;
-    private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampRoleService _campRoleService;
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
     {
-        _auditLog = Substitute.For<IAuditLogService>();
         _fileStorage = new InMemoryFileStorage();
 
         var repo = new CampRepository(DbFactory);
         var roleRepo = new CampRoleRepository(DbFactory);
 
         _userService = NewDbBackedUserService();
-
-        _notificationEmitter = Substitute.For<INotificationEmitter>();
 
         _campRoleService = Substitute.For<ICampRoleService>();
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -48,10 +43,10 @@ public sealed class CampServiceTests : ServiceTestHarness
             repo,
             roleRepo,
             _userService,
-            _auditLog,
+            AuditLog,
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
-            _notificationEmitter,
+            Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             Clock,
@@ -645,7 +640,7 @@ public sealed class CampServiceTests : ServiceTestHarness
         member.ConfirmedByUserId.Should().Be(approverId);
         member.ConfirmedAt.Should().NotBeNull();
 
-        await _notificationEmitter.Received(1).SendAsync(
+        await Notifier.Received(1).SendAsync(
             NotificationSource.CampMembershipApproved,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
@@ -699,7 +694,7 @@ public sealed class CampServiceTests : ServiceTestHarness
         member.Status.Should().Be(CampMemberStatus.Removed);
         member.RemovedAt.Should().NotBeNull();
 
-        await _notificationEmitter.Received(1).SendAsync(
+        await Notifier.Received(1).SendAsync(
             NotificationSource.CampMembershipRejected,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
@@ -815,7 +810,7 @@ public sealed class CampServiceTests : ServiceTestHarness
         member.Status.Should().Be(CampMemberStatus.Active);
         member.ConfirmedByUserId.Should().Be(leadUserId);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampMemberAddedByLead,
             nameof(CampMember), memberId,
             Arg.Any<string>(), leadUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -847,7 +842,7 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         memberId.Should().Be(existing.Id);
         // No new audit log for an already-active member.
-        await _auditLog.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             AuditAction.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -992,14 +987,14 @@ public sealed class CampServiceTests : ServiceTestHarness
         await SeedUserAsync(userId, "Alice");
         var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
         var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
-        _notificationEmitter.ClearReceivedCalls();
+        Notifier.ClearReceivedCalls();
 
         await _service.WithdrawSeasonAsync(season.Id);
 
         var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
         member.Status.Should().Be(CampMemberStatus.Pending);
 
-        await _notificationEmitter.Received(1).SendAsync(
+        await Notifier.Received(1).SendAsync(
             NotificationSource.CampMembershipSeasonClosed,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),

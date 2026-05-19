@@ -25,14 +25,12 @@ namespace Humans.Application.Tests.Services;
 /// </summary>
 public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
 {
-    private readonly IAuditLogService _auditLogService;
     private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly TeamResourceService _service;
 
     public TeamResourceServiceDeactivateTests()
         : base(Instant.FromUtc(2026, 4, 15, 12, 0))
     {
-        _auditLogService = Substitute.For<IAuditLogService>();
         _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
 
         IGoogleResourceRepository repository = new GoogleResourceRepository(DbFactory);
@@ -43,7 +41,7 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
             drivePermissions: _drivePermissions,
             teamService: Substitute.For<ITeamService>(),
             serviceProvider: new ServiceLocatorBuilder().Build(),
-            auditLogService: _auditLogService,
+            auditLogService: AuditLog,
             resourceOptions: new TeamResourceManagementOptions(),
             clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
@@ -78,7 +76,7 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
         safeRow.IsActive.Should().BeTrue();
 
         // Exactly two audit entries (for the two previously-active doomed resources).
-        await _auditLogService.Received(2).LogAsync(
+        await AuditLog.Received(2).LogAsync(
             AuditAction.GoogleResourceDeactivated,
             nameof(GoogleResource),
             Arg.Any<Guid>(),
@@ -194,7 +192,7 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
 
         await _service.DeactivateResourcesForTeamAsync(teamId);
 
-        await _auditLogService.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(),
             Arg.Any<string>(),
             Arg.Any<Guid>(),

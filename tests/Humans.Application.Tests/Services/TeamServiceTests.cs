@@ -38,15 +38,14 @@ public sealed class TeamServiceTests : ServiceTestHarness
     private readonly TeamService _service;
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
-    private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
 
     public TeamServiceTests()
     {
         _roleAssignmentService = new RoleAssignmentService(
             new RoleAssignmentRepository(DbFactory),
             Substitute.For<IUserService>(),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             Substitute.For<ISystemTeamSync>(),
             Substitute.For<INavBadgeCacheInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
@@ -72,8 +71,8 @@ public sealed class TeamServiceTests : ServiceTestHarness
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftManagementRepository(DbFactory),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
@@ -84,19 +83,18 @@ public sealed class TeamServiceTests : ServiceTestHarness
         // (backed by ShiftManagementService in DI). In tests we redirect it to the
         // same IMemoryCache entry so legacy assertions on the ShiftAuthorization
         // cache key keep working.
-        _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
-        _shiftAuthInvalidator
+        ShiftAuthInvalidator
             .When(s => s.Invalidate(Arg.Any<Guid>()))
             .Do(ci => Cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
 
         _service = new TeamService(
             new TeamRepository(DbFactory),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            _shiftAuthInvalidator,
-            Substitute.For<IAdminAuthorizationService>(),
+            ShiftAuthInvalidator,
+            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
