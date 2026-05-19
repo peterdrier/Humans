@@ -53,6 +53,7 @@ public class EventTests
     [HumansTheory]
     [InlineData(EventStatus.Draft)]
     [InlineData(EventStatus.Pending)]
+    [InlineData(EventStatus.Approved)]
     public void Withdraw_FromValidState_SetsWithdrawnAndLastUpdated(EventStatus source)
     {
         var guideEvent = CreateEvent(source);
@@ -64,7 +65,6 @@ public class EventTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Approved)]
     [InlineData(EventStatus.Rejected)]
     [InlineData(EventStatus.ResubmitRequested)]
     [InlineData(EventStatus.Withdrawn)]
