@@ -106,8 +106,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(expected.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(expected.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -126,7 +126,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("_DebugPager", new DebugPagerModel(expected.State, expected.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(expected.State, expected.Total, Model.Options, UrlFor))
 </section>
 
 @* §2 Currently in ML *@
@@ -143,9 +143,9 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(inMl.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(inMl.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(inMl.State, DebugSortColumn.InMlSince, "In ML since", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.InMlSince, "In ML since", UrlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -174,7 +174,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("_DebugPager", new DebugPagerModel(inMl.State, inMl.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(inMl.State, inMl.Total, Model.Options, UrlFor))
 </section>
 
 @* §3 To add *@
@@ -191,8 +191,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(toAdd.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(toAdd.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -211,7 +211,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("_DebugPager", new DebugPagerModel(toAdd.State, toAdd.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(toAdd.State, toAdd.Total, Model.Options, UrlFor))
 </section>
 
 @* §4 To remove *@
@@ -228,8 +228,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(toRemove.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(toRemove.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -257,7 +257,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("_DebugPager", new DebugPagerModel(toRemove.State, toRemove.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(toRemove.State, toRemove.Total, Model.Options, UrlFor))
 </section>
 
 @* §5 Non-primary diagnostic *@
@@ -274,8 +274,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(np.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("_DebugSortHeader", new DebugSortHeader(np.State, DebugSortColumn.Email, "Subscribed under", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Email, "Subscribed under", UrlFor))</th>
                     <th>Their current primary</th>
                 </tr>
                 </thead>
@@ -296,7 +296,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("_DebugPager", new DebugPagerModel(np.State, np.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(np.State, np.Total, Model.Options, UrlFor))
 </section>
 
 @* Apply button — posts to existing Sync action *@
