@@ -361,6 +361,996 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // UpdateTeamAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_TeamNotFound_Throws()
+    {
+        var act = () => _service.UpdateTeamAsync(
+            Guid.NewGuid(), "name", null, requiresApproval: false, isActive: true);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_SystemTeam_UpdatesOnlyDescriptionAndPrefixAndReturnsEarly()
+    {
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        team.Description = "old";
+        team.RequiresApproval = false;
+        await Db.SaveChangesAsync();
+        var originalName = team.Name;
+        var originalSlug = team.Slug;
+
+        var result = await _service.UpdateTeamAsync(
+            team.Id,
+            name: "Renamed",
+            description: "new",
+            requiresApproval: true,
+            isActive: false,
+            googleGroupPrefix: "vol-prefix");
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Description.Should().Be("new");
+        stored.GoogleGroupPrefix.Should().Be("vol-prefix");
+        // System teams ignore name/requiresApproval/isActive on update
+        stored.Name.Should().Be(originalName);
+        stored.Slug.Should().Be(originalSlug);
+        stored.RequiresApproval.Should().BeFalse();
+        stored.IsActive.Should().BeTrue();
+        result.Description.Should().Be("new");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentIsSelf_Throws()
+    {
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: team.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*own parent*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_TeamHasChildren_Throws()
+    {
+        var parent = SeedTeam("Parent");
+        var child = SeedTeam("Child");
+        child.ParentTeamId = parent.Id;
+        var newParent = SeedTeam("NewParent");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            parent.Id, "Parent", null, false, true, parentTeamId: newParent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*sub-teams*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentNotFound_Throws()
+    {
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Parent team*not found*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentIsSystemTeam_Throws()
+    {
+        var team = SeedTeam("Alpha");
+        var systemParent = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: systemParent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*System teams cannot be parents*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentAlreadyHasParent_Throws()
+    {
+        var grandparent = SeedTeam("Grand");
+        var parent = SeedTeam("Parent");
+        parent.ParentTeamId = grandparent.Id;
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: parent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*nest more than one level*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_InvalidCustomSlug_Throws()
+    {
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, customSlug: "!@#$");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Custom slug is not valid*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_CustomSlugTakenByAnotherTeam_Throws()
+    {
+        SeedTeam("Other Team");
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, customSlug: "other-team");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already in use*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_BlankCustomSlug_NormalizesToNull()
+    {
+        var team = SeedTeam("Alpha");
+        team.CustomSlug = "previous-custom";
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, customSlug: "");
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.CustomSlug.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_RenamesTeam_AndRegeneratesSlug()
+    {
+        var team = SeedTeam("Old Name");
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Brand New Name", null, false, true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Name.Should().Be("Brand New Name");
+        stored.Slug.Should().Be("brand-new-name");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_RenameWithSlugTaken_KeepsOldSlug()
+    {
+        SeedTeam("Conflict");
+        var team = SeedTeam("Old Name");
+        await Db.SaveChangesAsync();
+        var originalSlug = team.Slug;
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Conflict", null, false, true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Name.Should().Be("Conflict");
+        stored.Slug.Should().Be(originalSlug);
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_PersistsAllCoreFields()
+    {
+        var team = SeedTeam("Alpha");
+        team.Description = "old";
+        team.RequiresApproval = false;
+        team.IsActive = true;
+        team.IsPublicPage = false;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id,
+            "Alpha Renamed",
+            "new description",
+            requiresApproval: true,
+            isActive: false,
+            googleGroupPrefix: "alpha-prefix",
+            hasBudget: true,
+            isHidden: true,
+            isSensitive: true,
+            isPromotedToDirectory: true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Description.Should().Be("new description");
+        stored.RequiresApproval.Should().BeTrue();
+        stored.IsActive.Should().BeFalse();
+        stored.GoogleGroupPrefix.Should().Be("alpha-prefix");
+        stored.HasBudget.Should().BeTrue();
+        stored.IsHidden.Should().BeTrue();
+        stored.IsSensitive.Should().BeTrue();
+        stored.IsPromotedToDirectory.Should().BeTrue();
+        stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_OptionalFlagsNull_LeavesExistingValues()
+    {
+        var team = SeedTeam("Alpha");
+        team.HasBudget = true;
+        team.IsHidden = true;
+        team.IsSensitive = true;
+        team.IsPromotedToDirectory = true;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true,
+            hasBudget: null, isHidden: null, isSensitive: null, isPromotedToDirectory: null);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.HasBudget.Should().BeTrue();
+        stored.IsHidden.Should().BeTrue();
+        stored.IsSensitive.Should().BeTrue();
+        stored.IsPromotedToDirectory.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_BecomingChild_ForcesPublicPageFalse()
+    {
+        var parent = SeedTeam("Parent");
+        var team = SeedTeam("Alpha");
+        team.IsPublicPage = true;
+        team.ShowCoordinatorsOnPublicPage = true;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: parent.Id);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.IsPublicPage.Should().BeFalse();
+        stored.ShowCoordinatorsOnPublicPage.Should().BeFalse();
+        stored.ParentTeamId.Should().Be(parent.Id);
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentChange_InvalidatesShiftAuthForManagementUsers()
+    {
+        var parentOld = SeedTeam("Old Parent");
+        var parentNew = SeedTeam("New Parent");
+        var team = SeedTeam("Alpha");
+        team.ParentTeamId = parentOld.Id;
+        var manager = SeedUser(displayName: "Manager");
+        var member = SeedTeamMember(team.Id, manager.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await Db.SaveChangesAsync();
+        Cache.Set(CacheKeys.ShiftAuthorization(manager.Id), new[] { team.Id });
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: parentNew.Id);
+
+        Cache.TryGetValue(CacheKeys.ShiftAuthorization(manager.Id), out _).Should().BeFalse();
+    }
+
+    // ==========================================================================
+    // RequestToJoinTeamAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_TeamNotFound_Throws()
+    {
+        var user = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(Guid.NewGuid(), user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_SystemTeam_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers, requiresApproval: true);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_HiddenTeam_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        team.IsHidden = true;
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*hidden*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_TeamWithoutApproval_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*does not require approval*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_AlreadyHasPendingRequest_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedJoinRequest(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already has a pending request*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_AlreadyMember_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already a member*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_HappyPath_PersistsRequestWithMessage()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.RequestToJoinTeamAsync(team.Id, user.Id, "Pick me");
+
+        result.TeamId.Should().Be(team.Id);
+        result.UserId.Should().Be(user.Id);
+        result.Message.Should().Be("Pick me");
+        result.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        result.RequestedAt.Should().Be(Clock.GetCurrentInstant());
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamJoinRequests.AsNoTracking().SingleAsync();
+        stored.Id.Should().Be(result.Id);
+        stored.Message.Should().Be("Pick me");
+    }
+
+    // ==========================================================================
+    // RemoveMemberAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_TeamNotFound_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(Guid.NewGuid(), Guid.NewGuid(), actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_SystemTeam_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        SeedTeamMember(team.Id, target.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, target.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_TargetNotAMember_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not a member*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_RegularMember_SetsLeftAtAndReturnsFalse()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
+        var member = SeedTeamMember(team.Id, target.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        wasCoordinator.Should().BeFalse();
+        Db.ChangeTracker.Clear();
+        var reloaded = await Db.TeamMembers.AsNoTracking().SingleAsync(tm => tm.Id == member.Id);
+        reloaded.LeftAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_Coordinator_ReturnsTrue()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, target.Id, TeamMemberRole.Coordinator);
+        await Db.SaveChangesAsync();
+
+        var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        wasCoordinator.Should().BeTrue();
+    }
+
+    // ==========================================================================
+    // RejectJoinRequestAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_RequestNotFound_Throws()
+    {
+        var approver = SeedUser(displayName: "Approver");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RejectJoinRequestAsync(Guid.NewGuid(), approver.Id, "reason");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_ApproverLacksPermission_Throws()
+    {
+        var stranger = SeedUser(displayName: "Stranger");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RejectJoinRequestAsync(request.Id, stranger.Id, "no thanks");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_RequestAlreadyApproved_Throws()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id, TeamJoinRequestStatus.Approved);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "late");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*pending*");
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_HappyPath_RecordsRejectionWithReason()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await Db.SaveChangesAsync();
+
+        await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "out of capacity");
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Rejected);
+        stored.ReviewNotes.Should().Be("out of capacity");
+        stored.ReviewedByUserId.Should().Be(coordinator.Id);
+        stored.ResolvedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // ==========================================================================
+    // CreateRoleDefinitionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_TeamNotFound_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            Guid.NewGuid(), "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Team*not found*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_SystemTeam_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            team.Id, "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_DuplicateName_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        SeedTeamRoleDefinition(team.Id, isManagement: false);
+        var existingName = "Member Role";
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            team.Id, existingName, null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already exists*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            team.Id, "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_HappyPath_PersistsDefinition()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.CreateRoleDefinitionAsync(
+            team.Id, "Lead", "Lead description", 2,
+            [SlotPriority.Critical, SlotPriority.Important], 5, RolePeriod.Event, actor.Id,
+            isPublic: false);
+
+        result.TeamId.Should().Be(team.Id);
+        result.Name.Should().Be("Lead");
+        result.SlotCount.Should().Be(2);
+        result.SortOrder.Should().Be(5);
+        result.IsPublic.Should().BeFalse();
+        result.Period.Should().Be(RolePeriod.Event);
+        result.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // ==========================================================================
+    // UpdateRoleDefinitionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_DefinitionNotFound_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            Guid.NewGuid(), "Lead", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Role definition*not found*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            def.Id, "Lead", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_ReducingSlotCountBelowAssignmentsCount_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        def.SlotCount = 3;
+        var user = SeedUser(displayName: "Holder");
+        var member = SeedTeamMember(team.Id, user.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            def.Id, def.Name, null, slotCount: 1,
+            [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Cannot reduce slot count*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var first = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        first.Name = "Original";
+        var second = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        second.Name = "Other";
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            second.Id, "Original", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already exists*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_CanToggleManagementFalse_PreservesIsManagement()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateRoleDefinitionAsync(
+            def.Id, def.Name, null, 1, [SlotPriority.None], 0,
+            isManagement: false, RolePeriod.YearRound, actor.Id,
+            canToggleManagement: false);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id);
+        stored.IsManagement.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_PromotingToManagementWhenAnotherExists_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var existingManagement = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        existingManagement.Name = "Existing Mgmt";
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        def.Name = "To Promote";
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            def.Id, def.Name, null, 1, [SlotPriority.None], 0,
+            isManagement: true, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already marked as the management role*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_HappyPath_UpdatesAllEditableFields()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        def.Name = "Original";
+        def.SortOrder = 0;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateRoleDefinitionAsync(
+            def.Id, "Renamed", "new desc", slotCount: 2,
+            [SlotPriority.Critical, SlotPriority.None], sortOrder: 7,
+            isManagement: false, RolePeriod.Event, actor.Id, isPublic: false);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id);
+        stored.Name.Should().Be("Renamed");
+        stored.Description.Should().Be("new desc");
+        stored.SlotCount.Should().Be(2);
+        stored.SortOrder.Should().Be(7);
+        stored.IsPublic.Should().BeFalse();
+        stored.Period.Should().Be(RolePeriod.Event);
+        stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // ==========================================================================
+    // DeleteRoleDefinitionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_NotFound_Throws()
+    {
+        var actor = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.DeleteRoleDefinitionAsync(Guid.NewGuid(), actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Role definition*not found*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_ManagementWithAssignedMembers_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        var holder = SeedUser(displayName: "Holder");
+        var member = SeedTeamMember(team.Id, holder.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*management role while members are assigned*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_HappyPath_RemovesDefinition()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        await _service.DeleteRoleDefinitionAsync(def.Id, actor.Id);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().FirstOrDefaultAsync(d => d.Id == def.Id);
+        stored.Should().BeNull();
+    }
+
+    // ==========================================================================
+    // ToggleRoleIsManagementAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_DefinitionNotFound_Throws()
+    {
+        var actor = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(Guid.NewGuid(), actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Role definition*not found*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_PromotingWithAssignments_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        var holder = SeedUser(displayName: "Holder");
+        var member = SeedTeamMember(team.Id, holder.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*members are assigned*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_PromotingWhenAnotherManagementExists_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        SeedTeamRoleDefinition(team.Id, isManagement: true);
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already marked as the management role*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_HappyPathPromote_FlipsIsManagement()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        result.IsManagement.Should().BeTrue();
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id);
+        stored.IsManagement.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_HappyPathDemote_FlipsIsManagement()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        result.IsManagement.Should().BeFalse();
+    }
+
+    // ==========================================================================
+    // PermanentlyDeleteTeamAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task PermanentlyDeleteTeamAsync_TeamNotFound_Throws()
+    {
+        var act = () => _service.PermanentlyDeleteTeamAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task PermanentlyDeleteTeamAsync_SystemTeam_Throws()
+    {
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.PermanentlyDeleteTeamAsync(team.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task PermanentlyDeleteTeamAsync_HasActiveChildren_Throws()
+    {
+        var parent = SeedTeam("Parent");
+        var child = SeedTeam("Child");
+        child.ParentTeamId = parent.Id;
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.PermanentlyDeleteTeamAsync(parent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*sub-teams*");
+    }
+
+    // Happy-path PermanentlyDeleteTeamAsync needs a real transactional store; the in-memory
+    // EF provider used in this harness does not support transactions. Cover it in Integration tests.
+
+    // ==========================================================================
     // GetTeamBySlugAsync
     // ==========================================================================
 
