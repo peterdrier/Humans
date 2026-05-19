@@ -97,50 +97,6 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         member.Email.Should().Be("alice@example.test");
     }
 
-    private User SeedUser(string displayName = "Test User")
-    {
-        var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        Db.Users.Add(user);
-        return user;
-    }
-
-    private Team SeedTeam(string name, bool isActive = true)
-    {
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(" ", "-"),
-            IsActive = isActive,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        Db.Teams.Add(team);
-        return team;
-    }
-
-    private TeamMember SeedTeamMember(Guid teamId, Guid userId, TeamMemberRole role)
-    {
-        var member = new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Role = role,
-            JoinedAt = Clock.GetCurrentInstant()
-        };
-        Db.TeamMembers.Add(member);
-        return member;
-    }
-
     [HumansFact]
     public async Task GetUserTeamsAsync_AfterWarmup_ReturnsAllActiveMemberships()
     {

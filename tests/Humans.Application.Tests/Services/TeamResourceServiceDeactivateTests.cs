@@ -204,19 +204,6 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
             Arg.Any<string?>());
     }
 
-    private void SeedTeam(Guid id, string name)
-    {
-        Db.Teams.Add(new Team
-        {
-            Id = id,
-            Name = name,
-            Slug = name.ToLowerInvariant(),
-            IsActive = true,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        });
-    }
-
     private Guid SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true)
     {
         var id = Guid.NewGuid();

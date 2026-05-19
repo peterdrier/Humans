@@ -655,21 +655,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
     // --- Helpers ---
 
-    private Team SeedTeam(Guid teamId, string name)
-    {
-        var team = new Team
-        {
-            Id = teamId,
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(' ', '-'),
-            IsActive = true,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        Db.Teams.Add(team);
-        return team;
-    }
-
     private Guid SeedDocument(Guid teamId, string name, bool isActive = true, bool isRequired = true, Instant? effectiveFrom = null)
     {
         var now = Clock.GetCurrentInstant();

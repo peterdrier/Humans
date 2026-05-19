@@ -439,9 +439,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var confirmedUser = SeedUserLocal("Alice");
-        var pendingUser = SeedUserLocal("Bob");
-        var bailedUser = SeedUserLocal("Charlie");
+        var confirmedUser = SeedUser("Alice");
+        var pendingUser = SeedUser("Bob");
+        var bailedUser = SeedUser("Charlie");
 
         SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
@@ -464,8 +464,8 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var confirmedUser = SeedUserLocal("Zara");
-        var pendingUser = SeedUserLocal("Alice");
+        var confirmedUser = SeedUser("Zara");
+        var pendingUser = SeedUser("Alice");
 
         SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
@@ -489,7 +489,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var user = SeedUserLocal("Alice");
+        var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
         await Db.SaveChangesAsync();
 
@@ -542,13 +542,13 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         // Normal+staffed: MinVolunteers=2, two confirmed signups → meets minimum.
         var normalShift = SeedShift(normalStaffedRota, dayOffset: 1);
-        SeedSignup(normalShift, SeedUserLocal("NormA"), SignupStatus.Confirmed);
-        SeedSignup(normalShift, SeedUserLocal("NormB"), SignupStatus.Confirmed);
+        SeedSignup(normalShift, SeedUser("NormA"), SignupStatus.Confirmed);
+        SeedSignup(normalShift, SeedUser("NormB"), SignupStatus.Confirmed);
 
         // Important+staffed: still INCLUDED because of priority.
         var importantShift = SeedShift(importantRota, dayOffset: 1);
-        SeedSignup(importantShift, SeedUserLocal("ImpA"), SignupStatus.Confirmed);
-        SeedSignup(importantShift, SeedUserLocal("ImpB"), SignupStatus.Confirmed);
+        SeedSignup(importantShift, SeedUser("ImpA"), SignupStatus.Confirmed);
+        SeedSignup(importantShift, SeedUser("ImpB"), SignupStatus.Confirmed);
 
         // Normal+understaffed: zero confirmed signups, MinVolunteers=2 → understaffed → INCLUDED.
         var understaffedShift = SeedShift(understaffedRota, dayOffset: 1);
@@ -767,22 +767,6 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     // ============================================================
     // Helpers
     // ============================================================
-
-    private User SeedUserLocal(string displayName)
-    {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            DisplayName = displayName,
-            UserName = $"{displayName.ToLowerInvariant()}@test.com",
-            Email = $"{displayName.ToLowerInvariant()}@test.com",
-            NormalizedEmail = $"{displayName.ToUpperInvariant()}@TEST.COM",
-            NormalizedUserName = $"{displayName.ToUpperInvariant()}@TEST.COM",
-            CreatedAt = TestNow
-        };
-        Db.Users.Add(user);
-        return user;
-    }
 
     private Shift SeedShift(Rota rota, int dayOffset)
     {
@@ -1188,7 +1172,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: rota with one Confirmed signup
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var user = SeedUserLocal("Alice");
+        var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
         await Db.SaveChangesAsync();
 
@@ -1204,8 +1188,8 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: rota with two Pending signups (no Confirmed)
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
-        var user1 = SeedUserLocal("Bob");
-        var user2 = SeedUserLocal("Carol");
+        var user1 = SeedUser("Bob");
+        var user2 = SeedUser("Carol");
         var pending1 = new ShiftSignup
         {
             Id = Guid.NewGuid(),

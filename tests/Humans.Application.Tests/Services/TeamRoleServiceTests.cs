@@ -503,38 +503,6 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
     // Seed Helpers
     // ==========================================================================
 
-    private User SeedUser(string displayName = "Test User")
-    {
-        var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        Db.Users.Add(user);
-        return user;
-    }
-
-    private Team SeedTeam(string name = "Test Team", SystemTeamType type = SystemTeamType.None)
-    {
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(" ", "-"),
-            SystemTeamType = type,
-            IsActive = true,
-            RequiresApproval = false,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        Db.Teams.Add(team);
-        return team;
-    }
-
     private TeamMember SeedMember(Team team, User user, TeamMemberRole role = TeamMemberRole.Member)
     {
         var member = new TeamMember
