@@ -49,6 +49,8 @@ internal static class MailerSectionExtensions
         // (ITicketQueryService, IShiftSignupService, IShiftManagementService) are Scoped.
         services.AddScoped<IMailerAudienceSyncService, MailerAudienceSyncService>();
         services.AddScoped<IMailerAudience, TicketNoShiftsAudience>();
+        services.AddScoped<IMailerAudience, HasShiftAudience>();
+        services.AddScoped<IMailerAudience, HasTicketAudience>();
         services.AddTransient<MailerAudienceSyncJob>();
 
         return services;

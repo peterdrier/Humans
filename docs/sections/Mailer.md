@@ -61,8 +61,8 @@ All routes are `AdminOnly`.
 
 - **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
 - **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads `IUserService.GetByIdAsync` (tombstone follow), `IUserService.GetCountByContactSourceAsync`.
-- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`.
-- **Shifts**: `IShiftSignupService.GetActiveCommittedUserIdsForEventAsync` and `IShiftManagementService.GetActiveAsync` — audience-side shift commitment + active-event lookup.
+- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience` and `HasTicketAudience`.
+- **Shifts**: `IShiftSignupService.GetActiveCommittedUserIdsForEventAsync` and `IShiftManagementService.GetActiveAsync` — audience-side shift commitment + active-event lookup for `TicketNoShiftsAudience` and `HasShiftAudience`.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
 
 ## Architecture
