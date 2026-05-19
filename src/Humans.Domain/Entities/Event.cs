@@ -42,7 +42,7 @@ public class Event
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// Event description (≤ 300 chars).
+    /// Event description (≤ 450 chars).
     /// </summary>
     public string Description { get; set; } = string.Empty;
 
@@ -136,11 +136,11 @@ public class Event
     }
 
     /// <summary>
-    /// Withdraw the submission.
+    /// Withdraw the submission. Available from Draft, Pending, or Approved.
     /// </summary>
     public void Withdraw(IClock clock)
     {
-        if (Status is not (EventStatus.Draft or EventStatus.Pending))
+        if (Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Approved))
             throw new InvalidOperationException($"Cannot withdraw event in {Status} state");
         Status = EventStatus.Withdrawn;
         LastUpdatedAt = clock.GetCurrentInstant();

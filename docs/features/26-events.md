@@ -26,7 +26,7 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 
 **Acceptance Criteria:**
 - Submission form accessible from the team page
-- Fields: title (≤ 80 chars), description (≤ 300 chars), category, date/time, duration, location note, is_recurring, recurrence pattern, priority rank
+- Fields: title (≤ 80 chars), description (≤ 450 chars), category, date/time, duration, location note, is_recurring, recurrence pattern, priority rank
 - Event is anchored to the team's GuideCamp; GuideCamp is auto-created on first submission if not yet present
 - Submission creates a GuideEvent in `Pending` status
 - Submitter receives email confirmation on submission
@@ -58,6 +58,19 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 - On Reject or Request Edit: submitter receives email with the reason
 - On Approve: submitter receives confirmation email
 - All decisions logged as append-only ModerationAction records
+
+### US-26.4b: Withdrawing an Approved Event
+
+**As a** moderator or the original submitter
+**I want to** withdraw an approved event
+**So that** it is hidden from the published guide
+
+**Acceptance Criteria:**
+
+- Withdraw action available to GuideModerator/Admin on any Approved event (moderation queue)
+- Withdraw action available to the original submitter on their own Approved event (barrio events page or individual submission view)
+- Transitions status to `Withdrawn`; event no longer returned by the public API
+- No email sent on withdrawal
 
 ### US-26.5: Submitter Responds to Rejection / Edit Request
 **As a** submitter (barrio organiser or individual human)
@@ -134,12 +147,13 @@ Draft --> Pending           (Submit)
 Pending --> Approved        (Moderator: Approve)
 Pending --> Rejected        (Moderator: Reject)
 Pending --> ResubmitRequested (Moderator: Request Edit)
+Pending --> Withdrawn       (Submitter: withdraw)
 Rejected --> Pending        (Submitter: resubmit)
 ResubmitRequested --> Pending (Submitter: resubmit)
-Approved --> Deactivated    (Admin: soft delete — hides from guide, preserves audit trail)
+Approved --> Withdrawn      (Submitter or Moderator: withdraw — hides from guide)
 ```
 
-Hard deletion is blocked if any ModerationAction exists for the event.
+Hard deletion is not supported; `Withdrawn` is the terminal state for events removed from the guide.
 
 ## Authorization Model
 
