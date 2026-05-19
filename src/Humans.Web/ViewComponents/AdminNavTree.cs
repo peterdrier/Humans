@@ -28,8 +28,9 @@ public static class AdminNavTree
             new("Workload",  "ShiftWorkloadAdmin", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess)
         ]),
         new("Money", [
-            new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",     PolicyNames.FinanceAdminOrAdmin),
-            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",      PolicyNames.StoreCatalogAdmin)
+            new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin),
+            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
+            new("Store summary",  "StoreAdmin",   "Summary", null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin)
         ]),
         new("Expenses", [
             new("Expenses",          "Expenses", "Index",       null, null, "fa-solid fa-receipt",        PolicyNames.IsActiveMember),
