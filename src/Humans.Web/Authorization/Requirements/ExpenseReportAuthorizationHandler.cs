@@ -13,18 +13,9 @@ namespace Humans.Web.Authorization.Requirements;
 /// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
 /// Deny-by-default: only explicit Succeed paths grant access.
 /// </summary>
-public sealed class ExpenseReportAuthorizationHandler
+public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamService teamService)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
-    private readonly IBudgetService _budgetService;
-    private readonly ITeamService _teamService;
-
-    public ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamService teamService)
-    {
-        _budgetService = budgetService;
-        _teamService = teamService;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         ExpenseReportOperationRequirement requirement,
@@ -133,11 +124,11 @@ public sealed class ExpenseReportAuthorizationHandler
     /// </summary>
     private async Task<bool> IsCoordinatorOfReportCategoryAsync(Guid userId, ExpenseReportDto report)
     {
-        var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
+        var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
         if (category?.TeamId is null)
             return false;
 
-        return await _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId);
+        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId);
     }
 
     private static Guid? GetUserId(ClaimsPrincipal user)

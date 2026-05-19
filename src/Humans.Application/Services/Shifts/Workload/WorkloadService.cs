@@ -14,35 +14,22 @@ namespace Humans.Application.Services.Shifts.Workload;
 /// Workload aggregations for the coordinator dashboard. Reads via cached <see cref="IShiftView"/>;
 /// no own cache (per-rota cache eviction already covers mutations).
 /// </summary>
-public sealed class WorkloadService : IWorkloadService
+public sealed class WorkloadService(
+    IShiftManagementRepository repo,
+    IShiftView view,
+    ITeamService teamService,
+    IUserService userService) : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
-    private readonly IShiftManagementRepository _repo;
-    private readonly IShiftView _view;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-
-    public WorkloadService(
-        IShiftManagementRepository repo,
-        IShiftView view,
-        ITeamService teamService,
-        IUserService userService)
-    {
-        _repo = repo;
-        _view = view;
-        _teamService = teamService;
-        _userService = userService;
-    }
-
     public async Task<WorkloadReport?> GetForActiveEventAsync(CancellationToken ct = default)
     {
-        var es = await _repo.GetActiveEventSettingsAsync(ct);
+        var es = await repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return null;
 
         // Distinct rotaIds off GetShiftsForEventAsync — avoids adding an interface method.
-        var shiftStubs = await _repo.GetShiftsForEventAsync(es.Id, null, ct);
+        var shiftStubs = await repo.GetShiftsForEventAsync(es.Id, null, ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
         {
@@ -55,7 +42,7 @@ public sealed class WorkloadService : IWorkloadService
         }
 
         // ShiftRotaView is unfiltered — workload view is admin-only and needs hidden rotas.
-        var views = await _view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
+        var views = await view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
         var entries = views.Values
             .Where(v => v.Rota is not null)
             .SelectMany(v => v.Shifts.Select(s => (Rota: v.Rota!, Shift: s)))
@@ -63,7 +50,7 @@ public sealed class WorkloadService : IWorkloadService
 
         var teamIds = entries.Select(e => e.Rota.TeamId).Distinct().ToList();
         var teamLookup = teamIds.Count > 0
-            ? await _teamService.GetByIdsWithParentsAsync(teamIds, ct)
+            ? await teamService.GetByIdsWithParentsAsync(teamIds, ct)
             : new Dictionary<Guid, Team>();
 
         var byShift = BuildByShift(entries, es, teamLookup);
@@ -168,7 +155,7 @@ public sealed class WorkloadService : IWorkloadService
 
         if (perUser.Count == 0) return new List<WorkloadByPersonRow>();
 
-        var users = await _userService.GetUserInfosAsync(perUser.Keys.ToList(), ct);
+        var users = await userService.GetUserInfosAsync(perUser.Keys.ToList(), ct);
 
         return perUser
             .Select(kvp =>

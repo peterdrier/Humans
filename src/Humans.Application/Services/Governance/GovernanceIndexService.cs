@@ -5,29 +5,18 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Governance;
 
-public sealed class GovernanceIndexService : IGovernanceIndexService
+public sealed class GovernanceIndexService(
+    IApplicationDecisionService applicationDecisionService,
+    ILegalDocumentService legalDocService,
+    IUserService userService) : IGovernanceIndexService
 {
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly ILegalDocumentService _legalDocService;
-    private readonly IUserService _userService;
-
-    public GovernanceIndexService(
-        IApplicationDecisionService applicationDecisionService,
-        ILegalDocumentService legalDocService,
-        IUserService userService)
-    {
-        _applicationDecisionService = applicationDecisionService;
-        _legalDocService = legalDocService;
-        _userService = userService;
-    }
-
     public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
     {
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, ct);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, ct);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
-        var statutesContent = await _legalDocService.GetDocumentContentAsync("statutes");
+        var statutesContent = await legalDocService.GetDocumentContentAsync("statutes");
 
-        var snapshot = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);
         var asociadoCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Asociado);
 

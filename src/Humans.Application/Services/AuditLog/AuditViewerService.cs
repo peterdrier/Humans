@@ -7,46 +7,33 @@ using Humans.Domain.Entities;
 namespace Humans.Application.Services.AuditLog;
 
 /// <summary>Read-side wrapper over <see cref="IAuditLogService"/> that resolves actor/subject/team names. No DB or caching.</summary>
-public sealed class AuditViewerService : IAuditViewerService
+public sealed class AuditViewerService(
+    IAuditLogService auditLog,
+    IUserService userService,
+    ITeamService teamService,
+    ITeamResourceService teamResourceService) : IAuditViewerService
 {
-    private readonly IAuditLogService _auditLog;
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly ITeamResourceService _teamResourceService;
-
-    public AuditViewerService(
-        IAuditLogService auditLog,
-        IUserService userService,
-        ITeamService teamService,
-        ITeamResourceService teamResourceService)
-    {
-        _auditLog = auditLog;
-        _userService = userService;
-        _teamService = teamService;
-        _teamResourceService = teamResourceService;
-    }
-
     public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default)
     {
-        var entries = await _auditLog.GetRecentAsync(count, ct);
+        var entries = await auditLog.GetRecentAsync(count, ct);
         return await ResolveAsync(entries, ct);
     }
 
     public async Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        var entries = await _auditLog.GetByUserAsync(userId, count, ct);
+        var entries = await auditLog.GetByUserAsync(userId, count, ct);
         return await ResolveAsync(entries, ct);
     }
 
     public async Task<IReadOnlyList<AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
-        var entries = await _auditLog.GetByResourceAsync(resourceId);
+        var entries = await auditLog.GetByResourceAsync(resourceId);
         return await ResolveAsync(entries, ct);
     }
 
     public async Task<IReadOnlyList<AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var entries = await _auditLog.GetGoogleSyncByUserAsync(userId);
+        var entries = await auditLog.GetGoogleSyncByUserAsync(userId);
         return await ResolveAsync(entries, ct);
     }
 
@@ -58,13 +45,13 @@ public sealed class AuditViewerService : IAuditViewerService
         int limit,
         CancellationToken ct = default)
     {
-        var entries = await _auditLog.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, ct);
+        var entries = await auditLog.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, ct);
         return await ResolveAsync(entries, ct);
     }
 
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
-        var (items, totalCount, anomalyCount) = await _auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
+        var (items, totalCount, anomalyCount) = await auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
         var events = await ResolveAsync(items, ct);
         return new AuditEventPage(events, totalCount, anomalyCount);
     }
@@ -86,7 +73,7 @@ public sealed class AuditViewerService : IAuditViewerService
             : await GetTeamNamesAsync(teamIds, ct);
         var resources = resourceIds.Count == 0
             ? new Dictionary<Guid, string>()
-            : await _teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
+            : await teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
 
         var result = new List<AuditEvent>(entries.Count);
         foreach (var entry in entries)
@@ -109,7 +96,7 @@ public sealed class AuditViewerService : IAuditViewerService
             : await GetTeamNamesAsync(teamIds, ct);
         var resources = resourceIds.Count == 0
             ? new Dictionary<Guid, string>()
-            : await _teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
+            : await teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
 
         var result = new List<AuditEvent>(entries.Count);
         foreach (var entry in entries)
@@ -211,7 +198,7 @@ public sealed class AuditViewerService : IAuditViewerService
         IReadOnlyList<Guid> userIds, CancellationToken ct)
     {
         // BurnerName is the display name (memory/architecture/burnername-is-the-display-name.md). Users without one are absent.
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
         return users
             .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.Profile?.BurnerName))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Profile!.BurnerName!);
@@ -220,7 +207,7 @@ public sealed class AuditViewerService : IAuditViewerService
     private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
         IReadOnlyList<Guid> teamIds, CancellationToken ct)
     {
-        var teams = await _teamService.GetByIdsWithParentsAsync(teamIds, ct);
+        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
         return teams.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value.Name, kvp.Value.Slug));
     }
 

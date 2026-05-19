@@ -12,13 +12,13 @@ public sealed record CampRoleDrillDownData(
     IReadOnlyList<CampRoleDrillDownCampRow> Rows);
 
 public sealed record CampRoleDrillDownCampRow(
-    System.Guid CampId,
+    Guid CampId,
     string CampName,
     string CampSlug,
-    System.Guid CampSeasonId,
+    Guid CampSeasonId,
     IReadOnlyList<CampRoleDrillDownAssignee> Assignees);
 
 public sealed record CampRoleDrillDownAssignee(
-    System.Guid UserId,
+    Guid UserId,
     string? GoogleEmail,
     NodaTime.Instant AssignedAt);

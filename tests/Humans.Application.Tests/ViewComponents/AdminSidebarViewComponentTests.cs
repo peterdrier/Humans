@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Web.Authorization;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
@@ -98,7 +99,7 @@ public class AdminSidebarViewComponentTests
         IAuthorizationService auth, string controller, string action, IWebHostEnvironment? env = null)
     {
         env ??= MakeDevEnv();
-        var sp = Substitute.For<IServiceProvider>();
+        var sp = new ServiceLocatorBuilder().Build();
         var http = Substitute.For<IHttpContextAccessor>();
         var sut = new AdminSidebarViewComponent(auth, env, sp, http, NullLogger<AdminSidebarViewComponent>.Instance);
 

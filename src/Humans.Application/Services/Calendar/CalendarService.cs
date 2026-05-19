@@ -18,37 +18,22 @@ namespace Humans.Application.Services.Calendar;
 /// Inner service behind <c>CachingCalendarService</c> (§15). Mutations call the repo and return;
 /// the decorator handles invalidation. Owning-team names resolved via <see cref="ITeamService"/> (§6b).
 /// </summary>
-public sealed class CalendarService : ICalendarService
+public sealed class CalendarService(
+    ICalendarRepository repo,
+    ITeamService teamService,
+    IClock clock,
+    IAuditLogService audit,
+    ILogger<CalendarService> logger) : ICalendarService
 {
-    private readonly ICalendarRepository _repo;
-    private readonly ITeamService _teamService;
-    private readonly IClock _clock;
-    private readonly IAuditLogService _audit;
-    private readonly ILogger<CalendarService> _logger;
-
-    public CalendarService(
-        ICalendarRepository repo,
-        ITeamService teamService,
-        IClock clock,
-        IAuditLogService audit,
-        ILogger<CalendarService> logger)
-    {
-        _repo = repo;
-        _teamService = teamService;
-        _clock = clock;
-        _audit = audit;
-        _logger = logger;
-    }
-
     public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
     {
-        var events = await _repo.GetEventsInWindowAsync(from, to, teamId, ct);
+        var events = await repo.GetEventsInWindowAsync(from, to, teamId, ct);
 
         var infos = events.Select(CalendarOccurrenceExpander.ToInfo).ToList();
         var teamNames = await ResolveTeamNamesAsync(infos, ct);
 
-        return CalendarOccurrenceExpander.Expand(infos, from, to, teamNames, _logger);
+        return CalendarOccurrenceExpander.Expand(infos, from, to, teamNames, logger);
     }
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
@@ -56,7 +41,7 @@ public sealed class CalendarService : ICalendarService
     {
         // In-memory join (§6b): no .Include(e => e.OwningTeam).
         var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var teamsById = await teamService.GetTeamsAsync(ct);
         return teamIds
             .Where(teamsById.ContainsKey)
             .ToDictionary(id => id, id => teamsById[id].Name);
@@ -64,7 +49,7 @@ public sealed class CalendarService : ICalendarService
 
     public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var ev = await _repo.GetEventByIdAsync(id, ct);
+        var ev = await repo.GetEventByIdAsync(id, ct);
         return ev is null ? null : ToDetail(ev);
     }
 
@@ -73,7 +58,7 @@ public sealed class CalendarService : ICalendarService
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         var ev = new CalendarEvent
         {
@@ -98,13 +83,13 @@ public sealed class CalendarService : ICalendarService
         if (errors.Count > 0)
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
-        await _repo.AddAsync(ev, ct);
+        await repo.AddAsync(ev, ct);
 
         // Audit best-effort: row already committed. Re-raising would lie to the caller and
         // skip §15 decorator invalidation. See PR #585 follow-up.
         try
         {
-            await _audit.LogAsync(
+            await audit.LogAsync(
                 AuditAction.CalendarEventCreated, nameof(CalendarEvent), ev.Id,
                 $"Created calendar event '{ev.Title}'",
                 createdByUserId,
@@ -112,7 +97,7 @@ public sealed class CalendarService : ICalendarService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex,
+            logger.LogCritical(ex,
                 "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was created by {UserId}. Row was committed; reconcile audit trail manually.",
                 ev.Id, ev.Title, createdByUserId);
         }
@@ -132,17 +117,17 @@ public sealed class CalendarService : ICalendarService
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
             return CalendarEventMutationResult.Failed(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create calendar event");
+            logger.LogError(ex, "Failed to create calendar event");
             return CalendarEventMutationResult.Failed("Failed to create calendar event.");
         }
     }
@@ -253,10 +238,10 @@ public sealed class CalendarService : ICalendarService
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         CalendarEvent? mutated = null;
 
-        var found = await _repo.UpdateAsync(id, ev =>
+        var found = await repo.UpdateAsync(id, ev =>
         {
             ev.Title = dto.Title;
             ev.Description = dto.Description;
@@ -284,7 +269,7 @@ public sealed class CalendarService : ICalendarService
         // Audit best-effort: DB write already committed. See CreateEventAsync.
         try
         {
-            await _audit.LogAsync(
+            await audit.LogAsync(
                 AuditAction.CalendarEventUpdated, nameof(CalendarEvent), mutated.Id,
                 $"Updated calendar event '{mutated.Title}'",
                 updatedByUserId,
@@ -292,7 +277,7 @@ public sealed class CalendarService : ICalendarService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex,
+            logger.LogCritical(ex,
                 "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was updated by {UserId}. Row was committed; reconcile audit trail manually.",
                 mutated.Id, mutated.Title, updatedByUserId);
         }
@@ -313,36 +298,36 @@ public sealed class CalendarService : ICalendarService
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning(ex, "Calendar event {EventId} not found during update", id);
+            logger.LogWarning(ex, "Calendar event {EventId} not found during update", id);
             return CalendarEventMutationResult.Missing("Calendar event not found.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.Failed(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update calendar event {EventId}", id);
+            logger.LogError(ex, "Failed to update calendar event {EventId}", id);
             return CalendarEventMutationResult.Failed("Failed to update calendar event.");
         }
     }
 
     public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var result = await _repo.SoftDeleteAsync(id, now, ct);
+        var now = clock.GetCurrentInstant();
+        var result = await repo.SoftDeleteAsync(id, now, ct);
         if (result is null) return;
 
         // Audit best-effort: soft-delete already committed. See CreateEventAsync.
         try
         {
-            await _audit.LogAsync(
+            await audit.LogAsync(
                 AuditAction.CalendarEventDeleted, nameof(CalendarEvent), id,
                 $"Deleted calendar event '{result.Value.Title}'",
                 deletedByUserId,
@@ -350,7 +335,7 @@ public sealed class CalendarService : ICalendarService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex,
+            logger.LogCritical(ex,
                 "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was deleted by {UserId}. Soft-delete was committed; reconcile audit trail manually.",
                 id, result.Value.Title, deletedByUserId);
         }
@@ -389,9 +374,9 @@ public sealed class CalendarService : ICalendarService
         AuditAction auditAction, string auditDescription,
         CancellationToken ct)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        await _repo.UpsertExceptionAsync(
+        await repo.UpsertExceptionAsync(
             eventId,
             originalUtc,
             createdByUserId: userId,
@@ -402,14 +387,14 @@ public sealed class CalendarService : ICalendarService
         // Audit best-effort: exception upsert already committed (see CreateEventAsync).
         try
         {
-            await _audit.LogAsync(
+            await audit.LogAsync(
                 auditAction, nameof(CalendarEvent), eventId,
                 auditDescription,
                 userId);
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex,
+            logger.LogCritical(ex,
                 "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}. Exception upsert was committed; reconcile audit trail manually.",
                 auditAction, eventId, userId);
         }

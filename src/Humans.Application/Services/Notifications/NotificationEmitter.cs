@@ -18,28 +18,13 @@ namespace Humans.Application.Services.Notifications;
 /// this without closing a DI cycle through <see cref="INotificationService"/>.
 /// <see cref="NotificationService"/> delegates here so dispatch logic lives in one place.
 /// </summary>
-public sealed class NotificationEmitter : INotificationEmitter
+public sealed class NotificationEmitter(
+    INotificationRepository repo,
+    ICommunicationPreferenceService preferenceService,
+    IClock clock,
+    IMemoryCache cache,
+    ILogger<NotificationEmitter> logger) : INotificationEmitter
 {
-    private readonly INotificationRepository _repo;
-    private readonly ICommunicationPreferenceService _preferenceService;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<NotificationEmitter> _logger;
-
-    public NotificationEmitter(
-        INotificationRepository repo,
-        ICommunicationPreferenceService preferenceService,
-        IClock clock,
-        IMemoryCache cache,
-        ILogger<NotificationEmitter> logger)
-    {
-        _repo = repo;
-        _preferenceService = preferenceService;
-        _clock = clock;
-        _cache = cache;
-        _logger = logger;
-    }
-
     public async Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,
@@ -54,15 +39,15 @@ public sealed class NotificationEmitter : INotificationEmitter
     {
         if (recipientUserIds.Count == 0)
         {
-            _logger.LogWarning("SendAsync called with empty recipient list for source {Source}, title '{Title}'",
+            logger.LogWarning("SendAsync called with empty recipient list for source {Source}, title '{Title}'",
                 source, title);
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var category = source.ToMessageCategory();
 
-        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+        var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
             recipientUserIds, category, cancellationToken);
 
         var notifications = new List<Notification>(recipientUserIds.Count);
@@ -70,7 +55,7 @@ public sealed class NotificationEmitter : INotificationEmitter
         {
             if (notificationClass == NotificationClass.Informational && inboxDisabled.Contains(userId))
             {
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Skipping informational notification for user {UserId} — InboxEnabled=false for {Category}",
                     userId, category);
                 continue;
@@ -101,19 +86,19 @@ public sealed class NotificationEmitter : INotificationEmitter
 
         if (notifications.Count == 0)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "SendAsync: all {Count} recipient(s) suppressed notification for source {Source}",
                 recipientUserIds.Count, source);
             return;
         }
 
-        await _repo.AddRangeAsync(notifications, cancellationToken);
+        await repo.AddRangeAsync(notifications, cancellationToken);
         foreach (var n in notifications)
         {
-            _cache.Remove(CacheKeys.NotificationBadgeCounts(n.Recipients.Single().UserId));
+            cache.Remove(CacheKeys.NotificationBadgeCounts(n.Recipients.Single().UserId));
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to {Count} individual recipient(s)",
             source, title, notifications.Count);
     }

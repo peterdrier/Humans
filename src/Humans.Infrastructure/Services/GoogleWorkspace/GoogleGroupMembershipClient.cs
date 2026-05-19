@@ -15,20 +15,13 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// for group-membership operations; the Application-layer sync service
 /// (coming in §15 Part 2b) never sees SDK types.
 /// </summary>
-public sealed class GoogleGroupMembershipClient : IGoogleGroupMembershipClient
+public sealed class GoogleGroupMembershipClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleGroupMembershipClient> logger) : IGoogleGroupMembershipClient
 {
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleGroupMembershipClient> _logger;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private CloudIdentityService? _cloudIdentityService;
-
-    public GoogleGroupMembershipClient(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleGroupMembershipClient> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
 
     public async Task<GroupMembershipListResult> ListMembershipsAsync(
         string groupGoogleId,
@@ -68,7 +61,7 @@ public sealed class GoogleGroupMembershipClient : IGoogleGroupMembershipClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error listing memberships for group {GroupId}: Code={Code} Message={Message}",
                 groupGoogleId, ex.Error?.Code, ex.Error?.Message);
             return new GroupMembershipListResult(
@@ -108,7 +101,7 @@ public sealed class GoogleGroupMembershipClient : IGoogleGroupMembershipClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error adding {Email} to group {GroupId}: Code={Code} Message={Message}",
                 memberEmail, groupGoogleId, ex.Error?.Code, ex.Error?.Message);
             return new GroupMembershipMutationResult(
@@ -129,7 +122,7 @@ public sealed class GoogleGroupMembershipClient : IGoogleGroupMembershipClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error deleting membership {Name}: Code={Code} Message={Message}",
                 membershipResourceName, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);

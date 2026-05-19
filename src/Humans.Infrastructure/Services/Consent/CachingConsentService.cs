@@ -47,10 +47,14 @@ namespace Humans.Infrastructure.Services.Consent;
 /// path; they pass through to the inner service.
 /// </para>
 /// </remarks>
-public sealed class CachingConsentService
-    : TrackedCache<Guid, UserConsentInfo>,
-      IConsentService,
-      IConsentCacheInvalidator
+public sealed class CachingConsentService(
+    IConsentRepository repository,
+    ILegalDocumentSyncService legalDocumentSync,
+    IClock clock,
+    IServiceScopeFactory scopeFactory,
+    ILogger<CachingConsentService> logger)
+    : TrackedCache<Guid, UserConsentInfo>("Consent.UserConsentInfo", warmOnStartup: false, logger), IConsentService,
+        IConsentCacheInvalidator
 {
     /// <summary>
     /// DI service key under which the undecorated (inner)
@@ -58,30 +62,12 @@ public sealed class CachingConsentService
     /// </summary>
     public const string InnerServiceKey = "consent-inner";
 
-    private readonly IConsentRepository _repository;
-    private readonly ILegalDocumentSyncService _legalDocumentSync;
-    private readonly IClock _clock;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<CachingConsentService> _logger;
+    private readonly ILogger<CachingConsentService> _logger = logger;
 
-    public CachingConsentService(
-        IConsentRepository repository,
-        ILegalDocumentSyncService legalDocumentSync,
-        IClock clock,
-        IServiceScopeFactory scopeFactory,
-        ILogger<CachingConsentService> logger)
-        : base("Consent.UserConsentInfo", warmOnStartup: false, logger)
-    {
-        // ILegalDocumentSyncService and IClock are Singletons — inject directly.
-        // _scopeFactory is still needed to resolve the keyed Scoped inner
-        // IConsentService and Scoped IUserService for the SubmitConsent /
-        // pass-through / chain-resolve paths.
-        _repository = repository;
-        _legalDocumentSync = legalDocumentSync;
-        _clock = clock;
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
+    // ILegalDocumentSyncService and IClock are Singletons — inject directly.
+    // _scopeFactory is still needed to resolve the keyed Scoped inner
+    // IConsentService and Scoped IUserService for the SubmitConsent /
+    // pass-through / chain-resolve paths.
 
     // ==========================================================================
     // Reads served from cache
@@ -129,7 +115,7 @@ public sealed class CachingConsentService
 
         if (misses is { Count: > 0 })
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            await using var scope = scopeFactory.CreateAsyncScope();
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
             var missList = misses.ToList();
             var bulk = await inner.GetConsentMapForUsersAsync(missList, ct).ConfigureAwait(false);
@@ -159,9 +145,9 @@ public sealed class CachingConsentService
         // injected directly as a Singleton). Both halves are cache hits in
         // the warm path; we never re-enter the inner ConsentService here so
         // the repo isn't touched.
-        var documents = await _legalDocumentSync.GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
+        var documents = await legalDocumentSync.GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
         var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         var rows = new List<RequiredConsentRow>(documents.Count);
         foreach (var doc in documents)
@@ -241,7 +227,7 @@ public sealed class CachingConsentService
         // inline below. We also need the SAME source-id set the inner uses
         // to decide AlreadyConsented; resolving it once here and trusting
         // the inner is consistent (both go through IUserService).
-        await using (var scope = _scopeFactory.CreateAsyncScope())
+        await using (var scope = scopeFactory.CreateAsyncScope())
         {
             var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
@@ -301,21 +287,21 @@ public sealed class CachingConsentService
         // the union path or the single-id path applies — same logic as the
         // inner ConsentService's GetChainFollowIdsAsync, lifted to warm time
         // so it does not run on every read.
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
         var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
 
         IReadOnlySet<Guid> versions;
         if (sourceIds.Count == 0)
         {
-            versions = await _repository.GetExplicitlyConsentedVersionIdsAsync(userId, ct);
+            versions = await repository.GetExplicitlyConsentedVersionIdsAsync(userId, ct);
         }
         else
         {
             var allIds = new List<Guid>(sourceIds.Count + 1);
             allIds.AddRange(sourceIds);
             allIds.Add(userId);
-            versions = await _repository.GetExplicitlyConsentedVersionIdsForUserIdsAsync(allIds, ct);
+            versions = await repository.GetExplicitlyConsentedVersionIdsForUserIdsAsync(allIds, ct);
         }
 
         // Defensively freeze with a copy on every load. The repo currently
@@ -334,7 +320,7 @@ public sealed class CachingConsentService
 
     private async Task<TResult> WithInner<TResult>(Func<IConsentService, Task<TResult>> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
         return await action(inner);
     }

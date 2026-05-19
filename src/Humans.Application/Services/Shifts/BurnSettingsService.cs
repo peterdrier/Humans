@@ -8,20 +8,13 @@ namespace Humans.Application.Services.Shifts;
 /// Read-only adapter mapping <see cref="EventSettings"/> → <see cref="BurnSettingsInfo"/> at the
 /// section boundary. No caching (single active row, cold path — see #719).
 /// </summary>
-public sealed class BurnSettingsService : IBurnSettingsService
+public sealed class BurnSettingsService(IShiftManagementRepository repo) : IBurnSettingsService
 {
-    private readonly IShiftManagementRepository _repo;
-
-    public BurnSettingsService(IShiftManagementRepository repo)
-    {
-        _repo = repo;
-    }
-
     public async Task<BurnSettingsInfo?> GetActiveAsync(CancellationToken ct = default) =>
-        ToDto(await _repo.GetActiveEventSettingsAsync(ct));
+        ToDto(await repo.GetActiveEventSettingsAsync(ct));
 
     public async Task<BurnSettingsInfo?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-        ToDto(await _repo.GetEventSettingsByIdAsync(id, ct));
+        ToDto(await repo.GetEventSettingsByIdAsync(id, ct));
 
     private static BurnSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new BurnSettingsInfo(
         Id: src.Id,

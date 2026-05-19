@@ -102,12 +102,10 @@ public class IssueListItemViewModel
     public string? Section { get; set; }
     public string AreaLabel { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
     public DateTime LastUpdate { get; set; }
     public int CommentCount { get; set; }
     public Guid? AssigneeUserId { get; set; }
-    public string? AssigneeName { get; set; }
     public int? GitHubIssueNumber { get; set; }
 }
 
@@ -125,9 +123,7 @@ public class IssueDetailViewModel
     public string? AdditionalContext { get; set; }
     public string? ScreenshotUrl { get; set; }
 
-    public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
-    public string? AssigneeName { get; set; }
     public Guid? AssigneeUserId { get; set; }
     public int? GitHubIssueNumber { get; set; }
     public LocalDate? DueDate { get; set; }

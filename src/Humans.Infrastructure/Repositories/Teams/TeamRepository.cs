@@ -17,22 +17,15 @@ namespace Humans.Infrastructure.Repositories.Teams;
 /// registered as Singleton.
 /// </para>
 /// </summary>
-internal sealed class TeamRepository : ITeamRepository
+internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory) : ITeamRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public TeamRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Team reads
     // ==========================================================================
 
     public async Task<Team?> GetByIdAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == teamId, ct);
@@ -40,7 +33,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<Team?> GetByIdWithRelationsAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams
             .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
@@ -51,13 +44,13 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<Team?> FindForMutationAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams.FindAsync([teamId], ct);
     }
 
     public async Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams
             .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
@@ -68,7 +61,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var q = db.Teams.AsNoTracking().Where(t => t.Slug == slug || t.CustomSlug == slug);
         if (excludingTeamId.HasValue)
             q = q.Where(t => t.Id != excludingTeamId.Value);
@@ -77,7 +70,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<IReadOnlyList<Team>> GetAllActiveAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.IsActive)
@@ -88,7 +81,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams
             .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
@@ -98,7 +91,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var rows = await db.TeamRoleAssignments
             .AsNoTracking()
             .Where(tra =>
@@ -117,7 +110,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var definitions = await db.Set<TeamRoleDefinition>()
             .AsNoTracking()
             .Include(d => d.Assignments)
@@ -146,7 +139,7 @@ internal sealed class TeamRepository : ITeamRepository
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var q = db.Teams
             .AsNoTracking()
             .Where(t => t.IsActive);
@@ -165,7 +158,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
         int page, int pageSize, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var query = db.Teams
             .AsNoTracking()
@@ -190,7 +183,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (teamIds.Count == 0)
             return new Dictionary<Guid, Team>();
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var requested = await db.Teams
             .AsNoTracking()
@@ -219,7 +212,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<bool> HasActiveChildrenAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Teams.AnyAsync(t => t.ParentTeamId == teamId && t.IsActive, ct);
     }
 
@@ -229,7 +222,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (parentTeamIds.Count == 0)
             return [];
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var rows = await db.Teams
             .AsNoTracking()
             .Where(t => t.ParentTeamId != null && parentTeamIds.Contains(t.ParentTeamId.Value) && t.IsActive)
@@ -241,14 +234,14 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task AddTeamAsync(Team team, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Teams.Add(team);
         await db.SaveChangesAsync(ct);
     }
 
     public async Task UpdateTeamAsync(Team team, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Teams.Update(team);
         await db.SaveChangesAsync(ct);
     }
@@ -256,7 +249,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
         Team team, bool requiresApproval, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         db.Teams.Add(team);
         try
@@ -289,7 +282,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var team = await db.Teams.FindAsync([teamId], ct)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 
@@ -310,7 +303,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var team = await db.Teams.FindAsync([teamId], ct);
         if (team is null)
             return (false, null);
@@ -328,7 +321,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.UserId == userId && tm.LeftAt == null)
@@ -339,7 +332,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<bool> IsAnyActiveCoordinatorAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamMembers
             .AsNoTracking()
             .AnyAsync(tm => tm.UserId == userId
@@ -350,7 +343,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var byRoleAssignment = await db.TeamRoleAssignments
             .AsNoTracking()
@@ -378,7 +371,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<Guid>> GetUserDepartmentCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var directDepartmentIds = await db.TeamMembers
             .AsNoTracking()
@@ -403,7 +396,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<bool> IsActiveMemberAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamMembers
             .AsNoTracking()
             .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, ct);
@@ -412,14 +405,14 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<TeamMember?> FindActiveMemberForMutationAsync(
         Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, ct);
     }
 
     public async Task AddMemberAsync(TeamMember member, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.TeamMembers.Add(member);
         await db.SaveChangesAsync(ct);
     }
@@ -440,7 +433,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<TeamJoinRequest?> FindUserPendingRequestAsync(
         Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId && r.UserId == userId
@@ -449,14 +442,14 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<TeamJoinRequest?> FindRequestForMutationAsync(Guid requestId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests.FirstOrDefaultAsync(r => r.Id == requestId, ct);
     }
 
     public async Task<TeamJoinRequest?> FindRequestWithTeamForMutationAsync(
         Guid requestId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .Include(r => r.Team)
             .FirstOrDefaultAsync(r => r.Id == requestId, ct);
@@ -464,7 +457,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<IReadOnlyList<TeamJoinRequest>> GetAllPendingWithTeamsAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Include(r => r.Team)
@@ -479,7 +472,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (teamIds.Count == 0)
             return [];
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Include(r => r.Team)
@@ -491,7 +484,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingForTeamAsync(
         Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.Pending)
@@ -505,7 +498,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (teamIds.Count == 0)
             return new Dictionary<Guid, int>();
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var counts = await db.TeamJoinRequests
             .Where(r => teamIds.Contains(r.TeamId) && r.Status == TeamJoinRequestStatus.Pending)
             .GroupBy(r => r.TeamId)
@@ -520,14 +513,14 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<int> GetTotalPendingCountAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, ct);
     }
 
     public async Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.TeamJoinRequests.Add(request);
         await db.SaveChangesAsync(ct);
     }
@@ -535,7 +528,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<int> ReassignActiveJoinRequestsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var sourceRows = await db.TeamJoinRequests
             .Where(r => r.UserId == sourceUserId)
@@ -578,7 +571,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleDefinition>()
             .Include(d => d.Assignments)
                 .ThenInclude(a => a.TeamMember)
@@ -590,7 +583,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleDefinition>()
             .Include(d => d.Team)
             .Include(d => d.Assignments)
@@ -604,7 +597,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleDefinition>()
             .Include(d => d.Team)
             .Include(d => d.Assignments)
@@ -615,7 +608,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<TeamRoleDefinition?> FindRoleDefinitionWithMembersForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleDefinition>()
             .Include(d => d.Team)
             .Include(d => d.Assignments)
@@ -626,7 +619,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> RoleDefinitionNameExistsAsync(
         Guid teamId, string lowerName, Guid? excludingId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var q = db.Set<TeamRoleDefinition>()
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             .Where(d => d.TeamId == teamId && d.Name.ToLower() == lowerName);
@@ -639,7 +632,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> OtherRoleHasIsManagementAsync(
         Guid teamId, Guid excludingRoleDefinitionId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleDefinition>()
             .AnyAsync(d => d.TeamId == teamId
                 && d.Id != excludingRoleDefinitionId
@@ -652,7 +645,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (teamIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleDefinition>()
             .AsNoTracking()
             .Where(d => teamIds.Contains(d.TeamId) && d.IsManagement && d.IsPublic)
@@ -661,14 +654,14 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task AddRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Set<TeamRoleDefinition>().Add(definition);
         await db.SaveChangesAsync(ct);
     }
 
     public async Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Set<TeamRoleDefinition>().Attach(definition);
         db.Set<TeamRoleDefinition>().Remove(definition);
         await db.SaveChangesAsync(ct);
@@ -681,7 +674,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMemberForMutationAsync(
         Guid teamMemberId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleAssignment>()
             .Include(a => a.TeamRoleDefinition)
                 .ThenInclude(d => d.Team)
@@ -695,7 +688,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (teamMemberIds.Count == 0)
             return [];
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleAssignment>()
             .Include(a => a.TeamRoleDefinition)
                 .ThenInclude(d => d.Team)
@@ -706,7 +699,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> MemberHasOtherManagementAssignmentAsync(
         Guid teamMemberId, Guid excludingAssignmentId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleAssignment>()
             .AnyAsync(a => a.TeamMemberId == teamMemberId
                 && a.Id != excludingAssignmentId
@@ -716,7 +709,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<TeamRoleAssignment?> FindAssignmentForMutationAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleAssignment>()
             .Include(a => a.TeamMember)
             .FirstOrDefaultAsync(a => a.TeamRoleDefinitionId == roleDefinitionId
@@ -725,7 +718,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task AddAssignmentAsync(TeamRoleAssignment assignment, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Set<TeamRoleAssignment>().Add(assignment);
         await db.SaveChangesAsync(ct);
     }
@@ -733,7 +726,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<Guid>> GetUserIdsWithManagementOnTeamAsync(
         Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Set<TeamRoleAssignment>()
             .Where(a => a.TeamRoleDefinition.TeamId == teamId
                 && a.TeamRoleDefinition.IsManagement)
@@ -749,7 +742,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> AddMemberWithOutboxAsync(
         TeamMember member, GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.TeamMembers.Add(member);
         db.GoogleSyncOutboxEvents.Add(outboxEvent);
         try
@@ -769,7 +762,7 @@ internal sealed class TeamRepository : ITeamRepository
         GoogleSyncOutboxEvent? outboxEvent,
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.TeamJoinRequests.Attach(request);
         db.Entry(request).State = EntityState.Modified;
         db.TeamMembers.Add(member);
@@ -790,7 +783,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
         Guid teamMemberId, Instant leftAt, GoogleSyncOutboxEvent? outboxEvent, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var member = await db.TeamMembers.FirstOrDefaultAsync(tm => tm.Id == teamMemberId, ct)
             ?? throw new InvalidOperationException("Team member not found");
 
@@ -815,7 +808,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<TeamMemberRole?> SetMemberRoleAsync(
         Guid teamId, Guid userId, TeamMemberRole role, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var member = await db.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, ct);
 
@@ -830,7 +823,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> WithdrawRequestAsync(
         Guid requestId, Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var request = await db.TeamJoinRequests
             .FirstOrDefaultAsync(r => r.Id == requestId && r.UserId == userId, ct);
         if (request is null || request.Status != TeamJoinRequestStatus.Pending)
@@ -845,7 +838,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<bool> RejectRequestAsync(
         Guid requestId, Guid reviewerUserId, string reason, Instant now, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var request = await db.TeamJoinRequests
             .FirstOrDefaultAsync(r => r.Id == requestId, ct);
         if (request is null || request.Status != TeamJoinRequestStatus.Pending)
@@ -869,7 +862,7 @@ internal sealed class TeamRepository : ITeamRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var definition = await db.Set<TeamRoleDefinition>()
             .Include(d => d.Assignments)
@@ -937,7 +930,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var definition = await db.Set<TeamRoleDefinition>()
             .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, ct)
@@ -973,7 +966,7 @@ internal sealed class TeamRepository : ITeamRepository
         bool clearingIsManagement,
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         // Attach the definition as modified (scalar properties updated in memory).
         db.Set<TeamRoleDefinition>().Attach(definition);
@@ -1020,7 +1013,7 @@ internal sealed class TeamRepository : ITeamRepository
         bool clearingIsManagement,
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         db.Set<TeamRoleDefinition>().Attach(definition);
         db.Entry(definition).State = EntityState.Modified;
@@ -1061,7 +1054,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<int> RevokeAllMembershipsAsync(
         Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var activeMembers = await db.TeamMembers
             .Where(tm => tm.UserId == userId && tm.LeftAt == null)
@@ -1088,7 +1081,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<int> EnqueueResyncEventsForUserAsync(
         Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var memberships = await db.TeamMembers
             .Where(tm => tm.UserId == userId && tm.LeftAt == null)
             .Select(tm => new { tm.Id, tm.TeamId })
@@ -1117,7 +1110,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var team = await db.Teams
             .FirstOrDefaultAsync(t => t.Id == teamId, ct);
@@ -1160,7 +1153,7 @@ internal sealed class TeamRepository : ITeamRepository
 
     public async Task AddOutboxEventAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.GoogleSyncOutboxEvents.Add(outboxEvent);
         await db.SaveChangesAsync(ct);
     }
@@ -1172,7 +1165,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamMember>> GetAllMembershipsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamMembers
             .AsNoTracking()
             .Include(tm => tm.Team)
@@ -1186,7 +1179,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamJoinRequest>> GetAllJoinRequestsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Include(tjr => tjr.Team)
@@ -1202,7 +1195,7 @@ internal sealed class TeamRepository : ITeamRepository
     public async Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamMembers
             .AsNoTracking()
             .Include(tm => tm.Team)
@@ -1219,7 +1212,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (changes.Count == 0)
             return 0;
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var ids = changes.Select(c => c.TeamMemberId).ToList();
         var members = await db.TeamMembers
             .Where(tm => ids.Contains(tm.Id) && tm.LeftAt == null)
@@ -1255,7 +1248,7 @@ internal sealed class TeamRepository : ITeamRepository
         if (userIdsToAdd.Count == 0 && userIdsToRemove.Count == 0)
             return false;
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         // Inserts
         foreach (var userId in userIdsToAdd)

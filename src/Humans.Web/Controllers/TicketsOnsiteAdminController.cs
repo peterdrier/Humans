@@ -18,21 +18,11 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
 [Route("Tickets/Admin/Onsite")]
-public sealed class TicketsOnsiteAdminController : HumansControllerBase
+public sealed class TicketsOnsiteAdminController(
+    IUserService userService,
+    IShiftManagementService shifts,
+    IOnsiteRosterService roster) : HumansControllerBase(userService)
 {
-    private readonly IShiftManagementService _shifts;
-    private readonly IOnsiteRosterService _roster;
-
-    public TicketsOnsiteAdminController(
-        IUserService userService,
-        IShiftManagementService shifts,
-        IOnsiteRosterService roster)
-        : base(userService)
-    {
-        _shifts = shifts;
-        _roster = roster;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(
         [FromQuery] string? camp,
@@ -40,10 +30,10 @@ public sealed class TicketsOnsiteAdminController : HumansControllerBase
         [FromQuery] string? role,
         CancellationToken ct)
     {
-        var active = await _shifts.GetActiveAsync();
+        var active = await shifts.GetActiveAsync();
         var year = active?.Year ?? 0;
 
-        var result = await _roster.GetRosterAsync(year, camp, team, role, ct);
+        var result = await roster.GetRosterAsync(year, camp, team, role, ct);
 
         // Display sort lives at the presentation layer per
         // memory/architecture/display-sort-in-controllers.md — most-recent

@@ -4,33 +4,22 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Models.Tickets;
 
-public sealed class TicketDashboardPageBuilder
+public sealed class TicketDashboardPageBuilder(
+    ITicketVendorService vendorService,
+    IOptions<TicketVendorSettings> settings,
+    ITicketQueryService ticketQueryService,
+    ILogger<TicketDashboardPageBuilder> logger)
 {
-    private readonly ITicketVendorService _vendorService;
-    private readonly TicketVendorSettings _settings;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly ILogger<TicketDashboardPageBuilder> _logger;
-
-    public TicketDashboardPageBuilder(
-        ITicketVendorService vendorService,
-        IOptions<TicketVendorSettings> settings,
-        ITicketQueryService ticketQueryService,
-        ILogger<TicketDashboardPageBuilder> logger)
-    {
-        _vendorService = vendorService;
-        _settings = settings.Value;
-        _ticketQueryService = ticketQueryService;
-        _logger = logger;
-    }
+    private readonly TicketVendorSettings _settings = settings.Value;
 
     public async Task<TicketDashboardViewModel> BuildAsync(bool canAccessFinance)
     {
         if (!_settings.IsConfigured)
             return new TicketDashboardViewModel { IsConfigured = false };
 
-        var stats = await _ticketQueryService.GetDashboardStatsAsync();
+        var stats = await ticketQueryService.GetDashboardStatsAsync();
         var currency = stats.RecentOrders.FirstOrDefault()?.Currency ?? "EUR";
-        var breakEven = await _ticketQueryService.CalculateBreakEvenAsync(
+        var breakEven = await ticketQueryService.CalculateBreakEvenAsync(
             stats.TicketsSold,
             stats.Revenue,
             currency,
@@ -89,12 +78,12 @@ public sealed class TicketDashboardPageBuilder
     {
         try
         {
-            var summary = await _vendorService.GetEventSummaryAsync(_settings.EventId);
+            var summary = await vendorService.GetEventSummaryAsync(_settings.EventId);
             return summary?.TotalCapacity ?? 0;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not fetch event summary from vendor");
+            logger.LogWarning(ex, "Could not fetch event summary from vendor");
             return 0;
         }
     }

@@ -17,38 +17,25 @@ public sealed record ShiftAdminPageRequest(
     bool IncompleteOnboarding,
     Instant Now);
 
-public sealed class ShiftAdminPageBuilder
+public sealed class ShiftAdminPageBuilder(
+    IShiftManagementService shiftManagement,
+    IShiftSignupService signupService,
+    IUserService userService,
+    ITeamService teamService)
 {
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly IShiftSignupService _signupService;
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-
-    public ShiftAdminPageBuilder(
-        IShiftManagementService shiftManagement,
-        IShiftSignupService signupService,
-        IUserService userService,
-        ITeamService teamService)
-    {
-        _shiftManagement = shiftManagement;
-        _signupService = signupService;
-        _userService = userService;
-        _teamService = teamService;
-    }
-
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request)
     {
-        var rotas = await _shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id);
+        var rotas = await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id);
         var staffing = await BuildStaffingSummaryAsync(rotas, request.IncompleteOnboarding);
         var allUserIds = GetRelevantUserIds(rotas, staffing.PendingSignups);
         var profileDict = await LoadProfilesAsync(allUserIds, request.CanViewMedical);
         var userLookup = allUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(allUserIds);
+            : await userService.GetUserInfosAsync(allUserIds);
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department);
-        var allTags = await _shiftManagement.GetTagsAsync();
-        var staffingData = await _shiftManagement.GetStaffingDataAsync(request.EventSettings.Id, request.Department.Id);
-        var staffingHours = await _shiftManagement.GetStaffingHoursAsync(request.EventSettings.Id, request.Department.Id);
+        var allTags = await shiftManagement.GetTagsAsync();
+        var staffingData = await shiftManagement.GetStaffingDataAsync(request.EventSettings.Id, request.Department.Id);
+        var staffingHours = await shiftManagement.GetStaffingHoursAsync(request.EventSettings.Id, request.Department.Id);
 
         return new ShiftAdminViewModel
         {
@@ -85,14 +72,14 @@ public sealed class ShiftAdminPageBuilder
             foreach (var shift in rota.Shifts)
             {
                 totalSlots += shift.MaxVolunteers;
-                var shiftSignups = await _signupService.GetByShiftAsync(shift.Id);
+                var shiftSignups = await signupService.GetByShiftAsync(shift.Id);
                 confirmedCount += shiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
                 pendingSignups.AddRange(shiftSignups.Where(s => s.Status == SignupStatus.Pending));
             }
         }
 
         if (incompleteOnboarding)
-            pendingSignups = (await _signupService.FilterToIncompleteOnboardingAsync(pendingSignups)).ToList();
+            pendingSignups = (await signupService.FilterToIncompleteOnboardingAsync(pendingSignups)).ToList();
 
         return (pendingSignups, totalSlots, confirmedCount);
     }
@@ -104,7 +91,7 @@ public sealed class ShiftAdminPageBuilder
         var profileDict = new Dictionary<Guid, VolunteerEventProfile>();
         foreach (var uid in userIds)
         {
-            var profile = await _shiftManagement.GetShiftProfileAsync(uid, includeMedical: canViewMedical);
+            var profile = await shiftManagement.GetShiftProfileAsync(uid, includeMedical: canViewMedical);
             if (profile is not null)
                 profileDict[uid] = profile;
         }
@@ -114,7 +101,7 @@ public sealed class ShiftAdminPageBuilder
 
     private async Task<List<DepartmentOption>> LoadTransferDepartmentsAsync(Team currentDepartment)
     {
-        var allTeams = await _teamService.GetAllTeamsAsync();
+        var allTeams = await teamService.GetAllTeamsAsync();
         return allTeams
             .Where(t => t.ParentTeamId is null
                         && t.SystemTeamType == SystemTeamType.None

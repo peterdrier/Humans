@@ -15,15 +15,8 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Camp lead: allow only their assigned camp
 /// - Everyone else: deny
 /// </summary>
-public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequirement>
+public class CampAuthorizationHandler(ICampService campService) : AuthorizationHandler<CampOperationRequirement>
 {
-    private readonly ICampService _campService;
-
-    public CampAuthorizationHandler(ICampService campService)
-    {
-        _campService = campService;
-    }
-
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CampOperationRequirement requirement)
     {
         var campId = context.Resource switch
@@ -57,7 +50,7 @@ public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequir
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        if (await _campService.IsUserCampLeadAsync(userId, campId))
+        if (await campService.IsUserCampLeadAsync(userId, campId))
         {
             context.Succeed(requirement);
         }

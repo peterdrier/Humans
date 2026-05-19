@@ -10,18 +10,11 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// pattern, the Application-layer service runs against this stub — there
 /// is no "stub service" variant.
 /// </summary>
-public sealed class StubGoogleDirectoryClient : IGoogleDirectoryClient
+public sealed class StubGoogleDirectoryClient(ILogger<StubGoogleDirectoryClient> logger) : IGoogleDirectoryClient
 {
-    private readonly ILogger<StubGoogleDirectoryClient> _logger;
-
-    public StubGoogleDirectoryClient(ILogger<StubGoogleDirectoryClient> logger)
-    {
-        _logger = logger;
-    }
-
     public Task<DirectoryUserListResult> ListDomainUsersAsync(CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] List domain users");
+        logger.LogDebug("[STUB] List domain users");
 
         IReadOnlyList<DirectoryUser> users =
         [
@@ -35,7 +28,7 @@ public sealed class StubGoogleDirectoryClient : IGoogleDirectoryClient
 
     public Task<DirectoryGroupListResult> ListDomainGroupsAsync(CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] List domain groups");
+        logger.LogDebug("[STUB] List domain groups");
 
         IReadOnlyList<DirectoryGroup> groups =
         [

@@ -29,7 +29,6 @@ public sealed class TicketRepository_OrderDriftTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]

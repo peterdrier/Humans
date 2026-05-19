@@ -11,8 +11,8 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 /// <summary>
 /// Tests for <see cref="CachingShiftViewService"/> — Singleton decorator over a
-/// keyed Scoped inner. Covers dict-cache hit / miss, invalidation, empty view
-/// behavior, and that cache-hit reads never resolve the inner. Issue #720.
+/// keyed Scoped inner. Covers dict-cache hit / miss, batch-miss fan-in,
+/// invalidation, and that cache-hit reads never resolve the inner. Issue #720.
 /// </summary>
 public class CachingShiftViewServiceTests
 {
@@ -81,14 +81,12 @@ public class CachingShiftViewServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        var v1 = new ShiftUserView(u1, null, null, null,
-            [], []);
-        var v2 = new ShiftUserView(u2, null, null, null,
-            [], []);
-        _inner.GetUserAsync(u1, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(v1));
-        _inner.GetUserAsync(u2, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(v2));
+        var v1 = new ShiftUserView(u1, null, null, null, [], []);
+        var v2 = new ShiftUserView(u2, null, null, null, [], []);
+
+        _inner.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(
+                new Dictionary<Guid, ShiftUserView> { [u1] = v1, [u2] = v2 }));
 
         var sut = CreateSut();
 
@@ -100,8 +98,43 @@ public class CachingShiftViewServiceTests
         (await sut.GetUserAsync(u1)).Should().BeSameAs(v1);
         (await sut.GetUserAsync(u2)).Should().BeSameAs(v2);
 
-        await _inner.Received(1).GetUserAsync(u1, Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserAsync(u2, Arg.Any<CancellationToken>());
+        // The whole point: batch reads collapse to ONE call into the inner, not N.
+        await _inner.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetUsersAsync_PartialCacheHit_OnlyFetchesMissesFromInner()
+    {
+        var cached = Guid.NewGuid();
+        var miss1 = Guid.NewGuid();
+        var miss2 = Guid.NewGuid();
+        var cachedView = new ShiftUserView(cached, null, null, null, [], []);
+        var miss1View = new ShiftUserView(miss1, null, null, null, [], []);
+        var miss2View = new ShiftUserView(miss2, null, null, null, [], []);
+
+        _inner.GetUserAsync(cached, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(cachedView));
+        _inner.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var requested = ((IEnumerable<Guid>)ci[0]).ToList();
+                requested.Should().BeEquivalentTo(new[] { miss1, miss2 });
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(
+                    new Dictionary<Guid, ShiftUserView> { [miss1] = miss1View, [miss2] = miss2View });
+            });
+
+        var sut = CreateSut();
+        await sut.GetUserAsync(cached); // prime
+
+        var batch = await sut.GetUsersAsync([cached, miss1, miss2]);
+        batch.Should().HaveCount(3);
+        batch[cached].Should().BeSameAs(cachedView);
+        batch[miss1].Should().BeSameAs(miss1View);
+        batch[miss2].Should().BeSameAs(miss2View);
+
+        // Inner.GetUsersAsync called once with ONLY the misses.
+        await _inner.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     // ── GetRotaAsync ────────────────────────────────────────────────────────

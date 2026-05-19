@@ -22,36 +22,17 @@ namespace Humans.Infrastructure.Jobs;
 /// directly (design-rules §2c).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SendReConsentReminderJob : IRecurringJob
+public class SendReConsentReminderJob(
+    IMembershipCalculator membershipCalculator,
+    ILegalDocumentSyncService legalDocService,
+    IUserService userService,
+    IEmailService emailService,
+    IOptions<EmailSettings> emailSettings,
+    IHumansMetrics metrics,
+    ILogger<SendReConsentReminderJob> logger,
+    IClock clock) : IRecurringJob
 {
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly ILegalDocumentSyncService _legalDocService;
-    private readonly IUserService _userService;
-    private readonly IEmailService _emailService;
-    private readonly EmailSettings _emailSettings;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<SendReConsentReminderJob> _logger;
-    private readonly IClock _clock;
-
-    public SendReConsentReminderJob(
-        IMembershipCalculator membershipCalculator,
-        ILegalDocumentSyncService legalDocService,
-        IUserService userService,
-        IEmailService emailService,
-        IOptions<EmailSettings> emailSettings,
-        IHumansMetrics metrics,
-        ILogger<SendReConsentReminderJob> logger,
-        IClock clock)
-    {
-        _membershipCalculator = membershipCalculator;
-        _legalDocService = legalDocService;
-        _userService = userService;
-        _emailService = emailService;
-        _emailSettings = emailSettings.Value;
-        _metrics = metrics;
-        _logger = logger;
-        _clock = clock;
-    }
+    private readonly EmailSettings _emailSettings = emailSettings.Value;
 
     /// <summary>
     /// Sends re-consent reminders to members who haven't consented to required documents.
@@ -63,25 +44,25 @@ public class SendReConsentReminderJob : IRecurringJob
         var daysBeforeSuspension = _emailSettings.ConsentReminderDaysBeforeSuspension;
         var cooldownDays = _emailSettings.ConsentReminderCooldownDays;
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Starting re-consent reminder job at {Time}, {Days} days before suspension, {Cooldown}-day cooldown",
-            _clock.GetCurrentInstant(), daysBeforeSuspension, cooldownDays);
+            clock.GetCurrentInstant(), daysBeforeSuspension, cooldownDays);
 
         try
         {
-            var usersNeedingReminder = await _membershipCalculator
+            var usersNeedingReminder = await membershipCalculator
                 .GetUsersRequiringStatusUpdateAsync(cancellationToken);
 
-            var requiredVersions = await _legalDocService.GetRequiredVersionsAsync(cancellationToken);
+            var requiredVersions = await legalDocService.GetRequiredVersionsAsync(cancellationToken);
             var requiredDocNames = requiredVersions
                 .Select(v => v.LegalDocumentName)
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
 
             var userIds = usersNeedingReminder.ToList();
-            var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
+            var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
             var sentCount = 0;
 
@@ -102,7 +83,7 @@ public class SendReConsentReminderJob : IRecurringJob
                 var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
-                    await _emailService.SendReConsentReminderAsync(
+                    await emailService.SendReConsentReminderAsync(
                         effectiveEmail,
                         user.BurnerName,
                         requiredDocNames,
@@ -110,24 +91,24 @@ public class SendReConsentReminderJob : IRecurringJob
                         user.PreferredLanguage,
                         cancellationToken);
 
-                    await _userService.SetLastConsentReminderSentAsync(userId, now, cancellationToken);
+                    await userService.SetLastConsentReminderSentAsync(userId, now, cancellationToken);
                     sentCount++;
 
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Sent re-consent reminder to user {UserId} ({Email})",
                         userId, effectiveEmail);
                 }
             }
 
-            _metrics.RecordJobRun("send_reconsent_reminder", "success");
-            _logger.LogInformation(
+            metrics.RecordJobRun("send_reconsent_reminder", "success");
+            logger.LogInformation(
                 "Completed re-consent reminder job, sent {Count} reminders ({Skipped} skipped due to cooldown)",
                 sentCount, userIds.Count - sentCount);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("send_reconsent_reminder", "failure");
-            _logger.LogError(ex, "Error sending re-consent reminders");
+            metrics.RecordJobRun("send_reconsent_reminder", "failure");
+            logger.LogError(ex, "Error sending re-consent reminders");
             throw;
         }
     }

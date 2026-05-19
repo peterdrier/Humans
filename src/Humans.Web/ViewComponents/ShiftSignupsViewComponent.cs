@@ -7,28 +7,13 @@ using NodaTime;
 
 namespace Humans.Web.ViewComponents;
 
-public class ShiftSignupsViewComponent : ViewComponent
+public class ShiftSignupsViewComponent(
+    IShiftView shiftView,
+    IShiftManagementService shiftMgmt,
+    ITeamService teamService,
+    IClock clock,
+    ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
 {
-    private readonly IShiftView _shiftView;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly ITeamService _teamService;
-    private readonly IClock _clock;
-    private readonly ILogger<ShiftSignupsViewComponent> _logger;
-
-    public ShiftSignupsViewComponent(
-        IShiftView shiftView,
-        IShiftManagementService shiftMgmt,
-        ITeamService teamService,
-        IClock clock,
-        ILogger<ShiftSignupsViewComponent> logger)
-    {
-        _shiftView = shiftView;
-        _shiftMgmt = shiftMgmt;
-        _teamService = teamService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode, string? displayName = null)
     {
         var model = new ShiftSignupsViewModel
@@ -40,15 +25,15 @@ public class ShiftSignupsViewComponent : ViewComponent
 
         try
         {
-            var es = await _shiftMgmt.GetActiveAsync();
+            var es = await shiftMgmt.GetActiveAsync();
 
             // T-10: signups come from the cached ShiftUserView (issue #720).
             // ShiftUserView.Signups is pre-filtered to the active event by the
             // inner ShiftViewService — no active event yields an empty list.
-            var userView = await _shiftView.GetUserAsync(userId);
+            var userView = await shiftView.GetUserAsync(userId);
             var signups = userView.Signups;
 
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
             model.EventSettings = es;
 
             var componentTeamIds = ShiftSignupBucketer.GetTeamIds(signups);
@@ -59,7 +44,7 @@ public class ShiftSignupsViewComponent : ViewComponent
             }
             else
             {
-                var teamsById = await _teamService.GetTeamsAsync();
+                var teamsById = await teamService.GetTeamsAsync();
                 componentTeamNames = componentTeamIds
                     .Where(teamsById.ContainsKey)
                     .ToDictionary(id => id, id => teamsById[id].Name);
@@ -78,7 +63,7 @@ public class ShiftSignupsViewComponent : ViewComponent
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading shift signups for user {UserId}", userId);
+            logger.LogError(ex, "Error loading shift signups for user {UserId}", userId);
         }
 
         return View(model);

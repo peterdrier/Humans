@@ -2,7 +2,7 @@ using Humans.Application.Interfaces.Camps;
 
 namespace Humans.Web.Infrastructure;
 
-public sealed class DevelopmentCampRoleSeeder
+public sealed class DevelopmentCampRoleSeeder(ICampRoleService campRoleService)
 {
     private static readonly CreateCampRoleDefinitionInput[] Seeds =
     [
@@ -13,18 +13,11 @@ public sealed class DevelopmentCampRoleSeeder
         new("Build Lead", "build-lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
     ];
 
-    private readonly ICampRoleService _campRoleService;
-
-    public DevelopmentCampRoleSeeder(ICampRoleService campRoleService)
-    {
-        _campRoleService = campRoleService;
-    }
-
     public async Task<DevelopmentCampRoleSeedResult> SeedAsync(
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var existing = await _campRoleService.ListDefinitionsAsync(includeDeactivated: true, cancellationToken);
+        var existing = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, cancellationToken);
         var existingNames = existing.Select(d => d.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var created = 0;
@@ -37,7 +30,7 @@ public sealed class DevelopmentCampRoleSeeder
                 continue;
             }
 
-            await _campRoleService.CreateDefinitionAsync(input, actorUserId, cancellationToken);
+            await campRoleService.CreateDefinitionAsync(input, actorUserId, cancellationToken);
             created++;
         }
 

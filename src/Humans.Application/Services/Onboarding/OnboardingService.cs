@@ -16,58 +16,35 @@ namespace Humans.Application.Services.Onboarding;
 // Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
 // Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
 // admin dashboard (IAdminDashboardService), account deletion (future IAccountDeletionService).
-public sealed class OnboardingService : IOnboardingService
+public sealed class OnboardingService(
+    IProfileService profileService,
+    IUserService userService,
+    IApplicationDecisionService applicationDecisionService,
+    IEmailService emailService,
+    INotificationService notificationService,
+    ISystemTeamSync syncJob,
+    IMembershipCalculator membershipCalculator,
+    IHumansMetrics metrics,
+    ILogger<OnboardingService> logger) : IOnboardingService
 {
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
-    private readonly ISystemTeamSync _syncJob;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<OnboardingService> _logger;
-
-    public OnboardingService(
-        IProfileService profileService,
-        IUserService userService,
-        IApplicationDecisionService applicationDecisionService,
-        IEmailService emailService,
-        INotificationService notificationService,
-        ISystemTeamSync syncJob,
-        IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
-        ILogger<OnboardingService> logger)
-    {
-        _profileService = profileService;
-        _userService = userService;
-        _applicationDecisionService = applicationDecisionService;
-        _emailService = emailService;
-        _notificationService = notificationService;
-        _syncJob = syncJob;
-        _membershipCalculator = membershipCalculator;
-        _metrics = metrics;
-        _logger = logger;
-    }
-
     // --- Queries: review queue ---
 
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
     {
         // Review queue = not approved, not rejected, oldest first.
-        var reviewable = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
+        var reviewable = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.NeedsConsentReview)
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
         var allUserIds = reviewable.Select(u => u.Id).ToList();
-        var pendingAppUserIds = await _applicationDecisionService
+        var pendingAppUserIds = await applicationDecisionService
             .GetUserIdsWithPendingApplicationAsync(allUserIds, ct);
 
         var consentProgress = new Dictionary<Guid, ConsentProgressInfo>();
         foreach (var userId in allUserIds)
         {
-            var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+            var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
             consentProgress[userId] = new ConsentProgressInfo(
                 snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
                 snapshot.RequiredConsentCount);
@@ -86,14 +63,14 @@ public sealed class OnboardingService : IOnboardingService
 
     public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
+        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         if (profile is null)
             return new ReviewDetailData(null, 0, 0, null);
 
-        var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
 
-        var pendingApp = await _applicationDecisionService
+        var pendingApp = await applicationDecisionService
             .GetSubmittedApplicationForUserAsync(userId, ct);
 
         return new ReviewDetailData(
@@ -116,21 +93,21 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> ClearConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
-        var result = await _profileService.RecordConsentCheckAsync(
+        var result = await profileService.RecordConsentCheckAsync(
             userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
         if (!result.Success)
             return result;
 
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
 
-        var approvedTiers = await _applicationDecisionService.GetApprovedTiersForUserAsync(userId, ct);
+        var approvedTiers = await applicationDecisionService.GetApprovedTiersForUserAsync(userId, ct);
 
         foreach (var tier in approvedTiers)
         {
             if (tier == MembershipTier.Colaborador)
-                await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
+                await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
             else if (tier == MembershipTier.Asociado)
-                await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
+                await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
         }
 
         return result;
@@ -160,7 +137,7 @@ public sealed class OnboardingService : IOnboardingService
             }
             else
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "BulkClearConsentChecks: skipped user {UserId}: {ErrorKey}",
                     userId,
                     result.ErrorKey);
@@ -173,7 +150,7 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
-        var result = await _profileService.RecordConsentCheckAsync(
+        var result = await profileService.RecordConsentCheckAsync(
             userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
         if (!result.Success)
             return result;
@@ -187,17 +164,17 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
-        var result = await _profileService.RejectSignupAsync(userId, reviewerId, reason, ct);
+        var result = await profileService.RejectSignupAsync(userId, reviewerId, reason, ct);
         if (!result.Success)
             return result;
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
-        var rejectUser = await _userService.GetUserInfoAsync(userId, ct);
+        var rejectUser = await userService.GetUserInfoAsync(userId, ct);
 
         try
         {
-            await _emailService.SendSignupRejectedAsync(
+            await emailService.SendSignupRejectedAsync(
                 rejectUser?.Email ?? string.Empty,
                 rejectUser?.BurnerName ?? string.Empty,
                 reason,
@@ -205,12 +182,12 @@ public sealed class OnboardingService : IOnboardingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send signup rejection email to {UserId}", userId);
+            logger.LogError(ex, "Failed to send signup rejection email to {UserId}", userId);
         }
 
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.ProfileRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -225,7 +202,7 @@ public sealed class OnboardingService : IOnboardingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch ProfileRejected notification for user {UserId}", userId);
+            logger.LogError(ex, "Failed to dispatch ProfileRejected notification for user {UserId}", userId);
         }
 
         return result;
@@ -235,17 +212,17 @@ public sealed class OnboardingService : IOnboardingService
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
         // Preserves historical "NotFound" error-key contract via ProfileService.
-        var result = await _profileService.ApproveVolunteerAsync(userId, adminId, ct);
+        var result = await profileService.ApproveVolunteerAsync(userId, adminId, ct);
         if (!result.Success)
             return result;
 
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
 
-        _metrics.RecordVolunteerApproved();
+        metrics.RecordVolunteerApproved();
 
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.VolunteerApproved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -258,7 +235,7 @@ public sealed class OnboardingService : IOnboardingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch VolunteerApproved notification for user {UserId}", userId);
+            logger.LogError(ex, "Failed to dispatch VolunteerApproved notification for user {UserId}", userId);
         }
 
         return result;
@@ -269,16 +246,16 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var info = await _userService.GetUserInfoAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
             return false;
 
-        var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+        var hasAllConsents = await membershipCalculator.HasAllRequiredConsentsForTeamAsync(
             userId, SystemTeamIds.Volunteers, ct);
         if (!hasAllConsents)
             return false;
 
-        var set = await _profileService.SetConsentCheckPendingAsync(userId, ct);
+        var set = await profileService.SetConsentCheckPendingAsync(userId, ct);
         if (!set)
             return false;
 
@@ -289,8 +266,8 @@ public sealed class OnboardingService : IOnboardingService
 
     private async Task DeprovisionApprovalGatedSystemTeamsAsync(Guid userId)
     {
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
     }
 }

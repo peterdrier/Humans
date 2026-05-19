@@ -11,25 +11,15 @@ namespace Humans.Web.Controllers;
 // Profile-picture DB→FS migration verification — see #702. Idempotent; drives migrate-on-read.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/PictureMigration")]
-public sealed class ProfilePictureMigrationAdminController : HumansControllerBase
+public sealed class ProfilePictureMigrationAdminController(
+    IUserService userService,
+    IProfileService profileService,
+    ILogger<ProfilePictureMigrationAdminController> logger) : HumansControllerBase(userService)
 {
-    private readonly IProfileService _profileService;
-    private readonly ILogger<ProfilePictureMigrationAdminController> _logger;
-
-    public ProfilePictureMigrationAdminController(
-        IUserService userService,
-        IProfileService profileService,
-        ILogger<ProfilePictureMigrationAdminController> logger)
-        : base(userService)
-    {
-        _profileService = profileService;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct = default)
     {
-        var snapshot = await _profileService.GetProfilePictureMigrationSnapshotAsync(ct);
+        var snapshot = await profileService.GetProfilePictureMigrationSnapshotAsync(ct);
         return View(new ProfilePictureMigrationViewModel(snapshot));
     }
 
@@ -37,7 +27,7 @@ public sealed class ProfilePictureMigrationAdminController : HumansControllerBas
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Run(CancellationToken ct = default)
     {
-        var snapshot = await _profileService.GetProfilePictureMigrationSnapshotAsync(ct);
+        var snapshot = await profileService.GetProfilePictureMigrationSnapshotAsync(ct);
         if (snapshot.DbOnlyCount == 0)
         {
             SetSuccess("All DB-stored profile pictures are already on the filesystem — nothing to migrate.");
@@ -48,20 +38,20 @@ public sealed class ProfilePictureMigrationAdminController : HumansControllerBas
         var migrated = 0;
         foreach (var row in snapshot.DbOnlyRows)
         {
-            var result = await _profileService.GetProfilePictureAsync(row.ProfileId, ct);
+            var result = await profileService.GetProfilePictureAsync(row.ProfileId, ct);
             if (result is not null)
             {
                 migrated++;
             }
             else
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Profile-picture migration: GetProfilePictureAsync returned null for DB-only profile {ProfileId} (userId {UserId}); row skipped",
                     row.ProfileId, row.UserId);
             }
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Profile-picture DB→FS migration: drove migrate-on-read for {Count} profiles", migrated);
         SetSuccess($"Migrated {migrated} profile picture(s) from DB to filesystem.");
         return RedirectToAction(nameof(Index));

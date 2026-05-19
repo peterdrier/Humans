@@ -6,24 +6,14 @@ namespace Humans.Application.Services.Governance;
 
 // Pass-through to ITeamService + IRoleAssignmentService. Exists to break the DI cycle
 // MembershipCalculator → ITeamService → ISystemTeamSync → IMembershipCalculator.
-public sealed class MembershipQuery : IMembershipQuery
+public sealed class MembershipQuery(ITeamService teamService, IRoleAssignmentService roleAssignmentService)
+    : IMembershipQuery
 {
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-
-    public MembershipQuery(
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService)
-    {
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-    }
-
     public async Task<IReadOnlyList<MembershipTeamSnapshot>> GetUserTeamsAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
+        var memberships = await teamService.GetUserTeamsAsync(userId, cancellationToken);
 #pragma warning disable CS0618 // TeamMember.Team nav read is included on this path; stitching off UserInfo would be a layer-skip.
         return memberships
             .Select(m => new MembershipTeamSnapshot(
@@ -39,16 +29,16 @@ public sealed class MembershipQuery : IMembershipQuery
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var t = await _teamService.GetTeamAsync(teamId, cancellationToken);
+        var t = await teamService.GetTeamAsync(teamId, cancellationToken);
         return t is { IsActive: true } && t.Members.Any(m => m.UserId == userId);
     }
 
     public Task<bool> HasAnyActiveAssignmentAsync(
         Guid userId,
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.HasAnyActiveAssignmentAsync(userId, cancellationToken);
+        roleAssignmentService.HasAnyActiveAssignmentAsync(userId, cancellationToken);
 
     public Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
+        roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 }

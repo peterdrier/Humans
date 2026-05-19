@@ -10,30 +10,18 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Admin/DuplicateAccounts")]
-public class AdminDuplicateAccountsController : HumansControllerBase
+public class AdminDuplicateAccountsController(
+    IUserService userService,
+    IDuplicateAccountService duplicateService,
+    ITeamService teamService,
+    ILogger<AdminDuplicateAccountsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IDuplicateAccountService _duplicateService;
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly ILogger<AdminDuplicateAccountsController> _logger;
-
-    public AdminDuplicateAccountsController(
-        IUserService userService,
-        IDuplicateAccountService duplicateService,
-        ITeamService teamService,
-        ILogger<AdminDuplicateAccountsController> logger)
-        : base(userService)
-    {
-        _duplicateService = duplicateService;
-        _userService = userService;
-        _teamService = teamService;
-        _logger = logger;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var groups = await _duplicateService.DetectDuplicatesAsync();
+        var groups = await duplicateService.DetectDuplicatesAsync();
 
         var viewModel = new DuplicateAccountListViewModel
         {
@@ -65,7 +53,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
     [HttpGet("Detail")]
     public async Task<IActionResult> Detail(Guid userId1, Guid userId2)
     {
-        var group = await _duplicateService.GetDuplicateGroupAsync(userId1, userId2);
+        var group = await duplicateService.GetDuplicateGroupAsync(userId1, userId2);
         if (group is null)
         {
             SetError("No email conflict found between these accounts.");
@@ -99,12 +87,12 @@ public class AdminDuplicateAccountsController : HumansControllerBase
 
         try
         {
-            await _duplicateService.ResolveAsync(sourceUserId, targetUserId, user.Id, notes);
+            await duplicateService.ResolveAsync(sourceUserId, targetUserId, user.Id, notes);
             SetSuccess("Duplicate account resolved. The empty account has been archived and logins re-linked.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Failed to resolve duplicate: source {SourceId}, target {TargetId}", sourceUserId, targetUserId);
+            logger.LogError(ex, "Failed to resolve duplicate: source {SourceId}, target {TargetId}", sourceUserId, targetUserId);
             SetError($"Failed to resolve duplicate: {ex.Message}");
         }
 
@@ -115,7 +103,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
         Guid userId, DuplicateAccountInfo accountInfo)
     {
         var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
-        var teams = await _teamService.GetUserTeamsAsync(userId);
+        var teams = await teamService.GetUserTeamsAsync(userId);
         var activeTeamNames = teams
             .Where(m => m.LeftAt is null)
             .Select(m => m.Team?.Name ?? "Unknown")

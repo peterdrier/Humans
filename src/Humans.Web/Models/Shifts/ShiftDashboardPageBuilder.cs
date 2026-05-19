@@ -20,27 +20,16 @@ public sealed record ShiftDashboardPageRequest(
     ShiftPeriod? Period,
     BuildSubPeriod? SubPeriod);
 
-public sealed class ShiftDashboardPageBuilder
+public sealed class ShiftDashboardPageBuilder(
+    IShiftManagementService shiftManagement,
+    IWebHostEnvironment environment,
+    IClock clock)
 {
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IClock _clock;
-
-    public ShiftDashboardPageBuilder(
-        IShiftManagementService shiftManagement,
-        IWebHostEnvironment environment,
-        IClock clock)
-    {
-        _shiftManagement = shiftManagement;
-        _environment = environment;
-        _clock = clock;
-    }
-
     public async Task<ShiftDashboardViewModel> BuildAsync(ShiftDashboardPageRequest request)
     {
         var es = request.EventSettings;
 
-        var shifts = await _shiftManagement.GetUrgentShiftsAsync(
+        var shifts = await shiftManagement.GetUrgentShiftsAsync(
             es.Id,
             limit: null,
             request.DepartmentId,
@@ -48,15 +37,15 @@ public sealed class ShiftDashboardPageBuilder
             request.ActiveEnd,
             request.Period,
             request.SubPeriod);
-        var staffingData = await _shiftManagement.GetStaffingDataAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
-        var staffingHours = await _shiftManagement.GetStaffingHoursAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
-        var overview = await _shiftManagement.GetDashboardOverviewAsync(es.Id, request.Period, request.SubPeriod);
-        var coordinatorActivity = await _shiftManagement.GetCoordinatorActivityAsync(es.Id, request.Period, request.SubPeriod);
-        var trends = await _shiftManagement.GetDashboardTrendsAsync(es.Id, TrendWindow.All, request.Period, request.SubPeriod);
-        var dailyDeptStaffing = await _shiftManagement.GetDailyDepartmentStaffingAsync(es.Id, request.Period, request.SubPeriod);
-        var shiftDurationBreakdown = await _shiftManagement.GetShiftDurationBreakdownAsync(es.Id, request.Period, request.SubPeriod);
-        var coverageHeatmap = await _shiftManagement.GetCoverageHeatmapAsync(es.Id, request.Period, request.SubPeriod);
-        var deptTuples = await _shiftManagement.GetDepartmentsWithRotasAsync(es.Id);
+        var staffingData = await shiftManagement.GetStaffingDataAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
+        var staffingHours = await shiftManagement.GetStaffingHoursAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
+        var overview = await shiftManagement.GetDashboardOverviewAsync(es.Id, request.Period, request.SubPeriod);
+        var coordinatorActivity = await shiftManagement.GetCoordinatorActivityAsync(es.Id, request.Period, request.SubPeriod);
+        var trends = await shiftManagement.GetDashboardTrendsAsync(es.Id, TrendWindow.All, request.Period, request.SubPeriod);
+        var dailyDeptStaffing = await shiftManagement.GetDailyDepartmentStaffingAsync(es.Id, request.Period, request.SubPeriod);
+        var shiftDurationBreakdown = await shiftManagement.GetShiftDurationBreakdownAsync(es.Id, request.Period, request.SubPeriod);
+        var coverageHeatmap = await shiftManagement.GetCoverageHeatmapAsync(es.Id, request.Period, request.SubPeriod);
+        var deptTuples = await shiftManagement.GetDepartmentsWithRotasAsync(es.Id);
 
         return new ShiftDashboardViewModel
         {
@@ -82,7 +71,7 @@ public sealed class ShiftDashboardPageBuilder
             ShiftDurationBreakdown = shiftDurationBreakdown,
             CoverageHeatmap = coverageHeatmap,
             TrendWindow = request.TrendWindow,
-            IsDevelopment = _environment.IsDevelopment(),
+            IsDevelopment = environment.IsDevelopment(),
             Countdown = BuildCountdown(es)
         };
     }
@@ -90,7 +79,7 @@ public sealed class ShiftDashboardPageBuilder
     private BuildDayCountdown BuildCountdown(EventSettings eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
-        var todayLocal = _clock.GetCurrentInstant().InZone(tz).Date;
+        var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;
         var firstBuildDay = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
         var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
 

@@ -14,19 +14,12 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class ContactFieldRepository : IContactFieldRepository
+internal sealed class ContactFieldRepository(IDbContextFactory<HumansDbContext> factory) : IContactFieldRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public ContactFieldRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ContactFields
             .AsNoTracking()
             .Where(cf => cf.ProfileId == profileId)
@@ -37,7 +30,7 @@ internal sealed class ContactFieldRepository : IContactFieldRepository
 
     public async Task<IReadOnlyList<ContactField>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ContactFields
             .AsNoTracking()
             .ToListAsync(ct);
@@ -48,7 +41,7 @@ internal sealed class ContactFieldRepository : IContactFieldRepository
     {
         // With IDbContextFactory the context is short-lived, so returned entities
         // are detached. Callers must pass mutated entities explicitly to BatchSaveAsync.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ContactFields
             .AsNoTracking()
             .Where(cf => cf.ProfileId == profileId)
@@ -61,7 +54,7 @@ internal sealed class ContactFieldRepository : IContactFieldRepository
         IReadOnlyList<ContactField> toRemove,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         if (toRemove.Count > 0)
             ctx.ContactFields.RemoveRange(toRemove);
         if (toUpdate.Count > 0)
@@ -75,7 +68,7 @@ internal sealed class ContactFieldRepository : IContactFieldRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Resolve User -> Profile for both sides. ContactField FKs to Profile,
         // not User, so the bulk-move pivots on profile id.

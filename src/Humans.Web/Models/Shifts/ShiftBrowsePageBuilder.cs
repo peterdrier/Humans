@@ -30,17 +30,8 @@ public sealed record ShiftBrowsePageRequest(
     IReadOnlyList<string>? Periods,
     bool IsPrivileged);
 
-public sealed class ShiftBrowsePageBuilder
+public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManagement, ITeamService teamService)
 {
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly ITeamService _teamService;
-
-    public ShiftBrowsePageBuilder(IShiftManagementService shiftManagement, ITeamService teamService)
-    {
-        _shiftManagement = shiftManagement;
-        _teamService = teamService;
-    }
-
     public async Task<ShiftBrowseViewModel> BuildAsync(ShiftBrowsePageRequest request, CancellationToken ct = default)
     {
         var es = request.EventSettings;
@@ -69,7 +60,7 @@ public sealed class ShiftBrowsePageBuilder
             }
         }
 
-        var urgentShifts = await _shiftManagement.GetBrowseShiftsAsync(
+        var urgentShifts = await shiftManagement.GetBrowseShiftsAsync(
             es.Id,
             departmentId: request.DepartmentId,
             fromDate: filterFromDate,
@@ -91,7 +82,7 @@ public sealed class ShiftBrowsePageBuilder
         var isUrgencySort = !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
-        var allTags = await _shiftManagement.GetTagsAsync();
+        var allTags = await shiftManagement.GetTagsAsync();
         // T-10: preferred tag ids come from the cached ShiftUserView's
         // TagPreferences (issue #720) — the controller already fetched the
         // view for the signup read, so we reuse those rows here. The shape
@@ -105,7 +96,7 @@ public sealed class ShiftBrowsePageBuilder
         // grouping here so each promoted sub-team renders right after its
         // parent (memory/architecture/display-sort-in-controllers).
         var coveragePies = OrderPiesGroupedByParent(
-            await _shiftManagement.GetDepartmentCoveragePiesAsync(
+            await shiftManagement.GetDepartmentCoveragePiesAsync(
                 es.Id, filterFromDate, filterToDate, ct: ct));
 
         return new ShiftBrowseViewModel
@@ -140,7 +131,7 @@ public sealed class ShiftBrowsePageBuilder
         EventSettings eventSettings)
     {
         var shiftTeamIds = shifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await _teamService.GetByIdsWithParentsAsync(shiftTeamIds);
+        var teamLookup = await teamService.GetByIdsWithParentsAsync(shiftTeamIds);
 
         return shifts
             .GroupBy(u => u.Shift.Rota.TeamId)
@@ -177,7 +168,7 @@ public sealed class ShiftBrowsePageBuilder
                 .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
                 .ToList();
 
-        var depts = await _shiftManagement.GetDepartmentsWithRotasAsync(eventSettingsId);
+        var depts = await shiftManagement.GetDepartmentsWithRotasAsync(eventSettingsId);
         return depts
             .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
             .ToList();

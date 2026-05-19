@@ -27,7 +27,6 @@ public sealed class ApplicationRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]

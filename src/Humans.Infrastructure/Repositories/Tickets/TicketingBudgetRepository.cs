@@ -18,19 +18,12 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// per-request, short-lived instance — the same pattern as the other §15
 /// repositories (Profile, User, etc., per design-rules §15b).
 /// </remarks>
-internal sealed class TicketingBudgetRepository : ITicketingBudgetRepository
+internal sealed class TicketingBudgetRepository(IDbContextFactory<HumansDbContext> factory) : ITicketingBudgetRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public TicketingBudgetRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<IReadOnlyList<PaidTicketOrderSummary>> GetPaidOrderSummariesAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.TicketOrders
             .AsNoTracking()

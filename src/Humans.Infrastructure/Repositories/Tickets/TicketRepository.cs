@@ -23,20 +23,13 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// per method — same pattern as <c>ProfileRepository</c>, <c>UserRepository</c>,
 /// and <c>TicketingBudgetRepository</c> (design-rules §15b).
 /// </remarks>
-internal sealed class TicketRepository : ITicketRepository
+internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factory) : ITicketRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public TicketRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ── TicketSyncState ──────────────────────────────────────────────────────
 
     public async Task<TicketSyncState?> GetSyncStateAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketSyncStates
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == 1, ct);
@@ -44,7 +37,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task PersistSyncStateAsync(TicketSyncState state, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.TicketSyncStates.FirstOrDefaultAsync(s => s.Id == state.Id, ct);
         if (existing is null)
         {
@@ -59,7 +52,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task ResetSyncStateLastSyncAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var syncState = await ctx.TicketSyncStates.FindAsync([1], ct);
         if (syncState is null) return;
         syncState.LastSyncAt = null;
@@ -71,7 +64,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<UserEmailLookupEntry>> GetAllUserEmailLookupEntriesAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Verified-only: an unverified email isn't trustworthy enough to drive
         // ticket → user matching (issue nobodies-collective/Humans#645).
         return await ctx.Set<UserEmail>()
@@ -90,7 +83,7 @@ internal sealed class TicketRepository : ITicketRepository
         if (vendorOrderIds.Count == 0)
             return new Dictionary<string, TicketOrder>(StringComparer.Ordinal);
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = vendorOrderIds.ToList();
         var orders = await ctx.TicketOrders
             .AsNoTracking()
@@ -106,7 +99,7 @@ internal sealed class TicketRepository : ITicketRepository
         if (vendorTicketIds.Count == 0)
             return new Dictionary<string, TicketAttendee>(StringComparer.Ordinal);
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = vendorTicketIds.ToList();
         var attendees = await ctx.TicketAttendees
             .AsNoTracking()
@@ -118,7 +111,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyDictionary<string, Guid>> GetOrderIdsByVendorIdAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.TicketOrders
             .AsNoTracking()
             .Select(o => new { o.VendorOrderId, o.Id })
@@ -129,7 +122,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<TicketOrder>> GetOrdersNeedingStripeEnrichmentAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Exclude NULL / empty / placeholder ("--") / whitespace-only PI rows at the
         // SQL layer so we don't drag them into memory and hit Stripe with bogus ids.
         // LTRIM(RTRIM(...)) is the SQL-Server-friendly trim; it collapses any pure-whitespace
@@ -146,7 +139,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<TicketOrder>> GetAllOrdersWithAttendeesAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
@@ -156,7 +149,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<OrderDiscountCodeRow>> GetOrderDiscountCodesAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.DiscountCode != null)
@@ -168,7 +161,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
@@ -178,7 +171,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
         Guid orderId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.TicketOrderId == orderId)
@@ -190,7 +183,7 @@ internal sealed class TicketRepository : ITicketRepository
         string vendorEventId,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null && a.VendorEventId == vendorEventId)
@@ -206,7 +199,7 @@ internal sealed class TicketRepository : ITicketRepository
     {
         if (orders.Count == 0) return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var vendorIds = orders.Select(o => o.VendorOrderId).ToList();
         var existing = await ctx.TicketOrders
             .Where(o => vendorIds.Contains(o.VendorOrderId))
@@ -247,7 +240,7 @@ internal sealed class TicketRepository : ITicketRepository
     {
         if (attendees.Count == 0) return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var vendorIds = attendees.Select(a => a.VendorTicketId).ToList();
         var existing = await ctx.TicketAttendees
             .Where(a => vendorIds.Contains(a.VendorTicketId))
@@ -282,7 +275,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
         string vendorEventId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .Where(a =>
                 a.VendorEventId == vendorEventId &&
@@ -294,7 +287,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.TicketAttendees
             .FirstOrDefaultAsync(a => a.VendorTicketId == attendee.VendorTicketId, ct);
         if (existing is null)
@@ -310,7 +303,7 @@ internal sealed class TicketRepository : ITicketRepository
     {
         if (updates.Count == 0) return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = updates.Select(u => u.OrderId).ToList();
         var tracked = await ctx.TicketOrders
             .Where(o => ids.Contains(o.Id))
@@ -333,7 +326,7 @@ internal sealed class TicketRepository : ITicketRepository
     {
         if (orders.Count == 0) return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = orders.Select(o => o.Id).ToList();
         var tracked = await ctx.TicketOrders
             .Where(o => ids.Contains(o.Id))
@@ -355,7 +348,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<int> CountValidAttendeesMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .CountAsync(
@@ -367,7 +360,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.AttendeeEmail != null &&
@@ -380,7 +373,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null &&
@@ -393,7 +386,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetAllMatchedAttendeeUserIdsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null)
@@ -405,7 +398,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.MatchedUserId != null)
@@ -417,7 +410,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetMatchedOrderUserIdsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.MatchedUserId != null &&
@@ -431,7 +424,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetMatchedAttendeeUserIdsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null &&
@@ -444,7 +437,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<IReadOnlyList<int>> GetMatchedOrderYearsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var purchasedAt = await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.MatchedUserId != null)
@@ -461,7 +454,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
@@ -472,7 +465,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<bool> HasAnyTicketMatchAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         if (await ctx.TicketAttendees.AsNoTracking().AnyAsync(a => a.MatchedUserId == userId, ct))
             return true;
         return await ctx.TicketOrders.AsNoTracking().AnyAsync(o => o.MatchedUserId == userId, ct);
@@ -481,7 +474,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<bool> HasEventTicketAsync(
         Guid userId, string vendorEventId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var hasPaidOrder = await ctx.TicketOrders
             .AsNoTracking()
@@ -502,7 +495,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Select(a => a.TicketTypeName)
@@ -512,7 +505,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<int> CountSoldAttendeesAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .CountAsync(a =>
@@ -526,7 +519,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<TicketOrder>> GetOrdersMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
@@ -539,7 +532,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<Guid>> GetOpenOrderIdsMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.MatchedUserId == userId
@@ -552,7 +545,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId == userId)
@@ -562,7 +555,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
@@ -575,7 +568,7 @@ internal sealed class TicketRepository : ITicketRepository
         Instant toExclusive,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
@@ -587,7 +580,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<TicketDashboardTotals> GetDashboardTotalsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var paidOrders = ctx.TicketOrders
             .AsNoTracking()
@@ -617,7 +610,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<PaidOrderPaymentMethodRow>> GetPaidOrderPaymentMethodsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.PaymentMethod != null)
@@ -635,7 +628,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<OrderDateAndCount>> GetOrderDateAttendeeCountsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
@@ -651,7 +644,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<RecentOrder>> GetRecentOrdersAsync(
         int count, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             // arch:db-sort-ok top-N dashboard selector over unbounded orders
@@ -673,7 +666,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<decimal> GetGrossPaidRevenueAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
@@ -683,7 +676,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
@@ -707,7 +700,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<DiscountCodeOrderRow>> GetOrdersWithDiscountCodesAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.DiscountCode != null)
@@ -734,7 +727,7 @@ internal sealed class TicketRepository : ITicketRepository
         bool? filterMatched,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.TicketOrders.AsNoTracking().Include(o => o.Attendees).AsQueryable();
 
         if (HasSearchTerm(search, 1))
@@ -811,7 +804,7 @@ internal sealed class TicketRepository : ITicketRepository
         bool filterMultipleTickets,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.TicketAttendees.AsNoTracking().Include(a => a.TicketOrder).AsQueryable();
 
         if (!string.IsNullOrEmpty(filterOrderId))
@@ -887,7 +880,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<AttendeeExportRow>> GetAttendeeExportDataAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
@@ -908,7 +901,7 @@ internal sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<OrderExportRow>> GetOrderExportDataAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var orders = await ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
@@ -955,7 +948,7 @@ internal sealed class TicketRepository : ITicketRepository
         string errorMessage,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var state = await ctx.TicketSyncStates.FindAsync([1], ct);
         if (state is null)
             return null;
@@ -980,7 +973,7 @@ internal sealed class TicketRepository : ITicketRepository
 
     public async Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Filter must run against the source entity, not the projected record:
         // EF can't translate a Where over a Select-projected DTO's properties
         // (it tries to re-evaluate the constructor inside SQL and fails). Push
@@ -1018,7 +1011,7 @@ internal sealed class TicketRepository : ITicketRepository
         // dedup needed.
         _ = updatedAt;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var orders = await ctx.TicketOrders
             .Where(o => o.MatchedUserId == sourceUserId)

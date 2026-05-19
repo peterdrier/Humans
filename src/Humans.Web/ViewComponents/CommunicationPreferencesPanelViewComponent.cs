@@ -16,28 +16,17 @@ namespace Humans.Web.ViewComponents;
 ///     plus per-category <c>UpdateSource</c> and <c>UpdatedAt</c> for attribution.
 ///     No POST forms, no anti-forgery, no submit buttons.
 /// </summary>
-public sealed class CommunicationPreferencesPanelViewComponent : ViewComponent
+public sealed class CommunicationPreferencesPanelViewComponent(
+    ICommunicationPreferenceService commPrefService,
+    ITicketQueryService ticketQueryService,
+    IClock clock) : ViewComponent
 {
-    private readonly ICommunicationPreferenceService _commPrefService;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IClock _clock;
-
-    public CommunicationPreferencesPanelViewComponent(
-        ICommunicationPreferenceService commPrefService,
-        ITicketQueryService ticketQueryService,
-        IClock clock)
-    {
-        _commPrefService = commPrefService;
-        _ticketQueryService = ticketQueryService;
-        _clock = clock;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool readOnly = false)
     {
-        var prefs = await _commPrefService.GetPreferencesReadOnlyAsync(userId);
+        var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
+        var hasTicketOrder = await ticketQueryService.HasTicketAttendeeMatchAsync(userId);
 
         var categories = new List<CategoryPreferenceItem>();
         foreach (var category in MessageCategoryExtensions.ActiveCategories)
@@ -50,7 +39,7 @@ public sealed class CommunicationPreferencesPanelViewComponent : ViewComponent
             {
                 Category = category,
                 DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {_clock.GetCurrentInstant().InUtc().Year}"
+                    ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
                 EmailEnabled = pref is null || !pref.OptedOut,

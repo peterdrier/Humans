@@ -23,48 +23,29 @@ namespace Humans.Infrastructure.Jobs;
 /// (design-rules §2c).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class TermRenewalReminderJob : IRecurringJob
+public class TermRenewalReminderJob(
+    IApplicationDecisionService applicationDecisionService,
+    IUserService userService,
+    IEmailService emailService,
+    INotificationService notificationService,
+    IHumansMetrics metrics,
+    ILogger<TermRenewalReminderJob> logger,
+    IClock clock) : IRecurringJob
 {
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IUserService _userService;
-    private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<TermRenewalReminderJob> _logger;
-    private readonly IClock _clock;
-
     private const int ReminderDaysBeforeExpiry = 90;
-
-    public TermRenewalReminderJob(
-        IApplicationDecisionService applicationDecisionService,
-        IUserService userService,
-        IEmailService emailService,
-        INotificationService notificationService,
-        IHumansMetrics metrics,
-        ILogger<TermRenewalReminderJob> logger,
-        IClock clock)
-    {
-        _applicationDecisionService = applicationDecisionService;
-        _userService = userService;
-        _emailService = emailService;
-        _notificationService = notificationService;
-        _metrics = metrics;
-        _logger = logger;
-        _clock = clock;
-    }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting term renewal reminder job at {Time}", _clock.GetCurrentInstant());
+        logger.LogInformation("Starting term renewal reminder job at {Time}", clock.GetCurrentInstant());
 
         try
         {
-            var today = _clock.GetCurrentInstant().InUtc().Date;
+            var today = clock.GetCurrentInstant().InUtc().Date;
             var reminderThreshold = today.PlusDays(ReminderDaysBeforeExpiry);
 
             // Find approved applications with term expiring within 90 days that
             // haven't had a reminder sent yet.
-            var expiringApplications = await _applicationDecisionService
+            var expiringApplications = await applicationDecisionService
                 .GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, cancellationToken);
 
             // For each user, only consider the latest approved application per
@@ -77,7 +58,7 @@ public class TermRenewalReminderJob : IRecurringJob
 
             // Exclude users who already have a pending renewal application for
             // the same tier.
-            var pendingSet = await _applicationDecisionService
+            var pendingSet = await applicationDecisionService
                 .GetPendingApplicationUserTiersAsync(cancellationToken);
 
             // Stitch applicant user info in memory — Application.User
@@ -89,17 +70,17 @@ public class TermRenewalReminderJob : IRecurringJob
                 .ToList();
             var applicantsById = applicantIds.Count == 0
                 ? new Dictionary<Guid, Application.UserInfo>()
-                : (await _userService.GetUserInfosAsync(applicantIds, cancellationToken))
+                : (await userService.GetUserInfosAsync(applicantIds, cancellationToken))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             var sentCount = 0;
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
 
             foreach (var application in latestPerUserTier)
             {
                 if (pendingSet.Contains((application.UserId, application.MembershipTier)))
                 {
-                    _logger.LogDebug(
+                    logger.LogDebug(
                         "Skipping renewal reminder for user {UserId} tier {Tier} — pending application exists",
                         application.UserId, application.MembershipTier);
                     continue;
@@ -107,7 +88,7 @@ public class TermRenewalReminderJob : IRecurringJob
 
                 if (!applicantsById.TryGetValue(application.UserId, out var applicant))
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "User {UserId} not found while sending renewal reminder for {Tier}",
                         application.UserId, application.MembershipTier);
                     continue;
@@ -124,7 +105,7 @@ public class TermRenewalReminderJob : IRecurringJob
                     var expiresFormatted = application.TermExpiresAt!.Value
                         .ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
 
-                    await _emailService.SendTermRenewalReminderAsync(
+                    await emailService.SendTermRenewalReminderAsync(
                         email,
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),
@@ -132,18 +113,18 @@ public class TermRenewalReminderJob : IRecurringJob
                         applicant.PreferredLanguage,
                         cancellationToken);
 
-                    await _applicationDecisionService.MarkRenewalReminderSentAsync(
+                    await applicationDecisionService.MarkRenewalReminderSentAsync(
                         application.Id, now, cancellationToken);
                     sentCount++;
 
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Sent term renewal reminder to user {UserId} ({Email}) for {Tier} expiring {ExpiresAt}",
                         application.UserId, email, application.MembershipTier, application.TermExpiresAt);
 
                     // Dispatch in-app notification alongside email.
                     try
                     {
-                        await _notificationService.SendAsync(
+                        await notificationService.SendAsync(
                             NotificationSource.TermRenewalReminder,
                             NotificationClass.Actionable,
                             NotificationPriority.Normal,
@@ -156,28 +137,28 @@ public class TermRenewalReminderJob : IRecurringJob
                     }
                     catch (Exception notifEx)
                     {
-                        _logger.LogError(notifEx,
+                        logger.LogError(notifEx,
                             "Failed to dispatch TermRenewalReminder notification for user {UserId}",
                             application.UserId);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex,
+                    logger.LogError(ex,
                         "Failed to send term renewal reminder to user {UserId} for {Tier}",
                         application.UserId, application.MembershipTier);
                 }
             }
 
-            _metrics.RecordJobRun("term_renewal_reminder", "success");
-            _logger.LogInformation(
+            metrics.RecordJobRun("term_renewal_reminder", "success");
+            logger.LogInformation(
                 "Completed term renewal reminder job, sent {Count} reminders",
                 sentCount);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("term_renewal_reminder", "failure");
-            _logger.LogError(ex, "Error during term renewal reminder job");
+            metrics.RecordJobRun("term_renewal_reminder", "failure");
+            logger.LogError(ex, "Error during term renewal reminder job");
             throw;
         }
     }

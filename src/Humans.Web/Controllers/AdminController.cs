@@ -17,42 +17,18 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.Controllers;
 
 [Route("Admin")]
-public class AdminController : HumansControllerBase
+public class AdminController(
+    IUserService userService,
+    ILogger<AdminController> logger,
+    IWebHostEnvironment environment,
+    IAccountDeletionService accountDeletionService,
+    ConfigurationRegistry configRegistry,
+    QueryStatistics queryStatistics,
+    ICacheStatsProvider cacheStatsProvider,
+    IEnumerable<ICacheStats> decoratorCacheStats,
+    IUserEmailProviderBackfillService userEmailProviderBackfillService,
+    IAdminDatabaseDiagnosticsService databaseDiagnostics) : HumansControllerBase(userService)
 {
-    private readonly ILogger<AdminController> _logger;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IAccountDeletionService _accountDeletionService;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly QueryStatistics _queryStatistics;
-    private readonly ICacheStatsProvider _cacheStatsProvider;
-    private readonly IEnumerable<ICacheStats> _decoratorCacheStats;
-    private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
-    private readonly IAdminDatabaseDiagnosticsService _databaseDiagnostics;
-
-    public AdminController(
-        IUserService userService,
-        ILogger<AdminController> logger,
-        IWebHostEnvironment environment,
-        IAccountDeletionService accountDeletionService,
-        ConfigurationRegistry configRegistry,
-        QueryStatistics queryStatistics,
-        ICacheStatsProvider cacheStatsProvider,
-        IEnumerable<ICacheStats> decoratorCacheStats,
-        IUserEmailProviderBackfillService userEmailProviderBackfillService,
-        IAdminDatabaseDiagnosticsService databaseDiagnostics)
-        : base(userService)
-    {
-        _logger = logger;
-        _environment = environment;
-        _accountDeletionService = accountDeletionService;
-        _configRegistry = configRegistry;
-        _queryStatistics = queryStatistics;
-        _cacheStatsProvider = cacheStatsProvider;
-        _decoratorCacheStats = decoratorCacheStats;
-        _userEmailProviderBackfillService = userEmailProviderBackfillService;
-        _databaseDiagnostics = databaseDiagnostics;
-    }
-
     // AnyAdminRole so top-nav doesn't 403 for FinanceAdmin etc.; tiles are aggregate counts safe across roles. Other actions stay AdminOnly.
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
@@ -116,7 +92,7 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
-        if (_environment.IsProduction())
+        if (environment.IsProduction())
         {
             return NotFound();
         }
@@ -137,11 +113,11 @@ public class AdminController : HumansControllerBase
 
         var displayName = user.BurnerName;
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
-            currentUser?.Id, id, displayName, _environment.EnvironmentName);
+            currentUser?.Id, id, displayName, environment.EnvironmentName);
 
-        var result = await _accountDeletionService.PurgeAsync(id, currentUser?.Id);
+        var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);
         if (!result.Success)
         {
             return NotFound();
@@ -172,7 +148,7 @@ public class AdminController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Configuration()
     {
-        var entries = _configRegistry.GetAll();
+        var entries = configRegistry.GetAll();
 
         var items = entries.Select(e =>
         {
@@ -221,7 +197,7 @@ public class AdminController : HumansControllerBase
     [Produces("application/json")]
     public async Task<IActionResult> DbVersion(CancellationToken ct)
     {
-        var status = await _databaseDiagnostics.GetMigrationStatusAsync(ct);
+        var status = await databaseDiagnostics.GetMigrationStatusAsync(ct);
 
         return Ok(new
         {
@@ -237,10 +213,10 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var snapshot = _queryStatistics.GetSnapshot();
+            var snapshot = queryStatistics.GetSnapshot();
             var model = new DbStatsViewModel
             {
-                TotalQueryCount = _queryStatistics.TotalCount,
+                TotalQueryCount = queryStatistics.TotalCount,
                 Entries = snapshot.Select(e => new DbStatEntryViewModel
                 {
                     Operation = e.Operation,
@@ -255,7 +231,7 @@ public class AdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading DB stats");
+            logger.LogError(ex, "Error loading DB stats");
             SetError("Failed to load database statistics.");
             return RedirectToAction(nameof(Index));
         }
@@ -268,13 +244,13 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            _queryStatistics.Reset();
-            _logger.LogInformation("Admin reset DB query statistics");
+            queryStatistics.Reset();
+            logger.LogInformation("Admin reset DB query statistics");
             SetSuccess("Query statistics have been reset.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting DB stats");
+            logger.LogError(ex, "Error resetting DB stats");
             SetError("Failed to reset database statistics.");
         }
 
@@ -286,9 +262,9 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearHangfireLocks(CancellationToken ct)
     {
-        var deleted = await _databaseDiagnostics.ClearHangfireLocksAsync(ct);
+        var deleted = await databaseDiagnostics.ClearHangfireLocksAsync(ct);
 
-        _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
+        logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
         return RedirectToAction(nameof(Maintenance));
     }
@@ -316,11 +292,11 @@ public class AdminController : HumansControllerBase
     public async Task<IActionResult> BackfillUserEmailProvidersRun(CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync();
-        _logger.LogInformation(
+        logger.LogInformation(
             "Admin {AdminId} running UserEmail Provider/IsGoogle backfill",
             currentUser?.Id);
 
-        var result = await _userEmailProviderBackfillService.RunAsync(ct);
+        var result = await userEmailProviderBackfillService.RunAsync(ct);
 
         var msg =
             $"Provider/IsGoogle backfill complete. Users processed: {result.UsersProcessed}. " +
@@ -345,16 +321,16 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var snapshot = _cacheStatsProvider.GetSnapshot();
-            var entryCounts = (_cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
+            var snapshot = cacheStatsProvider.GetSnapshot();
+            var entryCounts = (cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
                 ?.GetActiveEntryCounts()
                 ?? new Dictionary<string, int>(StringComparer.Ordinal);
 
             var model = new CacheStatsViewModel
             {
-                TotalHits = _cacheStatsProvider.TotalHits,
-                TotalMisses = _cacheStatsProvider.TotalMisses,
-                TotalActiveEntries = _cacheStatsProvider.TotalActiveEntries,
+                TotalHits = cacheStatsProvider.TotalHits,
+                TotalMisses = cacheStatsProvider.TotalMisses,
+                TotalActiveEntries = cacheStatsProvider.TotalActiveEntries,
                 Entries = snapshot.Select(e =>
                 {
                     entryCounts.TryGetValue(e.KeyType, out var activeCount);
@@ -370,7 +346,7 @@ public class AdminController : HumansControllerBase
                         Type = meta?.Type.ToString() ?? "—"
                     };
                 }).ToList(),
-                DecoratorEntries = _decoratorCacheStats
+                DecoratorEntries = decoratorCacheStats
                     .OrderBy(s => s.Name, StringComparer.Ordinal)
                     .Select(s => new DecoratorCacheStatEntryViewModel
                     {
@@ -381,6 +357,7 @@ public class AdminController : HumansControllerBase
                         KeyRemovals = s.KeyRemovals,
                         BulkInvalidations = s.BulkInvalidations,
                         HitRatePercent = s.HitRatePercent,
+                        IsWarmedUp = s.IsWarmedUp,
                     })
                     .ToList()
             };
@@ -388,7 +365,7 @@ public class AdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading cache stats");
+            logger.LogError(ex, "Error loading cache stats");
             SetError("Failed to load cache statistics.");
             return RedirectToAction(nameof(Index));
         }
@@ -401,15 +378,15 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            _cacheStatsProvider.Reset();
-            foreach (var s in _decoratorCacheStats)
+            cacheStatsProvider.Reset();
+            foreach (var s in decoratorCacheStats)
                 s.ResetCounters();
-            _logger.LogInformation("Admin reset cache statistics");
+            logger.LogInformation("Admin reset cache statistics");
             SetSuccess("Cache statistics have been reset.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting cache stats");
+            logger.LogError(ex, "Error resetting cache stats");
             SetError("Failed to reset cache statistics.");
         }
 
@@ -422,7 +399,7 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var segmentation = await _databaseDiagnostics.GetAudienceSegmentationAsync(year);
+            var segmentation = await databaseDiagnostics.GetAudienceSegmentationAsync(year);
 
             var model = new AudienceSegmentationViewModel
             {
@@ -439,7 +416,7 @@ public class AdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading audience segmentation data");
+            logger.LogError(ex, "Error loading audience segmentation data");
             SetError("Failed to load audience segmentation data.");
             return RedirectToAction(nameof(Index));
         }

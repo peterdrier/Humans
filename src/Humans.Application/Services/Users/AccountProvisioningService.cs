@@ -11,34 +11,15 @@ using NodaTime;
 namespace Humans.Application.Services.Users;
 
 // Idempotent account provisioning for import jobs (ticket import, MailerLite). UserManager allowed per §2a exception.
-public sealed class AccountProvisioningService : IAccountProvisioningService
+public sealed class AccountProvisioningService(
+    IUserRepository userRepository,
+    IUserEmailService userEmailService,
+    IProfileService profileService,
+    UserManager<User> userManager,
+    IAuditLogService auditLogService,
+    IClock clock,
+    ILogger<AccountProvisioningService> logger) : IAccountProvisioningService
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IProfileService _profileService;
-    private readonly UserManager<User> _userManager;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IClock _clock;
-    private readonly ILogger<AccountProvisioningService> _logger;
-
-    public AccountProvisioningService(
-        IUserRepository userRepository,
-        IUserEmailService userEmailService,
-        IProfileService profileService,
-        UserManager<User> userManager,
-        IAuditLogService auditLogService,
-        IClock clock,
-        ILogger<AccountProvisioningService> logger)
-    {
-        _userRepository = userRepository;
-        _userEmailService = userEmailService;
-        _profileService = profileService;
-        _userManager = userManager;
-        _auditLogService = auditLogService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<AccountProvisioningResult> FindOrCreateUserByEmailAsync(
         string email, string? displayName, ContactSource source,
         CancellationToken ct = default)
@@ -46,27 +27,27 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
         // 1. Look up across OAuth / verified / unverified — via service so orchestrator owns invariants (see #687).
-        var matchingUserId = await _userEmailService.FindAnyUserIdByEmailAsync(email, ct);
+        var matchingUserId = await userEmailService.FindAnyUserIdByEmailAsync(email, ct);
 
         if (matchingUserId is not null)
         {
-            var existingUser = await _userRepository.GetByIdAsync(matchingUserId.Value, ct);
+            var existingUser = await userRepository.GetByIdAsync(matchingUserId.Value, ct);
             if (existingUser is null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Orphan UserEmail references missing user {UserId} during lookup for {Email}",
                     matchingUserId.Value, email);
             }
             else
             {
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Found existing account {UserId} via UserEmail match for {Email} (source: {Source})",
                     existingUser.Id, email, source);
 
                 // Layer ContactSource onto self-registered users.
                 if (existingUser.ContactSource is null)
                 {
-                    await _userRepository.SetContactSourceIfNullAsync(existingUser.Id, source, ct);
+                    await userRepository.SetContactSourceIfNullAsync(existingUser.Id, source, ct);
                     existingUser.ContactSource = source;
                 }
 
@@ -79,7 +60,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             ? email.Split('@')[0]
             : displayName;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         var newUserId = Guid.NewGuid();
         var newUser = new User
@@ -90,7 +71,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             CreatedAt = now,
         };
 
-        var result = await _userManager.CreateAsync(newUser);
+        var result = await userManager.CreateAsync(newUser);
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
@@ -98,18 +79,18 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
         }
 
         // see nobodies-collective/Humans#687
-        await _userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
+        await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
         // see #635 (§15i) — Stub Profile invariant; cross-section write via §2c.
-        await _profileService.EnsureStubProfileAsync(newUser.Id, ct);
+        await profileService.EnsureStubProfileAsync(newUser.Id, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.ContactCreated,
             nameof(User), newUser.Id,
             $"Account pre-created from {source} — {email}",
             nameof(AccountProvisioningService));
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Created new account {UserId} for {Email} (source: {Source}, displayName: {DisplayName})",
             newUser.Id, email, source, resolvedDisplayName);
 
@@ -123,13 +104,13 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
-        var existingEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        var existingEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
         if (existingEmail is not null)
         {
-            var existingUser = await _userRepository.GetByIdAsync(existingEmail.UserId, ct);
+            var existingUser = await userRepository.GetByIdAsync(existingEmail.UserId, ct);
             if (existingUser is null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Verified UserEmail references missing user {UserId} during magic-link signup for {Email}",
                     existingEmail.UserId, email);
                 return new MagicLinkSignupCompletionResult(
@@ -137,14 +118,14 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
                     User: null);
             }
 
-            existingUser.LastLoginAt = _clock.GetCurrentInstant();
-            await _userManager.UpdateAsync(existingUser);
+            existingUser.LastLoginAt = clock.GetCurrentInstant();
+            await userManager.UpdateAsync(existingUser);
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.ExistingUser,
                 existingUser);
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -153,10 +134,10 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             LastLoginAt = now
         };
 
-        var createResult = await _userManager.CreateAsync(user);
+        var createResult = await userManager.CreateAsync(user);
         if (!createResult.Succeeded)
         {
-            _logger.LogError(
+            logger.LogError(
                 "Failed to create user via magic link signup for {Email}: {Errors}",
                 email,
                 string.Join(", ", createResult.Errors.Select(e => e.Description)));
@@ -167,11 +148,11 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
 
         try
         {
-            await _userEmailService.AddVerifiedEmailAsync(user.Id, email, ct);
+            await userEmailService.AddVerifiedEmailAsync(user.Id, email, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to create UserEmail for magic-link signup {UserId} ({Email}); rolling back user",
                 user.Id, email);
             await TryDeleteOrphanUserAsync(user);
@@ -180,9 +161,9 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
                 User: null);
         }
 
-        await _profileService.EnsureStubProfileAsync(user.Id, ct);
+        await profileService.EnsureStubProfileAsync(user.Id, ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Magic link signup: user {UserId} created account for {Email}",
             user.Id, email);
 
@@ -195,11 +176,11 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
     {
         try
         {
-            await _userManager.DeleteAsync(user);
+            await userManager.DeleteAsync(user);
         }
         catch (Exception deleteEx)
         {
-            _logger.LogError(deleteEx,
+            logger.LogError(deleteEx,
                 "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
                 user.Id);
         }

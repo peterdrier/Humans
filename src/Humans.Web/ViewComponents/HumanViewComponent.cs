@@ -8,19 +8,8 @@ public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
 public enum HumanLink { None, Public, Admin }
 
-public class HumanViewComponent : ViewComponent
+public class HumanViewComponent(IUserService userService, IUrlHelperFactory urlHelperFactory) : ViewComponent
 {
-    private readonly IUserService _userService;
-    private readonly IUrlHelperFactory _urlHelperFactory;
-
-    public HumanViewComponent(
-        IUserService userService,
-        IUrlHelperFactory urlHelperFactory)
-    {
-        _userService = userService;
-        _urlHelperFactory = urlHelperFactory;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         HumanLayout layout = HumanLayout.Text,
@@ -35,13 +24,13 @@ public class HumanViewComponent : ViewComponent
 
         if (userId != Guid.Empty)
         {
-            var info = await _userService.GetUserInfoAsync(userId);
+            var info = await userService.GetUserInfoAsync(userId);
             if (info is not null)
             {
                 displayName = info.BurnerName;
                 if (info.Profile is { HasCustomPicture: true } profile)
                 {
-                    var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+                    var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
                     profilePictureUrl = urlHelper.Action(
                         action: "Picture",
                         controller: "Profile",
@@ -58,7 +47,7 @@ public class HumanViewComponent : ViewComponent
         string? href = null;
         if (link != HumanLink.None && userId != Guid.Empty)
         {
-            var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+            var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
             href = link == HumanLink.Admin
                 ? urlHelper.Action("AdminDetail", "Profile", new { id = userId })
                 : urlHelper.Action("ViewProfile", "Profile", new { id = userId });

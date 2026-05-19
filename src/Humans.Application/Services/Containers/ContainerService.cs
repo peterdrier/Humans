@@ -9,7 +9,12 @@ using NodaTime;
 
 namespace Humans.Application.Services.Containers;
 
-public sealed class ContainerService : IContainerService
+public sealed class ContainerService(
+    IContainerRepository repo,
+    IFileStorage fileStorage,
+    ICampService campService,
+    IAuditLogService auditLog,
+    IClock clock) : IContainerService
 {
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
@@ -17,41 +22,21 @@ public sealed class ContainerService : IContainerService
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const long MaxImageBytes = 10 * 1024 * 1024;
 
-    private readonly IContainerRepository _repo;
-    private readonly IFileStorage _fileStorage;
-    private readonly ICampService _campService;
-    private readonly IAuditLogService _auditLog;
-    private readonly IClock _clock;
-
-    public ContainerService(
-        IContainerRepository repo,
-        IFileStorage fileStorage,
-        ICampService campService,
-        IAuditLogService auditLog,
-        IClock clock)
-    {
-        _repo = repo;
-        _fileStorage = fileStorage;
-        _campService = campService;
-        _auditLog = auditLog;
-        _clock = clock;
-    }
-
     public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {
-        var containers = await _repo.GetByCampAsync(campId, ct);
+        var containers = await repo.GetByCampAsync(campId, ct);
         return containers.Select(ToDto).ToList();
     }
 
     public async Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var containers = await _repo.GetAllAsync(ct);
+        var containers = await repo.GetAllAsync(ct);
         return containers.Select(ToDto).ToList();
     }
 
     public async Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var container = await _repo.GetByIdAsync(id, ct);
+        var container = await repo.GetByIdAsync(id, ct);
         return container is null ? null : ToDto(container);
     }
 
@@ -59,7 +44,7 @@ public sealed class ContainerService : IContainerService
     {
         ValidateImage(data.MainImage);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var id = Guid.NewGuid();
         var container = new Container
         {
@@ -78,8 +63,8 @@ public sealed class ContainerService : IContainerService
             container.ImageFileName = data.MainImage.FileName;
         }
 
-        var created = await _repo.AddAsync(container, ct);
-        await _auditLog.LogAsync(
+        var created = await repo.AddAsync(container, ct);
+        await auditLog.LogAsync(
             AuditAction.ContainerCreated, nameof(Container), created.Id,
             $"Created container '{created.Name}'",
             actorUserId,
@@ -91,16 +76,16 @@ public sealed class ContainerService : IContainerService
     {
         ValidateImage(data.MainImage);
 
-        var container = await _repo.GetByIdAsync(id, ct)
+        var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
         container.Name = data.Name;
         container.Description = data.Description;
-        container.UpdatedAt = _clock.GetCurrentInstant();
+        container.UpdatedAt = clock.GetCurrentInstant();
 
         if (data.RemoveMainImage && container.ImageStoragePath is not null)
         {
-            await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
+            await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
             container.ImageStoragePath = null;
             container.ImageContentType = null;
             container.ImageFileName = null;
@@ -109,15 +94,15 @@ public sealed class ContainerService : IContainerService
         {
             if (container.ImageStoragePath is not null)
             {
-                await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
+                await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
             }
             container.ImageStoragePath = await SaveImageAsync(id, data.MainImage, ct);
             container.ImageContentType = data.MainImage.ContentType;
             container.ImageFileName = data.MainImage.FileName;
         }
 
-        var updated = await _repo.UpdateAsync(container, ct);
-        await _auditLog.LogAsync(
+        var updated = await repo.UpdateAsync(container, ct);
+        await auditLog.LogAsync(
             AuditAction.ContainerUpdated, nameof(Container), updated.Id,
             $"Updated container '{updated.Name}'",
             actorUserId,
@@ -127,18 +112,18 @@ public sealed class ContainerService : IContainerService
 
     public async Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
     {
-        var container = await _repo.GetByIdAsync(id, ct)
+        var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
         if (container.ImageStoragePath is not null)
         {
-            await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
+            await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
         }
 
         // Orphaned placement-image files tolerated at this scale; see docs/sections/Containers.md.
-        await _repo.DeleteAsync(id, ct);
+        await repo.DeleteAsync(id, ct);
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.ContainerDeleted, nameof(Container), container.Id,
             $"Deleted container '{container.Name}'",
             actorUserId,
@@ -147,13 +132,13 @@ public sealed class ContainerService : IContainerService
 
     public async Task<ContainerPlacementDto?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
     {
-        var placement = await _repo.GetPlacementAsync(containerId, year, ct);
+        var placement = await repo.GetPlacementAsync(containerId, year, ct);
         return placement is null ? null : ToPlacementDto(placement);
     }
 
     public async Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
     {
-        var placements = await _repo.GetPlacementsByYearAsync(year, ct);
+        var placements = await repo.GetPlacementsByYearAsync(year, ct);
         return placements.Select(ToPlacementDto).ToList();
     }
 
@@ -164,9 +149,9 @@ public sealed class ContainerService : IContainerService
             throw new ArgumentException("GeoJson must not be empty.", nameof(geoJson));
         }
 
-        var placement = await _repo.SavePlacementGeometryAsync(
-            containerId, year, geoJson, _clock.GetCurrentInstant(), ct);
-        await _auditLog.LogAsync(
+        var placement = await repo.SavePlacementGeometryAsync(
+            containerId, year, geoJson, clock.GetCurrentInstant(), ct);
+        await auditLog.LogAsync(
             AuditAction.ContainerPlacementSaved, nameof(ContainerPlacement), containerId,
             $"Placed container on map for {year}",
             actorUserId,
@@ -176,7 +161,7 @@ public sealed class ContainerService : IContainerService
 
     public async Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default)
     {
-        var existing = await _repo.GetPlacementAsync(containerId, year, ct);
+        var existing = await repo.GetPlacementAsync(containerId, year, ct);
         if (existing is null) return;
 
         var hasMetadata = !string.IsNullOrEmpty(existing.PlacementNotes)
@@ -184,16 +169,16 @@ public sealed class ContainerService : IContainerService
 
         if (!hasMetadata)
         {
-            await _repo.DeletePlacementAsync(containerId, year, ct);
+            await repo.DeletePlacementAsync(containerId, year, ct);
         }
         else
         {
             existing.LocationGeoJson = null;
-            existing.UpdatedAt = _clock.GetCurrentInstant();
-            await _repo.UpsertPlacementAsync(existing, ct);
+            existing.UpdatedAt = clock.GetCurrentInstant();
+            await repo.UpsertPlacementAsync(existing, ct);
         }
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.ContainerPlacementCleared, nameof(ContainerPlacement), containerId,
             $"Cleared container placement for {year}",
             actorUserId,
@@ -211,14 +196,14 @@ public sealed class ContainerService : IContainerService
     {
         ValidateImage(image);
 
-        var placement = await _repo.GetPlacementAsync(containerId, year, ct)
+        var placement = await repo.GetPlacementAsync(containerId, year, ct)
             ?? throw new InvalidOperationException("Placement not found. Place the container on the map first.");
 
         placement.PlacementNotes = string.IsNullOrWhiteSpace(notes) ? null : notes;
 
         if (removeImage && placement.PlacementImageStoragePath is not null)
         {
-            await _fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
+            await fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
             placement.PlacementImageStoragePath = null;
             placement.PlacementImageContentType = null;
             placement.PlacementImageFileName = null;
@@ -227,17 +212,17 @@ public sealed class ContainerService : IContainerService
         {
             if (placement.PlacementImageStoragePath is not null)
             {
-                await _fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
+                await fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
             }
             placement.PlacementImageStoragePath = await SaveImageAsync(containerId, image, ct);
             placement.PlacementImageContentType = image.ContentType;
             placement.PlacementImageFileName = image.FileName;
         }
 
-        placement.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpsertPlacementAsync(placement, ct);
+        placement.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpsertPlacementAsync(placement, ct);
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.ContainerPlacementNotesUpdated, nameof(ContainerPlacement), containerId,
             $"Updated placement notes for {year}",
             actorUserId,
@@ -248,11 +233,11 @@ public sealed class ContainerService : IContainerService
 
     public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
     {
-        var allContainers = await _repo.GetAllAsync(ct);
-        var placements = await _repo.GetPlacementsByYearAsync(year, ct);
+        var allContainers = await repo.GetAllAsync(ct);
+        var placements = await repo.GetPlacementsByYearAsync(year, ct);
         var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
 
-        var camps = await _campService.GetCampsForYearAsync(year, ct);
+        var camps = await campService.GetCampsForYearAsync(year, ct);
 
         ContainerWithPlacement Compose(Container c) => new(
             ToDto(c),
@@ -299,7 +284,7 @@ public sealed class ContainerService : IContainerService
     {
         var ext = Path.GetExtension(image.FileName);
         var key = $"uploads/containers/{containerId}/{Guid.NewGuid()}{ext}";
-        await _fileStorage.SaveAsync(key, image.Content, ct);
+        await fileStorage.SaveAsync(key, image.Content, ct);
         return key;
     }
 

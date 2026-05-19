@@ -14,16 +14,12 @@ namespace Humans.Web.Authorization;
 /// avatar and dashboard greeting. <c>NameIdentifier</c> still carries the
 /// user id, so authorization is unaffected.
 /// </summary>
-public sealed class HumansUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<User, IdentityRole<Guid>>
+public sealed class HumansUserClaimsPrincipalFactory(
+    UserManager<User> userManager,
+    RoleManager<IdentityRole<Guid>> roleManager,
+    IOptions<IdentityOptions> options)
+    : UserClaimsPrincipalFactory<User, IdentityRole<Guid>>(userManager, roleManager, options)
 {
-    public HumansUserClaimsPrincipalFactory(
-        UserManager<User> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager,
-        IOptions<IdentityOptions> options)
-        : base(userManager, roleManager, options)
-    {
-    }
-
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(User user)
     {
         var identity = await base.GenerateClaimsAsync(user);

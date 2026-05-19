@@ -29,7 +29,6 @@ public sealed class EventRepositoryTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]

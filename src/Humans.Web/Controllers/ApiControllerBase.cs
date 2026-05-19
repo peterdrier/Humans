@@ -25,15 +25,9 @@ namespace Humans.Web.Controllers;
 /// the derived controller.
 /// </para>
 /// </summary>
-public abstract class ApiControllerBase : ControllerBase
+public abstract class ApiControllerBase(IUserService userService) : ControllerBase
 {
-    private readonly IUserService _userService;
-    protected IUserService UserService => _userService;
-
-    protected ApiControllerBase(IUserService userService)
-    {
-        _userService = userService;
-    }
+    protected IUserService UserService => userService;
 
     protected Guid? GetCurrentUserId()
     {
@@ -44,12 +38,12 @@ public abstract class ApiControllerBase : ControllerBase
     protected async Task<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
     {
         var id = GetCurrentUserId();
-        return id is null ? null : await _userService.GetUserInfoAsync(id.Value, ct);
+        return id is null ? null : await userService.GetUserInfoAsync(id.Value, ct);
     }
 
     protected async Task<UserInfo?> FindUserInfoByIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return await _userService.GetUserInfoAsync(userId, ct);
+        return await userService.GetUserInfoAsync(userId, ct);
     }
 
     /// <summary>

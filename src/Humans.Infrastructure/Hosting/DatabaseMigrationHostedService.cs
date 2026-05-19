@@ -16,23 +16,16 @@ namespace Humans.Infrastructure.Hosting;
     justification: "Persistence-boundary bootstrap. The migration runner is part of HumansDbContext's wiring, not a consumer of it — it cannot route through a repository because it operates on the schema itself. Follow-up to teach the analyzer about hosted-service / design-time-factory roles in #750.",
     since: "2026-05-17",
     issueRef: "nobodies-collective/Humans#750")]
-internal sealed class DatabaseMigrationHostedService : IHostedLifecycleService
+internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    : IHostedLifecycleService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = loggerFactory.CreateLogger("DatabaseMigration");
 
-    public DatabaseMigrationHostedService(
-        IServiceScopeFactory scopeFactory,
-        ILoggerFactory loggerFactory)
-    {
-        _scopeFactory = scopeFactory;
-        // Preserve the "DatabaseMigration" log category for existing dashboards.
-        _logger = loggerFactory.CreateLogger("DatabaseMigration");
-    }
+    // Preserve the "DatabaseMigration" log category for existing dashboards.
 
     public async Task StartingAsync(CancellationToken cancellationToken)
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var dbName = dbContext.Database.GetDbConnection().Database;
         await MigrateAsync(dbContext, dbName, cancellationToken);

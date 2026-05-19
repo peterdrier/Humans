@@ -13,37 +13,28 @@ namespace Humans.Application.Services.Email;
 /// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background
 /// processor job reads it through the repository directly (Singleton→Scoped).
 /// </summary>
-public sealed class EmailOutboxService : IEmailOutboxService
+public sealed class EmailOutboxService(IEmailOutboxRepository repo, IClock clock) : IEmailOutboxService
 {
     private static readonly Duration Last24Hours = Duration.FromHours(24);
 
-    private readonly IEmailOutboxRepository _repo;
-    private readonly IClock _clock;
-
-    public EmailOutboxService(IEmailOutboxRepository repo, IClock clock)
-    {
-        _repo = repo;
-        _clock = clock;
-    }
-
     public Task<string?> RetryMessageAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _repo.RetryAsync(id, cancellationToken);
+        repo.RetryAsync(id, cancellationToken);
 
     public Task<string?> DiscardMessageAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _repo.DiscardAsync(id, cancellationToken);
+        repo.DiscardAsync(id, cancellationToken);
 
     public async Task<EmailOutboxStats> GetOutboxStatsAsync(
         int recentMessageCount = 50, CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var cutoff24H = now - Last24Hours;
 
-        var totalCount = await _repo.GetTotalCountAsync(cancellationToken);
-        var queuedCount = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Queued, cancellationToken);
-        var sentLast24H = await _repo.GetSentCountSinceAsync(cutoff24H, cancellationToken);
-        var failedCount = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Failed, cancellationToken);
-        var isPaused = await _repo.GetSendingPausedAsync(cancellationToken);
-        var messages = await _repo.GetRecentAsync(recentMessageCount, cancellationToken);
+        var totalCount = await repo.GetTotalCountAsync(cancellationToken);
+        var queuedCount = await repo.GetCountByStatusAsync(EmailOutboxStatus.Queued, cancellationToken);
+        var sentLast24H = await repo.GetSentCountSinceAsync(cutoff24H, cancellationToken);
+        var failedCount = await repo.GetCountByStatusAsync(EmailOutboxStatus.Failed, cancellationToken);
+        var isPaused = await repo.GetSendingPausedAsync(cancellationToken);
+        var messages = await repo.GetRecentAsync(recentMessageCount, cancellationToken);
 
         return new EmailOutboxStats(
             totalCount,
@@ -57,19 +48,19 @@ public sealed class EmailOutboxService : IEmailOutboxService
     public async Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var messages = await _repo.GetForUserAsync(userId, cancellationToken);
+        var messages = await repo.GetForUserAsync(userId, cancellationToken);
         return messages.Select(ToDto).ToList();
     }
 
     public Task<int> GetMessageCountForUserAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
-        _repo.GetCountForUserAsync(userId, cancellationToken);
+        repo.GetCountForUserAsync(userId, cancellationToken);
 
     public Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetSendingPausedAsync(cancellationToken);
+        repo.GetSendingPausedAsync(cancellationToken);
 
     public Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default) =>
-        _repo.SetSendingPausedAsync(paused, cancellationToken);
+        repo.SetSendingPausedAsync(paused, cancellationToken);
 
     private static EmailOutboxMessageDto ToDto(EmailOutboxMessage message) => new(
         message.Id,

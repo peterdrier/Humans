@@ -12,29 +12,18 @@ namespace Humans.Web.Controllers;
 [ApiController]
 [AllowAnonymous]
 [Route("Store/StripeWebhook")]
-public class StoreStripeWebhookController : ControllerBase
+public class StoreStripeWebhookController(
+    IStoreService storeService,
+    IStripeService stripeService,
+    ILogger<StoreStripeWebhookController> logger) : ControllerBase
 {
-    private readonly IStoreService _storeService;
-    private readonly IStripeService _stripeService;
-    private readonly ILogger<StoreStripeWebhookController> _logger;
-
-    public StoreStripeWebhookController(
-        IStoreService storeService,
-        IStripeService stripeService,
-        ILogger<StoreStripeWebhookController> logger)
-    {
-        _storeService = storeService;
-        _stripeService = stripeService;
-        _logger = logger;
-    }
-
     [HttpPost("")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
-        if (!_stripeService.IsStoreWebhookConfigured)
+        if (!stripeService.IsStoreWebhookConfigured)
         {
-            _logger.LogWarning("Store Stripe webhook hit while STRIPE_STORE_WEBHOOK_SECRET is unset; rejecting.");
+            logger.LogWarning("Store Stripe webhook hit while STRIPE_STORE_WEBHOOK_SECRET is unset; rejecting.");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
@@ -46,13 +35,13 @@ public class StoreStripeWebhookController : ControllerBase
 
         var signature = Request.Headers["Stripe-Signature"].ToString();
 
-        var parsed = _stripeService.ParseStoreCheckoutEvent(body, signature);
+        var parsed = stripeService.ParseStoreCheckoutEvent(body, signature);
         if (parsed is null)
         {
             return BadRequest();
         }
 
-        await _storeService.HandleStripeCheckoutWebhookEventAsync(parsed, ct);
+        await storeService.HandleStripeCheckoutWebhookEventAsync(parsed, ct);
 
         return Ok();
     }

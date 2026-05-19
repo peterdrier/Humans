@@ -19,48 +19,32 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Moderate")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsModerationController : HumansControllerBase
+public class EventsModerationController(
+    IEventService guide,
+    IUserService userService,
+    IEmailService emailService,
+    IUserService users,
+    ICampService camps,
+    ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
 {
-    private readonly IEventService _guide;
-    private readonly IEmailService _emailService;
-    private readonly IUserService _users;
-    private readonly ICampService _camps;
-    private readonly ILogger<EventsModerationController> _logger;
-
-    public EventsModerationController(
-        IEventService guide,
-        IUserService userService,
-        IEmailService emailService,
-        IUserService users,
-        ICampService camps,
-        ILogger<EventsModerationController> logger)
-        : base(userService)
-    {
-        _guide = guide;
-        _emailService = emailService;
-        _users = users;
-        _camps = camps;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] EventStatus? tab)
     {
         var activeTab = tab ?? EventStatus.Pending;
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = guideSettings != null
-            ? await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+            ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
             : null;
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
-        var counts = await _guide.GetEventStatusCountsAsync();
-        var events = await _guide.GetEventsByStatusAsync(activeTab);
+        var counts = await guide.GetEventStatusCountsAsync();
+        var events = await guide.GetEventsByStatusAsync(activeTab);
 
-        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
-        var submitterInfoById = await LoadSubmittersAsync(_users, events.Select(e => e.SubmitterUserId).Distinct());
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+        var submitterInfoById = await LoadSubmittersAsync(users, events.Select(e => e.SubmitterUserId).Distinct());
 
         var model = new ModerationQueueViewModel
         {
@@ -77,7 +61,7 @@ public class EventsModerationController : HumansControllerBase
         var campEvents = events.Where(e => e.CampId.HasValue).ToList();
         if (campEvents.Count > 0)
         {
-            var allCampEvents = await _guide.GetCampEventsForOverlapAsync();
+            var allCampEvents = await guide.GetCampEventsForOverlapAsync();
 
             foreach (var row in model.Events)
             {
@@ -141,7 +125,7 @@ public class EventsModerationController : HumansControllerBase
         var moderator = await GetCurrentUserInfoAsync();
         if (moderator == null) return Challenge();
 
-        var guideEvent = await _guide.GetEventForModerationAsync(eventId);
+        var guideEvent = await guide.GetEventForModerationAsync(eventId);
         if (guideEvent == null)
         {
             SetError("Event not found.");
@@ -154,7 +138,7 @@ public class EventsModerationController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        await _guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason);
+        await guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason);
 
         var actionLabel = actionType switch
         {
@@ -164,10 +148,10 @@ public class EventsModerationController : HumansControllerBase
             _ => "moderated"
         };
 
-        _logger.LogInformation("Moderator {UserId} {Action} event '{Title}' ({EventId})",
+        logger.LogInformation("Moderator {UserId} {Action} event '{Title}' ({EventId})",
             moderator.Id, actionLabel, guideEvent.Title, eventId);
 
-        var submitterInfo = await _users.GetUserInfoAsync(guideEvent.SubmitterUserId);
+        var submitterInfo = await users.GetUserInfoAsync(guideEvent.SubmitterUserId);
         var submitterEmail = submitterInfo?.Email;
         var submitterName = submitterInfo?.BurnerName ?? "Unknown";
 
@@ -176,11 +160,11 @@ public class EventsModerationController : HumansControllerBase
             string? campSlug = null;
             if (guideEvent.CampId.HasValue)
             {
-                var guideSettings = await _guide.GetGuideSettingsAsync();
+                var guideSettings = await guide.GetGuideSettingsAsync();
                 var eventSettings = guideSettings != null
-                    ? await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+                    ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
                     : null;
-                var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
+                var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
                 campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
             }
 
@@ -197,7 +181,7 @@ public class EventsModerationController : HumansControllerBase
             };
             if (lifecycleStatus.HasValue)
             {
-                await _emailService.SendEventLifecycleNotificationAsync(
+                await emailService.SendEventLifecycleNotificationAsync(
                     new EventLifecycleNotification(
                         NewStatus: lifecycleStatus.Value,
                         UserName: submitterName,

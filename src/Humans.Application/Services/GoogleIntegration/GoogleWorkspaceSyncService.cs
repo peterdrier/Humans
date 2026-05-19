@@ -21,63 +21,26 @@ namespace Humans.Application.Services.GoogleIntegration;
 /// <see cref="IGoogleSyncService"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
 /// Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.
 /// </summary>
-public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
+public sealed class GoogleWorkspaceSyncService(
+    IGoogleGroupProvisioningClient groupProvisioning,
+    IGoogleDrivePermissionsClient drivePermissions,
+    IGoogleDirectoryClient directory,
+    ITeamResourceGoogleClient teamResourceClient,
+    IGoogleResourceRepository resourceRepository,
+    IGoogleSyncOutboxRepository googleSyncOutboxRepository,
+    ITeamService teamService,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    IGoogleGroupSync googleGroupSync,
+    IAuditLogService auditLogService,
+    ISyncSettingsService syncSettingsService,
+    IGoogleRemovalNotificationService removalNotifications,
+    IOptions<GoogleWorkspaceOptions> options,
+    IClock clock,
+    IServiceProvider serviceProvider,
+    ILogger<GoogleWorkspaceSyncService> logger) : IGoogleSyncService
 {
-    private readonly IGoogleGroupProvisioningClient _groupProvisioning;
-    private readonly IGoogleDrivePermissionsClient _drivePermissions;
-    private readonly IGoogleDirectoryClient _directory;
-    private readonly ITeamResourceGoogleClient _teamResourceClient;
-    private readonly IGoogleResourceRepository _resourceRepository;
-    private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IGoogleGroupSync _googleGroupSync;
-    private readonly IAuditLogService _auditLogService;
-    private readonly ISyncSettingsService _syncSettingsService;
-    private readonly IGoogleRemovalNotificationService _removalNotifications;
-    private readonly GoogleWorkspaceOptions _options;
-    private readonly IClock _clock;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<GoogleWorkspaceSyncService> _logger;
-
-    public GoogleWorkspaceSyncService(
-        IGoogleGroupProvisioningClient groupProvisioning,
-        IGoogleDrivePermissionsClient drivePermissions,
-        IGoogleDirectoryClient directory,
-        ITeamResourceGoogleClient teamResourceClient,
-        IGoogleResourceRepository resourceRepository,
-        IGoogleSyncOutboxRepository googleSyncOutboxRepository,
-        ITeamService teamService,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        IGoogleGroupSync googleGroupSync,
-        IAuditLogService auditLogService,
-        ISyncSettingsService syncSettingsService,
-        IGoogleRemovalNotificationService removalNotifications,
-        IOptions<GoogleWorkspaceOptions> options,
-        IClock clock,
-        IServiceProvider serviceProvider,
-        ILogger<GoogleWorkspaceSyncService> logger)
-    {
-        _groupProvisioning = groupProvisioning;
-        _drivePermissions = drivePermissions;
-        _directory = directory;
-        _teamResourceClient = teamResourceClient;
-        _resourceRepository = resourceRepository;
-        _googleSyncOutboxRepository = googleSyncOutboxRepository;
-        _teamService = teamService;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _googleGroupSync = googleGroupSync;
-        _auditLogService = auditLogService;
-        _syncSettingsService = syncSettingsService;
-        _removalNotifications = removalNotifications;
-        _options = options.Value;
-        _clock = clock;
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
+    private readonly GoogleWorkspaceOptions _options = options.Value;
 
     // ==========================================================================
     // Provisioning — Drive folders and Google Groups
@@ -90,17 +53,17 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         CancellationToken cancellationToken = default)
     {
         // Idempotent: return any existing active folder for the team.
-        var existingActive = await _resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
+        var existingActive = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
         var existing = existingActive.FirstOrDefault(r => r.ResourceType == GoogleResourceType.DriveFolder);
         if (existing is not null)
         {
-            _logger.LogInformation("Team {TeamId} already has active Drive folder {FolderId}", teamId, existing.GoogleId);
+            logger.LogInformation("Team {TeamId} already has active Drive folder {FolderId}", teamId, existing.GoogleId);
             return existing;
         }
 
-        _logger.LogInformation("Provisioning Drive folder '{FolderName}' for team {TeamId}", folderName, teamId);
+        logger.LogInformation("Provisioning Drive folder '{FolderName}' for team {TeamId}", folderName, teamId);
 
-        var create = await _drivePermissions.CreateFolderAsync(folderName, _options.TeamFoldersParentId, cancellationToken);
+        var create = await drivePermissions.CreateFolderAsync(folderName, _options.TeamFoldersParentId, cancellationToken);
         if (create.Folder is null)
         {
             var err = create.Error;
@@ -108,7 +71,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 $"Google Drive folder create failed (HTTP {err?.StatusCode}): {err?.RawMessage}");
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var resource = new GoogleResource
         {
             Id = Guid.NewGuid(),
@@ -122,9 +85,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             IsActive = true
         };
 
-        await _resourceRepository.AddAsync(resource, cancellationToken);
+        await resourceRepository.AddAsync(resource, cancellationToken);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Drive folder '{resource.Name}' for team",
             nameof(GoogleWorkspaceSyncService),
@@ -139,9 +102,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         string groupName,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Provisioning Google Group '{GroupEmail}' for team {TeamId}", groupEmail, teamId);
+        logger.LogInformation("Provisioning Google Group '{GroupEmail}' for team {TeamId}", groupEmail, teamId);
 
-        var create = await _groupProvisioning.CreateGroupAsync(
+        var create = await groupProvisioning.CreateGroupAsync(
             groupEmail,
             groupName,
             $"Mailing list for {groupName} team",
@@ -155,21 +118,21 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         // Apply configured group settings — non-fatal on failure (group was created).
-        var settingsError = await _groupProvisioning.UpdateGroupSettingsAsync(
+        var settingsError = await groupProvisioning.UpdateGroupSettingsAsync(
             groupEmail, BuildExpectedGroupSettings(), cancellationToken);
 
         if (settingsError is not null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Failed to apply group settings to '{GroupEmail}' (HTTP {Code}: {Message}). Group was created with Google defaults",
                 groupEmail, settingsError.StatusCode, settingsError.RawMessage);
         }
         else
         {
-            _logger.LogInformation("Applied group settings to '{GroupEmail}'", groupEmail);
+            logger.LogInformation("Applied group settings to '{GroupEmail}'", groupEmail);
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var resource = new GoogleResource
         {
             Id = Guid.NewGuid(),
@@ -183,9 +146,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             IsActive = true
         };
 
-        await _resourceRepository.AddAsync(resource, cancellationToken);
+        await resourceRepository.AddAsync(resource, cancellationToken);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Google Group '{groupName}' ({groupEmail}) for team",
             nameof(GoogleWorkspaceSyncService),
@@ -203,22 +166,22 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         DrivePermissionLevel? permissionLevelOverride,
         CancellationToken cancellationToken)
     {
-        var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
+        var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
         if (mode == SyncMode.None)
         {
-            _logger.LogDebug("Skipping AddUserToDrive — GoogleDrive sync mode is None");
+            logger.LogDebug("Skipping AddUserToDrive — GoogleDrive sync mode is None");
             return;
         }
 
         var effectiveLevel = permissionLevelOverride ?? resource.DrivePermissionLevel;
         var apiRole = effectiveLevel.ToApiRole();
 
-        var result = await _drivePermissions.CreatePermissionAsync(resource.GoogleId, userEmail, apiRole, cancellationToken);
+        var result = await drivePermissions.CreatePermissionAsync(resource.GoogleId, userEmail, apiRole, cancellationToken);
 
         switch (result.Outcome)
         {
             case DrivePermissionCreateOutcome.Created:
-                await _auditLogService.LogGoogleSyncAsync(
+                await auditLogService.LogGoogleSyncAsync(
                     AuditAction.GoogleResourceAccessGranted, resource.Id,
                     $"Granted Drive access ({effectiveLevel}) to {userEmail} ({resource.Name})",
                     nameof(GoogleWorkspaceSyncService),
@@ -226,11 +189,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 break;
 
             case DrivePermissionCreateOutcome.AlreadyExists:
-                _logger.LogDebug("Permission already exists for {Email} on {GoogleId}", userEmail, resource.GoogleId);
+                logger.LogDebug("Permission already exists for {Email} on {GoogleId}", userEmail, resource.GoogleId);
                 break;
 
             case DrivePermissionCreateOutcome.Failed:
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
                     apiRole, userEmail, resource.GoogleId,
                     result.Error?.StatusCode, result.Error?.RawMessage);
@@ -272,18 +235,18 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        var user = await _userService.GetByEmailOrAlternateAsync(userEmail, ct);
+        var user = await userService.GetByEmailOrAlternateAsync(userEmail, ct);
         if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
             return;
         }
 
-        await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+        await userService.TrySetGoogleEmailStatusFromSyncAsync(
             user.Id,
             GoogleEmailStatus.Rejected,
             ct);
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP 400. " +
             "User.GoogleEmailStatus marked Rejected. Google error: {ErrorMessage}",
             userEmail,
@@ -307,23 +270,23 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         CancellationToken cancellationToken,
         SyncRemovalReason reason = SyncRemovalReason.Reconciliation)
     {
-        var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
+        var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
         if (mode != SyncMode.AddAndRemove)
         {
-            _logger.LogDebug("Skipping RemoveUserFromDrive — GoogleDrive sync mode is {Mode}", mode);
+            logger.LogDebug("Skipping RemoveUserFromDrive — GoogleDrive sync mode is {Mode}", mode);
             return;
         }
 
-        var error = await _drivePermissions.DeletePermissionAsync(resource.GoogleId, permissionId, cancellationToken);
+        var error = await drivePermissions.DeletePermissionAsync(resource.GoogleId, permissionId, cancellationToken);
         if (error is not null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Google API error deleting permission {PermissionId} on {GoogleId} — HTTP {Code}: {Message}",
                 permissionId, resource.GoogleId, error.StatusCode, error.RawMessage);
             return;
         }
 
-        await _auditLogService.LogGoogleSyncAsync(
+        await auditLogService.LogGoogleSyncAsync(
             AuditAction.GoogleResourceAccessRevoked, resource.Id,
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
@@ -332,7 +295,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Issue peterdrier/Humans#639 — notify only on confirmed delete.
         try
         {
-            await _removalNotifications.NotifyRemovalAsync(
+            await removalNotifications.NotifyRemovalAsync(
                 userEmail,
                 resource.ResourceType,
                 resource.Name,
@@ -342,7 +305,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to enqueue Drive removal notification for {UserEmail} on {GoogleId}",
                 userEmail, resource.GoogleId);
         }
@@ -384,7 +347,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Issue #635 (§15i): read UserEmails through the owning section
         // service (design-rules §2c) instead of traversing user.UserEmails
         // cross-domain.
-        var user = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var user = await userService.GetUserInfoAsync(userId, cancellationToken);
 
         // Merge-fold redirect (issue peterdrier/Humans#646): if the source
         // user has been folded into a target via AccountMergeService, the
@@ -397,24 +360,24 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var hops = 0;
         while (user is { MergedToUserId: { } targetUserId } && hops < 16)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Following merge-fold redirect for AddUserToTeamResources: source {SourceUserId} → target {TargetUserId} (team {TeamId})",
                 userId, targetUserId, teamId);
             userId = targetUserId;
-            user = await _userService.GetUserInfoAsync(userId, cancellationToken);
+            user = await userService.GetUserInfoAsync(userId, cancellationToken);
             hops++;
         }
 
         if (hops >= 16 && user is { MergedToUserId: not null })
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Merge-fold chain exceeded 16 hops for user {UserId} on team {TeamId}; provisioning against intermediate node",
                 userId, teamId);
         }
 
         var userEmails = user is null
             ? (IReadOnlyList<UserEmailRowSnapshot>)[]
-            : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
+            : await userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
 
         var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -429,13 +392,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (user is null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Skipped Google provisioning for {UserId} on team {TeamId}: user no longer exists (likely deleted between outbox enqueue and dequeue)",
                     userId, teamId);
             }
             else
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Skipped Google provisioning for {UserId} on team {TeamId}: user exists but has no verified email",
                     userId, teamId);
             }
@@ -444,12 +407,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         if (user!.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
-            _logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — GoogleEmailStatus is Rejected", userId);
+            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — GoogleEmailStatus is Rejected", userId);
             return;
         }
 
-        var team = await _teamService.GetTeamByIdAsync(teamId, cancellationToken);
-        var resources = await _resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
+        var team = await teamService.GetTeamByIdAsync(teamId, cancellationToken);
+        var resources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
 
         foreach (var resource in resources)
         {
@@ -468,8 +431,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Subteam member rollup: also add to parent department resources.
         if (team?.ParentTeamId is not null)
         {
-            var parentTeam = await _teamService.GetTeamByIdAsync(team.ParentTeamId.Value, cancellationToken);
-            var parentResources = await _resourceRepository.GetActiveByTeamIdAsync(team.ParentTeamId.Value, cancellationToken);
+            var parentTeam = await teamService.GetTeamByIdAsync(team.ParentTeamId.Value, cancellationToken);
+            var parentResources = await resourceRepository.GetActiveByTeamIdAsync(team.ParentTeamId.Value, cancellationToken);
             foreach (var resource in parentResources)
             {
                 if (resource.ResourceType == GoogleResourceType.Group)
@@ -493,13 +456,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var groupKey = GoogleGroupKeyHelper.TryGetGroupKey(resource, teamGoogleGroupEmail, _options.Domain);
         if (groupKey is null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cannot request Google Group membership sync for resource {ResourceId}: group email could not be derived",
                 resource.Id);
             return;
         }
 
-        await _googleGroupSync.RequestSyncAsync(groupKey, cancellationToken);
+        await googleGroupSync.RequestSyncAsync(groupKey, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -511,7 +474,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Individual user removal is a no-op. Drive removals are handled by
         // reconciliation, and Google Group membership is handled by
         // IGoogleGroupSync.
-        _logger.LogDebug(
+        logger.LogDebug(
             "Per-user removal deferred to reconciliation for user {UserId} team {TeamId}",
             userId, teamId);
         return Task.CompletedTask;
@@ -527,7 +490,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         SyncAction action,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("SyncResourcesByType: type={ResourceType}, action={Action}", resourceType, action);
+        logger.LogInformation("SyncResourcesByType: type={ResourceType}, action={Action}", resourceType, action);
 
         if (resourceType == GoogleResourceType.Group)
         {
@@ -539,7 +502,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // (including soft-deleted) through the Teams service so we never touch
         // the team graph directly — the resource's Team nav is hydrated via
         // ITeamService.GetTeamByIdAsync / GetByIdsWithParentsAsync.
-        var allActive = await _resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var allActive = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
         IReadOnlyList<GoogleResource> resources = allActive
             .Where(r => r.ResourceType == resourceType && r.IsActive)
             .ToList();
@@ -549,13 +512,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             return new SyncPreviewResult { Diffs = [] };
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         // Resolve TeamInfo read-models cross-section via ITeamService cache.
         // Downstream methods consume the dict directly — the obsolete
         // cross-section nav on GoogleResource is never assigned or read.
         var teamIds2 = resources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
         // Pre-load active members (primary team members) and child-team members
         // for the referenced team ids. Drive reconciliation uses the full
@@ -583,7 +546,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Deactivate soft-deleted-team resources now that reconciliation has
             // revoked their Google access. Only when mode was AddAndRemove.
-            var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
+            var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
             if (mode == SyncMode.AddAndRemove)
             {
                 // Track errored diffs by GoogleId, not ResourceId — Drive resources
@@ -606,7 +569,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 if (softDeletedTeamIds.Count > 0)
                 {
-                    var teamResourceService = _serviceProvider.GetRequiredService<ITeamResourceService>();
+                    var teamResourceService = serviceProvider.GetRequiredService<ITeamResourceService>();
                     foreach (var teamId in softDeletedTeamIds)
                     {
                         await teamResourceService.DeactivateResourcesForTeamAsync(
@@ -625,9 +588,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         SyncAction action,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("SyncSingleResource: resourceId={ResourceId}, action={Action}", resourceId, action);
+        logger.LogInformation("SyncSingleResource: resourceId={ResourceId}, action={Action}", resourceId, action);
 
-        var resource = await _resourceRepository.GetByIdAsync(resourceId, cancellationToken);
+        var resource = await resourceRepository.GetByIdAsync(resourceId, cancellationToken);
         if (resource is null)
         {
             return new ResourceSyncDiff
@@ -638,18 +601,18 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         // Resolve TeamInfo for this resource's team (cross-section via cache).
-        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var teamGoogleGroupEmail = teamsById.TryGetValue(resource.TeamId, out var teamInfo)
             ? teamInfo.GoogleGroupEmail
             : null;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         if (resource.ResourceType == GoogleResourceType.Group)
             return await ReconcileGroupResourceAsync(resource, teamGoogleGroupEmail, action, cancellationToken);
 
         // Drive resource: find ALL resources with same GoogleId to get full team union.
-        var all = await _resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var all = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
         var allWithSameGoogleId = all
             .Where(r => string.Equals(r.GoogleId, resource.GoogleId, StringComparison.Ordinal) && r.IsActive)
             .ToList();
@@ -691,7 +654,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 Url = resource.Url,
                 ErrorMessage = "Cannot determine Google group email for this resource"
             }
-            : await _googleGroupSync.ReconcileOneAsync(groupKey, action, cancellationToken);
+            : await googleGroupSync.ReconcileOneAsync(groupKey, action, cancellationToken);
     }
 
     private async Task<ResourceSyncDiff> SyncDriveResourceGroupAsync(
@@ -784,16 +747,16 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList();
 
             // Current: Drive permissions.
-            var permsResult = await _drivePermissions.ListPermissionsAsync(primary.GoogleId, cancellationToken);
+            var permsResult = await drivePermissions.ListPermissionsAsync(primary.GoogleId, cancellationToken);
             if (permsResult.Permissions is null)
             {
                 var code = permsResult.Error?.StatusCode ?? 0;
                 var msg = $"Google API error: {code} — {permsResult.Error?.RawMessage}";
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Failed to list permissions for {GoogleId}: {Message}", primary.GoogleId, msg);
                 if (action == SyncAction.Execute)
                 {
-                    await _resourceRepository.SetErrorMessageManyAsync(
+                    await resourceRepository.SetErrorMessageManyAsync(
                         resources.Select(r => r.Id).ToList(), msg, cancellationToken);
                 }
                 return new ResourceSyncDiff
@@ -862,7 +825,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     UserId: userId, ProfilePictureUrl: profilePictureUrl));
             }
 
-            var saEmail = await _teamResourceClient.GetServiceAccountEmailAsync(cancellationToken);
+            var saEmail = await teamResourceClient.GetServiceAccountEmailAsync(cancellationToken);
             var nonMemberEmails = allEmails
                 .Where(e => !membersByEmail.ContainsKey(e) &&
                     !string.Equals(e, saEmail, StringComparison.OrdinalIgnoreCase))
@@ -898,7 +861,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to grant Drive access to {Email} on {GoogleId}",
+                        logger.LogError(ex, "Failed to grant Drive access to {Email} on {GoogleId}",
                             member.Email, primary.GoogleId);
                     }
                 }
@@ -913,7 +876,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
                         if (permToRemove?.Id is null)
                         {
-                            _logger.LogInformation(
+                            logger.LogInformation(
                                 "Skipping removal of {Email} from {GoogleId} — permission is inherited, not direct",
                                 member.Email, primary.GoogleId);
                             continue;
@@ -923,12 +886,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to remove Drive access for {Email} on {GoogleId}",
+                        logger.LogError(ex, "Failed to remove Drive access for {Email} on {GoogleId}",
                             member.Email, primary.GoogleId);
                     }
                 }
 
-                await _resourceRepository.MarkSyncedManyAsync(
+                await resourceRepository.MarkSyncedManyAsync(
                     resources.Select(r => r.Id).ToList(), now, cancellationToken);
             }
 
@@ -946,10 +909,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing Drive resource group {GoogleId}", primary.GoogleId);
+            logger.LogError(ex, "Error syncing Drive resource group {GoogleId}", primary.GoogleId);
             if (action == SyncAction.Execute)
             {
-                await _resourceRepository.SetErrorMessageManyAsync(
+                await resourceRepository.SetErrorMessageManyAsync(
                     resources.Select(r => r.Id).ToList(), ex.Message, cancellationToken);
             }
             return new ResourceSyncDiff
@@ -982,14 +945,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         bool confirmReactivation = false,
         CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamByIdAsync(teamId, cancellationToken);
+        var team = await teamService.GetTeamByIdAsync(teamId, cancellationToken);
         if (team is null)
         {
-            _logger.LogWarning("Team {TeamId} not found for EnsureTeamGroupAsync", teamId);
+            logger.LogWarning("Team {TeamId} not found for EnsureTeamGroupAsync", teamId);
             return GroupLinkResult.Ok();
         }
 
-        var activeResources = await _resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
+        var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
         var existingGroup = activeResources.FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group);
 
         // If prefix was cleared, deactivate any active group resource.
@@ -997,11 +960,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (existingGroup is not null)
             {
-                await _resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
-                _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix cleared)",
+                await resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
+                logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix cleared)",
                     existingGroup.Id, teamId);
 
-                await _auditLogService.LogAsync(
+                await auditLogService.LogAsync(
                     AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                     "Deactivated Google Group resource (prefix cleared)",
                     nameof(GoogleWorkspaceSyncService),
@@ -1009,7 +972,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             }
             else
             {
-                _logger.LogDebug("Team {TeamId} has no GoogleGroupPrefix and no active group, nothing to do", teamId);
+                logger.LogDebug("Team {TeamId} has no GoogleGroupPrefix and no active group, nothing to do", teamId);
             }
             return GroupLinkResult.Ok();
         }
@@ -1019,7 +982,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (existingGroup is not null &&
             string.Equals(existingGroup.Url, expectedUrl, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogDebug("Team {TeamId} already has active Group resource {ResourceId} matching prefix",
+            logger.LogDebug("Team {TeamId} already has active Group resource {ResourceId} matching prefix",
                 teamId, existingGroup.Id);
             return GroupLinkResult.Ok();
         }
@@ -1033,7 +996,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             if (activeConflict.TeamId == teamId)
                 return GroupLinkResult.Error("This group is already linked to this team.");
 
-            var conflictTeam = await _teamService.GetTeamByIdAsync(activeConflict.TeamId, cancellationToken);
+            var conflictTeam = await teamService.GetTeamByIdAsync(activeConflict.TeamId, cancellationToken);
             var conflictName = conflictTeam?.Name ?? "another team";
             return GroupLinkResult.Error($"This group is already linked to team \"{conflictName}\".");
         }
@@ -1047,11 +1010,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 inactiveForTeam.Id);
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         if (inactiveForTeam is not null && confirmReactivation)
         {
-            await _resourceRepository.ReactivateAsync(
+            await resourceRepository.ReactivateAsync(
                 inactiveForTeam.Id,
                 inactiveForTeam.Name,
                 inactiveForTeam.Url,
@@ -1060,7 +1023,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 newPermissionLevel: null,
                 cancellationToken);
 
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
                 "Reactivated Google Group resource for team",
                 nameof(GoogleWorkspaceSyncService),
@@ -1072,9 +1035,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Deactivate the old resource if prefix changed.
         if (existingGroup is not null)
         {
-            await _resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
+            await resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
 
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                 $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                 nameof(GoogleWorkspaceSyncService),
@@ -1082,7 +1045,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         // Try to find an existing Google Group via Cloud Identity; if not, create it.
-        var lookup = await _groupProvisioning.LookupGroupIdAsync(email, cancellationToken);
+        var lookup = await groupProvisioning.LookupGroupIdAsync(email, cancellationToken);
         if (lookup.GroupNumericId is not null)
         {
             var resource = new GoogleResource
@@ -1098,9 +1061,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 IsActive = true
             };
 
-            await _resourceRepository.AddAsync(resource, cancellationToken);
+            await resourceRepository.AddAsync(resource, cancellationToken);
 
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
                 $"Linked existing Google Group '{team.Name}' ({email}) for team",
                 nameof(GoogleWorkspaceSyncService),
@@ -1109,7 +1072,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         else
         {
             var code = lookup.Error?.StatusCode ?? 0;
-            _logger.LogInformation("Google Group '{Email}' not found (HTTP {Code}), creating for team {TeamId}",
+            logger.LogInformation("Google Group '{Email}' not found (HTTP {Code}), creating for team {TeamId}",
                 email, code, teamId);
             await ProvisionTeamGroupAsync(teamId, email, team.Name, cancellationToken);
         }
@@ -1124,10 +1087,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <inheritdoc />
     public async Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
+        var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
         if (mode == SyncMode.None)
         {
-            _logger.LogInformation("Google Groups sync is disabled — skipping settings drift check");
+            logger.LogInformation("Google Groups sync is disabled — skipping settings drift check");
             return new GroupSettingsDriftResult
             {
                 Skipped = true,
@@ -1140,12 +1103,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Filter to groups whose team is still active. TeamInfo cache provides
         // the read-model (Name/Slug/GoogleGroupPrefix/IsActive) cross-section
         // so we never traverse the obsolete cross-section nav on GoogleResource.
-        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var filtered = groupResources
             .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
             .ToList();
 
-        _logger.LogInformation("Checking group settings for {Count} active Google Groups", filtered.Count);
+        logger.LogInformation("Checking group settings for {Count} active Google Groups", filtered.Count);
 
         var reports = new List<GroupSettingsDriftReport>();
         foreach (var resource in filtered)
@@ -1185,13 +1148,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         string groupEmail,
         CancellationToken cancellationToken)
     {
-        var getResult = await _groupProvisioning.GetGroupSettingsAsync(groupEmail, cancellationToken);
+        var getResult = await groupProvisioning.GetGroupSettingsAsync(groupEmail, cancellationToken);
         if (getResult.Settings is null)
         {
             var code = getResult.Error?.StatusCode ?? 0;
             if (code == 404 || code == 403)
             {
-                _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", groupEmail, code);
+                logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", groupEmail, code);
                 return new GroupSettingsDriftReport
                 {
                     ResourceId = resource.Id,
@@ -1201,7 +1164,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     ErrorMessage = $"Google API error: {code} — {getResult.Error?.RawMessage}"
                 };
             }
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Error fetching settings for group '{GroupEmail}' — HTTP {Code}: {Message}",
                 groupEmail, code, getResult.Error?.RawMessage);
             return new GroupSettingsDriftReport
@@ -1223,7 +1186,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         if (drifts.Count > 0)
         {
-            _logger.LogWarning("Group '{GroupEmail}' has {DriftCount} setting drift(s): {Drifts}",
+            logger.LogWarning("Group '{GroupEmail}' has {DriftCount} setting drift(s): {Drifts}",
                 groupEmail, drifts.Count,
                 string.Join(", ", drifts.Select(d => $"{d.SettingName}: expected={d.ExpectedValue}, actual={d.ActualValue}")));
         }
@@ -1244,19 +1207,19 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         try
         {
             // Settings remediation is always allowed — it doesn't add/remove members.
-            var error = await _groupProvisioning.UpdateGroupSettingsAsync(
+            var error = await groupProvisioning.UpdateGroupSettingsAsync(
                 groupEmail, BuildExpectedGroupSettings(), cancellationToken);
 
             if (error is not null)
             {
-                _logger.LogError(
+                logger.LogError(
                     "Failed to remediate settings for Google Group {GroupEmail} — HTTP {Code}: {Message}",
                     groupEmail, error.StatusCode, error.RawMessage);
                 return GroupSettingsRemediationResult.Failure(
                     $"Google Groups settings update failed for {groupEmail}: HTTP {error.StatusCode} — {error.RawMessage}");
             }
 
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
                 $"Remediated settings for Google Group '{groupEmail}'",
                 nameof(GoogleWorkspaceSyncService));
@@ -1265,7 +1228,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
+            logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
             return GroupSettingsRemediationResult.Failure($"Remediation failed for {groupEmail}: {ex.Message}");
         }
     }
@@ -1277,10 +1240,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <inheritdoc />
     public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
     {
-        var listResult = await _directory.ListDomainGroupsAsync(cancellationToken);
+        var listResult = await directory.ListDomainGroupsAsync(cancellationToken);
         if (listResult.Groups is null)
         {
-            _logger.LogError(
+            logger.LogError(
                 "Failed to enumerate domain groups — HTTP {Code}: {Message}",
                 listResult.Error?.StatusCode, listResult.Error?.RawMessage);
             return new AllGroupsResult
@@ -1290,10 +1253,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var allGroups = listResult.Groups;
-        _logger.LogInformation("Found {Count} Google Groups on domain {Domain}", allGroups.Count, _options.Domain);
+        logger.LogInformation("Found {Count} Google Groups on domain {Domain}", allGroups.Count, _options.Domain);
 
         // Build a lookup: group prefix → linked Team (active, with GoogleGroupPrefix set).
-        var teams = await _teamService.GetAllTeamsAsync(cancellationToken);
+        var teams = await teamService.GetAllTeamsAsync(cancellationToken);
         var teamsByPrefix = teams
             .Where(t => t.GoogleGroupPrefix is not null)
             .GroupBy(t => t.GoogleGroupPrefix!, StringComparer.OrdinalIgnoreCase)
@@ -1318,11 +1281,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 await semaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    var getResult = await _groupProvisioning.GetGroupSettingsAsync(email, cancellationToken);
+                    var getResult = await groupProvisioning.GetGroupSettingsAsync(email, cancellationToken);
                     if (getResult.Settings is null)
                     {
                         var code = getResult.Error?.StatusCode ?? 0;
-                        _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", email, code);
+                        logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", email, code);
                         errorMessage = $"Google API error: {code} — {getResult.Error?.RawMessage}";
                     }
                     else
@@ -1337,7 +1300,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);
+                    logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);
                     errorMessage = $"Error: {ex.Message}";
                 }
                 finally
@@ -1382,12 +1345,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <inheritdoc />
     public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
     {
-        var driveResources = await _resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var driveResources = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
 
         // Filter to resources whose team is still active.
         if (driveResources.Count == 0) return 0;
         var teamIds = driveResources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        var teamsById = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
         var filtered = driveResources
             .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
             .ToList();
@@ -1402,16 +1365,16 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 var fullPath = await ResolveDriveFolderPathAsync(resource.GoogleId, cancellationToken);
                 if (fullPath is not null && !string.Equals(resource.Name, fullPath, StringComparison.Ordinal))
                 {
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Drive folder path changed for resource {ResourceId}: '{OldName}' -> '{NewName}'",
                         resource.Id, resource.Name, fullPath);
-                    await _resourceRepository.UpdateNameAsync(resource.Id, fullPath, cancellationToken);
+                    await resourceRepository.UpdateNameAsync(resource.Id, fullPath, cancellationToken);
                     updatedCount++;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Failed to resolve Drive folder path for resource {ResourceId} ({GoogleId})",
                     resource.Id, resource.GoogleId);
             }
@@ -1431,13 +1394,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         for (var depth = 0; depth < maxDepth; depth++)
         {
-            var fileResult = await _drivePermissions.GetFileAsync(currentId, cancellationToken);
+            var fileResult = await drivePermissions.GetFileAsync(currentId, cancellationToken);
             if (fileResult.File is null)
             {
                 var code = fileResult.Error?.StatusCode ?? 0;
                 if (code == 404)
                 {
-                    _logger.LogWarning("Drive folder {GoogleId} not found", currentId);
+                    logger.LogWarning("Drive folder {GoogleId} not found", currentId);
                 }
                 break;
             }
@@ -1448,7 +1411,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             if (!string.IsNullOrEmpty(file.DriveId)
                 && string.Equals(currentId, file.DriveId, StringComparison.Ordinal))
             {
-                var driveResult = await _drivePermissions.GetSharedDriveAsync(file.DriveId, cancellationToken);
+                var driveResult = await drivePermissions.GetSharedDriveAsync(file.DriveId, cancellationToken);
                 if (driveResult.Drive is not null)
                 {
                     segments.Add(driveResult.Drive.Name);
@@ -1481,10 +1444,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         bool restrict,
         CancellationToken cancellationToken = default)
     {
-        var error = await _drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, cancellationToken);
+        var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, cancellationToken);
         if (error is not null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Failed to set inheritedPermissionsDisabled={Restrict} on {FileId} — HTTP {Code}: {Message}",
                 restrict, googleFileId, error.StatusCode, error.RawMessage);
             throw new InvalidOperationException(
@@ -1495,11 +1458,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <inheritdoc />
     public async Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
     {
-        var driveResources = await _resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var driveResources = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
 
         if (driveResources.Count == 0) return 0;
         var teamIds = driveResources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        var teamsById = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
 
         var restricted = driveResources
             .Where(r => r.RestrictInheritedAccess
@@ -1514,18 +1477,18 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             try
             {
-                var fileResult = await _drivePermissions.GetFileAsync(resource.GoogleId, cancellationToken);
+                var fileResult = await drivePermissions.GetFileAsync(resource.GoogleId, cancellationToken);
                 if (fileResult.File is null)
                 {
                     if ((fileResult.Error?.StatusCode ?? 0) == 404)
                     {
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Drive folder {GoogleId} not found (resource {ResourceId}) during inherited access check — may have been deleted",
                             resource.GoogleId, resource.Id);
                     }
                     else
                     {
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Failed to fetch file {GoogleId} during inherited access check — HTTP {Code}: {Message}",
                             resource.GoogleId, fileResult.Error?.StatusCode, fileResult.Error?.RawMessage);
                     }
@@ -1534,14 +1497,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 if (fileResult.File.InheritedPermissionsDisabled != true)
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Inherited access drift detected for resource {ResourceId} ({GoogleId}): " +
                         "inheritedPermissionsDisabled is {Actual}, expected true. Correcting.",
                         resource.Id, resource.GoogleId, fileResult.File.InheritedPermissionsDisabled);
 
                     await SetInheritedPermissionsDisabledAsync(resource.GoogleId, true, cancellationToken);
 
-                    await _auditLogService.LogAsync(
+                    await auditLogService.LogAsync(
                         AuditAction.GoogleResourceInheritanceDriftCorrected,
                         nameof(GoogleResource), resource.Id,
                         $"Corrected inherited access drift for Drive folder '{resource.Name}' — re-disabled inherited permissions",
@@ -1552,7 +1515,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Failed to check/enforce inherited access restriction for resource {ResourceId} ({GoogleId})",
                     resource.Id, resource.GoogleId);
             }
@@ -1567,13 +1530,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
     /// <inheritdoc />
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
-        => _googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
+        => googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default)
     {
-        var events = await _googleSyncOutboxRepository.GetRecentAsync(take, cancellationToken);
+        var events = await googleSyncOutboxRepository.GetRecentAsync(take, cancellationToken);
         return events
             .Select(e => new GoogleSyncOutboxEventSnapshot(
                 e.EventType,
@@ -1601,7 +1564,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var result = new Dictionary<Guid, IReadOnlyList<TeamActiveMemberSnapshot>>(teamIds.Count);
         if (teamIds.Count == 0) return result;
 
-        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var teamsById = await teamService.GetTeamsAsync(ct);
         foreach (var teamId in teamIds)
         {
             if (teamsById.TryGetValue(teamId, out var team))
@@ -1632,7 +1595,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (parentTeamIds.Count == 0) return result;
 
         var parentSet = parentTeamIds.ToHashSet();
-        var allTeams = await _teamService.GetAllTeamsAsync(ct);
+        var allTeams = await teamService.GetAllTeamsAsync(ct);
         var childMembersByParentId = parentTeamIds.ToDictionary(
             parentId => parentId,
             _ => new List<TeamMember>());
@@ -1661,7 +1624,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (members.Count == 0)
             return;
 
-        var users = await _userService.GetByIdsAsync(
+        var users = await userService.GetByIdsAsync(
             members.Select(m => m.UserId).Distinct().ToList(),
             ct);
 
@@ -1685,13 +1648,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         string googleId, Guid userId, CancellationToken cancellationToken)
     {
         // Which teams is the user an active member of?
-        var userTeams = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
+        var userTeams = await teamService.GetUserTeamsAsync(userId, cancellationToken);
         var userTeamIds = userTeams.Where(tm => tm.LeftAt is null).Select(tm => tm.TeamId).ToHashSet();
         if (userTeamIds.Count == 0)
             return DrivePermissionLevel.Contributor;
 
         // Which of those teams have an active resource with this Google id?
-        var resourcesByTeam = await _resourceRepository.GetActiveByTeamIdsAsync(userTeamIds.ToList(), cancellationToken);
+        var resourcesByTeam = await resourceRepository.GetActiveByTeamIdsAsync(userTeamIds.ToList(), cancellationToken);
         var levels = resourcesByTeam.Values
             .SelectMany(rs => rs)
             .Where(r => string.Equals(r.GoogleId, googleId, StringComparison.Ordinal)
@@ -1727,7 +1690,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // lets the email-based branch hit.
         var email = ExtractGroupEmailFromUrl(expectedUrl);
         if (email is null) return null;
-        return await _resourceRepository.FindInactiveGroupByCandidatesAsync(
+        return await resourceRepository.FindInactiveGroupByCandidatesAsync(
             teamId,
             googleNumericId: email, // empty-result on numeric id; email branch matches via ILike
             normalizedGroupEmail: email,
@@ -1756,12 +1719,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// </summary>
     private async Task<IReadOnlyList<GoogleResource>> GetActiveGroupResourcesAsync(CancellationToken ct)
     {
-        var allCounts = await _resourceRepository.GetActiveResourceCountsByTeamAsync(ct);
+        var allCounts = await resourceRepository.GetActiveResourceCountsByTeamAsync(ct);
         var teamIds = allCounts.Keys.ToList();
         if (teamIds.Count == 0)
             return [];
 
-        var perTeam = await _resourceRepository.GetActiveByTeamIdsAsync(teamIds, ct);
+        var perTeam = await resourceRepository.GetActiveByTeamIdsAsync(teamIds, ct);
         return perTeam.Values
             .SelectMany(rs => rs)
             .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive)
@@ -1775,9 +1738,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (emailList.Count == 0)
             return new Dictionary<string, (string, Guid, string?)>(NormalizingEmailComparer.Instance);
 
-        var matches = await _userEmailService.MatchByEmailsAsync(emailList, cancellationToken);
+        var matches = await userEmailService.MatchByEmailsAsync(emailList, cancellationToken);
         var userIds = matches.Select(m => m.UserId).Distinct().ToList();
-        var usersById = await _userService.GetUserInfosAsync(userIds, cancellationToken);
+        var usersById = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
         var result = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>(
             NormalizingEmailComparer.Instance);
@@ -1836,7 +1799,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             IReadOnlyCollection<Guid> userIds,
             CancellationToken ct)
     {
-        return _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
+        return userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
     }
 
     private static string? TryGetGoogleEmail(

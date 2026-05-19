@@ -9,47 +9,26 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Auth;
 
-public sealed class MagicLinkService : IMagicLinkService
+public sealed class MagicLinkService(
+    UserManager<User> userManager,
+    IUserEmailService userEmailService,
+    IUserService userService,
+    IEmailService emailService,
+    IMagicLinkUrlBuilder urlBuilder,
+    IMagicLinkRateLimiter rateLimiter,
+    IClock clock,
+    ILogger<MagicLinkService> logger) : IMagicLinkService
 {
     private static readonly Duration RateLimitCooldown = Duration.FromSeconds(60);
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan SignupCooldown = TimeSpan.FromSeconds(60);
 
-    private readonly UserManager<User> _userManager;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IUserService _userService;
-    private readonly IEmailService _emailService;
-    private readonly IMagicLinkUrlBuilder _urlBuilder;
-    private readonly IMagicLinkRateLimiter _rateLimiter;
-    private readonly IClock _clock;
-    private readonly ILogger<MagicLinkService> _logger;
-
-    public MagicLinkService(
-        UserManager<User> userManager,
-        IUserEmailService userEmailService,
-        IUserService userService,
-        IEmailService emailService,
-        IMagicLinkUrlBuilder urlBuilder,
-        IMagicLinkRateLimiter rateLimiter,
-        IClock clock,
-        ILogger<MagicLinkService> logger)
-    {
-        _userManager = userManager;
-        _userEmailService = userEmailService;
-        _userService = userService;
-        _emailService = emailService;
-        _urlBuilder = urlBuilder;
-        _rateLimiter = rateLimiter;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default)
     {
-        var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        var userEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
         if (userEmail is not null)
         {
-            var ownerUser = await _userManager.FindByIdAsync(userEmail.UserId.ToString());
+            var ownerUser = await userManager.FindByIdAsync(userEmail.UserId.ToString());
             if (ownerUser is not null)
             {
                 await SendLoginLinkAsync(ownerUser, userEmail.Email, returnUrl, ct);
@@ -63,30 +42,30 @@ public sealed class MagicLinkService : IMagicLinkService
 
     public async Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
         {
-            _logger.LogWarning("Magic link login: user {UserId} not found", userId);
+            logger.LogWarning("Magic link login: user {UserId} not found", userId);
             return null;
         }
 
-        var payload = _urlBuilder.UnprotectLoginToken(token);
+        var payload = urlBuilder.UnprotectLoginToken(token);
         if (payload is null)
         {
-            _logger.LogInformation("Magic link login: invalid or expired token for user {UserId}", userId);
+            logger.LogInformation("Magic link login: invalid or expired token for user {UserId}", userId);
             return null;
         }
 
         if (!string.Equals(payload, userId.ToString(), StringComparison.Ordinal))
         {
-            _logger.LogWarning("Magic link login: token userId mismatch for {UserId}", userId);
+            logger.LogWarning("Magic link login: token userId mismatch for {UserId}", userId);
             return null;
         }
 
         // Replay-prevention: consume token for its lifetime.
-        if (!await _rateLimiter.TryConsumeLoginTokenAsync(token, TokenLifetime))
+        if (!await rateLimiter.TryConsumeLoginTokenAsync(token, TokenLifetime))
         {
-            _logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
+            logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
             return null;
         }
 
@@ -95,10 +74,10 @@ public sealed class MagicLinkService : IMagicLinkService
 
     public string? VerifySignupToken(string token, string? expectedEmail = null)
     {
-        var payload = _urlBuilder.UnprotectSignupToken(token);
+        var payload = urlBuilder.UnprotectSignupToken(token);
         if (payload is null)
         {
-            _logger.LogInformation("Magic link signup: invalid or expired token for email {Email}",
+            logger.LogInformation("Magic link signup: invalid or expired token for email {Email}",
                 expectedEmail ?? "unknown");
         }
 
@@ -107,58 +86,58 @@ public sealed class MagicLinkService : IMagicLinkService
 
     public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default)
     {
-        var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        var userEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
         if (userEmail is null)
             return null;
 
-        return await _userManager.FindByIdAsync(userEmail.UserId.ToString());
+        return await userManager.FindByIdAsync(userEmail.UserId.ToString());
     }
 
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
         // Rate limit: one magic link per 60 seconds per user
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         if (user.MagicLinkSentAt is not null &&
             now - user.MagicLinkSentAt.Value < RateLimitCooldown)
         {
-            _logger.LogDebug("Magic link rate-limited for user {UserId}", user.Id);
+            logger.LogDebug("Magic link rate-limited for user {UserId}", user.Id);
             return; // Silently skip — same "check your email" message shown to user
         }
 
-        var magicLinkUrl = _urlBuilder.BuildLoginUrl(user.Id, returnUrl);
+        var magicLinkUrl = urlBuilder.BuildLoginUrl(user.Id, returnUrl);
 
-        var userInfo = await _userService.GetUserInfoAsync(user.Id, ct);
+        var userInfo = await userService.GetUserInfoAsync(user.Id, ct);
         var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
 
-        await _emailService.SendMagicLinkLoginAsync(
+        await emailService.SendMagicLinkLoginAsync(
             sendToEmail, displayName, magicLinkUrl, ct: ct);
 
         user.MagicLinkSentAt = now;
-        await _userManager.UpdateAsync(user);
+        await userManager.UpdateAsync(user);
 
-        _logger.LogInformation("Magic link login sent to {Email} for user {UserId}", sendToEmail, user.Id);
+        logger.LogInformation("Magic link login sent to {Email} for user {UserId}", sendToEmail, user.Id);
     }
 
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)
     {
         // Rate limit signup emails: one per 60 seconds per email address
-        if (!await _rateLimiter.TryReserveSignupSendAsync(email, SignupCooldown))
+        if (!await rateLimiter.TryReserveSignupSendAsync(email, SignupCooldown))
         {
-            _logger.LogDebug("Magic link signup rate-limited for {Email}", email);
+            logger.LogDebug("Magic link signup rate-limited for {Email}", email);
             return;
         }
 
         try
         {
-            var magicLinkUrl = _urlBuilder.BuildSignupUrl(email, returnUrl);
+            var magicLinkUrl = urlBuilder.BuildSignupUrl(email, returnUrl);
 
-            await _emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
+            await emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
 
-            _logger.LogInformation("Magic link signup sent to {Email}", email);
+            logger.LogInformation("Magic link signup sent to {Email}", email);
         }
         catch
         {
-            _rateLimiter.ReleaseSignupReservation(email);
+            rateLimiter.ReleaseSignupReservation(email);
             throw;
         }
     }

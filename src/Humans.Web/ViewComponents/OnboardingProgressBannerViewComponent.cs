@@ -6,19 +6,10 @@ namespace Humans.Web.ViewComponents;
 
 public sealed record OnboardingProgressBannerViewModel(bool Show);
 
-public sealed class OnboardingProgressBannerViewComponent : ViewComponent
+public sealed class OnboardingProgressBannerViewComponent(
+    IOnboardingWidgetState state,
+    ILogger<OnboardingProgressBannerViewComponent> logger) : ViewComponent
 {
-    private readonly IOnboardingWidgetState _state;
-    private readonly ILogger<OnboardingProgressBannerViewComponent> _logger;
-
-    public OnboardingProgressBannerViewComponent(
-        IOnboardingWidgetState state,
-        ILogger<OnboardingProgressBannerViewComponent> logger)
-    {
-        _state = state;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var hidden = new OnboardingProgressBannerViewModel(Show: false);
@@ -44,11 +35,11 @@ public sealed class OnboardingProgressBannerViewComponent : ViewComponent
         OnboardingWidgetStep step;
         try
         {
-            step = await _state.GetCurrentStepAsync(userId);
+            step = await state.GetCurrentStepAsync(userId);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "OnboardingProgressBanner: GetCurrentStepAsync failed for user {UserId}; suppressing banner", userId);
+            logger.LogWarning(ex, "OnboardingProgressBanner: GetCurrentStepAsync failed for user {UserId}; suppressing banner", userId);
             return View(hidden);
         }
 

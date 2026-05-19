@@ -16,30 +16,18 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 [Route("[controller]")]
-public class OnboardingReviewController : HumansControllerBase
+public class OnboardingReviewController(
+    IUserService userService,
+    IOnboardingService onboardingService,
+    ILogger<OnboardingReviewController> logger,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IOnboardingService _onboardingService;
-    private readonly IUserService _userService;
-    private readonly ILogger<OnboardingReviewController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public OnboardingReviewController(
-        IUserService userService,
-        IOnboardingService onboardingService,
-        ILogger<OnboardingReviewController> logger,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService)
-    {
-        _onboardingService = onboardingService;
-        _userService = userService;
-        _logger = logger;
-        _localizer = localizer;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var data = await _onboardingService.GetReviewQueueAsync(ct);
+        var data = await onboardingService.GetReviewQueueAsync(ct);
 
         var viewModel = new OnboardingReviewIndexViewModel
         {
@@ -53,7 +41,7 @@ public class OnboardingReviewController : HumansControllerBase
     [HttpGet("{userId:guid}")]
     public async Task<IActionResult> Detail(Guid userId, CancellationToken ct)
     {
-        var detail = await _onboardingService.GetReviewDetailAsync(userId, ct);
+        var detail = await onboardingService.GetReviewDetailAsync(userId, ct);
         var (profile, consentCount, requiredConsentCount, pendingApplicationMotivation) =
             (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplicationMotivation);
 
@@ -65,8 +53,6 @@ public class OnboardingReviewController : HumansControllerBase
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = detailUser?.BurnerName ?? "Unknown",
-            ProfilePictureUrl = detailUser?.ProfilePictureUrl,
             Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
@@ -96,25 +82,25 @@ public class OnboardingReviewController : HumansControllerBase
 
         try
         {
-            var result = await _onboardingService.ClearConsentCheckAsync(
+            var result = await onboardingService.ClearConsentCheckAsync(
                 userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
                 SetError(result.ErrorKey switch
                 {
-                    "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
-                    _ => _localizer["Common_Error"].Value
+                    "AlreadyRejected" => localizer["OnboardingReview_AlreadyRejected"].Value,
+                    _ => localizer["Common_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(_localizer["OnboardingReview_Cleared"].Value);
+            SetSuccess(localizer["OnboardingReview_Cleared"].Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear consent check for user {UserId}", userId);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to clear consent check for user {UserId}", userId);
+            SetError(localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -130,18 +116,18 @@ public class OnboardingReviewController : HumansControllerBase
 
         try
         {
-            var result = await _onboardingService.BulkClearConsentChecksAsync(
+            var result = await onboardingService.BulkClearConsentChecksAsync(
                 selectedUserIds, currentUser.Id, ct);
             SetBulkClearResultMessage(result, selectedUserIds.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Failed to bulk clear consent checks for {Count} users: {UserIds}",
                 selectedUserIds.Count,
                 selectedUserIds);
-            SetError(_localizer["Common_Error"].Value);
+            SetError(localizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index));
@@ -151,15 +137,15 @@ public class OnboardingReviewController : HumansControllerBase
     {
         if (result.ApprovedCount == 0)
         {
-            SetInfo(_localizer["OnboardingReview_BulkClearedNone"].Value);
+            SetInfo(localizer["OnboardingReview_BulkClearedNone"].Value);
         }
         else if (result.ApprovedCount < selectedCount)
         {
-            SetSuccess(_localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
+            SetSuccess(localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
         }
         else
         {
-            SetSuccess(_localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
+            SetSuccess(localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
         }
     }
 
@@ -174,21 +160,21 @@ public class OnboardingReviewController : HumansControllerBase
 
         try
         {
-            var result = await _onboardingService.FlagConsentCheckAsync(
+            var result = await onboardingService.FlagConsentCheckAsync(
                 userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
-                SetError(_localizer["Common_Error"].Value);
+                SetError(localizer["Common_Error"].Value);
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(_localizer["OnboardingReview_Flagged"].Value);
+            SetSuccess(localizer["OnboardingReview_Flagged"].Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to flag consent check for user {UserId}", userId);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to flag consent check for user {UserId}", userId);
+            SetError(localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -204,15 +190,15 @@ public class OnboardingReviewController : HumansControllerBase
 
         try
         {
-            var result = await _onboardingService.RejectSignupAsync(
+            var result = await onboardingService.RejectSignupAsync(
                 userId, currentUser.Id, reason);
 
             SetRejectSignupResultMessage(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to reject signup for user {UserId}", userId);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to reject signup for user {UserId}", userId);
+            SetError(localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -221,13 +207,13 @@ public class OnboardingReviewController : HumansControllerBase
     {
         if (result.Success)
         {
-            SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
+            SetSuccess(localizer["OnboardingReview_Rejected"].Value);
             return;
         }
 
         SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
-            ? _localizer["OnboardingReview_AlreadyRejected"].Value
-            : _localizer["Common_Error"].Value);
+            ? localizer["OnboardingReview_AlreadyRejected"].Value
+            : localizer["Common_Error"].Value);
     }
 
     private static OnboardingReviewItemViewModel MapToItem(
@@ -240,9 +226,7 @@ public class OnboardingReviewController : HumansControllerBase
         return new OnboardingReviewItemViewModel
         {
             UserId = info.Id,
-            DisplayName = info.BurnerName,
             LegalName = profile.FullName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
             Email = info.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             MembershipTier = profile.MembershipTier,

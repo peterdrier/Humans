@@ -14,7 +14,13 @@ namespace Humans.Application.Services.Profiles;
 /// Token generation and URL building are delegated to
 /// <see cref="IUnsubscribeTokenProvider"/> (Infrastructure concern).
 /// </summary>
-public sealed class CommunicationPreferenceService : ICommunicationPreferenceService, IUserMerge
+public sealed class CommunicationPreferenceService(
+    ICommunicationPreferenceRepository repository,
+    IUserService userService,
+    IUnsubscribeTokenProvider tokenProvider,
+    IClock clock,
+    IAuditLogService auditLog,
+    ILogger<CommunicationPreferenceService> logger) : ICommunicationPreferenceService, IUserMerge
 {
     private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()
     {
@@ -28,35 +34,12 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         [MessageCategory.Marketing] = true,
     };
 
-    private readonly ICommunicationPreferenceRepository _repository;
-    private readonly IUserService _userService;
-    private readonly IUnsubscribeTokenProvider _tokenProvider;
-    private readonly IClock _clock;
-    private readonly IAuditLogService _auditLog;
-    private readonly ILogger<CommunicationPreferenceService> _logger;
-
-    public CommunicationPreferenceService(
-        ICommunicationPreferenceRepository repository,
-        IUserService userService,
-        IUnsubscribeTokenProvider tokenProvider,
-        IClock clock,
-        IAuditLogService auditLog,
-        ILogger<CommunicationPreferenceService> logger)
-    {
-        _repository = repository;
-        _userService = userService;
-        _tokenProvider = tokenProvider;
-        _clock = clock;
-        _auditLog = auditLog;
-        _logger = logger;
-    }
-
     public async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var existing = await _repository.GetByUserIdAsync(userId, cancellationToken);
+        var existing = await repository.GetByUserIdAsync(userId, cancellationToken);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var toAdd = new List<CommunicationPreference>();
 
         foreach (var category in DefaultOptedOut.Keys)
@@ -79,7 +62,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
 
         if (toAdd.Count > 0)
         {
-            existing = await _repository.AddDefaultsOrReloadAsync(userId, toAdd, cancellationToken);
+            existing = await repository.AddDefaultsOrReloadAsync(userId, toAdd, cancellationToken);
         }
 
         return existing
@@ -91,7 +74,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     public async Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default)
     {
-        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         var pref = info?.CommunicationPreferences.FirstOrDefault(p => p.Category == category);
         return pref is null ? null : ToSnapshot(pref);
     }
@@ -99,7 +82,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     public async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesReadOnlyAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
         return info.CommunicationPreferences
             .Select(ToSnapshot)
@@ -130,7 +113,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         if (category.IsAlwaysOn())
             return false;
 
-        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         var pref = info?.CommunicationPreferences.FirstOrDefault(p => p.Category == category);
         return pref?.OptedOut ?? DefaultOptedOut.GetValueOrDefault(category, false);
     }
@@ -141,12 +124,12 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     {
         if (category.IsAlwaysOn())
         {
-            _logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
+            logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
-        var pref = await _repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
+        var now = clock.GetCurrentInstant();
+        var pref = await repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
 
         if (pref is null)
         {
@@ -160,7 +143,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
                 UpdateSource = source,
                 SubscribedAt = optedOut ? null : now,
             };
-            await _repository.AddAsync(pref, cancellationToken);
+            await repository.AddAsync(pref, cancellationToken);
         }
         else
         {
@@ -173,19 +156,19 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
             pref.OptedOut = optedOut;
             pref.UpdatedAt = now;
             pref.UpdateSource = source;
-            await _repository.UpdateAsync(pref, cancellationToken);
+            await repository.UpdateAsync(pref, cancellationToken);
         }
 
         var description = optedOut
             ? $"{category} opted out via {source}"
             : $"{category} opted in via {source}";
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CommunicationPreferenceChanged,
             "User", userId, description,
             "CommunicationPreferenceService");
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} communication preference {Category} set to OptedOut={OptedOut} via {Source}",
             userId, category, optedOut, source);
     }
@@ -196,12 +179,12 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     {
         if (category.IsAlwaysOn())
         {
-            _logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
+            logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
-        var pref = await _repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
+        var now = clock.GetCurrentInstant();
+        var pref = await repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
 
         if (pref is null)
         {
@@ -216,7 +199,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
                 UpdateSource = source,
                 SubscribedAt = optedOut ? null : now,
             };
-            await _repository.AddAsync(pref, cancellationToken);
+            await repository.AddAsync(pref, cancellationToken);
         }
         else
         {
@@ -230,26 +213,26 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
             pref.InboxEnabled = inboxEnabled;
             pref.UpdatedAt = now;
             pref.UpdateSource = source;
-            await _repository.UpdateAsync(pref, cancellationToken);
+            await repository.UpdateAsync(pref, cancellationToken);
         }
 
         var description = $"{category} set to OptedOut={optedOut}, InboxEnabled={inboxEnabled} via {source}";
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CommunicationPreferenceChanged,
             "User", userId, description,
             "CommunicationPreferenceService");
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} communication preference {Category} set to OptedOut={OptedOut}, InboxEnabled={InboxEnabled} via {Source}",
             userId, category, optedOut, inboxEnabled, source);
     }
 
     public string GenerateUnsubscribeToken(Guid userId, MessageCategory category) =>
-        _tokenProvider.GenerateToken(userId, category);
+        tokenProvider.GenerateToken(userId, category);
 
     public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token) =>
-        _tokenProvider.ValidateToken(token);
+        tokenProvider.ValidateToken(token);
 
     public async Task<bool> AcceptsFacilitatedMessagesAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
@@ -258,27 +241,27 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     public async Task<IReadOnlySet<Guid>> GetUsersWithInboxDisabledAsync(
         IReadOnlyList<Guid> userIds, MessageCategory category,
         CancellationToken cancellationToken = default) =>
-        await _repository.GetUsersWithInboxDisabledAsync(userIds, category, cancellationToken);
+        await repository.GetUsersWithInboxDisabledAsync(userIds, category, cancellationToken);
 
     public async Task<bool> HasAnyPreferencesAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
-        await _repository.HasAnyAsync(userId, cancellationToken);
+        await repository.HasAnyAsync(userId, cancellationToken);
 
     public async Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default) =>
-        await _repository.GetUsersWithAnyPreferencesAsync(userIds, cancellationToken);
+        await repository.GetUsersWithAnyPreferencesAsync(userIds, cancellationToken);
 
     public Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category) =>
-        _tokenProvider.GenerateUnsubscribeHeaders(userId, category);
+        tokenProvider.GenerateUnsubscribeHeaders(userId, category);
 
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
-        _tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
+        tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
 
     public Task<int> GetCountByCategoryAndStateAsync(
         MessageCategory category, bool optedOut, CancellationToken cancellationToken = default) =>
-        _repository.GetCountByCategoryAndStateAsync(category, optedOut, cancellationToken);
+        repository.GetCountByCategoryAndStateAsync(category, optedOut, cancellationToken);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
-        => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
+        => repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 }

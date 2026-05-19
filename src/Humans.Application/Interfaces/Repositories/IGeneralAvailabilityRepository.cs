@@ -47,6 +47,15 @@ public interface IGeneralAvailabilityRepository : IRepository
         Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns <see cref="GeneralAvailability"/> rows for the supplied user
+    /// ids in the given event, in one query. Read-only (<c>AsNoTracking</c>).
+    /// Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<GeneralAvailability>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
     /// Upserts the availability row for the given user + event pair. If no row
     /// exists, a new one is inserted with <paramref name="now"/> for both
     /// <c>CreatedAt</c> and <c>UpdatedAt</c>. If one exists, the

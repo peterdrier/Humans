@@ -15,28 +15,13 @@ namespace Humans.Application.Services.Shifts;
 /// Groups active signups by user and enqueues one personalised email per recipient via the outbox.
 /// One audit row per dispatch (recipient rows are auditable through the outbox).
 /// </summary>
-public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageService
+public sealed class RotaCoordinatorMessageService(
+    IShiftSignupRepository signupRepo,
+    IUserService userService,
+    IEmailService emailService,
+    IAuditLogService auditLogService,
+    ILogger<RotaCoordinatorMessageService> logger) : IRotaCoordinatorMessageService
 {
-    private readonly IShiftSignupRepository _signupRepo;
-    private readonly IUserService _userService;
-    private readonly IEmailService _emailService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly ILogger<RotaCoordinatorMessageService> _logger;
-
-    public RotaCoordinatorMessageService(
-        IShiftSignupRepository signupRepo,
-        IUserService userService,
-        IEmailService emailService,
-        IAuditLogService auditLogService,
-        ILogger<RotaCoordinatorMessageService> logger)
-    {
-        _signupRepo = signupRepo;
-        _userService = userService;
-        _emailService = emailService;
-        _auditLogService = auditLogService;
-        _logger = logger;
-    }
-
     public async Task<RotaMessageDispatchResult> SendRotaMessageAsync(
         Guid rotaId,
         Guid senderUserId,
@@ -46,7 +31,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
         if (string.IsNullOrWhiteSpace(messageText))
             return RotaMessageDispatchResult.Failure("Message body is required.");
 
-        var rota = await _signupRepo.GetRotaWithShiftsAsync(rotaId, ct);
+        var rota = await signupRepo.GetRotaWithShiftsAsync(rotaId, ct);
         if (rota is null)
             return RotaMessageDispatchResult.Failure("Rota not found.");
 
@@ -54,7 +39,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
             ?? throw new InvalidOperationException(
                 $"Rota {rotaId} loaded without EventSettings — repository contract broken.");
 
-        var signups = await _signupRepo.GetActiveByRotaAsync(rotaId, ct);
+        var signups = await signupRepo.GetActiveByRotaAsync(rotaId, ct);
         if (signups.Count == 0)
             return RotaMessageDispatchResult.Failure("This rota has no active signups to email.");
 
@@ -62,12 +47,12 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
             .GroupBy(s => s.UserId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var senderInfos = await _userService.GetUserInfosAsync([senderUserId], ct);
+        var senderInfos = await userService.GetUserInfosAsync([senderUserId], ct);
         if (!senderInfos.TryGetValue(senderUserId, out var sender))
             return RotaMessageDispatchResult.Failure("Sender not found.");
 
         var recipientIds = byUser.Keys.ToList();
-        var recipientInfos = await _userService.GetUserInfosAsync(recipientIds, ct);
+        var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
 
         var queued = 0;
         var skipped = 0;
@@ -76,7 +61,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
         {
             if (!recipientInfos.TryGetValue(userId, out var recipient))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Skipping rota-email recipient {UserId} on rota {RotaId}: user not found",
                     userId, rotaId);
                 skipped++;
@@ -86,7 +71,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
             var email = recipient.Email;
             if (string.IsNullOrWhiteSpace(email))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Skipping rota-email recipient {UserId} on rota {RotaId}: no email address",
                     userId, rotaId);
                 skipped++;
@@ -111,13 +96,13 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
             // Matches the fan-out pattern in AttendeeContactImportService.
             try
             {
-                await _emailService.SendCoordinatorRotaMessageAsync(request, ct);
+                await emailService.SendCoordinatorRotaMessageAsync(request, ct);
                 queued++;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 failed++;
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Failed to enqueue rota email for recipient {UserId} on rota {RotaId}",
                     userId, rotaId);
             }
@@ -127,7 +112,7 @@ public sealed class RotaCoordinatorMessageService : IRotaCoordinatorMessageServi
         if (skipped > 0) auditSuffix += $" ({skipped} skipped: no email or missing user)";
         if (failed > 0) auditSuffix += $" ({failed} failed: enqueue error)";
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
             $"Sent rota message '{Truncate(messageText, 120)}' to {queued} recipient(s) on '{rota.Name}'"

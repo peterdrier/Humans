@@ -49,18 +49,17 @@ namespace Humans.Infrastructure.Services.Tickets;
 /// nobodies-collective/Humans#587.
 /// </para>
 /// </remarks>
-public sealed class CachingTicketQueryService
-    : ITicketQueryService,
-      ITicketCacheInvalidator,
-      IHostedService
+public sealed class CachingTicketQueryService(
+    ITicketRepository ticketRepository,
+    IMemoryCache perUserCache,
+    IServiceScopeFactory scopeFactory,
+    ILogger<CachingTicketQueryService> logger) : ITicketQueryService, ITicketCacheInvalidator, IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
     private static readonly TimeSpan UserPerUserCacheTtl = TimeSpan.FromMinutes(5);
 
-    private readonly IMemoryCache _perUserCache;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly OrdersCache _orders;
+    private readonly OrdersCache _orders = new(ticketRepository, logger);
 
     /// <summary>
     /// Stats for the projection cache, surfaced on <c>/Admin/CacheStats</c>.
@@ -73,17 +72,6 @@ public sealed class CachingTicketQueryService
     /// <summary>Pass-through for tests that assert on the projection's entry count.</summary>
     public int Entries => _orders.Entries;
 
-    public CachingTicketQueryService(
-        ITicketRepository ticketRepository,
-        IMemoryCache perUserCache,
-        IServiceScopeFactory scopeFactory,
-        ILogger<CachingTicketQueryService> logger)
-    {
-        _perUserCache = perUserCache;
-        _scopeFactory = scopeFactory;
-        _orders = new OrdersCache(ticketRepository, logger);
-    }
-
     // ==========================================================================
     // Projection-served reads (answer from the in-memory TicketOrderInfo dict)
     // ==========================================================================
@@ -91,11 +79,11 @@ public sealed class CachingTicketQueryService
     public async Task<int> GetUserTicketCountAsync(Guid userId)
     {
         var cacheKey = CacheKeys.UserTicketCount(userId);
-        if (_perUserCache.TryGetExistingValue(cacheKey, out int cached))
+        if (perUserCache.TryGetExistingValue(cacheKey, out int cached))
             return cached;
 
         var count = await ComputeUserTicketCountAsync(userId);
-        _perUserCache.Set(cacheKey, count, UserPerUserCacheTtl);
+        perUserCache.Set(cacheKey, count, UserPerUserCacheTtl);
         return count;
     }
 
@@ -221,7 +209,7 @@ public sealed class CachingTicketQueryService
         Guid userId, CancellationToken ct = default)
     {
         var cacheKey = CacheKeys.UserTicketHoldings(userId);
-        if (_perUserCache.TryGetExistingValue<UserTicketHoldings>(cacheKey, out var cached))
+        if (perUserCache.TryGetExistingValue<UserTicketHoldings>(cacheKey, out var cached))
             return cached;
 
         var orders = await GetOrdersAsync();
@@ -246,7 +234,7 @@ public sealed class CachingTicketQueryService
             .ToList();
 
         var holdings = new UserTicketHoldings(orderCount, visibleAttendees);
-        _perUserCache.Set(cacheKey, holdings, UserPerUserCacheTtl);
+        perUserCache.Set(cacheKey, holdings, UserPerUserCacheTtl);
         return holdings;
     }
 
@@ -362,12 +350,12 @@ public sealed class CachingTicketQueryService
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
         _orders.Clear();
-        _perUserCache.Remove(CacheKeys.UserTicketCount(senderUserId));
-        _perUserCache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
+        perUserCache.Remove(CacheKeys.UserTicketCount(senderUserId));
+        perUserCache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
         if (receiverUserId is { } receiver)
         {
-            _perUserCache.Remove(CacheKeys.UserTicketCount(receiver));
-            _perUserCache.Remove(CacheKeys.UserTicketHoldings(receiver));
+            perUserCache.Remove(CacheKeys.UserTicketCount(receiver));
+            perUserCache.Remove(CacheKeys.UserTicketHoldings(receiver));
         }
     }
 
@@ -378,14 +366,14 @@ public sealed class CachingTicketQueryService
     public void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId)
     {
         _orders.Clear();
-        _perUserCache.Remove(CacheKeys.UserTicketCount(sourceUserId));
-        _perUserCache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
-        _perUserCache.Remove(CacheKeys.UserTicketCount(targetUserId));
-        _perUserCache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
+        perUserCache.Remove(CacheKeys.UserTicketCount(sourceUserId));
+        perUserCache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
+        perUserCache.Remove(CacheKeys.UserTicketCount(targetUserId));
+        perUserCache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
     }
 
     public void InvalidateVendorEventSummary(string vendorEventId) =>
-        _perUserCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
+        perUserCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
 
     // ==========================================================================
     // GDPR contributor — the export shape mirrors the inner exactly. Routes
@@ -460,7 +448,7 @@ public sealed class CachingTicketQueryService
 
     private async Task<TResult> WithInner<TResult>(Func<ITicketQueryService, Task<TResult>> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
         return await action(inner);
     }
@@ -474,16 +462,9 @@ public sealed class CachingTicketQueryService
     // Keeping it nested keeps the projection shape + load query co-located
     // with the decorator that owns the projection's invalidation seam.
     // ==========================================================================
-    private sealed class OrdersCache : TrackedCache<Guid, TicketOrderInfo>
+    private sealed class OrdersCache(ITicketRepository repository, ILogger logger)
+        : TrackedCache<Guid, TicketOrderInfo>("Tickets.Orders", warmOnStartup: true, logger)
     {
-        private readonly ITicketRepository _repository;
-
-        public OrdersCache(ITicketRepository repository, ILogger logger)
-            : base("Tickets.Orders", warmOnStartup: true, logger)
-        {
-            _repository = repository;
-        }
-
         /// <summary>
         /// Bulk-loads every order with attendees, projected into
         /// <see cref="TicketOrderInfo"/>. Driven by
@@ -494,7 +475,7 @@ public sealed class CachingTicketQueryService
         /// </summary>
         protected override async Task WarmAllAsync(CancellationToken ct)
         {
-            var orders = await _repository.GetAllOrdersWithAttendeesAsync(ct);
+            var orders = await repository.GetAllOrdersWithAttendeesAsync(ct);
             foreach (var order in orders)
                 Set(order.Id, Project(order));
         }

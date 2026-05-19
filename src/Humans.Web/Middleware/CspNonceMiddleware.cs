@@ -2,15 +2,8 @@ using System.Security.Cryptography;
 
 namespace Humans.Web.Middleware;
 
-public class CspNonceMiddleware
+public class CspNonceMiddleware(RequestDelegate next)
 {
-    private readonly RequestDelegate _next;
-
-    public CspNonceMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         var nonceBytes = RandomNumberGenerator.GetBytes(32);
@@ -27,6 +20,6 @@ public class CspNonceMiddleware
             "worker-src blob:; " +
             "frame-ancestors 'none'");
 
-        await _next(context);
+        await next(context);
     }
 }

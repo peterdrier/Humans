@@ -8,21 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public abstract class HumansTeamControllerBase : HumansControllerBase
+public abstract class HumansTeamControllerBase(
+    IUserService userService,
+    ITeamService teamService,
+    IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
-    private readonly ITeamService _teamService;
-    private readonly IAuthorizationService _authorizationService;
-
-    protected HumansTeamControllerBase(
-        IUserService userService,
-        ITeamService teamService,
-        IAuthorizationService authorizationService)
-        : base(userService)
-    {
-        _teamService = teamService;
-        _authorizationService = authorizationService;
-    }
-
     protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)
     {
         return await ResolveTeamAccessAsync(
@@ -30,7 +20,7 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             static _ => true,
             async (team, _) =>
             {
-                var result = await _authorizationService.AuthorizeAsync(
+                var result = await authorizationService.AuthorizeAsync(
                     User, team, TeamOperationRequirement.ManageCoordinators);
                 return result.Succeeded;
             });
@@ -58,7 +48,7 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
         }
 
         var normalizedSlug = slug.ToLowerInvariant();
-        var teamsById = await _teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync();
         var team = teamsById.Values.FirstOrDefault(
             t => string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
                  || string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));

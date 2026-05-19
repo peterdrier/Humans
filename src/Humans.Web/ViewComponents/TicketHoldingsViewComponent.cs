@@ -3,18 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
 
-public sealed class TicketHoldingsViewComponent : ViewComponent
+public sealed class TicketHoldingsViewComponent(ITicketQueryService queryService) : ViewComponent
 {
-    private readonly ITicketQueryService _queryService;
-
-    public TicketHoldingsViewComponent(ITicketQueryService queryService)
-    {
-        _queryService = queryService;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool showEmpty = false)
     {
-        var holdings = await _queryService.GetUserTicketHoldingsAsync(userId);
+        var holdings = await queryService.GetUserTicketHoldingsAsync(userId);
 
         if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)
             return Content(string.Empty);

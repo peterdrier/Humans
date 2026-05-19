@@ -14,15 +14,8 @@ namespace Humans.Infrastructure.Repositories.CityPlanning;
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class CityPlanningRepository : ICityPlanningRepository
+internal sealed class CityPlanningRepository(IDbContextFactory<HumansDbContext> factory) : ICityPlanningRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public CityPlanningRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Reads — CampPolygon
     // ==========================================================================
@@ -35,7 +28,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
             return [];
         }
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampPolygons
             .AsNoTracking()
             .Where(p => campSeasonIds.Contains(p.CampSeasonId))
@@ -50,7 +43,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
             return [];
         }
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampPolygons
             .AsNoTracking()
             .Where(p => campSeasonIds.Contains(p.CampSeasonId))
@@ -65,7 +58,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
     public async Task<IReadOnlyList<CampPolygonHistory>> GetHistoryForCampSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampPolygonHistories
             .AsNoTracking()
             .Where(h => h.CampSeasonId == campSeasonId)
@@ -76,7 +69,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
     public async Task<CampPolygonHistory?> GetHistoryEntryAsync(
         Guid campSeasonId, Guid historyId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampPolygonHistories
             .AsNoTracking()
             .FirstOrDefaultAsync(h => h.Id == historyId && h.CampSeasonId == campSeasonId, ct);
@@ -95,7 +88,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var polygon = await ctx.CampPolygons
             .FirstOrDefaultAsync(p => p.CampSeasonId == campSeasonId, ct);
@@ -146,7 +139,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
     public async Task<CityPlanningSettings?> GetSettingsByYearAsync(
         int year, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CityPlanningSettings
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Year == year, ct);
@@ -155,7 +148,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
     public async Task<CityPlanningSettings> GetOrCreateSettingsAsync(
         int year, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var settings = await ctx.CityPlanningSettings
             .FirstOrDefaultAsync(s => s.Year == year, ct);
 
@@ -181,7 +174,7 @@ internal sealed class CityPlanningRepository : ICityPlanningRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var settings = await ctx.CityPlanningSettings
             .FirstOrDefaultAsync(s => s.Year == year, ct);
 

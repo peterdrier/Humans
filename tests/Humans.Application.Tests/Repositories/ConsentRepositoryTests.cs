@@ -34,7 +34,6 @@ public sealed class ConsentRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================

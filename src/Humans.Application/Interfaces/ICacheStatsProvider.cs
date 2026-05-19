@@ -18,12 +18,12 @@ public interface ICacheStatsProvider
 /// Thread-safe: counters use Interlocked since TryGetValue is called
 /// on every cache access across the entire app.
 /// </summary>
-public sealed class CacheStatEntry
+public sealed class CacheStatEntry(string keyType, long hits, long misses)
 {
-    public string KeyType { get; }
+    public string KeyType { get; } = keyType;
 
-    private long _hits;
-    private long _misses;
+    private long _hits = hits;
+    private long _misses = misses;
 
     public long Hits => Interlocked.Read(ref _hits);
     public long Misses => Interlocked.Read(ref _misses);
@@ -31,13 +31,6 @@ public sealed class CacheStatEntry
     public double HitRatePercent => Hits + Misses > 0
         ? Math.Round(Hits * 100.0 / (Hits + Misses), 1)
         : 0;
-
-    public CacheStatEntry(string keyType, long hits, long misses)
-    {
-        KeyType = keyType;
-        _hits = hits;
-        _misses = misses;
-    }
 
     public CacheStatEntry RecordHit()
     {

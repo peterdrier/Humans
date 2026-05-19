@@ -1,12 +1,14 @@
 @model Humans.Web.Models.BoardVotingDetailViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["BoardVoting_DetailTitle"].Value, Model.DisplayName);
+    ViewData["Title"] = Localizer["BoardVoting_Title"].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="BoardVoting">@Localizer["BoardVoting_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Model.DisplayName</li>
+        <li class="breadcrumb-item active" aria-current="page">
+            <vc:human user-id="@Model.UserId" />
+        </li>
     </ol>
 </nav>
 

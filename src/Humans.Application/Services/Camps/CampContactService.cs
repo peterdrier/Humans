@@ -11,28 +11,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Services.Camps;
 
-public class CampContactService : ICampContactService
+public class CampContactService(
+    IEmailService emailService,
+    IAuditLogService auditLogService,
+    INotificationEmitter notificationEmitter,
+    IMemoryCache cache,
+    ILogger<CampContactService> logger) : ICampContactService
 {
-    private readonly IEmailService _emailService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly INotificationEmitter _notificationEmitter;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<CampContactService> _logger;
-
-    public CampContactService(
-        IEmailService emailService,
-        IAuditLogService auditLogService,
-        INotificationEmitter notificationEmitter,
-        IMemoryCache cache,
-        ILogger<CampContactService> logger)
-    {
-        _emailService = emailService;
-        _auditLogService = auditLogService;
-        _notificationEmitter = notificationEmitter;
-        _cache = cache;
-        _logger = logger;
-    }
-
     public async Task<CampContactResult> SendFacilitatedMessageAsync(
         Guid campId,
         string campContactEmail,
@@ -47,7 +32,7 @@ public class CampContactService : ICampContactService
     {
         // Rate limit: one message per camp per user per 10 minutes
         var rateLimitKey = CacheKeys.CampContactRateLimit(senderUserId, campId);
-        if (!await _cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
+        if (!await cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
         {
             return new CampContactResult(Success: false, RateLimited: true);
         }
@@ -57,7 +42,7 @@ public class CampContactService : ICampContactService
             var cleanMessage = Regex.Replace(
                 message, "<[^>]+>", "", RegexOptions.None, TimeSpan.FromSeconds(1));
 
-            await _emailService.SendFacilitatedMessageAsync(
+            await emailService.SendFacilitatedMessageAsync(
                 campContactEmail,
                 campDisplayName,
                 senderDisplayName,
@@ -65,7 +50,7 @@ public class CampContactService : ICampContactService
                 includeContactInfo,
                 senderEmail);
 
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.FacilitatedMessageSent,
                 nameof(Camp), campId,
                 $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
@@ -77,8 +62,8 @@ public class CampContactService : ICampContactService
         }
         catch (Exception ex)
         {
-            _cache.InvalidateCampContactRateLimit(senderUserId, campId);
-            _logger.LogError(ex, "Failed to send facilitated message to camp {CampId}", campId);
+            cache.InvalidateCampContactRateLimit(senderUserId, campId);
+            logger.LogError(ex, "Failed to send facilitated message to camp {CampId}", campId);
             throw;
         }
     }
@@ -96,7 +81,7 @@ public class CampContactService : ICampContactService
 
         try
         {
-            await _notificationEmitter.SendAsync(
+            await notificationEmitter.SendAsync(
                 NotificationSource.FacilitatedMessageReceived,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -107,7 +92,7 @@ public class CampContactService : ICampContactService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId}", campId);
+            logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId}", campId);
         }
     }
 }

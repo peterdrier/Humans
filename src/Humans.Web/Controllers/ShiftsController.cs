@@ -21,46 +21,20 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Shifts")]
-public class ShiftsController : HumansControllerBase
+public class ShiftsController(
+    IShiftManagementService shiftMgmt,
+    IShiftSignupService signupService,
+    IGeneralAvailabilityService availabilityService,
+    IShiftView shiftView,
+    ITeamService teamService,
+    IAuditLogService auditLogService,
+    IUserService userService,
+    IStringLocalizer<SharedResource> localizer,
+    IClock clock,
+    ShiftBrowsePageBuilder browsePageBuilder,
+    ILogger<ShiftsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftSignupService _signupService;
-    private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly IShiftView _shiftView;
-    private readonly ITeamService _teamService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IUserService _userService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly IClock _clock;
-    private readonly ShiftBrowsePageBuilder _browsePageBuilder;
-    private readonly ILogger<ShiftsController> _logger;
-
-    public ShiftsController(
-        IShiftManagementService shiftMgmt,
-        IShiftSignupService signupService,
-        IGeneralAvailabilityService availabilityService,
-        IShiftView shiftView,
-        ITeamService teamService,
-        IAuditLogService auditLogService,
-        IUserService userService,
-        IStringLocalizer<SharedResource> localizer,
-        IClock clock,
-        ShiftBrowsePageBuilder browsePageBuilder,
-        ILogger<ShiftsController> logger)
-        : base(userService)
-    {
-        _shiftMgmt = shiftMgmt;
-        _signupService = signupService;
-        _availabilityService = availabilityService;
-        _shiftView = shiftView;
-        _teamService = teamService;
-        _auditLogService = auditLogService;
-        _userService = userService;
-        _localizer = localizer;
-        _clock = clock;
-        _browsePageBuilder = browsePageBuilder;
-        _logger = logger;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
@@ -73,14 +47,14 @@ public class ShiftsController : HumansControllerBase
 
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                           (await _shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
+                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
         // see #720: cached ShiftUserView, already event-scoped.
-        var userView = await _shiftView.GetUserAsync(user.Id);
+        var userView = await shiftView.GetUserAsync(user.Id);
         var userSignups = userView.Signups;
         var hasSignups = userSignups.Count > 0;
         var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
@@ -88,7 +62,7 @@ public class ShiftsController : HumansControllerBase
         if (!CanBrowseShifts(es, isPrivileged, hasSignups))
             return View("BrowsingClosed");
 
-        var model = await _browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
+        var model = await browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
             es,
             user.Id,
             userSignups,
@@ -115,7 +89,7 @@ public class ShiftsController : HumansControllerBase
     private IActionResult? RedirectIfNameMissing(UserInfo user)
     {
         if (user.HasRequiredNameFields) return null;
-        SetInfo(_localizer["Onboarding_NameRequiredBeforeShifts"].Value);
+        SetInfo(localizer["Onboarding_NameRequiredBeforeShifts"].Value);
         return RedirectToAction(nameof(OnboardingWidgetController.Index), "OnboardingWidget");
     }
 
@@ -132,7 +106,7 @@ public class ShiftsController : HumansControllerBase
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await _signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
+        var result = await signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
 
         return RedirectToBrowseWithSignupResult(
             result,
@@ -161,7 +135,7 @@ public class ShiftsController : HumansControllerBase
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
+        var result = await signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
 
         return RedirectToBrowseWithSignupResult(
             result,
@@ -227,12 +201,12 @@ public class ShiftsController : HumansControllerBase
 
         try
         {
-            await _signupService.BailRangeAsync(signupBlockId, user.Id);
+            await signupService.BailRangeAsync(signupBlockId, user.Id);
             SetSuccess("Successfully bailed from shift range.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to bail shift range {SignupBlockId} for user {UserId}", signupBlockId, user.Id);
+            logger.LogWarning(ex, "Failed to bail shift range {SignupBlockId} for user {UserId}", signupBlockId, user.Id);
             SetError(ex.Message);
         }
 
@@ -249,7 +223,7 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        var result = await _signupService.BailAsync(signupId, user.Id, reason);
+        var result = await signupService.BailAsync(signupId, user.Id, reason);
 
         if (!result.Success)
         {
@@ -270,18 +244,18 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
 
         // see #720: cached ShiftUserView, event-scoped (empty when no active event).
-        var userView = await _shiftView.GetUserAsync(user.Id);
+        var userView = await shiftView.GetUserAsync(user.Id);
         var signups = userView.Signups;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var model = new MyShiftsViewModel { EventSettings = es };
 
         var mineTeamNames = await LoadTeamNamesForSignupsAsync(signups);
         var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now, onMissingSignupData: signup =>
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
                 signup.Id,
                 user.Id));
@@ -301,7 +275,7 @@ public class ShiftsController : HumansControllerBase
         var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
         if (teamIds.Count == 0)
             return new Dictionary<Guid, string>();
-        var teamsById = await _teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync();
         return teamIds
             .Where(teamsById.ContainsKey)
             .ToDictionary(id => id, id => teamsById[id].Name);
@@ -338,10 +312,10 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null) return BadRequest("No active event.");
 
-        await _availabilityService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
+        await availabilityService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
         SetSuccess("Availability updated.");
         return RedirectToAction(nameof(Mine));
     }
@@ -373,7 +347,7 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        await _shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
+        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
         SetSuccess("Tag preferences saved.");
         return RedirectToAction(nameof(Index));
     }
@@ -382,7 +356,7 @@ public class ShiftsController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Settings()
     {
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         return View(es is null ? new EventSettingsViewModel() : MapEventSettingsToViewModel(es));
     }
 
@@ -428,15 +402,15 @@ public class ShiftsController : HumansControllerBase
 
         if (model.Id.HasValue)
         {
-            var existing = await _shiftMgmt.GetByIdAsync(model.Id.Value);
+            var existing = await shiftMgmt.GetByIdAsync(model.Id.Value);
             if (existing is null) return NotFound();
 
             EventSettingsFormMapper.Apply(existing, draft);
-            await _shiftMgmt.UpdateAsync(existing);
+            await shiftMgmt.UpdateAsync(existing);
         }
         else
         {
-            await _shiftMgmt.CreateAsync(EventSettingsFormMapper.Create(draft, _clock.GetCurrentInstant()));
+            await shiftMgmt.CreateAsync(EventSettingsFormMapper.Create(draft, clock.GetCurrentInstant()));
         }
 
         SetSuccess("Event settings saved.");
@@ -453,7 +427,7 @@ public class ShiftsController : HumansControllerBase
 
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
     {
-        var allActiveSignups = await _signupService.GetActiveSignupsForUserAsync(userId);
+        var allActiveSignups = await signupService.GetActiveSignupsForUserAsync(userId);
         return allActiveSignups
             .Where(s => s.Shift?.Rota?.EventSettings is not null)
             .Select(s =>
@@ -501,8 +475,8 @@ public class ShiftsController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> OrphanSignups(CancellationToken ct)
     {
-        var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
-        var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
+        var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
+        var auditedIds = await auditLogService.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
             [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold, AuditAction.ShiftSignupConfirmed],
             ct);

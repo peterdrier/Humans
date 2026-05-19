@@ -10,37 +10,17 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-public class HomeController : HumansControllerBase
+public class HomeController(
+    IUserService userService,
+    IDashboardService dashboardService,
+    IShiftManagementService shiftMgmt,
+    IOnboardingWidgetState widgetState,
+    IConfiguration configuration,
+    ConfigurationRegistry configRegistry,
+    ILogger<HomeController> logger,
+    ITicketTransferService ticketTransferService) : HumansControllerBase(userService)
 {
-    private readonly IDashboardService _dashboardService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IUserService _userService;
-    private readonly IOnboardingWidgetState _widgetState;
-    private readonly IConfiguration _configuration;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly ILogger<HomeController> _logger;
-    private readonly ITicketTransferService _ticketTransferService;
-
-    public HomeController(
-        IUserService userService,
-        IDashboardService dashboardService,
-        IShiftManagementService shiftMgmt,
-        IOnboardingWidgetState widgetState,
-        IConfiguration configuration,
-        ConfigurationRegistry configRegistry,
-        ILogger<HomeController> logger,
-        ITicketTransferService ticketTransferService)
-        : base(userService)
-    {
-        _dashboardService = dashboardService;
-        _shiftMgmt = shiftMgmt;
-        _userService = userService;
-        _widgetState = widgetState;
-        _configuration = configuration;
-        _configRegistry = configRegistry;
-        _logger = logger;
-        _ticketTransferService = ticketTransferService;
-    }
+    private readonly IUserService _userService = userService;
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -56,7 +36,7 @@ public class HomeController : HumansControllerBase
         }
 
         // Route through the onboarding widget until the user has completed every required step.
-        var step = await _widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
+        var step = await widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
         if (step != OnboardingWidgetStep.Complete)
         {
             return RedirectToAction("Index", "OnboardingWidget");
@@ -71,7 +51,7 @@ public class HomeController : HumansControllerBase
         }
 
         var isPrivileged = User.IsInRole("Admin");
-        var data = await _dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
+        var data = await dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
 
         var viewModel = new DashboardViewModel
         {
@@ -133,7 +113,7 @@ public class HomeController : HumansControllerBase
             PendingCount = data.PendingSignupCount,
         };
 
-        var attendeeRows = await _ticketTransferService.GetMyAttendeesAsync(user.Id, cancellationToken);
+        var attendeeRows = await ticketTransferService.GetMyAttendeesAsync(user.Id, cancellationToken);
 
         viewModel.MyAttendees = attendeeRows
             .Select(a => new MyAttendeeRowVm(
@@ -171,7 +151,7 @@ public class HomeController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
             SetError("Something went wrong. Please try again.");
         }
 
@@ -199,7 +179,7 @@ public class HomeController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
             SetError("Something went wrong. Please try again.");
         }
 
@@ -208,7 +188,7 @@ public class HomeController : HumansControllerBase
 
     private async Task<int?> GetActiveEventYearOrSetErrorAsync()
     {
-        var activeEvent = await _shiftMgmt.GetActiveAsync();
+        var activeEvent = await shiftMgmt.GetActiveAsync();
         if (activeEvent is not null && activeEvent.Year > 0)
         {
             return activeEvent.Year;
@@ -230,8 +210,8 @@ public class HomeController : HumansControllerBase
     }
     public IActionResult Privacy()
     {
-        ViewData["DpoEmail"] = _configuration.GetOptionalSetting(
-            _configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
+        ViewData["DpoEmail"] = configuration.GetOptionalSetting(
+            configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
         return View();
     }
 

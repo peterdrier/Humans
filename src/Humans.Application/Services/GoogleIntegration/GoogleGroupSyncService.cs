@@ -15,70 +15,37 @@ using NodaTime;
 
 namespace Humans.Application.Services.GoogleIntegration;
 
-public sealed class GoogleGroupSyncService : IGoogleGroupSync
+public sealed class GoogleGroupSyncService(
+    IEnumerable<IGoogleGroupMembershipSource> sources,
+    IGoogleGroupMembershipClient membershipClient,
+    IGoogleGroupProvisioningClient provisioningClient,
+    ITeamResourceGoogleClient teamResourceClient,
+    ITeamResourceService teamResourceService,
+    ITeamService teamService,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    ISyncSettingsService syncSettingsService,
+    IAuditLogService auditLogService,
+    IGoogleRemovalNotificationService removalNotifications,
+    IGoogleGroupSyncScheduler syncScheduler,
+    IOptions<GoogleWorkspaceOptions> options,
+    IClock clock,
+    ILogger<GoogleGroupSyncService> logger) : IGoogleGroupSync
 {
     private static readonly TimeSpan ScopedRetryDelay = TimeSpan.FromMinutes(15);
     private const int MaxScopedRetryAttempts = 5;
 
-    private readonly IEnumerable<IGoogleGroupMembershipSource> _sources;
-    private readonly IGoogleGroupMembershipClient _membershipClient;
-    private readonly IGoogleGroupProvisioningClient _provisioningClient;
-    private readonly ITeamResourceGoogleClient _teamResourceClient;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ISyncSettingsService _syncSettingsService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IGoogleRemovalNotificationService _removalNotifications;
-    private readonly IGoogleGroupSyncScheduler _syncScheduler;
-    private readonly GoogleWorkspaceOptions _options;
-    private readonly IClock _clock;
-    private readonly ILogger<GoogleGroupSyncService> _logger;
-
-    public GoogleGroupSyncService(
-        IEnumerable<IGoogleGroupMembershipSource> sources,
-        IGoogleGroupMembershipClient membershipClient,
-        IGoogleGroupProvisioningClient provisioningClient,
-        ITeamResourceGoogleClient teamResourceClient,
-        ITeamResourceService teamResourceService,
-        ITeamService teamService,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        ISyncSettingsService syncSettingsService,
-        IAuditLogService auditLogService,
-        IGoogleRemovalNotificationService removalNotifications,
-        IGoogleGroupSyncScheduler syncScheduler,
-        IOptions<GoogleWorkspaceOptions> options,
-        IClock clock,
-        ILogger<GoogleGroupSyncService> logger)
-    {
-        _sources = sources;
-        _membershipClient = membershipClient;
-        _provisioningClient = provisioningClient;
-        _teamResourceClient = teamResourceClient;
-        _teamResourceService = teamResourceService;
-        _teamService = teamService;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _syncSettingsService = syncSettingsService;
-        _auditLogService = auditLogService;
-        _removalNotifications = removalNotifications;
-        _syncScheduler = syncScheduler;
-        _options = options.Value;
-        _clock = clock;
-        _logger = logger;
-    }
+    private readonly GoogleWorkspaceOptions _options = options.Value;
 
     public Task RequestSyncAsync(string groupKey, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(groupKey))
         {
-            _logger.LogWarning("RequestSyncAsync called with null/empty group key; skipping");
+            logger.LogWarning("RequestSyncAsync called with null/empty group key; skipping");
             return Task.CompletedTask;
         }
 
-        _syncScheduler.Enqueue(groupKey.Trim());
+        syncScheduler.Enqueue(groupKey.Trim());
         return Task.CompletedTask;
     }
 
@@ -130,7 +97,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         {
             var orphanResource = resourcesByGroup.GetValueOrDefault(groupKey);
             const string error = "No Google group membership source claims this group";
-            _logger.LogWarning("Google group sync: no source claims group key {GroupKey}", groupKey);
+            logger.LogWarning("Google group sync: no source claims group key {GroupKey}", groupKey);
             await RecordGroupErrorAsync(orphanResource, error, ct);
             return BuildErrorDiff(groupKey, orphanResource, error);
         }
@@ -156,7 +123,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     {
         var claims = new List<(string SourceName, string GroupKey, Guid[] UserIds)>();
 
-        foreach (var source in _sources)
+        foreach (var source in sources)
         {
             var expected = await source.GetExpectedAsync(groupKey, ct);
             foreach (var (key, userIds) in expected)
@@ -187,7 +154,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         IReadOnlyDictionary<Guid, ExpectedMember>? expectedMembersByUserId,
         CancellationToken ct)
     {
-        var lookup = await _provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
+        var lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
 
         // Provisioning: a claim references a group key that doesn't exist in Google.
         // Cloud Identity returns HTTP 404 — or HTTP 403 with a "permission
@@ -201,21 +168,21 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         {
             try
             {
-                var create = await _provisioningClient.CreateGroupAsync(
+                var create = await provisioningClient.CreateGroupAsync(
                     claim.GroupKey,
                     displayName: claim.GroupKey,
                     description: $"Auto-provisioned group ({claim.GroupKey}).",
                     ct);
                 if (create.GroupNumericId is not null)
                 {
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Auto-provisioned Google Group for {GroupKey}",
                         claim.GroupKey);
-                    lookup = await _provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
+                    lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
                 }
                 else
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Failed to auto-provision Google Group for {GroupKey}: HTTP {StatusCode} {Message}",
                         claim.GroupKey,
                         create.Error?.StatusCode,
@@ -224,7 +191,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Error auto-provisioning Google Group for {GroupKey}; treating as failed lookup: {Error}",
                     claim.GroupKey,
                     ex.Message);
@@ -235,7 +202,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         {
             var error = FormatGoogleError("Google group lookup failed", lookup.Error);
             await RecordGroupErrorAsync(resource, error, ct);
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Google group sync failed for {GroupKey}: {Error}",
                 claim.GroupKey,
                 error);
@@ -248,12 +215,12 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         var expectedMembers = BuildExpectedMembersByEmail(claim.UserIds, expectedMembersByUserId);
         var expectedEmails = expectedMembers.Keys.ToHashSet(NormalizingEmailComparer.Instance);
 
-        var list = await _membershipClient.ListMembershipsAsync(lookup.GroupNumericId, ct);
+        var list = await membershipClient.ListMembershipsAsync(lookup.GroupNumericId, ct);
         if (list.Memberships is null)
         {
             var error = FormatGoogleError("Google group membership list failed", list.Error);
             await RecordGroupErrorAsync(resource, error, ct);
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Google group sync failed for {GroupKey}: {Error}",
                 claim.GroupKey,
                 error);
@@ -279,7 +246,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
                 ProfilePictureUrl: expected.ProfilePictureUrl));
         }
 
-        var serviceAccountEmail = await _teamResourceClient.GetServiceAccountEmailAsync(ct);
+        var serviceAccountEmail = await teamResourceClient.GetServiceAccountEmailAsync(ct);
         foreach (var email in currentByEmail.Keys
                      .Where(email =>
                          !expectedEmails.Contains(email) &&
@@ -290,16 +257,16 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
         if (action == SyncAction.Execute)
         {
-            var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct);
+            var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct);
             if (mode != SyncMode.None)
             {
                 foreach (var member in members.Where(m => m.State == MemberSyncState.Missing))
                 {
-                    var add = await _membershipClient.CreateMembershipAsync(lookup.GroupNumericId, member.Email, ct);
+                    var add = await membershipClient.CreateMembershipAsync(lookup.GroupNumericId, member.Email, ct);
                     if (add.Outcome == GroupMembershipMutationOutcome.Failed)
                     {
                         var error = await HandleGroupAddFailureAsync(resource, claim.GroupKey, member.Email, add.Error, ct);
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Google group sync failed for {GroupKey} member {Email}: {Error}",
                             claim.GroupKey,
                             member.Email,
@@ -317,7 +284,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
                     if (resource is not null && add.Outcome == GroupMembershipMutationOutcome.Added)
                     {
-                        await _auditLogService.LogGoogleSyncAsync(
+                        await auditLogService.LogGoogleSyncAsync(
                             AuditAction.GoogleResourceAccessGranted,
                             resource.Id,
                             $"Granted Google Group access to {member.Email} ({resource.Name})",
@@ -337,11 +304,11 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
                     if (!currentByEmail.TryGetValue(member.Email, out var membershipResourceName))
                         continue;
 
-                    var deleteError = await _membershipClient.DeleteMembershipAsync(membershipResourceName, ct);
+                    var deleteError = await membershipClient.DeleteMembershipAsync(membershipResourceName, ct);
                     if (deleteError is not null)
                     {
                         var error = FormatGoogleError($"Google group remove failed for {member.Email}", deleteError);
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Google group sync failed for {GroupKey} member {Email}: {Error}",
                             claim.GroupKey,
                             member.Email,
@@ -359,7 +326,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
                     if (resource is not null)
                     {
-                        await _auditLogService.LogGoogleSyncAsync(
+                        await auditLogService.LogGoogleSyncAsync(
                             AuditAction.GoogleResourceAccessRevoked,
                             resource.Id,
                             $"Removed {member.Email} from Google Group ({resource.Name})",
@@ -375,7 +342,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             }
 
             if (resource is not null && mode != SyncMode.None)
-                await _teamResourceService.MarkResourceSyncedAsync(resource.Id, _clock.GetCurrentInstant(), ct);
+                await teamResourceService.MarkResourceSyncedAsync(resource.Id, clock.GetCurrentInstant(), ct);
         }
 
         return new ResourceSyncDiff
@@ -396,8 +363,8 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         if (userIds.Count == 0)
             return [];
 
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
-        var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
+        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
 
         var result = new Dictionary<Guid, ExpectedMember>();
         foreach (var userId in userIds)
@@ -460,9 +427,9 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         CancellationToken ct)
     {
         var error = $"Google group membership source collision for {claim.GroupKey}: {string.Join(", ", claim.SourceNames)}";
-        _logger.LogError("{Error}", error);
+        logger.LogError("{Error}", error);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.AnomalousPermissionDetected,
             nameof(GoogleResource),
             Guid.Empty,
@@ -474,15 +441,15 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private async Task<IReadOnlyDictionary<string, GoogleResourceSnapshot>> LoadActiveGroupResourcesByEmailAsync(CancellationToken ct)
     {
-        var counts = await _teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
+        var counts = await teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
         if (counts.Count == 0)
             return new Dictionary<string, GoogleResourceSnapshot>(StringComparer.OrdinalIgnoreCase);
 
-        var byTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(counts.Keys.ToList(), ct);
+        var byTeam = await teamResourceService.GetResourcesByTeamIdsAsync(counts.Keys.ToList(), ct);
         var teamIds = byTeam.Keys.ToList();
         var teamsById = new Dictionary<Guid, Team?>();
         foreach (var teamId in teamIds)
-            teamsById[teamId] = await _teamService.GetTeamByIdAsync(teamId, ct);
+            teamsById[teamId] = await teamService.GetTeamByIdAsync(teamId, ct);
 
         var resourcesByEmail = byTeam
             .SelectMany(kvp => kvp.Value.Select(resource => (TeamId: kvp.Key, Resource: resource)))
@@ -502,7 +469,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         foreach (var group in resourcesByEmail.Where(g => g.Count() > 1))
         {
             var kept = group.First().Resource;
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Multiple active Google group resource rows resolve to {GroupKey}; using {ResourceId} and ignoring {DuplicateCount} duplicate rows",
                 group.Key,
                 kept.Id,
@@ -517,7 +484,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         if (resource is null)
             return Task.CompletedTask;
 
-        return _teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
+        return teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
     }
 
     private async Task RecordMemberErrorAsync(
@@ -529,8 +496,8 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     {
         if (resource is not null)
         {
-            await _teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
-            await _auditLogService.LogGoogleSyncAsync(
+            await teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
+            await auditLogService.LogGoogleSyncAsync(
                 action,
                 resource.Id,
                 error,
@@ -570,7 +537,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
             if (isCallerPermissionError)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Service account lacks permission to add members to group {GroupKey} ({GroupId}) - HTTP 403: {ErrorMessage}",
                     groupKey,
                     resource?.GoogleId,
@@ -581,16 +548,16 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
         if (IsTargetMemberRejection(rawMessage))
         {
-            var user = await _userService.GetByEmailOrAlternateAsync(email, ct);
+            var user = await userService.GetByEmailOrAlternateAsync(email, ct);
             if (user is not null && user.GoogleEmailStatus != GoogleEmailStatus.Rejected)
             {
-                await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                await userService.TrySetGoogleEmailStatusFromSyncAsync(
                     user.Id,
                     GoogleEmailStatus.Rejected,
                     ct);
             }
 
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
                 "Legacy User.GoogleEmailStatus was marked Rejected when a matching user was found. Google error: {ErrorMessage}",
                 email,
@@ -621,7 +588,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt)
     {
-        _logger.LogWarning(
+        logger.LogWarning(
             "Scheduling scoped Google Group membership retry {RetryAttempt}/{MaxRetryAttempts} for {GroupKey} in {DelayMinutes} minutes after failure: {Error}",
             retryAttempt,
             MaxScopedRetryAttempts,
@@ -629,9 +596,9 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             ScopedRetryDelay.TotalMinutes,
             error);
 
-        _syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt);
+        syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.GoogleSyncRetryScheduled,
             nameof(GoogleResource),
             Guid.Empty,
@@ -647,7 +614,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     {
         try
         {
-            await _removalNotifications.NotifyRemovalAsync(
+            await removalNotifications.NotifyRemovalAsync(
                 email,
                 GoogleResourceType.Group,
                 resource?.Name ?? groupKey,
@@ -657,7 +624,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Failed to enqueue Google Group removal notification for {Email} from {GroupKey}",
                 email,

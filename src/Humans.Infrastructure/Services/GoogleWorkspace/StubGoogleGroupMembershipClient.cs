@@ -12,23 +12,18 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// connector pattern, the Application-layer service runs against this stub —
 /// there is no "stub service" variant.
 /// </summary>
-public sealed class StubGoogleGroupMembershipClient : IGoogleGroupMembershipClient
+public sealed class StubGoogleGroupMembershipClient(ILogger<StubGoogleGroupMembershipClient> logger)
+    : IGoogleGroupMembershipClient
 {
-    private readonly ILogger<StubGoogleGroupMembershipClient> _logger;
     private readonly Dictionary<string, Dictionary<string, string>> _membersByGroup = new(StringComparer.Ordinal);
     private readonly Lock _gate = new();
     private long _nextMembershipId = 1;
-
-    public StubGoogleGroupMembershipClient(ILogger<StubGoogleGroupMembershipClient> logger)
-    {
-        _logger = logger;
-    }
 
     public Task<GroupMembershipListResult> ListMembershipsAsync(
         string groupGoogleId,
         CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] List memberships for group {GroupId}", groupGoogleId);
+        logger.LogDebug("[STUB] List memberships for group {GroupId}", groupGoogleId);
 
         lock (_gate)
         {
@@ -51,7 +46,7 @@ public sealed class StubGoogleGroupMembershipClient : IGoogleGroupMembershipClie
         string memberEmail,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Add {Email} to group {GroupId}", memberEmail, groupGoogleId);
+        logger.LogInformation("[STUB] Add {Email} to group {GroupId}", memberEmail, groupGoogleId);
 
         lock (_gate)
         {
@@ -78,7 +73,7 @@ public sealed class StubGoogleGroupMembershipClient : IGoogleGroupMembershipClie
         string membershipResourceName,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Delete membership {Name}", membershipResourceName);
+        logger.LogInformation("[STUB] Delete membership {Name}", membershipResourceName);
 
         lock (_gate)
         {

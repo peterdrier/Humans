@@ -23,7 +23,15 @@ namespace Humans.Application.Services.Shifts;
 /// coordinator dashboard, shift tags, volunteer event profiles).
 /// Caches: 60s coordinator-team-ids (hot path, §15f); 5min dashboard. No full-grid cache.
 /// </summary>
-public sealed class ShiftManagementService : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
+public sealed class ShiftManagementService(
+    IShiftManagementRepository repo,
+    IAuditLogService auditLogService,
+    IAdminAuthorizationService adminAuthorization,
+    IServiceProvider serviceProvider,
+    IMemoryCache cache,
+    IShiftViewInvalidator viewInvalidator,
+    IClock clock,
+    ILogger<ShiftManagementService> logger) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -39,40 +47,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
-    private readonly IShiftManagementRepository _repo;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IAdminAuthorizationService _adminAuthorization;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IMemoryCache _cache;
-    private readonly IShiftViewInvalidator _viewInvalidator;
-    private readonly IClock _clock;
-    private readonly ILogger<ShiftManagementService> _logger;
+    private readonly ILogger<ShiftManagementService> _logger = logger;
 
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
-    private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
-    private IRoleAssignmentService RoleAssignmentService => _serviceProvider.GetRequiredService<IRoleAssignmentService>();
-    private ITicketQueryService TicketQueryService => _serviceProvider.GetRequiredService<ITicketQueryService>();
-    private IUserService UserService => _serviceProvider.GetRequiredService<IUserService>();
-
-    public ShiftManagementService(
-        IShiftManagementRepository repo,
-        IAuditLogService auditLogService,
-        IAdminAuthorizationService adminAuthorization,
-        IServiceProvider serviceProvider,
-        IMemoryCache cache,
-        IShiftViewInvalidator viewInvalidator,
-        IClock clock,
-        ILogger<ShiftManagementService> logger)
-    {
-        _repo = repo;
-        _auditLogService = auditLogService;
-        _adminAuthorization = adminAuthorization;
-        _serviceProvider = serviceProvider;
-        _cache = cache;
-        _viewInvalidator = viewInvalidator;
-        _clock = clock;
-        _logger = logger;
-    }
+    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private ITicketQueryService TicketQueryService => serviceProvider.GetRequiredService<ITicketQueryService>();
+    private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
     {
@@ -98,7 +79,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId)
     {
-        var result = await _cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
+        var result = await cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
             return await TeamService.GetUserCoordinatedTeamIdsAsync(userId);
@@ -116,56 +97,56 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     /// </summary>
     public void Invalidate(Guid userId)
     {
-        _cache.Remove(CacheKeys.ShiftAuthorization(userId));
+        cache.Remove(CacheKeys.ShiftAuthorization(userId));
     }
 
 
     public Task<EventSettings?> GetActiveAsync() =>
-        _repo.GetActiveEventSettingsAsync();
+        repo.GetActiveEventSettingsAsync();
 
     public Task<EventSettings?> GetByIdAsync(Guid id) =>
-        _repo.GetEventSettingsByIdAsync(id);
+        repo.GetEventSettingsByIdAsync(id);
 
     public async Task CreateAsync(EventSettings entity)
     {
         if (entity.IsActive)
         {
-            var conflict = await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null);
+            var conflict = await repo.AnyOtherActiveEventSettingsAsync(excludingId: null);
             if (conflict)
                 throw new InvalidOperationException("Only one EventSettings can be active at a time.");
         }
 
-        entity.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.AddEventSettingsAsync(entity);
+        entity.UpdatedAt = clock.GetCurrentInstant();
+        await repo.AddEventSettingsAsync(entity);
         // Activation can flip the active event; every ShiftUserView is event-scoped.
         if (entity.IsActive)
-            _viewInvalidator.InvalidateAll();
+            viewInvalidator.InvalidateAll();
     }
 
     public async Task UpdateAsync(EventSettings entity)
     {
         if (entity.IsActive)
         {
-            var conflict = await _repo.AnyOtherActiveEventSettingsAsync(excludingId: entity.Id);
+            var conflict = await repo.AnyOtherActiveEventSettingsAsync(excludingId: entity.Id);
             if (conflict)
                 throw new InvalidOperationException("Only one EventSettings can be active at a time.");
         }
 
-        entity.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpdateEventSettingsAsync(entity);
+        entity.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateEventSettingsAsync(entity);
 
         EvictDashboardCaches(entity.Id);
-        _viewInvalidator.InvalidateAll();
+        viewInvalidator.InvalidateAll();
     }
 
     public async Task<int> DeleteEventAsync(
         Guid eventSettingsId,
         CancellationToken cancellationToken = default)
     {
-        await _adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
-        var deleted = await _repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
+        await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
+        var deleted = await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
         EvictDashboardCaches(eventSettingsId);
-        _viewInvalidator.InvalidateAll();
+        viewInvalidator.InvalidateAll();
         return deleted;
     }
 
@@ -179,25 +160,25 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (team.SystemTeamType != SystemTeamType.None)
             throw new InvalidOperationException("Rotas cannot be created on system teams.");
 
-        var eventSettings = await _repo.GetEventSettingsByIdAsync(rota.EventSettingsId);
+        var eventSettings = await repo.GetEventSettingsByIdAsync(rota.EventSettingsId);
         if (eventSettings is null || !eventSettings.IsActive)
             throw new InvalidOperationException("Active EventSettings not found.");
 
-        rota.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.AddRotaAsync(rota);
-        _viewInvalidator.InvalidateRota(rota.Id);
+        rota.UpdatedAt = clock.GetCurrentInstant();
+        await repo.AddRotaAsync(rota);
+        viewInvalidator.InvalidateRota(rota.Id);
     }
 
     public async Task UpdateRotaAsync(Rota rota)
     {
-        rota.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpdateRotaAsync(rota);
-        _viewInvalidator.InvalidateRota(rota.Id);
+        rota.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateRotaAsync(rota);
+        viewInvalidator.InvalidateRota(rota.Id);
     }
 
     public async Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input)
     {
-        var rota = await _repo.GetRotaForUpdateAsync(input.RotaId);
+        var rota = await repo.GetRotaForUpdateAsync(input.RotaId);
         if (rota is null || rota.TeamId != input.SourceTeamId)
             return RotaMoveResult.Failure("Rota not found.");
 
@@ -216,11 +197,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
         // Targeted write: only TeamId + UpdatedAt are marked modified so concurrent edits don't clobber.
-        await _repo.UpdateRotaTeamAssignmentAsync(
-            rota.Id, input.TargetTeamId, _clock.GetCurrentInstant());
-        _viewInvalidator.InvalidateRota(rota.Id);
+        await repo.UpdateRotaTeamAssignmentAsync(
+            rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
+        viewInvalidator.InvalidateRota(rota.Id);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             input.ActorUserId,
@@ -230,7 +211,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
     public async Task DeleteRotaAsync(Guid rotaId)
     {
-        var rota = await _repo.GetRotaWithShiftsAndSignupsForDeleteAsync(rotaId);
+        var rota = await repo.GetRotaWithShiftsAndSignupsForDeleteAsync(rotaId);
         if (rota is null) throw new InvalidOperationException("Rota not found.");
 
         var confirmedCount = rota.Shifts
@@ -246,7 +227,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         {
             foreach (var signup in shift.ShiftSignups.Where(d => d.Status == SignupStatus.Pending).ToList())
             {
-                signup.Cancel(_clock, "Rota deleted");
+                signup.Cancel(clock, "Rota deleted");
             }
         }
 
@@ -257,27 +238,36 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             .Distinct()
             .ToList();
 
-        await _repo.DeleteRotaCascadeAsync(rotaId);
+        await repo.DeleteRotaCascadeAsync(rotaId);
 
-        _viewInvalidator.InvalidateRota(rotaId);
+        viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
-            _viewInvalidator.InvalidateUser(uid);
+            viewInvalidator.InvalidateUser(uid);
     }
 
     public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
-        _repo.GetRotaByIdWithShiftsAsync(rotaId);
+        repo.GetRotaByIdWithShiftsAsync(rotaId);
 
     public Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId) =>
-        _repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
+        repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
 
     public async Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max,
         CancellationToken cancellationToken = default)
     {
-        var settings = await _repo.GetActiveEventSettingsAsync(cancellationToken);
+        if (Guid.TryParse(query, out var id))
+        {
+            var rota = await repo.GetRotaByIdWithShiftsAsync(id);
+            if (rota is null) return [];
+            var teams = await TeamService.GetTeamsAsync(cancellationToken);
+            var teamName = teams.TryGetValue(rota.TeamId, out var t) ? t.Name : string.Empty;
+            return [new RotaSearchHit(rota.Name, rota.TeamId, teamName)];
+        }
+
+        var settings = await repo.GetActiveEventSettingsAsync(cancellationToken);
         if (settings is null) return [];
 
-        var rotas = await _repo.SearchRotasAsync(
+        var rotas = await repo.SearchRotasAsync(
             query, settings.Id,
             onlyVolunteerVisible: true,
             max, cancellationToken);
@@ -307,7 +297,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input)
     {
-        var rota = await _repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        var rota = await repo.GetRotaWithEventSettingsAsync(input.RotaId);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftGenerationResult.Failure("Rota not found.");
 
@@ -337,10 +327,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         // Skip days that already have shifts (additive mode)
-        var existingDayOffsets = await _repo.GetShiftDayOffsetsForRotaAsync(input.RotaId);
+        var existingDayOffsets = await repo.GetShiftDayOffsetsForRotaAsync(input.RotaId);
         var existingSet = existingDayOffsets.ToHashSet();
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var toInsert = new List<Shift>();
 
         foreach (var (dayOffset, staffing) in dailyStaffing.Where(d => !existingSet.Contains(d.Key)).OrderBy(d => d.Key))
@@ -363,8 +353,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         if (toInsert.Count > 0)
         {
-            await _repo.AddShiftsAsync(toInsert);
-            _viewInvalidator.InvalidateRota(input.RotaId);
+            await repo.AddShiftsAsync(toInsert);
+            viewInvalidator.InvalidateRota(input.RotaId);
         }
 
         return ShiftGenerationResult.Success($"Created {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
@@ -372,7 +362,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<ShiftGenerationResult> GenerateEventShiftsAsync(GenerateEventShiftsInput input)
     {
-        var rota = await _repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        var rota = await repo.GetRotaWithEventSettingsAsync(input.RotaId);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftGenerationResult.Failure("Rota not found.");
 
@@ -391,7 +381,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (input.TimeSlots.Count == 0)
             return ShiftGenerationResult.Failure("At least one time slot is required.");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var toInsert = new List<Shift>();
 
         for (var day = input.StartDayOffset; day <= input.EndDayOffset; day++)
@@ -416,8 +406,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         if (toInsert.Count > 0)
         {
-            await _repo.AddShiftsAsync(toInsert);
-            _viewInvalidator.InvalidateRota(input.RotaId);
+            await repo.AddShiftsAsync(toInsert);
+            viewInvalidator.InvalidateRota(input.RotaId);
         }
 
         return ShiftGenerationResult.Success($"Generated {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
@@ -426,7 +416,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input)
     {
-        var rota = await _repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        var rota = await repo.GetRotaWithEventSettingsAsync(input.RotaId);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftMutationResult.Failure("Rota not found.");
 
@@ -438,7 +428,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (input.MinVolunteers > input.MaxVolunteers)
             return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var shift = new Shift
         {
             Id = Guid.NewGuid(),
@@ -455,8 +445,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             UpdatedAt = now
         };
 
-        await _repo.AddShiftAsync(shift);
-        _viewInvalidator.InvalidateRota(input.RotaId);
+        await repo.AddShiftAsync(shift);
+        viewInvalidator.InvalidateRota(input.RotaId);
         return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
 
@@ -471,7 +461,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input)
     {
-        var shift = await _repo.GetShiftByIdAsync(input.ShiftId);
+        var shift = await repo.GetShiftByIdAsync(input.ShiftId);
         if (shift is null || shift.Rota.TeamId != input.TeamId)
             return ShiftMutationResult.Failure("Shift not found.");
 
@@ -490,16 +480,16 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         shift.MinVolunteers = input.MinVolunteers;
         shift.MaxVolunteers = input.MaxVolunteers;
         shift.AdminOnly = input.AdminOnly;
-        shift.UpdatedAt = _clock.GetCurrentInstant();
+        shift.UpdatedAt = clock.GetCurrentInstant();
 
-        await _repo.UpdateShiftAsync(shift);
-        _viewInvalidator.InvalidateShift(shift.Id);
+        await repo.UpdateShiftAsync(shift);
+        viewInvalidator.InvalidateShift(shift.Id);
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
     public async Task DeleteShiftAsync(Guid shiftId)
     {
-        var shift = await _repo.GetShiftWithSignupsForDeleteAsync(shiftId);
+        var shift = await repo.GetShiftWithSignupsForDeleteAsync(shiftId);
         if (shift is null) throw new InvalidOperationException("Shift not found.");
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -509,25 +499,25 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         foreach (var signup in shift.ShiftSignups.Where(d => d.Status == SignupStatus.Pending))
         {
-            signup.Cancel(_clock, "Shift deleted");
+            signup.Cancel(clock, "Shift deleted");
         }
 
         var rotaId = shift.RotaId;
         var affectedUserIds = shift.ShiftSignups.Select(d => d.UserId).Distinct().ToList();
 
-        await _repo.DeleteShiftCascadeAsync(shiftId);
+        await repo.DeleteShiftCascadeAsync(shiftId);
 
-        _viewInvalidator.InvalidateShift(shiftId);
-        _viewInvalidator.InvalidateRota(rotaId);
+        viewInvalidator.InvalidateShift(shiftId);
+        viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
-            _viewInvalidator.InvalidateUser(uid);
+            viewInvalidator.InvalidateUser(uid);
     }
 
     public Task<Shift?> GetShiftByIdAsync(Guid shiftId) =>
-        _repo.GetShiftByIdAsync(shiftId);
+        repo.GetShiftByIdAsync(shiftId);
 
     public Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId) =>
-        _repo.GetShiftsByRotaAsync(rotaId);
+        repo.GetShiftsByRotaAsync(rotaId);
 
     public (Instant Start, Instant End, ShiftPeriod Period) ResolveShiftTimes(Shift shift, EventSettings eventSettings)
     {
@@ -601,7 +591,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
@@ -624,14 +614,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await _repo.GetShiftsWithSignupsForUrgencyAsync(
+        var shifts = await repo.GetShiftsWithSignupsForUrgencyAsync(
             eventSettingsId, urgencyTeamIds, minDayOffset, maxDayOffset);
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var urgentShifts = shifts
             .Where(s => s.GetAbsoluteEnd(es) > now)
             .Select(s =>
@@ -658,7 +648,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         bool includeAdminOnly = false, bool includeSignups = false,
         bool includeHidden = false, bool priorityOnly = false)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
         int? fromOffset = fromDate.HasValue
@@ -670,7 +660,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
 
-        IReadOnlyList<Shift> shifts = await _repo.GetShiftsWithSignupsForEventAsync(
+        IReadOnlyList<Shift> shifts = await repo.GetShiftsWithSignupsForEventAsync(
             eventSettingsId, departmentTeamIds, includeAdminOnly, includeHidden,
             fromOffset, toOffset, includeRotaTags: true);
 
@@ -760,7 +750,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
         // Proximity boost: 1 + 10/(1+daysUntilStart). Today→11x, tomorrow→6x, 7d→2.25x, 30d→1.32x.
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var daysUntilStart = Math.Max(0, (shiftStart - now).TotalDays);
         var proximityBoost = 1.0 + (10.0 / (1.0 + daysUntilStart));
@@ -810,7 +800,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
@@ -819,11 +809,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (dayOffsets.Count == 0) return [];
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
+        var shifts = await repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
 
         // Need signup counts per shift (confirmed).
         var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
         var results = new List<DailyStaffingData>();
 
@@ -857,7 +847,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
@@ -866,7 +856,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (dayOffsets.Count == 0) return [];
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
+        var shifts = await repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
         var results = new List<DailyStaffingHours>();
 
         foreach (var dayOffset in dayOffsets)
@@ -919,7 +909,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     {
         if (teamIds.Count == 0) return null;
 
-        var rotas = await _repo.GetRotasWithShiftsAndSignupsAsync(eventSettingsId, teamIds.ToList());
+        var rotas = await repo.GetRotasWithShiftsAndSignupsAsync(eventSettingsId, teamIds.ToList());
         if (rotas.Count == 0) return null;
 
         var allShifts = rotas.SelectMany(r => r.Shifts).ToList();
@@ -946,7 +936,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid eventSettingsId,
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default) =>
-        _repo.GetTeamIdsWithShiftsInEventAsync(eventSettingsId, teamIds, ct);
+        repo.GetTeamIdsWithShiftsInEventAsync(eventSettingsId, teamIds, ct);
 
     public async Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
         Guid eventSettingsId,
@@ -954,16 +944,16 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         LocalDate? toDate = null,
         CancellationToken ct = default)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
         if (es is null) return [];
 
-        var teamIdsWithRotas = await _repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
+        var teamIdsWithRotas = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
         if (teamIdsWithRotas.Count == 0) return [];
 
         // Brings rota-owning teams + parents in one lookup (avoids second hop for sub-team rotas).
         var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsWithRotas, ct);
 
-        var allRotas = await _repo.GetRotasWithShiftsAndSignupsAsync(
+        var allRotas = await repo.GetRotasWithShiftsAndSignupsAsync(
             eventSettingsId, teamIdsWithRotas.ToList(), ct);
 
         // Pie-eligible teams = top-level departments + promoted sub-teams.
@@ -1023,7 +1013,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId)
     {
-        var teamIds = await _repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId);
+        var teamIds = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId);
         if (teamIds.Count == 0) return [];
 
         // Filter parents back out — only rota-owning teams belong in the department dropdown.
@@ -1049,10 +1039,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
         foreach (var period in periods)
         {
-            _cache.Remove(OverviewCacheKey(eventSettingsId, period));
-            _cache.Remove(CoordinatorActivityCacheKey(eventSettingsId, period));
+            cache.Remove(OverviewCacheKey(eventSettingsId, period));
+            cache.Remove(CoordinatorActivityCacheKey(eventSettingsId, period));
             foreach (var window in Enum.GetValues<TrendWindow>())
-                _cache.Remove(TrendsCacheKey(eventSettingsId, window, period));
+                cache.Remove(TrendsCacheKey(eventSettingsId, window, period));
         }
     }
 
@@ -1062,7 +1052,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (subPeriod is not null)
             return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod);
 
-        var cached = await _cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
+        var cached = await cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
             return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null);
@@ -1072,11 +1062,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null)
             return EmptyOverview();
 
-        var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var allShifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
 
         var shifts = period is null
             ? allShifts
@@ -1089,7 +1079,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCountsRo = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCountsRo = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
         var confirmedCounts = confirmedCountsRo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         int ConfirmedOn(Guid shiftId) => confirmedCounts.TryGetValue(shiftId, out var c) ? c : 0;
@@ -1116,14 +1106,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var ticketHolderIds = await TicketQueryService.GetMatchedUserIdsForPaidOrdersAsync();
         var ticketHolders = ticketHolderIds as HashSet<Guid> ?? ticketHolderIds.ToHashSet();
 
-        var engagedUserIds = await _repo.GetEngagedUserIdsForShiftsAsync(shiftIds);
+        var engagedUserIds = await repo.GetEngagedUserIdsForShiftsAsync(shiftIds);
         var engaged = engagedUserIds.ToHashSet();
 
         var ticketHoldersEngaged = engaged.Count(ticketHolders.Contains);
         var nonTicketSignups = engaged.Count(u => !ticketHolders.Contains(u));
 
-        var staleThreshold = _clock.GetCurrentInstant().Minus(Duration.FromDays(3));
-        var stalePendingCount = await _repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold);
+        var staleThreshold = clock.GetCurrentInstant().Minus(Duration.FromDays(3));
+        var stalePendingCount = await repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold);
 
         // Teams resolved via ITeamService — no cross-domain navigation.
         var teamIdsOnRotas = shifts
@@ -1281,7 +1271,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (subPeriod is not null)
             return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod);
 
-        var cached = await _cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
+        var cached = await cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
             return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null);
@@ -1296,12 +1286,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         if (period is not null)
         {
-            var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+            var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
             if (es is null) return [];
             (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
         }
 
-        var pendingCounts = await _repo.GetPendingSignupCountsByTeamAsync(
+        var pendingCounts = await repo.GetPendingSignupCountsByTeamAsync(
             eventSettingsId, minDayOffset, maxDayOffset);
 
         if (pendingCounts.Count == 0)
@@ -1360,7 +1350,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                         userLookup.TryGetValue(c.UserId, out var user);
                         return new CoordinatorLogin(
                             c.UserId,
-                            user?.DisplayName ?? string.Empty,
                             user?.LastLoginAt);
                     })
                     .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
@@ -1425,7 +1414,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (subPeriod is not null)
             return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod);
 
-        var cached = await _cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
+        var cached = await cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
             return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null);
@@ -1436,11 +1425,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var today = now.InZone(tz).Date;
 
         LocalDate start = window switch
@@ -1459,7 +1448,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
 
-        var signupsInWindow = await _repo.GetSignupCreatedAtsInWindowAsync(
+        var signupsInWindow = await repo.GetSignupCreatedAtsInWindowAsync(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
 
         var ticketsInWindow = await TicketQueryService.GetPaidOrderDatesInWindowAsync(startInstant, endInstant);
@@ -1495,7 +1484,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (period is not (ShiftPeriod.Build or ShiftPeriod.Strike))
             return [];
 
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1504,9 +1493,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
-        var shifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var shifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
         var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
         var teamIdsOnRotas = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsOnRotas);
@@ -1565,7 +1554,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             [],
             []);
 
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return empty;
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1573,11 +1562,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return empty;
 
-        var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var allShifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
         if (allShifts.Count == 0) return empty;
 
         var shiftIds = allShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
         var teamIds = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
@@ -1663,14 +1652,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default)
     {
-        var es = await _repo.GetActiveEventSettingsAsync(ct);
+        var es = await repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return (0, 0, 0d);
 
-        var allShifts = await _repo.GetVisibleShiftsForEventAsync(es.Id, ct);
+        var allShifts = await repo.GetVisibleShiftsForEventAsync(es.Id, ct);
         if (allShifts.Count == 0) return (0, 0, 0d);
 
         var shiftIds = allShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var total = allShifts.Sum(s => s.MaxVolunteers);
         var filled = allShifts.Sum(s =>
@@ -1685,10 +1674,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     {
         if (period is null) return [];
 
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
-        var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var allShifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
         var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
 
         if (period == ShiftPeriod.Build && subPeriod is not null)
@@ -1698,7 +1687,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         var shiftIds = periodShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
         int FilledSlotsOn(Shift s)
         {
@@ -1727,7 +1716,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null)
     {
-        var tags = await _repo.GetTagsAsync(query);
+        var tags = await repo.GetTagsAsync(query);
         return tags
             .Select(tag => new ShiftTagSummary(tag.Id, tag.Name))
             .ToList();
@@ -1736,7 +1725,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public async Task<ShiftTagSummary> GetOrCreateTagAsync(string name)
     {
         var trimmed = name.Trim();
-        var existing = await _repo.FindTagByNameAsync(trimmed);
+        var existing = await repo.FindTagByNameAsync(trimmed);
         if (existing is not null) return new ShiftTagSummary(existing.Id, existing.Name);
 
         var tag = new ShiftTag
@@ -1744,19 +1733,19 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             Id = Guid.NewGuid(),
             Name = trimmed
         };
-        await _repo.AddTagAsync(tag);
+        await repo.AddTagAsync(tag);
         return new ShiftTagSummary(tag.Id, tag.Name);
     }
 
     public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds)
     {
-        await _repo.SetRotaTagsAsync(rotaId, tagIds);
-        _viewInvalidator.InvalidateRota(rotaId);
+        await repo.SetRotaTagsAsync(rotaId, tagIds);
+        viewInvalidator.InvalidateRota(rotaId);
     }
 
     public async Task<IReadOnlyList<ShiftTagPreferenceSummary>> GetVolunteerTagPreferencesAsync(Guid userId)
     {
-        var preferences = await _repo.GetVolunteerTagPreferencesAsync(userId);
+        var preferences = await repo.GetVolunteerTagPreferencesAsync(userId);
         return preferences
             .Select(tag => new ShiftTagPreferenceSummary(tag.Id, tag.Name))
             .ToList();
@@ -1764,28 +1753,28 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
     {
-        await _repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
-        _viewInvalidator.InvalidateUser(userId);
+        await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
+        viewInvalidator.InvalidateUser(userId);
     }
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
         Guid eventSettingsId,
         CancellationToken cancellationToken = default)
     {
-        var activeEventId = await _repo.GetActiveEventIdAsync(eventSettingsId, cancellationToken);
+        var activeEventId = await repo.GetActiveEventIdAsync(eventSettingsId, cancellationToken);
         if (activeEventId == Guid.Empty)
             return new Dictionary<Guid, int>();
 
-        return await _repo.GetPendingSignupCountsByTeamAsync(activeEventId, null, null, cancellationToken);
+        return await repo.GetPendingSignupCountsByTeamAsync(activeEventId, null, null, cancellationToken);
     }
 
 
     public async Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId)
     {
-        var existing = await _repo.GetVolunteerEventProfileAsync(userId);
+        var existing = await repo.GetVolunteerEventProfileAsync(userId);
         if (existing is not null) return existing;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var profile = new VolunteerEventProfile
         {
             Id = Guid.NewGuid(),
@@ -1794,21 +1783,21 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             UpdatedAt = now
         };
 
-        await _repo.AddVolunteerEventProfileAsync(profile);
-        _viewInvalidator.InvalidateUser(userId);
+        await repo.AddVolunteerEventProfileAsync(profile);
+        viewInvalidator.InvalidateUser(userId);
         return profile;
     }
 
     public async Task UpdateShiftProfileAsync(VolunteerEventProfile profile)
     {
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpdateVolunteerEventProfileAsync(profile);
-        _viewInvalidator.InvalidateUser(profile.UserId);
+        profile.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateVolunteerEventProfileAsync(profile);
+        viewInvalidator.InvalidateUser(profile.UserId);
     }
 
     public async Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical)
     {
-        var profile = await _repo.GetVolunteerEventProfileAsync(userId);
+        var profile = await repo.GetVolunteerEventProfileAsync(userId);
 
         if (profile is not null && !includeMedical)
         {
@@ -1821,16 +1810,16 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public async Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var deleted = await _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
-        _viewInvalidator.InvalidateUser(userId);
+        var deleted = await repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+        viewInvalidator.InvalidateUser(userId);
         return deleted;
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await _repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        _viewInvalidator.InvalidateUser(sourceUserId);
-        _viewInvalidator.InvalidateUser(targetUserId);
+        await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        viewInvalidator.InvalidateUser(sourceUserId);
+        viewInvalidator.InvalidateUser(targetUserId);
     }
 }

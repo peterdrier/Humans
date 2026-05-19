@@ -1,8 +1,10 @@
 @using Humans.Application.DTOs
+@inject IConfiguration Configuration
 @model Humans.Web.Models.GlobalSearchViewModel
 
 @{
     ViewData["Title"] = "Search";
+    var eventsEnabled = Configuration.GetValue<bool>("Features:Events");
 
     string ChipUrl(SearchResultType? filter)
     {
@@ -30,7 +32,7 @@
     }
     <div class="input-group" style="max-width: 600px;">
         <input type="text" name="q" class="form-control" value="@Model.Query"
-               placeholder="Search humans, teams, camps, shifts…"
+               placeholder="@(eventsEnabled ? "Search humans, teams, camps, shifts, events…" : "Search humans, teams, camps, shifts…")"
                autofocus aria-label="Search query" />
         <button type="submit" class="btn btn-primary">
             <i class="fa-solid fa-magnifying-glass me-1"></i>Search
@@ -42,7 +44,7 @@
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
-        Type at least 2 characters to search across humans, teams, camps, and shifts.
+        Type at least 2 characters to search across humans, teams, camps, shifts@(eventsEnabled ? ", and events" : "").
     </div>
 }
 else if (Model.QueryIsTooShort)
@@ -70,6 +72,12 @@ else
         <a href="@ChipUrl(SearchResultType.Shift)" class="@ChipClass(SearchResultType.Shift)">
             <i class="fa-solid fa-clock me-1"></i>Shifts (@Model.ShiftCount)
         </a>
+        @if (eventsEnabled)
+        {
+            <a href="@ChipUrl(SearchResultType.Event)" class="@ChipClass(SearchResultType.Event)">
+                <i class="fa-solid fa-calendar-day me-1"></i>Events (@Model.EventCount)
+            </a>
+        }
     </div>
 
     @if (!Model.HasResults)
@@ -102,6 +110,12 @@ else
         {
             <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-clock me-2"></i>Shifts</h3>
             <partial name="_GlobalSearchSection" model="Model.ShiftResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-clock" } })" />
+        }
+
+        @if (eventsEnabled && ShowSection(SearchResultType.Event, Model.EventCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-calendar-day me-2"></i>Events</h3>
+            <partial name="_GlobalSearchSection" model="Model.EventResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-calendar-day" } })" />
         }
     }
 }

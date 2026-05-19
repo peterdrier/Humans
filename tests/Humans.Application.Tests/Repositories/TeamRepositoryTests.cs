@@ -39,7 +39,6 @@ public sealed class TeamRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================

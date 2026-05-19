@@ -12,28 +12,14 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Feedback")]
-public class FeedbackController : HumansControllerBase
+public class FeedbackController(
+    IFeedbackService feedbackService,
+    ITeamService teamService,
+    IUserService userService,
+    IStringLocalizer<SharedResource> localizer,
+    ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
-    private readonly IFeedbackService _feedbackService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ILogger<FeedbackController> _logger;
-
-    public FeedbackController(
-        IFeedbackService feedbackService,
-        ITeamService teamService,
-        IUserService userService,
-        IStringLocalizer<SharedResource> localizer,
-        ILogger<FeedbackController> logger)
-        : base(userService)
-    {
-        _feedbackService = feedbackService;
-        _teamService = teamService;
-        _userService = userService;
-        _localizer = localizer;
-        _logger = logger;
-    }
+    private readonly IUserService _userService = userService;
 
     /// <summary>
     /// Resolves active-approved humans into <see cref="AssigneeOption"/>
@@ -65,7 +51,7 @@ public class FeedbackController : HumansControllerBase
         var isAdmin = RoleChecks.IsFeedbackAdmin(User);
         Guid? reporterFilter = isAdmin ? reporterUserId : user.Id;
 
-        var reports = await _feedbackService.GetFeedbackListAsync(
+        var reports = await feedbackService.GetFeedbackListAsync(
             status, category, reporterFilter,
             assignedToUserId: isAdmin ? assignedTo : null,
             assignedToTeamId: isAdmin ? team : null,
@@ -76,7 +62,7 @@ public class FeedbackController : HumansControllerBase
 
         if (isAdmin)
         {
-            teamOptions = (await _teamService.GetTeamsAsync()).Values
+            teamOptions = (await teamService.GetTeamsAsync()).Values
                 .Where(t => t.IsActive)
                 .OrderBy(t => t.Name, StringComparer.Ordinal)
                 .ToList();
@@ -86,7 +72,7 @@ public class FeedbackController : HumansControllerBase
         var reporters = new List<ReporterDropdownItem>();
         if (isAdmin)
         {
-            var distinctReporters = await _feedbackService.GetDistinctReportersAsync();
+            var distinctReporters = await feedbackService.GetDistinctReportersAsync();
             reporters = distinctReporters.Select(r => new ReporterDropdownItem
             {
                 UserId = r.UserId,
@@ -140,7 +126,7 @@ public class FeedbackController : HumansControllerBase
         if (userMissing is not null) return userMissing;
 
         var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        var report = await _feedbackService.GetFeedbackByIdForViewerAsync(id, user.Id, isAdmin);
+        var report = await feedbackService.GetFeedbackByIdForViewerAsync(id, user.Id, isAdmin);
         if (report is null) return NotFound();
 
         var viewModel = MapDetailViewModel(report, isAdmin);
@@ -172,7 +158,7 @@ public class FeedbackController : HumansControllerBase
 
         if (!ModelState.IsValid)
         {
-            var errorMsg = _localizer["Feedback_Error"].Value;
+            var errorMsg = localizer["Feedback_Error"].Value;
             if (isAjax) return Json(new { success = false, message = errorMsg });
             SetError(errorMsg);
             return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
@@ -185,19 +171,19 @@ public class FeedbackController : HumansControllerBase
                 .Select(c => c.Value)
                 .ToList();
 
-            await _feedbackService.SubmitUserFeedbackAsync(
+            await feedbackService.SubmitUserFeedbackAsync(
                 user.Id, model.Category, model.Description,
                 model.PageUrl, model.UserAgent, roles,
                 model.Screenshot);
 
-            var successMsg = _localizer["Feedback_Submitted"].Value;
+            var successMsg = localizer["Feedback_Submitted"].Value;
             if (isAjax) return Json(new { success = true, message = successMsg });
             SetSuccess(successMsg);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Feedback submission failed for user {UserId}", user.Id);
-            var errorMsg = _localizer["Feedback_Error"].Value;
+            logger.LogWarning(ex, "Feedback submission failed for user {UserId}", user.Id);
+            var errorMsg = localizer["Feedback_Error"].Value;
             if (isAjax) return Json(new { success = false, message = errorMsg });
             SetError(errorMsg);
         }
@@ -220,7 +206,7 @@ public class FeedbackController : HumansControllerBase
 
         try
         {
-            await _feedbackService.PostMessageAsync(id, user.Id, model.Content, RoleChecks.IsFeedbackAdmin(User));
+            await feedbackService.PostMessageAsync(id, user.Id, model.Content, RoleChecks.IsFeedbackAdmin(User));
             SetSuccess("Message posted.");
         }
         catch (InvalidOperationException)
@@ -229,7 +215,7 @@ public class FeedbackController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
+            logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
             SetError("Failed to post message.");
         }
 
@@ -246,7 +232,7 @@ public class FeedbackController : HumansControllerBase
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
 
-            await _feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
+            await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
             SetSuccess("Status updated.");
         }
         catch (InvalidOperationException)
@@ -255,7 +241,7 @@ public class FeedbackController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
+            logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
             SetError("Failed to update status.");
         }
 
@@ -272,7 +258,7 @@ public class FeedbackController : HumansControllerBase
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
 
-            await _feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
+            await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
             SetSuccess("Assignment updated.");
         }
         catch (InvalidOperationException)
@@ -281,7 +267,7 @@ public class FeedbackController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
+            logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
             SetError("Failed to update assignment.");
         }
 
@@ -295,7 +281,7 @@ public class FeedbackController : HumansControllerBase
     {
         try
         {
-            await _feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
+            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
             SetSuccess("GitHub issue linked.");
         }
         catch (InvalidOperationException)
@@ -304,7 +290,7 @@ public class FeedbackController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
+            logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
             SetError("Failed to link GitHub issue.");
         }
 
@@ -350,7 +336,7 @@ public class FeedbackController : HumansControllerBase
 
     private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel)
     {
-        var teamsById = await _teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync();
         var teamOptions = teamsById.Values
             .Where(t => t.IsActive)
             .OrderBy(t => t.Name, StringComparer.Ordinal)

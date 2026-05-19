@@ -10,15 +10,9 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Team coordinator (or parent department coordinator): allow only their team
 /// - Everyone else: deny
 /// </summary>
-public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
+public class TeamAuthorizationHandler(ITeamService teamService)
+    : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
 {
-    private readonly ITeamService _teamService;
-
-    public TeamAuthorizationHandler(ITeamService teamService)
-    {
-        _teamService = teamService;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         TeamOperationRequirement requirement,
@@ -34,7 +28,7 @@ public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequir
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        if (await _teamService.IsUserCoordinatorOfTeamAsync(resource.Id, userId))
+        if (await teamService.IsUserCoordinatorOfTeamAsync(resource.Id, userId))
         {
             context.Succeed(requirement);
         }

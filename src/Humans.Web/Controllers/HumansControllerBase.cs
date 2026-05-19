@@ -6,15 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public abstract class HumansControllerBase : Controller
+public abstract class HumansControllerBase(IUserService userService) : Controller
 {
-    private readonly IUserService _userService;
-    protected IUserService UserService => _userService;
-
-    protected HumansControllerBase(IUserService userService)
-    {
-        _userService = userService;
-    }
+    protected IUserService UserService => userService;
 
     protected Guid? GetCurrentUserId()
     {
@@ -22,15 +16,20 @@ public abstract class HumansControllerBase : Controller
         return Guid.TryParse(raw, out var id) ? id : null;
     }
 
-    protected async Task<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
+    protected bool IsAuthenticated()
     {
-        var id = GetCurrentUserId();
-        return id is null ? null : await _userService.GetUserInfoAsync(id.Value, ct);
+        return User.Identity?.IsAuthenticated == true;
     }
 
-    protected async Task<UserInfo?> FindUserInfoByIdAsync(Guid userId, CancellationToken ct = default)
+    protected async ValueTask<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
     {
-        return await _userService.GetUserInfoAsync(userId, ct);
+        var id = GetCurrentUserId();
+        return id is null ? null : await userService.GetUserInfoAsync(id.Value, ct);
+    }
+
+    protected async ValueTask<UserInfo?> FindUserInfoByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await userService.GetUserInfoAsync(userId, ct);
     }
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User)> RequireCurrentUserAsync(CancellationToken ct = default)

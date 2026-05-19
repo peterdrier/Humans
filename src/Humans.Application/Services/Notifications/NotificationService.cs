@@ -16,34 +16,15 @@ namespace Humans.Application.Services.Notifications;
 /// preferences, and delegates persistence to <see cref="INotificationRepository"/>.
 /// Invalidates per-user nav-badge cache keys after every successful send (§15 Option A).
 /// </summary>
-public sealed class NotificationService : INotificationService, IUserMerge
+public sealed class NotificationService(
+    INotificationEmitter emitter,
+    INotificationRepository repo,
+    INotificationRecipientResolver recipientResolver,
+    ICommunicationPreferenceService preferenceService,
+    IClock clock,
+    IMemoryCache cache,
+    ILogger<NotificationService> logger) : INotificationService, IUserMerge
 {
-    private readonly INotificationEmitter _emitter;
-    private readonly INotificationRepository _repo;
-    private readonly INotificationRecipientResolver _recipientResolver;
-    private readonly ICommunicationPreferenceService _preferenceService;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<NotificationService> _logger;
-
-    public NotificationService(
-        INotificationEmitter emitter,
-        INotificationRepository repo,
-        INotificationRecipientResolver recipientResolver,
-        ICommunicationPreferenceService preferenceService,
-        IClock clock,
-        IMemoryCache cache,
-        ILogger<NotificationService> logger)
-    {
-        _emitter = emitter;
-        _repo = repo;
-        _recipientResolver = recipientResolver;
-        _preferenceService = preferenceService;
-        _clock = clock;
-        _cache = cache;
-        _logger = logger;
-    }
-
     public Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,
@@ -55,7 +36,7 @@ public sealed class NotificationService : INotificationService, IUserMerge
         string? actionLabel = null,
         string? targetGroupName = null,
         CancellationToken cancellationToken = default) =>
-        _emitter.SendAsync(
+        emitter.SendAsync(
             source, notificationClass, priority, title, recipientUserIds,
             body, actionUrl, actionLabel, targetGroupName, cancellationToken);
 
@@ -70,24 +51,24 @@ public sealed class NotificationService : INotificationService, IUserMerge
         string? actionLabel = null,
         CancellationToken cancellationToken = default)
     {
-        var team = await _recipientResolver.GetTeamNotificationInfoAsync(teamId, cancellationToken);
+        var team = await recipientResolver.GetTeamNotificationInfoAsync(teamId, cancellationToken);
         if (team is null)
         {
-            _logger.LogWarning("SendToTeamAsync: team {TeamId} not found", teamId);
+            logger.LogWarning("SendToTeamAsync: team {TeamId} not found", teamId);
             return;
         }
 
         var memberUserIds = team.MemberUserIds;
         if (memberUserIds.Count == 0)
         {
-            _logger.LogWarning("SendToTeamAsync: team {TeamId} has no members", teamId);
+            logger.LogWarning("SendToTeamAsync: team {TeamId} has no members", teamId);
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var category = source.ToMessageCategory();
 
-        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+        var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
             memberUserIds, category, cancellationToken);
 
         var notification = new Notification
@@ -120,15 +101,15 @@ public sealed class NotificationService : INotificationService, IUserMerge
 
         if (notification.Recipients.Count == 0)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "SendToTeamAsync: all recipients suppressed notification for team {TeamId}", teamId);
             return;
         }
 
-        await _repo.AddAsync(notification, cancellationToken);
+        await repo.AddAsync(notification, cancellationToken);
         InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to team '{TeamName}' ({Count} recipients)",
             source, title, team.Name, notification.Recipients.Count);
     }
@@ -144,17 +125,17 @@ public sealed class NotificationService : INotificationService, IUserMerge
         string? actionLabel = null,
         CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var roleUserIds = await _recipientResolver.GetActiveUserIdsForRoleAsync(roleName, cancellationToken);
+        var roleUserIds = await recipientResolver.GetActiveUserIdsForRoleAsync(roleName, cancellationToken);
         if (roleUserIds.Count == 0)
         {
-            _logger.LogWarning("SendToRoleAsync: no active users found for role '{RoleName}'", roleName);
+            logger.LogWarning("SendToRoleAsync: no active users found for role '{RoleName}'", roleName);
             return;
         }
 
         var category = source.ToMessageCategory();
-        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+        var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
             roleUserIds, category, cancellationToken);
 
         var notification = new Notification
@@ -187,15 +168,15 @@ public sealed class NotificationService : INotificationService, IUserMerge
 
         if (notification.Recipients.Count == 0)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "SendToRoleAsync: all recipients suppressed notification for role '{RoleName}'", roleName);
             return;
         }
 
-        await _repo.AddAsync(notification, cancellationToken);
+        await repo.AddAsync(notification, cancellationToken);
         InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to role '{RoleName}' ({Count} recipients)",
             source, title, roleName, notification.Recipients.Count);
     }
@@ -204,13 +185,13 @@ public sealed class NotificationService : INotificationService, IUserMerge
     {
         foreach (var userId in userIds)
         {
-            _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
+            cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
         }
     }
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
-        => _repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        => repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds) =>
         InvalidateBadgeCaches(userIds);

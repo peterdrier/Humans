@@ -6,32 +6,19 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Teams;
 
-public sealed class TeamPageService : ITeamPageService
+public sealed class TeamPageService(
+    ITeamService teamService,
+    ITeamResourceService teamResourceService,
+    IShiftManagementService shiftManagementService,
+    IUserService userService) : ITeamPageService
 {
-    private readonly ITeamService _teamService;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly IUserService _userService;
-
-    public TeamPageService(
-        ITeamService teamService,
-        ITeamResourceService teamResourceService,
-        IShiftManagementService shiftManagementService,
-        IUserService userService)
-    {
-        _teamService = teamService;
-        _teamResourceService = teamResourceService;
-        _shiftManagementService = shiftManagementService;
-        _userService = userService;
-    }
-
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,
         bool canManageShiftsByRole,
         CancellationToken cancellationToken = default)
     {
-        var detail = await _teamService.GetTeamDetailAsync(slug, userId, cancellationToken);
+        var detail = await teamService.GetTeamDetailAsync(slug, userId, cancellationToken);
         if (detail is null)
         {
             return null;
@@ -58,7 +45,7 @@ public sealed class TeamPageService : ITeamPageService
             cancellationToken);
 
         var resources = detail.IsAuthenticated
-            ? (await _teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
+            ? (await teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
                 .Select(resource => new TeamPageResourceSummary(
                     resource.Name,
                     resource.Url ?? string.Empty,
@@ -102,7 +89,7 @@ public sealed class TeamPageService : ITeamPageService
             return null;
         }
 
-        var user = await _userService.GetUserInfoAsync(userId.Value, cancellationToken);
+        var user = await userService.GetUserInfoAsync(userId.Value, cancellationToken);
         return user?.BurnerName;
     }
 
@@ -122,9 +109,9 @@ public sealed class TeamPageService : ITeamPageService
         }
 
         var canManageShifts = canManageShiftsByRole ||
-            await _shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
+            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
 
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
+        var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
@@ -137,13 +124,13 @@ public sealed class TeamPageService : ITeamPageService
             var allTeamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
             allTeamIds.AddRange(activeChildTeamIds);
 
-            var aggregatedData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, allTeamIds);
+            var aggregatedData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, allTeamIds);
             if (aggregatedData is null)
             {
                 return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
             }
 
-            var childTeamIdsWithShifts = await _shiftManagementService.GetTeamIdsWithShiftsInEventAsync(
+            var childTeamIdsWithShifts = await shiftManagementService.GetTeamIdsWithShiftsInEventAsync(
                 activeEvent.Id, activeChildTeamIds, cancellationToken);
 
             return new TeamPageShiftsSummary(
@@ -155,7 +142,7 @@ public sealed class TeamPageService : ITeamPageService
                 childTeamIdsWithShifts.Count);
         }
 
-        var summaryData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, [team.Id]);
+        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, [team.Id]);
         if (summaryData is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);

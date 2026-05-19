@@ -14,7 +14,11 @@ namespace Humans.Infrastructure.Services;
 /// Self-gated on STRIPE_STORE_WEBHOOK_REGISTRAR_KEY; prod uses a dashboard-configured webhook.
 /// Also sweeps stale endpoints for closed PRs. Failures log warnings and don't block boot.
 /// </summary>
-public class StoreWebhookRegistrationService : IHostedService
+public class StoreWebhookRegistrationService(
+    IOptions<StripeSettings> settings,
+    IOptions<GitHubSettings> githubSettings,
+    IConfiguration configuration,
+    ILogger<StoreWebhookRegistrationService> logger) : IHostedService
 {
     private static readonly TimeSpan RegistrationTimeout = TimeSpan.FromSeconds(15);
     private const string EventCheckoutSessionCompleted = "checkout.session.completed";
@@ -39,23 +43,6 @@ public class StoreWebhookRegistrationService : IHostedService
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 
-    private readonly IOptions<StripeSettings> _settings;
-    private readonly IOptions<GitHubSettings> _githubSettings;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<StoreWebhookRegistrationService> _logger;
-
-    public StoreWebhookRegistrationService(
-        IOptions<StripeSettings> settings,
-        IOptions<GitHubSettings> githubSettings,
-        IConfiguration configuration,
-        ILogger<StoreWebhookRegistrationService> logger)
-    {
-        _settings = settings;
-        _githubSettings = githubSettings;
-        _configuration = configuration;
-        _logger = logger;
-    }
-
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Background fire-and-forget — never block boot on a Stripe API call.
@@ -67,8 +54,8 @@ public class StoreWebhookRegistrationService : IHostedService
 
     private async Task RegisterAsync(CancellationToken ct)
     {
-        var settings = _settings.Value;
-        if (!settings.IsWebhookRegistrarConfigured)
+        var settings1 = settings.Value;
+        if (!settings1.IsWebhookRegistrarConfigured)
         {
             // Quiet — production and QA deliberately don't set the registrar key.
             return;
@@ -77,7 +64,7 @@ public class StoreWebhookRegistrationService : IHostedService
         var baseUrl = ResolveBaseUrl();
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Store webhook auto-registration skipped: no Email:BaseUrl configured to derive the webhook URL.");
             return;
         }
@@ -90,7 +77,7 @@ public class StoreWebhookRegistrationService : IHostedService
         if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
             !webhookUri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Store webhook auto-registration skipped: {Url} is not a recognized PR-preview host (must end in {Suffix}).",
                 webhookUrl, OwnedHostSuffix);
             return;
@@ -99,14 +86,14 @@ public class StoreWebhookRegistrationService : IHostedService
         // Warning level — this is a rare, boot-time-only event in PR-preview environments
         // and the success line is the only on-host confirmation that the in-memory
         // STRIPE_STORE_WEBHOOK_SECRET was stamped. Information would be filtered out in prod.
-        _logger.LogWarning("Auto-registering Stripe webhook for PR-preview env at {Url}…", webhookUrl);
+        logger.LogWarning("Auto-registering Stripe webhook for PR-preview env at {Url}…", webhookUrl);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(RegistrationTimeout);
 
         try
         {
-            var client = new StripeClient(settings.WebhookRegistrarKey);
+            var client = new StripeClient(settings1.WebhookRegistrarKey);
             var service = new WebhookEndpointService(client);
 
             await SweepStaleEndpointsAsync(service, webhookUrl, cts.Token);
@@ -121,37 +108,37 @@ public class StoreWebhookRegistrationService : IHostedService
 
             if (string.IsNullOrEmpty(created.Secret))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Stripe returned a webhook endpoint with no signing secret for {Url}; webhook will reject deliveries.",
                     webhookUrl);
                 return;
             }
 
-            settings.StoreWebhookSecret = created.Secret;
-            _logger.LogWarning(
+            settings1.StoreWebhookSecret = created.Secret;
+            logger.LogWarning(
                 "Auto-registered Stripe webhook {EndpointId} at {Url} (events: {Events}); STRIPE_STORE_WEBHOOK_SECRET stamped in-memory.",
                 created.Id, webhookUrl, string.Join(", ", SubscribedEvents));
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Store key is missing webhook_endpoint:read/write scope — webhook auto-registration not possible. {Message}",
                 ex.Message);
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Stripe webhook auto-registration failed. Code: {Code}",
                 ex.StripeError?.Code);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe webhook auto-registration timed out after {Timeout}.", RegistrationTimeout);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Stripe webhook auto-registration failed unexpectedly.");
+            logger.LogWarning(ex, "Stripe webhook auto-registration failed unexpectedly.");
         }
     }
 
@@ -165,7 +152,7 @@ public class StoreWebhookRegistrationService : IHostedService
         foreach (var stale in matches)
         {
             await service.DeleteAsync(stale.Id, cancellationToken: ct);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Deleted Stripe webhook {EndpointId} pointing at {Url} (current-PR cleanup).",
                 stale.Id, webhookUrl);
         }
@@ -180,12 +167,12 @@ public class StoreWebhookRegistrationService : IHostedService
     private async Task SweepStaleEndpointsAsync(
         WebhookEndpointService service, string ownWebhookUrl, CancellationToken ct)
     {
-        var settings = _settings.Value;
-        var github = _githubSettings.Value;
+        var settings1 = settings.Value;
+        var github = githubSettings.Value;
 
-        if (!settings.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
+        if (!settings1.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Cross-PR webhook sweep skipped: missing Stripe:WebhookCleanupOwner/Repository or GitHub:AccessToken.");
             return;
         }
@@ -194,16 +181,16 @@ public class StoreWebhookRegistrationService : IHostedService
         try
         {
             openPrs = await ListOpenPullRequestsAsync(
-                settings.WebhookCleanupGitHubOwner,
-                settings.WebhookCleanupGitHubRepository,
+                settings1.WebhookCleanupGitHubOwner,
+                settings1.WebhookCleanupGitHubRepository,
                 github.AccessToken,
                 ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}.",
-                settings.WebhookCleanupGitHubOwner, settings.WebhookCleanupGitHubRepository);
+                settings1.WebhookCleanupGitHubOwner, settings1.WebhookCleanupGitHubRepository);
             return;
         }
 
@@ -230,14 +217,14 @@ public class StoreWebhookRegistrationService : IHostedService
             try
             {
                 await service.DeleteAsync(endpoint.Id, cancellationToken: ct);
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Deleted Stripe webhook {EndpointId} for closed PR #{PrId} ({Url}).",
                     endpoint.Id, prId, endpoint.Url);
             }
             catch (StripeException ex)
             {
                 // Idempotent — another PR's registrar may have raced ahead. 404s are fine.
-                _logger.LogDebug(ex,
+                logger.LogDebug(ex,
                     "Could not delete webhook {EndpointId} during sweep — likely already gone.",
                     endpoint.Id);
             }
@@ -262,5 +249,5 @@ public class StoreWebhookRegistrationService : IHostedService
     /// Public hostname this app is reachable at. Reuses Email:BaseUrl, which Coolify
     /// already sets per environment for transactional email links.
     /// </summary>
-    private string? ResolveBaseUrl() => _configuration["Email:BaseUrl"];
+    private string? ResolveBaseUrl() => configuration["Email:BaseUrl"];
 }

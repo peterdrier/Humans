@@ -12,20 +12,14 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// per design-rules §15b — every method creates and disposes a fresh
 /// short-lived <see cref="HumansDbContext"/>.
 /// </summary>
-internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
+internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbContext> factory)
+    : IGoogleSyncOutboxRepository
 {
     private const int LastErrorMaxLength = 4000;
 
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public GoogleSyncOutboxRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<int> CountFailedAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(e => e.ProcessedAt == null && e.LastError != null, ct);
@@ -33,7 +27,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
 
     public async Task<int> CountPendingAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(e => e.ProcessedAt == null, ct);
@@ -41,7 +35,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
 
     public async Task<int> CountStaleAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(
@@ -51,7 +45,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
 
     public async Task<int> CountTransientRetriesAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(
@@ -62,7 +56,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
     public async Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentAsync(
         int take, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .OrderByDescending(e => e.OccurredAt)
@@ -73,7 +67,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
     public async Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetProcessingBatchAsync(
         int batchSize, int maxRetryCount, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .Where(e => e.ProcessedAt == null
@@ -86,7 +80,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
 
     public async Task MarkProcessedAsync(Guid id, Instant processedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return;
@@ -99,7 +93,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
     public async Task MarkPermanentlyFailedAsync(
         Guid id, Instant processedAt, string lastError, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return;
@@ -117,7 +111,7 @@ internal sealed class GoogleSyncOutboxRepository : IGoogleSyncOutboxRepository
         int maxRetryCount,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return (false, 0);

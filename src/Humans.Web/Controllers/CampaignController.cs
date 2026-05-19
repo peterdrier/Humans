@@ -10,23 +10,14 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Admin/Campaigns")]
-public class CampaignController : HumansControllerBase
+public class CampaignController(ICampaignService campaignService, IUserService userService)
+    : HumansControllerBase(userService)
 {
-    private readonly ICampaignService _campaignService;
-
-    public CampaignController(
-        ICampaignService campaignService,
-        IUserService userService)
-        : base(userService)
-    {
-        _campaignService = campaignService;
-    }
-
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Index()
     {
-        var campaigns = await _campaignService.GetAllAsync();
+        var campaigns = await campaignService.GetAllAsync();
         return View(campaigns);
     }
 
@@ -45,7 +36,7 @@ public class CampaignController : HumansControllerBase
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _campaignService.CreateAsync(
+        var result = await campaignService.CreateAsync(
             title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
         if (!result.Success)
         {
@@ -72,7 +63,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id)
     {
-        var campaign = await _campaignService.GetByIdAsync(id);
+        var campaign = await campaignService.GetByIdAsync(id);
         if (campaign is null) return NotFound();
         return View(campaign);
     }
@@ -82,7 +73,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
-        var updated = await _campaignService.UpdateAsync(
+        var updated = await campaignService.UpdateAsync(
             id,
             title,
             description,
@@ -101,7 +92,7 @@ public class CampaignController : HumansControllerBase
             else if (string.Equals(updated.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
                 ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
 
-            var campaign = await _campaignService.GetByIdAsync(id);
+            var campaign = await campaignService.GetByIdAsync(id);
             if (campaign is null)
             {
                 return NotFound();
@@ -123,7 +114,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var page = await _campaignService.GetDetailPageAsync(id);
+        var page = await campaignService.GetDetailPageAsync(id);
         if (page is null) return NotFound();
 
         return View(new CampaignDetailViewModel
@@ -158,7 +149,7 @@ public class CampaignController : HumansControllerBase
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        await _campaignService.ImportCodesAsync(id, codes);
+        await campaignService.ImportCodesAsync(id, codes);
         SetSuccess($"Imported {codes.Count} codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -168,7 +159,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
-        var result = await _campaignService.GenerateAndImportDiscountCodesAsync(
+        var result = await campaignService.GenerateAndImportDiscountCodesAsync(
             id, count, discountType, discountValue);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
             return NotFound();
@@ -190,7 +181,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Activate(Guid id)
     {
-        await _campaignService.ActivateAsync(id);
+        await campaignService.ActivateAsync(id);
         SetSuccess("Campaign activated.");
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -200,7 +191,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Complete(Guid id)
     {
-        await _campaignService.CompleteAsync(id);
+        await campaignService.CompleteAsync(id);
         SetSuccess("Campaign completed.");
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -209,7 +200,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid? teamId)
     {
-        var page = await _campaignService.GetSendWavePageAsync(id, teamId);
+        var page = await campaignService.GetSendWavePageAsync(id, teamId);
         if (page is null) return NotFound();
 
         return View(new CampaignSendWaveViewModel
@@ -226,7 +217,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid teamId)
     {
-        var sentCount = await _campaignService.SendWaveAsync(id, teamId);
+        var sentCount = await campaignService.SendWaveAsync(id, teamId);
         SetSuccess($"Wave sent to {sentCount} humans.");
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -236,10 +227,10 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Resend(Guid grantId)
     {
-        var campaignId = await _campaignService.GetCampaignIdForGrantAsync(grantId);
+        var campaignId = await campaignService.GetCampaignIdForGrantAsync(grantId);
         if (!campaignId.HasValue) return NotFound();
 
-        await _campaignService.ResendToGrantAsync(grantId);
+        await campaignService.ResendToGrantAsync(grantId);
         SetSuccess("Resend queued.");
         return RedirectToAction(nameof(Detail), new { id = campaignId.Value });
     }
@@ -249,7 +240,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> RetryAllFailed(Guid id)
     {
-        await _campaignService.RetryAllFailedAsync(id);
+        await campaignService.RetryAllFailedAsync(id);
         SetSuccess("Retrying all failed sends.");
         return RedirectToAction(nameof(Detail), new { id });
     }

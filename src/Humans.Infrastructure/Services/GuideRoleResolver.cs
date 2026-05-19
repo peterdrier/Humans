@@ -7,7 +7,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class GuideRoleResolver : IGuideRoleResolver
+public sealed class GuideRoleResolver(ITeamService teamService) : IGuideRoleResolver
 {
     private static readonly IReadOnlyList<string> KnownRoles =
     [
@@ -23,13 +23,6 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
-
-    private readonly ITeamService _teamService;
-
-    public GuideRoleResolver(ITeamService teamService)
-    {
-        _teamService = teamService;
-    }
 
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
@@ -57,7 +50,7 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
             // contains active (LeftAt is null) memberships, so we just look for
             // any team where the user holds the Coordinator role. Mirrors the
             // SQL filter UserId == userId && Role == Coordinator && LeftAt == null.
-            var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+            var teamsById = await teamService.GetTeamsAsync(cancellationToken);
             isCoordinator = teamsById.Values.Any(t =>
                 t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
         }

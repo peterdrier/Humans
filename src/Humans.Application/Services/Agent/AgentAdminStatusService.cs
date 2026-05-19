@@ -7,34 +7,17 @@ using NodaTime;
 namespace Humans.Application.Services.Agent;
 
 /// <summary>Read-only assembler for /Agent/Admin/Status. One 30-day projection, all sub-windows computed in memory (~500 users; fits in RAM).</summary>
-public sealed class AgentAdminStatusService : IAgentAdminStatusService
+public sealed class AgentAdminStatusService(
+    IAgentRepository repo,
+    IAgentSettingsService settings,
+    IAgentRateLimitStore rateLimit,
+    IAgentRetentionRunStore retention,
+    IAgentAnthropicBalanceProvider balance,
+    IClock clock) : IAgentAdminStatusService
 {
-    private readonly IAgentRepository _repo;
-    private readonly IAgentSettingsService _settings;
-    private readonly IAgentRateLimitStore _rateLimit;
-    private readonly IAgentRetentionRunStore _retention;
-    private readonly IAgentAnthropicBalanceProvider _balance;
-    private readonly IClock _clock;
-
-    public AgentAdminStatusService(
-        IAgentRepository repo,
-        IAgentSettingsService settings,
-        IAgentRateLimitStore rateLimit,
-        IAgentRetentionRunStore retention,
-        IAgentAnthropicBalanceProvider balance,
-        IClock clock)
-    {
-        _repo = repo;
-        _settings = settings;
-        _rateLimit = rateLimit;
-        _retention = retention;
-        _balance = balance;
-        _clock = clock;
-    }
-
     public async Task<AgentAdminStatusReport> GetStatusAsync(CancellationToken cancellationToken)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var window24h = now - Duration.FromDays(1);
         var window7d = now - Duration.FromDays(7);
         var window30d = now - Duration.FromDays(30);
@@ -46,15 +29,15 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
 
         var startOfWindow = firstOfMonth < window30d ? firstOfMonth : window30d;
 
-        var rows = await _repo.ListMessagesSinceAsync(startOfWindow, cancellationToken);
+        var rows = await repo.ListMessagesSinceAsync(startOfWindow, cancellationToken);
 
-        var settings = _settings.Current;
-        var defaultModel = settings.Model;
+        var settings1 = settings.Current;
+        var defaultModel = settings1.Model;
 
         // Conversation counts from the parent table — handles convs with no new messages in window.
-        var convCount24h = await _repo.CountConversationsInWindowAsync(window24h, now, cancellationToken);
-        var convCount7d = await _repo.CountConversationsInWindowAsync(window7d, now, cancellationToken);
-        var convCount30d = await _repo.CountConversationsInWindowAsync(window30d, now, cancellationToken);
+        var convCount24h = await repo.CountConversationsInWindowAsync(window24h, now, cancellationToken);
+        var convCount7d = await repo.CountConversationsInWindowAsync(window7d, now, cancellationToken);
+        var convCount30d = await repo.CountConversationsInWindowAsync(window30d, now, cancellationToken);
 
         var usage24h = BuildUsage(rows, window24h, convCount24h);
         var usage7d = BuildUsage(rows, window7d, convCount7d);
@@ -83,9 +66,9 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
             .Take(10)
             .ToList();
 
-        var topUsers7d = BuildTopUsers(rows, window7d, settings, now);
+        var topUsers7d = BuildTopUsers(rows, window7d, settings1, now);
 
-        var balance = await _balance.GetBalanceAsync(cancellationToken);
+        var balance1 = await balance.GetBalanceAsync(cancellationToken);
 
         return new AgentAdminStatusReport(
             Usage24h: usage24h,
@@ -99,9 +82,9 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
             Refusals7d: refusals7d,
             TopDocs7d: topDocs7d,
             TopUsers7d: topUsers7d,
-            Retention: _retention.Snapshot,
-            Balance: balance,
-            SettingsStoreWarm: settings.UpdatedAt != Instant.MinValue);
+            Retention: retention.Snapshot,
+            Balance: balance1,
+            SettingsStoreWarm: settings1.UpdatedAt != Instant.MinValue);
     }
 
     private static AgentUsageStats BuildUsage(
@@ -178,7 +161,7 @@ public sealed class AgentAdminStatusService : IAgentAdminStatusService
             .Take(10)
             .Select(kv =>
             {
-                var snapshot = _rateLimit.Get(kv.Key, today, hour);
+                var snapshot = rateLimit.Get(kv.Key, today, hour);
                 var dailyRemaining = Math.Max(0, settings.DailyMessageCap - snapshot.MessagesToday);
                 var hourlyRemaining = Math.Max(0, settings.HourlyMessageCap - snapshot.MessagesThisHour);
                 return new AgentTopUser(

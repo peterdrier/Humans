@@ -11,25 +11,17 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
 [Route("Tickets/Admin/Contacts")]
-public sealed class TicketsContactsAdminController : HumansControllerBase
+public sealed class TicketsContactsAdminController(
+    IAttendeeContactImportService import,
+    IUserService userService,
+    ILogger<TicketsContactsAdminController> logger) : HumansControllerBase(userService)
 {
-    private readonly IAttendeeContactImportService _import;
-    private readonly ILogger<TicketsContactsAdminController> _logger;
-
-    public TicketsContactsAdminController(
-        IAttendeeContactImportService import,
-        IUserService userService,
-        ILogger<TicketsContactsAdminController> logger)
-        : base(userService)
-    {
-        _import = import;
-        _logger = logger;
-    }
+    private readonly ILogger<TicketsContactsAdminController> _logger = logger;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var plan = await _import.BuildPlanAsync(ct);
+        var plan = await import.BuildPlanAsync(ct);
         var rows = plan.Decisions
             .OrderBy(d => SortKey(d.Outcome))
             .ThenBy(d => d.Email, StringComparer.OrdinalIgnoreCase)
@@ -63,8 +55,8 @@ public sealed class TicketsContactsAdminController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var fresh = await _import.BuildPlanAsync(ct);
-        var result = await _import.ApplyAsync(fresh, new HashSet<Guid>(selected), actor.Id, ct);
+        var fresh = await import.BuildPlanAsync(ct);
+        var result = await import.ApplyAsync(fresh, new HashSet<Guid>(selected), actor.Id, ct);
         SetInfo($"Attendee contact import: {result.FormatSummary()}");
         return RedirectToAction(nameof(Index));
     }

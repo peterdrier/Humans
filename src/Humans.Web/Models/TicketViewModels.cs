@@ -63,12 +63,8 @@ public class TicketOrderSummary
     public TicketPaymentStatus PaymentStatus { get; set; }
 }
 
-public class TicketOrdersViewModel : PagedListViewModel
+public class TicketOrdersViewModel() : PagedListViewModel(25)
 {
-    public TicketOrdersViewModel() : base(25)
-    {
-    }
-
     public List<TicketOrderRow> Orders { get; set; } = [];
     public string? Search { get; set; }
     public string SortBy { get; set; } = "date";
@@ -103,12 +99,8 @@ public class TicketOrderRow
     public string? MatchedUserName { get; set; }
 }
 
-public class TicketAttendeesViewModel : PagedListViewModel
+public class TicketAttendeesViewModel() : PagedListViewModel(25)
 {
-    public TicketAttendeesViewModel() : base(25)
-    {
-    }
-
     public List<TicketAttendeeRow> Attendees { get; set; } = [];
     public string? Search { get; set; }
     public string SortBy { get; set; } = "name";
@@ -202,12 +194,8 @@ public class QuarterlySalesRow
     public decimal VipDonations { get; set; }
 }
 
-public class WhoHasntBoughtViewModel : PagedListViewModel
+public class WhoHasntBoughtViewModel() : PagedListViewModel(25)
 {
-    public WhoHasntBoughtViewModel() : base(25)
-    {
-    }
-
     public List<WhoHasntBoughtRow> Humans { get; set; } = [];
     public string? Search { get; set; }
     public string? FilterTeam { get; set; }

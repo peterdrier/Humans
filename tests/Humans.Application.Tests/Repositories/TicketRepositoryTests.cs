@@ -37,7 +37,6 @@ public sealed class TicketRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ── GetSyncStateAsync / PersistSyncStateAsync ────────────────────────────

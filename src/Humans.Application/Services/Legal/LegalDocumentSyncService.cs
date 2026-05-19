@@ -10,41 +10,22 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Legal;
 
-public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
+public sealed class LegalDocumentSyncService(
+    ILegalDocumentRepository repository,
+    IGitHubLegalDocumentConnector gitHub,
+    INotificationService notificationService,
+    ITeamService teamService,
+    IUserService userService,
+    IClock clock,
+    ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncService
 {
-    private readonly ILegalDocumentRepository _repository;
-    private readonly IGitHubLegalDocumentConnector _gitHub;
-    private readonly INotificationService _notificationService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly ILogger<LegalDocumentSyncService> _logger;
-
-    public LegalDocumentSyncService(
-        ILegalDocumentRepository repository,
-        IGitHubLegalDocumentConnector gitHub,
-        INotificationService notificationService,
-        ITeamService teamService,
-        IUserService userService,
-        IClock clock,
-        ILogger<LegalDocumentSyncService> logger)
-    {
-        _repository = repository;
-        _gitHub = gitHub;
-        _notificationService = notificationService;
-        _teamService = teamService;
-        _userService = userService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting sync of all legal documents");
+        logger.LogInformation("Starting sync of all legal documents");
 
         var updatedDocuments = new List<LegalDocument>();
-        var activeDocuments = await _repository.GetActiveDocumentsAsync(cancellationToken);
+        var activeDocuments = await repository.GetActiveDocumentsAsync(cancellationToken);
 
         foreach (var document in activeDocuments)
         {
@@ -58,7 +39,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error syncing document {DocumentName} ({DocumentId})",
+                logger.LogError(ex, "Error syncing document {DocumentName} ({DocumentId})",
                     document.Name, document.Id);
             }
         }
@@ -68,10 +49,10 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
 
     public async Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
-        var document = await _repository.GetByIdAsync(documentId, cancellationToken);
+        var document = await repository.GetByIdAsync(documentId, cancellationToken);
         if (document is null)
         {
-            _logger.LogWarning("Document {DocumentId} not found", documentId);
+            logger.LogWarning("Document {DocumentId} not found", documentId);
             return null;
         }
 
@@ -82,7 +63,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         CancellationToken cancellationToken = default)
     {
         var documentsWithUpdates = new List<LegalDocument>();
-        var documents = await _repository.GetActiveDocumentsAsync(cancellationToken);
+        var documents = await repository.GetActiveDocumentsAsync(cancellationToken);
 
         foreach (var document in documents)
         {
@@ -94,7 +75,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
 
                 if (string.IsNullOrEmpty(checkPath)) continue;
 
-                var latestSha = await _gitHub.GetLatestCommitShaAsync(checkPath, cancellationToken);
+                var latestSha = await gitHub.GetLatestCommitShaAsync(checkPath, cancellationToken);
                 if (latestSha is not null && !string.Equals(latestSha, document.CurrentCommitSha, StringComparison.Ordinal))
                 {
                     documentsWithUpdates.Add(document);
@@ -102,7 +83,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error checking for updates to {DocumentName}", document.Name);
+                logger.LogWarning(ex, "Error checking for updates to {DocumentName}", document.Name);
             }
         }
 
@@ -112,15 +93,15 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     public async Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
         CancellationToken cancellationToken = default)
     {
-        var documents = await _repository.GetActiveDocumentsAsync(cancellationToken);
+        var documents = await repository.GetActiveDocumentsAsync(cancellationToken);
         return documents.Select(ToDocumentSnapshot).ToList();
     }
 
     public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
         CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var requiredDocuments = await _repository.GetActiveRequiredDocumentsAsync(cancellationToken);
+        var now = clock.GetCurrentInstant();
+        var requiredDocuments = await repository.GetActiveRequiredDocumentsAsync(cancellationToken);
 
         return requiredDocuments
             .Select(d =>
@@ -140,15 +121,15 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     public async Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(
         Guid versionId, CancellationToken cancellationToken = default)
     {
-        var version = await _repository.GetVersionByIdAsync(versionId, cancellationToken);
+        var version = await repository.GetVersionByIdAsync(versionId, cancellationToken);
         return version is null ? null : ToVersionSnapshot(version);
     }
 
     public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
         Guid teamId, CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var requiredDocuments = await _repository.GetActiveRequiredDocumentsForTeamAsync(teamId, cancellationToken);
+        var now = clock.GetCurrentInstant();
+        var requiredDocuments = await repository.GetActiveRequiredDocumentsForTeamAsync(teamId, cancellationToken);
 
         return requiredDocuments
             .Select(d =>
@@ -190,19 +171,19 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
 
     public async Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)
     {
-        var documents = await _repository.GetActiveRequiredDocumentsAsync(cancellationToken);
+        var documents = await repository.GetActiveRequiredDocumentsAsync(cancellationToken);
         return documents.Count;
     }
 
     public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
     {
-        var documents = await _repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
+        var documents = await repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
         if (documents.Count == 0) return [];
 
         // Team names via ITeamService — no cross-section EF join (memory/architecture/no-cross-section-ef-joins.md).
         var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await _teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
+        var teams = await teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
 
         return documents.Select(d =>
         {
@@ -248,10 +229,10 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         LegalDocument document,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Syncing document {Name} from folder {Folder}",
+        logger.LogDebug("Syncing document {Name} from folder {Folder}",
             document.Name, document.GitHubFolderPath);
 
-        var languageFiles = await _gitHub.DiscoverLanguageFilesAsync(
+        var languageFiles = await gitHub.DiscoverLanguageFilesAsync(
             document.GitHubFolderPath!, cancellationToken);
 
         if (languageFiles.Count == 0)
@@ -269,37 +250,37 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
                 $"Need a file without language suffix (e.g. 'name.md'). Found languages: {found}");
         }
 
-        var canonicalResult = await _gitHub.GetFileContentAsync(canonicalPath, cancellationToken);
+        var canonicalResult = await gitHub.GetFileContentAsync(canonicalPath, cancellationToken);
         if (canonicalResult is null)
         {
-            _logger.LogWarning("Canonical file not found at {Path}", canonicalPath);
+            logger.LogWarning("Canonical file not found at {Path}", canonicalPath);
             return null;
         }
 
         var commitSha = canonicalResult.Sha;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         if (string.Equals(document.CurrentCommitSha, commitSha, StringComparison.Ordinal))
         {
-            _logger.LogDebug("Document {Name} is up to date (SHA: {Sha})", document.Name, commitSha);
-            await _repository.TouchLastSyncedAtAsync(document.Id, now, cancellationToken);
+            logger.LogDebug("Document {Name} is up to date (SHA: {Sha})", document.Name, commitSha);
+            await repository.TouchLastSyncedAtAsync(document.Id, now, cancellationToken);
             return null;
         }
 
         var content = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (lang, path) in languageFiles)
         {
-            var file = await _gitHub.GetFileContentAsync(path, cancellationToken);
+            var file = await gitHub.GetFileContentAsync(path, cancellationToken);
             if (file is null)
             {
-                _logger.LogDebug("Language file not found at {Path}", path);
+                logger.LogDebug("Language file not found at {Path}", path);
                 continue;
             }
             content[lang] = file.Content;
         }
 
-        var commitMessage = await _gitHub.GetCommitMessageAsync(commitSha, cancellationToken);
+        var commitMessage = await gitHub.GetCommitMessageAsync(commitSha, cancellationToken);
 
         var isNew = document.Versions.Count == 0;
         var versionNumber = $"v{document.Versions.Count + 1}.0";
@@ -316,13 +297,13 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             ChangesSummary = commitMessage ?? (isNew ? "Initial version" : "Updated from GitHub")
         };
 
-        var persisted = await _repository.AddVersionAsync(
+        var persisted = await repository.AddVersionAsync(
             document.Id, newVersion, commitSha, now, cancellationToken);
 
         if (!persisted)
         {
             // Document row vanished between read and write — bail without log/fanout.
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Skipped version add for document {Name} ({DocumentId}): document row not found during persist.",
                 document.Name, document.Id);
             return null;
@@ -335,7 +316,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
 
         var languages = string.Join(", ", content.Keys.Order(StringComparer.Ordinal));
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",
             document.Name, versionNumber, commitSha, languages);
 
@@ -371,13 +352,13 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     {
         try
         {
-            var approvedUserIds = (await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
+            var approvedUserIds = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
                 .Where(u => u.IsActive)
                 .Select(u => u.Id)
                 .ToList();
             if (approvedUserIds.Count > 0)
             {
-                await _notificationService.SendAsync(
+                await notificationService.SendAsync(
                     source,
                     NotificationClass.Actionable,
                     NotificationPriority.High,
@@ -391,7 +372,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch {Source} notifications for document {DocumentId}",
                 source, document.Id);
         }
@@ -400,7 +381,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     private async Task<string?> GetCanonicalFilePathAsync(
         string folderPath, CancellationToken cancellationToken)
     {
-        var files = await _gitHub.DiscoverLanguageFilesAsync(folderPath, cancellationToken);
+        var files = await gitHub.DiscoverLanguageFilesAsync(folderPath, cancellationToken);
         return files.GetValueOrDefault("es");
     }
 }

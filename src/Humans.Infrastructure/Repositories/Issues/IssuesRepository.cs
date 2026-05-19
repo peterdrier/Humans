@@ -15,22 +15,18 @@ namespace Humans.Infrastructure.Repositories.Issues;
 /// so the repository can be registered as Singleton while
 /// <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class IssuesRepository : IIssuesRepository
+internal sealed class IssuesRepository(IDbContextFactory<HumansDbContext> factory) : IIssuesRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public IssuesRepository(IDbContextFactory<HumansDbContext> factory) => _factory = factory;
-
     public async Task AddIssueAsync(Issue issue, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Issues.Add(issue);
         await db.SaveChangesAsync(ct);
     }
 
     public async Task<Issue?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
             .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
@@ -39,7 +35,7 @@ internal sealed class IssuesRepository : IIssuesRepository
 
     public async Task<Issue?> FindForMutationAsync(Guid id, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .Include(i => i.Comments)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
@@ -51,7 +47,7 @@ internal sealed class IssuesRepository : IIssuesRepository
         Guid? reporterFallback,
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         IQueryable<Issue> q = db.Issues.AsNoTracking().Include(i => i.Comments);
 
         if (f.Statuses is { Length: > 0 }) q = q.Where(i => f.Statuses.Contains(i.Status));
@@ -82,7 +78,7 @@ internal sealed class IssuesRepository : IIssuesRepository
 
     public async Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         db.Attach(issue);
         db.Entry(issue).State = EntityState.Modified;
         await db.SaveChangesAsync(ct);
@@ -90,7 +86,7 @@ internal sealed class IssuesRepository : IIssuesRepository
 
     public async Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         // Attach the issue (mutated by the caller) and mark it modified so
         // timestamp/status fields are persisted in the same transaction as the
         // new comment.
@@ -105,7 +101,7 @@ internal sealed class IssuesRepository : IIssuesRepository
         Guid? viewerFallback,
         CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         IQueryable<Issue> q = db.Issues.AsNoTracking()
             .Where(i => i.Status == IssueStatus.Open || i.Status == IssueStatus.Triage);
 
@@ -123,7 +119,7 @@ internal sealed class IssuesRepository : IIssuesRepository
 
     public async Task<IReadOnlyList<DistinctReporterRow>> GetReporterCountsAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var rows = await db.Issues.AsNoTracking()
             .GroupBy(i => i.ReporterUserId)
             .Select(g => new { UserId = g.Key, Count = g.Count() })
@@ -135,7 +131,7 @@ internal sealed class IssuesRepository : IIssuesRepository
 
     public async Task<IReadOnlyList<Issue>> GetForUserExportAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
             .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
@@ -146,7 +142,7 @@ internal sealed class IssuesRepository : IIssuesRepository
     public async Task<IReadOnlyList<ExpiredIssueRow>> GetExpiredTerminalAsync(
         Instant cutoff, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
             .Where(i => i.ResolvedAt != null && i.ResolvedAt <= cutoff)
@@ -162,7 +158,7 @@ internal sealed class IssuesRepository : IIssuesRepository
         // so unit tests using the EF InMemory provider still cover the path.
         // ExecuteDeleteAsync would be cheaper at scale but is not supported by
         // the InMemory provider.
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var toDelete = await db.Issues
             .Where(i => ids.Contains(i.Id))
             .ToListAsync(ct);

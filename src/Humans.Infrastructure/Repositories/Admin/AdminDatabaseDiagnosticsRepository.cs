@@ -5,18 +5,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Infrastructure.Repositories.Admin;
 
-internal sealed class AdminDatabaseDiagnosticsRepository : IAdminDatabaseDiagnosticsRepository
+internal sealed class AdminDatabaseDiagnosticsRepository(IDbContextFactory<HumansDbContext> factory)
+    : IAdminDatabaseDiagnosticsRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public AdminDatabaseDiagnosticsRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
         var pending = await db.Database.GetPendingMigrationsAsync(ct);
 
@@ -28,7 +22,7 @@ internal sealed class AdminDatabaseDiagnosticsRepository : IAdminDatabaseDiagnos
 
     public async Task<int> ClearHangfireLocksAsync(CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock", ct);
     }
 }

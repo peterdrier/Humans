@@ -24,22 +24,21 @@ namespace Humans.Application.Services.Issues;
 /// <see cref="IIssuesService"/> impl. Data via <see cref="IIssuesRepository"/>; cross-section reads via user/email/role services;
 /// audit after save (design-rules §7a); notifications and emails dispatched at the end.
 /// </summary>
-public sealed class IssuesService : IIssuesService, IUserDataContributor
+public sealed class IssuesService(
+    IIssuesRepository repo,
+    IUserService users,
+    IUserEmailService userEmails,
+    IRoleAssignmentService roles,
+    IEmailService email,
+    INotificationService notifications,
+    IAuditLogService audit,
+    INavBadgeCacheInvalidator navBadge,
+    IIssuesBadgeCacheInvalidator issuesBadge,
+    IMemoryCache cache,
+    IClock clock,
+    IHostEnvironment env,
+    ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
-    private readonly IIssuesRepository _repo;
-    private readonly IUserService _users;
-    private readonly IUserEmailService _userEmails;
-    private readonly IRoleAssignmentService _roles;
-    private readonly IEmailService _email;
-    private readonly INotificationService _notifications;
-    private readonly IAuditLogService _audit;
-    private readonly INavBadgeCacheInvalidator _navBadge;
-    private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
-    private readonly IMemoryCache _cache;
-    private readonly IClock _clock;
-    private readonly IHostEnvironment _env;
-    private readonly ILogger<IssuesService> _logger;
-
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -56,36 +55,6 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     /// <see cref="Duration"/>.
     /// </summary>
     private static readonly Duration RetentionPeriod = Duration.FromDays(180);
-
-    public IssuesService(
-        IIssuesRepository repo,
-        IUserService users,
-        IUserEmailService userEmails,
-        IRoleAssignmentService roles,
-        IEmailService email,
-        INotificationService notifications,
-        IAuditLogService audit,
-        INavBadgeCacheInvalidator navBadge,
-        IIssuesBadgeCacheInvalidator issuesBadge,
-        IMemoryCache cache,
-        IClock clock,
-        IHostEnvironment env,
-        ILogger<IssuesService> logger)
-    {
-        _repo = repo;
-        _users = users;
-        _userEmails = userEmails;
-        _roles = roles;
-        _email = email;
-        _notifications = notifications;
-        _audit = audit;
-        _navBadge = navBadge;
-        _issuesBadge = issuesBadge;
-        _cache = cache;
-        _clock = clock;
-        _env = env;
-        _logger = logger;
-    }
 
     // ─── Submission ───
 
@@ -129,7 +98,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         IReadOnlyList<string>? reporterRoles,
         CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var issueId = Guid.NewGuid();
         var storedAdditionalContext = BuildAdditionalContext(additionalContext, reporterRoles);
 
@@ -168,7 +137,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
             var fileName = $"{Guid.NewGuid()}{ext}";
             var relativePath = Path.Combine("uploads", "issues", issueId.ToString(), fileName);
-            var absolutePath = Path.Combine(_env.ContentRootPath, "wwwroot", relativePath);
+            var absolutePath = Path.Combine(env.ContentRootPath, "wwwroot", relativePath);
 
             Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
 
@@ -180,14 +149,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             issue.ScreenshotContentType = screenshot.ContentType;
         }
 
-        await _repo.AddIssueAsync(issue, ct);
-        _navBadge.Invalidate();
-        _issuesBadge.InvalidateMany(
+        await repo.AddIssueAsync(issue, ct);
+        navBadge.Invalidate();
+        issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
 
         await DispatchSubmittedNotificationAsync(issue, ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Issue {IssueId} submitted by {UserId}: {Category}/{Section}",
             issueId, reporterUserId, category, section ?? "(unknown)");
         return issue;
@@ -212,7 +181,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     public async Task<Issue?> GetIssueByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var issue = await _repo.GetByIdAsync(id, ct);
+        var issue = await repo.GetByIdAsync(id, ct);
         if (issue is null) return null;
         await StitchCrossDomainNavsAsync([issue], ct);
         return issue;
@@ -234,7 +203,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             reporterFallback = viewerUserId;
         }
 
-        var issues = await _repo.GetListAsync(filter, sectionFilter, reporterFallback, ct);
+        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, ct);
         return await BuildListSnapshotsAsync(issues, ct);
     }
 
@@ -251,7 +220,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
                 userIds.Add(issue.AssigneeUserId.Value);
         }
 
-        var users = await _users.GetUserInfosAsync(userIds.ToList(), ct);
+        var users1 = await users.GetUserInfosAsync(userIds.ToList(), ct);
         return issues.Select(issue => new IssueListSnapshot(
             issue.Id,
             issue.Status,
@@ -263,7 +232,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             issue.UserAgent,
             issue.AdditionalContext,
             issue.ReporterUserId,
-            users.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.BurnerName : null,
+            users1.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.BurnerName : null,
             reporter?.Email,
             reporter?.PreferredLanguage,
             issue.CreatedAt,
@@ -273,7 +242,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             issue.ScreenshotStoragePath,
             issue.Comments.Count,
             issue.AssigneeUserId,
-            issue.AssigneeUserId.HasValue && users.TryGetValue(issue.AssigneeUserId.Value, out var assignee)
+            issue.AssigneeUserId.HasValue && users1.TryGetValue(issue.AssigneeUserId.Value, out var assignee)
                 ? assignee.BurnerName
                 : null,
             issue.GitHubIssueNumber)).ToList();
@@ -286,7 +255,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
         // Audit entries for the four Issue-related actions.
-        var auditEntries = await _audit.GetFilteredEntriesAsync(
+        var auditEntries = await audit.GetFilteredEntriesAsync(
             entityType: nameof(Issue),
             entityId: issueId,
             userId: null,
@@ -309,7 +278,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             .ToList();
         IReadOnlyDictionary<Guid, UserInfo> actorUsers = actorIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await _users.GetUserInfosAsync(actorIds, ct);
+            : await users.GetUserInfosAsync(actorIds, ct);
 
         var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
             c.Id,
@@ -354,10 +323,10 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         bool resolveOnPost,
         CancellationToken ct = default)
     {
-        var issue = await _repo.FindForMutationAsync(issueId, ct)
+        var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var comment = new IssueComment
         {
             Id = Guid.NewGuid(),
@@ -379,7 +348,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
 
         issue.UpdatedAt = now;
-        await _repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
+        await repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
 
         if (statusChangedToOpen)
         {
@@ -389,14 +358,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
 
         await DispatchCommentNotificationsAsync(issue, comment, senderIsReporter, ct);
-        _navBadge.Invalidate();
+        navBadge.Invalidate();
         if (statusChangedToOpen)
         {
-            _issuesBadge.InvalidateMany(
+            issuesBadge.InvalidateMany(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Comment posted on issue {IssueId} by {UserId} (reporter: {Reporter})",
             issueId, senderUserId, senderIsReporter);
 
@@ -412,13 +381,13 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         Guid issueId, IssueStatus newStatus, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await _repo.FindForMutationAsync(issueId, ct)
+        var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
         var oldStatus = issue.Status;
         if (oldStatus == newStatus) return;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         issue.Status = newStatus;
         issue.UpdatedAt = now;
 
@@ -433,13 +402,13 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             issue.ResolvedByUserId = null;
         }
 
-        await _repo.SaveTrackedIssueAsync(issue, ct);
+        await repo.SaveTrackedIssueAsync(issue, ct);
         await LogAuditAsync(
             AuditAction.IssueStatusChanged, issueId, actorUserId,
             $"status: {oldStatus} → {newStatus}");
         await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
-        _navBadge.Invalidate();
-        _issuesBadge.InvalidateMany(
+        navBadge.Invalidate();
+        issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
     }
 
@@ -456,12 +425,12 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Issue {IssueId} not found during UpdateStatus", issueId);
+            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateStatus", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update issue {IssueId} status", issueId);
+            logger.LogError(ex, "Failed to update issue {IssueId} status", issueId);
             return IssueMutationResult.Failed("Failed to update status.");
         }
     }
@@ -470,7 +439,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         Guid issueId, Guid? newAssigneeUserId, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await _repo.FindForMutationAsync(issueId, ct)
+        var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
         if (issue.AssigneeUserId == newAssigneeUserId) return;
@@ -480,20 +449,20 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         if (oldAssigneeId.HasValue) idsToResolve.Add(oldAssigneeId.Value);
         if (newAssigneeUserId.HasValue) idsToResolve.Add(newAssigneeUserId.Value);
 
-        var users = idsToResolve.Count == 0
+        var users1 = idsToResolve.Count == 0
             ? null
-            : await _users.GetUserInfosAsync(idsToResolve, ct);
+            : await users.GetUserInfosAsync(idsToResolve, ct);
 
         var oldName = oldAssigneeId.HasValue
-            ? (users!.TryGetValue(oldAssigneeId.Value, out var ou) ? ou.BurnerName : oldAssigneeId.Value.ToString())
+            ? (users1!.TryGetValue(oldAssigneeId.Value, out var ou) ? ou.BurnerName : oldAssigneeId.Value.ToString())
             : "Unassigned";
         var newName = newAssigneeUserId.HasValue
-            ? (users!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.BurnerName : newAssigneeUserId.Value.ToString())
+            ? (users1!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.BurnerName : newAssigneeUserId.Value.ToString())
             : "Unassigned";
 
         issue.AssigneeUserId = newAssigneeUserId;
-        issue.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.SaveTrackedIssueAsync(issue, ct);
+        issue.UpdatedAt = clock.GetCurrentInstant();
+        await repo.SaveTrackedIssueAsync(issue, ct);
 
         await LogAuditAsync(
             AuditAction.IssueAssigneeChanged, issueId, actorUserId,
@@ -518,12 +487,12 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Issue {IssueId} not found during UpdateAssignee", issueId);
+            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateAssignee", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update assignee on issue {IssueId}", issueId);
+            logger.LogError(ex, "Failed to update assignee on issue {IssueId}", issueId);
             return IssueMutationResult.Failed("Failed to update assignee.");
         }
     }
@@ -532,7 +501,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         Guid issueId, string? newSection, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await _repo.FindForMutationAsync(issueId, ct)
+        var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
         if (string.Equals(issue.Section, newSection, StringComparison.Ordinal)) return;
@@ -548,14 +517,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         var nextSection = newSection ?? "(unknown)";
 
         issue.Section = newSection;
-        issue.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.SaveTrackedIssueAsync(issue, ct);
+        issue.UpdatedAt = clock.GetCurrentInstant();
+        await repo.SaveTrackedIssueAsync(issue, ct);
 
         await LogAuditAsync(
             AuditAction.IssueSectionChanged, issueId, actorUserId,
             $"section: {oldSection} → {nextSection}");
-        _navBadge.Invalidate();
-        _issuesBadge.InvalidateMany(
+        navBadge.Invalidate();
+        issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
     }
 
@@ -572,12 +541,12 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
+            logger.LogWarning(ex, "Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
             return IssueMutationResult.Failed(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update section on issue {IssueId}", issueId);
+            logger.LogError(ex, "Failed to update section on issue {IssueId}", issueId);
             return IssueMutationResult.Failed("Failed to update section.");
         }
     }
@@ -586,14 +555,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         Guid issueId, int? githubIssueNumber, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await _repo.FindForMutationAsync(issueId, ct)
+        var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
         if (issue.GitHubIssueNumber == githubIssueNumber) return;
 
         issue.GitHubIssueNumber = githubIssueNumber;
-        issue.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.SaveTrackedIssueAsync(issue, ct);
+        issue.UpdatedAt = clock.GetCurrentInstant();
+        await repo.SaveTrackedIssueAsync(issue, ct);
 
         await LogAuditAsync(
             AuditAction.IssueGitHubLinked, issueId, actorUserId,
@@ -613,12 +582,12 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Issue {IssueId} not found during SetGitHubIssue", issueId);
+            logger.LogWarning(ex, "Issue {IssueId} not found during SetGitHubIssue", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set GitHub issue for issue {IssueId}", issueId);
+            logger.LogError(ex, "Failed to set GitHub issue for issue {IssueId}", issueId);
             return IssueMutationResult.Failed("Failed to link GitHub issue.");
         }
     }
@@ -630,14 +599,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         CancellationToken ct = default)
     {
         var cacheKey = CacheKeys.IssuesBadge(viewerUserId);
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
 
-            if (viewerIsAdmin) return await _repo.CountActionableAsync(null, null, ct);
+            if (viewerIsAdmin) return await repo.CountActionableAsync(null, null, ct);
 
             var sections = IssueSectionRouting.SectionsForRoles(viewerRoles);
-            return await _repo.CountActionableAsync(sections, viewerUserId, ct);
+            return await repo.CountActionableAsync(sections, viewerUserId, ct);
         });
     }
 
@@ -648,7 +617,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     {
         var ids = new HashSet<Guid> { reporterUserId };
 
-        var admins = await _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct);
+        var admins = await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct);
         foreach (var id in admins) ids.Add(id);
 
         foreach (var s in new[] { section, previousSection })
@@ -656,7 +625,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             if (s is null) continue;
             foreach (var role in IssueSectionRouting.RolesFor(s))
             {
-                var holders = await _roles.GetActiveUserIdsInRoleAsync(role, ct);
+                var holders = await roles.GetActiveUserIdsInRoleAsync(role, ct);
                 foreach (var id in holders) ids.Add(id);
             }
         }
@@ -667,14 +636,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     public async Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(
         CancellationToken ct = default)
     {
-        var rows = await _repo.GetReporterCountsAsync(ct);
+        var rows = await repo.GetReporterCountsAsync(ct);
         if (rows.Count == 0) return [];
 
-        var users = await _users.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
+        var users1 = await users.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
         return rows
             .Select(r => new DistinctReporterRow(
                 r.UserId,
-                users.TryGetValue(r.UserId, out var u) ? u.BurnerName : r.UserId.ToString(),
+                users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : r.UserId.ToString(),
                 r.Count))
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -684,19 +653,19 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     public async Task<int> PurgeExpiredAsync(CancellationToken ct = default)
     {
-        var cutoff = _clock.GetCurrentInstant() - RetentionPeriod;
+        var cutoff = clock.GetCurrentInstant() - RetentionPeriod;
 
-        var expired = await _repo.GetExpiredTerminalAsync(cutoff, ct);
+        var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
         var ids = expired.Select(e => e.Id).ToList();
-        var deleted = await _repo.DeleteByIdsAsync(ids, ct);
+        var deleted = await repo.DeleteByIdsAsync(ids, ct);
 
         // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
         foreach (var row in expired)
         {
             var issueDir = Path.Combine(
-                _env.ContentRootPath, "wwwroot", "uploads", "issues", row.Id.ToString());
+                env.ContentRootPath, "wwwroot", "uploads", "issues", row.Id.ToString());
 
             try
             {
@@ -705,17 +674,17 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
+                logger.LogWarning(ex,
                     "Failed to delete screenshot directory {Dir} for purged issue {IssueId}",
                     issueDir, row.Id);
             }
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
             deleted, cutoff, RetentionPeriod.Days);
 
-        _navBadge.Invalidate();
+        navBadge.Invalidate();
         return deleted;
     }
 
@@ -723,7 +692,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var issues = await _repo.GetForUserExportAsync(userId, ct);
+        var issues = await repo.GetForUserExportAsync(userId, ct);
         var shaped = issues.Select(i => new
         {
             i.Title,
@@ -752,11 +721,11 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     {
         if (actorUserId.HasValue)
         {
-            await _audit.LogAsync(action, nameof(Issue), issueId, description, actorUserId.Value);
+            await audit.LogAsync(action, nameof(Issue), issueId, description, actorUserId.Value);
         }
         else
         {
-            await _audit.LogAsync(action, nameof(Issue), issueId, description, "API");
+            await audit.LogAsync(action, nameof(Issue), issueId, description, "API");
         }
     }
 
@@ -772,7 +741,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             // Reporter commented → notify section role-holders + assignee.
             foreach (var role in IssueSectionRouting.RolesFor(issue.Section))
             {
-                foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(role, ct))
+                foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
                 {
                     if (id != comment.SenderUserId) recipients.Add(id);
                 }
@@ -795,7 +764,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         try
         {
-            await _notifications.SendAsync(
+            await notifications.SendAsync(
                 NotificationSource.IssueComment,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -808,7 +777,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch IssueComment notifications for issue {IssueId}",
                 issue.Id);
         }
@@ -816,15 +785,15 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     private async Task SendCommentEmailAsync(Issue issue, IssueComment comment, CancellationToken ct)
     {
-        var reporter = await _users.GetUserInfoAsync(issue.ReporterUserId, ct);
-        var emails = await _userEmails.GetNotificationTargetEmailsAsync(
+        var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
+        var emails = await userEmails.GetNotificationTargetEmailsAsync(
             [issue.ReporterUserId], ct);
 
         if (reporter is not null &&
             emails.TryGetValue(issue.ReporterUserId, out var to) &&
             !string.IsNullOrWhiteSpace(to))
         {
-            await _email.SendIssueCommentAsync(
+            await email.SendIssueCommentAsync(
                 to,
                 reporter.BurnerName,
                 issue.Title,
@@ -835,7 +804,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         else
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Skipping issue comment email for issue {IssueId} — reporter {UserId} has no effective email",
                 issue.Id, issue.ReporterUserId);
         }
@@ -854,7 +823,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         try
         {
-            await _notifications.SendAsync(
+            await notifications.SendAsync(
                 NotificationSource.IssueStatusChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -867,7 +836,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch IssueStatusChanged notification for issue {IssueId}",
                 issue.Id);
         }
@@ -878,14 +847,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         // Fan out to Admins + section role-holders (US-28.4); exclude self-filer.
         var recipients = new HashSet<Guid>();
 
-        foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
+        foreach (var id in await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
         {
             if (id != issue.ReporterUserId) recipients.Add(id);
         }
 
         foreach (var role in IssueSectionRouting.RolesFor(issue.Section))
         {
-            foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(role, ct))
+            foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
             {
                 if (id != issue.ReporterUserId) recipients.Add(id);
             }
@@ -895,7 +864,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         try
         {
-            await _notifications.SendAsync(
+            await notifications.SendAsync(
                 NotificationSource.IssueSubmitted,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
@@ -908,7 +877,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch IssueSubmitted notification for issue {IssueId}",
                 issue.Id);
         }
@@ -922,7 +891,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         try
         {
-            await _notifications.SendAsync(
+            await notifications.SendAsync(
                 NotificationSource.IssueAssigned,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
@@ -935,7 +904,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch IssueAssigned notification for issue {IssueId}",
                 issue.Id);
         }
@@ -960,24 +929,24 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             }
         }
 
-        var users = userIds.Count == 0
+        var users1 = userIds.Count == 0
             ? null
-            : await _users.GetByIdsAsync(userIds.ToList(), ct);
+            : await users.GetByIdsAsync(userIds.ToList(), ct);
 
         foreach (var i in issues)
         {
-            if (users is not null && users.TryGetValue(i.ReporterUserId, out var rep))
+            if (users1 is not null && users1.TryGetValue(i.ReporterUserId, out var rep))
                 i.Reporter = rep;
-            if (i.AssigneeUserId is { } aid && users is not null &&
-                users.TryGetValue(aid, out var assignee))
+            if (i.AssigneeUserId is { } aid && users1 is not null &&
+                users1.TryGetValue(aid, out var assignee))
                 i.Assignee = assignee;
-            if (i.ResolvedByUserId is { } rbid && users is not null &&
-                users.TryGetValue(rbid, out var resolver))
+            if (i.ResolvedByUserId is { } rbid && users1 is not null &&
+                users1.TryGetValue(rbid, out var resolver))
                 i.ResolvedByUser = resolver;
             foreach (var c in i.Comments)
             {
-                if (c.SenderUserId is { } sid && users is not null &&
-                    users.TryGetValue(sid, out var sender))
+                if (c.SenderUserId is { } sid && users1 is not null &&
+                    users1.TryGetValue(sid, out var sender))
                 {
                     c.SenderUser = sender;
                 }

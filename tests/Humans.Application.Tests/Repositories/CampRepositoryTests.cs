@@ -29,7 +29,6 @@ public sealed class CampRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================

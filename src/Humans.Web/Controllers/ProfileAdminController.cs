@@ -15,55 +15,33 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin")]
-public class ProfileAdminController : HumansControllerBase
+public class ProfileAdminController(
+    IUserService userService,
+    IEmailProblemsService emailProblems,
+    IAccountMergeService accountMerge,
+    IUserEmailService userEmails,
+    IUserService users,
+    IAuditLogService audit,
+    ILogger<ProfileAdminController> logger,
+    IProfileService profileService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService) : HumansControllerBase(userService)
 {
-    private readonly IEmailProblemsService _emailProblems;
-    private readonly IAccountMergeService _accountMerge;
-    private readonly IUserEmailService _userEmails;
-    private readonly IUserService _users;
-    private readonly IAuditLogService _audit;
-    private readonly ILogger<ProfileAdminController> _logger;
-    private readonly IProfileService _profileService;
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-
-    public ProfileAdminController(
-        IUserService userService,
-        IEmailProblemsService emailProblems,
-        IAccountMergeService accountMerge,
-        IUserEmailService userEmails,
-        IUserService users,
-        IAuditLogService audit,
-        ILogger<ProfileAdminController> logger,
-        IProfileService profileService,
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService)
-        : base(userService)
-    {
-        _emailProblems = emailProblems;
-        _accountMerge = accountMerge;
-        _userEmails = userEmails;
-        _users = users;
-        _audit = audit;
-        _logger = logger;
-        _profileService = profileService;
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-    }
+    private readonly IProfileService _profileService = profileService;
 
     [HttpGet("EmailProblems")]
     public async Task<IActionResult> EmailProblems(CancellationToken ct)
     {
-        var report = await _emailProblems.ScanAsync(ct);
+        var report = await emailProblems.ScanAsync(ct);
 
         var allInvolvedUserIds = report.Problems
             .SelectMany(p => new[] { p.UserId, p.OtherUserId })
             .OfType<Guid>()
             .Distinct()
             .ToList();
-        var users = await _users.GetUserInfosAsync(allInvolvedUserIds, ct);
+        var users1 = await users.GetUserInfosAsync(allInvolvedUserIds, ct);
 
-        return View(EmailProblemsListViewModel.From(report, users));
+        return View(EmailProblemsListViewModel.From(report, users1));
     }
 
     [HttpGet("EmailProblems/Compare")]
@@ -76,15 +54,15 @@ public class ProfileAdminController : HumansControllerBase
         }
 
         var ids = new[] { userId1, userId2 };
-        var users = await _users.GetByIdsAsync(ids, ct);
-        if (!users.TryGetValue(userId1, out var u1) || !users.TryGetValue(userId2, out var u2))
+        var users1 = await users.GetByIdsAsync(ids, ct);
+        if (!users1.TryGetValue(userId1, out var u1) || !users1.TryGetValue(userId2, out var u2))
         {
             SetError("One or both users not found.");
             return RedirectToAction(nameof(EmailProblems));
         }
 
-        var info1 = await _users.GetUserInfoAsync(userId1, ct);
-        var info2 = await _users.GetUserInfoAsync(userId2, ct);
+        var info1 = await users.GetUserInfoAsync(userId1, ct);
+        var info2 = await users.GetUserInfoAsync(userId2, ct);
 
         IReadOnlyList<UserEmailInfo> Emails(UserInfo? info) =>
             info?.UserEmails ?? [];
@@ -101,10 +79,10 @@ public class ProfileAdminController : HumansControllerBase
                 user.LastLoginAt,
                 !string.IsNullOrEmpty(info?.Profile?.BurnerName));
 
-        var memberships1 = await _teamService.GetUserTeamsAsync(userId1, ct);
-        var memberships2 = await _teamService.GetUserTeamsAsync(userId2, ct);
-        var roles1 = await _roleAssignmentService.GetByUserIdAsync(userId1, ct);
-        var roles2 = await _roleAssignmentService.GetByUserIdAsync(userId2, ct);
+        var memberships1 = await teamService.GetUserTeamsAsync(userId1, ct);
+        var memberships2 = await teamService.GetUserTeamsAsync(userId2, ct);
+        var roles1 = await roleAssignmentService.GetByUserIdAsync(userId1, ct);
+        var roles2 = await roleAssignmentService.GetByUserIdAsync(userId2, ct);
 
         var vm = new EmailProblemsCompareViewModel
         {
@@ -135,13 +113,13 @@ public class ProfileAdminController : HumansControllerBase
 
         try
         {
-            await _accountMerge.AdminMergeAsync(sourceUserId, targetUserId, currentUser.Id, notes, ct);
+            await accountMerge.AdminMergeAsync(sourceUserId, targetUserId, currentUser.Id, notes, ct);
             SetSuccess("Accounts merged. The source account has been tombstoned.");
             return RedirectToAction(nameof(EmailProblems));
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Admin-initiated merge failed: source {Source}, target {Target}: {Reason}",
+            logger.LogWarning("Admin-initiated merge failed: source {Source}, target {Target}: {Reason}",
                 sourceUserId, targetUserId, ex.Message);
             SetError($"Merge failed: {ex.Message}");
             return RedirectToAction(nameof(EmailProblemsCompare),
@@ -162,7 +140,7 @@ public class ProfileAdminController : HumansControllerBase
                 new { userId1 = user1Id, userId2 = user2Id }));
         }
 
-        if (!await _emailProblems.UsersShareAnyEmailAsync(user1Id, user2Id, ct))
+        if (!await emailProblems.UsersShareAnyEmailAsync(user1Id, user2Id, ct))
         {
             SetError("These accounts no longer share an email and cannot be merged here.");
             return (Guid.Empty, RedirectToAction(nameof(EmailProblems)));
@@ -178,10 +156,10 @@ public class ProfileAdminController : HumansControllerBase
         var (error, currentUser) = await RequireCurrentUserAsync();
         if (error is not null) return error;
 
-        var deleted = await _userEmails.DeleteByIdAsync(emailId, ct);
+        var deleted = await userEmails.DeleteByIdAsync(emailId, ct);
         if (deleted)
         {
-            await _audit.LogAsync(
+            await audit.LogAsync(
                 AuditAction.OrphanUserEmailDeleted, nameof(UserEmail), emailId,
                 $"Orphan UserEmail row {emailId} deleted by EmailProblems action",
                 currentUser.Id);
@@ -201,10 +179,10 @@ public class ProfileAdminController : HumansControllerBase
         var (error, currentUser) = await RequireCurrentUserAsync();
         if (error is not null) return error;
 
-        var backfilled = await _emailProblems.BackfillLegacyIdentityEmailsAsync(currentUser.Id, ct);
+        var backfilled = await emailProblems.BackfillLegacyIdentityEmailsAsync(currentUser.Id, ct);
         foreach (var (userId, email) in backfilled)
         {
-            await _audit.LogAsync(
+            await audit.LogAsync(
                 AuditAction.LegacyIdentityEmailBackfilled, nameof(User), userId,
                 $"Backfilled verified UserEmail row from legacy User.Email column: {email}",
                 currentUser.Id);

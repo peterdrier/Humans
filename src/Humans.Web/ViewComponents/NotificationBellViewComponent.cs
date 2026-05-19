@@ -7,18 +7,10 @@ using System.Security.Claims;
 
 namespace Humans.Web.ViewComponents;
 
-public class NotificationBellViewComponent : ViewComponent
+public class NotificationBellViewComponent(INotificationInboxService notificationInboxService, IMemoryCache cache)
+    : ViewComponent
 {
-    private readonly INotificationInboxService _notificationInboxService;
-    private readonly IMemoryCache _cache;
-
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
-
-    public NotificationBellViewComponent(INotificationInboxService notificationInboxService, IMemoryCache cache)
-    {
-        _notificationInboxService = notificationInboxService;
-        _cache = cache;
-    }
 
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -28,11 +20,11 @@ public class NotificationBellViewComponent : ViewComponent
 
         var cacheKey = CacheKeys.NotificationBadgeCounts(userId.Value);
 
-        var model = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        var model = await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            var (actionableCount, informationalCount) = await _notificationInboxService.GetUnreadBadgeCountsAsync(userId.Value);
+            var (actionableCount, informationalCount) = await notificationInboxService.GetUnreadBadgeCountsAsync(userId.Value);
 
             return new NotificationBadgeViewModel
             {

@@ -17,69 +17,39 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Application.Services.Profiles;
 
 // AcceptAsync fans out IUserMerge across sections to re-FK source→target, then tombstones source via AnonymizeForMergeAsync.
-public sealed class AccountMergeService : IAccountMergeService, IUserDataContributor
+public sealed class AccountMergeService(
+    IAccountMergeRepository mergeRepository,
+    IUserEmailRepository userEmailRepository,
+    IAuditLogService auditLogService,
+    IUserInfoInvalidator userInfoInvalidator,
+    ILogger<AccountMergeService> logger,
+    IClock clock,
+    IEnumerable<IUserMerge> userMerges,
+    IUserService userService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService,
+    INotificationService notificationService,
+    IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
 {
-    private readonly IAccountMergeRepository _mergeRepository;
-    private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IUserInfoInvalidator _userInfoInvalidator;
-    private readonly ILogger<AccountMergeService> _logger;
-    private readonly IClock _clock;
-
     // Fan-out — IUserMerge implementations register in each section's Add…Section extension.
-    private readonly IEnumerable<IUserMerge> _userMerges;
-
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly INotificationService _notificationService;
-    private readonly IConsentCacheInvalidator _consentCacheInvalidator;
-
-    public AccountMergeService(
-        IAccountMergeRepository mergeRepository,
-        IUserEmailRepository userEmailRepository,
-        IAuditLogService auditLogService,
-        IUserInfoInvalidator userInfoInvalidator,
-        ILogger<AccountMergeService> logger,
-        IClock clock,
-        IEnumerable<IUserMerge> userMerges,
-        IUserService userService,
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
-        INotificationService notificationService,
-        IConsentCacheInvalidator consentCacheInvalidator)
-    {
-        _mergeRepository = mergeRepository;
-        _userEmailRepository = userEmailRepository;
-        _auditLogService = auditLogService;
-        _userInfoInvalidator = userInfoInvalidator;
-        _logger = logger;
-        _clock = clock;
-        _userMerges = userMerges;
-        _userService = userService;
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-        _notificationService = notificationService;
-        _consentCacheInvalidator = consentCacheInvalidator;
-    }
 
     public async Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default)
     {
-        var requests = await _mergeRepository.GetPendingAsync(ct);
+        var requests = await mergeRepository.GetPendingAsync(ct);
         if (requests.Count == 0) return [];
 
         var userIds = CollectUserIds(requests);
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
         return requests.Select(r => ToSnapshot(r, users)).ToList();
     }
 
     public async Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var request = await _mergeRepository.GetByIdAsync(id, ct);
+        var request = await mergeRepository.GetByIdAsync(id, ct);
         if (request is null) return null;
 
         var userIds = CollectUserIds([request]);
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
         return ToSnapshot(request, users);
     }
 
@@ -99,12 +69,12 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         Guid requestId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
-        var request = await _mergeRepository.GetByIdAsync(requestId, ct)
+        var request = await mergeRepository.GetByIdAsync(requestId, ct)
             ?? throw new InvalidOperationException("Merge request not found.");
         if (request.Status != AccountMergeRequestStatus.Pending)
             throw new InvalidOperationException("Merge request is not pending.");
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Admin {AdminId} accepting merge request {RequestId}: folding {SourceUserId} into {TargetUserId}",
             adminUserId, requestId, request.SourceUserId, request.TargetUserId);
 
@@ -117,7 +87,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
         await FoldAsync(request.SourceUserId, request.TargetUserId, adminUserId, audit, ct);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         using var scope = new TransactionScope(
             TransactionScopeOption.Required,
             new TransactionOptions
@@ -125,7 +95,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 IsolationLevel = IsolationLevel.ReadCommitted
             },
             TransactionScopeAsyncFlowOption.Enabled);
-        var verified = await _userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
+        var verified = await userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
         if (!verified)
             throw new InvalidOperationException(
                 $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
@@ -134,7 +104,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         request.ResolvedAt = now;
         request.ResolvedByUserId = adminUserId;
         request.AdminNotes = notes;
-        await _mergeRepository.UpdateAsync(request, ct);
+        await mergeRepository.UpdateAsync(request, ct);
 
         scope.Complete();
     }
@@ -186,7 +156,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         Guid adminUserId, AuditEntry audit,
         CancellationToken ct)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         try
         {
@@ -200,14 +170,14 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 TransactionScopeAsyncFlowOption.Enabled))
             {
                 // Fan-out: each IUserMerge re-FKs source→target. Order is irrelevant inside the transaction.
-                foreach (var merger in _userMerges)
+                foreach (var merger in userMerges)
                     await merger.ReassignAsync(sourceUserId, targetUserId, adminUserId, now, ct);
 
                 // Tombstone source User (no wipe — chain-follow reads need the redirect).
-                await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
+                await userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
                 // Audit inside scope — rolled-back fold must not leave a ghost row.
-                await _auditLogService.LogAsync(
+                await auditLogService.LogAsync(
                     audit.Action,
                     audit.EntityType, audit.EntityId,
                     audit.Description,
@@ -219,21 +189,21 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             }
 
             // Cache invalidation AFTER commit so cache-aside readers don't repopulate from rolled-back rows.
-            _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
-            _roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
-            _roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
-            _roleAssignmentService.InvalidateNavBadgeCache();
-            _roleAssignmentService.InvalidateRoleAssignmentCache();
-            _notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
+            teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
+            roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
+            roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
+            roleAssignmentService.InvalidateNavBadgeCache();
+            roleAssignmentService.InvalidateRoleAssignmentCache();
+            notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
 
             // T-04: rebuild target's UserConsentInfo against post-merge chain (§12 — source records stay at source).
-            _consentCacheInvalidator.InvalidateUser(sourceUserId);
-            _consentCacheInvalidator.InvalidateUser(targetUserId);
+            consentCacheInvalidator.InvalidateUser(sourceUserId);
+            consentCacheInvalidator.InvalidateUser(targetUserId);
         }
         finally
         {
             // Evict ActiveTeams cache: TeamService mutates it during scope; rolled-back state would otherwise leak.
-            _teamService.InvalidateActiveTeamsCache();
+            teamService.InvalidateActiveTeamsCache();
         }
     }
 
@@ -241,7 +211,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         Guid requestId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
-        var request = await _mergeRepository.GetByIdPlainAsync(requestId, ct)
+        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct)
             ?? throw new InvalidOperationException("Merge request not found.");
 
         if (request.Status != AccountMergeRequestStatus.Pending)
@@ -249,7 +219,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             throw new InvalidOperationException("Merge request is not pending.");
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         // Transaction so pending-email delete and request status commit together (else dangling PendingEmailId blocks future Accept).
         using (var scope = new TransactionScope(
@@ -258,15 +228,15 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             TransactionScopeAsyncFlowOption.Enabled))
         {
             // Best-effort remove the target's pending email.
-            await _userEmailRepository.RemoveByIdAsync(request.PendingEmailId, ct);
+            await userEmailRepository.RemoveByIdAsync(request.PendingEmailId, ct);
 
             request.Status = AccountMergeRequestStatus.Rejected;
             request.ResolvedAt = now;
             request.ResolvedByUserId = adminUserId;
             request.AdminNotes = notes;
-            await _mergeRepository.UpdateAsync(request, ct);
+            await mergeRepository.UpdateAsync(request, ct);
 
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.AccountMergeRejected,
                 nameof(AccountMergeRequest), request.Id,
                 $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
@@ -276,12 +246,12 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         }
 
         // Invalidate target's UserInfo AFTER commit.
-        await _userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
+        await userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var rows = await _mergeRepository.GetForUserGdprAsync(userId, ct);
+        var rows = await mergeRepository.GetForUserGdprAsync(userId, ct);
 
         var shaped = rows.Select(r => new
         {
@@ -298,19 +268,19 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
     public Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
         IReadOnlyList<Guid> emailIds, CancellationToken ct = default) =>
-        _mergeRepository.GetPendingEmailIdsAsync(emailIds, ct);
+        mergeRepository.GetPendingEmailIdsAsync(emailIds, ct);
 
     public Task<bool> HasPendingForUserAndEmailAsync(
         Guid targetUserId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default) =>
-        _mergeRepository.HasPendingForUserAndEmailAsync(
+        mergeRepository.HasPendingForUserAndEmailAsync(
             targetUserId, normalizedEmail, alternateEmail, ct);
 
     public Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default) =>
-        _mergeRepository.HasPendingForEmailIdAsync(pendingEmailId, ct);
+        mergeRepository.HasPendingForEmailIdAsync(pendingEmailId, ct);
 
     public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
-        _mergeRepository.AddAsync(request, ct);
+        mergeRepository.AddAsync(request, ct);
 
     public async Task AdminMergeAsync(
         Guid sourceUserId, Guid targetUserId,
@@ -320,9 +290,9 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         if (sourceUserId == targetUserId)
             throw new InvalidOperationException("Source and target users are the same.");
 
-        var source = await _userService.GetUserInfoAsync(sourceUserId, ct)
+        var source = await userService.GetUserInfoAsync(sourceUserId, ct)
             ?? throw new InvalidOperationException($"Source user {sourceUserId} not found.");
-        var target = await _userService.GetUserInfoAsync(targetUserId, ct)
+        var target = await userService.GetUserInfoAsync(targetUserId, ct)
             ?? throw new InvalidOperationException($"Target user {targetUserId} not found.");
 
         if (source.MergedToUserId is not null)
@@ -333,7 +303,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             throw new InvalidOperationException(
                 $"Target user {targetUserId} is already tombstoned.");
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Admin {AdminId} initiated direct merge: folding {SourceUserId} into {TargetUserId}",
             adminUserId, sourceUserId, targetUserId);
 

@@ -16,41 +16,34 @@ namespace Humans.Infrastructure.Repositories.Email;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository is
 /// registered as Singleton while <c>HumansDbContext</c> stays Scoped.
 /// </summary>
-internal sealed class EmailOutboxRepository : IEmailOutboxRepository
+internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> factory) : IEmailOutboxRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public EmailOutboxRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Reads — admin dashboard and profile views
     // ==========================================================================
 
     public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages.CountAsync(ct);
     }
 
     public async Task<int> GetCountByStatusAsync(EmailOutboxStatus status, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages.CountAsync(m => m.Status == status, ct);
     }
 
     public async Task<int> GetSentCountSinceAsync(Instant since, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .CountAsync(m => m.Status == EmailOutboxStatus.Sent && m.SentAt > since, ct);
     }
 
     public async Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(int take, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
             .OrderByDescending(m => m.CreatedAt) // arch:db-sort-ok top-N selector
@@ -61,7 +54,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
     public async Task<IReadOnlyList<EmailOutboxMessage>> GetForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
             .Where(m => m.UserId == userId)
@@ -71,13 +64,13 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task<int> GetCountForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages.CountAsync(m => m.UserId == userId, ct);
     }
 
     public async Task<int> GetPendingCountAsync(int maxRetries, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .CountAsync(m => m.SentAt == null && m.RetryCount < maxRetries, ct);
     }
@@ -88,14 +81,14 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task AddAsync(EmailOutboxMessage message, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.EmailOutboxMessages.Add(message);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<string?> RetryAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([id], ct);
         if (message is null) return null;
 
@@ -111,7 +104,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task<string?> DiscardAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([id], ct);
         if (message is null) return null;
 
@@ -133,7 +126,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
         int batchSize,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
             .Where(m => m.SentAt == null
@@ -150,7 +143,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
     {
         if (messageIds.Count == 0) return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Load-mutate-save rather than ExecuteUpdateAsync so unit tests using
         // the EF InMemory provider still see the update. At ~500-user scale the
         // batch is at most OutboxBatchSize rows.
@@ -166,7 +159,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task<bool> MarkSentAsync(Guid messageId, Instant sentAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([messageId], ct);
         if (message is null) return false;
 
@@ -184,7 +177,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
         Instant nextRetryAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([messageId], ct);
         if (message is null) return false;
 
@@ -203,7 +196,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Load-then-RemoveRange so unit tests using the EF InMemory provider
         // still cover the path. ExecuteDeleteAsync would be cheaper at scale
         // but is not supported by the InMemory provider.
@@ -222,7 +215,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task<bool> GetSendingPausedAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var setting = await ctx.SystemSettings
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, ct);
@@ -231,7 +224,7 @@ internal sealed class EmailOutboxRepository : IEmailOutboxRepository
 
     public async Task SetSendingPausedAsync(bool paused, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var setting = await ctx.SystemSettings
             .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, ct);
         if (setting is null)

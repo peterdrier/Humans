@@ -13,27 +13,18 @@ namespace Humans.Infrastructure.Services.Auth;
 /// protection/validation and <see cref="EmailSettings.BaseUrl"/> for URL
 /// construction. Mirrors <c>UnsubscribeTokenProvider</c>.
 /// </summary>
-public sealed class MagicLinkUrlBuilder : IMagicLinkUrlBuilder
+public sealed class MagicLinkUrlBuilder(
+    IDataProtectionProvider dataProtection,
+    IOptions<EmailSettings> emailSettings,
+    ILogger<MagicLinkUrlBuilder> logger) : IMagicLinkUrlBuilder
 {
     private const string LoginProtectorPurpose = "MagicLinkLogin";
     private const string SignupProtectorPurpose = "MagicLinkSignup";
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(15);
 
-    private readonly ITimeLimitedDataProtector _loginProtector;
-    private readonly ITimeLimitedDataProtector _signupProtector;
-    private readonly string _baseUrl;
-    private readonly ILogger<MagicLinkUrlBuilder> _logger;
-
-    public MagicLinkUrlBuilder(
-        IDataProtectionProvider dataProtection,
-        IOptions<EmailSettings> emailSettings,
-        ILogger<MagicLinkUrlBuilder> logger)
-    {
-        _loginProtector = dataProtection.CreateProtector(LoginProtectorPurpose).ToTimeLimitedDataProtector();
-        _signupProtector = dataProtection.CreateProtector(SignupProtectorPurpose).ToTimeLimitedDataProtector();
-        _baseUrl = emailSettings.Value.BaseUrl;
-        _logger = logger;
-    }
+    private readonly ITimeLimitedDataProtector _loginProtector = dataProtection.CreateProtector(LoginProtectorPurpose).ToTimeLimitedDataProtector();
+    private readonly ITimeLimitedDataProtector _signupProtector = dataProtection.CreateProtector(SignupProtectorPurpose).ToTimeLimitedDataProtector();
+    private readonly string _baseUrl = emailSettings.Value.BaseUrl;
 
     public string BuildLoginUrl(Guid userId, string? returnUrl)
     {
@@ -51,7 +42,7 @@ public sealed class MagicLinkUrlBuilder : IMagicLinkUrlBuilder
         }
         catch (CryptographicException)
         {
-            _logger.LogInformation("Magic link login: invalid or expired token");
+            logger.LogInformation("Magic link login: invalid or expired token");
             return null;
         }
     }

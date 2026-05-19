@@ -14,15 +14,9 @@ namespace Humans.Web.Authorization.Requirements;
 ///   <item><description>Admin on admin page: <see cref="IbanAccessRequirement.IsAdminPageContext"/> is true.</description></item>
 /// </list>
 /// </summary>
-public sealed class IbanAccessHandler : AuthorizationHandler<IbanAccessRequirement>
+public sealed class IbanAccessHandler(IExpenseReportService expenseService)
+    : AuthorizationHandler<IbanAccessRequirement>
 {
-    private readonly IExpenseReportService _expenseService;
-
-    public IbanAccessHandler(IExpenseReportService expenseService)
-    {
-        _expenseService = expenseService;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         IbanAccessRequirement requirement)
@@ -49,7 +43,7 @@ public sealed class IbanAccessHandler : AuthorizationHandler<IbanAccessRequireme
         // and is neither Draft nor Withdrawn
         if (requirement.ReportId.HasValue && RoleChecks.IsFinanceAdmin(context.User))
         {
-            var report = await _expenseService.GetAsync(requirement.ReportId.Value);
+            var report = await expenseService.GetAsync(requirement.ReportId.Value);
             if (report is not null &&
                 report.Status is not ExpenseReportStatus.Draft and not ExpenseReportStatus.Withdrawn)
             {

@@ -22,58 +22,23 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Governance;
 
-public sealed class ApplicationDecisionService : IApplicationDecisionService, IUserDataContributor, IUserMerge
+public sealed class ApplicationDecisionService(
+    IApplicationRepository repository,
+    IUserService userService,
+    IProfileService profileService,
+    IRoleAssignmentService roleAssignmentService,
+    IAuditLogService auditLogService,
+    IEmailService emailService,
+    IUserEmailService userEmailService,
+    INotificationService notificationService,
+    ISystemTeamSync syncJob,
+    IHumansMetrics metrics,
+    INavBadgeCacheInvalidator navBadge,
+    INotificationMeterCacheInvalidator notificationMeter,
+    IVotingBadgeCacheInvalidator votingBadge,
+    IClock clock,
+    ILogger<ApplicationDecisionService> logger) : IApplicationDecisionService, IUserDataContributor, IUserMerge
 {
-    private readonly IApplicationRepository _repository;
-    private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IEmailService _emailService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly INotificationService _notificationService;
-    private readonly ISystemTeamSync _syncJob;
-    private readonly IHumansMetrics _metrics;
-    private readonly INavBadgeCacheInvalidator _navBadge;
-    private readonly INotificationMeterCacheInvalidator _notificationMeter;
-    private readonly IVotingBadgeCacheInvalidator _votingBadge;
-    private readonly IClock _clock;
-    private readonly ILogger<ApplicationDecisionService> _logger;
-
-    public ApplicationDecisionService(
-        IApplicationRepository repository,
-        IUserService userService,
-        IProfileService profileService,
-        IRoleAssignmentService roleAssignmentService,
-        IAuditLogService auditLogService,
-        IEmailService emailService,
-        IUserEmailService userEmailService,
-        INotificationService notificationService,
-        ISystemTeamSync syncJob,
-        IHumansMetrics metrics,
-        INavBadgeCacheInvalidator navBadge,
-        INotificationMeterCacheInvalidator notificationMeter,
-        IVotingBadgeCacheInvalidator votingBadge,
-        IClock clock,
-        ILogger<ApplicationDecisionService> logger)
-    {
-        _repository = repository;
-        _userService = userService;
-        _profileService = profileService;
-        _roleAssignmentService = roleAssignmentService;
-        _auditLogService = auditLogService;
-        _emailService = emailService;
-        _userEmailService = userEmailService;
-        _notificationService = notificationService;
-        _syncJob = syncJob;
-        _metrics = metrics;
-        _navBadge = navBadge;
-        _notificationMeter = notificationMeter;
-        _votingBadge = votingBadge;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
         Guid reviewerUserId,
@@ -81,7 +46,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, cancellationToken);
+        var application = await repository.GetByIdAsync(applicationId, cancellationToken);
         if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
@@ -90,55 +55,55 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         // Ordering: capture voter ids → finalize (atomic governance commit) → audit → tier/sync → notifications.
         // Voter capture must precede FinalizeAsync (which deletes BoardVote rows).
-        var voterIds = await _repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
+        var voterIds = await repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
-        application.Approve(reviewerUserId, notes, _clock);
+        application.Approve(reviewerUserId, notes, clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = notes;
 
-        var today = _clock.GetCurrentInstant().InUtc().Date;
+        var today = clock.GetCurrentInstant().InUtc().Date;
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
-        await _repository.FinalizeAsync(application, cancellationToken);
+        await repository.FinalizeAsync(application, cancellationToken);
 
-        _navBadge.Invalidate();
-        _notificationMeter.Invalidate();
+        navBadge.Invalidate();
+        notificationMeter.Invalidate();
         foreach (var voterId in voterIds)
-            _votingBadge.Invalidate(voterId);
+            votingBadge.Invalidate(voterId);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.TierApplicationApproved,
             nameof(Domain.Entities.Application),
             application.Id,
             $"{application.MembershipTier} application approved",
             reviewerUserId);
 
-        _metrics.RecordApplicationProcessed("approved");
-        _logger.LogInformation(
+        metrics.RecordApplicationProcessed("approved");
+        logger.LogInformation(
             "Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
 
-        await _profileService.SetMembershipTierAsync(
+        await profileService.SetMembershipTierAsync(
             application.UserId, application.MembershipTier, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)
-            await _syncJob.SyncMembershipForUserAsync(
+            await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Colaboradors, cancellationToken);
         else if (application.MembershipTier == MembershipTier.Asociado)
-            await _syncJob.SyncMembershipForUserAsync(
+            await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);
 
-        var user = await _userService.GetUserInfoAsync(application.UserId, cancellationToken);
+        var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
         if (user is not null)
         {
-            var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(
+            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
                 [application.UserId], cancellationToken);
             if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
                 && !string.IsNullOrWhiteSpace(recipientEmail))
             {
                 try
                 {
-                    await _emailService.SendApplicationApprovedAsync(
+                    await emailService.SendApplicationApprovedAsync(
                         recipientEmail,
                         user.BurnerName,
                         application.MembershipTier,
@@ -146,12 +111,12 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
+                    logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
                 }
             }
             else
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Skipping approval email for application {ApplicationId} because user {UserId} has no notification-target email",
                     application.Id, application.UserId);
             }
@@ -159,7 +124,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.ApplicationApproved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -172,7 +137,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch ApplicationApproved notification for {ApplicationId}",
                 application.Id);
         }
@@ -187,7 +152,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, cancellationToken);
+        var application = await repository.GetByIdAsync(applicationId, cancellationToken);
         if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
@@ -195,42 +160,42 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
         // Capture voter ids before FinalizeAsync deletes them.
-        var voterIds = await _repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
+        var voterIds = await repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
-        application.Reject(reviewerUserId, reason, _clock);
+        application.Reject(reviewerUserId, reason, clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
-        await _repository.FinalizeAsync(application, cancellationToken);
+        await repository.FinalizeAsync(application, cancellationToken);
 
-        _navBadge.Invalidate();
-        _notificationMeter.Invalidate();
+        navBadge.Invalidate();
+        notificationMeter.Invalidate();
         foreach (var voterId in voterIds)
-            _votingBadge.Invalidate(voterId);
+            votingBadge.Invalidate(voterId);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.TierApplicationRejected,
             nameof(Domain.Entities.Application),
             application.Id,
             $"{application.MembershipTier} application rejected",
             reviewerUserId);
 
-        _metrics.RecordApplicationProcessed("rejected");
-        _logger.LogInformation(
+        metrics.RecordApplicationProcessed("rejected");
+        logger.LogInformation(
             "Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
 
-        var user = await _userService.GetUserInfoAsync(application.UserId, cancellationToken);
+        var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
         if (user is not null)
         {
-            var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(
+            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
                 [application.UserId], cancellationToken);
             if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
                 && !string.IsNullOrWhiteSpace(recipientEmail))
             {
                 try
                 {
-                    await _emailService.SendApplicationRejectedAsync(
+                    await emailService.SendApplicationRejectedAsync(
                         recipientEmail,
                         user.BurnerName,
                         application.MembershipTier,
@@ -239,12 +204,12 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
+                    logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
                 }
             }
             else
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Skipping rejection email for application {ApplicationId} because user {UserId} has no notification-target email",
                     application.Id, application.UserId);
             }
@@ -252,7 +217,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.ApplicationRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -265,7 +230,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to dispatch ApplicationRejected notification for {ApplicationId}",
                 application.Id);
         }
@@ -276,7 +241,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public async Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var applications = await _repository.GetByUserIdAsync(userId, ct);
+        var applications = await repository.GetByUserIdAsync(userId, ct);
         return applications.Select(ToUserApplicationSnapshot).ToList();
     }
 
@@ -297,7 +262,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public async Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(
         Guid applicationId, Guid userId, CancellationToken ct = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, ct);
+        var application = await repository.GetByIdAsync(applicationId, ct);
         if (application is null || application.UserId != userId)
             return null;
 
@@ -334,11 +299,11 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (tier == MembershipTier.Asociado && string.IsNullOrWhiteSpace(roleUnderstanding))
             return new ApplicationDecisionResult(false, "RoleUnderstandingRequired");
 
-        var hasPending = await _repository.AnySubmittedForUserAsync(userId, ct);
+        var hasPending = await repository.AnySubmittedForUserAsync(userId, ct);
         if (hasPending)
             return new ApplicationDecisionResult(false, "AlreadyPending");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var application = new MemberApplication
         {
             Id = Guid.NewGuid(),
@@ -354,12 +319,12 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         };
         application.ValidateTier();
 
-        await _repository.AddAsync(application, ct);
+        await repository.AddAsync(application, ct);
 
-        _navBadge.Invalidate();
-        _notificationMeter.Invalidate();
+        navBadge.Invalidate();
+        notificationMeter.Invalidate();
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} submitted application {ApplicationId}",
             userId, application.Id);
 
@@ -369,21 +334,21 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public async Task<ApplicationDecisionResult> WithdrawAsync(
         Guid applicationId, Guid userId, CancellationToken ct = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, ct);
+        var application = await repository.GetByIdAsync(applicationId, ct);
         if (application is null || application.UserId != userId)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "CannotWithdraw");
 
-        application.Withdraw(_clock);
-        await _repository.UpdateAsync(application, ct);
+        application.Withdraw(clock);
+        await repository.UpdateAsync(application, ct);
 
-        _navBadge.Invalidate();
-        _notificationMeter.Invalidate();
+        navBadge.Invalidate();
+        notificationMeter.Invalidate();
 
-        _metrics.RecordApplicationProcessed("withdrawn");
-        _logger.LogInformation(
+        metrics.RecordApplicationProcessed("withdrawn");
+        logger.LogInformation(
             "User {UserId} withdrew application {ApplicationId}",
             userId, applicationId);
 
@@ -407,14 +372,14 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             tier = parsedTier;
         }
 
-        var (apps, totalCount) = await _repository.GetFilteredAsync(status, tier, page, pageSize, ct);
+        var (apps, totalCount) = await repository.GetFilteredAsync(status, tier, page, pageSize, ct);
         if (apps.Count == 0)
         {
             return ([], totalCount);
         }
 
         var userIds = apps.Select(a => a.UserId).Distinct().ToList();
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
 
         var rows = apps.Select(a =>
         {
@@ -436,7 +401,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public async Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
         Guid applicationId, CancellationToken ct = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, ct);
+        var application = await repository.GetByIdAsync(applicationId, ct);
         if (application is null)
             return null;
 
@@ -446,7 +411,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         foreach (var row in application.StateHistory)
             userIds.Add(row.ChangedByUserId);
 
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
 
         var applicant = users.GetValueOrDefault(application.UserId);
         var reviewer = application.ReviewedByUserId is { } rid
@@ -487,12 +452,12 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     // Onboarding-section support methods — Governance owns application/board-vote tables (design-rules §2c).
     public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _repository.GetUserIdsWithSubmittedAsync(userIds, ct);
+        repository.GetUserIdsWithSubmittedAsync(userIds, ct);
 
     public async Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var application = await _repository.GetSubmittedForUserAsync(userId, ct);
+        var application = await repository.GetSubmittedForUserAsync(userId, ct);
         return application is null
             ? null
             : new SubmittedApplicationSnapshot(
@@ -503,15 +468,15 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
     public Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
         Guid userId, CancellationToken ct = default) =>
-        _repository.GetApprovedTiersForUserAsync(userId, ct);
+        repository.GetApprovedTiersForUserAsync(userId, ct);
 
     public async Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(
         CancellationToken ct = default)
     {
-        var applications = await _repository.GetAllSubmittedWithVotesAsync(ct);
+        var applications = await repository.GetAllSubmittedWithVotesAsync(ct);
 
         var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
-        var applicantsById = await _userService.GetUserInfosAsync(applicantIds, ct);
+        var applicantsById = await userService.GetUserInfosAsync(applicantIds, ct);
 
         var rows = applications.Select(a =>
         {
@@ -535,9 +500,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                     .ToList());
         }).ToList();
 
-        var boardMemberIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
+        var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);
-        var boardUsersById = await _userService.GetUserInfosAsync(boardMemberIds, ct);
+        var boardUsersById = await userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values
             .Select(u => new BoardMemberInfo(u.Id, u.BurnerName))
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -549,18 +514,18 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public async Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(
         Guid applicationId, CancellationToken ct = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, ct);
+        var application = await repository.GetByIdAsync(applicationId, ct);
         if (application is null)
             return null;
 
-        var applicantInfo = await _userService.GetUserInfoAsync(application.UserId, ct);
+        var applicantInfo = await userService.GetUserInfoAsync(application.UserId, ct);
         var profile = applicantInfo?.Profile;
 
         var voterIds = application.BoardVotes
             .Select(v => v.BoardMemberUserId)
             .Distinct()
             .ToList();
-        var votersById = await _userService.GetUserInfosAsync(voterIds, ct);
+        var votersById = await userService.GetUserInfosAsync(voterIds, ct);
 
         var voteRows = application.BoardVotes
             .Select(v => new BoardVoteRow(
@@ -592,7 +557,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     }
 
     public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
-        _repository.HasBoardVotesAsync(applicationId, ct);
+        repository.HasBoardVotesAsync(applicationId, ct);
 
     public async Task<ApplicationDecisionResult> CastBoardVoteAsync(
         Guid applicationId,
@@ -601,19 +566,19 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         string? note,
         CancellationToken ct = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, ct);
+        var application = await repository.GetByIdAsync(applicationId, ct);
         if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
-        var now = _clock.GetCurrentInstant();
-        await _repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
+        var now = clock.GetCurrentInstant();
+        await repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
 
-        _votingBadge.Invalidate(boardMemberUserId);
+        votingBadge.Invalidate(boardMemberUserId);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Board member {UserId} voted {Vote} on application {ApplicationId}",
             boardMemberUserId, vote, applicationId);
 
@@ -622,18 +587,18 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
     public Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default) =>
-        _repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
+        repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
 
     public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
-        _repository.GetAdminStatsAsync(ct);
+        repository.GetAdminStatsAsync(ct);
 
     public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
-        _repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
+        repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
 
     public async Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default)
     {
-        var applications = await _repository.GetExpiringApplicationsNeedingReminderAsync(
+        var applications = await repository.GetExpiringApplicationsNeedingReminderAsync(
             today, reminderThreshold, ct);
         return applications.Select(ToRenewalReminderCandidate).ToList();
     }
@@ -648,16 +613,16 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
     public Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default) =>
-        _repository.GetPendingApplicationUserTiersAsync(ct);
+        repository.GetPendingApplicationUserTiersAsync(ct);
 
     public Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
-        _repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
+        repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
 
     public async Task<IReadOnlyList<ApprovedApplicationDigestEntry>> GetApprovedInWindowAsync(
         Instant windowStart, Instant windowEnd, CancellationToken ct = default)
     {
-        var applications = await _repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
+        var applications = await repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
         return applications
             .Select(a => new ApprovedApplicationDigestEntry(a.UserId, a.MembershipTier))
             .ToList();
@@ -665,46 +630,46 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
     public Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
         CancellationToken ct = default) =>
-        _repository.GetSubmittedApplicationIdsAsync(ct);
+        repository.GetSubmittedApplicationIdsAsync(ct);
 
     public Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
         Guid boardMemberUserId,
         IReadOnlyCollection<Guid> applicationIds,
         CancellationToken ct = default) =>
-        _repository.GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        repository.GetUnvotedCountForBoardMemberAmongApplicationsAsync(
             boardMemberUserId, applicationIds, ct);
 
     public Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        _repository.GetActiveApprovedTierUserIdsAsync(tier, today, ct);
+        repository.GetActiveApprovedTierUserIdsAsync(tier, today, ct);
 
     public Task<bool> HasActiveApprovedTierAsync(
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        _repository.HasActiveApprovedTierAsync(userId, tier, today, ct);
+        repository.HasActiveApprovedTierAsync(userId, tier, today, ct);
 
     public Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
-        _repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
+        repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
-        _repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public async Task UpdateDraftApplicationAsync(
         Guid applicationId, MembershipTier tier, string motivation,
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,
         CancellationToken ct = default)
     {
-        var application = await _repository.GetByIdAsync(applicationId, ct);
+        var application = await repository.GetByIdAsync(applicationId, ct);
         if (application is null)
         {
-            _logger.LogWarning("UpdateDraftApplicationAsync: application {Id} not found", applicationId);
+            logger.LogWarning("UpdateDraftApplicationAsync: application {Id} not found", applicationId);
             return;
         }
 
         if (application.Status != ApplicationStatus.Submitted)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "UpdateDraftApplicationAsync: application {Id} is {Status}, not Submitted",
                 applicationId, application.Status);
             return;
@@ -715,14 +680,14 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         application.AdditionalInfo = additionalInfo;
         application.SignificantContribution = significantContribution;
         application.RoleUnderstanding = roleUnderstanding;
-        application.UpdatedAt = _clock.GetCurrentInstant();
+        application.UpdatedAt = clock.GetCurrentInstant();
 
-        await _repository.UpdateAsync(application, ct);
+        await repository.UpdateAsync(application, ct);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var applications = await _repository.GetByUserIdAsync(userId, ct);
+        var applications = await repository.GetByUserIdAsync(userId, ct);
 
         var shaped = applications.Select(a => new
         {
@@ -759,7 +724,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         IReadOnlyDictionary<Guid, UserInfo> users = userIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(userIds, ct);
+            : await userService.GetUserInfosAsync(userIds, ct);
 
         var reviewerName = application.ReviewedByUserId is { } rid
             ? users.GetValueOrDefault(rid)?.BurnerName

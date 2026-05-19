@@ -15,20 +15,13 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// by <c>GoogleWorkspaceSyncService</c>; the Application-layer sync service
 /// (coming in §15 Part 2b) never sees SDK types.
 /// </summary>
-public sealed class GoogleDirectoryClient : IGoogleDirectoryClient
+public sealed class GoogleDirectoryClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleDirectoryClient> logger) : IGoogleDirectoryClient
 {
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleDirectoryClient> _logger;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private DirectoryService? _directoryService;
-
-    public GoogleDirectoryClient(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleDirectoryClient> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
 
     public async Task<DirectoryUserListResult> ListDomainUsersAsync(CancellationToken ct = default)
     {
@@ -68,7 +61,7 @@ public sealed class GoogleDirectoryClient : IGoogleDirectoryClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error listing domain users: Code={Code} Message={Message}",
                 ex.Error?.Code, ex.Error?.Message);
             return new DirectoryUserListResult(
@@ -124,7 +117,7 @@ public sealed class GoogleDirectoryClient : IGoogleDirectoryClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error listing domain groups: Code={Code} Message={Message}",
                 ex.Error?.Code, ex.Error?.Message);
             return new DirectoryGroupListResult(

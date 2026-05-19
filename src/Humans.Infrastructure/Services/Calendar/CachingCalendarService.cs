@@ -16,25 +16,14 @@ namespace Humans.Infrastructure.Services.Calendar;
 /// non-soft-deleted <c>calendar_events</c> row with its <c>Exceptions</c>
 /// embedded, keyed by event id. Exception writes evict the parent.
 /// </summary>
-public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInfo>, ICalendarService
+public sealed class CachingCalendarService(
+    ICalendarRepository repo,
+    IServiceScopeFactory scopeFactory,
+    ILogger<CachingCalendarService> logger)
+    : TrackedCache<Guid, CalendarEventInfo>("Calendar.Event", warmOnStartup: true, logger), ICalendarService
 {
     /// <summary>DI key for the undecorated inner <see cref="ICalendarService"/>.</summary>
     public const string InnerServiceKey = "calendar-inner";
-
-    private readonly ICalendarRepository _repo;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<CachingCalendarService> _logger;
-
-    public CachingCalendarService(
-        ICalendarRepository repo,
-        IServiceScopeFactory scopeFactory,
-        ILogger<CachingCalendarService> logger)
-        : base("Calendar.Event", warmOnStartup: true, logger)
-    {
-        _repo = repo;
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
 
     // Reads
 
@@ -51,7 +40,7 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
 
         var teamNames = await ResolveTeamNamesAsync(matched, ct);
 
-        return CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, _logger);
+        return CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger);
     }
 
     public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
@@ -82,7 +71,7 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
             return new Dictionary<Guid, string>();
 
         var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
         var teamsById = await teamService.GetTeamsAsync(ct);
         return teamIds
@@ -155,7 +144,7 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var events = await _repo.GetAllAsync(ct);
+        var events = await repo.GetAllAsync(ct);
         foreach (var ev in events)
         {
             // Skip if a concurrent post-commit invalidate already wrote a fresher row (PR #585 race).
@@ -166,7 +155,7 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
 
     protected override async ValueTask<CalendarEventInfo?> LoadRowAsync(Guid key, CancellationToken ct)
     {
-        var ev = await _repo.GetEventByIdAsync(key, ct);
+        var ev = await repo.GetEventByIdAsync(key, ct);
         return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
     }
 
@@ -174,14 +163,14 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
 
     private async Task<TResult> WithInner<TResult>(Func<ICalendarService, Task<TResult>> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
         return await action(inner);
     }
 
     private async Task WithInner(Func<ICalendarService, Task> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
         await action(inner);
     }

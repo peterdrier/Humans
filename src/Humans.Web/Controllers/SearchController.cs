@@ -9,24 +9,14 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>Global search: name-only hits across humans/teams/camps/rotas. Public-visibility surface only (docs/features/global/global-search.md).</summary>
+/// <summary>Global search: name-only hits across humans/teams/camps/rotas/events. Public-visibility surface only (docs/features/global/global-search.md).</summary>
 [Authorize]
 [Route("Search")]
-public sealed class SearchController : HumansControllerBase
+public sealed class SearchController(
+    ISearchService searchService,
+    IUserService userService,
+    ILogger<SearchController> logger) : HumansControllerBase(userService)
 {
-    private readonly ISearchService _searchService;
-    private readonly ILogger<SearchController> _logger;
-
-    public SearchController(
-        ISearchService searchService,
-        IUserService userService,
-        ILogger<SearchController> logger)
-        : base(userService)
-    {
-        _searchService = searchService;
-        _logger = logger;
-    }
-
     /// <summary>Global search page. Short query → placeholder; otherwise fans out and renders type-grouped results.</summary>
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -46,7 +36,7 @@ public sealed class SearchController : HumansControllerBase
     {
         try
         {
-            var results = await _searchService.SearchAsync(
+            var results = await searchService.SearchAsync(
                 trimmed, filter, PerTypeLimit(filter), ct);
             return BuildViewModel(results, filter);
         }
@@ -57,7 +47,7 @@ public sealed class SearchController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Global search failed for query {Query}", trimmed);
+            logger.LogError(ex, "Global search failed for query {Query}", trimmed);
             // Page shell instead of 500; preserve query so user can refine.
             return new GlobalSearchViewModel { Query = trimmed, Filter = filter };
         }
@@ -81,6 +71,7 @@ public sealed class SearchController : HumansControllerBase
             TeamResults = SortByScore(results.Teams),
             CampResults = SortByScore(results.Camps),
             ShiftResults = SortByScore(results.Shifts),
+            EventResults = SortByScore(results.Events),
         };
 
     private static IReadOnlyList<GlobalSearchResult> SortByScore(

@@ -18,33 +18,15 @@ namespace Humans.Web.Controllers;
 // Wider policy for page entry; privileged sub-panels gated by ShiftDashboardAccess in views.
 [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
 [Route("Shifts/Dashboard")]
-public class ShiftDashboardController : HumansControllerBase
+public class ShiftDashboardController(
+    IShiftManagementService shiftMgmt,
+    IShiftSignupService signupService,
+    IShiftView shiftView,
+    IGeneralAvailabilityService availabilityService,
+    IUserService userService,
+    ShiftDashboardPageBuilder pageBuilder,
+    ILogger<ShiftDashboardController> logger) : HumansControllerBase(userService)
 {
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftSignupService _signupService;
-    private readonly IShiftView _shiftView;
-    private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly ShiftDashboardPageBuilder _pageBuilder;
-    private readonly ILogger<ShiftDashboardController> _logger;
-
-    public ShiftDashboardController(
-        IShiftManagementService shiftMgmt,
-        IShiftSignupService signupService,
-        IShiftView shiftView,
-        IGeneralAvailabilityService availabilityService,
-        IUserService userService,
-        ShiftDashboardPageBuilder pageBuilder,
-        ILogger<ShiftDashboardController> logger)
-        : base(userService)
-    {
-        _shiftMgmt = shiftMgmt;
-        _signupService = signupService;
-        _shiftView = shiftView;
-        _availabilityService = availabilityService;
-        _pageBuilder = pageBuilder;
-        _logger = logger;
-    }
-
     private static LocalDate? ParseIsoDateOrNull(string? raw)
     {
         if (string.IsNullOrEmpty(raw)) return null;
@@ -72,7 +54,7 @@ public class ShiftDashboardController : HumansControllerBase
         ShiftPeriod? period,
         BuildSubPeriod? subPeriod)
     {
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null)
         {
             SetError("No active event settings configured.");
@@ -83,7 +65,7 @@ public class ShiftDashboardController : HumansControllerBase
         var filterEndDate = ParseIsoDateOrNull(endDate);
         var (activeStart, activeEnd) = ResolveActiveDateRange(period, filterStartDate, filterEndDate);
 
-        var model = await _pageBuilder.BuildAsync(new ShiftDashboardPageRequest(
+        var model = await pageBuilder.BuildAsync(new ShiftDashboardPageRequest(
             es,
             departmentId,
             rotaId,
@@ -108,19 +90,19 @@ public class ShiftDashboardController : HumansControllerBase
         try
         {
             var result = await ShiftVolunteerSearchBuilder.BuildForShiftAsync(
-                await _shiftMgmt.GetShiftByIdAsync(shiftId),
+                await shiftMgmt.GetShiftByIdAsync(shiftId),
                 query,
-                _shiftMgmt.GetActiveAsync,
+                shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
                 UserService,
-                _shiftView,
-                _signupService,
-                _availabilityService);
+                shiftView,
+                signupService,
+                availabilityService);
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Volunteer search failed for shift {ShiftId}, query '{Query}'", shiftId, query);
+            logger.LogError(ex, "Volunteer search failed for shift {ShiftId}, query '{Query}'", shiftId, query);
             return StatusCode(500, new { error = "Search failed." });
         }
     }
@@ -146,7 +128,7 @@ public class ShiftDashboardController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
+        var result = await signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
         if (result.Success)
         {
             SetSuccess("Volunteer assigned to shift.");

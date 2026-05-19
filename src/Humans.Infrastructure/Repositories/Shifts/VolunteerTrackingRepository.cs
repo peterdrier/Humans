@@ -17,15 +17,11 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <see cref="ShiftSignupRepository"/>) so multi-step mutations on
 /// <see cref="VolunteerBuildStatus"/> share one EF change-tracker.
 /// </remarks>
-internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
+internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunteerTrackingRepository
 {
-    private readonly HumansDbContext _db;
-
-    public VolunteerTrackingRepository(HumansDbContext db) => _db = db;
-
     public Task<VolunteerBuildStatus?> GetAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct = default) =>
-        _db.VolunteerBuildStatuses
+        db.VolunteerBuildStatuses
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
@@ -33,9 +29,19 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
 
     public async Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(
         Guid eventSettingsId, CancellationToken ct = default) =>
-        await _db.VolunteerBuildStatuses
+        await db.VolunteerBuildStatuses
             .Where(x => x.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        return await db.VolunteerBuildStatuses
+            .AsNoTracking()
+            .Where(x => x.EventSettingsId == eventSettingsId && userIds.Contains(x.UserId))
+            .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<int>> UpsertCampSetupAsync(
         Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
@@ -65,7 +71,7 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
             }
         }
 
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
         return trimmed;
     }
 
@@ -79,14 +85,14 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         row.DayOffs.Add(entry);
         // arch:db-sort-ok normalization for canonical jsonb storage (sorted), not a display sort
         row.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<bool> RemoveDayOffAsync(
         Guid userId, Guid eventSettingsId, int dayOffset,
         CancellationToken ct = default)
     {
-        var existing = await _db.VolunteerBuildStatuses
+        var existing = await db.VolunteerBuildStatuses
             .FirstOrDefaultAsync(
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);
@@ -96,7 +102,7 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
         if (removed)
         {
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
         return removed;
     }
@@ -109,7 +115,7 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
     private async Task<VolunteerBuildStatus> GetOrCreateAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct)
     {
-        var existing = await _db.VolunteerBuildStatuses
+        var existing = await db.VolunteerBuildStatuses
             .FirstOrDefaultAsync(
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);
@@ -121,14 +127,14 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
             UserId = userId,
             EventSettingsId = eventSettingsId,
         };
-        _db.VolunteerBuildStatuses.Add(row);
+        db.VolunteerBuildStatuses.Add(row);
         return row;
     }
 
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, CancellationToken ct = default)
     {
-        var es = await _db.EventSettings
+        var es = await db.EventSettings
             .Where(x => x.Id == eventSettingsId)
             .Select(x => new { x.BuildStartOffset })
             .FirstOrDefaultAsync(ct);
@@ -140,7 +146,7 @@ internal sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         // avoid `>=`/`<=` on those enums and use an explicit `||` chain so the
         // SQL stays a literal-IN match (no lexicographic comparison).
         // DayOffset is an int — direct numeric comparison is safe.
-        return await _db.ShiftSignups
+        return await db.ShiftSignups
             .Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
             .Where(s => s.Shift.DayOffset >= es.BuildStartOffset && s.Shift.DayOffset < 0)
             .Where(s => s.Shift.Rota.Period == RotaPeriod.Build || s.Shift.Rota.Period == RotaPeriod.All)

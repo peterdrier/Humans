@@ -4,23 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public class UnsubscribeController : Controller
+public class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogger<UnsubscribeController> logger)
+    : Controller
 {
-    private readonly IUnsubscribeService _unsubscribeService;
-    private readonly ILogger<UnsubscribeController> _logger;
-
-    public UnsubscribeController(
-        IUnsubscribeService unsubscribeService,
-        ILogger<UnsubscribeController> logger)
-    {
-        _unsubscribeService = unsubscribeService;
-        _logger = logger;
-    }
-
     [HttpGet("/Unsubscribe/{token:minlength(40)}")]
     public async Task<IActionResult> Index(string token)
     {
-        var result = await _unsubscribeService.ValidateTokenAsync(token);
+        var result = await unsubscribeService.ValidateTokenAsync(token);
 
         if (result.IsExpired)
             return View("Expired");
@@ -46,7 +36,7 @@ public class UnsubscribeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(string token)
     {
-        var result = await _unsubscribeService.ConfirmUnsubscribeAsync(token, "MagicLink");
+        var result = await unsubscribeService.ConfirmUnsubscribeAsync(token, "MagicLink");
 
         if (result.IsExpired)
             return View("Expired");
@@ -74,18 +64,18 @@ public class UnsubscribeController : Controller
     {
         try
         {
-            var result = await _unsubscribeService.ConfirmUnsubscribeAsync(token, "OneClick");
+            var result = await unsubscribeService.ConfirmUnsubscribeAsync(token, "OneClick");
             if (!result.IsValid)
                 return BadRequest();
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "RFC 8058 one-click unsubscribe: user {UserId} from {Category}",
                 result.UserId, result.Category);
             return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process RFC 8058 one-click unsubscribe");
+            logger.LogError(ex, "Failed to process RFC 8058 one-click unsubscribe");
             return StatusCode(500);
         }
     }

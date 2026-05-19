@@ -14,34 +14,18 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
 [Route("Tickets")]
-public class TicketController : HumansControllerBase
+public class TicketController(
+    ITicketQueryService ticketQueryService,
+    ITicketSyncService ticketSyncService,
+    IUserParticipationBackfillService participationBackfillService,
+    TicketDashboardPageBuilder dashboardPageBuilder,
+    IUserService userService,
+    ILogger<TicketController> logger) : HumansControllerBase(userService)
 {
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly ITicketSyncService _ticketSyncService;
-    private readonly IUserParticipationBackfillService _participationBackfillService;
-    private readonly TicketDashboardPageBuilder _dashboardPageBuilder;
-    private readonly ILogger<TicketController> _logger;
-
-    public TicketController(
-        ITicketQueryService ticketQueryService,
-        ITicketSyncService ticketSyncService,
-        IUserParticipationBackfillService participationBackfillService,
-        TicketDashboardPageBuilder dashboardPageBuilder,
-        IUserService userService,
-        ILogger<TicketController> logger)
-        : base(userService)
-    {
-        _ticketQueryService = ticketQueryService;
-        _ticketSyncService = ticketSyncService;
-        _participationBackfillService = participationBackfillService;
-        _dashboardPageBuilder = dashboardPageBuilder;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        return View(await _dashboardPageBuilder.BuildAsync(RoleChecks.CanAccessFinance(User)));
+        return View(await dashboardPageBuilder.BuildAsync(RoleChecks.CanAccessFinance(User)));
     }
 
     [HttpGet("Orders")]
@@ -53,7 +37,7 @@ public class TicketController : HumansControllerBase
     {
         pageSize = pageSize.ClampPageSize();
 
-        var result = await _ticketQueryService.GetOrdersPageAsync(
+        var result = await ticketQueryService.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterPaymentStatus, filterTicketType, filterMatched);
 
@@ -91,7 +75,7 @@ public class TicketController : HumansControllerBase
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = (await _ticketQueryService.GetAvailableTicketTypesAsync())
+            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync())
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList(),
         };
@@ -109,7 +93,7 @@ public class TicketController : HumansControllerBase
     {
         pageSize = pageSize.ClampPageSize();
 
-        var result = await _ticketQueryService.GetAttendeesPageAsync(
+        var result = await ticketQueryService.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets);
 
@@ -145,7 +129,7 @@ public class TicketController : HumansControllerBase
             FilterMatched = filterMatched,
             FilterOrderId = filterOrderId,
             FilterMultipleTickets = filterMultipleTickets,
-            AvailableTicketTypes = (await _ticketQueryService.GetAvailableTicketTypesAsync())
+            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync())
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList(),
         };
@@ -156,7 +140,7 @@ public class TicketController : HumansControllerBase
     [HttpGet("Codes")]
     public async Task<IActionResult> Codes(string? search)
     {
-        var data = await _ticketQueryService.GetCodeTrackingDataAsync(search);
+        var data = await ticketQueryService.GetCodeTrackingDataAsync(search);
 
         var model = new TicketCodeTrackingViewModel
         {
@@ -205,7 +189,7 @@ public class TicketController : HumansControllerBase
     {
         pageSize = pageSize.ClampPageSize();
 
-        var result = await _ticketQueryService.GetWhoHasntBoughtAsync(
+        var result = await ticketQueryService.GetWhoHasntBoughtAsync(
             search, filterTeam, filterTier, filterTicketStatus, page, pageSize);
 
         var model = new WhoHasntBoughtViewModel
@@ -235,7 +219,7 @@ public class TicketController : HumansControllerBase
     [HttpGet("SalesAggregates")]
     public async Task<IActionResult> SalesAggregates()
     {
-        var aggregates = await _ticketQueryService.GetSalesAggregatesAsync();
+        var aggregates = await ticketQueryService.GetSalesAggregatesAsync();
 
         var model = new TicketSalesAggregatesViewModel
         {
@@ -281,7 +265,7 @@ public class TicketController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> FullResync()
     {
-        await _ticketSyncService.ResetSyncStateForFullResyncAsync();
+        await ticketSyncService.ResetSyncStateForFullResyncAsync();
 
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
         SetSuccess("Full re-sync triggered. All orders will be re-fetched.");
@@ -294,7 +278,7 @@ public class TicketController : HumansControllerBase
     {
         var model = new ParticipationBackfillViewModel
         {
-            Year = await _participationBackfillService.GetDefaultYearAsync(),
+            Year = await participationBackfillService.GetDefaultYearAsync(),
         };
         return View(model);
     }
@@ -312,7 +296,7 @@ public class TicketController : HumansControllerBase
 
         try
         {
-            var result = await _participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData);
+            var result = await participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData);
             if (!result.Succeeded)
             {
                 SetError(result.Message);
@@ -323,7 +307,7 @@ public class TicketController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to backfill participation data for year {Year}", model.Year);
+            logger.LogError(ex, "Failed to backfill participation data for year {Year}", model.Year);
             SetError("Failed to process backfill data. Check the format and try again.");
             return View(model);
         }
@@ -335,7 +319,7 @@ public class TicketController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAttendees()
     {
-        var rows = await _ticketQueryService.GetAttendeeExportDataAsync();
+        var rows = await ticketQueryService.GetAttendeeExportDataAsync();
 
         var csv = new System.Text.StringBuilder();
         csv.AppendCsvRow("Name", "Email", "Ticket Type", "Price", "Status", "Order ID");
@@ -352,7 +336,7 @@ public class TicketController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportOrders()
     {
-        var rows = await _ticketQueryService.GetOrderExportDataAsync();
+        var rows = await ticketQueryService.GetOrderExportDataAsync();
 
         var csv = new System.Text.StringBuilder();
         csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",

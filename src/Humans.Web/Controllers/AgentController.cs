@@ -15,32 +15,18 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Agent")]
-public class AgentController : HumansControllerBase
+public class AgentController(
+    IAgentService agent,
+    IAuthorizationService auth,
+    IAgentSettingsService settings,
+    IUserService users,
+    IUserService userService) : HumansControllerBase(userService)
 {
     private static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter() }
     }.ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
-
-    private readonly IAgentService _agent;
-    private readonly IAuthorizationService _auth;
-    private readonly IAgentSettingsService _settings;
-    private readonly IUserService _users;
-
-    public AgentController(
-        IAgentService agent,
-        IAuthorizationService auth,
-        IAgentSettingsService settings,
-        IUserService users,
-        IUserService userService)
-        : base(userService)
-    {
-        _agent = agent;
-        _auth = auth;
-        _settings = settings;
-        _users = users;
-    }
 
     [HttpPost("Ask")]
     [ValidateAntiForgeryToken]
@@ -53,13 +39,13 @@ public class AgentController : HumansControllerBase
             return;
         }
 
-        if (!_settings.Current.Enabled)
+        if (!settings.Current.Enabled)
         {
             Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
         }
 
-        var rate = await _auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit);
+        var rate = await auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit);
         if (!rate.Succeeded)
         {
             Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -78,7 +64,7 @@ public class AgentController : HumansControllerBase
             Message: body.Message,
             Locale: user.PreferredLanguage);
 
-        await foreach (var token in _agent.AskAsync(req, cancellationToken))
+        await foreach (var token in agent.AskAsync(req, cancellationToken))
         {
             await WriteSse(token, cancellationToken);
         }
@@ -108,7 +94,7 @@ public class AgentController : HumansControllerBase
         // Ownership mismatch returns 404 (not 403) per Agent.md invariant 7
         // and the issue #632 spec — the existence of someone else's
         // conversation must not be inferable from the response code.
-        var view = await _agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
+        var view = await agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
         if (view is null) return NotFound();
 
         return View(new AgentMyConversationViewModel(view.Conversation, view.CurrentUserContextTail));
@@ -138,9 +124,9 @@ public class AgentController : HumansControllerBase
         // otherwise crash the EF paging call with a 500.
         var safePage = page < 0 ? 0 : page;
         if (!isAdmin)
-            return await _agent.GetHistoryAsync(currentUserId, take: 50, ct);
+            return await agent.GetHistoryAsync(currentUserId, take: 50, ct);
 
-        return await _agent.ListAllConversationsForAdminAsync(
+        return await agent.ListAllConversationsForAdminAsync(
             refusalsOnly, userId, adminPageSize, safePage * adminPageSize, ct);
     }
 
@@ -153,10 +139,10 @@ public class AgentController : HumansControllerBase
             return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
 
         var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
-        var users = await _users.GetUserInfosAsync(distinctUserIds, ct);
+        var users1 = await users.GetUserInfosAsync(distinctUserIds, ct);
         return rows.Select(r => new AgentConversationRow(
             Conversation: r,
-            DisplayName: users.TryGetValue(r.UserId, out var u) ? u.BurnerName : null)
+            DisplayName: users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : null)
         ).ToList();
     }
 
@@ -164,16 +150,16 @@ public class AgentController : HumansControllerBase
         bool isAdmin, Guid currentUserId, Guid conversationId, CancellationToken ct)
     {
         if (isAdmin)
-            return await _agent.GetConversationForAdminAsync(conversationId, ct);
+            return await agent.GetConversationForAdminAsync(conversationId, ct);
 
-        return await _agent.GetConversationForUserAsync(currentUserId, conversationId, ct);
+        return await agent.GetConversationForUserAsync(currentUserId, conversationId, ct);
     }
 
     private async Task<string?> ResolveOwnerDisplayNameAsync(
         bool isAdmin, AgentConversationTranscriptSnapshot conv, CancellationToken ct)
     {
         if (!isAdmin) return null;
-        var owner = await _users.GetUserInfoAsync(conv.UserId, ct);
+        var owner = await users.GetUserInfoAsync(conv.UserId, ct);
         return owner?.BurnerName ?? conv.UserId.ToString();
     }
 

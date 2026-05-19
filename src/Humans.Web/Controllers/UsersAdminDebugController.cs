@@ -9,19 +9,13 @@ namespace Humans.Web.Controllers;
 // Diagnostic surface for UserInfo cache — flat sortable table from GetAllUserInfosAsync, no secondary queries.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-public sealed class UsersAdminDebugController : HumansControllerBase
+public sealed class UsersAdminDebugController(IUserService userService) : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;
     private const int DefaultPageSize = 25;
 
-    private readonly IUserService _userService;
-
-    public UsersAdminDebugController(IUserService userService)
-        : base(userService)
-    {
-        _userService = userService;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(int page = 1, int pageSize = DefaultPageSize,

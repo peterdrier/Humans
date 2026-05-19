@@ -14,34 +14,17 @@ namespace Humans.Infrastructure.Jobs;
 /// Add/remove behavior is controlled by SyncSettings, enforced by the service gateway methods.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class GoogleResourceReconciliationJob : IRecurringJob
+public class GoogleResourceReconciliationJob(
+    IGoogleSyncService googleSyncService,
+    IGoogleGroupSync googleGroupSync,
+    INotificationService notificationService,
+    IHumansMetrics metrics,
+    ILogger<GoogleResourceReconciliationJob> logger,
+    IClock clock) : IRecurringJob
 {
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly IGoogleGroupSync _googleGroupSync;
-    private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<GoogleResourceReconciliationJob> _logger;
-    private readonly IClock _clock;
-
-    public GoogleResourceReconciliationJob(
-        IGoogleSyncService googleSyncService,
-        IGoogleGroupSync googleGroupSync,
-        INotificationService notificationService,
-        IHumansMetrics metrics,
-        ILogger<GoogleResourceReconciliationJob> logger,
-        IClock clock)
-    {
-        _googleSyncService = googleSyncService;
-        _googleGroupSync = googleGroupSync;
-        _notificationService = notificationService;
-        _metrics = metrics;
-        _logger = logger;
-        _clock = clock;
-    }
-
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting Google resource reconciliation at {Time}", _clock.GetCurrentInstant());
+        logger.LogInformation("Starting Google resource reconciliation at {Time}", clock.GetCurrentInstant());
 
         try
         {
@@ -49,56 +32,56 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             // same Drive permission path as DriveFolder, and omitting it meant soft-deleted
             // teams with linked files kept Google permissions indefinitely because no
             // reconciliation pass ever touched them.
-            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
-            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
+            await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
+            await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
 
             // Provisioning of missing Google Groups is handled inside
             // GoogleGroupSyncService.ReconcileAllAsync — when a claim references
             // a group that doesn't yet exist in Google, the reconcile path
             // creates it inline (best-effort) before reconciling membership.
-            await _googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+            await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
 
             // Update Drive folder paths (detects renames and moves)
-            var pathUpdates = await _googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
+            var pathUpdates = await googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
             if (pathUpdates > 0)
             {
-                _logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
+                logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
             }
 
             // Enforce inherited access restrictions on Drive folders
-            var inheritanceCorrected = await _googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
+            var inheritanceCorrected = await googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
             if (inheritanceCorrected > 0)
             {
-                _logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
+                logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
             }
 
             // Check Google Group settings for drift and auto-remediate
-            var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(cancellationToken);
+            var settingsResult = await googleSyncService.CheckGroupSettingsAsync(cancellationToken);
             if (!settingsResult.Skipped && settingsResult.DriftCount > 0)
             {
-                _logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
+                logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
                     settingsResult.DriftCount, settingsResult.TotalGroups);
 
                 foreach (var report in settingsResult.Reports.Where(r => r.HasDrift))
                 {
                     try
                     {
-                        var remediation = await _googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
+                        var remediation = await googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
                         if (remediation.Succeeded)
-                            _logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
+                            logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
                         else
-                            _logger.LogError("Failed to auto-remediate settings for group '{GroupEmail}': {ErrorMessage}",
+                            logger.LogError("Failed to auto-remediate settings for group '{GroupEmail}': {ErrorMessage}",
                                 report.GroupEmail, remediation.ErrorMessage);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to auto-remediate settings for group '{GroupEmail}'", report.GroupEmail);
+                        logger.LogError(ex, "Failed to auto-remediate settings for group '{GroupEmail}'", report.GroupEmail);
                     }
                 }
             }
             if (settingsResult.ErrorCount > 0)
             {
-                _logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
+                logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
             }
 
             // Notify Admin if any drift was detected and corrected
@@ -107,7 +90,7 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             {
                 try
                 {
-                    await _notificationService.SendToRoleAsync(
+                    await notificationService.SendToRoleAsync(
                         NotificationSource.GoogleDriftDetected,
                         NotificationClass.Informational,
                         NotificationPriority.Normal,
@@ -120,17 +103,17 @@ public class GoogleResourceReconciliationJob : IRecurringJob
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to dispatch GoogleDriftDetected notification");
+                    logger.LogError(ex, "Failed to dispatch GoogleDriftDetected notification");
                 }
             }
 
-            _metrics.RecordJobRun("google_resource_reconciliation", "success");
-            _logger.LogInformation("Completed Google resource reconciliation");
+            metrics.RecordJobRun("google_resource_reconciliation", "success");
+            logger.LogInformation("Completed Google resource reconciliation");
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("google_resource_reconciliation", "failure");
-            _logger.LogError(ex, "Error during Google resource reconciliation");
+            metrics.RecordJobRun("google_resource_reconciliation", "failure");
+            logger.LogError(ex, "Error during Google resource reconciliation");
             throw;
         }
     }

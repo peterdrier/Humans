@@ -10,21 +10,11 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Tickets/Transfers")]
-public sealed class TicketTransferController : HumansControllerBase
+public sealed class TicketTransferController(
+    ITicketTransferService service,
+    IUserService userService,
+    ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
 {
-    private readonly ITicketTransferService _service;
-    private readonly ILogger<TicketTransferController> _logger;
-
-    public TicketTransferController(
-        ITicketTransferService service,
-        IUserService userService,
-        ILogger<TicketTransferController> logger)
-        : base(userService)
-    {
-        _service = service;
-        _logger = logger;
-    }
-
     [HttpGet("Send")]
     public IActionResult Send(Guid attendeeId)
     {
@@ -44,14 +34,14 @@ public sealed class TicketTransferController : HumansControllerBase
         IReadOnlyList<ReceiverLookupResultDto> matches;
         if (selectedUserId is { } pickedId)
         {
-            var card = await _service.GetReceiverCardAsync(pickedId, user.Id, ct);
+            var card = await service.GetReceiverCardAsync(pickedId, user.Id, ct);
             matches = card is null
                 ? Array.Empty<ReceiverLookupResultDto>()
                 : new[] { card };
         }
         else
         {
-            matches = await _service.LookupReceiversAsync(query, user.Id, ct);
+            matches = await service.LookupReceiversAsync(query, user.Id, ct);
         }
 
         var vm = BuildPageViewModel(attendeeId, query, matches);
@@ -71,7 +61,7 @@ public sealed class TicketTransferController : HumansControllerBase
 
         try
         {
-            await _service.CreateRequestAsync(
+            await service.CreateRequestAsync(
                 new TicketTransferRequestDto(form.AttendeeId, form.ReceiverUserId, form.Reason),
                 user.Id, ct);
             SetSuccess("Transfer requested. A ticket admin will review it shortly.");
@@ -79,12 +69,12 @@ public sealed class TicketTransferController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
+            logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
                 form.AttendeeId, ex.Message);
             SetError(ex.Message);
 
             // Preserve Receiver + reason on re-render.
-            var card = await _service.GetReceiverCardAsync(form.ReceiverUserId, user.Id, ct);
+            var card = await service.GetReceiverCardAsync(form.ReceiverUserId, user.Id, ct);
             var matches = card is null
                 ? Array.Empty<ReceiverLookupResultDto>()
                 : new[] { card };
@@ -103,12 +93,12 @@ public sealed class TicketTransferController : HumansControllerBase
 
         try
         {
-            await _service.CancelAsync(id, user.Id, ct);
+            await service.CancelAsync(id, user.Id, ct);
             SetSuccess("Transfer cancelled.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Ticket transfer Cancel rejected for transfer {TransferId}: {Message}",
+            logger.LogWarning("Ticket transfer Cancel rejected for transfer {TransferId}: {Message}",
                 id, ex.Message);
             SetError(ex.Message);
         }

@@ -14,19 +14,13 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class CommunicationPreferenceRepository : ICommunicationPreferenceRepository
+internal sealed class CommunicationPreferenceRepository(IDbContextFactory<HumansDbContext> factory)
+    : ICommunicationPreferenceRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public CommunicationPreferenceRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<List<CommunicationPreference>> GetByUserIdAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences
             .Where(cp => cp.UserId == userId)
             .ToListAsync(ct);
@@ -35,7 +29,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
     public async Task<CommunicationPreference?> GetByUserAndCategoryAsync(
         Guid userId, MessageCategory category, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences
             .FirstOrDefaultAsync(
                 cp => cp.UserId == userId && cp.Category == category, ct);
@@ -48,7 +42,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var disabledUserIds = await ctx.CommunicationPreferences
             .Where(cp => userIds.Contains(cp.UserId) && cp.Category == category && !cp.InboxEnabled)
             .Select(cp => cp.UserId)
@@ -59,7 +53,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
 
     public async Task<bool> HasAnyAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences
             .AnyAsync(cp => cp.UserId == userId, ct);
     }
@@ -70,7 +64,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var usersWithPrefs = await ctx.CommunicationPreferences
             .Where(cp => userIds.Contains(cp.UserId))
             .Select(cp => cp.UserId)
@@ -83,7 +77,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
     public async Task<IReadOnlyList<CommunicationPreference>> GetByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences
             .AsNoTracking()
             .Where(cp => cp.UserId == userId)
@@ -92,7 +86,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
 
     public async Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences
             .AsNoTracking()
             .ToListAsync(ct);
@@ -101,14 +95,14 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
     public async Task<int> GetCountByCategoryAndStateAsync(
         MessageCategory category, bool optedOut, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences.AsNoTracking()
             .CountAsync(p => p.Category == category && p.OptedOut == optedOut, ct);
     }
 
     public async Task AddAsync(CommunicationPreference preference, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CommunicationPreferences.Add(preference);
         await ctx.SaveChangesAsync(ct);
     }
@@ -116,7 +110,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
     public async Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CommunicationPreferences.AddRange(preferences);
         await ctx.SaveChangesAsync(ct);
     }
@@ -124,7 +118,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
     public async Task<List<CommunicationPreference>> AddDefaultsOrReloadAsync(
         Guid userId, IReadOnlyList<CommunicationPreference> defaults, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         try
         {
             ctx.CommunicationPreferences.AddRange(defaults);
@@ -143,7 +137,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
 
     public async Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(preference);
         ctx.Entry(preference).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -153,7 +147,7 @@ internal sealed class CommunicationPreferenceRepository : ICommunicationPreferen
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var sourceRows = await ctx.CommunicationPreferences
             .Where(cp => cp.UserId == sourceUserId)

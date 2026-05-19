@@ -11,17 +11,11 @@ namespace Humans.Infrastructure.Services;
 /// verification, magic-link, workspace credentials) are delivered
 /// immediately.
 /// </summary>
-public sealed class HangfireImmediateOutboxProcessor : IImmediateOutboxProcessor
+public sealed class HangfireImmediateOutboxProcessor(IBackgroundJobClient backgroundJobClient)
+    : IImmediateOutboxProcessor
 {
-    private readonly IBackgroundJobClient _backgroundJobClient;
-
-    public HangfireImmediateOutboxProcessor(IBackgroundJobClient backgroundJobClient)
-    {
-        _backgroundJobClient = backgroundJobClient;
-    }
-
     public void TriggerImmediate()
     {
-        _backgroundJobClient.Enqueue<ProcessEmailOutboxJob>(x => x.ExecuteAsync(default));
+        backgroundJobClient.Enqueue<ProcessEmailOutboxJob>(x => x.ExecuteAsync(default));
     }
 }

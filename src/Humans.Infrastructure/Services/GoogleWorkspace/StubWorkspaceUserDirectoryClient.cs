@@ -11,37 +11,31 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// <see cref="Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService"/>
 /// runs against this stub — there is no "stub service" variant.
 /// </summary>
-public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
+public sealed class StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUserDirectoryClient> logger)
+    : IWorkspaceUserDirectoryClient
 {
-    private readonly ILogger<StubWorkspaceUserDirectoryClient> _logger;
-    private readonly List<WorkspaceUserAccount> _accounts;
-
-    public StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUserDirectoryClient> logger)
-    {
-        _logger = logger;
-        _accounts =
-        [
-            new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Example", false,
-                new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc),
-                IsEnrolledIn2Sv: true,
-                RecoveryEmail: "alice.personal@example.com"),
-            new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Test", false,
-                new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 3, 15, 14, 0, 0, DateTimeKind.Utc),
-                IsEnrolledIn2Sv: false,
-                RecoveryEmail: null),
-            new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Demo", true,
-                new DateTime(2025, 6, 10, 0, 0, 0, DateTimeKind.Utc),
-                null,
-                IsEnrolledIn2Sv: false,
-                RecoveryEmail: "carol.personal@example.com")
-        ];
-    }
+    private readonly List<WorkspaceUserAccount> _accounts =
+    [
+        new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Example", false,
+            new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc),
+            IsEnrolledIn2Sv: true,
+            RecoveryEmail: "alice.personal@example.com"),
+        new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Test", false,
+            new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 15, 14, 0, 0, DateTimeKind.Utc),
+            IsEnrolledIn2Sv: false,
+            RecoveryEmail: null),
+        new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Demo", true,
+            new DateTime(2025, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+            null,
+            IsEnrolledIn2Sv: false,
+            RecoveryEmail: "carol.personal@example.com")
+    ];
 
     public Task<IReadOnlyList<WorkspaceUserAccount>> ListAccountsAsync(CancellationToken ct = default)
     {
-        _logger.LogDebug("[Stub] Listing {Count} fake @nobodies.team accounts", _accounts.Count);
+        logger.LogDebug("[Stub] Listing {Count} fake @nobodies.team accounts", _accounts.Count);
         return Task.FromResult<IReadOnlyList<WorkspaceUserAccount>>(_accounts.AsReadOnly());
     }
 
@@ -60,7 +54,7 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
         string? recoveryEmail,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
+        logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
         var account = new WorkspaceUserAccount(
             primaryEmail, firstName, lastName, false, DateTime.UtcNow, null,
             IsEnrolledIn2Sv: false,
@@ -71,27 +65,27 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
 
     public Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)
     {
-        _logger.LogInformation("[Stub] Suspended fake account: {Email}", primaryEmail);
+        logger.LogInformation("[Stub] Suspended fake account: {Email}", primaryEmail);
         ReplaceAccount(primaryEmail, a => a with { IsSuspended = true });
         return Task.CompletedTask;
     }
 
     public Task ReactivateAccountAsync(string primaryEmail, CancellationToken ct = default)
     {
-        _logger.LogInformation("[Stub] Reactivated fake account: {Email}", primaryEmail);
+        logger.LogInformation("[Stub] Reactivated fake account: {Email}", primaryEmail);
         ReplaceAccount(primaryEmail, a => a with { IsSuspended = false });
         return Task.CompletedTask;
     }
 
     public Task ResetPasswordAsync(string primaryEmail, string newPassword, CancellationToken ct = default)
     {
-        _logger.LogInformation("[Stub] Reset password for fake account: {Email}", primaryEmail);
+        logger.LogInformation("[Stub] Reset password for fake account: {Email}", primaryEmail);
         return Task.CompletedTask;
     }
 
     public Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string primaryEmail, CancellationToken ct = default)
     {
-        _logger.LogInformation("[Stub] Generated backup codes for fake account: {Email}", primaryEmail);
+        logger.LogInformation("[Stub] Generated backup codes for fake account: {Email}", primaryEmail);
         // Return 10 placeholder codes for local development visibility.
         IReadOnlyList<string> codes =
         [

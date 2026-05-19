@@ -34,11 +34,15 @@ public sealed class GlobalSearchViewModel
     public IReadOnlyList<GlobalSearchResult> ShiftResults { get; init; } =
         [];
 
+    public IReadOnlyList<GlobalSearchResult> EventResults { get; init; } =
+        [];
+
     public int HumanCount => HumanResults.Count;
     public int TeamCount => TeamResults.Count;
     public int CampCount => CampResults.Count;
     public int ShiftCount => ShiftResults.Count;
-    public int TotalCount => HumanCount + TeamCount + CampCount + ShiftCount;
+    public int EventCount => EventResults.Count;
+    public int TotalCount => HumanCount + TeamCount + CampCount + ShiftCount + EventCount;
 
     public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
     public bool QueryIsTooShort => HasQuery && (Query?.Trim().Length ?? 0) < 2;

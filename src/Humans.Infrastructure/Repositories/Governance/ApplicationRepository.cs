@@ -14,18 +14,11 @@ namespace Humans.Infrastructure.Repositories.Governance;
 /// <c>DbContext.BoardVotes</c>, or <c>DbContext.ApplicationStateHistories</c>
 /// after the Governance migration lands.
 /// </summary>
-internal sealed class ApplicationRepository : IApplicationRepository
+internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> factory) : IApplicationRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public ApplicationRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Applications
             .Include(a => a.BoardVotes)
             .Include(a => a.StateHistory)
@@ -54,7 +47,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
         int pageSize,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.Applications.AsNoTracking().AsQueryable();
 
         query = status is null
@@ -79,21 +72,21 @@ internal sealed class ApplicationRepository : IApplicationRepository
 
     public async Task AddAsync(MemberApplication application, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Applications.Add(application);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateAsync(MemberApplication application, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Applications.Update(application);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task FinalizeAsync(MemberApplication application, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Attach-or-update the mutated application. The caller has already
         // fired app.Approve()/app.Reject() which appended a StateHistory row
         // through the aggregate-local collection — EF will cascade-insert it.
@@ -127,7 +120,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var matched = await ctx.Applications
             .AsNoTracking()
             .Where(a => userIds.Contains(a.UserId) && a.Status == ApplicationStatus.Submitted)
@@ -184,7 +177,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.BoardVotes
             .FirstOrDefaultAsync(
                 v => v.ApplicationId == applicationId && v.BoardMemberUserId == boardMemberUserId,
@@ -221,7 +214,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
 
     public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var stats = await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status != ApplicationStatus.Withdrawn)
@@ -257,7 +250,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
     public async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var pairs = await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Submitted)
@@ -297,7 +290,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
         if (applicationIds.Count == 0)
             return 0;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var votedCount = await ctx.BoardVotes
             .AsNoTracking()
             .CountAsync(v => v.BoardMemberUserId == boardMemberUserId
@@ -309,7 +302,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
     public async Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var app = await ctx.Applications.FindAsync([applicationId], ct);
         if (app is null)
             return;
@@ -343,7 +336,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
     public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Approved
@@ -370,7 +363,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
         // Asociado tier applications over multiple years). Both source and
         // target may have applied independently; every row is preserved.
         // No conflict rule, no dedup. UpdatedAt stamped on every moved row.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var sourceRows = await ctx.Applications
             .Where(a => a.UserId == sourceUserId)
             .ToListAsync(ct);
@@ -391,7 +384,7 @@ internal sealed class ApplicationRepository : IApplicationRepository
         Func<HumansDbContext, Task<T>> action,
         CancellationToken ct)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await action(ctx);
     }
 }

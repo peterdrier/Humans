@@ -15,31 +15,19 @@ namespace Humans.Infrastructure.Services.Mailer;
 /// Caching MailerLite client (Singleton). Writes are restricted to groups whose
 /// name starts with "Humans - "; pinned by MailerLiteClientWriteGuardTests.
 /// </summary>
-public sealed class MailerLiteClient : IMailerLiteService
+public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock clock, ILogger<MailerLiteClient> logger)
+    : IMailerLiteService
 {
     public const string HttpClientName = "mailerlite";
     private const string HumansGroupPrefix = "Humans - ";
 
     private static readonly JsonSerializerOptions Json = BuildJson();
-    private readonly IHttpClientFactory _httpFactory;
-    private readonly IClock _clock;
-    private readonly ILogger<MailerLiteClient> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private IReadOnlyList<MailerLiteSubscriber>? _subscribers;
     private MailerLiteAccountSummary? _summary;
     private IReadOnlyList<MailerLiteGroup>? _groups;
     private Instant? _lastFetchedAt;
-
-    public MailerLiteClient(
-        IHttpClientFactory httpFactory,
-        IClock clock,
-        ILogger<MailerLiteClient> logger)
-    {
-        _httpFactory = httpFactory;
-        _clock = clock;
-        _logger = logger;
-    }
 
     public Instant? LastFetchedAt => _lastFetchedAt;
 
@@ -151,7 +139,7 @@ public sealed class MailerLiteClient : IMailerLiteService
             if (!resp.IsSuccessStatusCode)
             {
                 errors++;
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Subscriber upsert failed for {Email} into group {GroupId}: {StatusCode}",
                     email, groupId, (int)resp.StatusCode);
                 continue;
@@ -226,7 +214,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         _subscribers = subscribers;
         _summary = new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
         _groups = groups;
-        _lastFetchedAt = _clock.GetCurrentInstant();
+        _lastFetchedAt = clock.GetCurrentInstant();
     }
 
     private async IAsyncEnumerable<MailerLiteSubscriber> FetchSubscribersAsync(
@@ -272,7 +260,7 @@ public sealed class MailerLiteClient : IMailerLiteService
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method, string url, HttpContent? content, CancellationToken ct)
     {
-        var http = _httpFactory.CreateClient(HttpClientName);
+        var http = httpFactory.CreateClient(HttpClientName);
         using var req = new HttpRequestMessage(method, url);
         if (content is not null) req.Content = content;
         HttpResponseMessage resp;
@@ -282,13 +270,13 @@ public sealed class MailerLiteClient : IMailerLiteService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "MailerLite HTTP call failed: {Method} {Url}", method, url);
+            logger.LogError(ex, "MailerLite HTTP call failed: {Method} {Url}", method, url);
             throw;
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
             // HttpClient timeout — surfaces as TaskCanceledException with no token cancel.
-            _logger.LogError(ex, "MailerLite HTTP call timed out: {Method} {Url}", method, url);
+            logger.LogError(ex, "MailerLite HTTP call timed out: {Method} {Url}", method, url);
             throw;
         }
         if (resp.Headers.TryGetValues("X-RateLimit-Remaining", out var values)
@@ -317,7 +305,7 @@ public sealed class MailerLiteClient : IMailerLiteService
             }
         }
         if (!resp.IsSuccessStatusCode)
-            _logger.LogWarning("MailerLite returned {StatusCode}: {Method} {Url}",
+            logger.LogWarning("MailerLite returned {StatusCode}: {Method} {Url}",
                 (int)resp.StatusCode, method, url);
         return resp;
     }

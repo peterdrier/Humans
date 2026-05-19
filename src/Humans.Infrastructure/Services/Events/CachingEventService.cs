@@ -37,7 +37,10 @@ namespace Humans.Infrastructure.Services.Events;
 /// a fresh pending count and the cache only holds approved events.
 /// </para>
 /// </remarks>
-public sealed class CachingEventService : IEventService, IEventViewInvalidator, IHostedService
+public sealed class CachingEventService(
+    IEventRepository repo,
+    IServiceScopeFactory scopeFactory,
+    ILogger<CachingEventService> logger) : IEventService, IEventViewInvalidator, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventService"/>
@@ -46,15 +49,12 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
     /// </summary>
     public const string InnerServiceKey = "event-inner";
 
-    private readonly IEventRepository _repo;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<CachingEventService> _logger;
-
     // warmOnStartup: false — the decorator owns cross-cutting warmup over all
     // four projections (events + categories + venues + settings) via its own
     // IHostedService surface; per-cache hosted-service kickoff would only see
     // the events dict.
-    private readonly TrackedCache<Guid, ApprovedEventView> _eventCache;
+    private readonly TrackedCache<Guid, ApprovedEventView> _eventCache = new(
+        "Event.ApprovedEventView", warmOnStartup: false, logger);
 
     // Flat lookup tables — categories and venues are admin-managed lookups
     // (~10–30 rows each), so a simple immutable snapshot is the natural shape.
@@ -68,18 +68,6 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     /// <summary>Diagnostics surface for <c>/Admin/CacheStats</c>.</summary>
     public ICacheStats EventCacheStats => _eventCache;
-
-    public CachingEventService(
-        IEventRepository repo,
-        IServiceScopeFactory scopeFactory,
-        ILogger<CachingEventService> logger)
-    {
-        _repo = repo;
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-        _eventCache = new TrackedCache<Guid, ApprovedEventView>(
-            "Event.ApprovedEventView", warmOnStartup: false, logger);
-    }
 
     // ==========================================================================
     // Settings — singleton projection
@@ -112,7 +100,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         var view = await GetSettingsViewAsync(ct);
         if (view is null) return false;
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var clock = scope.ServiceProvider.GetRequiredService<IClock>();
         return view.IsSubmissionOpenAt(clock.GetCurrentInstant());
     }
@@ -432,23 +420,23 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     async Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Warming Events cache at startup");
+        logger.LogInformation("Warming Events cache at startup");
         var stopwatch = Stopwatch.StartNew();
         try
         {
             await WarmAllAsync(cancellationToken);
             stopwatch.Stop();
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Events cache warmed in {ElapsedMs}ms",
                 stopwatch.ElapsedMilliseconds);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Events cache warmup canceled during startup");
+            logger.LogInformation("Events cache warmup canceled during startup");
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Failed to warm Events cache at startup; lazy reads will populate on demand");
         }
@@ -469,10 +457,10 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
             // and slug-uniqueness must see inactive rows, matching the DB.
             // Active-only filtering happens at projection time in
             // GetActiveCategoriesAsync / GetActiveVenuesAsync.
-            var categories = await _repo.GetAllCategoriesAsync(ct);
-            var venues = await _repo.GetAllVenuesAsync(ct);
-            var settings = await _repo.GetGuideSettingsAsync(ct);
-            var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
+            var categories = await repo.GetAllCategoriesAsync(ct);
+            var venues = await repo.GetAllVenuesAsync(ct);
+            var settings = await repo.GetGuideSettingsAsync(ct);
+            var approved = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
 
             var venuesById = venues.ToDictionary(v => v.Id);
 
@@ -510,7 +498,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     private async Task RefreshSettingsAsync(CancellationToken ct)
     {
-        var fresh = await _repo.GetGuideSettingsAsync(ct);
+        var fresh = await repo.GetGuideSettingsAsync(ct);
         _settings = await BuildSettingsViewAsync(fresh, ct);
     }
 
@@ -533,7 +521,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "CachingEventService: failed to load BurnSettings {EventSettingsId} for guide-settings cache; TimeZoneId left null",
                 settings.EventSettingsId);
         }
@@ -552,19 +540,19 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     private async Task RefreshCategoriesAsync(CancellationToken ct)
     {
-        var categories = await _repo.GetAllCategoriesAsync(ct);
+        var categories = await repo.GetAllCategoriesAsync(ct);
         _categories = categories.Select(CategoryEntityToView).ToList();
     }
 
     private async Task RefreshVenuesAsync(CancellationToken ct)
     {
-        var venues = await _repo.GetAllVenuesAsync(ct);
+        var venues = await repo.GetAllVenuesAsync(ct);
         _venues = venues.Select(VenueEntityToView).ToList();
     }
 
     private async Task RefreshEventEntryAsync(Guid eventId, CancellationToken ct)
     {
-        var ev = await _repo.GetApprovedEventByIdAsync(eventId, ct);
+        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct);
         if (ev is null)
         {
             _eventCache.Invalidate(eventId);
@@ -573,7 +561,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
         // All-rows lookup — an approved event can reference a now-inactive
         // venue, and we still want its flattened fields populated.
-        var venuesById = (await _repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
+        var venuesById = (await repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
         _eventCache.Set(eventId, BuildEventView(ev, venuesById));
     }
 
@@ -590,8 +578,8 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
             return;
         }
 
-        var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        var venuesById = (await _repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
+        var approved = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
+        var venuesById = (await repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
 
         // Rebuild the whole approved set — category / venue renames touch
         // every event row's flattened fields.
@@ -721,14 +709,14 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     private async Task<T> WithInner<T>(Func<IEventService, Task<T>> work)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IEventService>(InnerServiceKey);
         return await work(inner);
     }
 
     private async Task WithInner(Func<IEventService, Task> work)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IEventService>(InnerServiceKey);
         await work(inner);
     }

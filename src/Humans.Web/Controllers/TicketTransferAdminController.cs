@@ -12,33 +12,21 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
 [Route("Tickets/Admin/Transfers")]
-public sealed class TicketTransferAdminController : HumansControllerBase
+public sealed class TicketTransferAdminController(
+    ITicketTransferService service,
+    ITicketQueryService ticketQueryService,
+    IUserService userService,
+    ILogger<TicketTransferAdminController> logger) : HumansControllerBase(userService)
 {
-    private readonly ITicketTransferService _service;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly ILogger<TicketTransferAdminController> _logger;
-
-    public TicketTransferAdminController(
-        ITicketTransferService service,
-        ITicketQueryService ticketQueryService,
-        IUserService userService,
-        ILogger<TicketTransferAdminController> logger)
-        : base(userService)
-    {
-        _service = service;
-        _ticketQueryService = ticketQueryService;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(string? tab, CancellationToken ct)
     {
         tab ??= "pending";
 
-        var pendingAll = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
+        var pendingAll = await service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
         var pending = pendingAll.OrderBy(r => r.RequestedAt).ToList();
 
-        var approvedAll = await _service.GetByStatusAsync(TicketTransferStatus.Approved, ct);
+        var approvedAll = await service.GetByStatusAsync(TicketTransferStatus.Approved, ct);
         var needsAttention = approvedAll
             .Where(r => r.VendorResult == TicketTransferVendorResult.Failed
                      || r.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
@@ -52,7 +40,7 @@ public sealed class TicketTransferAdminController : HumansControllerBase
             _ => pending,
         };
 
-        var drift = (await _ticketQueryService.GetOrderDriftAsync(ct))
+        var drift = (await ticketQueryService.GetOrderDriftAsync(ct))
             .OrderByDescending(r => r.IssuedCount - r.ValidCount)
             .ToList();
 
@@ -69,14 +57,14 @@ public sealed class TicketTransferAdminController : HumansControllerBase
         var statuses = Enum.GetValues<TicketTransferStatus>();
         var combined = new List<TicketTransferRowDto>();
         foreach (var s in statuses)
-            combined.AddRange(await _service.GetByStatusAsync(s, ct));
+            combined.AddRange(await service.GetByStatusAsync(s, ct));
         return combined.OrderByDescending(r => r.RequestedAt).ToList();
     }
 
     [HttpGet("Detail/{id:guid}")]
     public async Task<IActionResult> Detail(Guid id, CancellationToken ct)
     {
-        var detail = await _service.GetDetailAsync(id, ct);
+        var detail = await service.GetDetailAsync(id, ct);
         if (detail is null)
         {
             return NotFound();
@@ -99,7 +87,7 @@ public sealed class TicketTransferAdminController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Ticket transfer Decide rejected for transfer {TransferId} (approve={Approve}): {Message}",
+            logger.LogWarning("Ticket transfer Decide rejected for transfer {TransferId} (approve={Approve}): {Message}",
                 id, approve, ex.Message);
             SetError(ex.Message);
         }
@@ -116,7 +104,7 @@ public sealed class TicketTransferAdminController : HumansControllerBase
 
         try
         {
-            var result = await _service.RetryIssueAsync(id, user.Id, adminNotes, ct);
+            var result = await service.RetryIssueAsync(id, user.Id, adminNotes, ct);
             if (result.VendorResult == TicketTransferVendorResult.Succeeded)
             {
                 SetSuccess($"Retry succeeded — new ticket {result.VendorMessage ?? result.Id.ToString()}.");
@@ -128,7 +116,7 @@ public sealed class TicketTransferAdminController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Retry-issue rejected for transfer {TransferId}: {Message}",
+            logger.LogWarning("Retry-issue rejected for transfer {TransferId}: {Message}",
                 id, ex.Message);
             SetError(ex.Message);
         }
@@ -154,6 +142,6 @@ public sealed class TicketTransferAdminController : HumansControllerBase
 
     private Task<TicketTransferRowDto> DispatchDecisionAsync(Guid id, bool approve, Guid userId, string? notes, CancellationToken ct) =>
         approve
-            ? _service.ApproveAsync(id, userId, notes, ct)
-            : _service.RejectAsync(id, userId, notes, ct);
+            ? service.ApproveAsync(id, userId, notes, ct)
+            : service.RejectAsync(id, userId, notes, ct);
 }

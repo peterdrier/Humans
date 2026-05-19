@@ -15,24 +15,16 @@ namespace Humans.Infrastructure.Services.Profiles;
 /// using ASP.NET Core Data Protection for token generation/validation and
 /// <see cref="EmailSettings"/> for URL building.
 /// </summary>
-public sealed class UnsubscribeTokenProvider : IUnsubscribeTokenProvider
+public sealed class UnsubscribeTokenProvider(
+    IDataProtectionProvider dataProtection,
+    IOptions<EmailSettings> emailSettings,
+    ILogger<UnsubscribeTokenProvider> logger) : IUnsubscribeTokenProvider
 {
     private const string ProtectorPurpose = "CommunicationPreference";
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromDays(90);
 
-    private readonly ITimeLimitedDataProtector _protector;
-    private readonly string _baseUrl;
-    private readonly ILogger<UnsubscribeTokenProvider> _logger;
-
-    public UnsubscribeTokenProvider(
-        IDataProtectionProvider dataProtection,
-        IOptions<EmailSettings> emailSettings,
-        ILogger<UnsubscribeTokenProvider> logger)
-    {
-        _protector = dataProtection.CreateProtector(ProtectorPurpose).ToTimeLimitedDataProtector();
-        _baseUrl = emailSettings.Value.BaseUrl.TrimEnd('/');
-        _logger = logger;
-    }
+    private readonly ITimeLimitedDataProtector _protector = dataProtection.CreateProtector(ProtectorPurpose).ToTimeLimitedDataProtector();
+    private readonly string _baseUrl = emailSettings.Value.BaseUrl.TrimEnd('/');
 
     public string GenerateToken(Guid userId, MessageCategory category)
     {
@@ -62,11 +54,11 @@ public sealed class UnsubscribeTokenProvider : IUnsubscribeTokenProvider
             var tokenPrefix = token.Length > 12 ? token[..12] : token;
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Expired unsubscribe token {TokenPrefix}", tokenPrefix);
+                logger.LogWarning("Expired unsubscribe token {TokenPrefix}", tokenPrefix);
                 return (TokenValidationStatus.Expired, default, default);
             }
 
-            _logger.LogWarning("Failed to validate unsubscribe token {TokenPrefix}", tokenPrefix);
+            logger.LogWarning("Failed to validate unsubscribe token {TokenPrefix}", tokenPrefix);
             return (TokenValidationStatus.Invalid, default, default);
         }
     }

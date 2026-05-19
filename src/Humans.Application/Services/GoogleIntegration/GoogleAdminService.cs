@@ -18,38 +18,17 @@ namespace Humans.Application.Services.GoogleIntegration;
 /// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
 /// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
 /// </summary>
-public sealed class GoogleAdminService : IGoogleAdminService
+public sealed class GoogleAdminService(
+    IGoogleWorkspaceUserService workspaceUserService,
+    IGoogleSyncService googleSyncService,
+    ITeamService teamService,
+    ITeamResourceService teamResourceService,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    IAuditLogService auditLogService,
+    ILogger<GoogleAdminService> logger) : IGoogleAdminService
 {
-    private readonly IGoogleWorkspaceUserService _workspaceUserService;
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly ITeamService _teamService;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly ILogger<GoogleAdminService> _logger;
-
     private const string NobodiesTeamDomain = "nobodies.team";
-
-    public GoogleAdminService(
-        IGoogleWorkspaceUserService workspaceUserService,
-        IGoogleSyncService googleSyncService,
-        ITeamService teamService,
-        ITeamResourceService teamResourceService,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        IAuditLogService auditLogService,
-        ILogger<GoogleAdminService> logger)
-    {
-        _workspaceUserService = workspaceUserService;
-        _googleSyncService = googleSyncService;
-        _teamService = teamService;
-        _teamResourceService = teamResourceService;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _auditLogService = auditLogService;
-        _logger = logger;
-    }
 
     // Resolve a single Workspace email to the linked human's UserId for audit
     // attribution. Returns null when the address isn't linked. Mirrors the
@@ -57,7 +36,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
     // so the audit subject matches what /Google/Accounts shows.
     private async Task<Guid?> TryFindLinkedUserIdAsync(string email, CancellationToken ct)
     {
-        var matches = await _userEmailService.MatchByEmailsAsync([email], ct);
+        var matches = await userEmailService.MatchByEmailsAsync([email], ct);
         return matches
             .OrderByDescending(m => m.IsVerified)
             .ThenByDescending(m => m.UpdatedAt)
@@ -71,12 +50,12 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var accounts = await _workspaceUserService.ListAccountsAsync(ct);
+            var accounts = await workspaceUserService.ListAccountsAsync(ct);
 
             // Match only against emails that correspond to Google-side accounts
             // we just listed — much cheaper than loading the entire user_emails table.
             var accountEmails = accounts.Select(a => a.PrimaryEmail).ToList();
-            var matches = await _userEmailService.MatchByEmailsAsync(accountEmails, ct);
+            var matches = await userEmailService.MatchByEmailsAsync(accountEmails, ct);
 
             // user_emails may have verified+unverified rows per address. Pick one winner: verified > most-recent > stable UserId.
             var matchByEmail = matches
@@ -94,7 +73,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             var matchedUserIds = matchByEmail.Values.Select(m => m.UserId).Distinct().ToList();
             var usersById = matchedUserIds.Count == 0
                 ? new Dictionary<Guid, UserInfo>()
-                : (await _userService.GetUserInfosAsync(matchedUserIds, ct))
+                : (await userService.GetUserInfosAsync(matchedUserIds, ct))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             var accountInfos = new List<WorkspaceAccountInfo>();
@@ -150,7 +129,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load @nobodies.team accounts");
+            logger.LogError(ex, "Failed to load @nobodies.team accounts");
             return new WorkspaceAccountListResult(
                 Accounts: [],
                 TotalAccounts: 0,
@@ -182,10 +161,10 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // Check DB first: reject if the address is already tied to any human in our system.
         // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
         // cannot silently "move" the identity off its current human.
-        var emailInUse = await _userEmailService.IsEmailLinkedToAnyUserAsync(fullEmail, ct);
+        var emailInUse = await userEmailService.IsEmailLinkedToAnyUserAsync(fullEmail, ct);
         if (emailInUse)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Standalone provisioning rejected: {Email} is already linked to a human",
                 fullEmail);
             return new WorkspaceAccountActionResult(false,
@@ -196,10 +175,10 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // the legacy User.GoogleEmail shadow column, catching the ~200
         // pre-issue-687 users whose IsGoogle is unset on every row but the
         // legacy column still holds the address.
-        var existingUser = await _userService.GetByEmailOrAlternateAsync(fullEmail, ct);
+        var existingUser = await userService.GetByEmailOrAlternateAsync(fullEmail, ct);
         if (existingUser is not null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Standalone provisioning rejected: {Email} is already linked to a human",
                 fullEmail);
             return new WorkspaceAccountActionResult(false,
@@ -209,12 +188,12 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // Reject if the prefix collides with a team's Google Group. Team groups live on
         // the same domain (@nobodies.team), so provisioning a user account with the same
         // address would cause mail-routing chaos and break group membership.
-        var conflictingTeamName = (await _teamService.GetTeamsAsync(ct)).Values
+        var conflictingTeamName = (await teamService.GetTeamsAsync(ct)).Values
             .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
             ?.Name;
         if (!string.IsNullOrEmpty(conflictingTeamName))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Standalone provisioning rejected: {Email} is the Google Group address for team '{TeamName}'",
                 fullEmail, conflictingTeamName);
             return new WorkspaceAccountActionResult(false,
@@ -222,7 +201,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
 
         // Check if account already exists
-        var existing = await _workspaceUserService.GetAccountAsync(fullEmail, ct);
+        var existing = await workspaceUserService.GetAccountAsync(fullEmail, ct);
         if (existing is not null)
         {
             return new WorkspaceAccountActionResult(false,
@@ -233,12 +212,12 @@ public sealed class GoogleAdminService : IGoogleAdminService
         {
             var tempPassword = PasswordGenerator.GenerateTemporary();
 
-            await _workspaceUserService.ProvisionAccountAsync(
+            await workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName.Trim(), lastName.Trim(), tempPassword, ct: ct);
 
             // Audit AFTER Google API success — business "save" here is the Workspace-side
             // provision. No local DB write happens in this flow.
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", Guid.Empty,
                 $"Provisioned @{NobodiesTeamDomain} account: {fullEmail}",
@@ -250,7 +229,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to provision @nobodies.team account: {Email}", fullEmail);
+            logger.LogError(ex, "Failed to provision @nobodies.team account: {Email}", fullEmail);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to provision {fullEmail}. Check logs for details.");
         }
@@ -262,11 +241,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            await _workspaceUserService.SuspendAccountAsync(email, ct);
+            await workspaceUserService.SuspendAccountAsync(email, ct);
 
             // Audit AFTER Google API success — the "business save" here is the
             // Workspace-side suspend. No local DB write happens in this flow.
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountSuspended,
                 "WorkspaceAccount", Guid.Empty,
                 $"Suspended @{NobodiesTeamDomain} account: {email}",
@@ -277,7 +256,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to suspend account: {Email}", email);
+            logger.LogError(ex, "Failed to suspend account: {Email}", email);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to suspend {email}.");
         }
@@ -289,11 +268,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            await _workspaceUserService.ReactivateAccountAsync(email, ct);
+            await workspaceUserService.ReactivateAccountAsync(email, ct);
 
             // Audit AFTER Google API success — the "business save" here is the
             // Workspace-side reactivate. No local DB write happens in this flow.
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountReactivated,
                 "WorkspaceAccount", Guid.Empty,
                 $"Reactivated @{NobodiesTeamDomain} account: {email}",
@@ -304,7 +283,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to reactivate account: {Email}", email);
+            logger.LogError(ex, "Failed to reactivate account: {Email}", email);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to reactivate {email}.");
         }
@@ -323,11 +302,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         try
         {
             newPassword = PasswordGenerator.GenerateTemporary();
-            await _workspaceUserService.ResetPasswordAsync(email, newPassword, ct);
+            await workspaceUserService.ResetPasswordAsync(email, newPassword, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to reset password for: {Email}", email);
+            logger.LogError(ex, "Failed to reset password for: {Email}", email);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to reset password for {email}.");
         }
@@ -336,7 +315,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         try
         {
             var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountPasswordReset,
                 "WorkspaceAccount", linkedUserId ?? Guid.Empty,
                 email,
@@ -344,7 +323,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex,
+            logger.LogCritical(ex,
                 "Audit-log write failed AFTER password reset for {Email} by actor {ActorUserId}. Password was rotated; reconcile audit trail manually.",
                 email, actorUserId);
         }
@@ -361,11 +340,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         IReadOnlyList<string> codes;
         try
         {
-            codes = await _workspaceUserService.GenerateBackupCodesAsync(email, ct);
+            codes = await workspaceUserService.GenerateBackupCodesAsync(email, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to generate backup codes for: {Email}", email);
+            logger.LogError(ex, "Failed to generate backup codes for: {Email}", email);
             return new WorkspaceBackupCodesResult(
                 Success: false,
                 Email: email,
@@ -377,7 +356,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // Generate succeeded but List returned 0 — API hiccup or race.
             // No codes to deliver and nothing to audit; surface a clear failure
             // instead of recording "Generated 0 backup codes" in the audit log.
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Backup-code generation for {Email} returned 0 codes; nothing to deliver",
                 email);
             return new WorkspaceBackupCodesResult(
@@ -397,7 +376,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // to one, so the audit row renders with the human's name as subject;
             // unlinked accounts log with Guid.Empty and fall back to the email tail.
             var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountBackupCodesGenerated,
                 "WorkspaceAccount", linkedUserId ?? Guid.Empty,
                 $"{codes.Count} code(s), {email}",
@@ -405,7 +384,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex,
+            logger.LogCritical(ex,
                 "Audit-log write failed AFTER backup codes were generated for {Email} by actor {ActorUserId}. Codes were delivered; reconcile audit trail manually.",
                 email, actorUserId);
         }
@@ -437,11 +416,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         WorkspaceUserAccount? liveAccount;
         try
         {
-            liveAccount = await _workspaceUserService.GetAccountAsync(email, ct);
+            liveAccount = await workspaceUserService.GetAccountAsync(email, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch live 2SV state for: {Email}", email);
+            logger.LogError(ex, "Failed to fetch live 2SV state for: {Email}", email);
             return new WorkspaceRecoveryCredentialsResult(
                 Success: false,
                 Email: email,
@@ -450,7 +429,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
 
         if (liveAccount is null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Reset+2FA refused for {Email}: account not found in Workspace Directory. Actor: {ActorUserId}.",
                 email, actorUserId);
             return new WorkspaceRecoveryCredentialsResult(
@@ -461,7 +440,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
 
         if (liveAccount.IsEnrolledIn2Sv)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Reset+2FA refused for {Email}: already enrolled in 2-Step Verification. Actor: {ActorUserId}.",
                 email, actorUserId);
 
@@ -472,7 +451,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // (no Workspace mutation happened).
             try
             {
-                await _auditLogService.LogAsync(
+                await auditLogService.LogAsync(
                     AuditAction.WorkspaceAccountResetBlockedFor2Sv,
                     "WorkspaceAccount", Guid.Empty,
                     $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
@@ -480,7 +459,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             }
             catch (Exception ex)
             {
-                _logger.LogCritical(ex,
+                logger.LogCritical(ex,
                     "Audit-log write failed for Reset+2FA refusal on {Email} by actor {ActorUserId}. Refusal was still surfaced to the admin; reconcile audit trail manually.",
                     email, actorUserId);
             }
@@ -536,7 +515,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var user = await _userService.GetUserInfoAsync(userId, ct);
+            var user = await userService.GetUserInfoAsync(userId, ct);
             if (user is null)
             {
                 return new WorkspaceAccountActionResult(false,
@@ -544,7 +523,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             }
 
             // Check not already linked (case-insensitive, any user)
-            var alreadyLinked = await _userEmailService.IsEmailLinkedToAnyUserAsync(email, ct);
+            var alreadyLinked = await userEmailService.IsEmailLinkedToAnyUserAsync(email, ct);
             if (alreadyLinked)
             {
                 return new WorkspaceAccountActionResult(false,
@@ -552,15 +531,15 @@ public sealed class GoogleAdminService : IGoogleAdminService
             }
 
             // Add verified email; orchestrator stamps IsGoogle. Reset GoogleEmailStatus so reconciliation resumes (#687).
-            await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-            await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+            await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+            await userService.TrySetGoogleEmailStatusFromSyncAsync(
                 userId, GoogleEmailStatus.Unknown, ct);
 
             // Enqueue re-sync for team memberships (outbox writes owned by Teams service).
-            await _teamService.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
+            await teamService.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 
             // Audit AFTER all business writes.
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,
                 $"Linked @{NobodiesTeamDomain} account {email}",
@@ -571,7 +550,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to link {Email} to user {UserId}", email, userId);
+            logger.LogError(ex, "Failed to link {Email} to user {UserId}", email, userId);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to link {email}.");
         }
@@ -586,12 +565,12 @@ public sealed class GoogleAdminService : IGoogleAdminService
         (bool updated, string? previousPrefix) setResult;
         try
         {
-            setResult = await _teamService.SetGoogleGroupPrefixAsync(
+            setResult = await teamService.SetGoogleGroupPrefixAsync(
                 teamId, normalizedPrefix, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
+            logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
             return new GroupLinkActionResult(false,
                 ErrorMessage: $"Failed to link group: {ex.Message}");
         }
@@ -610,10 +589,10 @@ public sealed class GoogleAdminService : IGoogleAdminService
         var committed = false;
         try
         {
-            var team = await _teamService.GetTeamByIdAsync(teamId, ct);
+            var team = await teamService.GetTeamByIdAsync(teamId, ct);
             var teamName = team?.Name ?? teamId.ToString();
 
-            var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: ct);
+            var linkResult = await googleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: ct);
             if (linkResult.RequiresConfirmation)
             {
                 committed = true;
@@ -633,7 +612,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
+            logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
             return new GroupLinkActionResult(false,
                 ErrorMessage: $"Failed to link group: {ex.Message}");
         }
@@ -643,11 +622,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
             {
                 try
                 {
-                    await _teamService.SetGoogleGroupPrefixAsync(teamId, setResult.previousPrefix, ct);
+                    await teamService.SetGoogleGroupPrefixAsync(teamId, setResult.previousPrefix, ct);
                 }
                 catch (Exception revertEx)
                 {
-                    _logger.LogError(revertEx,
+                    logger.LogError(revertEx,
                         "Failed to revert GoogleGroupPrefix for team {TeamId} after failed link (prefix remains {Prefix})",
                         teamId, normalizedPrefix);
                 }
@@ -658,7 +637,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
     public async Task<IReadOnlyList<TeamSummary>> GetActiveTeamsAsync(
         CancellationToken ct = default)
     {
-        var options = (await _teamService.GetTeamsAsync(ct)).Values
+        var options = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive);
         return options
             .Select(o => new TeamSummary(o.Id, o.Name))
@@ -674,9 +653,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // service (design-rules §2c) instead of traversing user.UserEmails
             // cross-domain. The service returns row snapshots so this caller
             // can read per-row IsVerified / IsGoogle / Provider flags.
-            var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+            var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
             var allUserIds = allUsers.Select(u => u.Id).ToList();
-            var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
+            var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
 
             var nobodiesUsers = allUsers
                 .Select(u =>
@@ -700,14 +679,14 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 .ToList();
 
             // Load resource counts per team for affected resource calculation
-            var teamResourceCounts = await _teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
+            var teamResourceCounts = await teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
 
             // Active team memberships per user — delegated to ITeamService so we
             // never read team_members directly from here.
             var userTeamNameLookup = new Dictionary<Guid, IReadOnlyList<Guid>>();
             foreach (var u in nobodiesUsers)
             {
-                var memberships = await _teamService.GetUserTeamsAsync(u.Id, ct);
+                var memberships = await teamService.GetUserTeamsAsync(u.Id, ct);
                 userTeamNameLookup[u.Id] = memberships
                     .Where(m => m.LeftAt == null)
                     .Select(m => m.TeamId)
@@ -720,7 +699,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             {
                 try
                 {
-                    var account = await _workspaceUserService.GetAccountAsync(user.GoogleEmail!, ct);
+                    var account = await workspaceUserService.GetAccountAsync(user.GoogleEmail!, ct);
 
                     if (account is null)
                     {
@@ -750,7 +729,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex,
+                    logger.LogWarning(ex,
                         "Failed to check email rename for user {UserId} ({Email})",
                         user.Id, user.GoogleEmail);
                 }
@@ -764,7 +743,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to detect email renames");
+            logger.LogError(ex, "Failed to detect email renames");
             return new EmailRenameDetectionResult
             {
                 ErrorMessage = "Failed to detect email renames. Check the logs for details."

@@ -10,38 +10,25 @@ namespace Humans.Infrastructure.Jobs;
 /// at least 6 months ago, plus their screenshot directories. Runs daily.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupIssuesJob : IRecurringJob
+public class CleanupIssuesJob(IIssuesService issues, IHumansMetrics metrics, ILogger<CleanupIssuesJob> logger)
+    : IRecurringJob
 {
-    private readonly IIssuesService _issues;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<CleanupIssuesJob> _logger;
-
-    public CleanupIssuesJob(
-        IIssuesService issues,
-        IHumansMetrics metrics,
-        ILogger<CleanupIssuesJob> logger)
-    {
-        _issues = issues;
-        _metrics = metrics;
-        _logger = logger;
-    }
-
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var deleted = await _issues.PurgeExpiredAsync(cancellationToken);
+            var deleted = await issues.PurgeExpiredAsync(cancellationToken);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "CleanupIssuesJob: deleted {Count} expired issues",
                 deleted);
 
-            _metrics.RecordJobRun("cleanup_issues", "success");
+            metrics.RecordJobRun("cleanup_issues", "success");
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("cleanup_issues", "failure");
-            _logger.LogError(ex, "Error cleaning up expired issues");
+            metrics.RecordJobRun("cleanup_issues", "failure");
+            logger.LogError(ex, "Error cleaning up expired issues");
             throw;
         }
     }

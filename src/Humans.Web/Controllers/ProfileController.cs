@@ -43,40 +43,43 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Profile")]
-public class ProfileController : HumansControllerBase
+public class ProfileController(
+    IUserService userService,
+    UserManager<User> userManager,
+    IProfileService profileService,
+    IContactFieldService contactFieldService,
+    IEmailService emailService,
+    IUserEmailService userEmailService,
+    ICommunicationPreferenceService commPrefService,
+    IAuditLogService auditLogService,
+    IOnboardingService onboardingService,
+    IHumanLifecycleService humanLifecycleService,
+    IRoleAssignmentService roleAssignmentService,
+    IShiftSignupService shiftSignupService,
+    IShiftManagementService shiftMgmt,
+    IShiftView shiftView,
+    IGdprExportService gdprExportService,
+    IConfiguration configuration,
+    ConfigurationRegistry configRegistry,
+    ILogger<ProfileController> logger,
+    IStringLocalizer<SharedResource> localizer,
+    ITicketQueryService ticketQueryService,
+    ITeamService teamService,
+    ICampaignService campaignService,
+    IEmailOutboxService emailOutboxService,
+    IClock clock,
+    IAuthorizationService authorizationService,
+    IConsentService consentService,
+    IApplicationDecisionService applicationDecisionService,
+    IAccountDeletionService accountDeletionService,
+    IMembershipCalculator membershipCalculator,
+    IHttpClientFactory httpClientFactory,
+    SignInManager<User> signInManager,
+    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly UserManager<User> _userManager;
-    private readonly IProfileService _profileService;
-    private readonly IContactFieldService _contactFieldService;
-    private readonly IEmailService _emailService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ICommunicationPreferenceService _commPrefService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IOnboardingService _onboardingService;
-    private readonly IHumanLifecycleService _humanLifecycleService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IShiftSignupService _shiftSignupService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftView _shiftView;
-    private readonly IGdprExportService _gdprExportService;
-    private readonly IConfiguration _configuration;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly ILogger<ProfileController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly ITeamService _teamService;
-    private readonly ICampaignService _campaignService;
-    private readonly IEmailOutboxService _emailOutboxService;
-    private readonly IClock _clock;
-    private readonly IAuthorizationService _authorizationService;
-    private readonly IUserService _userService;
-    private readonly IConsentService _consentService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IAccountDeletionService _accountDeletionService;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly SignInManager<User> _signInManager;
-    private readonly GoogleWorkspaceOptions _googleWorkspaceOptions;
+    private readonly ITicketQueryService _ticketQueryService = ticketQueryService;
+    private readonly IUserService _userService = userService;
+    private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
@@ -103,75 +106,6 @@ public class ProfileController : HumansControllerBase
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
 
-    public ProfileController(
-        IUserService userService,
-        UserManager<User> userManager,
-        IProfileService profileService,
-        IContactFieldService contactFieldService,
-        IEmailService emailService,
-        IUserEmailService userEmailService,
-        ICommunicationPreferenceService commPrefService,
-        IAuditLogService auditLogService,
-        IOnboardingService onboardingService,
-        IHumanLifecycleService humanLifecycleService,
-        IRoleAssignmentService roleAssignmentService,
-        IShiftSignupService shiftSignupService,
-        IShiftManagementService shiftMgmt,
-        IShiftView shiftView,
-        IGdprExportService gdprExportService,
-        IConfiguration configuration,
-        ConfigurationRegistry configRegistry,
-        ILogger<ProfileController> logger,
-        IStringLocalizer<SharedResource> localizer,
-        ITicketQueryService ticketQueryService,
-        ITeamService teamService,
-        ICampaignService campaignService,
-        IEmailOutboxService emailOutboxService,
-        IClock clock,
-        IAuthorizationService authorizationService,
-        IConsentService consentService,
-        IApplicationDecisionService applicationDecisionService,
-        IAccountDeletionService accountDeletionService,
-        IMembershipCalculator membershipCalculator,
-        IHttpClientFactory httpClientFactory,
-        SignInManager<User> signInManager,
-        IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
-        : base(userService)
-    {
-        _userManager = userManager;
-        _profileService = profileService;
-        _contactFieldService = contactFieldService;
-        _emailService = emailService;
-        _userEmailService = userEmailService;
-        _commPrefService = commPrefService;
-        _auditLogService = auditLogService;
-        _onboardingService = onboardingService;
-        _humanLifecycleService = humanLifecycleService;
-        _roleAssignmentService = roleAssignmentService;
-        _shiftSignupService = shiftSignupService;
-        _shiftMgmt = shiftMgmt;
-        _shiftView = shiftView;
-        _gdprExportService = gdprExportService;
-        _configuration = configuration;
-        _configRegistry = configRegistry;
-        _logger = logger;
-        _localizer = localizer;
-        _ticketQueryService = ticketQueryService;
-        _teamService = teamService;
-        _campaignService = campaignService;
-        _emailOutboxService = emailOutboxService;
-        _clock = clock;
-        _authorizationService = authorizationService;
-        _userService = userService;
-        _consentService = consentService;
-        _applicationDecisionService = applicationDecisionService;
-        _accountDeletionService = accountDeletionService;
-        _membershipCalculator = membershipCalculator;
-        _httpClientFactory = httpClientFactory;
-        _signInManager = signInManager;
-        _googleWorkspaceOptions = googleWorkspaceOptions.Value;
-    }
-
     // Admin humans list: bit-flag PersonSearchFields filter + status partition + projection.
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
         string? search, string? statusFilter, CancellationToken ct)
@@ -179,7 +113,7 @@ public class ProfileController : HumansControllerBase
         var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var allUserIds = allUsers.Select(u => u.Id).ToList();
         var notificationEmails =
-            await _userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
+            await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
 
         IReadOnlySet<Guid>? searchUserIds = null;
         if (!string.IsNullOrWhiteSpace(search))
@@ -206,7 +140,7 @@ public class ProfileController : HumansControllerBase
             notificationEmails,
             searchUserIds,
             statusFilter,
-            _membershipCalculator,
+            membershipCalculator,
             ct);
     }
 
@@ -223,13 +157,13 @@ public class ProfileController : HumansControllerBase
             return NotFound();
 
         var profile = info.Profile;
-        var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
+        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
         var pendingConsentCount = snapshot.PendingConsentCount;
 
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(info.Id, ct);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
 
-        var campaignGrants = await _campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
+        var campaignGrants = await campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -266,7 +200,7 @@ public class ProfileController : HumansControllerBase
     /// </summary>
     private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
     {
-        var active = await _shiftMgmt.GetActiveAsync();
+        var active = await shiftMgmt.GetActiveAsync();
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }
@@ -274,21 +208,21 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Edit")]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false, CancellationToken ct = default)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
         if (info is null) return NotFound();
 
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await _shiftMgmt.GetTagsAsync();
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
+        var allShiftTags = await shiftMgmt.GetTagsAsync();
         // see #720 (T-09) — tag prefs from cached ShiftUserView, not repo.
-        var userShiftView = await _shiftView.GetUserAsync(user.Id, ct);
+        var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences
             .Select(p => new ShiftTagPreferenceSummary(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))
             .ToList();
-        var externalLogins = await _userManager.GetLoginsAsync(user);
+        var externalLogins = await userManager.GetLoginsAsync(user);
 
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
@@ -299,7 +233,7 @@ public class ProfileController : HumansControllerBase
             externalLogins.Any(l => string.Equals(l.LoginProvider, "Google", StringComparison.OrdinalIgnoreCase)),
             p => Url.Action(nameof(Picture), new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
 
-        ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
     }
 
@@ -308,13 +242,13 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
-        model.AllShiftTags = (await _shiftMgmt.GetTagsAsync())
+        model.AllShiftTags = (await shiftMgmt.GetTagsAsync())
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         if (!ModelState.IsValid)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -329,19 +263,19 @@ public class ProfileController : HumansControllerBase
             if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith("+", StringComparison.Ordinal))
             {
                 ModelState.AddModelError($"EditableContactFields[{i}].Value",
-                    _localizer["Validation_PhoneE164", _localizer["Profile_" + cf.FieldType].Value].Value);
+                    localizer["Validation_PhoneE164", localizer["Profile_" + cf.FieldType].Value].Value);
             }
         }
 
         if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
-                _localizer["Validation_PhoneE164", _localizer["Profile_EmergencyContactPhone"].Value].Value);
+                localizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
         }
 
         if (ModelState.ErrorCount > 0)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -351,13 +285,13 @@ public class ProfileController : HumansControllerBase
         if (!model.NoPriorBurnExperience && !hasVolunteerHistory)
         {
             ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
-                _localizer["Profile_BurnerCVRequired"].Value);
+                localizer["Profile_BurnerCVRequired"].Value);
             var existingProfile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
             model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
-            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -369,12 +303,12 @@ public class ProfileController : HumansControllerBase
                 string.IsNullOrWhiteSpace(model.ApplicationMotivation))
             {
                 ModelState.AddModelError(nameof(model.ApplicationMotivation),
-                    _localizer["Profile_MotivationRequired"].Value);
+                    localizer["Profile_MotivationRequired"].Value);
                 model.IsInitialSetup = true;
                 model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                     && string.IsNullOrEmpty(model.LastName)
                     && string.IsNullOrEmpty(model.EmergencyContactName);
-                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+                ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -383,12 +317,12 @@ public class ProfileController : HumansControllerBase
                 if (string.IsNullOrWhiteSpace(model.ApplicationSignificantContribution))
                 {
                     ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                        _localizer["Application_SignificantContributionRequired"].Value);
+                        localizer["Application_SignificantContributionRequired"].Value);
                 }
                 if (string.IsNullOrWhiteSpace(model.ApplicationRoleUnderstanding))
                 {
                     ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                        _localizer["Application_RoleUnderstandingRequired"].Value);
+                        localizer["Application_RoleUnderstandingRequired"].Value);
                 }
                 if (!ModelState.IsValid)
                 {
@@ -396,7 +330,7 @@ public class ProfileController : HumansControllerBase
                     model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                         && string.IsNullOrEmpty(model.LastName)
                         && string.IsNullOrEmpty(model.EmergencyContactName);
-                    ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+                    ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                     return View(model);
                 }
             }
@@ -405,7 +339,7 @@ public class ProfileController : HumansControllerBase
         var pictureUpload = await TryReadProfilePictureUploadAsync(model);
         if (!pictureUpload.Success)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -432,17 +366,17 @@ public class ProfileController : HumansControllerBase
             ProfilePictureContentType: pictureUpload.ContentType,
             RemoveProfilePicture: model.RemoveProfilePicture);
 
-        var profileId = await _profileService.SaveProfileAsync(
+        var profileId = await profileService.SaveProfileAsync(
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
         // Peer-call into Onboarding; ProfileService doesn't.
-        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
+        await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
         // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop. see #685.
         if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
         {
-            var existingApps = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
+            var existingApps = await applicationDecisionService.GetUserApplicationsAsync(user.Id);
             var existingDraft = existingApps.FirstOrDefault(a =>
                 a.Status == ApplicationStatus.Submitted);
             var hasApprovedApp = existingApps.Any(a =>
@@ -450,7 +384,7 @@ public class ProfileController : HumansControllerBase
 
             if (existingDraft is not null)
             {
-                await _applicationDecisionService.UpdateDraftApplicationAsync(
+                await applicationDecisionService.UpdateDraftApplicationAsync(
                     existingDraft.Id,
                     model.SelectedTier,
                     model.ApplicationMotivation!,
@@ -460,7 +394,7 @@ public class ProfileController : HumansControllerBase
             }
             else if (!hasApprovedApp)
             {
-                await _applicationDecisionService.SubmitAsync(
+                await applicationDecisionService.SubmitAsync(
                     user.Id, model.SelectedTier,
                     model.ApplicationMotivation!,
                     model.ApplicationAdditionalInfo,
@@ -473,8 +407,8 @@ public class ProfileController : HumansControllerBase
         // Route pending-deletion cancel through IAccountDeletionService, not raw UserManager.
         if (isInitialSetup && user.IsDeletionPending)
         {
-            await _accountDeletionService.CancelDeletionAsync(user.Id);
-            _logger.LogInformation(
+            await accountDeletionService.CancelDeletionAsync(user.Id);
+            logger.LogInformation(
                 "Cancelled pending deletion request for user {UserId} on profile creation",
                 user.Id);
         }
@@ -493,13 +427,13 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
+            await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", user.Id, profileId);
+            logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", user.Id, profileId);
             ModelState.AddModelError(string.Empty, ex.Message);
-            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -514,7 +448,7 @@ public class ProfileController : HumansControllerBase
             ))
             .ToList();
 
-        await _profileService.SaveCVEntriesAsync(user.Id, cvEntries);
+        await profileService.SaveCVEntriesAsync(user.Id, cvEntries);
 
         // Languages: remove-and-replace.
         var newLanguages = model.EditableLanguages
@@ -528,11 +462,11 @@ public class ProfileController : HumansControllerBase
             })
             .ToList();
 
-        await _profileService.SaveProfileLanguagesAsync(profileId, newLanguages);
+        await profileService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
-        await _shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
+        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
-        SetSuccess(_localizer["Profile_Updated"].Value);
+        SetSuccess(localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
     }
 
@@ -546,7 +480,7 @@ public class ProfileController : HumansControllerBase
         if (upload.Length > MaxProfilePictureUploadBytes)
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                _localizer["Profile_PictureTooLarge"].Value);
+                localizer["Profile_PictureTooLarge"].Value);
             return (false, null, null);
         }
 
@@ -563,7 +497,7 @@ public class ProfileController : HumansControllerBase
         if (!AllowedImageContentTypes.Contains(uploadContentType))
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                _localizer["Profile_PictureInvalidFormat"].Value);
+                localizer["Profile_PictureInvalidFormat"].Value);
             return (false, null, null);
         }
 
@@ -573,7 +507,7 @@ public class ProfileController : HumansControllerBase
         if (result is null)
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                _localizer["Profile_PictureInvalidFormat"].Value);
+                localizer["Profile_PictureInvalidFormat"].Value);
             return (false, null, null);
         }
 
@@ -583,7 +517,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Emails")]
     public async Task<IActionResult> Emails()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -595,26 +529,26 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
         if (string.IsNullOrWhiteSpace(model.NewEmail) || !ModelState.IsValid)
         {
             if (string.IsNullOrWhiteSpace(model.NewEmail))
-                ModelState.AddModelError(nameof(model.NewEmail), _localizer["Profile_EnterEmail"].Value);
+                ModelState.AddModelError(nameof(model.NewEmail), localizer["Profile_EnterEmail"].Value);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
         try
         {
-            var result = await _userEmailService.AddEmailAsync(user.Id, model.NewEmail);
+            var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail);
             await SendAddedEmailVerificationAsync(user, model.NewEmail, result);
             SetAddedEmailFlash(model.NewEmail, result.IsConflict);
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Rejected email add for user {UserId} ({Email}): {Reason}",
                 user.Id, model.NewEmail, ex.Message);
             ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
@@ -635,14 +569,14 @@ public class ProfileController : HumansControllerBase
 
         var info = await _userService.GetUserInfoAsync(user.Id);
 
-        await _emailService.SendEmailVerificationAsync(
+        await emailService.SendEmailVerificationAsync(
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
             user.PreferredLanguage);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
             trimmedEmail, user.Id, result.IsConflict);
     }
@@ -655,7 +589,7 @@ public class ProfileController : HumansControllerBase
             return;
         }
 
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, email.Trim()));
+        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Profile_VerificationSent"].Value, email.Trim()));
     }
 
     [HttpGet("Me/Emails/Verify")]
@@ -664,24 +598,24 @@ public class ProfileController : HumansControllerBase
     {
         if (string.IsNullOrEmpty(token) || emailId == Guid.Empty)
         {
-            return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
+            return VerifyEmailError(localizer["Profile_InvalidVerificationLink"].Value);
         }
 
         try
         {
             var decodedToken = HttpUtility.UrlDecode(token);
-            var result = await _userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
+            var result = await userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
 
             return VerifyEmailSuccess(userId, result);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogInformation("Email verification failed for user {UserId}: {Message}", userId, ex.Message);
-            return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
+            logger.LogInformation("Email verification failed for user {UserId}: {Message}", userId, ex.Message);
+            return VerifyEmailError(localizer["Profile_InvalidVerificationLink"].Value);
         }
         catch (ValidationException ex)
         {
-            _logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
+            logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
             return VerifyEmailError(ex.Message);
         }
     }
@@ -690,7 +624,7 @@ public class ProfileController : HumansControllerBase
     {
         if (result.MergeRequestCreated)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "User {UserId} verified email {Email} - merge request created",
                 userId, result.Email);
 
@@ -699,12 +633,12 @@ public class ProfileController : HumansControllerBase
             return View("VerifyEmailResult");
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} verified email {Email}",
             userId, result.Email);
 
         ViewData["Success"] = true;
-        ViewData["Message"] = string.Format(_localizer["Profile_EmailVerified"].Value, result.Email);
+        ViewData["Message"] = string.Format(localizer["Profile_EmailVerified"].Value, result.Email);
         return View("VerifyEmailResult");
     }
     private IActionResult VerifyEmailError(string message)
@@ -722,25 +656,25 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         try
         {
-            await _userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
+            await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
             // Self audit at controller — SetPrimaryAsync doesn't take actorUserId.
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
                 nameof(User), user.Id,
                 $"Set primary email row {emailId}",
                 user.Id,
                 relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-            SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
+            SetSuccess(localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to set primary email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning(ex, "Failed to set primary email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -755,7 +689,7 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -763,13 +697,13 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+            await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
             await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
-            SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
+            SetSuccess(localizer["Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to set email visibility for email {EmailId} and user {UserId}", emailId, user.Id);
+            logger.LogWarning(ex, "Failed to set email visibility for email {EmailId} and user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -785,7 +719,7 @@ public class ProfileController : HumansControllerBase
         Guid userId,
         Guid emailId,
         ContactFieldVisibility? visibility) =>
-        _auditLogService.LogAsync(
+        auditLogService.LogAsync(
             AuditAction.UserEmailVisibilityChanged,
             nameof(User), userId,
             $"Changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
@@ -800,26 +734,26 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         try
         {
-            var deleted = await _userEmailService.DeleteEmailAsync(user.Id, emailId);
+            var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
             if (deleted)
             {
                 await LogSelfEmailDeletedAsync(user.Id, emailId);
-                SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+                SetSuccess(localizer["Profile_EmailDeleted"].Value);
             }
             else
             {
-                SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
+                SetError(localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
             }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to delete email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning(ex, "Failed to delete email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -827,7 +761,7 @@ public class ProfileController : HumansControllerBase
     }
 
     private Task LogSelfEmailDeletedAsync(Guid userId, Guid emailId) =>
-        _auditLogService.LogAsync(
+        auditLogService.LogAsync(
             AuditAction.UserEmailDeleted,
             nameof(User), userId,
             $"Deleted email row {emailId}",
@@ -842,18 +776,18 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         try
         {
-            var ok = await _userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
+            var ok = await userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
             SetGoogleEmailResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to set Google service email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning(ex, "Failed to set Google service email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -864,11 +798,11 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            SetSuccess(_localizer["EmailGrid_GoogleServiceUpdated"].Value);
+            SetSuccess(localizer["EmailGrid_GoogleServiceUpdated"].Value);
             return;
         }
 
-        SetError(_localizer["EmailGrid_SetGoogleRejected"].Value);
+        SetError(localizer["EmailGrid_SetGoogleRejected"].Value);
     }
 
     [HttpPost("Me/Emails/ClearGoogle")]
@@ -879,18 +813,18 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         try
         {
-            var ok = await _userEmailService.ClearGoogleAsync(user.Id, emailId, user.Id, ct);
+            var ok = await userEmailService.ClearGoogleAsync(user.Id, emailId, user.Id, ct);
             SetGoogleEmailClearedResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to clear Google flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning(ex, "Failed to clear Google flag on email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -901,11 +835,11 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            SetSuccess(_localizer["EmailGrid_GoogleFlagCleared"].Value);
+            SetSuccess(localizer["EmailGrid_GoogleFlagCleared"].Value);
             return;
         }
 
-        SetError(_localizer["EmailGrid_ClearGoogleRejected"].Value);
+        SetError(localizer["EmailGrid_ClearGoogleRejected"].Value);
     }
 
     [HttpPost("Me/Emails/ClearPrimary")]
@@ -916,18 +850,18 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         try
         {
-            var ok = await _userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
+            var ok = await userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
             SetPrimaryEmailClearedResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to clear primary flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning(ex, "Failed to clear primary flag on email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -938,11 +872,11 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            SetSuccess(_localizer["EmailGrid_PrimaryFlagCleared"].Value);
+            SetSuccess(localizer["EmailGrid_PrimaryFlagCleared"].Value);
             return;
         }
 
-        SetError(_localizer["EmailGrid_ClearPrimaryRejected"].Value);
+        SetError(localizer["EmailGrid_ClearPrimaryRejected"].Value);
     }
 
     [HttpPost("Me/Emails/Link/{provider}")]
@@ -953,7 +887,7 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -961,7 +895,7 @@ public class ProfileController : HumansControllerBase
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
         var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { returnUrl = resolvedReturnUrl })
             ?? "/Account/ExternalLoginCallback";
-        var props = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        var props = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return Challenge(props, provider);
     }
 
@@ -973,18 +907,18 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         try
         {
-            var ok = await _userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+            var ok = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
             SetEmailUnlinkedResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to unlink email {EmailId} for user {UserId}", id, user.Id);
+            logger.LogWarning(ex, "Failed to unlink email {EmailId} for user {UserId}", id, user.Id);
             SetError(ex.Message);
         }
 
@@ -995,11 +929,11 @@ public class ProfileController : HumansControllerBase
     {
         if (ok)
         {
-            SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
+            SetSuccess(localizer["EmailGrid_UnlinkSuccess"].Value);
             return;
         }
 
-        SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+        SetError(localizer["EmailGrid_UnlinkRejected"].Value);
     }
 
     // User-facing Unlink (see nobodies-collective/Humans#731) — keyed by (Provider, ProviderKey); enforces auth-method invariant server-side.
@@ -1009,31 +943,31 @@ public class ProfileController : HumansControllerBase
     {
         if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
         {
-            SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            SetError(localizer["EmailGrid_UnlinkRejected"].Value);
             return RedirectToAction(nameof(Emails));
         }
 
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
-        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         // Stale dashboard or forged request — fail soft.
-        var logins = await _userManager.GetLoginsAsync(user);
+        var logins = await userManager.GetLoginsAsync(user);
         var hasLogin = logins.Any(l =>
             string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
             && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
         if (!hasLogin)
         {
-            SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            SetError(localizer["EmailGrid_UnlinkRejected"].Value);
             return RedirectToAction(nameof(Emails));
         }
 
         // Route via UnlinkAsync to keep AspNetUserLogins + user_emails in sync. Orphan logins fall back to RemoveLoginAsync.
-        var rawRows = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
+        var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         var matching = rawRows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
             && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
@@ -1043,7 +977,7 @@ public class ProfileController : HumansControllerBase
         var verifiedAfter = verifiedTotal - (matching?.IsVerified == true ? 1 : 0);
         if (verifiedAfter < 1)
         {
-            SetError(_localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
+            SetError(localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
             return RedirectToAction(nameof(Emails));
         }
 
@@ -1051,35 +985,35 @@ public class ProfileController : HumansControllerBase
         {
             if (matching is not null)
             {
-                var ok = await _userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
+                var ok = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
                 SetEmailUnlinkedResult(ok);
             }
             else
             {
                 // Orphan login: no UserEmail row — drop directly.
-                var removeLogin = await _userManager.RemoveLoginAsync(user, provider, providerKey);
+                var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
                 if (removeLogin.Succeeded)
                 {
-                    await _auditLogService.LogAsync(
+                    await auditLogService.LogAsync(
                         AuditAction.UserEmailUnlinked,
                         nameof(User), user.Id,
                         $"Unlinked orphan {provider} login (no matching UserEmail row)",
                         user.Id);
-                    SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
+                    SetSuccess(localizer["EmailGrid_UnlinkSuccess"].Value);
                 }
                 else
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
                         user.Id, provider,
                         string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-                    SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+                    SetError(localizer["EmailGrid_UnlinkRejected"].Value);
                 }
             }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
                 provider, user.Id, ex.Message);
             SetError(ex.Message);
@@ -1092,11 +1026,11 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/Emails")]
     public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
-        var targetUser = await _userManager.FindByIdAsync(id.ToString());
+        var targetUser = await userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -1108,7 +1042,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSetGoogle(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1118,12 +1052,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var ok = await _userEmailService.SetGoogleAsync(id, emailId, actor.Id, ct);
+            var ok = await userEmailService.SetGoogleAsync(id, emailId, actor.Id, ct);
             SetGoogleEmailResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1134,7 +1068,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSetPrimary(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1144,19 +1078,19 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetPrimaryAsync(id, emailId, ct);
+            await userEmailService.SetPrimaryAsync(id, emailId, ct);
             // Audit at controller — SetPrimaryAsync has no actorUserId.
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
                 nameof(User), id,
                 $"Admin set primary email row {emailId}",
                 actor.Id,
                 relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-            SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
+            SetSuccess(localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1167,7 +1101,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminClearGoogle(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1177,12 +1111,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var ok = await _userEmailService.ClearGoogleAsync(id, emailId, actor.Id, ct);
+            var ok = await userEmailService.ClearGoogleAsync(id, emailId, actor.Id, ct);
             SetGoogleEmailClearedResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to clear Google flag on email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to clear Google flag on email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1193,7 +1127,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminClearPrimary(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1203,12 +1137,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var ok = await _userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
+            var ok = await userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
             SetPrimaryEmailClearedResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to clear primary flag on email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to clear primary flag on email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1219,13 +1153,13 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminAddEmail(Guid id, string email, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         if (string.IsNullOrWhiteSpace(email))
         {
-            SetError(_localizer["Profile_EnterEmail"].Value);
+            SetError(localizer["Profile_EnterEmail"].Value);
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
@@ -1233,18 +1167,18 @@ public class ProfileController : HumansControllerBase
         if (actor is null)
             return Forbid();
 
-        var targetUser = await _userManager.FindByIdAsync(id.ToString());
+        var targetUser = await userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
         try
         {
-            var result = await _userEmailService.AddEmailAsync(id, email, ct);
+            var result = await userEmailService.AddEmailAsync(id, email, ct);
             await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id, ct);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Admin failed to add email for user {UserId} ({Email}): {Reason}",
                 id, email, ex.Message);
             SetError(ex.Message);
@@ -1270,7 +1204,7 @@ public class ProfileController : HumansControllerBase
 
         var info = await _userService.GetUserInfoAsync(userId, ct);
 
-        await _emailService.SendEmailVerificationAsync(
+        await emailService.SendEmailVerificationAsync(
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
@@ -1278,17 +1212,17 @@ public class ProfileController : HumansControllerBase
             targetUser.PreferredLanguage,
             ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
             trimmedEmail, userId, result.IsConflict);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pending email {trimmedEmail} for user {userId} (conflict: {result.IsConflict})",
             actorId);
 
-        SetSuccess(_localizer["EmailGrid_AdminAddSentVerification"].Value);
+        SetSuccess(localizer["EmailGrid_AdminAddSentVerification"].Value);
     }
     // Admin recovery: insert a verified UserEmail without verification email.
     [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
@@ -1298,12 +1232,12 @@ public class ProfileController : HumansControllerBase
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            SetError(_localizer["Profile_EnterEmail"].Value);
+            SetError(localizer["Profile_EnterEmail"].Value);
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
-        var actor = await _userManager.GetUserAsync(User);
-        var targetUser = await _userManager.FindByIdAsync(id.ToString());
+        var actor = await userManager.GetUserAsync(User);
+        var targetUser = await userManager.FindByIdAsync(id.ToString());
 
         return await AdminAddVerifiedEmailAsync(id, email.Trim(), actor, targetUser, ct);
     }
@@ -1323,12 +1257,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var inserted = await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+            var inserted = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
             await ReportVerifiedEmailAddAsync(inserted, userId, email, actor.Id);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Admin failed to add verified email for user {UserId} ({Email}): {Reason}",
                 userId, email, ex.Message);
             SetError(ex.Message);
@@ -1350,7 +1284,7 @@ public class ProfileController : HumansControllerBase
         }
 
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
@@ -1370,19 +1304,19 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var result = await _userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
+            var result = await userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
             if (result.MergeRequestCreated)
             {
-                SetSuccess(_localizer["EmailGrid_AdminVerifyMergeRequested"].Value);
+                SetSuccess(localizer["EmailGrid_AdminVerifyMergeRequested"].Value);
             }
             else
             {
-                SetSuccess(_localizer["EmailGrid_AdminVerifySuccess"].Value);
+                SetSuccess(localizer["EmailGrid_AdminVerifySuccess"].Value);
             }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Admin failed to manually verify email {EmailId} for user {UserId}: {Reason}",
                 emailId, id, ex.Message);
             SetError(ex.Message);
@@ -1395,7 +1329,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminUnlink(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1405,12 +1339,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var ok = await _userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
+            var ok = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
             SetEmailUnlinkedResult(ok);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1421,7 +1355,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminDeleteEmail(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1431,12 +1365,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var deleted = await _userEmailService.DeleteEmailAsync(id, emailId, ct);
+            var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
             await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1447,25 +1381,25 @@ public class ProfileController : HumansControllerBase
     {
         if (!deleted)
         {
-            SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
+            SetError(localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
             return;
         }
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.UserEmailDeleted,
             nameof(User), userId,
             $"Admin deleted email row {emailId}",
             actorId,
             relatedEntityId: emailId,
             relatedEntityType: nameof(UserEmail));
-        SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+        SetSuccess(localizer["Profile_EmailDeleted"].Value);
     }
     [HttpPost("{id:guid}/Admin/Emails/SetVisibility")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSetVisibility(
         Guid id, Guid emailId, ContactFieldVisibility? visibility, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1475,12 +1409,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+            await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
             await SetAdminEmailVisibilityChangedResultAsync(id, emailId, actor.Id, visibility);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, id);
+            logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1493,14 +1427,14 @@ public class ProfileController : HumansControllerBase
         Guid actorId,
         ContactFieldVisibility? visibility)
     {
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.UserEmailVisibilityChanged,
             nameof(User), userId,
             $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
             actorId,
             relatedEntityId: emailId,
             relatedEntityType: nameof(UserEmail));
-        SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
+        SetSuccess(localizer["Profile_EmailVisibilityUpdated"].Value);
     }
     [HttpGet("Me/Outbox")]
     public async Task<IActionResult> MyOutbox()
@@ -1509,7 +1443,7 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var messages = await _emailOutboxService.GetMessagesForUserAsync(user.Id);
+        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id);
 
         return View("Outbox", messages);
     }
@@ -1528,7 +1462,7 @@ public class ProfileController : HumansControllerBase
             DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc()
         };
 
-        ViewData["DpoEmail"] = _configuration.GetOptionalSetting(_configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
+        ViewData["DpoEmail"] = configuration.GetOptionalSetting(configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
         return View(viewModel);
     }
 
@@ -1540,16 +1474,16 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var result = await _accountDeletionService.RequestDeletionAsync(user.Id);
+        var result = await accountDeletionService.RequestDeletionAsync(user.Id);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                SetError(_localizer["Profile_DeletionAlreadyPending"].Value);
+                SetError(localizer["Profile_DeletionAlreadyPending"].Value);
             return RedirectToAction(nameof(Privacy));
         }
 
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
-            _localizer["Profile_DeletionRequested"].Value,
+            localizer["Profile_DeletionRequested"].Value,
             result.EffectiveDeletionDate?.ToDateTimeUtc().ToDisplayLongDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
@@ -1562,15 +1496,15 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var result = await _accountDeletionService.CancelDeletionAsync(user.Id);
+        var result = await accountDeletionService.CancelDeletionAsync(user.Id);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal))
-                SetError(_localizer["Profile_NoDeletionPending"].Value);
+                SetError(localizer["Profile_NoDeletionPending"].Value);
             return RedirectToAction(nameof(Privacy));
         }
 
-        SetSuccess(_localizer["Profile_DeletionCancelled"].Value);
+        SetSuccess(localizer["Profile_DeletionCancelled"].Value);
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -1581,12 +1515,12 @@ public class ProfileController : HumansControllerBase
         {
             var user = await GetCurrentUserInfoAsync();
             if (user is null)
-                return NotFound(); var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+                return NotFound(); var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
             return View(ShiftInfoViewModel.FromProfile(profile));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load shift info for user");
+            logger.LogError(ex, "Failed to load shift info for user");
             SetError("Failed to load shift info.");
             return RedirectToAction(nameof(Me));
         }
@@ -1602,7 +1536,7 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var shiftProfile = await _shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+            var shiftProfile = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
 
             shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
                 model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
@@ -1611,14 +1545,14 @@ public class ProfileController : HumansControllerBase
             shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
                 model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
 
-            await _shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
+            await shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
 
-            SetSuccess(_localizer["Profile_Updated"].Value);
+            SetSuccess(localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save shift info for user");
+            logger.LogError(ex, "Failed to save shift info for user");
             SetError("Failed to save shift info.");
             return View(model);
         }
@@ -1637,7 +1571,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load communication preferences");
+            logger.LogError(ex, "Failed to load communication preferences");
             SetError("Failed to load communication preferences.");
             return RedirectToAction(nameof(Me));
         }
@@ -1656,14 +1590,14 @@ public class ProfileController : HumansControllerBase
             if (category.IsAlwaysOn())
                 return BadRequest("Cannot change always-on categories.");
 
-            await _commPrefService.UpdatePreferenceAsync(
+            await commPrefService.UpdatePreferenceAsync(
                 user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
 
             return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save communication preference for {Category}", category);
+            logger.LogError(ex, "Failed to save communication preference for {Category}", category);
             return StatusCode(500);
         }
     }
@@ -1679,12 +1613,12 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var export = await _gdprExportService.ExportForUserAsync(user.Id, ct);
+        var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
 
         var payload = BuildExportPayload(export);
         var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
+        var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
         return File(bytes, "application/json", fileName);
     }
@@ -1710,7 +1644,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
         // §2: controller routes through IProfileService (owns FS-first/DB-fallback + GDPR gate, see #527).
-        var result = await _profileService.GetProfilePictureAsync(id, ct);
+        var result = await profileService.GetProfilePictureAsync(id, ct);
         if (result is null)
         {
             return NotFound();
@@ -1723,34 +1657,34 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ImportGooglePhoto(CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user is null)
         {
             return NotFound();
         }
 
-        var externalLogins = await _userManager.GetLoginsAsync(user);
+        var externalLogins = await userManager.GetLoginsAsync(user);
         if (!HasGoogleAvatarSource(user, externalLogins))
         {
-            SetError(_localizer["Profile_ImportGooglePhoto_Unavailable"].Value);
+            SetError(localizer["Profile_ImportGooglePhoto_Unavailable"].Value);
             return RedirectToAction(nameof(Edit));
         }
 
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
         if (info?.Profile is null)
         {
-            SetError(_localizer["Profile_ImportGooglePhoto_NoProfile"].Value);
+            SetError(localizer["Profile_ImportGooglePhoto_NoProfile"].Value);
             return RedirectToAction(nameof(Edit));
         }
         if (info.Profile.HasCustomPicture)
         {
-            SetError(_localizer["Profile_ImportGooglePhoto_AlreadyHasCustom"].Value);
+            SetError(localizer["Profile_ImportGooglePhoto_AlreadyHasCustom"].Value);
             return RedirectToAction(nameof(Edit));
         }
 
         if (!TryGetTrustedGoogleAvatarUri(user, out var pictureUri))
         {
-            SetError(_localizer["Profile_ImportGooglePhoto_NotGoogleUrl"].Value);
+            SetError(localizer["Profile_ImportGooglePhoto_NotGoogleUrl"].Value);
             return RedirectToAction(nameof(Edit));
         }
 
@@ -1760,17 +1694,17 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Edit));
         }
 
-        var resized = Helpers.ProfilePictureProcessor.ResizeProfilePicture(rawBytes, _logger);
+        var resized = Helpers.ProfilePictureProcessor.ResizeProfilePicture(rawBytes, logger);
         if (resized is null)
         {
-            SetError(_localizer["Profile_ImportGooglePhoto_InvalidFormat"].Value);
+            SetError(localizer["Profile_ImportGooglePhoto_InvalidFormat"].Value);
             return RedirectToAction(nameof(Edit));
         }
 
-        await _profileService.SetProfilePictureAsync(user.Id, resized.Value.Data, resized.Value.ContentType, ct);
+        await profileService.SetProfilePictureAsync(user.Id, resized.Value.Data, resized.Value.ContentType, ct);
 
-        _logger.LogInformation("Imported Google avatar for user {UserId}", user.Id);
-        SetSuccess(_localizer["Profile_ImportGooglePhoto_Success"].Value);
+        logger.LogInformation("Imported Google avatar for user {UserId}", user.Id);
+        SetSuccess(localizer["Profile_ImportGooglePhoto_Success"].Value);
         return RedirectToAction(nameof(Edit));
     }
 
@@ -1788,7 +1722,7 @@ public class ProfileController : HumansControllerBase
             return true;
         }
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Refusing to import Google photo for user {UserId}: URL is not a trusted Google host",
             user.Id);
         return false;
@@ -1798,33 +1732,33 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var httpClient = _httpClientFactory.CreateClient(GoogleAvatarHttpClientName);
+            var httpClient = httpClientFactory.CreateClient(GoogleAvatarHttpClientName);
             using var response = await httpClient.GetAsync(pictureUri, ct);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Google avatar fetch for user {UserId} returned {StatusCode}",
                     userId, (int)response.StatusCode);
-                SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+                SetError(localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
                 return null;
             }
 
             var fetchedContentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
             if (!AllowedImageContentTypes.Contains(fetchedContentType))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Google avatar for user {UserId} returned unsupported content type {ContentType}",
                     userId, fetchedContentType);
-                SetError(_localizer["Profile_ImportGooglePhoto_InvalidFormat"].Value);
+                SetError(localizer["Profile_ImportGooglePhoto_InvalidFormat"].Value);
                 return null;
             }
 
             var rawBytes = await response.Content.ReadAsByteArrayAsync(ct);
             if (rawBytes.Length == 0 || rawBytes.Length > MaxGooglePhotoDownloadBytes)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Google avatar for user {UserId} had invalid size {Bytes}", userId, rawBytes.Length);
-                SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+                SetError(localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
                 return null;
             }
 
@@ -1832,14 +1766,14 @@ public class ProfileController : HumansControllerBase
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Google avatar fetch failed for user {UserId}", userId);
-            SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+            logger.LogWarning(ex, "Google avatar fetch failed for user {UserId}", userId);
+            SetError(localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
             return null;
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "Google avatar fetch timed out for user {UserId}", userId);
-            SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+            logger.LogWarning(ex, "Google avatar fetch timed out for user {UserId}", userId);
+            SetError(localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
             return null;
         }
     }
@@ -1871,7 +1805,7 @@ public class ProfileController : HumansControllerBase
         // tier don't see the chip on other humans — wider visibility is a
         // follow-up PR if needed.
         var canViewOnsiteChip = isOwnProfile
-            || (await _authorizationService.AuthorizeAsync(
+            || (await authorizationService.AuthorizeAsync(
                 User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
 
         var viewModel = new ProfileViewModel
@@ -1903,21 +1837,21 @@ public class ProfileController : HumansControllerBase
             return (false, null);
         }
 
-        var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
+        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
         var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         if (!viewerCanViewShiftHistory)
         {
             return (false, null);
         }
 
-        var noShows = await _shiftSignupService.GetNoShowHistoryAsync(profileUserId);
+        var noShows = await shiftSignupService.GetNoShowHistoryAsync(profileUserId);
         if (noShows.Count == 0)
         {
             return (true, null);
         }
 
         var noShowTeamIds = noShows.Select(s => s.TeamId).Distinct().ToList();
-        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var teamsById = await teamService.GetTeamsAsync(ct);
         var noShowTeamNames = noShowTeamIds
             .Where(teamsById.ContainsKey)
             .ToDictionary(id => id, id => teamsById[id].Name);
@@ -1962,7 +1896,7 @@ public class ProfileController : HumansControllerBase
                 ProfileSummaryViewModelBuilder.BuildWithoutProfile(info));
         }
 
-        var memberships = await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct);
+        var memberships = await teamService.GetActiveTeamMembershipsForUserAsync(id, ct);
         var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships);
 
         return PartialView("_HumanPopover", vm);
@@ -1982,7 +1916,7 @@ public class ProfileController : HumansControllerBase
         if (targetInfo is null)
             return NotFound();
 
-        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id))
         {
             SetError("This human has opted out of receiving messages.");
             return RedirectToAction(nameof(ViewProfile), new { id });
@@ -2013,7 +1947,7 @@ public class ProfileController : HumansControllerBase
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
 
-        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id))
         {
             SetError("This human has opted out of receiving messages.");
             return RedirectToAction(nameof(ViewProfile), new { id });
@@ -2031,11 +1965,11 @@ public class ProfileController : HumansControllerBase
         var request = FacilitatedMessageRequestBuilder.TryBuild(sender, targetUser, model);
         if (request is null)
         {
-            ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
+            ModelState.AddModelError(string.Empty, localizer["Common_Error"].Value);
             return View(model);
         }
 
-        await _emailService.SendFacilitatedMessageAsync(
+        await emailService.SendFacilitatedMessageAsync(
             request.RecipientEmail,
             request.RecipientDisplayName,
             request.SenderDisplayName,
@@ -2044,14 +1978,14 @@ public class ProfileController : HumansControllerBase
             request.SenderEmail,
             request.RecipientPreferredLanguage);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.FacilitatedMessageSent,
             nameof(User), targetUser.Id,
             $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
             currentUser.Id);
 
         SetSuccess(string.Format(
-            _localizer["SendMessage_Success"].Value,
+            localizer["SendMessage_Success"].Value,
             targetUser.BurnerName));
 
         return RedirectToAction(nameof(ViewProfile), new { id });
@@ -2112,15 +2046,15 @@ public class ProfileController : HumansControllerBase
         if (info is null)
             return NotFound();
 
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(id, ct);
-        var userEmails = await _userEmailService.GetEntitiesByUserIdAsync(id, ct);
-        var consentCount = await _consentService.GetConsentRecordCountAsync(id, ct);
-        var roleAssignments = await _roleAssignmentService.GetByUserIdAsync(id, ct);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(id, ct);
+        var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
+        var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
+        var roleAssignments = await roleAssignmentService.GetByUserIdAsync(id, ct);
         var roleCreatorNamesByUserId = (await _userService.GetUserInfosAsync(
                 roleAssignments.Select(ra => ra.CreatedByUserId).Distinct().ToList(), ct))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
-        var campaignGrants = await _campaignService.GetAllGrantsForUserAsync(id, ct);
-        var outboxCount = await _emailOutboxService.GetMessageCountForUserAsync(id, ct);
+        var campaignGrants = await campaignService.GetAllGrantsForUserAsync(id, ct);
+        var outboxCount = await emailOutboxService.GetMessageCountForUserAsync(id, ct);
         var revealedIban = TempData.TryGetValue("RevealedIban", out var revealed) && revealed is string value
             ? value
             : null;
@@ -2134,7 +2068,7 @@ public class ProfileController : HumansControllerBase
             roleCreatorNamesByUserId,
             campaignGrants,
             outboxCount,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             await GetRejectedByNameAsync(info.Profile, ct),
             revealedIban);
 
@@ -2170,7 +2104,7 @@ public class ProfileController : HumansControllerBase
             SetError("No IBAN on record for this user.");
             return RedirectToAction(nameof(AdminDetail), new { id });
         }
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.IbanReveal, "User", id,
             $"Admin revealed IBAN for user {id}", actorId);
         TempData["RevealedIban"] = iban;
@@ -2181,7 +2115,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/Outbox")]
     public async Task<IActionResult> AdminOutbox(Guid id, CancellationToken ct)
     {
-        var messages = await _emailOutboxService.GetMessagesForUserAsync(id, ct);
+        var messages = await emailOutboxService.GetMessagesForUserAsync(id, ct);
 
         ViewBag.HumanId = id;
         return View("Outbox", messages);
@@ -2196,11 +2130,11 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _humanLifecycleService.SuspendAsync(id, currentUser.Id, notes);
+        var result = await humanLifecycleService.SuspendAsync(id, currentUser.Id, notes);
         if (!result.Success)
             return NotFound();
 
-        SetSuccess(_localizer["Admin_MemberSuspended"].Value);
+        SetSuccess(localizer["Admin_MemberSuspended"].Value);
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
@@ -2213,11 +2147,11 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _humanLifecycleService.UnsuspendAsync(id, currentUser.Id);
+        var result = await humanLifecycleService.UnsuspendAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
-        SetSuccess(_localizer["Admin_MemberUnsuspended"].Value);
+        SetSuccess(localizer["Admin_MemberUnsuspended"].Value);
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
@@ -2230,11 +2164,11 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
+        var result = await onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
-        SetSuccess(_localizer["Admin_VolunteerApproved"].Value);
+        SetSuccess(localizer["Admin_VolunteerApproved"].Value);
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
@@ -2247,7 +2181,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return Unauthorized();
 
-        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
+        var result = await onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
@@ -2274,7 +2208,6 @@ public class ProfileController : HumansControllerBase
         var viewModel = new CreateRoleAssignmentViewModel
         {
             UserId = id,
-            UserDisplayName = info.BurnerName,
             AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
         };
 
@@ -2295,7 +2228,7 @@ public class ProfileController : HumansControllerBase
         if (string.IsNullOrWhiteSpace(model.RoleName))
         {
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
-            PopulateRoleAssignmentForm(model, id, info.BurnerName);
+            PopulateRoleAssignmentForm(model, id);
             return View(model);
         }
 
@@ -2305,27 +2238,26 @@ public class ProfileController : HumansControllerBase
             return Unauthorized();
         }
 
-        var authResult = await _authorizationService.AuthorizeAsync(
+        var authResult = await authorizationService.AuthorizeAsync(
             User, model.RoleName, RoleAssignmentOperationRequirement.Manage);
         if (!authResult.Succeeded)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Authorization denied for role assignment: principal {Principal} attempted to assign role {Role} to user {UserId}",
                 User.Identity?.Name, model.RoleName, id);
             return Forbid();
         }
 
-        var result = await _roleAssignmentService.AssignRoleAsync(
+        var result = await roleAssignmentService.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
 
         SetRoleAssignmentResult(model.RoleName, result.Success);
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
-    private void PopulateRoleAssignmentForm(CreateRoleAssignmentViewModel model, Guid userId, string userDisplayName)
+    private void PopulateRoleAssignmentForm(CreateRoleAssignmentViewModel model, Guid userId)
     {
         model.UserId = userId;
-        model.UserDisplayName = userDisplayName;
         model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
     }
 
@@ -2333,11 +2265,11 @@ public class ProfileController : HumansControllerBase
     {
         if (success)
         {
-            SetSuccess(string.Format(_localizer["Admin_RoleAssigned"].Value, roleName));
+            SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, roleName));
             return;
         }
 
-        SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, roleName));
+        SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, roleName));
     }
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
@@ -2345,7 +2277,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
     {
-        var roleAssignment = await _roleAssignmentService.GetByIdAsync(roleId);
+        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId);
 
         if (roleAssignment is null)
         {
@@ -2359,17 +2291,17 @@ public class ProfileController : HumansControllerBase
             return Unauthorized();
         }
 
-        var authResult = await _authorizationService.AuthorizeAsync(
+        var authResult = await authorizationService.AuthorizeAsync(
             User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage);
         if (!authResult.Succeeded)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Authorization denied for ending role: principal {Principal} attempted to end role {Role} for user {UserId}",
                 User.Identity?.Name, roleAssignment.RoleName, roleAssignment.UserId);
             return NotFound();
         }
 
-        var result = await _roleAssignmentService.EndRoleAsync(
+        var result = await roleAssignmentService.EndRoleAsync(
             roleId, currentUser.Id, notes);
 
         SetRoleEndedResult(result.Success, roleAssignment.RoleName, roleAssignment.UserDisplayName);
@@ -2381,20 +2313,20 @@ public class ProfileController : HumansControllerBase
     {
         if (success)
         {
-            SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleName, userDisplayName));
+            SetSuccess(string.Format(localizer["Admin_RoleEnded"].Value, roleName, userDisplayName));
             return;
         }
 
-        SetError(_localizer["Admin_RoleNotActive"].Value);
+        SetError(localizer["Admin_RoleNotActive"].Value);
     }
     // ─── Helpers ─────────────────────────────────────────────────────
 
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
-        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);
+        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
 
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
-        var emails = await _userEmailService.GetUserEmailsAsync(user.Id, ct);
+        var emails = await userEmailService.GetUserEmailsAsync(user.Id, ct);
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
         var burnerName = info?.BurnerName ?? string.Empty;
 
@@ -2405,7 +2337,7 @@ public class ProfileController : HumansControllerBase
         if (pendingEmail is not null)
         {
             var (cooldownCanAdd, cooldownMinutes, _) =
-                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
+                await profileService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
             canAdd = cooldownCanAdd;
             minutesUntilResend = cooldownMinutes;
         }
@@ -2430,28 +2362,26 @@ public class ProfileController : HumansControllerBase
             ?? workspaceCandidates.FirstOrDefault();
 
         // see nobodies-collective/Humans#697 — admin diagnostic loads AspNetUserLogins + computes store-disagreement.
-        IReadOnlyList<(string Provider, string ProviderKey)> userLogins =
-            [];
-        IReadOnlyList<UserEmailRowSnapshot> rawUserEmails =
-            [];
+        IReadOnlyList<(string Provider, string ProviderKey)> userLogins = [];
+        IReadOnlyList<UserEmailRowSnapshot> rawUserEmails = [];
         if (isAdminContext)
         {
             var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([user.Id], ct);
             if (loginsByUser.TryGetValue(user.Id, out var list))
                 userLogins = list;
-            rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
+            rawUserEmails = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         }
 
         // see nobodies-collective/Humans#731 — self uses UserManager (ProviderDisplayName); stitches UserEmail row id + CreatedAt.
         IReadOnlyList<LinkedOAuthAccountViewModel> linkedAccounts = [];
         if (!isAdminContext)
         {
-            var logins = await _userManager.GetLoginsAsync(user);
+            var logins = await userManager.GetLoginsAsync(user);
             if (logins.Count > 0)
             {
                 // (Provider, ProviderKey) uniqueness is service-enforced, not DB-enforced — keep first row per key.
                 var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
-                foreach (var r in await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
+                foreach (var r in await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
                 {
                     if (string.IsNullOrEmpty(r.Provider) || string.IsNullOrEmpty(r.ProviderKey))
                         continue;

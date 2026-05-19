@@ -20,7 +20,12 @@ namespace Humans.Web.Authorization;
     "Auth claims transformation runs on every authenticated request and reads role_assignments via IRoleAssignmentRepository directly. Routing through IRoleAssignmentService drags in INotificationEmitter / ISystemTeamSync / IGoogleSyncService / Hangfire scheduler — wrong for the request-time auth hot path and unresolvable in the integration-test host. Team membership uses the cache-backed ITeamService. A thin Application-layer read-only interface is the proper home — tracked separately.",
     "2026-05-17",
     "nobodies-collective/Humans#750")]
-public class RoleAssignmentClaimsTransformation : IClaimsTransformation
+public class RoleAssignmentClaimsTransformation(
+    IRoleAssignmentRepository roleAssignments,
+    ITeamService teams,
+    IUserService userService,
+    IClock clock,
+    IMemoryCache cache) : IClaimsTransformation
 {
     /// <summary>Active member of the Volunteers team.</summary>
     public const string ActiveMemberClaimType = "ActiveMember";
@@ -32,26 +37,6 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
-
-    private readonly IRoleAssignmentRepository _roleAssignments;
-    private readonly ITeamService _teams;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
-
-    public RoleAssignmentClaimsTransformation(
-        IRoleAssignmentRepository roleAssignments,
-        ITeamService teams,
-        IUserService userService,
-        IClock clock,
-        IMemoryCache cache)
-    {
-        _roleAssignments = roleAssignments;
-        _teams = teams;
-        _userService = userService;
-        _clock = clock;
-        _cache = cache;
-    }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
@@ -72,7 +57,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
-        var claims = await _cache.GetOrCreateAsync(CacheKeys.RoleAssignmentClaims(userId), async entry =>
+        var claims = await cache.GetOrCreateAsync(CacheKeys.RoleAssignmentClaims(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
             return await LoadClaimsAsync(userId);
@@ -93,15 +78,15 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 
     private async Task<List<Claim>> LoadClaimsAsync(Guid userId)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var claims = new List<Claim>();
 
         // Cached UserInfo read-model avoids hitting profiles on every authenticated request.
-        var userInfo = await _userService.GetUserInfoAsync(userId);
+        var userInfo = await userService.GetUserInfoAsync(userId);
         var isSuspended = userInfo?.IsSuspended ?? false;
         var hasProfile = userInfo?.HasProfile ?? false;
 
-        var activeRoles = await _roleAssignments.GetActiveRoleNamesAsync(userId, now);
+        var activeRoles = await roleAssignments.GetActiveRoleNamesAsync(userId, now);
         foreach (var role in activeRoles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
@@ -110,7 +95,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         if (!isSuspended)
         {
             // Warm CachingTeamService index — no DB round-trip; returns active memberships only.
-            var memberships = await _teams.GetUserTeamsAsync(userId);
+            var memberships = await teams.GetUserTeamsAsync(userId);
             var isVolunteerMember = memberships.Any(m => m.TeamId == SystemTeamIds.Volunteers);
             if (isVolunteerMember)
             {

@@ -20,74 +20,49 @@ namespace Humans.Application.Services.Tickets;
 /// Tickets sync pipeline: upsert vendor orders/attendees, match users by email,
 /// compute VAT, enrich Stripe fees, reconcile event participation.
 /// </summary>
-public sealed class TicketSyncService : ITicketSyncService, IUserMerge
+public sealed class TicketSyncService(
+    ITicketRepository ticketRepository,
+    ITicketTransferRepository transferRepository,
+    ITicketVendorService vendorService,
+    IStripeService stripeService,
+    IClock clock,
+    IOptions<TicketVendorSettings> settings,
+    ILogger<TicketSyncService> logger,
+    ITicketCacheInvalidator ticketCache,
+    IUserService userService,
+    ICampaignService campaignService,
+    IShiftManagementService shiftManagementService) : ITicketSyncService, IUserMerge
 {
-    private readonly ITicketRepository _ticketRepository;
-    private readonly ITicketTransferRepository _transferRepository;
-    private readonly ITicketVendorService _vendorService;
-    private readonly IStripeService _stripeService;
-    private readonly IClock _clock;
-    private readonly TicketVendorSettings _settings;
-    private readonly ITicketCacheInvalidator _ticketCache;
-    private readonly IUserService _userService;
-    private readonly ICampaignService _campaignService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly ILogger<TicketSyncService> _logger;
-
-    public TicketSyncService(
-        ITicketRepository ticketRepository,
-        ITicketTransferRepository transferRepository,
-        ITicketVendorService vendorService,
-        IStripeService stripeService,
-        IClock clock,
-        IOptions<TicketVendorSettings> settings,
-        ILogger<TicketSyncService> logger,
-        ITicketCacheInvalidator ticketCache,
-        IUserService userService,
-        ICampaignService campaignService,
-        IShiftManagementService shiftManagementService)
-    {
-        _ticketRepository = ticketRepository;
-        _transferRepository = transferRepository;
-        _vendorService = vendorService;
-        _stripeService = stripeService;
-        _clock = clock;
-        _settings = settings.Value;
-        _ticketCache = ticketCache;
-        _userService = userService;
-        _campaignService = campaignService;
-        _shiftManagementService = shiftManagementService;
-        _logger = logger;
-    }
+    private readonly TicketVendorSettings _settings = settings.Value;
 
     public async Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default)
     {
         if (!_settings.IsConfigured)
         {
-            _logger.LogDebug("Ticket vendor not configured (missing EventId or API key), skipping sync");
+            logger.LogDebug("Ticket vendor not configured (missing EventId or API key), skipping sync");
             return new TicketSyncResult(0, 0, 0, 0, 0);
         }
 
         var eventId = _settings.EventId;
 
-        var syncState = await _ticketRepository.GetSyncStateAsync(ct)
+        var syncState = await ticketRepository.GetSyncStateAsync(ct)
             ?? throw new InvalidOperationException("TicketSyncState seed row missing");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         syncState.SyncStatus = TicketSyncStatus.Running;
         syncState.StatusChangedAt = now;
         syncState.VendorEventId = eventId;
-        await _ticketRepository.PersistSyncStateAsync(syncState, ct);
+        await ticketRepository.PersistSyncStateAsync(syncState, ct);
 
         try
         {
-            var orders = await _vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
-            var tickets = await _vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
+            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
+            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
 
             var emailLookup = await BuildEmailLookupAsync(ct);
 
-            var existingOrdersByVendorId = await _ticketRepository
+            var existingOrdersByVendorId = await ticketRepository
                 .GetOrdersByVendorIdsAsync(orders.Select(o => o.VendorOrderId).ToList(), ct);
 
             var ordersToUpsert = new List<TicketOrder>(orders.Count);
@@ -101,13 +76,13 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                     ordersMatched++;
             }
 
-            await _ticketRepository.UpsertOrdersAsync(ordersToUpsert, ct);
+            await ticketRepository.UpsertOrdersAsync(ordersToUpsert, ct);
             var ordersSynced = ordersToUpsert.Count;
 
             await EnrichOrdersWithStripeDataAsync(ct);
 
-            var orderIdByVendorId = await _ticketRepository.GetOrderIdsByVendorIdAsync(ct);
-            var existingAttendeesByVendorId = await _ticketRepository
+            var orderIdByVendorId = await ticketRepository.GetOrderIdsByVendorIdAsync(ct);
+            var existingAttendeesByVendorId = await ticketRepository
                 .GetAttendeesByVendorIdsAsync(tickets.Select(t => t.VendorTicketId).ToList(), ct);
 
             var attendeesToUpsert = new List<TicketAttendee>(tickets.Count);
@@ -120,7 +95,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                 {
                     if (!orderIdByVendorId.TryGetValue(dto.VendorOrderId, out parentOrderId))
                     {
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
                             dto.VendorTicketId, dto.VendorOrderId);
                         continue;
@@ -132,7 +107,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                     var localExisting = existingAttendeesByVendorId.GetValueOrDefault(dto.VendorTicketId);
                     if (localExisting is null)
                     {
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Attendee {VendorTicketId} has null vendor order id and no local row; skipping",
                             dto.VendorTicketId);
                         continue;
@@ -147,7 +122,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                     attendeesMatched++;
             }
 
-            await _ticketRepository.UpsertAttendeesAsync(attendeesToUpsert, ct);
+            await ticketRepository.UpsertAttendeesAsync(attendeesToUpsert, ct);
             var attendeesSynced = attendeesToUpsert.Count;
 
             await ComputeVatForOrdersAsync(ct);
@@ -157,19 +132,19 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             await SyncEventParticipationsAsync(tickets, ct);
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
-            syncState.StatusChangedAt = _clock.GetCurrentInstant();
+            syncState.StatusChangedAt = clock.GetCurrentInstant();
             syncState.LastSyncAt = now;
             syncState.LastError = null;
-            await _ticketRepository.PersistSyncStateAsync(syncState, ct);
+            await ticketRepository.PersistSyncStateAsync(syncState, ct);
 
             // invalidate ticket caches via seam (§15c)
-            _ticketCache.InvalidateVendorEventSummary(eventId);
-            _ticketCache.InvalidateAll();
+            ticketCache.InvalidateVendorEventSummary(eventId);
+            ticketCache.InvalidateAll();
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Ticket sync completed: {OrdersSynced} orders, {AttendeesSynced} attendees, " +
                 "{OrdersMatched} order matches, {AttendeesMatched} attendee matches, {CodesRedeemed} codes redeemed",
                 result.OrdersSynced, result.AttendeesSynced,
@@ -180,24 +155,24 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
         {
             // Transient: preserve LastSyncAt, retry next run.
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run",
                 (int?)ex.StatusCode, eventId);
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
-            syncState.StatusChangedAt = _clock.GetCurrentInstant();
-            await _ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
+            syncState.StatusChangedAt = clock.GetCurrentInstant();
+            await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
 
             return new TicketSyncResult(0, 0, 0, 0, 0);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ticket sync failed for event {EventId}", eventId);
+            logger.LogError(ex, "Ticket sync failed for event {EventId}", eventId);
 
             syncState.SyncStatus = TicketSyncStatus.Error;
-            syncState.StatusChangedAt = _clock.GetCurrentInstant();
+            syncState.StatusChangedAt = clock.GetCurrentInstant();
             syncState.LastError = ex.Message;
-            await _ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
+            await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
 
             throw;
         }
@@ -205,22 +180,22 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
     public async Task ResetSyncStateForFullResyncAsync()
     {
-        await _ticketRepository.ResetSyncStateLastSyncAsync();
+        await ticketRepository.ResetSyncStateLastSyncAsync();
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await _ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        await _transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
+        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
 
-        _ticketCache.InvalidateAfterUserMerge(sourceUserId, targetUserId);
+        ticketCache.InvalidateAfterUserMerge(sourceUserId, targetUserId);
     }
 
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
         // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
-        var entries = await _ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
+        var entries = await ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
 
         var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
         var grouped = entries.GroupBy(e => e.Email, NormalizingEmailComparer.Instance);
@@ -234,7 +209,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             else
             {
-                _logger.LogError(
+                logger.LogError(
                     "Email {Email} verified by {Count} users, leaving unmatched",
                     group.Key, distinctUserIds.Count);
             }
@@ -312,30 +287,30 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
     private async Task<int> MatchDiscountCodesAsync(CancellationToken ct)
     {
-        var rows = await _ticketRepository.GetOrderDiscountCodesAsync(ct);
+        var rows = await ticketRepository.GetOrderDiscountCodesAsync(ct);
         if (rows.Count == 0) return 0;
 
         var redemptions = rows
             .Select(r => new DiscountCodeRedemption(r.Code, r.PurchasedAt))
             .ToList();
 
-        return await _campaignService.MarkGrantsRedeemedAsync(redemptions, ct);
+        return await campaignService.MarkGrantsRedeemedAsync(redemptions, ct);
     }
 
     private async Task EnrichOrdersWithStripeDataAsync(CancellationToken ct)
     {
-        if (!_stripeService.IsConfigured)
+        if (!stripeService.IsConfigured)
         {
-            _logger.LogDebug("Stripe not configured, skipping fee enrichment");
+            logger.LogDebug("Stripe not configured, skipping fee enrichment");
             return;
         }
 
-        var ordersToEnrich = await _ticketRepository
+        var ordersToEnrich = await ticketRepository
             .GetOrdersNeedingStripeEnrichmentAsync(ct);
 
         if (ordersToEnrich.Count == 0) return;
 
-        _logger.LogInformation("Enriching {Count} orders with Stripe fee data", ordersToEnrich.Count);
+        logger.LogInformation("Enriching {Count} orders with Stripe fee data", ordersToEnrich.Count);
 
         var updated = new List<TicketOrder>(ordersToEnrich.Count);
         foreach (var order in ordersToEnrich)
@@ -349,7 +324,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
             try
             {
-                var details = await _stripeService.GetPaymentDetailsAsync(trimmedPi, ct);
+                var details = await stripeService.GetPaymentDetailsAsync(trimmedPi, ct);
                 if (details is null) continue;
 
                 order.PaymentMethod = details.PaymentMethod;
@@ -360,13 +335,13 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId}): {Reason}",
                     order.VendorOrderId, trimmedPi, ex.Message);
             }
         }
 
-        await _ticketRepository.UpdateOrderStripeEnrichmentAsync(updated, ct);
+        await ticketRepository.UpdateOrderStripeEnrichmentAsync(updated, ct);
     }
 
     /// <summary>
@@ -377,12 +352,12 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
     /// </summary>
     private async Task ComputeVatForOrdersAsync(CancellationToken ct)
     {
-        var orders = await _ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
+        var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
         var updates = orders
             .Select(o => (o.Id, VatAmount: ComputeOrderVat(o)))
             .ToList();
 
-        await _ticketRepository.UpdateOrderVatAmountsAsync(updates, ct);
+        await ticketRepository.UpdateOrderVatAmountsAsync(updates, ct);
     }
 
     /// <summary>
@@ -418,13 +393,13 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
     public async Task<bool> IsInErrorStateAsync(CancellationToken ct = default)
     {
-        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
         return syncState?.SyncStatus == TicketSyncStatus.Error;
     }
 
     public async Task<TicketSyncErrorStatus> GetErrorStatusAsync(CancellationToken ct = default)
     {
-        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
         var inError = syncState?.SyncStatus == TicketSyncStatus.Error;
         return new TicketSyncErrorStatus(inError, inError ? syncState?.LastError : null);
     }
@@ -448,13 +423,13 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         IReadOnlyList<VendorTicketDto> vendorTicketsThisSync,
         CancellationToken ct)
     {
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
+        var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 
         var year = activeEvent.Year;
 
-        var matchedAttendees = await _ticketRepository
+        var matchedAttendees = await ticketRepository
             .GetMatchedAttendeesForEventAsync(_settings.EventId, ct);
 
         var userTicketStatuses = matchedAttendees
@@ -496,18 +471,18 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                 Instant? checkedInAt = checkedInAtByUserId.TryGetValue(userId, out var ts)
                     ? ts
                     : null;
-                await _userService.SetParticipationFromTicketSyncAsync(
+                await userService.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Attended, checkedInAt, ct);
             }
             else if (hasValidTicket)
             {
-                await _userService.SetParticipationFromTicketSyncAsync(
+                await userService.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
 
         // Clear stale Ticketed for users who no longer hold a valid ticket.
-        var allParticipations = await _userService.GetAllParticipationsForYearAsync(year, ct);
+        var allParticipations = await userService.GetAllParticipationsForYearAsync(year, ct);
         var stalePreviousTicketed = allParticipations
             .Where(ep => ep.Source == ParticipationSource.TicketSync
                 && ep.Status == ParticipationStatus.Ticketed);
@@ -518,7 +493,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
                 !statuses.Any(s =>
                     s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
             {
-                await _userService.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
+                await userService.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
             }
         }
     }
@@ -542,7 +517,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         if (result == TicketPaymentStatus.Pending &&
             !string.Equals(status, "pending", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning("Unknown payment status '{Status}' from vendor, defaulting to Pending", status);
+            logger.LogWarning("Unknown payment status '{Status}' from vendor, defaulting to Pending", status);
         }
 
         return result;
@@ -562,7 +537,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             !string.Equals(status, "void", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(status, "voided", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning("Unknown attendee status '{Status}' from vendor, defaulting to Void", status);
+            logger.LogWarning("Unknown attendee status '{Status}' from vendor, defaulting to Void", status);
         }
 
         return result;

@@ -19,10 +19,11 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// <c>Google.Apis.*</c> for Drive Activity monitoring; the Application-layer
 /// <c>DriveActivityMonitorService</c> never sees SDK types.
 /// </summary>
-public sealed class GoogleDriveActivityClient : IGoogleDriveActivityClient
+public sealed class GoogleDriveActivityClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleDriveActivityClient> logger) : IGoogleDriveActivityClient
 {
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleDriveActivityClient> _logger;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private DriveActivityService? _activityService;
     private DirectoryService? _directoryService;
@@ -30,14 +31,6 @@ public sealed class GoogleDriveActivityClient : IGoogleDriveActivityClient
     private string? _serviceAccountClientId;
     private bool _serviceAccountEmailResolved;
     private bool _serviceAccountClientIdResolved;
-
-    public GoogleDriveActivityClient(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleDriveActivityClient> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
 
     public bool IsConfigured =>
         !string.IsNullOrEmpty(_settings.ServiceAccountKeyPath) ||
@@ -143,13 +136,13 @@ public sealed class GoogleDriveActivityClient : IGoogleDriveActivityClient
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
         {
-            _logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})",
+            logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})",
                 peopleId, ex.Error.Code);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error resolving {PeopleId} via Directory API", peopleId);
+            logger.LogWarning(ex, "Error resolving {PeopleId} via Directory API", peopleId);
             return null;
         }
     }

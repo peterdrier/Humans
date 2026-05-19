@@ -9,22 +9,14 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Expenses;
 
-internal sealed class ExpenseRepository : IExpenseRepository
+internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> factory, ILogger<ExpenseRepository> logger)
+    : IExpenseRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly ILogger<ExpenseRepository> _logger;
-
-    public ExpenseRepository(
-        IDbContextFactory<HumansDbContext> factory,
-        ILogger<ExpenseRepository> logger)
-    {
-        _factory = factory;
-        _logger = logger;
-    }
+    private readonly ILogger<ExpenseRepository> _logger = logger;
 
     public async Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entity = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
@@ -34,7 +26,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.SubmitterUserId == submitterUserId)
@@ -47,7 +39,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<IReadOnlyList<ExpenseReportDto>> GetByStatusAsync(
         ExpenseReportStatus status, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status)
@@ -63,7 +55,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         CancellationToken ct = default)
     {
         if (categoryIds.Count == 0) return [];
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status && categoryIds.Contains(r.BudgetCategoryId))
@@ -76,7 +68,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status != ExpenseReportStatus.Draft
@@ -90,7 +82,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<Guid?> GetReportIdByAttachmentIdAsync(
         Guid attachmentId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ExpenseLines.AsNoTracking()
             .Where(l => l.AttachmentId == attachmentId)
             .Select(l => (Guid?)l.ExpenseReportId)
@@ -99,14 +91,14 @@ internal sealed class ExpenseRepository : IExpenseRepository
 
     public async Task AddDraftAsync(ExpenseReport report, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.ExpenseReports.Add(report);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateDraftAsync(ExpenseReport report, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var tracked = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == report.Id, ct);
         if (tracked is null || tracked.Status != ExpenseReportStatus.Draft) return;
@@ -120,7 +112,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<bool> AddLineAsync(
         Guid reportId, ExpenseLine line, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var report = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == reportId, ct);
         if (report is null) return false;
@@ -135,7 +127,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<bool> UpdateLineAsync(
         Guid reportId, ExpenseLine line, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var report = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == reportId, ct);
         var tracked = await ctx.ExpenseLines
@@ -151,7 +143,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<bool> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var report = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == reportId, ct);
         var tracked = await ctx.ExpenseLines
@@ -166,7 +158,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<Guid> AddAttachmentAsync(
         ExpenseAttachment attachment, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.ExpenseAttachments.Add(attachment);
         await ctx.SaveChangesAsync(ct);
         return attachment.Id;
@@ -174,7 +166,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
 
     public async Task RemoveAttachmentAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var att = await ctx.ExpenseAttachments.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (att is null) return;
         ctx.ExpenseAttachments.Remove(att);
@@ -184,7 +176,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task SetLineAttachmentAsync(
         Guid lineId, Guid? attachmentId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var line = await ctx.ExpenseLines.FirstOrDefaultAsync(l => l.Id == lineId, ct);
         if (line is null) return;
         line.AttachmentId = attachmentId;
@@ -195,7 +187,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         Guid reportId, string payeeName, string payeeIban,
         Instant submittedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Draft) return false;
@@ -214,7 +206,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<bool> WithdrawAsync(
         Guid reportId, Instant updatedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
@@ -234,7 +226,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid actorUserId, Instant endorsedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Submitted) return false;
@@ -250,7 +242,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         Guid reportId, Guid actorUserId, string reason,
         Instant rejectedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Submitted) return false;
@@ -267,7 +259,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
         Instant approvedAt, Guid outboxEventId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
@@ -296,7 +288,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         Guid reportId, Guid actorUserId, string reason,
         Instant rejectedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
@@ -318,7 +310,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         CancellationToken ct = default)
     {
         if (reportIds.Count == 0) return [];
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.ExpenseReports
             .Where(r => reportIds.Contains(r.Id) && r.Status == ExpenseReportStatus.Approved)
             .ToListAsync(ct);
@@ -335,7 +327,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<bool> MarkPaidAsync(
         Guid reportId, Instant paidAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.SepaSent) return false;
@@ -349,7 +341,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
         int limit, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
             .Where(e => e.ProcessedAt == null && !e.FailedPermanently)
             // arch:db-sort-ok identity-ordered outbox drain — FIFO is the protocol requirement
@@ -362,7 +354,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         Guid reportId, string holdedDocId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return;
         r.HoldedDocId = holdedDocId;
@@ -373,7 +365,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task IncrementOutboxRetryAsync(
         Guid outboxEventId, string error, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.HoldedExpenseOutboxEvents
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
         if (ev is null) return;
@@ -386,7 +378,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
         Guid outboxEventId, string error, Instant processedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.HoldedExpenseOutboxEvents
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
         if (ev is null) return;
@@ -399,7 +391,7 @@ internal sealed class ExpenseRepository : IExpenseRepository
     public async Task MarkOutboxProcessedAsync(
         Guid outboxEventId, Instant processedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.HoldedExpenseOutboxEvents
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
         if (ev is null) return;

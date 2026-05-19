@@ -18,24 +18,12 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
-public sealed class WidgetGalleryController : HumansControllerBase
+public sealed class WidgetGalleryController(
+    IUserService userService,
+    ITeamService teamService,
+    IShiftManagementService shiftMgmt,
+    ILogger<WidgetGalleryController> logger) : HumansControllerBase(userService)
 {
-    private readonly ITeamService _teamService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly ILogger<WidgetGalleryController> _logger;
-
-    public WidgetGalleryController(
-        IUserService userService,
-        ITeamService teamService,
-        IShiftManagementService shiftMgmt,
-        ILogger<WidgetGalleryController> logger)
-        : base(userService)
-    {
-        _teamService = teamService;
-        _shiftMgmt = shiftMgmt;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
@@ -123,7 +111,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
 
     private async Task<Team?> ResolveSampleTeamAsync()
     {
-        var allTeams = await _teamService.GetAllTeamsAsync();
+        var allTeams = await teamService.GetAllTeamsAsync();
         return allTeams
             .Where(t => !t.IsSystemTeam && !t.IsHidden)
             .OrderBy(t => t.Name, StringComparer.Ordinal)
@@ -135,11 +123,11 @@ public sealed class WidgetGalleryController : HumansControllerBase
     {
         try
         {
-            return await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+            return await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Failed to fetch shift profile for user {UserId}: {Reason}", userId, ex.Message);
+            logger.LogWarning("Failed to fetch shift profile for user {UserId}: {Reason}", userId, ex.Message);
             return null;
         }
     }
@@ -148,27 +136,27 @@ public sealed class WidgetGalleryController : HumansControllerBase
     {
         try
         {
-            var es = await _shiftMgmt.GetActiveAsync();
+            var es = await shiftMgmt.GetActiveAsync();
             if (es is null)
                 return ShiftsSamples.Empty;
 
             Rota? rota = null;
             Guid? sampleDeptId = null;
-            var depts = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            var depts = await shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
             if (depts.Count > 0)
             {
                 sampleDeptId = depts[0].TeamId;
-                var rotas = await _shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
+                var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
                 rota = rotas.FirstOrDefault();
             }
 
-            var staffing = await _shiftMgmt.GetStaffingDataAsync(es.Id);
-            var hours = await _shiftMgmt.GetStaffingHoursAsync(es.Id);
+            var staffing = await shiftMgmt.GetStaffingDataAsync(es.Id);
+            var hours = await shiftMgmt.GetStaffingHoursAsync(es.Id);
 
             var sampleRotaShifts = new List<ShiftDisplayItem>();
             if (rota is not null && sampleDeptId is not null)
             {
-                var browse = await _shiftMgmt.GetBrowseShiftsAsync(
+                var browse = await shiftMgmt.GetBrowseShiftsAsync(
                     es.Id, departmentId: sampleDeptId.Value, includeSignups: true);
                 sampleRotaShifts = browse
                     .Where(u => u.Shift.RotaId == rota.Id)
@@ -188,14 +176,14 @@ public sealed class WidgetGalleryController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
+            logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
             return ShiftsSamples.Empty;
         }
     }
 
     private ShiftDisplayItem MapToDisplayItem(UrgentShift u, EventSettings es)
     {
-        var (start, end, period) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
+        var (start, end, period) = shiftMgmt.ResolveShiftTimes(u.Shift, es);
         return new ShiftDisplayItem
         {
             Shift = u.Shift,

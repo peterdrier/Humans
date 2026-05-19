@@ -17,56 +17,31 @@ using Humans.Application.Interfaces.Auth;
 namespace Humans.Application.Services.Auth;
 
 // Stitches display data onto obsolete RoleAssignment nav props in memory — design-rules §6b in-memory join.
-public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataContributor, IUserMerge
+public sealed class RoleAssignmentService(
+    IRoleAssignmentRepository repository,
+    IUserService userService,
+    IAuditLogService auditLogService,
+    INotificationEmitter notificationService,
+    ISystemTeamSync systemTeamSyncJob,
+    INavBadgeCacheInvalidator navBadge,
+    IRoleAssignmentClaimsCacheInvalidator claimsInvalidator,
+    IRoleAssignmentCacheInvalidator roleAssignmentCacheInvalidator,
+    IClock clock,
+    ILogger<RoleAssignmentService> logger) : IRoleAssignmentService, IUserDataContributor, IUserMerge
 {
-    private readonly IRoleAssignmentRepository _repository;
-    private readonly IUserService _userService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly INotificationEmitter _notificationService;
-    private readonly ISystemTeamSync _systemTeamSyncJob;
-    private readonly INavBadgeCacheInvalidator _navBadge;
-    private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
-    private readonly IRoleAssignmentCacheInvalidator _roleAssignmentCacheInvalidator;
-    private readonly IClock _clock;
-    private readonly ILogger<RoleAssignmentService> _logger;
-
-    public RoleAssignmentService(
-        IRoleAssignmentRepository repository,
-        IUserService userService,
-        IAuditLogService auditLogService,
-        INotificationEmitter notificationService,
-        ISystemTeamSync systemTeamSyncJob,
-        INavBadgeCacheInvalidator navBadge,
-        IRoleAssignmentClaimsCacheInvalidator claimsInvalidator,
-        IRoleAssignmentCacheInvalidator roleAssignmentCacheInvalidator,
-        IClock clock,
-        ILogger<RoleAssignmentService> logger)
-    {
-        _repository = repository;
-        _userService = userService;
-        _auditLogService = auditLogService;
-        _notificationService = notificationService;
-        _systemTeamSyncJob = systemTeamSyncJob;
-        _navBadge = navBadge;
-        _claimsInvalidator = claimsInvalidator;
-        _roleAssignmentCacheInvalidator = roleAssignmentCacheInvalidator;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
         string roleName,
         Instant validFrom,
         Instant? validTo = null,
         CancellationToken cancellationToken = default) =>
-        _repository.HasOverlappingAssignmentAsync(userId, roleName, validFrom, validTo, cancellationToken);
+        repository.HasOverlappingAssignmentAsync(userId, roleName, validFrom, validTo, cancellationToken);
 
     public async Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default)
     {
-        var (items, totalCount) = await _repository.GetFilteredAsync(
+        var (items, totalCount) = await repository.GetFilteredAsync(
             roleFilter, activeOnly, page, pageSize, now, ct);
 
         return (await ToSummarySnapshotsAsync(items, ct), totalCount);
@@ -74,10 +49,10 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
     public async Task<RoleAssignmentDetailSnapshot?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
-        var assignment = await _repository.GetByIdAsync(assignmentId, ct);
+        var assignment = await repository.GetByIdAsync(assignmentId, ct);
         if (assignment is null) return null;
 
-        var user = await _userService.GetUserInfoAsync(assignment.UserId, ct);
+        var user = await userService.GetUserInfoAsync(assignment.UserId, ct);
         return new RoleAssignmentDetailSnapshot(
             assignment.UserId,
             assignment.RoleName,
@@ -86,7 +61,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
     public async Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        var items = await _repository.GetByUserIdAsync(userId, ct);
+        var items = await repository.GetByUserIdAsync(userId, ct);
         return await ToSummarySnapshotsAsync(items, ct);
     }
 
@@ -101,7 +76,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             .ToList();
         var users = userIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(userIds, ct);
+            : await userService.GetUserInfosAsync(userIds, ct);
 
         return assignments.Select(assignment =>
         {
@@ -127,9 +102,9 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         string? notes,
         CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var hasOverlap = await _repository.HasOverlappingAssignmentAsync(userId, roleName, now, validTo: null, ct);
+        var hasOverlap = await repository.HasOverlappingAssignmentAsync(userId, roleName, now, validTo: null, ct);
         if (hasOverlap)
         {
             return new OnboardingResult(false, "RoleAlreadyActive");
@@ -146,21 +121,21 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             CreatedByUserId = assignerId
         };
 
-        await _repository.AddAsync(roleAssignment, ct);
-        _roleAssignmentCacheInvalidator.InvalidateAll();
+        await repository.AddAsync(roleAssignment, ct);
+        roleAssignmentCacheInvalidator.InvalidateAll();
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
             $"'{roleName}'",
             assignerId);
 
-        _navBadge.Invalidate();
-        _claimsInvalidator.Invalidate(userId);
+        navBadge.Invalidate();
+        claimsInvalidator.Invalidate(userId);
 
         // Best-effort in-app notification.
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.RoleAssignmentChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -171,12 +146,12 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch RoleAssignmentChanged notification for user {UserId} role {Role}", userId, roleName);
+            logger.LogError(ex, "Failed to dispatch RoleAssignmentChanged notification for user {UserId} role {Role}", userId, roleName);
         }
 
         if (string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
         {
-            await _systemTeamSyncJob.SyncBoardTeamAsync();
+            await systemTeamSyncJob.SyncBoardTeamAsync();
         }
 
         return new OnboardingResult(true);
@@ -187,14 +162,14 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         string? notes,
         CancellationToken ct = default)
     {
-        var roleAssignment = await _repository.FindForMutationAsync(assignmentId, ct);
+        var roleAssignment = await repository.FindForMutationAsync(assignmentId, ct);
 
         if (roleAssignment is null)
         {
             return new OnboardingResult(false, "NotFound");
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         if (!roleAssignment.IsActive(now))
         {
@@ -209,21 +184,21 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
                 : $"{roleAssignment.Notes} | Ended: {notes}";
         }
 
-        await _repository.UpdateAsync(roleAssignment, ct);
-        _roleAssignmentCacheInvalidator.InvalidateAll();
+        await repository.UpdateAsync(roleAssignment, ct);
+        roleAssignmentCacheInvalidator.InvalidateAll();
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
             $"'{roleAssignment.RoleName}'",
             enderId);
 
-        _navBadge.Invalidate();
-        _claimsInvalidator.Invalidate(roleAssignment.UserId);
+        navBadge.Invalidate();
+        claimsInvalidator.Invalidate(roleAssignment.UserId);
 
         // Best-effort in-app notification.
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.RoleAssignmentChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -234,44 +209,44 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch RoleAssignmentChanged notification for user {UserId} role {Role}", roleAssignment.UserId, roleAssignment.RoleName);
+            logger.LogError(ex, "Failed to dispatch RoleAssignmentChanged notification for user {UserId} role {Role}", roleAssignment.UserId, roleAssignment.RoleName);
         }
 
         if (string.Equals(roleAssignment.RoleName, RoleNames.Board, StringComparison.Ordinal))
         {
-            await _systemTeamSyncJob.SyncBoardTeamAsync();
+            await systemTeamSyncJob.SyncBoardTeamAsync();
         }
 
         return new OnboardingResult(true);
     }
 
     public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.HasActiveRoleAsync(userId, RoleNames.Admin, _clock.GetCurrentInstant(), cancellationToken);
+        repository.HasActiveRoleAsync(userId, RoleNames.Admin, clock.GetCurrentInstant(), cancellationToken);
 
     public Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.HasActiveRoleAsync(userId, RoleNames.Board, _clock.GetCurrentInstant(), cancellationToken);
+        repository.HasActiveRoleAsync(userId, RoleNames.Board, clock.GetCurrentInstant(), cancellationToken);
 
     public Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.HasActiveRoleAsync(userId, RoleNames.TeamsAdmin, _clock.GetCurrentInstant(), cancellationToken);
+        repository.HasActiveRoleAsync(userId, RoleNames.TeamsAdmin, clock.GetCurrentInstant(), cancellationToken);
 
     public Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
-        _repository.HasActiveRoleAsync(userId, roleName, _clock.GetCurrentInstant(), cancellationToken);
+        repository.HasActiveRoleAsync(userId, roleName, clock.GetCurrentInstant(), cancellationToken);
 
     public Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.HasAnyActiveAssignmentAsync(userId, _clock.GetCurrentInstant(), cancellationToken);
+        repository.HasAnyActiveAssignmentAsync(userId, clock.GetCurrentInstant(), cancellationToken);
 
     public Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default) =>
-        _repository.GetUserIdsWithActiveAssignmentsAsync(_clock.GetCurrentInstant(), cancellationToken);
+        repository.GetUserIdsWithActiveAssignmentsAsync(clock.GetCurrentInstant(), cancellationToken);
 
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default) =>
-        _repository.GetActiveUserIdsInRoleAsync(roleName, _clock.GetCurrentInstant(), ct);
+        repository.GetActiveUserIdsInRoleAsync(roleName, clock.GetCurrentInstant(), ct);
 
     public async Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var activeRoles = await _repository.GetActiveForUserForMutationAsync(userId, now, ct);
+        var activeRoles = await repository.GetActiveForUserForMutationAsync(userId, now, ct);
 
         if (activeRoles.Count == 0)
             return 0;
@@ -281,9 +256,9 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             role.ValidTo = now;
         }
 
-        await _repository.UpdateManyAsync(activeRoles, ct);
-        _roleAssignmentCacheInvalidator.InvalidateAll();
-        _claimsInvalidator.Invalidate(userId);
+        await repository.UpdateManyAsync(activeRoles, ct);
+        roleAssignmentCacheInvalidator.InvalidateAll();
+        claimsInvalidator.Invalidate(userId);
 
         return activeRoles.Count;
     }
@@ -292,19 +267,19 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         CancellationToken cancellationToken)
     {
         // Caller invalidates caches AFTER the ambient TransactionScope commits — see AccountMergeService.AcceptAsync.
-        return _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
+        return repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
     }
 
-    public void InvalidateClaimsCacheForUser(Guid userId) => _claimsInvalidator.Invalidate(userId);
+    public void InvalidateClaimsCacheForUser(Guid userId) => claimsInvalidator.Invalidate(userId);
 
-    public void InvalidateNavBadgeCache() => _navBadge.Invalidate();
+    public void InvalidateNavBadgeCache() => navBadge.Invalidate();
 
-    public void InvalidateRoleAssignmentCache() => _roleAssignmentCacheInvalidator.InvalidateAll();
+    public void InvalidateRoleAssignmentCache() => roleAssignmentCacheInvalidator.InvalidateAll();
 
     public async Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var all = await _repository.GetByUserIdAsync(userId, ct);
+        var now = clock.GetCurrentInstant();
+        var all = await repository.GetByUserIdAsync(userId, ct);
         return all
             .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
             .OrderBy(ra => ra.RoleName, StringComparer.Ordinal)
@@ -313,11 +288,11 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
     }
 
     public Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default) =>
-        _repository.GetActiveCountsByRoleAsync(_clock.GetCurrentInstant(), ct);
+        repository.GetActiveCountsByRoleAsync(clock.GetCurrentInstant(), ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var assignments = await _repository.GetByUserIdAsync(userId, ct);
+        var assignments = await repository.GetByUserIdAsync(userId, ct);
 
         var shaped = assignments.Select(ra => new
         {
@@ -344,7 +319,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             userIds.Add(ra.CreatedByUserId);
         }
 
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await userService.GetByIdsAsync(userIds, ct);
 
         foreach (var ra in assignments)
         {

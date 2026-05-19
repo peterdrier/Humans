@@ -2,12 +2,8 @@ using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
-public class AuditLogListViewModel : PagedListViewModel
+public class AuditLogListViewModel() : PagedListViewModel(50)
 {
-    public AuditLogListViewModel() : base(50)
-    {
-    }
-
     public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } = [];
     public string? ActionFilter { get; set; }
     public int AnomalyCount { get; set; }

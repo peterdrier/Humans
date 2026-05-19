@@ -8,15 +8,8 @@ namespace Humans.Infrastructure.Data;
 /// EF Core interceptor that tracks query execution counts and timings in memory,
 /// grouped by operation type (SELECT/INSERT/UPDATE/DELETE) and table name.
 /// </summary>
-public partial class QueryMonitoringInterceptor : DbCommandInterceptor
+public partial class QueryMonitoringInterceptor(QueryStatistics statistics) : DbCommandInterceptor
 {
-    private readonly QueryStatistics _statistics;
-
-    public QueryMonitoringInterceptor(QueryStatistics statistics)
-    {
-        _statistics = statistics;
-    }
-
     public override DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData,
         DbDataReader result)
     {
@@ -66,7 +59,7 @@ public partial class QueryMonitoringInterceptor : DbCommandInterceptor
         var (operation, table) = ParseCommand(commandText);
         if (operation is not null && table is not null)
         {
-            _statistics.Record(operation, table, duration.TotalMilliseconds);
+            statistics.Record(operation, table, duration.TotalMilliseconds);
         }
     }
 

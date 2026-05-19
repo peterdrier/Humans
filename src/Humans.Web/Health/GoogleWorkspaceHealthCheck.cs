@@ -11,18 +11,11 @@ namespace Humans.Web.Health;
 /// Health check that validates Google service account credentials and API access.
 /// Verifies the service account can authenticate and access the Cloud Identity Groups API.
 /// </summary>
-public class GoogleWorkspaceHealthCheck : IHealthCheck
+public class GoogleWorkspaceHealthCheck(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleWorkspaceHealthCheck> logger) : IHealthCheck
 {
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleWorkspaceHealthCheck> _logger;
-
-    public GoogleWorkspaceHealthCheck(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleWorkspaceHealthCheck> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -54,28 +47,28 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
-            _logger.LogWarning(ex, "Google API authorization failed - check service account permissions");
+            logger.LogWarning(ex, "Google API authorization failed - check service account permissions");
             return HealthCheckResult.Unhealthy(
                 "Authorization failed - ensure the service account has Cloud Identity Groups access",
                 ex);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 401)
         {
-            _logger.LogWarning(ex, "Google API authentication failed");
+            logger.LogWarning(ex, "Google API authentication failed");
             return HealthCheckResult.Unhealthy(
                 "Authentication failed - check service account credentials",
                 ex);
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogWarning(ex, "Service account key file not found");
+            logger.LogWarning(ex, "Service account key file not found");
             return HealthCheckResult.Unhealthy(
                 $"Service account key file not found: {_settings.ServiceAccountKeyPath}",
                 ex);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Google Workspace health check failed");
+            logger.LogWarning(ex, "Google Workspace health check failed");
             return HealthCheckResult.Unhealthy(
                 $"Google service account check failed: {ex.Message}",
                 ex);

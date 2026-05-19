@@ -10,9 +10,9 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// the §15 connector pattern, the Application-layer service runs against
 /// this stub — there is no "stub service" variant.
 /// </summary>
-public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
+public sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePermissionsClient> logger)
+    : IGoogleDrivePermissionsClient
 {
-    private readonly ILogger<StubGoogleDrivePermissionsClient> _logger;
     private readonly Dictionary<string, StubFile> _filesById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<DrivePermission>> _permissionsByFile = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SharedDriveMetadata> _drivesById = new(StringComparer.Ordinal);
@@ -20,17 +20,12 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
     private long _nextFileId = 1;
     private long _nextPermissionId = 1;
 
-    public StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePermissionsClient> logger)
-    {
-        _logger = logger;
-    }
-
     public Task<DriveFolderCreateResult> CreateFolderAsync(
         string folderName,
         string? parentFolderId,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Create folder '{Name}' under parent {Parent}",
+        logger.LogInformation("[STUB] Create folder '{Name}' under parent {Parent}",
             folderName, parentFolderId ?? "(root)");
 
         lock (_gate)
@@ -49,7 +44,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         string fileId,
         CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] List permissions for {FileId}", fileId);
+        logger.LogDebug("[STUB] List permissions for {FileId}", fileId);
 
         lock (_gate)
         {
@@ -82,7 +77,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         string role,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Grant {Role} to {Email} on {FileId}", role, userEmail, fileId);
+        logger.LogInformation("[STUB] Grant {Role} to {Email} on {FileId}", role, userEmail, fileId);
 
         lock (_gate)
         {
@@ -129,7 +124,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         string permissionId,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Delete permission {PermId} from {FileId}", permissionId, fileId);
+        logger.LogInformation("[STUB] Delete permission {PermId} from {FileId}", permissionId, fileId);
 
         lock (_gate)
         {
@@ -153,7 +148,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         string fileId,
         CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] Get file {FileId}", fileId);
+        logger.LogDebug("[STUB] Get file {FileId}", fileId);
 
         lock (_gate)
         {
@@ -181,7 +176,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         bool disabled,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Set inheritedPermissionsDisabled={Disabled} on {FileId}",
+        logger.LogInformation("[STUB] Set inheritedPermissionsDisabled={Disabled} on {FileId}",
             disabled, fileId);
 
         lock (_gate)
@@ -200,7 +195,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         string driveId,
         CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] Get shared drive {DriveId}", driveId);
+        logger.LogDebug("[STUB] Get shared drive {DriveId}", driveId);
 
         lock (_gate)
         {

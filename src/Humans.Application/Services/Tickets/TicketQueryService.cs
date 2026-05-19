@@ -19,51 +19,30 @@ namespace Humans.Application.Services.Tickets;
 /// <summary>
 /// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15 / T-07).
 /// </summary>
-public sealed class TicketQueryService : ITicketQueryService, IUserDataContributor
+public sealed class TicketQueryService(
+    ITicketRepository ticketRepository,
+    IBudgetService budgetService,
+    ICampaignService campaignService,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    ITeamService teamService,
+    IShiftManagementService shiftManagementService,
+    IClock clock) : ITicketQueryService, IUserDataContributor
 {
-    private readonly ITicketRepository _ticketRepository;
-    private readonly IBudgetService _budgetService;
-    private readonly ICampaignService _campaignService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ITeamService _teamService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly IClock _clock;
-
-    public TicketQueryService(
-        ITicketRepository ticketRepository,
-        IBudgetService budgetService,
-        ICampaignService campaignService,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        ITeamService teamService,
-        IShiftManagementService shiftManagementService,
-        IClock clock)
-    {
-        _ticketRepository = ticketRepository;
-        _budgetService = budgetService;
-        _campaignService = campaignService;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _teamService = teamService;
-        _shiftManagementService = shiftManagementService;
-        _clock = clock;
-    }
-
     public async Task<int> GetUserTicketCountAsync(Guid userId)
     {
         // Attendees only — buyers don't count for themselves.
-        var matchedCount = await _ticketRepository
+        var matchedCount = await ticketRepository
             .CountValidAttendeesMatchedToUserAsync(userId);
         if (matchedCount > 0)
             return matchedCount;
 
         // Fallback: verified-emails ↔ attendee-emails, compared in-memory for consistent casing.
-        var verifiedEmails = await _userEmailService.GetVerifiedEmailsForUserAsync(userId);
+        var verifiedEmails = await userEmailService.GetVerifiedEmailsForUserAsync(userId);
         if (verifiedEmails.Count == 0)
             return 0;
 
-        var attendeeEmails = await _ticketRepository.GetValidAttendeeEmailsAsync();
+        var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync();
         if (attendeeEmails.Count == 0)
             return 0;
 
@@ -73,20 +52,20 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
-        var ids = await _ticketRepository.GetValidMatchedAttendeeUserIdsAsync();
+        var ids = await ticketRepository.GetValidMatchedAttendeeUserIdsAsync();
         return ids.ToHashSet();
     }
 
     public async Task<List<string>> GetAvailableTicketTypesAsync()
     {
-        var types = await _ticketRepository.GetDistinctTicketTypesAsync();
+        var types = await ticketRepository.GetDistinctTicketTypesAsync();
         return types.ToList();
     }
 
     public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
     {
-        var fromAttendees = await _ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
-        var fromOrders = await _ticketRepository.GetAllMatchedOrderUserIdsAsync();
+        var fromAttendees = await ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
+        var fromOrders = await ticketRepository.GetAllMatchedOrderUserIdsAsync();
         return fromAttendees.Concat(fromOrders).ToHashSet();
     }
 
@@ -95,25 +74,25 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var start = Instant.FromUtc(year, 1, 1, 0, 0);
         var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
 
-        var fromOrders = await _ticketRepository.GetMatchedOrderUserIdsInWindowAsync(start, end, ct);
-        var fromAttendees = await _ticketRepository.GetMatchedAttendeeUserIdsInWindowAsync(start, end, ct);
+        var fromOrders = await ticketRepository.GetMatchedOrderUserIdsInWindowAsync(start, end, ct);
+        var fromAttendees = await ticketRepository.GetMatchedAttendeeUserIdsInWindowAsync(start, end, ct);
         return fromOrders.Concat(fromAttendees).ToHashSet();
     }
 
     public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) =>
-        _ticketRepository.GetMatchedOrderYearsAsync(ct);
+        ticketRepository.GetMatchedOrderYearsAsync(ct);
 
     public async Task<TicketDashboardStats> GetDashboardStatsAsync()
     {
         // Crash recovery: reset Running >30min.
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var staleThreshold = now - Duration.FromMinutes(30);
-        var syncState = await _ticketRepository.ResetStaleRunningStateAsync(
+        var syncState = await ticketRepository.ResetStaleRunningStateAsync(
             olderThan: staleThreshold,
             now: now,
             errorMessage: "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.");
 
-        var totals = await _ticketRepository.GetDashboardTotalsAsync();
+        var totals = await ticketRepository.GetDashboardTotalsAsync();
 
         var revenue = totals.GrossRevenue;
         var totalStripeFees = totals.TotalStripeFees;
@@ -124,7 +103,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = totals.UnmatchedOrderCount;
 
-        var feeData = await _ticketRepository.GetPaidOrderPaymentMethodsAsync();
+        var feeData = await ticketRepository.GetPaidOrderPaymentMethodsAsync();
 
         var feesByMethod = feeData
             .GroupBy(
@@ -147,7 +126,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .OrderByDescending(f => f.TotalStripeFees)
             .ToList();
 
-        var orderDates = await _ticketRepository.GetOrderDateAttendeeCountsAsync();
+        var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync();
 
         var salesByDate = orderDates
             .GroupBy(o => o.PurchasedAt.InUtc().Date)
@@ -179,9 +158,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             }
         }
 
-        var recentOrders = await _ticketRepository.GetRecentOrdersAsync(count: 10);
+        var recentOrders = await ticketRepository.GetRecentOrdersAsync(count: 10);
 
-        var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToList() ?? [];
         var totalActiveVolunteers = volunteerUserIds.Count;
 
@@ -215,7 +194,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     }
 
     public Task<decimal> GetGrossTicketRevenueAsync() =>
-        _ticketRepository.GetGrossPaidRevenueAsync();
+        ticketRepository.GetGrossPaidRevenueAsync();
 
     public async Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold,
@@ -227,11 +206,11 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (ticketsSold <= 0 || grossRevenue <= 0)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
-        var activeBudgetYear = await _budgetService.GetActiveYearAsync();
+        var activeBudgetYear = await budgetService.GetActiveYearAsync();
         if (activeBudgetYear is null)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
-        var summary = _budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
+        var summary = budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
         var plannedExpenses = Math.Abs(summary.TotalExpenses);
         if (plannedExpenses <= 0)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
@@ -260,7 +239,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search)
     {
-        var campaignData = await _campaignService.GetCodeTrackingAsync();
+        var campaignData = await campaignService.GetCodeTrackingAsync();
 
         var campaignSummaries = campaignData.Campaigns
             .Select(c => new CampaignCodeSummaryDto
@@ -284,7 +263,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 g.RecipientName.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
 
-        var ordersWithCodes = await _ticketRepository.GetOrdersWithDiscountCodesAsync();
+        var ordersWithCodes = await ticketRepository.GetOrdersWithDiscountCodesAsync();
         var orderByCode = ordersWithCodes
             .GroupBy(o => o.DiscountCode, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -323,7 +302,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     public async Task<TicketSalesAggregates> GetSalesAggregatesAsync()
     {
-        var orders = await _ticketRepository.GetPaidOrderSalesRowsAsync();
+        var orders = await ticketRepository.GetPaidOrderSalesRowsAsync();
 
         var weeklySales = orders
             .GroupBy(o =>
@@ -391,7 +370,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             parsedStatus = paymentStatus;
         }
 
-        var (rawRows, totalCount) = await _ticketRepository.GetOrdersPageAsync(
+        var (rawRows, totalCount) = await ticketRepository.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             parsedStatus, filterTicketType, filterMatched);
 
@@ -412,7 +391,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             parsedStatus = status;
         }
 
-        var (rawRows, totalCount) = await _ticketRepository.GetAttendeesPageAsync(
+        var (rawRows, totalCount) = await ticketRepository.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterTicketType, parsedStatus, filterMatched, filterOrderId, filterMultipleTickets);
 
@@ -430,7 +409,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await _userService.GetUserInfosAsync(matchedIds);
+        var users = await userService.GetUserInfosAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
@@ -473,7 +452,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await _userService.GetUserInfosAsync(matchedIds);
+        var users = await userService.GetUserInfosAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
@@ -501,8 +480,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     {
         var matchedUserIds = await GetAllMatchedUserIdsAsync();
 
-        var allUsers = await _userService.GetAllUserInfosAsync().ConfigureAwait(false);
-        var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var allUsers = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
+        var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         var candidateIds = allUsers
@@ -510,11 +489,11 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .Select(u => u.Id)
             .ToList();
 
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
+        var activeEvent = await shiftManagementService.GetActiveAsync();
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            var participations = await _userService.GetAllParticipationsForYearAsync(activeEvent.Year);
+            var participations = await userService.GetAllParticipationsForYearAsync(activeEvent.Year);
             notAttendingSet = participations
                 .Where(ep => ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
@@ -532,9 +511,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             };
         }
 
-        var emailsById = await _userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
+        var emailsById = await userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
         var candidateIdSet = candidateIds.ToHashSet();
-        var teamsByIdLookup = await _teamService.GetTeamsAsync();
+        var teamsByIdLookup = await teamService.GetTeamsAsync();
         var teamsByUser = new Dictionary<Guid, IReadOnlyList<string>>();
         foreach (var team in teamsByIdLookup.Values
             .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
@@ -576,7 +555,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         HashSet<Guid>? emailMatchUserIds = null;
         if (HasSearchTerm(search, 1))
         {
-            var matches = await _userEmailService.SearchUserIdsByVerifiedEmailAsync(search!);
+            var matches = await userEmailService.SearchUserIdsByVerifiedEmailAsync(search!);
             emailMatchUserIds = matches.ToHashSet();
         }
 
@@ -660,22 +639,22 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync()
     {
-        var rows = await _ticketRepository.GetAttendeeExportDataAsync();
+        var rows = await ticketRepository.GetAttendeeExportDataAsync();
         return rows.ToList();
     }
 
     public async Task<List<OrderExportRow>> GetOrderExportDataAsync()
     {
-        var rows = await _ticketRepository.GetOrderExportDataAsync();
+        var rows = await ticketRepository.GetOrderExportDataAsync();
         return rows.ToList();
     }
 
     public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) =>
-        _ticketRepository.HasAnyTicketMatchAsync(userId);
+        ticketRepository.HasAnyTicketMatchAsync(userId);
 
     public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
     {
-        var orders = await _ticketRepository.GetOrdersMatchedToUserAsync(userId);
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId);
         return orders.Select(o => new UserTicketOrderSummary(
             o.BuyerName,
             o.PurchasedAt,
@@ -687,10 +666,10 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var orders = await _ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
         var orderCount = orders.Count;
 
-        var attendees = await _ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+        var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
             .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
@@ -705,11 +684,11 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     }
 
     public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        _ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
+        ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
 
     public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
+        var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null)
             return null;
 
@@ -721,23 +700,23 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .AtStartOfDayInZone(tz)
             .ToInstant();
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         return postEventInstant > now ? postEventInstant : null;
     }
 
     public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
     {
-        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
         if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
             return false;
 
-        return await _ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
+        return await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
     }
 
     public async Task<UserTicketExportData> GetUserTicketExportDataAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var orders = await _ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
         var orderRows = orders
             .Select(o => new UserTicketOrderExportRow(
                 o.BuyerName,
@@ -749,7 +728,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 o.PurchasedAt))
             .ToList();
 
-        var attendees = await _ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
+        var attendees = await ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
         var attendeeRows = attendees
             .Select(a => new UserTicketAttendeeExportRow(
                 a.AttendeeName,
@@ -765,7 +744,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
         CancellationToken ct = default)
     {
-        var ids = await _ticketRepository.GetMatchedUserIdsForPaidOrdersAsync(ct);
+        var ids = await ticketRepository.GetMatchedUserIdsForPaidOrdersAsync(ct);
         return ids;
     }
 
@@ -773,7 +752,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         Instant fromInclusive,
         Instant toExclusive,
         CancellationToken ct = default) =>
-        _ticketRepository.GetPaidOrderDatesInWindowAsync(fromInclusive, toExclusive, ct);
+        ticketRepository.GetPaidOrderDatesInWindowAsync(fromInclusive, toExclusive, ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
@@ -816,5 +795,5 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     public void InvalidateAfterContactImport() { }
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
-        _ticketRepository.GetOrderDriftAsync(ct);
+        ticketRepository.GetOrderDriftAsync(ct);
 }

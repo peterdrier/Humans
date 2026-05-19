@@ -15,41 +15,25 @@ using System.Text.Json;
 namespace Humans.Application.Services.CityPlanning;
 
 /// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampService/ITeamService/IUserService.</summary>
-public sealed class CityPlanningService : ICityPlanningService
+public sealed class CityPlanningService(
+    ICityPlanningRepository repo,
+    IClock clock,
+    IOptions<CityPlanningOptions> options,
+    ICampService campService,
+    ITeamService teamService,
+    IUserService userService) : ICityPlanningService
 {
-    private readonly ICityPlanningRepository _repo;
-    private readonly IClock _clock;
-    private readonly IOptions<CityPlanningOptions> _options;
-    private readonly ICampService _campService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
-
-    public CityPlanningService(
-        ICityPlanningRepository repo,
-        IClock clock,
-        IOptions<CityPlanningOptions> options,
-        ICampService campService,
-        ITeamService teamService,
-        IUserService userService)
-    {
-        _repo = repo;
-        _clock = clock;
-        _options = options;
-        _campService = campService;
-        _teamService = teamService;
-        _userService = userService;
-    }
 
     // --- Polygon reads ---
 
     public async Task<List<CampPolygonDto>> GetCampPolygonsAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var displayData = await campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
-        var polygons = await _repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
+        var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
         return polygons
             .Where(p => displayData.ContainsKey(p.CampSeasonId))
@@ -72,17 +56,17 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<string?> GetUserDisplayNameAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         return info?.Profile?.BurnerName;
     }
 
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var displayData = await campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
-        var polygonSeasonIds = await _repo.GetCampSeasonIdsWithPolygonAsync(seasonIds, cancellationToken);
+        var polygonSeasonIds = await repo.GetCampSeasonIdsWithPolygonAsync(seasonIds, cancellationToken);
         var polygonSeasonIdSet = new HashSet<Guid>(polygonSeasonIds);
 
         return displayData
@@ -129,14 +113,14 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        var rows = await _repo.GetHistoryForCampSeasonAsync(campSeasonId, cancellationToken);
+        var rows = await repo.GetHistoryForCampSeasonAsync(campSeasonId, cancellationToken);
         if (rows.Count == 0)
         {
             return [];
         }
 
         var userIds = rows.Select(r => r.ModifiedByUserId).Distinct().ToList();
-        var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
+        var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
         return rows.Select(h =>
         {
@@ -163,8 +147,8 @@ public sealed class CityPlanningService : ICityPlanningService
         if (string.IsNullOrWhiteSpace(geoJson) || !IsValidJson(geoJson))
             throw new ArgumentException("Invalid GeoJSON.", nameof(geoJson));
 
-        var now = _clock.GetCurrentInstant();
-        return _repo.SavePolygonAndAppendHistoryAsync(
+        var now = clock.GetCurrentInstant();
+        return repo.SavePolygonAndAppendHistoryAsync(
             campSeasonId, geoJson, areaSqm, modifiedByUserId, note, now, cancellationToken);
     }
 
@@ -185,7 +169,7 @@ public sealed class CityPlanningService : ICityPlanningService
         Guid campSeasonId, Guid historyId, Guid restoredByUserId,
         CancellationToken cancellationToken = default)
     {
-        var entry = await _repo.GetHistoryEntryAsync(campSeasonId, historyId, cancellationToken)
+        var entry = await repo.GetHistoryEntryAsync(campSeasonId, historyId, cancellationToken)
             ?? throw new InvalidOperationException(
                 $"History entry {historyId} not found for CampSeason {campSeasonId}.");
 
@@ -200,8 +184,8 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var normalizedSlug = _options.Value.CityPlanningTeamSlug.ToLowerInvariant();
-        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+        var normalizedSlug = options.Value.CityPlanningTeamSlug.ToLowerInvariant();
+        var team = (await teamService.GetTeamsAsync(cancellationToken)).Values
             .FirstOrDefault(t =>
                 string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal) ||
                 string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));
@@ -217,11 +201,11 @@ public sealed class CityPlanningService : ICityPlanningService
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.IsPlacementOpen) return false;
 
-        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
         if (season is null) return false;
         if (season.Year != settings.Year) return false;
 
-        return await _campService.IsUserCampLeadAsync(userId, season.CampId, cancellationToken);
+        return await campService.IsUserCampLeadAsync(userId, season.CampId, cancellationToken);
     }
 
     // --- Settings ---
@@ -229,17 +213,17 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<CityPlanningSettingsDto> GetSettingsAsync(
         CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        var settings = await _repo.GetOrCreateSettingsAsync(
-            campSettings.PublicYear, _clock.GetCurrentInstant(), cancellationToken);
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var settings = await repo.GetOrCreateSettingsAsync(
+            campSettings.PublicYear, clock.GetCurrentInstant(), cancellationToken);
         return ToDto(settings);
     }
 
     public async Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        var now = _clock.GetCurrentInstant();
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var now = clock.GetCurrentInstant();
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s =>
             {
@@ -252,9 +236,9 @@ public sealed class CityPlanningService : ICityPlanningService
 
     public async Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        var now = _clock.GetCurrentInstant();
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var now = clock.GetCurrentInstant();
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s =>
             {
@@ -267,9 +251,9 @@ public sealed class CityPlanningService : ICityPlanningService
 
     public async Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        var now = _clock.GetCurrentInstant();
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var now = clock.GetCurrentInstant();
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s =>
             {
@@ -282,9 +266,9 @@ public sealed class CityPlanningService : ICityPlanningService
 
     public async Task CloseContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        var now = _clock.GetCurrentInstant();
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var now = clock.GetCurrentInstant();
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s =>
             {
@@ -298,11 +282,11 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task UpdateLimitZoneAsync(
         string geoJson, Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s => s.LimitZoneGeoJson = geoJson,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
     }
 
@@ -336,22 +320,22 @@ public sealed class CityPlanningService : ICityPlanningService
 
     public async Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s => s.LimitZoneGeoJson = null,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
     }
 
     public async Task UpdateOfficialZonesAsync(
         string geoJson, Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s => s.OfficialZonesGeoJson = geoJson,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
     }
 
@@ -368,26 +352,26 @@ public sealed class CityPlanningService : ICityPlanningService
 
     public async Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s => s.OfficialZonesGeoJson = null,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
     }
 
     public async Task UpdatePlacementDatesAsync(
         LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default)
     {
-        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        await _repo.MutateSettingsAsync(
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
             campSettings.PublicYear,
             s =>
             {
                 s.PlacementOpensAt = opensAt;
                 s.PlacementClosesAt = closesAt;
             },
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
     }
 
@@ -424,8 +408,8 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)
     {
         var targetYear = await GetRegistrationTargetYearAsync(cancellationToken);
-        var settings = await _repo.GetOrCreateSettingsAsync(
-            targetYear, _clock.GetCurrentInstant(), cancellationToken);
+        var settings = await repo.GetOrCreateSettingsAsync(
+            targetYear, clock.GetCurrentInstant(), cancellationToken);
         return settings.RegistrationInfo;
     }
 
@@ -434,17 +418,17 @@ public sealed class CityPlanningService : ICityPlanningService
     {
         var targetYear = await GetRegistrationTargetYearAsync(cancellationToken);
         var trimmed = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
-        await _repo.MutateSettingsAsync(
+        await repo.MutateSettingsAsync(
             targetYear,
             s => s.RegistrationInfo = trimmed,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
     }
 
     // Key registration-info to the highest open season (Register page targets it), not PublicYear.
     private async Task<int> GetRegistrationTargetYearAsync(CancellationToken ct)
     {
-        var campSettings = await _campService.GetSettingsAsync(ct);
+        var campSettings = await campService.GetSettingsAsync(ct);
         return campSettings.OpenSeasons.Count > 0
             ? campSettings.OpenSeasons.Max()
             : campSettings.PublicYear;
@@ -454,10 +438,10 @@ public sealed class CityPlanningService : ICityPlanningService
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
-        var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var displayData = await campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
-        var polygons = await _repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
+        var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
         var docs = new List<JsonDocument>();
         try

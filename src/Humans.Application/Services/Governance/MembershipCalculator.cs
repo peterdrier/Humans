@@ -10,38 +10,24 @@ using Humans.Application.Interfaces.Governance;
 
 namespace Humans.Application.Services.Governance;
 
-public sealed class MembershipCalculator : IMembershipCalculator
+public sealed class MembershipCalculator(
+    IMembershipQuery membershipQuery,
+    IUserService userService,
+    ILegalDocumentSyncService legalDocumentSyncService,
+    IServiceProvider serviceProvider,
+    IClock clock) : IMembershipCalculator
 {
     // IMembershipQuery (not ITeamService/IRoleAssignmentService) breaks DI cycle through ISystemTeamSync.
-    private readonly IMembershipQuery _membershipQuery;
-    private readonly IUserService _userService;
-    private readonly ILegalDocumentSyncService _legalDocumentSyncService;
 
     // Lazy IConsentService resolve — ConsentService depends on IMembershipCalculator.
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IClock _clock;
 
-    public MembershipCalculator(
-        IMembershipQuery membershipQuery,
-        IUserService userService,
-        ILegalDocumentSyncService legalDocumentSyncService,
-        IServiceProvider serviceProvider,
-        IClock clock)
-    {
-        _membershipQuery = membershipQuery;
-        _userService = userService;
-        _legalDocumentSyncService = legalDocumentSyncService;
-        _serviceProvider = serviceProvider;
-        _clock = clock;
-    }
-
-    private IConsentService ConsentService => _serviceProvider.GetRequiredService<IConsentService>();
+    private IConsentService ConsentService => serviceProvider.GetRequiredService<IConsentService>();
 
     public async Task<MembershipStatus> ComputeStatusAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
 
         if (info?.Profile is null)
         {
@@ -60,7 +46,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         // Active = has role assignments OR is a Volunteers-team member.
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
-        var isVolunteerMember = await _membershipQuery.IsUserMemberOfTeamAsync(
+        var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
 
         if (!hasActiveRoles && !isVolunteerMember)
@@ -88,7 +74,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         foreach (var teamId in eligibleTeamIds)
         {
-            var versions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, cancellationToken);
+            var versions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, cancellationToken);
             allRequiredVersionIds.AddRange(versions.Select(v => v.Id));
         }
 
@@ -99,7 +85,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
 
-        var isVolunteerMember = await _membershipQuery.IsUserMemberOfTeamAsync(
+        var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
 
         return new MembershipSnapshot(
@@ -122,7 +108,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid teamId,
         CancellationToken ct = default)
     {
-        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         if (requiredVersions.Count == 0)
         {
             return true;
@@ -144,8 +130,8 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid teamId,
         CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        var now = clock.GetCurrentInstant();
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, ct);
 
         return requiredVersions
@@ -161,7 +147,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
         var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
 
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, cancellationToken);
@@ -175,13 +161,13 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        return await _membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
+        return await membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
         CancellationToken cancellationToken = default)
     {
-        var usersWithActiveRoles = await _membershipQuery.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
+        var usersWithActiveRoles = await membershipQuery.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 
         var usersWithAnyExpiredConsents = await GetUsersWithAnyExpiredConsentsAsync(usersWithActiveRoles, cancellationToken);
 
@@ -206,7 +192,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
             return new HashSet<Guid>();
         }
 
-        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
 
         if (requiredVersionIds.Count == 0)
@@ -241,9 +227,9 @@ public sealed class MembershipCalculator : IMembershipCalculator
             return new HashSet<Guid>();
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
         var expiredVersions = requiredVersions
             .Where(v =>
             {
@@ -284,7 +270,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var memberships = await _membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
+        var memberships = await membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
         var teamIds = memberships.Select(m => m.TeamId).ToList();
 
         // Volunteers docs apply to everyone.
@@ -313,7 +299,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
     {
         var allIds = userIds.ToList();
 
-        var usersById = await _userService.GetUserInfosAsync(allIds, ct);
+        var usersById = await userService.GetUserInfosAsync(allIds, ct);
 
         var pendingDeletion = allIds
             .Where(id => usersById.TryGetValue(id, out var u) && u.DeletionRequestedAt != null)

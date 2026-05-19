@@ -10,28 +10,13 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.ViewComponents;
 
-public class ThingsToDoViewComponent : ViewComponent
+public class ThingsToDoViewComponent(
+    IUserService userService,
+    IShiftManagementService shiftMgmt,
+    IMembershipCalculator membershipCalculator,
+    IStringLocalizer<SharedResource> localizer,
+    ILogger<ThingsToDoViewComponent> logger) : ViewComponent
 {
-    private readonly IUserService _userService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ILogger<ThingsToDoViewComponent> _logger;
-
-    public ThingsToDoViewComponent(
-        IUserService userService,
-        IShiftManagementService shiftMgmt,
-        IMembershipCalculator membershipCalculator,
-        IStringLocalizer<SharedResource> localizer,
-        ILogger<ThingsToDoViewComponent> logger)
-    {
-        _userService = userService;
-        _shiftMgmt = shiftMgmt;
-        _membershipCalculator = membershipCalculator;
-        _localizer = localizer;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         bool isVolunteerMember,
@@ -42,8 +27,8 @@ public class ThingsToDoViewComponent : ViewComponent
 
         try
         {
-            var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
-            var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
+            var profile = (await userService.GetUserInfoAsync(userId))?.Profile;
+            var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
 
             // Hidden/derived required fields can cap real-user completion in the
             // 90–95% range. Treat 80% as "complete enough" so the nudge stops
@@ -56,15 +41,15 @@ public class ThingsToDoViewComponent : ViewComponent
             model.Items.Add(new TodoItem
             {
                 Key = "profile",
-                Title = _localizer["Todo_Profile_Title"].Value,
+                Title = localizer["Todo_Profile_Title"].Value,
                 Description = profileComplete
-                    ? _localizer["Todo_Profile_Done"].Value
+                    ? localizer["Todo_Profile_Done"].Value
                     : string.Format(CultureInfo.CurrentCulture,
-                        _localizer["Dashboard_ProfileCompletionPercent"].Value,
+                        localizer["Dashboard_ProfileCompletionPercent"].Value,
                         profileCompletionPercent),
                 IsDone = profileComplete,
                 ActionUrl = profileComplete ? null : Url.Action("Edit", "Profile"),
-                ActionText = profileComplete ? null : _localizer["Todo_Profile_Action"].Value,
+                ActionText = profileComplete ? null : localizer["Todo_Profile_Action"].Value,
                 IconClass = "fa-solid fa-user",
                 PercentComplete = profileComplete ? null : profileCompletionPercent,
             });
@@ -75,14 +60,14 @@ public class ThingsToDoViewComponent : ViewComponent
                 model.Items.Add(new TodoItem
                 {
                     Key = "consents",
-                    Title = _localizer["Todo_Consents_Title"].Value,
+                    Title = localizer["Todo_Consents_Title"].Value,
                     Description = consentsComplete
-                        ? _localizer["Todo_Consents_Done"].Value
-                        : string.Format(CultureInfo.CurrentCulture, _localizer["Todo_Consents_Pending"].Value,
+                        ? localizer["Todo_Consents_Done"].Value
+                        : string.Format(CultureInfo.CurrentCulture, localizer["Todo_Consents_Pending"].Value,
                             membershipSnapshot.PendingConsentCount, membershipSnapshot.RequiredConsentCount),
                     IsDone = consentsComplete,
                     ActionUrl = consentsComplete ? null : Url.Action("Index", "Consent"),
-                    ActionText = consentsComplete ? null : _localizer["Todo_Consents_Action"].Value,
+                    ActionText = consentsComplete ? null : localizer["Todo_Consents_Action"].Value,
                     IconClass = "fa-solid fa-file-signature"
                 });
             }
@@ -96,10 +81,10 @@ public class ThingsToDoViewComponent : ViewComponent
                 model.Items.Add(new TodoItem
                 {
                     Key = "consent-check",
-                    Title = _localizer["Todo_ConsentCheck_Title"].Value,
+                    Title = localizer["Todo_ConsentCheck_Title"].Value,
                     Description = consentCheckCleared
-                        ? _localizer["Todo_ConsentCheck_Done"].Value
-                        : _localizer["Todo_ConsentCheck_Pending"].Value,
+                        ? localizer["Todo_ConsentCheck_Done"].Value
+                        : localizer["Todo_ConsentCheck_Pending"].Value,
                     IsDone = consentCheckCleared,
                     ActionUrl = null,
                     ActionText = null,
@@ -113,31 +98,31 @@ public class ThingsToDoViewComponent : ViewComponent
                 var needsShiftInfo = false;
                 try
                 {
-                    var shiftProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+                    var shiftProfile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
                     needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);
+                    logger.LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);
                 }
 
                 model.Items.Add(new TodoItem
                 {
                     Key = "shift-info",
-                    Title = _localizer["Todo_ShiftInfo_Title"].Value,
+                    Title = localizer["Todo_ShiftInfo_Title"].Value,
                     Description = needsShiftInfo
-                        ? _localizer["Todo_ShiftInfo_Pending"].Value
-                        : _localizer["Todo_ShiftInfo_Done"].Value,
+                        ? localizer["Todo_ShiftInfo_Pending"].Value
+                        : localizer["Todo_ShiftInfo_Done"].Value,
                     IsDone = !needsShiftInfo,
                     ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "Profile") : null,
-                    ActionText = needsShiftInfo ? _localizer["Todo_ShiftInfo_Action"].Value : null,
+                    ActionText = needsShiftInfo ? localizer["Todo_ShiftInfo_Action"].Value : null,
                     IconClass = "fa-solid fa-calendar-check"
                 });
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load ThingsToDo data for user {UserId}", userId);
+            logger.LogError(ex, "Failed to load ThingsToDo data for user {UserId}", userId);
             return Content(string.Empty);
         }
 

@@ -37,22 +37,11 @@ namespace Humans.Application.Architecture;
 /// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-public sealed class GrandfatheredAttribute : Attribute
+public sealed class GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef)
+    : Attribute
 {
-    public GrandfatheredAttribute(
-        string ruleId,
-        string justification,
-        string since,
-        string issueRef)
-    {
-        RuleId = ruleId;
-        Justification = justification;
-        Since = since;
-        IssueRef = issueRef;
-    }
-
-    public string RuleId { get; }
-    public string Justification { get; }
-    public string Since { get; }
-    public string IssueRef { get; }
+    public string RuleId { get; } = ruleId;
+    public string Justification { get; } = justification;
+    public string Since { get; } = since;
+    public string IssueRef { get; } = issueRef;
 }

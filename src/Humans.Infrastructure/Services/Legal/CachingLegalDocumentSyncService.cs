@@ -36,10 +36,13 @@ namespace Humans.Infrastructure.Services.Legal;
 /// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> itself.
 /// </para>
 /// </remarks>
-public sealed class CachingLegalDocumentSyncService
-    : TrackedCache<Guid, LegalDocumentInfo>,
-      ILegalDocumentSyncService,
-      ILegalDocumentCacheInvalidator
+public sealed class CachingLegalDocumentSyncService(
+    ILegalDocumentRepository repository,
+    IServiceScopeFactory scopeFactory,
+    IClock clock,
+    ILogger<CachingLegalDocumentSyncService> logger)
+    : TrackedCache<Guid, LegalDocumentInfo>("Legal.LegalDocumentInfo", warmOnStartup: true, logger),
+        ILegalDocumentSyncService, ILegalDocumentCacheInvalidator
 {
     /// <summary>
     /// DI service key under which the undecorated (inner)
@@ -49,28 +52,12 @@ public sealed class CachingLegalDocumentSyncService
     /// </summary>
     public const string InnerServiceKey = "legal-document-sync-inner";
 
-    private readonly ILegalDocumentRepository _repository;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IClock _clock;
-    private readonly ILogger<CachingLegalDocumentSyncService> _logger;
+    private readonly ILogger<CachingLegalDocumentSyncService> _logger = logger;
 
     // Version-id → document-id index. Rebuilt with the main dict on warm so
     // GetVersionByIdAsync can answer without scanning every document.
     private volatile IReadOnlyDictionary<Guid, Guid> _versionToDocument =
         new Dictionary<Guid, Guid>();
-
-    public CachingLegalDocumentSyncService(
-        ILegalDocumentRepository repository,
-        IServiceScopeFactory scopeFactory,
-        IClock clock,
-        ILogger<CachingLegalDocumentSyncService> logger)
-        : base("Legal.LegalDocumentInfo", warmOnStartup: true, logger)
-    {
-        _repository = repository;
-        _scopeFactory = scopeFactory;
-        _clock = clock;
-        _logger = logger;
-    }
 
     // ==========================================================================
     // Reads served from cache
@@ -100,7 +87,7 @@ public sealed class CachingLegalDocumentSyncService
         Guid teamId, CancellationToken cancellationToken = default)
     {
         var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         return docs.Values
             .Where(d => d.TeamId == teamId)
@@ -121,7 +108,7 @@ public sealed class CachingLegalDocumentSyncService
         CancellationToken cancellationToken = default)
     {
         var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         return docs.Values
             .Select(d =>
@@ -227,7 +214,7 @@ public sealed class CachingLegalDocumentSyncService
         // stitched here via ITeamService so the cache warm path stays
         // free of the cross-domain nav (docs/sections/LegalAndConsent.md
         // "Touch-and-clean guidance").
-        var docs = await _repository.GetActiveRequiredDocumentsAsync(ct);
+        var docs = await repository.GetActiveRequiredDocumentsAsync(ct);
 
         // Resolve team display names via ITeamService — scoped, so
         // pulled through a fresh DI scope per-warm.
@@ -254,7 +241,7 @@ public sealed class CachingLegalDocumentSyncService
             return new Dictionary<Guid, string>();
 
         var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
         var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
         return teams.ToDictionary(kv => kv.Key, kv => kv.Value.Name);
@@ -312,7 +299,7 @@ public sealed class CachingLegalDocumentSyncService
 
     private async Task<TResult> WithInner<TResult>(Func<ILegalDocumentSyncService, Task<TResult>> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider
             .GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
         return await action(inner);

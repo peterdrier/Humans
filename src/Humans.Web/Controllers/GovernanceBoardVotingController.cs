@@ -13,36 +13,23 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Governance/BoardVoting")]
-public class GovernanceBoardVotingController : HumansControllerBase
+public class GovernanceBoardVotingController(
+    IUserService userService,
+    IApplicationDecisionService applicationDecisionService,
+    ILogger<GovernanceBoardVotingController> logger,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly ILogger<GovernanceBoardVotingController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public GovernanceBoardVotingController(
-        IUserService userService,
-        IApplicationDecisionService applicationDecisionService,
-        ILogger<GovernanceBoardVotingController> logger,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService)
-    {
-        _applicationDecisionService = applicationDecisionService;
-        _logger = logger;
-        _localizer = localizer;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> BoardVoting(CancellationToken ct)
     {
-        var (applications, boardMembers) = await _applicationDecisionService.GetBoardVotingDashboardAsync(ct);
+        var (applications, boardMembers) = await applicationDecisionService.GetBoardVotingDashboardAsync(ct);
 
         var viewModel = new BoardVotingDashboardViewModel
         {
             BoardMembers = boardMembers
                 .Select(m => new BoardVoteMemberViewModel
                 {
-                    UserId = m.UserId,
-                    DisplayName = m.DisplayName
+                    UserId = m.UserId
                 })
                 .ToList(),
             Applications = applications.Select(a =>
@@ -51,8 +38,6 @@ public class GovernanceBoardVotingController : HumansControllerBase
                 {
                     ApplicationId = a.ApplicationId,
                     UserId = a.UserId,
-                    DisplayName = a.UserDisplayName,
-                    ProfilePictureUrl = a.UserProfilePictureUrl,
                     MembershipTier = a.MembershipTier,
                     ApplicationMotivation = a.ApplicationMotivation,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
@@ -76,7 +61,7 @@ public class GovernanceBoardVotingController : HumansControllerBase
     [HttpGet("{applicationId:guid}")]
     public async Task<IActionResult> BoardVotingDetail(Guid applicationId, CancellationToken ct)
     {
-        var application = await _applicationDecisionService.GetBoardVotingDetailAsync(applicationId, ct);
+        var application = await applicationDecisionService.GetBoardVotingDetailAsync(applicationId, ct);
         if (application is null)
             return NotFound();
 
@@ -91,8 +76,6 @@ public class GovernanceBoardVotingController : HumansControllerBase
         {
             ApplicationId = application.ApplicationId,
             UserId = application.UserId,
-            DisplayName = application.DisplayName,
-            ProfilePictureUrl = application.ProfilePictureUrl,
             Email = application.Email,
             FirstName = application.FirstName,
             LastName = application.LastName,
@@ -109,12 +92,11 @@ public class GovernanceBoardVotingController : HumansControllerBase
                 .Select(v => new BoardVoteDetailItemViewModel
                 {
                     BoardMemberUserId = v.BoardMemberUserId,
-                    DisplayName = v.BoardMemberDisplayName ?? string.Empty,
                     Vote = v.Vote,
                     Note = v.Note,
                     VotedAt = v.VotedAt.ToDateTimeUtc()
                 })
-                .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(v => v.VotedAt)
                 .ToList(),
             CurrentUserVote = currentVote?.Vote,
             CurrentUserNote = currentVote?.Note,
@@ -135,27 +117,27 @@ public class GovernanceBoardVotingController : HumansControllerBase
 
         try
         {
-            var result = await _applicationDecisionService.CastBoardVoteAsync(
+            var result = await applicationDecisionService.CastBoardVoteAsync(
                 applicationId, currentUser.Id, vote, note);
 
             if (!result.Success)
             {
                 SetError(result.ErrorKey switch
                 {
-                    "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                    "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
-                    _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
+                    "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
+                    "NotSubmitted" => localizer["BoardVoting_ApplicationNotVotable"].Value,
+                    _ => localizer["BoardVoting_ApplicationNotVotable"].Value
                 });
                 return RedirectToAction(nameof(BoardVoting));
             }
 
-            SetSuccess(_localizer["BoardVoting_VoteSaved"].Value);
+            SetSuccess(localizer["BoardVoting_VoteSaved"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to cast board vote for application {ApplicationId}", applicationId);
-            SetError(_localizer["BoardVoting_ApplicationNotVotable"].Value);
+            logger.LogError(ex, "Failed to cast board vote for application {ApplicationId}", applicationId);
+            SetError(localizer["BoardVoting_ApplicationNotVotable"].Value);
             return RedirectToAction(nameof(BoardVoting));
         }
     }
@@ -179,14 +161,14 @@ public class GovernanceBoardVotingController : HumansControllerBase
 
         if (meetingDate is null)
         {
-            SetError(_localizer["BoardVoting_MeetingDateRequired"].Value);
+            SetError(localizer["BoardVoting_MeetingDateRequired"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
-        var hasVotes = await _applicationDecisionService.HasBoardVotesAsync(model.ApplicationId);
+        var hasVotes = await applicationDecisionService.HasBoardVotesAsync(model.ApplicationId);
         if (!hasVotes)
         {
-            SetError(_localizer["BoardVoting_NoVotes"].Value);
+            SetError(localizer["BoardVoting_NoVotes"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
@@ -195,37 +177,37 @@ public class GovernanceBoardVotingController : HumansControllerBase
             ApplicationDecisionResult result;
             if (model.Approved)
             {
-                result = await _applicationDecisionService.ApproveAsync(
+                result = await applicationDecisionService.ApproveAsync(
                     model.ApplicationId, currentUser.Id,
                     model.DecisionNote, meetingDate);
             }
             else
             {
-                result = await _applicationDecisionService.RejectAsync(
+                result = await applicationDecisionService.RejectAsync(
                     model.ApplicationId, currentUser.Id,
                     model.DecisionNote ?? string.Empty, meetingDate);
             }
 
             if (!result.Success)
             {
-                _logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
+                logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
                     model.ApplicationId, result.ErrorKey);
                 SetError(result.ErrorKey switch
                 {
-                    "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                    "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
-                    "ConcurrencyConflict" => _localizer["BoardVoting_ConcurrencyConflict"].Value,
-                    _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
+                    "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
+                    "NotSubmitted" => localizer["BoardVoting_ApplicationNotVotable"].Value,
+                    "ConcurrencyConflict" => localizer["BoardVoting_ConcurrencyConflict"].Value,
+                    _ => localizer["BoardVoting_ApplicationNotVotable"].Value
                 });
                 return RedirectToAction(nameof(BoardVoting));
             }
 
-            SetSuccess(_localizer["BoardVoting_Finalized"].Value);
+            SetSuccess(localizer["BoardVoting_Finalized"].Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to finalize application {ApplicationId}", model.ApplicationId);
-            SetError(_localizer["BoardVoting_ApplicationNotVotable"].Value);
+            logger.LogError(ex, "Failed to finalize application {ApplicationId}", model.ApplicationId);
+            SetError(localizer["BoardVoting_ApplicationNotVotable"].Value);
         }
         return RedirectToAction(nameof(BoardVoting));
     }

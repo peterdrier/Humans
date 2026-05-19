@@ -49,24 +49,15 @@ public class QueryStatistics
 /// <summary>
 /// Immutable snapshot of statistics for a single operation + table combination.
 /// </summary>
-public sealed class QueryStatEntry
+public sealed class QueryStatEntry(string operation, string table, long count, double totalMs, double maxMs)
 {
-    public string Operation { get; }
-    public string Table { get; }
-    public long Count { get; private set; }
-    public double TotalMilliseconds { get; private set; }
-    public double MaxMilliseconds { get; private set; }
+    public string Operation { get; } = operation;
+    public string Table { get; } = table;
+    public long Count { get; private set; } = count;
+    public double TotalMilliseconds { get; private set; } = totalMs;
+    public double MaxMilliseconds { get; private set; } = maxMs;
 
     public double AverageMilliseconds => Count > 0 ? TotalMilliseconds / Count : 0;
-
-    public QueryStatEntry(string operation, string table, long count, double totalMs, double maxMs)
-    {
-        Operation = operation;
-        Table = table;
-        Count = count;
-        TotalMilliseconds = totalMs;
-        MaxMilliseconds = maxMs;
-    }
 
     internal QueryStatEntry Add(double elapsedMs)
     {

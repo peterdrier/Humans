@@ -17,34 +17,21 @@ namespace Humans.Application.Services.Notifications;
 /// Cross-domain display names are stitched via <c>IUserService.GetByIdsAsync</c>
 /// (design-rules §6).
 /// </summary>
-public sealed class NotificationInboxService : INotificationInboxService, IUserDataContributor
+public sealed class NotificationInboxService(
+    INotificationRepository repo,
+    IUserService userService,
+    IClock clock,
+    IMemoryCache cache) : INotificationInboxService, IUserDataContributor
 {
-    private readonly INotificationRepository _repo;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
-
-    public NotificationInboxService(
-        INotificationRepository repo,
-        IUserService userService,
-        IClock clock,
-        IMemoryCache cache)
-    {
-        _repo = repo;
-        _userService = userService;
-        _clock = clock;
-        _cache = cache;
-    }
-
     public async Task<NotificationInboxResult> GetInboxAsync(
         Guid userId, string? search, string filter, string tab,
         CancellationToken ct = default)
     {
         var (parsedFilter, effectiveTab) = ParseFilterAndTab(filter, tab);
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var cutoff = now - Duration.FromDays(7);
 
-        var recipients = await _repo.GetInboxAsync(
+        var recipients = await repo.GetInboxAsync(
             userId, search, parsedFilter, effectiveTab, cutoff, ct);
 
         var displayNames = await LoadDisplayNamesAsync(recipients, ct);
@@ -80,7 +67,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid userId,
         CancellationToken ct = default)
     {
-        var recipients = await _repo.GetPopupAsync(userId, ct);
+        var recipients = await repo.GetPopupAsync(userId, ct);
 
         var displayNames = await LoadDisplayNamesAsync(recipients, ct);
 
@@ -108,7 +95,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid notificationId, Guid userId,
         CancellationToken ct = default)
     {
-        var outcome = await _repo.ResolveAsync(notificationId, userId, _clock.GetCurrentInstant(), ct);
+        var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
         if (outcome.Success)
             InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
@@ -118,7 +105,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid notificationId, Guid userId,
         CancellationToken ct = default)
     {
-        var outcome = await _repo.DismissAsync(notificationId, userId, _clock.GetCurrentInstant(), ct);
+        var outcome = await repo.DismissAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
         if (outcome.Success)
             InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
@@ -128,7 +115,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid notificationId, Guid userId,
         CancellationToken ct = default)
     {
-        var outcome = await _repo.MarkReadAsync(notificationId, userId, _clock.GetCurrentInstant(), ct);
+        var outcome = await repo.MarkReadAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
         if (outcome.Success)
             InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
@@ -138,7 +125,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid userId,
         CancellationToken ct = default)
     {
-        var updated = await _repo.MarkAllReadAsync(userId, _clock.GetCurrentInstant(), ct);
+        var updated = await repo.MarkAllReadAsync(userId, clock.GetCurrentInstant(), ct);
         if (updated > 0)
             InvalidateBadgeCaches([userId]);
     }
@@ -148,7 +135,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         CancellationToken ct = default)
     {
         if (notificationIds.Count == 0) return;
-        var affected = await _repo.BulkResolveAsync(notificationIds, userId, _clock.GetCurrentInstant(), ct);
+        var affected = await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), ct);
         if (affected.Count > 0)
             InvalidateBadgeCaches(affected);
     }
@@ -158,7 +145,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         CancellationToken ct = default)
     {
         if (notificationIds.Count == 0) return;
-        var affected = await _repo.BulkDismissAsync(notificationIds, userId, _clock.GetCurrentInstant(), ct);
+        var affected = await repo.BulkDismissAsync(notificationIds, userId, clock.GetCurrentInstant(), ct);
         if (affected.Count > 0)
             InvalidateBadgeCaches(affected);
     }
@@ -167,7 +154,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid notificationId, Guid userId,
         CancellationToken ct = default)
     {
-        var outcome = await _repo.ClickThroughAsync(notificationId, userId, _clock.GetCurrentInstant(), ct);
+        var outcome = await repo.ClickThroughAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
         if (outcome.NotFound) return null;
         if (outcome.MarkedRead)
             InvalidateBadgeCaches([userId]);
@@ -178,18 +165,18 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         Guid userId, NotificationSource source,
         CancellationToken ct = default)
     {
-        var updated = await _repo.ResolveBySourceAsync(userId, source, _clock.GetCurrentInstant(), ct);
+        var updated = await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct);
         if (updated)
             InvalidateBadgeCaches([userId]);
     }
 
     public Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default) =>
-        _repo.GetUnreadBadgeCountsAsync(userId, ct);
+        repo.GetUnreadBadgeCountsAsync(userId, ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var recipients = await _repo.GetAllForUserContributorAsync(userId, ct);
+        var recipients = await repo.GetAllForUserContributorAsync(userId, ct);
 
         var shaped = recipients.Select(nr => new
         {
@@ -246,7 +233,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
         return users.ToDictionary(kv => kv.Key, kv => kv.Value.DisplayName);
     }
 
@@ -287,7 +274,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
     {
         foreach (var userId in userIds)
         {
-            _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
+            cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
         }
     }
 }

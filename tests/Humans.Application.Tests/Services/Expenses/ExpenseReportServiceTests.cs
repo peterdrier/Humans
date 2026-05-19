@@ -11,44 +11,35 @@ using Humans.Application.Services.Expenses;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Expenses;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Expenses;
 
-public class ExpenseReportServiceTests
+public sealed class ExpenseReportServiceTests : ServiceTestHarness
 {
     private static readonly Instant FakeNow = Instant.FromUtc(2026, 5, 10, 12, 0);
 
-    private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IProfileService _profileService;
-    private readonly IAuditLogService _auditLogService;
     private readonly ExpenseReportService _sut;
 
     public ExpenseReportServiceTests()
+        : base(FakeNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _factory = new TestDbContextFactory(options);
-        _expenseRepo = new ExpenseRepository(_factory, NullLogger<ExpenseRepository>.Instance);
+        _expenseRepo = new ExpenseRepository(DbFactory, NullLogger<ExpenseRepository>.Instance);
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         _profileService = Substitute.For<IProfileService>();
-        _auditLogService = Substitute.For<IAuditLogService>();
 
         _sut = new ExpenseReportService(
             _expenseRepo,
@@ -57,9 +48,9 @@ public class ExpenseReportServiceTests
             _teamService,
             _userService,
             _profileService,
-            _auditLogService,
+            AuditLog,
             Substitute.For<IHoldedClient>(),
-            new FakeClock(FakeNow),
+            Clock,
             NullLogger<ExpenseReportService>.Instance);
     }
 
@@ -118,7 +109,7 @@ public class ExpenseReportServiceTests
         await _sut.CreateDraftAsync(Guid.NewGuid(), category.Id, null);
 
         // No audit on mere draft creation
-        await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, Guid.Empty, null!, Guid.Empty);
     }
 
@@ -395,7 +386,7 @@ public class ExpenseReportServiceTests
             Arg.Any<Stream>(),
             Arg.Any<CancellationToken>());
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseAttachmentUploaded,
             "ExpenseReport", id,
             Arg.Any<string>(),
@@ -513,7 +504,7 @@ public class ExpenseReportServiceTests
         await _fileStorage.Received(1).DeleteAsync(
             $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
             Arg.Any<CancellationToken>());
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseAttachmentRemoved,
             "ExpenseReport", id,
             Arg.Any<string>(),
@@ -618,7 +609,7 @@ public class ExpenseReportServiceTests
 
         await _sut.SubmitAsync(id, submitter);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseSubmit,
             "ExpenseReport", id,
             Arg.Any<string>(),
@@ -686,7 +677,7 @@ public class ExpenseReportServiceTests
 
         await _sut.WithdrawAsync(reportId, submitter);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseWithdraw,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
@@ -900,7 +891,7 @@ public class ExpenseReportServiceTests
 
         await _sut.CoordinatorEndorseAsync(reportId, coordinator);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseEndorse,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
@@ -960,7 +951,7 @@ public class ExpenseReportServiceTests
         loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
         loaded.LastRejectionReason.Should().Be("Missing invoice");
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseCoordinatorReject,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
@@ -1022,7 +1013,7 @@ public class ExpenseReportServiceTests
         loaded.ApprovedByUserId.Should().Be(actor);
         loaded.ApprovedAt.Should().Be(FakeNow);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseApprove,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
@@ -1041,11 +1032,11 @@ public class ExpenseReportServiceTests
 
         await _sut.ApproveAsync(reportId, actor, overrideCatId);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseApprove,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseCategoryOverride,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
@@ -1093,7 +1084,7 @@ public class ExpenseReportServiceTests
         loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
         loaded.LastRejectionReason.Should().Be("Wrong category");
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseReject,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
@@ -1147,10 +1138,10 @@ public class ExpenseReportServiceTests
         (await _sut.GetAsync(id2))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
         (await _sut.GetAsync(id3))!.Status.Should().Be(ExpenseReportStatus.Submitted);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseSepaSent, "ExpenseReport", id1,
             Arg.Any<string>(), actor);
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseSepaSent, "ExpenseReport", id2,
             Arg.Any<string>(), actor);
     }
@@ -1171,10 +1162,10 @@ public class ExpenseReportServiceTests
         flipped.Should().BeEquivalentTo([aId]);
         (await _sut.GetAsync(bId))!.Status.Should().Be(ExpenseReportStatus.Submitted);
 
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseSepaSent, "ExpenseReport", aId,
             Arg.Any<string>(), actor);
-        await _auditLogService.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             AuditAction.ExpenseSepaSent, "ExpenseReport", bId,
             Arg.Any<string>(), actor);
     }
@@ -1191,7 +1182,7 @@ public class ExpenseReportServiceTests
         ok.Should().BeTrue();
 
         (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Paid);
-        await _auditLogService.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ExpensePaid, "ExpenseReport", reportId,
             Arg.Any<string>(),
             "ExpensePaidJob");
@@ -1398,7 +1389,7 @@ public class ExpenseReportServiceTests
             CreatedAt = now,
             UpdatedAt = now
         };
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         ctx.ExpenseReports.Add(report);
         await ctx.SaveChangesAsync();
     }

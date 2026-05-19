@@ -43,7 +43,6 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     private async Task<LegalDocument> SeedDocumentAsync(

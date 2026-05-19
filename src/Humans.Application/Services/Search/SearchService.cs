@@ -1,40 +1,33 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Search;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Microsoft.Extensions.Configuration;
 
 namespace Humans.Application.Services.Search;
 
 /// <summary>
-/// Names-only search orchestrator: each section runs its own ILike, this scores hits and returns four buckets (unsorted).
+/// Names-only search orchestrator: each section runs its own ILike, this scores hits and returns five buckets (unsorted).
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
-public sealed class SearchService : ISearchService
+public sealed class SearchService(
+    IUserService userService,
+    ITeamService teamService,
+    ICampService campService,
+    IShiftManagementService shiftService,
+    IEventService eventService,
+    IConfiguration configuration) : ISearchService
 {
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly ICampService _campService;
-    private readonly IShiftManagementService _shiftService;
-
     // Name-match scoring: exact > prefix > contains.
     private const int ScoreExactName = 100;
     private const int ScorePrefixName = 80;
     private const int ScoreContainsName = 60;
 
-    public SearchService(
-        IUserService userService,
-        ITeamService teamService,
-        ICampService campService,
-        IShiftManagementService shiftService)
-    {
-        _userService = userService;
-        _teamService = teamService;
-        _campService = campService;
-        _shiftService = shiftService;
-    }
+    private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");
 
     public async Task<GlobalSearchResults> SearchAsync(
         string query,
@@ -47,6 +40,7 @@ public sealed class SearchService : ISearchService
         {
             return new GlobalSearchResults(
                 trimmed,
+                [],
                 [],
                 [],
                 [],
@@ -65,29 +59,33 @@ public sealed class SearchService : ISearchService
         var shifts = onlyType is null or SearchResultType.Shift
             ? await SearchShiftsAsync(trimmed, perTypeLimit, ct)
             : Array.Empty<GlobalSearchResult>();
+        var events = _eventsFeatureEnabled && onlyType is null or SearchResultType.Event
+            ? await SearchEventsAsync(trimmed, perTypeLimit, ct)
+            : Array.Empty<GlobalSearchResult>();
 
-        return new GlobalSearchResults(trimmed, humans, teams, camps, shifts);
+        return new GlobalSearchResults(trimmed, humans, teams, camps, shifts, events);
     }
 
     private async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
         string query, int limit, CancellationToken ct)
     {
         // Public surface only — admin fields never reach /Search regardless of role.
-        return await _userService.SearchUsersAsync(
+        return await userService.SearchUsersAsync(
             query, PersonSearchFields.PublicAll, limit, ct);
     }
 
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchTeamsAsync(
         string query, int limit, CancellationToken ct)
     {
-        var hits = await _teamService.SearchAsync(query, limit, ct);
+        var hits = await teamService.SearchAsync(query, limit, ct);
+        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(t => new GlobalSearchResult(
                 Type: SearchResultType.Team,
                 Title: t.Name,
                 Subtitle: t.Slug,
                 Url: $"/Teams/{t.Slug}",
-                Score: ScoreNameField(t.Name, query)))
+                Score: isGuidQuery ? ScoreExactName : ScoreNameField(t.Name, query)))
             .Where(r => r.Score > 0)
             .ToList();
     }
@@ -95,14 +93,15 @@ public sealed class SearchService : ISearchService
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchCampsAsync(
         string query, int limit, CancellationToken ct)
     {
-        var hits = await _campService.SearchAsync(query, limit, ct);
+        var hits = await campService.SearchAsync(query, limit, ct);
+        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(c => new GlobalSearchResult(
                 Type: SearchResultType.Camp,
                 Title: c.Name,
                 Subtitle: c.Slug,
                 Url: $"/Camps/{c.Slug}",
-                Score: ScoreNameField(c.Name, query)))
+                Score: isGuidQuery ? ScoreExactName : ScoreNameField(c.Name, query)))
             .Where(r => r.Score > 0)
             .ToList();
     }
@@ -111,15 +110,44 @@ public sealed class SearchService : ISearchService
         string query, int limit, CancellationToken ct)
     {
         // Hits are Rotas (named shift groupings), not individual Shift rows (which have no title).
-        var hits = await _shiftService.SearchAsync(query, limit, ct);
+        var hits = await shiftService.SearchAsync(query, limit, ct);
+        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(r => new GlobalSearchResult(
                 Type: SearchResultType.Shift,
                 Title: r.Name,
                 Subtitle: r.TeamName,
                 Url: $"/Shifts?departmentId={r.TeamId}",
-                Score: ScoreNameField(r.Name, query)))
+                Score: isGuidQuery ? ScoreExactName : ScoreNameField(r.Name, query)))
             .Where(r => r.Score > 0)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<GlobalSearchResult>> SearchEventsAsync(
+        string query, int limit, CancellationToken ct)
+    {
+        // Reuse the public Browse query — Approved-only, filtered server-side by title/description.
+        // We re-score on Title here so the global "exact > prefix > contains" rubric still ranks the
+        // bucket; rows that only matched via Description fall through to a contains score so they
+        // still appear (matches what users expect from event search, which is more free-form than
+        // the other entity types).
+        var hits = await eventService.GetApprovedEventsAsync(
+            campId: null, venueId: null, categoryId: null,
+            q: query, excludedSlugs: Array.Empty<string>(), ct);
+
+        return hits
+            .Select(e =>
+            {
+                var titleScore = ScoreNameField(e.Title, query);
+                return new GlobalSearchResult(
+                    Type: SearchResultType.Event,
+                    Title: e.Title,
+                    Subtitle: e.Category?.Name ?? string.Empty,
+                    Url: $"/Events/Browse?q={Uri.EscapeDataString(e.Title)}",
+                    Score: titleScore > 0 ? titleScore : ScoreContainsName);
+            })
+            .OrderByDescending(r => r.Score) // arch:db-sort-ok top-N relevance selector
+            .Take(limit)
             .ToList();
     }
 

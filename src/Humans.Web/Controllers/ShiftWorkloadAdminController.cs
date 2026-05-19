@@ -10,20 +10,13 @@ namespace Humans.Web.Controllers;
 /// <summary>Site-wide workload dashboard (read-only). see #734.</summary>
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 [Route("Shifts/Admin/Workload")]
-public class ShiftWorkloadAdminController : HumansControllerBase
+public class ShiftWorkloadAdminController(IUserService userService, IWorkloadService workloadService)
+    : HumansControllerBase(userService)
 {
-    private readonly IWorkloadService _workloadService;
-
-    public ShiftWorkloadAdminController(IUserService userService, IWorkloadService workloadService)
-        : base(userService)
-    {
-        _workloadService = workloadService;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var report = await _workloadService.GetForActiveEventAsync(ct);
+        var report = await workloadService.GetForActiveEventAsync(ct);
         return View(SortForDisplay(report));
     }
 

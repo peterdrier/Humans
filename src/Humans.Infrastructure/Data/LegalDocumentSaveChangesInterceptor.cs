@@ -35,11 +35,10 @@ namespace Humans.Infrastructure.Data;
 /// cache miss reloads from DB.
 /// </para>
 /// </remarks>
-public sealed class LegalDocumentSaveChangesInterceptor : SaveChangesInterceptor
+public sealed class LegalDocumentSaveChangesInterceptor(
+    IServiceProvider services,
+    ILogger<LegalDocumentSaveChangesInterceptor> logger) : SaveChangesInterceptor
 {
-    private readonly IServiceProvider _services;
-    private readonly ILogger<LegalDocumentSaveChangesInterceptor> _logger;
-
     // Per-context snapshot collected in SavingChangesAsync (before commit, while
     // Deleted entries are still in the ChangeTracker) and consumed in
     // SavedChangesAsync (after commit, when Added/Modified → Unchanged and
@@ -49,14 +48,6 @@ public sealed class LegalDocumentSaveChangesInterceptor : SaveChangesInterceptor
     // SavedChangesAsync never fires.
     private readonly ConditionalWeakTable<DbContext, object> _pending = new();
     private static readonly object PendingMarker = new();
-
-    public LegalDocumentSaveChangesInterceptor(
-        IServiceProvider services,
-        ILogger<LegalDocumentSaveChangesInterceptor> logger)
-    {
-        _services = services;
-        _logger = logger;
-    }
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
@@ -81,7 +72,7 @@ public sealed class LegalDocumentSaveChangesInterceptor : SaveChangesInterceptor
         if (eventData.Context is { } context && _pending.TryGetValue(context, out _))
         {
             _pending.Remove(context);
-            var invalidator = _services.GetService<ILegalDocumentCacheInvalidator>();
+            var invalidator = services.GetService<ILegalDocumentCacheInvalidator>();
             if (invalidator is not null)
             {
                 try
@@ -90,7 +81,7 @@ public sealed class LegalDocumentSaveChangesInterceptor : SaveChangesInterceptor
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogError(ex,
+                    logger.LogError(ex,
                         "LegalDocumentSaveChangesInterceptor: cache invalidation failed after SaveChanges");
                 }
             }

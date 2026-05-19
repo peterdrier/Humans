@@ -11,17 +11,10 @@ namespace Humans.Infrastructure.Jobs;
 /// and ApprovedAt != null to the Paid state.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 120)]
-public class ExpensePaidPollingJob : IRecurringJob
+public class ExpensePaidPollingJob(IExpenseReportService expenseService) : IRecurringJob
 {
     private const int BatchSize = 50;
 
-    private readonly IExpenseReportService _expenseService;
-
-    public ExpensePaidPollingJob(IExpenseReportService expenseService)
-    {
-        _expenseService = expenseService;
-    }
-
     public Task ExecuteAsync(CancellationToken cancellationToken = default) =>
-        _expenseService.PollHoldedPaidStatusAsync(BatchSize, cancellationToken);
+        expenseService.PollHoldedPaidStatusAsync(BatchSize, cancellationToken);
 }

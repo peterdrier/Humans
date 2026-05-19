@@ -14,43 +14,22 @@ using Humans.Application.Interfaces.Profiles;
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>4-step @nobodies.team email provisioning flow. Used by HumanController (Admin) and TeamAdminController (Coordinators).</summary>
-public sealed class EmailProvisioningService : IEmailProvisioningService
+public sealed class EmailProvisioningService(
+    IUserService userService,
+    IGoogleWorkspaceUserService workspaceUserService,
+    IUserEmailService userEmailService,
+    ITeamService teamService,
+    IEmailService emailService,
+    INotificationService notificationService,
+    IAuditLogService auditLogService,
+    ILogger<EmailProvisioningService> logger) : IEmailProvisioningService
 {
-    private readonly IUserService _userService;
-    private readonly IGoogleWorkspaceUserService _workspaceUserService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ITeamService _teamService;
-    private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly ILogger<EmailProvisioningService> _logger;
-
-    public EmailProvisioningService(
-        IUserService userService,
-        IGoogleWorkspaceUserService workspaceUserService,
-        IUserEmailService userEmailService,
-        ITeamService teamService,
-        IEmailService emailService,
-        INotificationService notificationService,
-        IAuditLogService auditLogService,
-        ILogger<EmailProvisioningService> logger)
-    {
-        _userService = userService;
-        _workspaceUserService = workspaceUserService;
-        _userEmailService = userEmailService;
-        _teamService = teamService;
-        _emailService = emailService;
-        _notificationService = notificationService;
-        _auditLogService = auditLogService;
-        _logger = logger;
-    }
-
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
         Guid provisionedByUserId)
     {
-        var user = await _userService.GetUserInfoAsync(userId);
+        var user = await userService.GetUserInfoAsync(userId);
         if (user is null)
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
 
@@ -65,10 +44,10 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // DB conflict check BEFORE Workspace check — prevents stale Workspace accounts from silently re-binding identity.
             // user_emails is the single source of truth (#687).
             var conflictingEmailUserId =
-                await _userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
+                await userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
             if (conflictingEmailUserId is not null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Provisioning rejected: {Email} is already linked to user {ConflictUserId} (requested for {UserId})",
                     fullEmail, conflictingEmailUserId, userId);
                 return new EmailProvisioningResult(false, fullEmail,
@@ -78,12 +57,12 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // Reject if the prefix collides with a team's Google Group. Team groups
             // live on the same domain (@nobodies.team), so a user account with the
             // same address would cause mail-routing chaos and break group membership.
-            var conflictingTeamName = (await _teamService.GetTeamsAsync()).Values
+            var conflictingTeamName = (await teamService.GetTeamsAsync()).Values
                 .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, sanitizedPrefix, StringComparison.OrdinalIgnoreCase))
                 ?.Name;
             if (!string.IsNullOrEmpty(conflictingTeamName))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Provisioning rejected: {Email} is the Google Group address for team '{TeamName}' (requested for {UserId})",
                     fullEmail, conflictingTeamName, userId);
                 return new EmailProvisioningResult(false, fullEmail,
@@ -91,7 +70,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             }
 
             // Check if account already exists in Google Workspace
-            var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
+            var existing = await workspaceUserService.GetAccountAsync(fullEmail);
             if (existing is not null)
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
@@ -110,32 +89,32 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
 
             // Step 2: Generate temp password and provision in Google Workspace.
             var tempPassword = PasswordGenerator.GenerateTemporary();
-            await _workspaceUserService.ProvisionAccountAsync(
+            await workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
             // Step 3: Link the email — flips notification target; orchestrator stamps IsGoogle (#687). Do NOT move above step 1.
-            await _userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
+            await userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
 
             // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify + stamp IsGoogle explicitly.
-            var rows = await _userEmailService.GetUserEmailsAsync(userId);
+            var rows = await userEmailService.GetUserEmailsAsync(userId);
             var workspaceRow = rows.FirstOrDefault(r =>
                 string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
             if (workspaceRow is not null && !workspaceRow.IsVerified)
             {
-                await _userEmailService.AdminMarkVerifiedAsync(
+                await userEmailService.AdminMarkVerifiedAsync(
                     userId, workspaceRow.Id, provisionedByUserId);
-                rows = await _userEmailService.GetUserEmailsAsync(userId);
+                rows = await userEmailService.GetUserEmailsAsync(userId);
                 workspaceRow = rows.FirstOrDefault(r =>
                     string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
             }
             if (workspaceRow is not null && !workspaceRow.IsGoogle)
             {
-                await _userEmailService.SetGoogleAsync(userId, workspaceRow.Id, provisionedByUserId);
+                await userEmailService.SetGoogleAsync(userId, workspaceRow.Id, provisionedByUserId);
             }
 
             // Audit
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
@@ -144,7 +123,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // Step 4: Send credentials to the PERSONAL email captured in step 1.
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
-                await _emailService.SendWorkspaceCredentialsAsync(
+                await emailService.SendWorkspaceCredentialsAsync(
                     recoveryEmail, user.BurnerName, fullEmail, tempPassword,
                     user.PreferredLanguage);
             }
@@ -152,7 +131,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // In-app notification (best-effort)
             try
             {
-                await _notificationService.SendAsync(
+                await notificationService.SendAsync(
                     NotificationSource.WorkspaceCredentialsReady,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
@@ -164,7 +143,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to dispatch WorkspaceCredentialsReady notification for user {UserId}", userId);
+                logger.LogError(ex, "Failed to dispatch WorkspaceCredentialsReady notification for user {UserId}", userId);
             }
 
             return !string.IsNullOrEmpty(recoveryEmail)
@@ -173,7 +152,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, userId);
+            logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, userId);
             return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Failed to provision {fullEmail}. Check logs for details.");
         }
     }
@@ -183,7 +162,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
     /// </summary>
     private async Task<string?> ResolveRecoveryEmailAsync(Guid userId, string? oauthEmail)
     {
-        var emails = await _userEmailService.GetUserEmailsAsync(userId);
+        var emails = await userEmailService.GetUserEmailsAsync(userId);
         var target = emails.FirstOrDefault(e => e.IsPrimary && e.IsVerified);
         var candidate = target?.Email ?? oauthEmail;
 

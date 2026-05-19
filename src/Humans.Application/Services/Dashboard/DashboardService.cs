@@ -15,42 +15,19 @@ using NodaTime;
 namespace Humans.Application.Services.Dashboard;
 
 /// <summary>Orchestrates the member dashboard snapshot across profile/membership/applications/shifts/tickets/participation.</summary>
-public class DashboardService : IDashboardService
+public class DashboardService(
+    IMembershipCalculator membershipCalculator,
+    IApplicationDecisionService applicationDecisionService,
+    IShiftManagementService shiftMgmt,
+    IShiftView shiftView,
+    ITicketQueryService ticketQueryService,
+    IUserService userService,
+    ITeamService teamService,
+    IOptions<TicketVendorSettings> ticketSettings,
+    IClock clock,
+    ILogger<DashboardService> logger) : IDashboardService
 {
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftView _shiftView;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly TicketVendorSettings _ticketSettings;
-    private readonly IClock _clock;
-    private readonly ILogger<DashboardService> _logger;
-
-    public DashboardService(
-        IMembershipCalculator membershipCalculator,
-        IApplicationDecisionService applicationDecisionService,
-        IShiftManagementService shiftMgmt,
-        IShiftView shiftView,
-        ITicketQueryService ticketQueryService,
-        IUserService userService,
-        ITeamService teamService,
-        IOptions<TicketVendorSettings> ticketSettings,
-        IClock clock,
-        ILogger<DashboardService> logger)
-    {
-        _membershipCalculator = membershipCalculator;
-        _applicationDecisionService = applicationDecisionService;
-        _shiftMgmt = shiftMgmt;
-        _shiftView = shiftView;
-        _ticketQueryService = ticketQueryService;
-        _userService = userService;
-        _teamService = teamService;
-        _ticketSettings = ticketSettings.Value;
-        _clock = clock;
-        _logger = logger;
-    }
+    private readonly TicketVendorSettings _ticketSettings = ticketSettings.Value;
 
     public async Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,
@@ -59,9 +36,9 @@ public class DashboardService : IDashboardService
     {
         _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
 
-        var userInfo = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var userInfo = await userService.GetUserInfoAsync(userId, cancellationToken);
         var profile = userInfo?.Profile;
-        var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
+        var userView = await shiftView.GetUserAsync(userId, cancellationToken);
         var hasShiftTagPreferences = userView.TagPreferences.Count > 0;
         var dashboardProfile = profile is null
             ? null
@@ -71,10 +48,10 @@ public class DashboardService : IDashboardService
                 ConsentCheckStatus: profile.ConsentCheckStatus,
                 IsRejected: profile.RejectedAt is not null,
                 RejectionReason: profile.RejectionReason);
-        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, cancellationToken);
+        var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, cancellationToken);
 
         // Applications + term expiry state
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
         var latestApplicationSnapshot = latestApplication is null
             ? null
@@ -93,11 +70,11 @@ public class DashboardService : IDashboardService
         EventSettings? activeEvent = null;
         try
         {
-            activeEvent = await _shiftMgmt.GetActiveAsync();
+            activeEvent = await shiftMgmt.GetActiveAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load active event for dashboard");
+            logger.LogError(ex, "Failed to load active event for dashboard");
         }
 
         var urgentItems = new List<DashboardUrgentShift>();
@@ -109,7 +86,7 @@ public class DashboardService : IDashboardService
         {
             try
             {
-                var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
+                var urgentShifts = await shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
                 foreach (var u in urgentShifts)
                 {
                     try
@@ -123,18 +100,18 @@ public class DashboardService : IDashboardService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift.Id);
+                        logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift.Id);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load urgent shifts for dashboard");
+                logger.LogError(ex, "Failed to load urgent shifts for dashboard");
             }
 
             try
             {
-                var now = _clock.GetCurrentInstant();
+                var now = clock.GetCurrentInstant();
                 // Filter signups to active event in memory.
                 var userSignups = userView.Signups
                     .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
@@ -151,7 +128,7 @@ public class DashboardService : IDashboardService
                     .Select(s => s.Shift.Rota.TeamId)
                     .Distinct()
                     .ToList();
-                var teamsById = await _teamService.GetTeamsAsync();
+                var teamsById = await teamService.GetTeamsAsync();
                 var teamNames = dashboardTeamIds
                     .Where(teamsById.ContainsKey)
                     .ToDictionary(id => id, id => teamsById[id].Name);
@@ -171,7 +148,7 @@ public class DashboardService : IDashboardService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to build shift item for signup {SignupId}", s.Id);
+                        logger.LogError(ex, "Failed to build shift item for signup {SignupId}", s.Id);
                     }
                 }
 
@@ -180,7 +157,7 @@ public class DashboardService : IDashboardService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load user signups for dashboard");
+                logger.LogError(ex, "Failed to load user signups for dashboard");
             }
         }
 
@@ -192,13 +169,13 @@ public class DashboardService : IDashboardService
         {
             if (ticketsConfigured)
             {
-                userTicketCount = await _ticketQueryService.GetUserTicketCountAsync(userId);
+                userTicketCount = await ticketQueryService.GetUserTicketCountAsync(userId);
                 hasTicket = userTicketCount > 0;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
+            logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
         }
 
         // Event participation
@@ -207,18 +184,18 @@ public class DashboardService : IDashboardService
         {
             if (activeEvent is not null && activeEvent.Year > 0)
             {
-                var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+                var info = await userService.GetUserInfoAsync(userId, cancellationToken);
                 participationStatus = info?.EventParticipations
                     .FirstOrDefault(p => p.Year == activeEvent.Year)?.Status;
             }
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
+            logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load participation status for user {UserId}", userId);
+            logger.LogError(ex, "Failed to load participation status for user {UserId}", userId);
         }
 
         return new MemberDashboardData(
@@ -264,7 +241,7 @@ public class DashboardService : IDashboardService
             return (null, false, false);
         }
 
-        var today = _clock.GetCurrentInstant().InUtc().Date;
+        var today = clock.GetCurrentInstant().InUtc().Date;
         var expiryDate = latestApprovedApp.TermExpiresAt.Value;
         var expired = expiryDate < today;
         var expiresSoon = !expired && expiryDate <= today.PlusDays(90);

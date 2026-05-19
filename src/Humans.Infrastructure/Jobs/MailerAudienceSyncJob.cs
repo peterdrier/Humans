@@ -9,22 +9,13 @@ namespace Humans.Infrastructure.Jobs;
 /// daily. Default cron <c>0 6 * * *</c> (06:00 UTC) — early morning, low MailerLite traffic.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public sealed class MailerAudienceSyncJob
+public sealed class MailerAudienceSyncJob(IMailerAudienceSyncService sync, ILogger<MailerAudienceSyncJob> logger)
 {
-    private readonly IMailerAudienceSyncService _sync;
-    private readonly ILogger<MailerAudienceSyncJob> _logger;
-
-    public MailerAudienceSyncJob(IMailerAudienceSyncService sync, ILogger<MailerAudienceSyncJob> logger)
-    {
-        _sync = sync;
-        _logger = logger;
-    }
-
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
-        _logger.LogInformation("MailerAudienceSyncJob starting");
-        var results = await _sync.SyncAllAsync(actorUserId: null, ct);
-        _logger.LogInformation(
+        logger.LogInformation("MailerAudienceSyncJob starting");
+        var results = await sync.SyncAllAsync(actorUserId: null, ct);
+        logger.LogInformation(
             "MailerAudienceSyncJob completed: {Count} audiences processed",
             results.Count);
     }

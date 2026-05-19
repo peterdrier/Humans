@@ -36,7 +36,6 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]

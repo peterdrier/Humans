@@ -11,29 +11,19 @@ using Humans.Web.Models;
 namespace Humans.Web.Controllers;
 
 [Route("AuditLog")]
-public class AuditLogController : HumansControllerBase
+public class AuditLogController(
+    IUserService userService,
+    IAuditViewerService auditViewer,
+    ILogger<AuditLogController> logger) : HumansControllerBase(userService)
 {
-    private readonly IAuditViewerService _auditViewer;
-    private readonly IUserService _userService;
-    private readonly ILogger<AuditLogController> _logger;
-
-    public AuditLogController(
-        IUserService userService,
-        IAuditViewerService auditViewer,
-        ILogger<AuditLogController> logger)
-        : base(userService)
-    {
-        _auditViewer = auditViewer;
-        _userService = userService;
-        _logger = logger;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Index(string? filter, int page = 1)
     {
         var pageSize = 50;
-        var result = await _auditViewer.GetPageAsync(filter, page, pageSize);
+        var result = await auditViewer.GetPageAsync(filter, page, pageSize);
 
         var viewModel = new AuditLogListViewModel
         {
@@ -59,7 +49,7 @@ public class AuditLogController : HumansControllerBase
         try
         {
             var count = await monitorService.CheckForAnomalousActivityAsync();
-            _logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
+            logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
                 currentUser?.Id, count);
 
             SetSuccess(count > 0
@@ -68,7 +58,7 @@ public class AuditLogController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Manual Drive activity check failed");
+            logger.LogError(ex, "Manual Drive activity check failed");
             SetError("Drive activity check failed. Check logs for details.");
         }
 
@@ -88,7 +78,7 @@ public class AuditLogController : HumansControllerBase
             return NotFound();
         }
 
-        var events = await _auditViewer.GetForResourceAsync(id);
+        var events = await auditViewer.GetForResourceAsync(id);
         return GoogleSyncAuditView(
             $"Sync Audit: {resource.Name}",
             Url.Action(nameof(GoogleController.Sync), "Google"),
@@ -107,7 +97,7 @@ public class AuditLogController : HumansControllerBase
             return NotFound();
         }
 
-        var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
+        var events = await auditViewer.GetGoogleSyncForUserAsync(id);
         var info = await _userService.GetUserInfoAsync(id);
         var displayName = info?.BurnerName ?? user.BurnerName;
         return GoogleSyncAuditView(

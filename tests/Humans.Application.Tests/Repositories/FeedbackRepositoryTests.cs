@@ -29,7 +29,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================

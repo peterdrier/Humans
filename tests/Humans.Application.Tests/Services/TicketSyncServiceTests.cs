@@ -11,23 +11,18 @@ using Humans.Application.Services.Tickets;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Application.Tests.Services;
 
-public class TicketSyncServiceTests : IDisposable
+public sealed class TicketSyncServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly TestDbContextFactory _factory;
-    private readonly FakeClock _clock;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
@@ -38,13 +33,6 @@ public class TicketSyncServiceTests : IDisposable
 
     public TicketSyncServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _factory = new TestDbContextFactory(options);
-        _dbContext = _factory.CreateDbContext();
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _vendorService = Substitute.For<ITicketVendorService>();
 
         var settings = Options.Create(new TicketVendorSettings
@@ -61,14 +49,14 @@ public class TicketSyncServiceTests : IDisposable
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IShiftManagementService>();
 
-        _ticketRepository = new TicketRepository(_factory);
+        _ticketRepository = new TicketRepository(DbFactory);
 
         _service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(_factory),
+            new TicketTransferRepository(DbFactory),
             _vendorService,
             _stripeService,
-            _clock,
+            Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
             Substitute.For<ITicketCacheInvalidator>(),
@@ -77,19 +65,13 @@ public class TicketSyncServiceTests : IDisposable
             _shiftManagementService);
 
         // Seed the singleton TicketSyncState row
-        _dbContext.TicketSyncStates.Add(new TicketSyncState
+        Db.TicketSyncStates.Add(new TicketSyncState
         {
             Id = 1,
             SyncStatus = TicketSyncStatus.Idle,
             VendorEventId = string.Empty
         });
-        _dbContext.SaveChanges();
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        Db.SaveChanges();
     }
 
     // ==========================================================================
@@ -115,7 +97,7 @@ public class TicketSyncServiceTests : IDisposable
         result.OrdersSynced.Should().Be(2);
         result.AttendeesSynced.Should().Be(0);
 
-        var dbOrders = await _dbContext.TicketOrders.ToListAsync();
+        var dbOrders = await Db.TicketOrders.ToListAsync();
         dbOrders.Should().HaveCount(2);
         dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo("ord_001", "ord_002");
     }
@@ -131,7 +113,7 @@ public class TicketSyncServiceTests : IDisposable
         SeedUser(userId);
         // Seed email in LOWERCASE — order will use UPPERCASE to test case-insensitivity
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var orders = new List<VendorOrderDto>
         {
@@ -147,7 +129,7 @@ public class TicketSyncServiceTests : IDisposable
 
         result.OrdersMatched.Should().Be(1);
 
-        var dbOrder = await _dbContext.TicketOrders.SingleAsync();
+        var dbOrder = await Db.TicketOrders.SingleAsync();
         dbOrder.MatchedUserId.Should().Be(userId);
     }
 
@@ -182,7 +164,7 @@ public class TicketSyncServiceTests : IDisposable
         // Second sync
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var dbOrders = await _dbContext.TicketOrders.ToListAsync();
+        var dbOrders = await Db.TicketOrders.ToListAsync();
         dbOrders.Should().ContainSingle();
         dbOrders[0].BuyerName.Should().Be("Alice Updated");
         dbOrders[0].TotalAmount.Should().Be(75m);
@@ -237,7 +219,7 @@ public class TicketSyncServiceTests : IDisposable
         var result = await _service.SyncOrdersAndAttendeesAsync();
 
         result.OrdersSynced.Should().Be(0);
-        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+        var syncState = await Db.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastError.Should().BeNull();
@@ -253,7 +235,7 @@ public class TicketSyncServiceTests : IDisposable
 
         await act.Should().ThrowAsync<HttpRequestException>();
 
-        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+        var syncState = await Db.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Error);
         syncState.LastError.Should().Be("Unauthorized");
@@ -276,10 +258,10 @@ public class TicketSyncServiceTests : IDisposable
 
         var service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(_factory),
+            new TicketTransferRepository(DbFactory),
             _vendorService,
             _stripeService,
-            _clock,
+            Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
             Substitute.For<ITicketCacheInvalidator>(),
@@ -325,10 +307,10 @@ public class TicketSyncServiceTests : IDisposable
         // Second sync with same data
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var dbOrders = await _dbContext.TicketOrders.ToListAsync();
+        var dbOrders = await Db.TicketOrders.ToListAsync();
         dbOrders.Should().ContainSingle();
 
-        var dbAttendees = await _dbContext.TicketAttendees.ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.ToListAsync();
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].AttendeeName.Should().Be("Alice");
     }
@@ -354,7 +336,7 @@ public class TicketSyncServiceTests : IDisposable
 
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var order = await _dbContext.TicketOrders.SingleAsync();
+        var order = await Db.TicketOrders.SingleAsync();
         order.VatAmount.Should().Be(28.64m);
     }
 
@@ -380,7 +362,7 @@ public class TicketSyncServiceTests : IDisposable
 
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var syncedOrders = await _dbContext.TicketOrders
+        var syncedOrders = await Db.TicketOrders
             .OrderBy(o => o.VendorOrderId)
             .ToListAsync();
 
@@ -419,14 +401,14 @@ public class TicketSyncServiceTests : IDisposable
         result.OrdersSynced.Should().Be(500);
         result.AttendeesSynced.Should().Be(700);
 
-        var dbOrders = await _dbContext.TicketOrders.CountAsync();
+        var dbOrders = await Db.TicketOrders.CountAsync();
         dbOrders.Should().Be(500);
 
-        var dbAttendees = await _dbContext.TicketAttendees.CountAsync();
+        var dbAttendees = await Db.TicketAttendees.CountAsync();
         dbAttendees.Should().Be(700);
 
         // Sync state should be Idle after success
-        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+        var syncState = await Db.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastSyncAt.Should().NotBeNull();
@@ -442,7 +424,7 @@ public class TicketSyncServiceTests : IDisposable
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -471,7 +453,7 @@ public class TicketSyncServiceTests : IDisposable
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -507,7 +489,7 @@ public class TicketSyncServiceTests : IDisposable
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -534,7 +516,7 @@ public class TicketSyncServiceTests : IDisposable
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -559,26 +541,11 @@ public class TicketSyncServiceTests : IDisposable
     // Helpers
     // ==========================================================================
 
-    private User SeedUser(Guid? id = null, string displayName = "Test User")
-    {
-        var userId = id ?? Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        _dbContext.Users.Add(user);
-        return user;
-    }
-
     private UserEmail SeedUserEmail(
         Guid userId, string email,
         bool isOAuth = false, bool isVerified = true)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         var userEmail = new UserEmail
         {
             Id = Guid.NewGuid(),
@@ -590,7 +557,7 @@ public class TicketSyncServiceTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         };
-        _dbContext.UserEmails.Add(userEmail);
+        Db.UserEmails.Add(userEmail);
         return userEmail;
     }
 

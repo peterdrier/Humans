@@ -817,6 +817,21 @@ internal sealed class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampMember>>> GetMembersForYearAsync(
+        int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.CampSeason.Year == year && m.Status != CampMemberStatus.Removed)
+            .ToListAsync(ct);
+        return rows
+            .GroupBy(m => m.CampSeasonId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<CampMember>)g.ToList());
+    }
+
     public async Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
         Guid userId, CancellationToken ct = default)
     {

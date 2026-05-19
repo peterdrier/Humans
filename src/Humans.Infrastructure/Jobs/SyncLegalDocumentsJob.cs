@@ -21,51 +21,30 @@ namespace Humans.Infrastructure.Jobs;
 /// which is already the Legal &amp; Consent section's owned repository.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SyncLegalDocumentsJob : IRecurringJob
+public class SyncLegalDocumentsJob(
+    ILegalDocumentSyncService syncService,
+    IEmailService emailService,
+    ITeamService teamService,
+    IUserService userService,
+    IConsentRepository consentRepository,
+    IHumansMetrics metrics,
+    ILogger<SyncLegalDocumentsJob> logger,
+    IClock clock) : IRecurringJob
 {
-    private readonly ILegalDocumentSyncService _syncService;
-    private readonly IEmailService _emailService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IConsentRepository _consentRepository;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<SyncLegalDocumentsJob> _logger;
-    private readonly IClock _clock;
-
-    public SyncLegalDocumentsJob(
-        ILegalDocumentSyncService syncService,
-        IEmailService emailService,
-        ITeamService teamService,
-        IUserService userService,
-        IConsentRepository consentRepository,
-        IHumansMetrics metrics,
-        ILogger<SyncLegalDocumentsJob> logger,
-        IClock clock)
-    {
-        _syncService = syncService;
-        _emailService = emailService;
-        _teamService = teamService;
-        _userService = userService;
-        _consentRepository = consentRepository;
-        _metrics = metrics;
-        _logger = logger;
-        _clock = clock;
-    }
-
     /// <summary>
     /// Executes the legal document sync job.
     /// </summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting legal document sync at {Time}", _clock.GetCurrentInstant());
+        logger.LogInformation("Starting legal document sync at {Time}", clock.GetCurrentInstant());
 
         try
         {
-            var updatedDocs = await _syncService.SyncAllDocumentsAsync(cancellationToken);
+            var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken);
 
             if (updatedDocs.Count > 0)
             {
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Synced {Count} updated legal documents: {Documents}",
                     updatedDocs.Count,
                     string.Join(", ", updatedDocs.Select(d => d.Name)));
@@ -75,15 +54,15 @@ public class SyncLegalDocumentsJob : IRecurringJob
             }
             else
             {
-                _logger.LogInformation("No legal document updates found");
+                logger.LogInformation("No legal document updates found");
             }
 
-            _metrics.RecordJobRun("sync_legal_documents", "success");
+            metrics.RecordJobRun("sync_legal_documents", "success");
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("sync_legal_documents", "failure");
-            _logger.LogError(ex, "Error syncing legal documents");
+            metrics.RecordJobRun("sync_legal_documents", "failure");
+            logger.LogError(ex, "Error syncing legal documents");
             throw;
         }
     }
@@ -103,7 +82,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         var activeUserIds = new HashSet<Guid>();
         foreach (var teamId in teamIds)
         {
-            var team = await _teamService.GetTeamAsync(teamId, cancellationToken);
+            var team = await teamService.GetTeamAsync(teamId, cancellationToken);
             if (team is null)
                 continue;
 
@@ -115,7 +94,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
 
         if (activeUserIds.Count == 0)
         {
-            _logger.LogInformation("No team members to notify for re-consent");
+            logger.LogInformation("No team members to notify for re-consent");
             return;
         }
 
@@ -126,7 +105,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
             .ToList();
 
         var activeUserIdList = activeUserIds.ToList();
-        var consentPairs = await _consentRepository.GetPairsForUsersAndVersionsAsync(
+        var consentPairs = await consentRepository.GetPairsForUsersAndVersionsAsync(
             activeUserIdList, updatedDocVersionIds, cancellationToken);
 
         var userConsents = consentPairs
@@ -140,14 +119,14 @@ public class SyncLegalDocumentsJob : IRecurringJob
 
         if (usersToNotify.Count == 0)
         {
-            _logger.LogInformation("No users require notifications for these updates");
+            logger.LogInformation("No users require notifications for these updates");
             return;
         }
 
         // Batch load UserInfo snapshots via IUserService so we resolve the
         // verified notification-target address (UserInfo.Email mirrors
         // User.GetEffectiveEmail).
-        var users = await _userService.GetUserInfosAsync(usersToNotify, cancellationToken);
+        var users = await userService.GetUserInfosAsync(usersToNotify, cancellationToken);
 
         var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;
@@ -165,7 +144,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
                 continue;
             }
 
-            await _emailService.SendReConsentsRequiredAsync(
+            await emailService.SendReConsentsRequiredAsync(
                 effectiveEmail,
                 user.BurnerName,
                 documentNames,
@@ -175,7 +154,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
             notificationCount++;
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Sent consolidated re-consent notifications to {Count} users for documents: {Documents}",
             notificationCount, string.Join(", ", documentNames));
     }

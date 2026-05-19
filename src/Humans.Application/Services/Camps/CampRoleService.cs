@@ -14,56 +14,35 @@ using NodaTime;
 
 namespace Humans.Application.Services.Camps;
 
-public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSource
+public sealed class CampRoleService(
+    ICampRoleRepository repo,
+    ICampService campService,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    IAuditLogService auditLog,
+    INotificationEmitter notificationEmitter,
+    IOptions<GoogleWorkspaceOptions> googleOptions,
+    IClock clock,
+    ILogger<CampRoleService> logger) : ICampRoleService, IGoogleGroupMembershipSource
 {
-    private readonly ICampRoleRepository _repo;
-    private readonly ICampService _campService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IAuditLogService _auditLog;
-    private readonly INotificationEmitter _notificationEmitter;
-    private readonly GoogleWorkspaceOptions _googleOptions;
-    private readonly IClock _clock;
-    private readonly ILogger<CampRoleService> _logger;
-
-    public CampRoleService(
-        ICampRoleRepository repo,
-        ICampService campService,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        IAuditLogService auditLog,
-        INotificationEmitter notificationEmitter,
-        IOptions<GoogleWorkspaceOptions> googleOptions,
-        IClock clock,
-        ILogger<CampRoleService> logger)
-    {
-        _repo = repo;
-        _campService = campService;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _auditLog = auditLog;
-        _notificationEmitter = notificationEmitter;
-        _googleOptions = googleOptions.Value;
-        _clock = clock;
-        _logger = logger;
-    }
+    private readonly GoogleWorkspaceOptions _googleOptions = googleOptions.Value;
 
     public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
     {
-        var definitions = await _repo.ListDefinitionsAsync(includeDeactivated, ct);
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated, ct);
         return definitions.Select(CreateCampRoleDefinitionInfo).ToList();
     }
 
     public async Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var definition = await _repo.GetDefinitionByIdAsync(id, ct);
+        var definition = await repo.GetDefinitionByIdAsync(id, ct);
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
 
     public async Task<CampRoleDefinitionInfo?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(slug)) return null;
-        var definition = await _repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
+        var definition = await repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
 
@@ -72,13 +51,13 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
         var slug = NormalizeAndValidateSlug(input.Slug);
 
-        if (await _repo.DefinitionNameExistsAsync(input.Name, excludingId: null, ct))
+        if (await repo.DefinitionNameExistsAsync(input.Name, excludingId: null, ct))
             throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
 
-        if (await _repo.DefinitionSlugExistsAsync(slug, excludingId: null, ct))
+        if (await repo.DefinitionSlugExistsAsync(slug, excludingId: null, ct))
             throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var def = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
@@ -92,8 +71,8 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
             UpdatedAt = now,
         };
 
-        await _repo.AddDefinitionAsync(def, ct); // SaveChangesAsync first
-        await _auditLog.LogAsync(
+        await repo.AddDefinitionAsync(def, ct); // SaveChangesAsync first
+        await auditLog.LogAsync(
             AuditAction.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
             def.Id,
@@ -116,7 +95,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         if (string.IsNullOrWhiteSpace(slug))
             throw new ArgumentException("Slug is required.", nameof(slug));
         var normalized = slug.Trim().ToLowerInvariant();
-        if (!Humans.Application.Helpers.SlugHelper.IsValidKebabSlug(normalized))
+        if (!Helpers.SlugHelper.IsValidKebabSlug(normalized))
             throw new ArgumentException(
                 "Slug must be kebab-case (lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens; max 60 chars).",
                 nameof(slug));
@@ -151,14 +130,14 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
         var slug = NormalizeAndValidateSlug(input.Slug);
 
-        if (await _repo.DefinitionNameExistsAsync(input.Name, excludingId: id, ct))
+        if (await repo.DefinitionNameExistsAsync(input.Name, excludingId: id, ct))
             throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
 
-        if (await _repo.DefinitionSlugExistsAsync(slug, excludingId: id, ct))
+        if (await repo.DefinitionSlugExistsAsync(slug, excludingId: id, ct))
             throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
 
-        var now = _clock.GetCurrentInstant();
-        var updated = await _repo.UpdateDefinitionAsync(id, def =>
+        var now = clock.GetCurrentInstant();
+        var updated = await repo.UpdateDefinitionAsync(id, def =>
         {
             def.Name = input.Name;
             def.Slug = slug;
@@ -171,7 +150,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
         if (!updated) return UpdateCampRoleDefinitionResult.NotFound;
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CampRoleDefinitionUpdated,
             nameof(CampRoleDefinition),
             id,
@@ -183,8 +162,8 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var updated = await _repo.UpdateDefinitionAsync(id, def =>
+        var now = clock.GetCurrentInstant();
+        var updated = await repo.UpdateDefinitionAsync(id, def =>
         {
             if (def.DeactivatedAt is null)
                 def.DeactivatedAt = now;
@@ -192,7 +171,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         }, ct);
         if (!updated) return false;
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), id,
             "Deactivated camp role definition.", actorUserId);
@@ -201,15 +180,15 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<bool> ReactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var updated = await _repo.UpdateDefinitionAsync(id, def =>
+        var now = clock.GetCurrentInstant();
+        var updated = await repo.UpdateDefinitionAsync(id, def =>
         {
             def.DeactivatedAt = null;
             def.UpdatedAt = now;
         }, ct);
         if (!updated) return false;
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), id,
             "Reactivated camp role definition.", actorUserId);
@@ -218,13 +197,13 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
     {
-        var definitions = await _repo.ListDefinitionsAsync(includeDeactivated: false, ct);
-        var assignments = await _repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
+        var assignments = await repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
 
         var memberUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
         IReadOnlyDictionary<Guid, UserInfo> users = memberUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(memberUserIds, ct);
+            : await userService.GetUserInfosAsync(memberUserIds, ct);
 
         var rows = definitions.Select(def =>
         {
@@ -254,23 +233,23 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
     public async Task<AssignCampRoleOutcome> AssignAsync(
         Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
     {
-        var def = await _repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
+        var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
         if (def is null) return AssignCampRoleOutcome.RoleNotFound;
         if (def.DeactivatedAt is not null) return AssignCampRoleOutcome.RoleDeactivated;
 
-        var memberLookup = await _campService.GetCampMemberStatusAsync(campMemberId, ct);
+        var memberLookup = await campService.GetCampMemberStatusAsync(campMemberId, ct);
         if (memberLookup is null) return AssignCampRoleOutcome.MemberNotFound;
         if (memberLookup.CampSeasonId != campSeasonId) return AssignCampRoleOutcome.MemberSeasonMismatch;
         if (memberLookup.Status != CampMemberStatus.Active) return AssignCampRoleOutcome.MemberNotActive;
 
-        if (await _repo.AssignmentExistsAsync(campSeasonId, roleDefinitionId, campMemberId, ct))
+        if (await repo.AssignmentExistsAsync(campSeasonId, roleDefinitionId, campMemberId, ct))
             return AssignCampRoleOutcome.AlreadyHoldsRole;
 
-        var existingCount = await _repo.CountAssignmentsForSeasonAndDefinitionAsync(campSeasonId, roleDefinitionId, ct);
+        var existingCount = await repo.CountAssignmentsForSeasonAndDefinitionAsync(campSeasonId, roleDefinitionId, ct);
         if (existingCount >= def.SlotCount)
             return AssignCampRoleOutcome.SlotCapReached;
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var assignment = new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
@@ -281,14 +260,14 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
             AssignedByUserId = actorUserId,
         };
 
-        var inserted = await _repo.AddAssignmentAsync(assignment, ct);
+        var inserted = await repo.AddAssignmentAsync(assignment, ct);
         if (!inserted)
         {
             // Repo translated the unique-index race.
             return AssignCampRoleOutcome.AlreadyHoldsRole;
         }
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CampRoleAssigned,
             nameof(CampRoleAssignment),
             assignment.Id,
@@ -298,7 +277,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
         try
         {
-            await _notificationEmitter.SendAsync(
+            await notificationEmitter.SendAsync(
                 source: NotificationSource.CampRoleAssigned,
                 notificationClass: NotificationClass.Informational,
                 priority: NotificationPriority.Normal,
@@ -308,7 +287,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);
+            logger.LogWarning(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);
         }
 
         return AssignCampRoleOutcome.Assigned;
@@ -316,19 +295,19 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
-        var assignment = await _repo.GetAssignmentByIdAsync(assignmentId, ct);
+        var assignment = await repo.GetAssignmentByIdAsync(assignmentId, ct);
         return assignment is null ? null : CreateCampRoleAssignmentInfo(assignment);
     }
 
     public async Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var assignment = await _repo.GetAssignmentByIdAsync(assignmentId, ct);
+        var assignment = await repo.GetAssignmentByIdAsync(assignmentId, ct);
         if (assignment is null) return false;
 
-        var deleted = await _repo.DeleteAssignmentAsync(assignmentId, ct);
+        var deleted = await repo.DeleteAssignmentAsync(assignmentId, ct);
         if (!deleted) return false;
 
-        await _auditLog.LogAsync(
+        await auditLog.LogAsync(
             AuditAction.CampRoleUnassigned,
             nameof(CampRoleAssignment),
             assignmentId,
@@ -342,10 +321,10 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
     {
-        var deleted = await _repo.DeleteAllForMemberAsync(campMemberId, ct);
+        var deleted = await repo.DeleteAllForMemberAsync(campMemberId, ct);
         if (deleted > 0)
         {
-            await _auditLog.LogAsync(
+            await auditLog.LogAsync(
                 AuditAction.CampRoleUnassigned,
                 nameof(CampMember), campMemberId,
                 $"Cascade-removed {deleted} role assignment(s) for camp member.",
@@ -356,12 +335,12 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default)
     {
-        var requiredDefs = (await _repo.ListDefinitionsAsync(includeDeactivated: false, ct))
+        var requiredDefs = (await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
             .Where(d => d.MinimumRequired > 0)
             .ToList();
 
-        var camps = await _campService.GetCampSeasonsForComplianceAsync(year, ct);
-        var counts = await _repo.GetAssignmentCountsForYearAsync(year, ct);
+        var camps = await campService.GetCampSeasonsForComplianceAsync(year, ct);
+        var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);
         var countLookup = counts.ToLookup(c => c.CampSeasonId);
 
         var rows = camps.Select(c =>
@@ -381,11 +360,11 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
     public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default)
     {
-        var def = await _repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
+        var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
         if (def is null) return null;
 
-        var seasons = await _campService.GetCampSeasonsForComplianceAsync(year, ct);
-        var assignments = await _repo.GetAssignmentsForDefinitionInYearAsync(def.Id, year, ct);
+        var seasons = await campService.GetCampSeasonsForComplianceAsync(year, ct);
+        var assignments = await repo.GetAssignmentsForDefinitionInYearAsync(def.Id, year, ct);
 
         var assignmentsBySeason = assignments
             .GroupBy(a => a.CampSeasonId)
@@ -394,7 +373,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         var allUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
         var emailsByUserId = allUserIds.Count == 0
             ? new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>()
-            : await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
+            : await userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
 
         var rows = seasons
             .Select(s =>
@@ -434,7 +413,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
         // In-scope years: the public year + every open season year. This matches
         // the years users can currently interact with via the UI.
-        var settings = await _campService.GetSettingsAsync(ct);
+        var settings = await campService.GetSettingsAsync(ct);
         var inScopeYears = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear };
         if (inScopeYears.Count == 0)
             return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
@@ -442,7 +421,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
         // Empty Slug => the definition does not get a Google Group and is not
         // listed in expected claims. Admins set the slug via the role-edit form
         // when they want a group for this role.
-        var activeDefs = (await _repo.ListDefinitionsAsync(includeDeactivated: false, ct))
+        var activeDefs = (await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
             .Where(d => !string.IsNullOrWhiteSpace(d.Slug))
             .ToList();
         if (activeDefs.Count == 0)
@@ -450,7 +429,7 @@ public sealed class CampRoleService : ICampRoleService, IGoogleGroupMembershipSo
 
         // Pull assignments for every in-scope year in one shot. Filters out
         // deactivated definitions at the repo level.
-        var assignments = await _repo.GetActiveAssignmentsForYearsAsync(inScopeYears, ct);
+        var assignments = await repo.GetActiveAssignmentsForYearsAsync(inScopeYears, ct);
         var assignmentsBySlugAndYear = assignments
             .Where(a => !string.IsNullOrWhiteSpace(a.Definition.Slug))
             .GroupBy(a => (a.Definition.Slug, Year: a.CampSeason.Year))

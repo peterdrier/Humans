@@ -10,24 +10,15 @@ namespace Humans.Application.Services.Notifications;
 /// doesn't depend on those services directly (they inject INotificationService,
 /// which would close a DI cycle).
 /// </summary>
-public sealed class NotificationRecipientResolver : INotificationRecipientResolver
+public sealed class NotificationRecipientResolver(
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService) : INotificationRecipientResolver
 {
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-
-    public NotificationRecipientResolver(
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService)
-    {
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-    }
-
     public async Task<TeamNotificationInfo?> GetTeamNotificationInfoAsync(
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamAsync(teamId, cancellationToken);
+        var team = await teamService.GetTeamAsync(teamId, cancellationToken);
         if (team is null)
         {
             return null;
@@ -40,5 +31,5 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(
         string roleName,
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
+        roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
 }

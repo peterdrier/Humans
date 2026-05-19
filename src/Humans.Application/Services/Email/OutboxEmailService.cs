@@ -20,40 +20,17 @@ namespace Humans.Application.Services.Email;
 /// immediate processor run through <see cref="IImmediateOutboxProcessor"/>.
 /// SMTP-send lives in <c>ProcessEmailOutboxJob</c>.
 /// </summary>
-public sealed class OutboxEmailService : IEmailService
+public sealed class OutboxEmailService(
+    IEmailOutboxRepository outboxRepo,
+    IUserEmailService userEmailService,
+    IEmailRenderer renderer,
+    IEmailBodyComposer bodyComposer,
+    IImmediateOutboxProcessor immediateProcessor,
+    IHumansMetrics metrics,
+    IClock clock,
+    ICommunicationPreferenceService commPrefService,
+    ILogger<OutboxEmailService> logger) : IEmailService
 {
-    private readonly IEmailOutboxRepository _outboxRepo;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IEmailRenderer _renderer;
-    private readonly IEmailBodyComposer _bodyComposer;
-    private readonly IImmediateOutboxProcessor _immediateProcessor;
-    private readonly IHumansMetrics _metrics;
-    private readonly IClock _clock;
-    private readonly ICommunicationPreferenceService _commPrefService;
-    private readonly ILogger<OutboxEmailService> _logger;
-
-    public OutboxEmailService(
-        IEmailOutboxRepository outboxRepo,
-        IUserEmailService userEmailService,
-        IEmailRenderer renderer,
-        IEmailBodyComposer bodyComposer,
-        IImmediateOutboxProcessor immediateProcessor,
-        IHumansMetrics metrics,
-        IClock clock,
-        ICommunicationPreferenceService commPrefService,
-        ILogger<OutboxEmailService> logger)
-    {
-        _outboxRepo = outboxRepo;
-        _userEmailService = userEmailService;
-        _renderer = renderer;
-        _bodyComposer = bodyComposer;
-        _immediateProcessor = immediateProcessor;
-        _metrics = metrics;
-        _clock = clock;
-        _commPrefService = commPrefService;
-        _logger = logger;
-    }
-
     /// <inheritdoc />
     public async Task SendApplicationApprovedAsync(
         string userEmail,
@@ -62,7 +39,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderApplicationApproved(userName, tier, culture);
+        var content = renderer.RenderApplicationApproved(userName, tier, culture);
         await EnqueueAsync(userEmail, userName, content, "application_approved", cancellationToken,
             category: MessageCategory.Governance);
     }
@@ -76,7 +53,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderApplicationRejected(userName, tier, reason, culture);
+        var content = renderer.RenderApplicationRejected(userName, tier, reason, culture);
         await EnqueueAsync(userEmail, userName, content, "application_rejected", cancellationToken,
             category: MessageCategory.Governance);
     }
@@ -101,7 +78,7 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var docs = documentNames.ToList();
-        var content = _renderer.RenderReConsentsRequired(userName, docs, culture);
+        var content = renderer.RenderReConsentsRequired(userName, docs, culture);
         await EnqueueAsync(userEmail, userName, content, "reconsents_required", cancellationToken);
     }
 
@@ -115,7 +92,7 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var docs = documentNames.ToList();
-        var content = _renderer.RenderReConsentReminder(userName, docs, daysRemaining, culture);
+        var content = renderer.RenderReConsentReminder(userName, docs, daysRemaining, culture);
         await EnqueueAsync(userEmail, userName, content, "reconsent_reminder", cancellationToken);
     }
 
@@ -126,7 +103,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderWelcome(userName, culture);
+        var content = renderer.RenderWelcome(userName, culture);
         await EnqueueAsync(userEmail, userName, content, "welcome", cancellationToken);
     }
 
@@ -138,7 +115,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderAccessSuspended(userName, reason, culture);
+        var content = renderer.RenderAccessSuspended(userName, reason, culture);
         await EnqueueAsync(userEmail, userName, content, "access_suspended", cancellationToken);
     }
 
@@ -151,7 +128,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
+        var content = renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
         await EnqueueAsync(toEmail, userName, content, "email_verification", cancellationToken,
             triggerImmediate: true);
     }
@@ -166,7 +143,7 @@ public sealed class OutboxEmailService : IEmailService
     {
         // Invariant long-date formatter; duplicated from Infrastructure.EmailDateTimeExtensions to avoid back-reference.
         var formattedDate = deletionDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
-        var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
+        var content = renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await EnqueueAsync(userEmail, userName, content, "deletion_requested", cancellationToken);
     }
 
@@ -177,7 +154,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderAccountDeleted(userName, culture);
+        var content = renderer.RenderAccountDeleted(userName, culture);
         await EnqueueAsync(userEmail, userName, content, "account_deleted", cancellationToken);
     }
 
@@ -192,7 +169,7 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var resourceList = resources.ToList();
-        var content = _renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
+        var content = renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
         await EnqueueAsync(userEmail, userName, content, "added_to_team", cancellationToken,
             category: MessageCategory.TeamUpdates);
     }
@@ -205,7 +182,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderSignupRejected(userName, reason, culture);
+        var content = renderer.RenderSignupRejected(userName, reason, culture);
         await EnqueueAsync(userEmail, userName, content, "signup_rejected", cancellationToken,
             category: MessageCategory.System);
     }
@@ -219,7 +196,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
+        var content = renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
         await EnqueueAsync(userEmail, userName, content, "term_renewal_reminder", cancellationToken,
             category: MessageCategory.Governance);
     }
@@ -230,7 +207,7 @@ public sealed class OutboxEmailService : IEmailService
         string responseMessage, string reportLink, string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
+        var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
         await EnqueueAsync(userEmail, userName, content, "feedback_response", cancellationToken,
             category: MessageCategory.System);
     }
@@ -246,7 +223,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderFacilitatedMessage(
+        var content = renderer.RenderFacilitatedMessage(
             recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
         var replyTo = includeContactInfo ? senderEmail : null;
         await EnqueueAsync(recipientEmail, recipientName, content, "facilitated_message", cancellationToken,
@@ -260,7 +237,7 @@ public sealed class OutboxEmailService : IEmailService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var content = _renderer.RenderCoordinatorRotaMessage(
+        var content = renderer.RenderCoordinatorRotaMessage(
             request.RecipientName,
             request.SenderName,
             request.SenderEmail,
@@ -287,7 +264,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken ct = default)
     {
-        var content = _renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
+        var content = renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
         await EnqueueAsync(toEmail, displayName, content, "magic_link_login", ct,
             triggerImmediate: true);
     }
@@ -299,7 +276,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken ct = default)
     {
-        var content = _renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
+        var content = renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
         await EnqueueAsync(toEmail, toEmail, content, "magic_link_signup", ct,
             triggerImmediate: true);
     }
@@ -313,7 +290,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
+        var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
         await EnqueueAsync(recoveryEmail, userName, content, "workspace_credentials", cancellationToken,
             triggerImmediate: true);
     }
@@ -322,14 +299,14 @@ public sealed class OutboxEmailService : IEmailService
     public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
     {
         // Renderer HTML-encodes {{Code}}/{{Name}} substitutions to prevent injection.
-        var rendered = _renderer.RenderCampaignCode(
+        var rendered = renderer.RenderCampaignCode(
             request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
 
-        var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(request.UserId, MessageCategory.CampaignCodes);
+        var unsubHeaders = commPrefService.GenerateUnsubscribeHeaders(request.UserId, MessageCategory.CampaignCodes);
         var extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
-        var unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(request.UserId, MessageCategory.CampaignCodes);
+        var unsubscribeUrl = commPrefService.GenerateBrowserUnsubscribeUrl(request.UserId, MessageCategory.CampaignCodes);
 
-        var (wrappedHtml, plainText) = _bodyComposer.Compose(rendered.HtmlBody, unsubscribeUrl);
+        var (wrappedHtml, plainText) = bodyComposer.Compose(rendered.HtmlBody, unsubscribeUrl);
 
         var message = new EmailOutboxMessage
         {
@@ -345,13 +322,13 @@ public sealed class OutboxEmailService : IEmailService
             ReplyTo = request.ReplyTo,
             ExtraHeaders = extraHeadersJson,
             Status = EmailOutboxStatus.Queued,
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = clock.GetCurrentInstant()
         };
 
-        await _outboxRepo.AddAsync(message, cancellationToken);
+        await outboxRepo.AddAsync(message, cancellationToken);
 
-        _metrics.RecordEmailQueued("campaign_code");
-        _logger.LogInformation(
+        metrics.RecordEmailQueued("campaign_code");
+        logger.LogInformation(
             "Campaign code email queued for grant {GrantId} to {Recipient}",
             request.CampaignGrantId, request.RecipientEmail);
     }
@@ -365,7 +342,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
+        var content = renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
         await EnqueueAsync(removedEmail, userName, content, "google_group_removal_loss_of_access", cancellationToken,
             category: MessageCategory.System);
     }
@@ -378,7 +355,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
+        var content = renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
         await EnqueueAsync(removedEmail, userName, content, "google_drive_removal_loss_of_access", cancellationToken,
             category: MessageCategory.System);
     }
@@ -391,7 +368,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderGoogleAccessRemovalSecondaryCleanup(
+        var content = renderer.RenderGoogleAccessRemovalSecondaryCleanup(
             userName, removedEmail, currentGoogleEmail, culture);
         await EnqueueAsync(removedEmail, userName, content, "google_access_removal_secondary_cleanup", cancellationToken,
             category: MessageCategory.System);
@@ -407,7 +384,7 @@ public sealed class OutboxEmailService : IEmailService
         string preferredLanguage,
         CancellationToken ct = default)
     {
-        var content = _renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
+        var content = renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
         await EnqueueAsync(to, displayName, content, "issue_comment", ct,
             category: MessageCategory.System);
     }
@@ -422,13 +399,13 @@ public sealed class OutboxEmailService : IEmailService
         string? replyTo = null,
         MessageCategory? category = null)
     {
-        var userId = await _userEmailService.GetUserIdByVerifiedEmailAsync(recipientEmail, cancellationToken);
+        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(recipientEmail, cancellationToken);
 
         if (category is not null && category != MessageCategory.System && userId.HasValue)
         {
-            if (await _commPrefService.IsOptedOutAsync(userId.Value, category.Value, cancellationToken))
+            if (await commPrefService.IsOptedOutAsync(userId.Value, category.Value, cancellationToken))
             {
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Email suppressed: {TemplateName} to {Recipient} — opted out of {Category}",
                     templateName, recipientEmail, category.Value);
                 return;
@@ -439,12 +416,12 @@ public sealed class OutboxEmailService : IEmailService
         string? extraHeadersJson = null;
         if (category is not null && category != MessageCategory.System && userId.HasValue)
         {
-            var headers = _commPrefService.GenerateUnsubscribeHeaders(userId.Value, category.Value);
+            var headers = commPrefService.GenerateUnsubscribeHeaders(userId.Value, category.Value);
             extraHeadersJson = JsonSerializer.Serialize(headers);
-            unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(userId.Value, category.Value);
+            unsubscribeUrl = commPrefService.GenerateBrowserUnsubscribeUrl(userId.Value, category.Value);
         }
 
-        var (wrappedHtml, plainText) = _bodyComposer.Compose(content.HtmlBody, unsubscribeUrl);
+        var (wrappedHtml, plainText) = bodyComposer.Compose(content.HtmlBody, unsubscribeUrl);
 
         var message = new EmailOutboxMessage
         {
@@ -459,18 +436,18 @@ public sealed class OutboxEmailService : IEmailService
             ReplyTo = replyTo,
             ExtraHeaders = extraHeadersJson,
             Status = EmailOutboxStatus.Queued,
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = clock.GetCurrentInstant()
         };
 
-        await _outboxRepo.AddAsync(message, cancellationToken);
+        await outboxRepo.AddAsync(message, cancellationToken);
 
-        _metrics.RecordEmailQueued(templateName);
-        _logger.LogInformation("Email queued: {TemplateName} to {Recipient}", templateName, recipientEmail);
+        metrics.RecordEmailQueued(templateName);
+        logger.LogInformation("Email queued: {TemplateName} to {Recipient}", templateName, recipientEmail);
 
         if (triggerImmediate)
         {
-            _immediateProcessor.TriggerImmediate();
-            _logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
+            immediateProcessor.TriggerImmediate();
+            logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
         }
     }
 
@@ -479,7 +456,7 @@ public sealed class OutboxEmailService : IEmailService
         string userEmail,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEventLifecycle(request);
+        var content = renderer.RenderEventLifecycle(request);
         await EnqueueAsync(userEmail, request.UserName, content,
             request.TemplateName(), cancellationToken,
             triggerImmediate: true);

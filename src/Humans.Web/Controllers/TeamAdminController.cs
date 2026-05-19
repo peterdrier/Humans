@@ -20,44 +20,24 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}")]
-public class TeamAdminController : HumansTeamControllerBase
+public class TeamAdminController(
+    ITeamService teamService,
+    ITeamResourceService teamResourceService,
+    IGoogleSyncService googleSyncService,
+    IProfileService profileService,
+    IUserService userService,
+    IEmailProvisioningService emailProvisioningService,
+    INotificationService notificationService,
+    IAuthorizationService authorizationService,
+    ISystemTeamSync systemTeamSyncJob,
+    ILogger<TeamAdminController> logger,
+    IStringLocalizer<SharedResource> localizer)
+    : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly ITeamService _teamService;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IEmailProvisioningService _emailProvisioningService;
-    private readonly INotificationService _notificationService;
-    private readonly ISystemTeamSync _systemTeamSyncJob;
-    private readonly ILogger<TeamAdminController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public TeamAdminController(
-        ITeamService teamService,
-        ITeamResourceService teamResourceService,
-        IGoogleSyncService googleSyncService,
-        IProfileService profileService,
-        IUserService userService,
-        IEmailProvisioningService emailProvisioningService,
-        INotificationService notificationService,
-        IAuthorizationService authorizationService,
-        ISystemTeamSync systemTeamSyncJob,
-        ILogger<TeamAdminController> logger,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService, teamService, authorizationService)
-    {
-        _teamService = teamService;
-        _teamResourceService = teamResourceService;
-        _googleSyncService = googleSyncService;
-        _profileService = profileService;
-        _userService = userService;
-        _emailProvisioningService = emailProvisioningService;
-        _notificationService = notificationService;
-        _systemTeamSyncJob = systemTeamSyncJob;
-        _logger = logger;
-        _localizer = localizer;
-    }
+    private readonly ITeamService _teamService = teamService;
+    private readonly IProfileService _profileService = profileService;
+    private readonly IUserService _userService = userService;
+    private readonly INotificationService _notificationService = notificationService;
 
     [HttpPost("Requests/{requestId}/Approve")]
     [ValidateAntiForgeryToken]
@@ -72,11 +52,11 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
-            SetSuccess(_localizer["TeamAdmin_RequestApproved"].Value);
+            SetSuccess(localizer["TeamAdmin_RequestApproved"].Value);
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to approve join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to approve join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -95,18 +75,18 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (string.IsNullOrWhiteSpace(model.Notes))
         {
-            SetError(_localizer["TeamAdmin_ProvideRejectionReason"].Value);
+            SetError(localizer["TeamAdmin_ProvideRejectionReason"].Value);
             return RedirectToAction(nameof(Members), new { slug });
         }
 
         try
         {
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
-            SetSuccess(_localizer["TeamAdmin_RequestRejected"].Value);
+            SetSuccess(localizer["TeamAdmin_RequestRejected"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to reject join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to reject join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -134,16 +114,11 @@ public class TeamAdminController : HumansTeamControllerBase
             .Take(pageSize)
             .ToList();
 
-        var memberUserIds = pagedMembers.Select(m => m.UserId).ToList();
-        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
-
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 Email = m.Email ?? "",
-                ProfilePictureUrl = memberInfos.GetValueOrDefault(m.UserId)?.ProfilePictureUrl,
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator
@@ -157,15 +132,13 @@ public class TeamAdminController : HumansTeamControllerBase
                 TeamId = r.TeamId,
                 TeamName = team.Name,
                 UserId = r.UserId,
-                UserDisplayName = r.UserDisplayName ?? "",
                 UserEmail = r.UserEmail ?? "",
-                UserProfilePictureUrl = r.UserProfilePictureUrl,
                 Status = r.Status,
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
 
-        var allTeamResources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
+        var allTeamResources = await teamResourceService.GetTeamResourcesAsync(team.Id);
         var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
 
         var parentDepartmentResources = new List<GoogleResourceSnapshot>();
@@ -176,7 +149,7 @@ public class TeamAdminController : HumansTeamControllerBase
         {
             parentDepartmentName = parentTeam.Name;
             parentDepartmentSlug = parentTeam.CustomSlug ?? parentTeam.Slug;
-            var allParentResources = await _teamResourceService.GetTeamResourcesAsync(parentTeam.Id);
+            var allParentResources = await teamResourceService.GetTeamResourcesAsync(parentTeam.Id);
             parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
         }
 
@@ -247,13 +220,13 @@ public class TeamAdminController : HumansTeamControllerBase
             var wasCoordinator = await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
             if (wasCoordinator)
             {
-                await _systemTeamSyncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators);
+                await systemTeamSyncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators);
             }
-            SetSuccess(_localizer["TeamAdmin_MemberRemoved"].Value);
+            SetSuccess(localizer["TeamAdmin_MemberRemoved"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}", userId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}", userId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -280,11 +253,11 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
-            SetSuccess(_localizer["TeamAdmin_MemberAdded"].Value);
+            SetSuccess(localizer["TeamAdmin_MemberAdded"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to add member {MemberUserId} to team {TeamId} by user {UserId}", model.UserId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to add member {MemberUserId} to team {TeamId} by user {UserId}", model.UserId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -314,7 +287,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
+        var result = await emailProvisioningService.ProvisionNobodiesEmailAsync(
             userId, emailPrefix, user.Id);
 
         if (!result.Success)
@@ -389,8 +362,8 @@ public class TeamAdminController : HumansTeamControllerBase
             return Forbid();
         }
 
-        var resources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
-        var serviceAccountEmail = await _teamResourceService.GetServiceAccountEmailAsync();
+        var resources = await teamResourceService.GetTeamResourcesAsync(team.Id);
+        var serviceAccountEmail = await teamResourceService.GetServiceAccountEmailAsync();
 
         var viewModel = new TeamResourcesViewModel
         {
@@ -449,11 +422,11 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["TeamAdmin_InvalidDriveUrl"].Value);
+            SetError(localizer["TeamAdmin_InvalidDriveUrl"].Value);
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await _teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel);
+        var result = await teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel);
         SetDriveResourceLinkResult(result);
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -482,11 +455,11 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["TeamAdmin_InvalidGroupEmail"].Value);
+            SetError(localizer["TeamAdmin_InvalidGroupEmail"].Value);
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await _teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
+        var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
         SetGroupResourceLinkResult(result);
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -519,7 +492,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        await _teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
+        await teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
         SetSuccess($"Permission level updated to {level}.");
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -546,7 +519,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return Forbid();
         }
 
-        var result = await _teamResourceService.SetRestrictInheritedAccessWithResultAsync(
+        var result = await teamResourceService.SetRestrictInheritedAccessWithResultAsync(
             resourceId,
             restrict,
             CancellationToken.None);
@@ -584,8 +557,8 @@ public class TeamAdminController : HumansTeamControllerBase
             return Forbid();
         }
 
-        await _teamResourceService.UnlinkResourceAsync(resourceId);
-        SetSuccess(_localizer["TeamAdmin_ResourceUnlinked"].Value);
+        await teamResourceService.UnlinkResourceAsync(resourceId);
+        SetSuccess(localizer["TeamAdmin_ResourceUnlinked"].Value);
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
@@ -616,7 +589,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
-            var diff = await _googleSyncService.SyncSingleResourceAsync(
+            var diff = await googleSyncService.SyncSingleResourceAsync(
                 resourceId,
                 SyncAction.Execute,
                 HttpContext.RequestAborted);
@@ -624,8 +597,8 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
-            SetError(string.Format(_localizer["TeamAdmin_ResourceSyncFailed"].Value, ex.Message));
+            logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
+            SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, ex.Message));
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -634,9 +607,9 @@ public class TeamAdminController : HumansTeamControllerBase
     private void SetResourceSyncResult(string? syncError)
     {
         if (syncError is not null)
-            SetError(string.Format(_localizer["TeamAdmin_ResourceSyncFailed"].Value, syncError));
+            SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, syncError));
         else
-            SetSuccess(_localizer["TeamAdmin_ResourceSynced"].Value);
+            SetSuccess(localizer["TeamAdmin_ResourceSynced"].Value);
     }
 
     private void SetDriveResourceLinkResult(LinkResourceResult result)
@@ -654,11 +627,11 @@ public class TeamAdminController : HumansTeamControllerBase
     {
         if (result.Success)
         {
-            SetSuccess(string.Format(_localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
+            SetSuccess(string.Format(localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
             return;
         }
 
-        SetError(BuildResourceLinkError(result, _localizer["TeamAdmin_GroupLinkFailed"].Value));
+        SetError(BuildResourceLinkError(result, localizer["TeamAdmin_GroupLinkFailed"].Value));
     }
 
     private string BuildResourceLinkError(LinkResourceResult result, string defaultMessage)
@@ -666,7 +639,7 @@ public class TeamAdminController : HumansTeamControllerBase
         var errorMessage = result.ErrorMessage ?? defaultMessage;
         if (result.ServiceAccountEmail is not null)
         {
-            errorMessage += $" {string.Format(_localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
+            errorMessage += $" {string.Format(localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
         }
 
         return errorMessage;
@@ -696,13 +669,20 @@ public class TeamAdminController : HumansTeamControllerBase
         var teamMembers = members.Select(m => new TeamMemberViewModel
         {
             UserId = m.UserId,
-            DisplayName = m.DisplayName,
             Email = m.Email ?? "",
-            ProfilePictureUrl = memberInfos.GetValueOrDefault(m.UserId)?.ProfilePictureUrl,
             Role = m.Role,
             JoinedAt = m.JoinedAt.ToDateTimeUtc(),
             IsCoordinator = m.Role == TeamMemberRole.Coordinator
         }).ToList();
+
+        var memberOptions = members
+            .Select(m => new TeamMemberDropdownItem
+            {
+                UserId = m.UserId,
+                BurnerName = memberInfos.TryGetValue(m.UserId, out var info) ? info.BurnerName : string.Empty
+            })
+            .OrderBy(o => o.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var viewModel = new RoleManagementViewModel
         {
@@ -714,7 +694,8 @@ public class TeamAdminController : HumansTeamControllerBase
             CanManage = true,
             CanToggleManagement = canToggleManagement,
             RoleDefinitions = definitions.Select(d => TeamRoleDefinitionViewModel.FromSnapshot(d, teamMembers)).ToList(),
-            TeamMembers = teamMembers
+            TeamMembers = teamMembers,
+            MemberOptions = memberOptions
         };
 
         return View(viewModel);
@@ -744,7 +725,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -779,7 +760,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             return RoleEditError(isAjax, slug, ex.Message);
         }
     }
@@ -818,7 +799,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -849,7 +830,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -869,12 +850,12 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
-            await _systemTeamSyncJob.SyncMembershipForUserAsync(model.UserId, SystemTeamType.Coordinators);
+            await systemTeamSyncJob.SyncMembershipForUserAsync(model.UserId, SystemTeamType.Coordinators);
             SetSuccess("Member assigned to role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -901,14 +882,14 @@ public class TeamAdminController : HumansTeamControllerBase
 
             if (userId.HasValue)
             {
-                await _systemTeamSyncJob.SyncMembershipForUserAsync(userId.Value, SystemTeamType.Coordinators);
+                await systemTeamSyncJob.SyncMembershipForUserAsync(userId.Value, SystemTeamType.Coordinators);
             }
 
             SetSuccess("Member unassigned from role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -979,7 +960,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (result.Succeeded)
         {
-            SetSuccess(_localizer["EditTeamPage_Saved"].Value);
+            SetSuccess(localizer["EditTeamPage_Saved"].Value);
             return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
         }
 
@@ -1038,7 +1019,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         // Sub-team managers cannot manage Google resources — check at department level.
         var checkTeamId = team.ParentTeamId ?? team.Id;
-        return await _teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
+        return await teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
     }
 
     private static void PopulateEditTeamPageModel(EditTeamPageViewModel model, Team team)

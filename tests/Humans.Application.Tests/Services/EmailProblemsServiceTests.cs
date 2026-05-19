@@ -3,30 +3,30 @@ using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class EmailProblemsServiceTests
+public sealed class EmailProblemsServiceTests : ServiceTestHarness
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
 
     private readonly List<UserInfo> _allInfos = [];
 
     public EmailProblemsServiceTests()
+        : base(Instant.FromUtc(2026, 5, 5, 12, 0))
     {
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_allInfos.ToArray()));
     }
 
     private EmailProblemsService Sut => new(
-        _userEmailService, _userService, _clock);
+        _userEmailService, _userService, Clock);
 
     private static UserEmail Email(Guid userId, string address,
         bool isVerified = true, bool isPrimary = false, bool isGoogle = false) =>

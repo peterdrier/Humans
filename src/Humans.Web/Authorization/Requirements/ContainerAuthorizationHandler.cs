@@ -15,17 +15,9 @@ namespace Humans.Web.Authorization.Requirements;
 ///   <see cref="ContainerOperation.Place"/> the placement phase must also be open
 /// - Everyone else: deny
 /// </summary>
-public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
+public class ContainerAuthorizationHandler(ICampService campService, ICityPlanningService cityPlanningService)
+    : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
-    private readonly ICampService _campService;
-    private readonly ICityPlanningService _cityPlanningService;
-
-    public ContainerAuthorizationHandler(ICampService campService, ICityPlanningService cityPlanningService)
-    {
-        _campService = campService;
-        _cityPlanningService = cityPlanningService;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         ContainerOperationRequirement requirement,
@@ -43,7 +35,7 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
             return;
         }
 
-        if (await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId))
+        if (await cityPlanningService.IsCityPlanningTeamMemberAsync(userId))
         {
             context.Succeed(requirement);
             return;
@@ -51,14 +43,14 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
 
         if (requirement.Operation == ContainerOperation.Place)
         {
-            var settings = await _cityPlanningService.GetSettingsAsync();
+            var settings = await cityPlanningService.GetSettingsAsync();
             if (!settings.IsContainerPlacementOpen)
             {
                 return;
             }
         }
 
-        if (await _campService.IsUserCampLeadAsync(userId, resource.CampId))
+        if (await campService.IsUserCampLeadAsync(userId, resource.CampId))
         {
             context.Succeed(requirement);
         }

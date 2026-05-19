@@ -11,41 +11,24 @@ using NodaTime;
 namespace Humans.Application.Services.Users;
 
 // One-shot backfill: tags UserEmail rows with Provider/ProviderKey from AspNetUserLogins; flips IsGoogle from the legacy shadow column.
-public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfillService
+public sealed class UserEmailProviderBackfillService(
+    IUserRepository userRepository,
+    IUserEmailRepository userEmailRepository,
+    UserManager<User> userManager,
+    IAuditLogService auditLogService,
+    IClock clock,
+    ILogger<UserEmailProviderBackfillService> logger) : IUserEmailProviderBackfillService
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IUserEmailRepository _userEmailRepository;
-    private readonly UserManager<User> _userManager;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IClock _clock;
-    private readonly ILogger<UserEmailProviderBackfillService> _logger;
-
-    public UserEmailProviderBackfillService(
-        IUserRepository userRepository,
-        IUserEmailRepository userEmailRepository,
-        UserManager<User> userManager,
-        IAuditLogService auditLogService,
-        IClock clock,
-        ILogger<UserEmailProviderBackfillService> logger)
-    {
-        _userRepository = userRepository;
-        _userEmailRepository = userEmailRepository;
-        _userManager = userManager;
-        _auditLogService = auditLogService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<UserEmailProviderBackfillResult> RunAsync(CancellationToken cancellationToken = default)
     {
-        var users = await _userRepository.GetAllAsync(cancellationToken);
+        var users = await userRepository.GetAllAsync(cancellationToken);
         var warnings = new List<string>();
         var providerRowsUpdated = 0;
         var isGoogleRowsUpdated = 0;
         var ambiguousMatchesWarned = 0;
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var legacyGoogleEmails = await _userRepository.GetLegacyGoogleEmailsAsync(
+        var legacyGoogleEmails = await userRepository.GetLegacyGoogleEmailsAsync(
             users.Select(u => u.Id).ToArray(), cancellationToken);
 
         foreach (var user in users)
@@ -54,14 +37,14 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
 
             legacyGoogleEmails.TryGetValue(user.Id, out var legacyGoogleEmail);
 
-            var snapshots = (await _userEmailRepository
+            var snapshots = (await userEmailRepository
                 .GetLegacyBackfillSnapshotsByUserIdAsync(user.Id, cancellationToken))
                 .ToList();
             if (snapshots.Count == 0)
                 continue;
 
-            var logins = await _userManager.GetLoginsAsync(user);
-            var emails = (await _userEmailRepository.GetByUserIdForMutationAsync(user.Id, cancellationToken))
+            var logins = await userManager.GetLoginsAsync(user);
+            var emails = (await userEmailRepository.GetByUserIdForMutationAsync(user.Id, cancellationToken))
                 .ToList();
             var updates = new List<UserEmail>();
             var taggedRowIds = new HashSet<Guid>();
@@ -138,10 +121,10 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
             }
 
             if (updates.Count > 0)
-                await _userEmailRepository.UpdateBatchAsync(updates, cancellationToken);
+                await userEmailRepository.UpdateBatchAsync(updates, cancellationToken);
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "UserEmailProviderBackfill: complete — usersProcessed={UsersProcessed}, providerRowsUpdated={ProviderRowsUpdated}, isGoogleRowsUpdated={IsGoogleRowsUpdated}, ambiguous={Ambiguous}",
             users.Count, providerRowsUpdated, isGoogleRowsUpdated, ambiguousMatchesWarned);
 
@@ -201,7 +184,7 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
     {
         try
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.UserEmailProviderBackfilled,
                 nameof(User), userId,
                 description,
@@ -209,7 +192,7 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "UserEmailProviderBackfill: audit log failed for user {UserId} — best-effort, continuing batch",
                 userId);
         }

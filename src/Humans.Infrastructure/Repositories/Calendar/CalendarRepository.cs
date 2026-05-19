@@ -17,15 +17,8 @@ namespace Humans.Infrastructure.Repositories.Calendar;
 /// <c>Include</c>-ed; the service stitches team names via
 /// <see cref="Application.Interfaces.Teams.ITeamService"/>.
 /// </summary>
-internal sealed class CalendarRepository : ICalendarRepository
+internal sealed class CalendarRepository(IDbContextFactory<HumansDbContext> factory) : ICalendarRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public CalendarRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Reads
     // ==========================================================================
@@ -36,7 +29,7 @@ internal sealed class CalendarRepository : ICalendarRepository
         Guid? teamId,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.CalendarEvents
             .AsNoTracking()
@@ -54,7 +47,7 @@ internal sealed class CalendarRepository : ICalendarRepository
 
     public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CalendarEvents
             .AsNoTracking()
             .Include(e => e.Exceptions)
@@ -63,7 +56,7 @@ internal sealed class CalendarRepository : ICalendarRepository
 
     public async Task<IReadOnlyList<CalendarEvent>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CalendarEvents
             .AsNoTracking()
             .Include(e => e.Exceptions)
@@ -76,7 +69,7 @@ internal sealed class CalendarRepository : ICalendarRepository
 
     public async Task AddAsync(CalendarEvent ev, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CalendarEvents.Add(ev);
         await ctx.SaveChangesAsync(ct);
     }
@@ -86,7 +79,7 @@ internal sealed class CalendarRepository : ICalendarRepository
         Action<CalendarEvent> mutate,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (ev is null)
         {
@@ -103,7 +96,7 @@ internal sealed class CalendarRepository : ICalendarRepository
         Instant deletedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (ev is null)
         {
@@ -128,7 +121,7 @@ internal sealed class CalendarRepository : ICalendarRepository
         Action<CalendarEventException> apply,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Bypass the soft-delete query filter on the existence lookup so that if
         // the parent event was soft-deleted between the caller's pre-check and

@@ -20,21 +20,14 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// group provisioning and settings reconciliation; the Application-layer
 /// sync service (coming in §15 Part 2b) never sees SDK types.
 /// </summary>
-public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClient
+public sealed class GoogleGroupProvisioningClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleGroupProvisioningClient> logger) : IGoogleGroupProvisioningClient
 {
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleGroupProvisioningClient> _logger;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private CloudIdentityService? _cloudIdentityService;
     private GroupssettingsService? _groupsSettingsService;
-
-    public GoogleGroupProvisioningClient(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleGroupProvisioningClient> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
 
     public async Task<GroupCreateResult> CreateGroupAsync(
         string groupEmail,
@@ -72,7 +65,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
             // exception.
             if (operation.Error is not null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Cloud Identity groups.create returned an error for {Email}: Code={Code} Message={Message}",
                     groupEmail, operation.Error.Code, operation.Error.Message);
                 return new GroupCreateResult(
@@ -82,7 +75,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
 
             if (operation.Done != true || operation.Response is null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Cloud Identity groups.create did not complete synchronously for {Email} (Done={Done})",
                     groupEmail, operation.Done);
                 return new GroupCreateResult(
@@ -96,7 +89,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
                 nameObj is not string resourceName ||
                 !resourceName.StartsWith("groups/", StringComparison.Ordinal))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Cloud Identity groups.create response for {Email} missing or malformed 'name' field",
                     groupEmail);
                 return new GroupCreateResult(
@@ -109,7 +102,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error creating group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupCreateResult(
@@ -133,7 +126,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogDebug(ex,
+            logger.LogDebug(ex,
                 "Google API error looking up group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupLookupIdResult(
@@ -156,7 +149,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error reading settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupSettingsGetResult(
@@ -180,7 +173,7 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error updating settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);

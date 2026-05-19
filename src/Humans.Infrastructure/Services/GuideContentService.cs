@@ -7,30 +7,16 @@ using Humans.Infrastructure.Configuration;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class GuideContentService : IGuideContentService
+public sealed class GuideContentService(
+    IGuideContentSource source,
+    IGuideRenderer renderer,
+    IMemoryCache cache,
+    IOptions<GuideSettings> settings,
+    ILogger<GuideContentService> logger) : IGuideContentService
 {
     private const string CacheKeyPrefix = "guide:";
 
-    private readonly IGuideContentSource _source;
-    private readonly IGuideRenderer _renderer;
-    private readonly IMemoryCache _cache;
-    private readonly IOptions<GuideSettings> _settings;
-    private readonly ILogger<GuideContentService> _logger;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
-
-    public GuideContentService(
-        IGuideContentSource source,
-        IGuideRenderer renderer,
-        IMemoryCache cache,
-        IOptions<GuideSettings> settings,
-        ILogger<GuideContentService> logger)
-    {
-        _source = source;
-        _renderer = renderer;
-        _cache = cache;
-        _settings = settings;
-        _logger = logger;
-    }
 
     public async Task<string> GetRenderedAsync(string fileStem, CancellationToken cancellationToken = default)
     {
@@ -39,14 +25,14 @@ public sealed class GuideContentService : IGuideContentService
         var canonical = GuideFiles.All.FirstOrDefault(s => s.Equals(fileStem, StringComparison.OrdinalIgnoreCase))
             ?? throw new FileNotFoundException($"Guide file '{fileStem}' is not in the known set.");
 
-        if (_cache.TryGetValue(CacheKey(canonical), out string? cached) && cached is not null)
+        if (cache.TryGetValue(CacheKey(canonical), out string? cached) && cached is not null)
         {
             return cached;
         }
 
         await PopulateAsync(isRefresh: false, cancellationToken);
 
-        if (_cache.TryGetValue(CacheKey(canonical), out string? afterPopulate) && afterPopulate is not null)
+        if (cache.TryGetValue(CacheKey(canonical), out string? afterPopulate) && afterPopulate is not null)
         {
             return afterPopulate;
         }
@@ -63,10 +49,10 @@ public sealed class GuideContentService : IGuideContentService
         await _refreshLock.WaitAsync(cancellationToken);
         try
         {
-            var hasStale = GuideFiles.All.Any(s => _cache.TryGetValue(CacheKey(s), out string? _));
+            var hasStale = GuideFiles.All.Any(s => cache.TryGetValue(CacheKey(s), out string? _));
 
-            var settings = _settings.Value;
-            var ttl = TimeSpan.FromHours(Math.Max(1, settings.CacheTtlHours));
+            var settings1 = settings.Value;
+            var ttl = TimeSpan.FromHours(Math.Max(1, settings1.CacheTtlHours));
             var anyFailures = false;
             var newEntries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -74,14 +60,14 @@ public sealed class GuideContentService : IGuideContentService
             {
                 try
                 {
-                    var markdown = await _source.GetMarkdownAsync(stem, cancellationToken);
-                    var html = _renderer.Render(markdown, stem);
+                    var markdown = await source.GetMarkdownAsync(stem, cancellationToken);
+                    var html = renderer.Render(markdown, stem);
                     newEntries[stem] = html;
                 }
                 catch (Exception ex)
                 {
                     anyFailures = true;
-                    _logger.LogWarning(ex,
+                    logger.LogWarning(ex,
                         "Failed to fetch or render guide file {FileStem}; {Outcome}",
                         stem,
                         hasStale ? "keeping stale cached copy" : "no stale copy available");
@@ -96,7 +82,7 @@ public sealed class GuideContentService : IGuideContentService
 
             foreach (var (stem, html) in newEntries)
             {
-                _cache.Set(CacheKey(stem), html, new MemoryCacheEntryOptions
+                cache.Set(CacheKey(stem), html, new MemoryCacheEntryOptions
                 {
                     SlidingExpiration = ttl
                 });
@@ -104,7 +90,7 @@ public sealed class GuideContentService : IGuideContentService
 
             if (anyFailures)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Guide refresh completed with failures (isRefresh={IsRefresh}); stale entries retained.",
                     isRefresh);
             }

@@ -12,22 +12,15 @@ namespace Humans.Web.ViewComponents;
 /// links to the AI Terms (<c>/Legal/agent-chat</c>) below the composer
 /// instead of gating use behind explicit consent.
 /// </summary>
-public class HelpWidgetViewComponent : ViewComponent
+public class HelpWidgetViewComponent(IAgentSettingsService settings) : ViewComponent
 {
-    private readonly IAgentSettingsService _settings;
-
-    public HelpWidgetViewComponent(IAgentSettingsService settings)
-    {
-        _settings = settings;
-    }
-
     public IViewComponentResult Invoke()
     {
         if (UserClaimsPrincipal?.Identity?.IsAuthenticated != true)
             return Content(string.Empty);
 
         var pagePath = Request?.Path.Value ?? string.Empty;
-        var agentAvailable = _settings.Current.Enabled;
+        var agentAvailable = settings.Current.Enabled;
 
         return View(new HelpWidgetModel(pagePath, agentAvailable));
     }

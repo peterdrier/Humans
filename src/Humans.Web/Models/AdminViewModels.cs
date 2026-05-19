@@ -100,7 +100,6 @@ public class AdminApplicationViewModel
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
-    public string UserDisplayName { get; set; } = string.Empty;
     public ApplicationStatus Status { get; set; }
     public string StatusBadgeClass { get; set; } = "bg-secondary";
     public DateTime SubmittedAt { get; set; }
@@ -112,8 +111,6 @@ public class AdminApplicationDetailViewModel : ApplicationDetailViewModelBase
 {
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
-    public string UserDisplayName { get; set; } = string.Empty;
-    public string? UserProfilePictureUrl { get; set; }
     public string? Language { get; set; }
     public bool CanApproveReject { get; set; }
 }
@@ -125,12 +122,8 @@ public class AdminApplicationActionModel
     public string? Notes { get; set; }
 }
 
-public class AdminRoleAssignmentListViewModel : PagedListViewModel
+public class AdminRoleAssignmentListViewModel() : PagedListViewModel(50)
 {
-    public AdminRoleAssignmentListViewModel() : base(50)
-    {
-    }
-
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public string? RoleFilter { get; set; }
     public bool ShowInactive { get; set; }
@@ -141,7 +134,6 @@ public class AdminRoleAssignmentViewModel
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
-    public string UserDisplayName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public DateTime ValidFrom { get; set; }
     public DateTime? ValidTo { get; set; }
@@ -154,7 +146,6 @@ public class AdminRoleAssignmentViewModel
 public class CreateRoleAssignmentViewModel
 {
     public Guid UserId { get; set; }
-    public string UserDisplayName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public List<string> AvailableRoles { get; set; } = [];
@@ -163,7 +154,7 @@ public class CreateRoleAssignmentViewModel
 public class EndRoleAssignmentViewModel
 {
     public Guid Id { get; set; }
-    public string UserDisplayName { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
     public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
 }
@@ -207,10 +198,8 @@ public class AccountMergeRequestViewModel
 {
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;
-    public string PrimaryUserDisplayName { get; set; } = string.Empty;
     public string? PrimaryUserEmail { get; set; }
     public Guid PrimaryUserId { get; set; }
-    public string DuplicateUserDisplayName { get; set; } = string.Empty;
     public string? DuplicateUserEmail { get; set; }
     public Guid DuplicateUserId { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -332,6 +321,7 @@ public class DecoratorCacheStatEntryViewModel
     public long KeyRemovals { get; set; }
     public long BulkInvalidations { get; set; }
     public double HitRatePercent { get; set; }
+    public bool IsWarmedUp { get; set; }
 }
 
 public class DuplicateAccountListViewModel

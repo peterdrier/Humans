@@ -10,42 +10,18 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-public class AccountController : HumansControllerBase
+public class AccountController(
+    SignInManager<User> signInManager,
+    IUserService userService,
+    UserManager<User> userManager,
+    IClock clock,
+    ILogger<AccountController> logger,
+    IUserEmailService userEmailService,
+    IMagicLinkService magicLinkService,
+    IAccountProvisioningService accountProvisioningService,
+    IProfileService profileService,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly SignInManager<User> _signInManager;
-    private readonly UserManager<User> _userManager;
-    private readonly IClock _clock;
-    private readonly ILogger<AccountController> _logger;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IMagicLinkService _magicLinkService;
-    private readonly IAccountProvisioningService _accountProvisioningService;
-    private readonly IProfileService _profileService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public AccountController(
-        SignInManager<User> signInManager,
-        IUserService userService,
-        UserManager<User> userManager,
-        IClock clock,
-        ILogger<AccountController> logger,
-        IUserEmailService userEmailService,
-        IMagicLinkService magicLinkService,
-        IAccountProvisioningService accountProvisioningService,
-        IProfileService profileService,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService)
-    {
-        _signInManager = signInManager;
-        _userManager = userManager;
-        _clock = clock;
-        _logger = logger;
-        _userEmailService = userEmailService;
-        _magicLinkService = magicLinkService;
-        _accountProvisioningService = accountProvisioningService;
-        _profileService = profileService;
-        _localizer = localizer;
-    }
-
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
@@ -58,7 +34,7 @@ public class AccountController : HumansControllerBase
     public IActionResult ExternalLogin(string provider, string? returnUrl = null)
     {
         var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
-        var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        var properties = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return Challenge(properties, provider);
     }
 
@@ -69,14 +45,14 @@ public class AccountController : HumansControllerBase
 
         if (remoteError is not null)
         {
-            _logger.LogWarning("External login error: {Error}", remoteError);
+            logger.LogWarning("External login error: {Error}", remoteError);
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        var info = await _signInManager.GetExternalLoginInfoAsync();
+        var info = await signInManager.GetExternalLoginInfoAsync();
         if (info is null)
         {
-            _logger.LogWarning("Could not get external login info");
+            logger.LogWarning("Could not get external login info");
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
@@ -84,14 +60,14 @@ public class AccountController : HumansControllerBase
         var googlePictureClaim = info.Principal.FindFirstValue("urn:google:picture");
         if (!string.IsNullOrEmpty(googlePictureClaim))
         {
-            _logger.LogInformation("Google avatar URL captured for {Provider} sign-in", info.LoginProvider);
+            logger.LogInformation("Google avatar URL captured for {Provider} sign-in", info.LoginProvider);
         }
         else
         {
-            _logger.LogInformation("Google avatar URL not captured for {Provider} sign-in (claim missing)", info.LoginProvider);
+            logger.LogInformation("Google avatar URL not captured for {Provider} sign-in (claim missing)", info.LoginProvider);
         }
 
-        var result = await _signInManager.ExternalLoginSignInAsync(
+        var result = await signInManager.ExternalLoginSignInAsync(
             info.LoginProvider,
             info.ProviderKey,
             isPersistent: false,
@@ -99,16 +75,16 @@ public class AccountController : HumansControllerBase
 
         if (result.Succeeded)
         {
-            var existingUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+            var existingUser = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
             if (existingUser is not null)
             {
-                existingUser.LastLoginAt = _clock.GetCurrentInstant();
-                await _userManager.UpdateAsync(existingUser);
+                existingUser.LastLoginAt = clock.GetCurrentInstant();
+                await userManager.UpdateAsync(existingUser);
 
                 await TryReconcileOAuthIdentityAsync(existingUser.Id, info);
             }
 
-            _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
+            logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
             return RedirectToLocal(returnUrl);
         }
 
@@ -119,37 +95,37 @@ public class AccountController : HumansControllerBase
         // Link-while-signed-in must precede lockout/email-match/create — otherwise a fresh OAuth email spawns a duplicate.
         if (User.Identity?.IsAuthenticated == true)
         {
-            var currentUser = await _userManager.GetUserAsync(User);
+            var currentUser = await userManager.GetUserAsync(User);
             if (currentUser is not null)
             {
-                var addLinkResult = await _userManager.AddLoginAsync(currentUser, info);
+                var addLinkResult = await userManager.AddLoginAsync(currentUser, info);
                 if (addLinkResult.Succeeded)
                 {
-                    currentUser.LastLoginAt = _clock.GetCurrentInstant();
+                    currentUser.LastLoginAt = clock.GetCurrentInstant();
                     if (string.IsNullOrEmpty(currentUser.ProfilePictureUrl) && pictureUrl is not null)
                     {
                         currentUser.ProfilePictureUrl = pictureUrl;
                     }
-                    await _userManager.UpdateAsync(currentUser);
+                    await userManager.UpdateAsync(currentUser);
 
                     if (!string.IsNullOrEmpty(email))
                     {
                         await TryReconcileOAuthIdentityAsync(currentUser.Id, info);
                     }
 
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Linked {Provider} login to currently-authenticated user {UserId}",
                         info.LoginProvider, currentUser.Id);
                     return RedirectToLocal(returnUrl);
                 }
 
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Failed to link {Provider} to authenticated user {UserId}: {Errors}",
                     info.LoginProvider, currentUser.Id,
                     string.Join(", ", addLinkResult.Errors.Select(e => e.Description)));
 
                 // Don't fall through — unauthenticated branches would spawn a duplicate User. Surface as error toast.
-                SetError(_localizer["EmailGrid_LinkFailed"].Value);
+                SetError(localizer["EmailGrid_LinkFailed"].Value);
                 return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/Profile/Me/Emails");
             }
         }
@@ -161,37 +137,37 @@ public class AccountController : HumansControllerBase
             {
                 if (!string.IsNullOrEmpty(email))
                 {
-                    var lockedSource = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
-                    var activeTarget = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
+                    var lockedSource = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                    var activeTarget = await magicLinkService.FindUserByVerifiedEmailAsync(email);
                     if (lockedSource is not null && activeTarget is not null && lockedSource.Id != activeTarget.Id)
                     {
-                        var removeResult = await _userManager.RemoveLoginAsync(
+                        var removeResult = await userManager.RemoveLoginAsync(
                             lockedSource, info.LoginProvider, info.ProviderKey);
                         if (removeResult.Succeeded)
                         {
-                            var relinkResult = await _userManager.AddLoginAsync(activeTarget, info);
+                            var relinkResult = await userManager.AddLoginAsync(activeTarget, info);
                             if (relinkResult.Succeeded)
                             {
-                                activeTarget.LastLoginAt = _clock.GetCurrentInstant();
-                                await _userManager.UpdateAsync(activeTarget);
-                                await _signInManager.SignInAsync(activeTarget, isPersistent: false);
+                                activeTarget.LastLoginAt = clock.GetCurrentInstant();
+                                await userManager.UpdateAsync(activeTarget);
+                                await signInManager.SignInAsync(activeTarget, isPersistent: false);
 
                                 await TryReconcileOAuthIdentityAsync(activeTarget.Id, info);
 
-                                _logger.LogInformation(
+                                logger.LogInformation(
                                     "Relinked {Provider} login from locked source {SourceId} to active target {TargetId}",
                                     info.LoginProvider, lockedSource.Id, activeTarget.Id);
                                 return RedirectToLocal(returnUrl);
                             }
 
-                            _logger.LogWarning(
+                            logger.LogWarning(
                                 "Lockout-relink: AddLoginAsync to {TargetId} failed: {Errors}",
                                 activeTarget.Id,
                                 string.Join(", ", relinkResult.Errors.Select(e => e.Description)));
                         }
                         else
                         {
-                            _logger.LogWarning(
+                            logger.LogWarning(
                                 "Lockout-relink: RemoveLoginAsync from {SourceId} failed: {Errors}",
                                 lockedSource.Id,
                                 string.Join(", ", removeResult.Errors.Select(e => e.Description)));
@@ -201,7 +177,7 @@ public class AccountController : HumansControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Error during lockout-relink for {Provider}; falling through to lockedout redirect",
                     info.LoginProvider);
             }
@@ -211,42 +187,42 @@ public class AccountController : HumansControllerBase
 
         if (string.IsNullOrEmpty(email))
         {
-            _logger.LogWarning("Email not provided by external provider");
+            logger.LogWarning("Email not provided by external provider");
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        var existingByEmail = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
+        var existingByEmail = await magicLinkService.FindUserByVerifiedEmailAsync(email);
         if (existingByEmail is not null)
         {
             try
             {
-                var linkResult = await _userManager.AddLoginAsync(existingByEmail, info);
+                var linkResult = await userManager.AddLoginAsync(existingByEmail, info);
                 if (linkResult.Succeeded)
                 {
-                    existingByEmail.LastLoginAt = _clock.GetCurrentInstant();
+                    existingByEmail.LastLoginAt = clock.GetCurrentInstant();
                     if (string.IsNullOrEmpty(existingByEmail.ProfilePictureUrl) && pictureUrl is not null)
                     {
                         existingByEmail.ProfilePictureUrl = pictureUrl;
                     }
-                    await _userManager.UpdateAsync(existingByEmail);
+                    await userManager.UpdateAsync(existingByEmail);
 
                     await TryReconcileOAuthIdentityAsync(existingByEmail.Id, info);
 
-                    await _signInManager.SignInAsync(existingByEmail, isPersistent: false);
-                    _logger.LogInformation(
+                    await signInManager.SignInAsync(existingByEmail, isPersistent: false);
+                    logger.LogInformation(
                         "Linked {Provider} login to existing user {UserId} via email match",
                         info.LoginProvider, existingByEmail.Id);
                     return RedirectToLocal(returnUrl);
                 }
 
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Failed to link {Provider} to existing user {UserId}: {Errors}",
                     info.LoginProvider, existingByEmail.Id,
                     string.Join(", ", linkResult.Errors.Select(e => e.Description)));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Error linking {Provider} to existing user {UserId}, falling through to create new account",
                     info.LoginProvider, existingByEmail.Id);
             }
@@ -258,11 +234,11 @@ public class AccountController : HumansControllerBase
             Id = newUserId,
             DisplayName = name ?? email,
             ProfilePictureUrl = pictureUrl,
-            CreatedAt = _clock.GetCurrentInstant(),
-            LastLoginAt = _clock.GetCurrentInstant()
+            CreatedAt = clock.GetCurrentInstant(),
+            LastLoginAt = clock.GetCurrentInstant()
         };
 
-        var createResult = await _userManager.CreateAsync(user);
+        var createResult = await userManager.CreateAsync(user);
         if (!createResult.Succeeded)
         {
             foreach (var error in createResult.Errors)
@@ -272,16 +248,16 @@ public class AccountController : HumansControllerBase
         }
 
         // Roll back the just-created User on link failure — RequireUniqueEmail=false leaves us responsible for cleanup.
-        var oauthLinkResult = await _userManager.AddLoginAsync(user, info);
+        var oauthLinkResult = await userManager.AddLoginAsync(user, info);
         if (!oauthLinkResult.Succeeded)
         {
             try
             {
-                await _userManager.DeleteAsync(user);
+                await userManager.DeleteAsync(user);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Failed to clean up orphan user {UserId} after AddLoginAsync failure for {Provider}",
                     user.Id, info.LoginProvider);
             }
@@ -295,7 +271,7 @@ public class AccountController : HumansControllerBase
         // Reconcile creates the UserEmail row; on throw or CrossUserBlocked, roll back the User to avoid an unreachable orphan.
         try
         {
-            var reconcile = await _userEmailService.ReconcileOAuthIdentityAsync(
+            var reconcile = await userEmailService.ReconcileOAuthIdentityAsync(
                 user.Id,
                 info.LoginProvider,
                 info.ProviderKey,
@@ -314,7 +290,7 @@ public class AccountController : HumansControllerBase
         }
         catch (OAuthReconcileConcurrencyException race)
         {
-            _logger.LogError(race,
+            logger.LogError(race,
                 "OAuth signup race on UserEmail unique index for new user " +
                 "{UserId} (provider={Provider}, sub={Sub}, claimEmail={Email}); " +
                 "rolling back user + login. The verified-email partial unique " +
@@ -329,7 +305,7 @@ public class AccountController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to reconcile OAuth identity for new user {UserId} ({Email}); rolling back user + login",
                 user.Id, email);
             await TryDeleteOrphanUserAsync(user);
@@ -340,10 +316,10 @@ public class AccountController : HumansControllerBase
         }
 
         // see #635 (§15i) — Stub Profile invariant.
-        await _profileService.EnsureStubProfileAsync(user.Id);
+        await profileService.EnsureStubProfileAsync(user.Id);
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
+        await signInManager.SignInAsync(user, isPersistent: false);
+        logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
         return RedirectToLocal(returnUrl);
     }
 
@@ -356,7 +332,7 @@ public class AccountController : HumansControllerBase
 
         try
         {
-            await _userEmailService.ReconcileOAuthIdentityAsync(
+            await userEmailService.ReconcileOAuthIdentityAsync(
                 userId,
                 info.LoginProvider,
                 info.ProviderKey,
@@ -370,7 +346,7 @@ public class AccountController : HumansControllerBase
         catch (OAuthReconcileConcurrencyException race)
         {
             // Verified-email partial unique index caught a concurrent insert (rare race). Log; sign-in continues.
-            _logger.LogError(race,
+            logger.LogError(race,
                 "OAuth reconcile race for user {UserId} " +
                 "(provider={Provider}, sub={Sub}, claimEmail={Email}); " +
                 "sign-in continues — investigate via /Profile/Admin/EmailProblems.",
@@ -378,7 +354,7 @@ public class AccountController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "OAuth reconcile failed for user {UserId} {Provider} sub={Sub}; sign-in continues",
                 userId, info.LoginProvider, info.ProviderKey);
         }
@@ -389,11 +365,11 @@ public class AccountController : HumansControllerBase
     {
         try
         {
-            await _userManager.DeleteAsync(user);
+            await userManager.DeleteAsync(user);
         }
         catch (Exception deleteEx)
         {
-            _logger.LogError(deleteEx,
+            logger.LogError(deleteEx,
                 "Failed to clean up orphan user {UserId} after reconcile failure",
                 user.Id);
         }
@@ -419,16 +395,16 @@ public class AccountController : HumansControllerBase
 
         try
         {
-            await _magicLinkService.SendMagicLinkAsync(email.Trim(), returnUrl);
+            await magicLinkService.SendMagicLinkAsync(email.Trim(), returnUrl);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending magic link for {Email}", email);
+            logger.LogError(ex, "Error sending magic link for {Email}", email);
         }
 
         // Always show "check your email" — no account enumeration.
         var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var expiryInstant = _clock.GetCurrentInstant() + Duration.FromMinutes(15);
+        var expiryInstant = clock.GetCurrentInstant() + Duration.FromMinutes(15);
         var expiryLocal = expiryInstant.InZone(madridZone);
         ViewData["ExpiryTime"] = expiryLocal.ToString("HH:mm", null);
         return View("MagicLinkSent");
@@ -450,17 +426,17 @@ public class AccountController : HumansControllerBase
     {
         returnUrl ??= Url.Content("~/");
 
-        var user = await _magicLinkService.VerifyLoginTokenAsync(userId, token);
+        var user = await magicLinkService.VerifyLoginTokenAsync(userId, token);
         if (user is null)
         {
             return View("MagicLinkError");
         }
 
-        user.LastLoginAt = _clock.GetCurrentInstant();
-        await _userManager.UpdateAsync(user);
+        user.LastLoginAt = clock.GetCurrentInstant();
+        await userManager.UpdateAsync(user);
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogInformation("User {UserId} logged in via magic link", user.Id);
+        await signInManager.SignInAsync(user, isPersistent: false);
+        logger.LogInformation("User {UserId} logged in via magic link", user.Id);
 
         return RedirectToLocal(returnUrl);
     }
@@ -471,7 +447,7 @@ public class AccountController : HumansControllerBase
         if (string.IsNullOrEmpty(token))
             return View("MagicLinkError");
 
-        var verifiedEmail = _magicLinkService.VerifySignupToken(token, email);
+        var verifiedEmail = magicLinkService.VerifySignupToken(token, email);
         if (verifiedEmail is null)
         {
             return View("MagicLinkError");
@@ -492,13 +468,13 @@ public class AccountController : HumansControllerBase
 
         returnUrl ??= Url.Content("~/");
 
-        var verifiedEmail = _magicLinkService.VerifySignupToken(token, email);
+        var verifiedEmail = magicLinkService.VerifySignupToken(token, email);
         if (verifiedEmail is null)
         {
             return View("MagicLinkError");
         }
 
-        var result = await _accountProvisioningService.CompleteMagicLinkSignupAsync(
+        var result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
             verifiedEmail,
             displayName,
             HttpContext.RequestAborted);
@@ -507,7 +483,7 @@ public class AccountController : HumansControllerBase
         if (result.User is null)
             return View("MagicLinkError");
 
-        await _signInManager.SignInAsync(result.User, isPersistent: false);
+        await signInManager.SignInAsync(result.User, isPersistent: false);
 #pragma warning restore CS0618
 
         return RedirectToLocal(returnUrl);
@@ -519,8 +495,8 @@ public class AccountController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-        await _signInManager.SignOutAsync();
-        _logger.LogInformation("User logged out");
+        await signInManager.SignOutAsync();
+        logger.LogInformation("User logged out");
         return RedirectToAction(nameof(HomeController.Index), "Home");
     }
 

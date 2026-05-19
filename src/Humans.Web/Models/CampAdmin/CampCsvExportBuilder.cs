@@ -7,28 +7,19 @@ namespace Humans.Web.Models.CampAdmin;
 
 public sealed record CampCsvExport(byte[] Content, string ContentType, string FileName);
 
-public sealed class CampCsvExportBuilder
+public sealed class CampCsvExportBuilder(ICampService campService, IUserService userService)
 {
-    private readonly ICampService _campService;
-    private readonly IUserService _userService;
-
-    public CampCsvExportBuilder(ICampService campService, IUserService userService)
-    {
-        _campService = campService;
-        _userService = userService;
-    }
-
     public async Task<CampCsvExport> BuildAsync()
     {
-        var settings = await _campService.GetSettingsAsync();
+        var settings = await campService.GetSettingsAsync();
         var year = settings.PublicYear;
-        var camps = await _campService.GetCampsForYearAsync(year);
+        var camps = await campService.GetCampsForYearAsync(year);
 
         var leadUserIds = camps
             .SelectMany(c => c.Leads.Select(l => l.UserId))
             .Distinct()
             .ToList();
-        var leadUsers = await _userService.GetUserInfosAsync(leadUserIds);
+        var leadUsers = await userService.GetUserInfosAsync(leadUserIds);
 
         var csv = new StringBuilder();
         csv.AppendCsvRow(

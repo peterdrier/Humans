@@ -5,7 +5,10 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Infrastructure.Services.Preload;
 
-public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
+public sealed class AgentPreloadCorpusBuilder(
+    AgentSectionDocReader sections,
+    IMemoryCache cache,
+    IAgentPreloadAugmentor? augmentor = null) : IAgentPreloadCorpusBuilder
 {
     private static readonly IReadOnlyList<string> Tier1Sections =
         ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth"];
@@ -14,25 +17,13 @@ public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
         ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth",
          "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"];
 
-    private readonly AgentSectionDocReader _sections;
-    private readonly IMemoryCache _cache;
-    private readonly IAgentPreloadAugmentor? _augmentor;
-
-    public AgentPreloadCorpusBuilder(AgentSectionDocReader sections, IMemoryCache cache,
-        IAgentPreloadAugmentor? augmentor = null)
-    {
-        _sections = sections;
-        _cache = cache;
-        _augmentor = augmentor;
-    }
-
     public async Task<string> BuildAsync(AgentPreloadConfig config, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"agent:preload:{config}";
-        if (_cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
+        if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
             return cached;
 
-        var sections = config == AgentPreloadConfig.Tier1 ? Tier1Sections : Tier2Sections;
+        var sections1 = config == AgentPreloadConfig.Tier1 ? Tier1Sections : Tier2Sections;
         var sb = new StringBuilder();
         sb.AppendLine("# Nobodies Collective — System Knowledge");
         sb.AppendLine();
@@ -40,26 +31,26 @@ public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
         sb.AppendLine();
         sb.AppendLine("## Section Index");
         sb.AppendLine();
-        foreach (var key in sections)
+        foreach (var key in sections1)
         {
-            var body = await _sections.ReadAsync(key, cancellationToken);
+            var body = await sections.ReadAsync(key, cancellationToken);
             if (body is null) continue;
             var tagline = ExtractTagline(body);
             sb.Append("- **").Append(key).Append("** — ").AppendLine(tagline);
         }
         sb.AppendLine();
 
-        if (_augmentor is not null)
+        if (augmentor is not null)
         {
-            sb.AppendLine(_augmentor.BuildAccessMatrixMarkdown());
+            sb.AppendLine(augmentor.BuildAccessMatrixMarkdown());
             sb.AppendLine();
-            sb.AppendLine(_augmentor.BuildGlossariesMarkdown());
+            sb.AppendLine(augmentor.BuildGlossariesMarkdown());
             sb.AppendLine();
-            sb.AppendLine(_augmentor.BuildRouteMapMarkdown());
+            sb.AppendLine(augmentor.BuildRouteMapMarkdown());
         }
 
         var result = sb.ToString();
-        _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+        cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
         return result;
     }
 

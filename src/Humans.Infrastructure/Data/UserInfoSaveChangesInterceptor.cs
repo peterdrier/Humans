@@ -14,22 +14,14 @@ namespace Humans.Infrastructure.Data;
 /// (Identity machinery, OAuth callbacks, direct-repo) and invalidates UserInfo.
 /// Profile-section writes are handled by CachingUserService directly. See #703.
 /// </summary>
-public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
+public sealed class UserInfoSaveChangesInterceptor(
+    IServiceProvider services,
+    ILogger<UserInfoSaveChangesInterceptor> logger) : SaveChangesInterceptor
 {
     // Lazy IServiceProvider — direct ctor injection would close a DI cycle.
-    private readonly IServiceProvider _services;
-    private readonly ILogger<UserInfoSaveChangesInterceptor> _logger;
 
     // Snapshot collected pre-commit (Deleted still tracked) and consumed post-commit.
     private readonly ConditionalWeakTable<DbContext, PendingUserInfoInvalidations> _pending = new();
-
-    public UserInfoSaveChangesInterceptor(
-        IServiceProvider services,
-        ILogger<UserInfoSaveChangesInterceptor> logger)
-    {
-        _services = services;
-        _logger = logger;
-    }
 
     // Async-only: a sync override would have to fire invalidation as a discarded task and race.
 
@@ -53,7 +45,7 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         if (eventData.Context is { } context && _pending.TryGetValue(context, out var affected))
         {
             _pending.Remove(context);
-            var refresher = _services.GetService<IUserInfoSliceRefresher>();
+            var refresher = services.GetService<IUserInfoSliceRefresher>();
             if (refresher is not null)
             {
                 await ApplyAsync(refresher, affected, cancellationToken);
@@ -119,7 +111,7 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "UserInfoSaveChangesInterceptor {Operation} failed for {UserId}: {ExType}",
                 operation, userId, ex.GetType().Name);
         }

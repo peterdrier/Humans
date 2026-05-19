@@ -79,16 +79,13 @@
                             Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
                     }
                     <ul class="navbar-nav flex-grow-1">
-                        @if (isAuthenticated && !hasProfile)
+                        @if (isAuthenticated)
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Guest" asp-action="Index">@Localizer["Nav_Home"]</a>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">@Localizer["Nav_Home"]</a>
+                                <a class="nav-link" asp-controller="Search" asp-action="Index"
+                                   aria-label="Search" title="Search">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </a>
                             </li>
                         }
                         <li class="nav-item">
@@ -149,10 +146,6 @@
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <a class="nav-link p-1" asp-controller="Search" asp-action="Index"
-                               aria-label="Search" title="Search">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </a>
                             @await Component.InvokeAsync("NotificationBell")
                         }
                         <partial name="_LanguageChooser" />

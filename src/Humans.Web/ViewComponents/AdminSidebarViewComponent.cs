@@ -3,27 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
 
-public sealed class AdminSidebarViewComponent : ViewComponent
+public sealed class AdminSidebarViewComponent(
+    IAuthorizationService authorization,
+    IWebHostEnvironment environment,
+    IServiceProvider serviceProvider,
+    IHttpContextAccessor httpContext,
+    ILogger<AdminSidebarViewComponent> logger) : ViewComponent
 {
-    private readonly IAuthorizationService _authorization;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IHttpContextAccessor _httpContext;
-    private readonly ILogger<AdminSidebarViewComponent> _logger;
-
-    public AdminSidebarViewComponent(
-        IAuthorizationService authorization,
-        IWebHostEnvironment environment,
-        IServiceProvider serviceProvider,
-        IHttpContextAccessor httpContext,
-        ILogger<AdminSidebarViewComponent> logger)
-    {
-        _authorization = authorization;
-        _environment = environment;
-        _serviceProvider = serviceProvider;
-        _httpContext = httpContext;
-        _logger = logger;
-    }
+    private readonly IHttpContextAccessor _httpContext = httpContext;
 
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -36,12 +23,12 @@ public sealed class AdminSidebarViewComponent : ViewComponent
             var visibleItems = new List<AdminSidebarItemViewModel>(group.Items.Count);
             foreach (var item in group.Items)
             {
-                if (item.EnvironmentGate is not null && !item.EnvironmentGate(_environment))
+                if (item.EnvironmentGate is not null && !item.EnvironmentGate(environment))
                     continue;
 
                 if (item.Policy is not null)
                 {
-                    var auth = await _authorization.AuthorizeAsync(HttpContext.User, null, item.Policy);
+                    var auth = await authorization.AuthorizeAsync(HttpContext.User, null, item.Policy);
                     if (!auth.Succeeded) continue;
                 }
                 else if (item.RoleCheck is not null && !item.RoleCheck(HttpContext.User))
@@ -54,11 +41,11 @@ public sealed class AdminSidebarViewComponent : ViewComponent
                 {
                     try
                     {
-                        pill = await item.PillCount(_serviceProvider);
+                        pill = await item.PillCount(serviceProvider);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to compute pill count for nav item {Label}", item.Label);
+                        logger.LogWarning(ex, "Failed to compute pill count for nav item {Label}", item.Label);
                         pill = null;
                     }
                 }

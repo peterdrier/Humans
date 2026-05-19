@@ -9,28 +9,14 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-public class ConsentController : HumansControllerBase
+public class ConsentController(
+    IUserService userService,
+    IConsentService consentService,
+    IOnboardingService onboardingService,
+    IStringLocalizer<SharedResource> localizer,
+    ILogger<ConsentController> logger) : HumansControllerBase(userService)
 {
-    private readonly IConsentService _consentService;
-    private readonly IOnboardingService _onboardingService;
-    private readonly IUserService _userService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ILogger<ConsentController> _logger;
-
-    public ConsentController(
-        IUserService userService,
-        IConsentService consentService,
-        IOnboardingService onboardingService,
-        IStringLocalizer<SharedResource> localizer,
-        ILogger<ConsentController> logger)
-        : base(userService)
-    {
-        _consentService = consentService;
-        _onboardingService = onboardingService;
-        _userService = userService;
-        _localizer = localizer;
-        _logger = logger;
-    }
+    private readonly IUserService _userService = userService;
 
     public async Task<IActionResult> Index()
     {
@@ -38,7 +24,7 @@ public class ConsentController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var (groups, history) = await _consentService.GetConsentDashboardAsync(user.Id);
+        var (groups, history) = await consentService.GetConsentDashboardAsync(user.Id);
 
         var teamGroups = groups
             .Select(g =>
@@ -123,7 +109,7 @@ public class ConsentController : HumansControllerBase
 
         try
         {
-            var result = await _consentService.SubmitConsentAsync(
+            var result = await consentService.SubmitConsentAsync(
                 user.Id, model.DocumentVersionId, model.ExplicitConsent,
                 ipAddress, userAgent);
 
@@ -134,22 +120,22 @@ public class ConsentController : HumansControllerBase
             }
 
             // Peer-call: ConsentService does not call into Onboarding (avoids inverted arrow).
-            await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
+            await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
             SetConsentSubmitSuccessFlash(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to submit consent for user {UserId}, document version {DocumentVersionId}",
+            logger.LogError(ex, "Failed to submit consent for user {UserId}, document version {DocumentVersionId}",
                 user.Id, model.DocumentVersionId);
-            SetError(_localizer["Consent_SubmitError"].Value);
+            SetError(localizer["Consent_SubmitError"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
 
     private async Task<IActionResult> RedisplayUncheckedConsentAsync(Guid documentVersionId, Guid userId)
     {
-        ModelState.AddModelError(string.Empty, _localizer["Consent_MustCheck"].Value);
+        ModelState.AddModelError(string.Empty, localizer["Consent_MustCheck"].Value);
 
         var viewModel = await BuildConsentReviewViewModelAsync(documentVersionId, userId);
         if (viewModel is null)
@@ -162,12 +148,12 @@ public class ConsentController : HumansControllerBase
     {
         if (string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
         {
-            SetInfo(_localizer["Consent_AlreadyConsented"].Value);
+            SetInfo(localizer["Consent_AlreadyConsented"].Value);
         }
     }
 
     private void SetConsentSubmitSuccessFlash(ConsentSubmitResult result) =>
-        SetSuccess(string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName));
+        SetSuccess(string.Format(localizer["Consent_ThankYou"].Value, result.DocumentName));
 
     private async Task<bool> IsStubProfileAsync(Guid userId)
     {
@@ -177,13 +163,13 @@ public class ConsentController : HumansControllerBase
 
     private IActionResult RedirectToProfileEditForStub()
     {
-        SetInfo(_localizer["Consent_StubProfile_AddName"].Value);
+        SetInfo(localizer["Consent_StubProfile_AddName"].Value);
         return RedirectToAction(nameof(ProfileController.Edit), "Profile");
     }
 
     private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId)
     {
-        var detail = await _consentService.GetConsentReviewDetailAsync(documentVersionId, userId);
+        var detail = await consentService.GetConsentReviewDetailAsync(documentVersionId, userId);
 
         if (detail is null)
         {

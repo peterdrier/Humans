@@ -8,34 +8,17 @@ using NodaTime;
 
 namespace Humans.Application.Services.Shifts;
 
-public sealed class VolunteerTrackingService : IVolunteerTrackingService
+public sealed class VolunteerTrackingService(
+    IVolunteerTrackingRepository trackingRepo,
+    IShiftManagementRepository shiftManagement,
+    IGeneralAvailabilityRepository availability,
+    IUserService userService,
+    IShiftViewInvalidator viewInvalidator,
+    IClock clock) : IVolunteerTrackingService
 {
-    private readonly IVolunteerTrackingRepository _trackingRepo;
-    private readonly IShiftManagementRepository _shiftManagement;
-    private readonly IGeneralAvailabilityRepository _availability;
-    private readonly IUserService _userService;
-    private readonly IShiftViewInvalidator _viewInvalidator;
-    private readonly IClock _clock;
-
-    public VolunteerTrackingService(
-        IVolunteerTrackingRepository trackingRepo,
-        IShiftManagementRepository shiftManagement,
-        IGeneralAvailabilityRepository availability,
-        IUserService userService,
-        IShiftViewInvalidator viewInvalidator,
-        IClock clock)
-    {
-        _trackingRepo = trackingRepo;
-        _shiftManagement = shiftManagement;
-        _availability = availability;
-        _userService = userService;
-        _viewInvalidator = viewInvalidator;
-        _clock = clock;
-    }
-
     public async Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default)
     {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         if (es is null)
         {
             return new VolunteerTrackingViewModel(
@@ -48,11 +31,11 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         }
 
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
+        var today = clock.GetCurrentInstant().InZone(zone).Date;
         var todayOffset = OffsetOf(es, today);
 
-        var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
-        var participations = await _userService.GetAllParticipationsForYearAsync(es.Year, ct).ConfigureAwait(false);
+        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var participations = await userService.GetAllParticipationsForYearAsync(es.Year, ct).ConfigureAwait(false);
         var statusMap = participations
             .Where(p => p.Status == ParticipationStatus.NotAttending
                      || p.Status == ParticipationStatus.Ticketed
@@ -74,7 +57,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                             .Distinct(StringComparer.Ordinal)
                             .ToList())));
 
-        var bsRows = await _trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
+        var bsRows = await trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
         var bsByUser = bsRows.ToDictionary(r => r.UserId);
 
         var mainRows = new List<VolunteerHeatmapRow>();
@@ -143,7 +126,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 dayOffSummaries));
         }
 
-        var availabilityRows = await _availability.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
+        var availabilityRows = await availability.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
         var availabilityByUser = availabilityRows
             .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
 
@@ -234,7 +217,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen", null);
         }
 
-        var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         int? firstSignup = signups
             .Where(s => s.UserId == targetUserId)
             .Select(s => (int?)s.DayOffset)
@@ -245,17 +228,17 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             return new SetCampSetupResult(false, "VolTrack_Err_SetupBeforeFirstSignup", null);
         }
 
-        var trimmed = await _trackingRepo.UpsertCampSetupAsync(
+        var trimmed = await trackingRepo.UpsertCampSetupAsync(
             targetUserId,
             es.Id,
             barrioSetupStartDate,
             notes,
             coordinatorUserId,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             setupOffsetThreshold: setupOffset,
             ct).ConfigureAwait(false);
 
-        _viewInvalidator.InvalidateUser(targetUserId);
+        viewInvalidator.InvalidateUser(targetUserId);
         return new SetCampSetupResult(true, null, trimmed);
     }
 
@@ -263,7 +246,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
-        await _trackingRepo.UpsertCampSetupAsync(
+        await trackingRepo.UpsertCampSetupAsync(
             targetUserId,
             es.Id,
             barrioSetupStartDate: null,
@@ -272,7 +255,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             setAt: null,
             setupOffsetThreshold: null,
             ct).ConfigureAwait(false);
-        _viewInvalidator.InvalidateUser(targetUserId);
+        viewInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<SetDayOffResult> SetDayOffAsync(
@@ -286,7 +269,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             return new SetDayOffResult(false, "VolTrack_Err_DayOffOutsideBuild");
         }
 
-        var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var hasSignupThatDay = signups.Any(s => s.UserId == targetUserId && s.DayOffset == dayOffset);
         if (hasSignupThatDay)
         {
@@ -303,10 +286,10 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             DayOffset: dayOffset,
             Reason: trimmed,
             MarkedByUserId: coordinatorUserId,
-            MarkedAt: _clock.GetCurrentInstant());
+            MarkedAt: clock.GetCurrentInstant());
 
-        await _trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
-        _viewInvalidator.InvalidateUser(targetUserId);
+        await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
+        viewInvalidator.InvalidateUser(targetUserId);
         return new SetDayOffResult(true, null);
     }
 
@@ -315,16 +298,16 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
 
-        var removed = await _trackingRepo
+        var removed = await trackingRepo
             .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
             .ConfigureAwait(false);
         if (removed)
-            _viewInvalidator.InvalidateUser(targetUserId);
+            viewInvalidator.InvalidateUser(targetUserId);
         return new ClearDayOffResult(removed);
     }
 
     private async Task<EventSettings> RequireActiveEventAsync(CancellationToken ct) =>
-        await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+        await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("No active event");
 
     private static int OffsetOf(EventSettings es, LocalDate date) =>

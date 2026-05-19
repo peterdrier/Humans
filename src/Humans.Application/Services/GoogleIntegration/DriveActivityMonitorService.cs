@@ -11,43 +11,28 @@ namespace Humans.Application.Services.GoogleIntegration;
 /// <summary>
 /// Monitors Drive Activity API for non-service-account permission changes on managed resources and logs anomaly audit entries.
 /// </summary>
-public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
+public sealed class DriveActivityMonitorService(
+    IGoogleDriveActivityClient driveActivityClient,
+    ITeamResourceService teamResourceService,
+    IDriveActivityMonitorRepository repository,
+    IClock clock,
+    ILogger<DriveActivityMonitorService> logger) : IDriveActivityMonitorService
 {
-    private readonly IGoogleDriveActivityClient _driveActivityClient;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IDriveActivityMonitorRepository _repository;
-    private readonly IClock _clock;
-    private readonly ILogger<DriveActivityMonitorService> _logger;
-
     private const string JobName = "DriveActivityMonitorJob";
-
-    public DriveActivityMonitorService(
-        IGoogleDriveActivityClient driveActivityClient,
-        ITeamResourceService teamResourceService,
-        IDriveActivityMonitorRepository repository,
-        IClock clock,
-        ILogger<DriveActivityMonitorService> logger)
-    {
-        _driveActivityClient = driveActivityClient;
-        _teamResourceService = teamResourceService;
-        _repository = repository;
-        _clock = clock;
-        _logger = logger;
-    }
 
     /// <inheritdoc />
     public async Task<int> CheckForAnomalousActivityAsync(CancellationToken cancellationToken = default)
     {
-        var resources = await _teamResourceService.GetActiveDriveFoldersAsync(cancellationToken);
+        var resources = await teamResourceService.GetActiveDriveFoldersAsync(cancellationToken);
 
         if (resources.Count == 0)
         {
-            _logger.LogDebug("No active Drive folder resources to monitor");
+            logger.LogDebug("No active Drive folder resources to monitor");
             return 0;
         }
 
-        var serviceAccountEmail = await _driveActivityClient.GetServiceAccountEmailAsync(cancellationToken);
-        var serviceAccountClientId = await _driveActivityClient.GetServiceAccountClientIdAsync(cancellationToken);
+        var serviceAccountEmail = await driveActivityClient.GetServiceAccountEmailAsync(cancellationToken);
+        var serviceAccountClientId = await driveActivityClient.GetServiceAccountClientIdAsync(cancellationToken);
         var hadFailures = false;
         var anyResourceQueried = false;
         Exception? firstFailure = null;
@@ -64,12 +49,12 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
 
         // Use time-window dedup: only process events since the last successful run.
         // Falls back to 24 hours on first run or if the stored timestamp is missing.
-        var now = _clock.GetCurrentInstant();
-        var lookbackTime = await _repository.GetLastRunTimestampAsync(cancellationToken)
+        var now = clock.GetCurrentInstant();
+        var lookbackTime = await repository.GetLastRunTimestampAsync(cancellationToken)
             ?? now.Minus(Duration.FromHours(24));
         var filterTime = lookbackTime.ToInvariantInstantString();
 
-        _logger.LogDebug("Drive activity monitor checking events since {LookbackTime}", filterTime);
+        logger.LogDebug("Drive activity monitor checking events since {LookbackTime}", filterTime);
 
         var anomalies = new List<AuditLogEntry>();
 
@@ -77,7 +62,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
         {
             try
             {
-                await foreach (var activity in _driveActivityClient.QueryActivityAsync(
+                await foreach (var activity in driveActivityClient.QueryActivityAsync(
                                    resource.GoogleId, filterTime, cancellationToken))
                 {
                     if (activity.PermissionChange is null)
@@ -95,7 +80,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
                     var actorEmail = await GetActorEmailAsync(
                         activity, peopleIdCache, cancellationToken);
 
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Anomalous permission change detected on {ResourceName} ({GoogleId}) by {Actor}: {Description}",
                         resource.Name, resource.GoogleId, actorEmail ?? "unknown", description);
 
@@ -106,7 +91,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
                         EntityType = nameof(GoogleResource),
                         EntityId = resource.Id,
                         Description = $"{JobName}: {description}",
-                        OccurredAt = _clock.GetCurrentInstant(),
+                        OccurredAt = clock.GetCurrentInstant(),
                         ActorUserId = null,
                     });
                 }
@@ -121,7 +106,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
                 // The connector itself worked, so this still counts as a
                 // successful query for "is the connector alive" purposes.
                 anyResourceQueried = true;
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Drive resource {GoogleId} not found when checking activity (may have been deleted)",
                     resource.GoogleId);
             }
@@ -129,20 +114,20 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
             {
                 hadFailures = true;
                 firstFailure ??= ex;
-                _logger.LogError(ex, "Error checking Drive activity for resource {ResourceId} ({GoogleId})",
+                logger.LogError(ex, "Error checking Drive activity for resource {ResourceId} ({GoogleId})",
                     resource.Id, resource.GoogleId);
             }
         }
 
         if (anomalies.Count > 0)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Detected {AnomalyCount} anomalous permission change(s) across {ResourceCount} resources",
                 anomalies.Count, resources.Count);
         }
         else
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Drive activity check completed: no anomalous changes detected across {ResourceCount} resources",
                 resources.Count);
         }
@@ -152,14 +137,14 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
         if (hadFailures)
         {
             newMarker = null;
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Skipping last-run marker update due to partial failures — next run will re-process from {LookbackTime}",
                 filterTime);
         }
-        else if (!_driveActivityClient.IsConfigured)
+        else if (!driveActivityClient.IsConfigured)
         {
             newMarker = null;
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Drive activity client is not configured (stub mode) — leaving last-run marker unchanged so anomaly coverage is preserved once real credentials are configured");
         }
         else
@@ -167,7 +152,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
             newMarker = now;
         }
 
-        await _repository.PersistAnomaliesAsync(anomalies, newMarker, cancellationToken);
+        await repository.PersistAnomaliesAsync(anomalies, newMarker, cancellationToken);
 
         // All-resources-failed = connector outage (revoked key / network). Throw so Hangfire records a failed run, not a hollow success.
         if (hadFailures && !anyResourceQueried)
@@ -331,19 +316,19 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
         // Extract the numeric user ID from "people/123456789" for the local-DB fallback.
         var googleUserId = personName["people/".Length..];
 
-        var resolved = await _driveActivityClient.TryResolvePersonEmailAsync(personName, cancellationToken)
-            ?? await _repository.TryResolveEmailByGoogleUserIdAsync(googleUserId, cancellationToken);
+        var resolved = await driveActivityClient.TryResolvePersonEmailAsync(personName, cancellationToken)
+            ?? await repository.TryResolveEmailByGoogleUserIdAsync(googleUserId, cancellationToken);
 
         if (resolved is not null)
         {
             peopleIdCache[personName] = resolved;
-            _logger.LogDebug("Resolved {PersonName} to {Email}", personName, resolved);
+            logger.LogDebug("Resolved {PersonName} to {Email}", personName, resolved);
             return resolved;
         }
 
         // Fall back to raw ID
         peopleIdCache[personName] = personName;
-        _logger.LogDebug("Could not resolve {PersonName} to an email address", personName);
+        logger.LogDebug("Could not resolve {PersonName} to an email address", personName);
         return personName;
     }
 }

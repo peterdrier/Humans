@@ -6,15 +6,8 @@ using Humans.Web.Extensions;
 
 namespace Humans.Web.Controllers;
 
-public class LanguageController : Controller
+public class LanguageController(IUserService userService) : Controller
 {
-    private readonly IUserService _userService;
-
-    public LanguageController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetLanguage(string culture, string? returnUrl, CancellationToken ct)
@@ -32,7 +25,7 @@ public class LanguageController : Controller
         if (User.Identity?.IsAuthenticated == true
             && Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            await _userService.SetPreferredLanguageAsync(userId, culture, ct);
+            await userService.SetPreferredLanguageAsync(userId, culture, ct);
         }
 
         return Url.IsLocalUrl(returnUrl)

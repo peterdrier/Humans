@@ -9,14 +9,9 @@ namespace Humans.Infrastructure.Services.Anthropic;
 /// Reads the Anthropic billing balance via the admin API key. Never throws —
 /// returns BalanceUsd=null + a reason string on every failure path.
 /// </summary>
-public sealed class AnthropicBalanceProvider : IAgentAnthropicBalanceProvider
+public sealed class AnthropicBalanceProvider(IOptions<AnthropicOptions> options) : IAgentAnthropicBalanceProvider
 {
-    private readonly AnthropicOptions _options;
-
-    public AnthropicBalanceProvider(IOptions<AnthropicOptions> options)
-    {
-        _options = options.Value;
-    }
+    private readonly AnthropicOptions _options = options.Value;
 
     public async Task<AgentBalanceStatus> GetBalanceAsync(CancellationToken cancellationToken)
     {

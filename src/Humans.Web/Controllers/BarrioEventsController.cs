@@ -17,42 +17,26 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("Barrios/{slug}/Events")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class BarrioEventsController : HumansCampControllerBase
+public class BarrioEventsController(
+    IUserService userService,
+    ICampService campService,
+    IAuthorizationService authorizationService,
+    IEventService guide,
+    IUserService users,
+    IClock clock,
+    IEmailService emailService,
+    ILogger<BarrioEventsController> logger) : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly IEventService _guide;
-    private readonly IUserService _users;
-    private readonly IClock _clock;
-    private readonly IEmailService _emailService;
-    private readonly ILogger<BarrioEventsController> _logger;
-
-    public BarrioEventsController(
-        IUserService userService,
-        ICampService campService,
-        IAuthorizationService authorizationService,
-        IEventService guide,
-        IUserService users,
-        IClock clock,
-        IEmailService emailService,
-        ILogger<BarrioEventsController> logger)
-        : base(userService, campService, authorizationService)
-    {
-        _guide = guide;
-        _users = users;
-        _clock = clock;
-        _emailService = emailService;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug)
     {
         var (error, _, camp) = await ResolveCampManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         var tz = GetTimeZone(eventSettings);
-        var events = await _guide.GetCampSubmissionsAsync(camp.Id);
+        var events = await guide.GetCampSubmissionsAsync(camp.Id);
 
         var model = new CampEventsTabViewModel
         {
@@ -89,7 +73,7 @@ public class BarrioEventsController : HumansCampControllerBase
         var (error, _, camp) = await ResolveCampManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError("The submission window is not currently open.");
@@ -109,7 +93,7 @@ public class BarrioEventsController : HumansCampControllerBase
         var (error, user, camp) = await ResolveCampManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError("The submission window is not currently open.");
@@ -145,19 +129,19 @@ public class BarrioEventsController : HumansCampControllerBase
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
             PriorityRank = model.PriorityRank
         };
-        guideEvent.Submit(_clock);
+        guideEvent.Submit(clock);
 
-        await _guide.SubmitEventAsync(guideEvent);
+        await guide.SubmitEventAsync(guideEvent);
 
-        _logger.LogInformation("User {UserId} submitted event '{Title}' for camp {CampId}",
+        logger.LogInformation("User {UserId} submitted event '{Title}' for camp {CampId}",
             user.Id, model.Title, camp.Id);
 
         var userEmail = user.Email;
         if (userEmail != null)
         {
-            var userInfo = await _users.GetUserInfoAsync(user.Id);
+            var userInfo = await users.GetUserInfoAsync(user.Id);
             var viewUrl = Url.Action(nameof(Index), "BarrioEvents", new { slug }, Request.Scheme)!;
-            await _emailService.SendEventLifecycleNotificationAsync(
+            await emailService.SendEventLifecycleNotificationAsync(
                 new EventLifecycleNotification(
                     NewStatus: EventStatus.Pending,
                     UserName: userInfo?.BurnerName ?? userEmail,
@@ -176,7 +160,7 @@ public class BarrioEventsController : HumansCampControllerBase
         var (error, _, camp) = await ResolveCampManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await _guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
@@ -185,7 +169,7 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
             SetError("Guide settings not configured.");
@@ -221,7 +205,7 @@ public class BarrioEventsController : HumansCampControllerBase
         var (error, user, camp) = await ResolveCampManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await _guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
@@ -230,7 +214,7 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
             SetError("Guide settings not configured.");
@@ -262,9 +246,9 @@ public class BarrioEventsController : HumansCampControllerBase
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
         guideEvent.PriorityRank = model.PriorityRank;
 
-        await _guide.UpdateAndResubmitAsync(guideEvent);
+        await guide.UpdateAndResubmitAsync(guideEvent);
 
-        _logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})",
+        logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})",
             user.Id, model.Title, eventId);
 
         SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
@@ -278,7 +262,7 @@ public class BarrioEventsController : HumansCampControllerBase
         var (error, user, camp) = await ResolveCampManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await _guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status != EventStatus.Pending)
@@ -287,9 +271,9 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        await _guide.WithdrawEventAsync(guideEvent);
+        await guide.WithdrawEventAsync(guideEvent);
 
-        _logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})",
+        logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})",
             user.Id, guideEvent.Title, eventId);
 
         SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
@@ -297,7 +281,7 @@ public class BarrioEventsController : HumansCampControllerBase
     }
 
     private bool IsSubmissionOpen(EventGuideSettings? settings) =>
-        settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
+        settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
     private async Task<CampEventFormViewModel> BuildFormAsync(string slug, CampLookup camp, BurnSettingsInfo burn)
     {
@@ -314,7 +298,7 @@ public class BarrioEventsController : HumansCampControllerBase
 
     private async Task PopulateDropdownsAsync(CampEventFormViewModel model, BurnSettingsInfo burn)
     {
-        var categories = await _guide.GetActiveCategoriesAsync();
+        var categories = await guide.GetActiveCategoriesAsync();
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
@@ -340,7 +324,7 @@ public class BarrioEventsController : HumansCampControllerBase
     private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettings? guideSettings)
     {
         if (guideSettings == null) return null;
-        return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
+        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
     }
 
     private static string ResolveCampName(CampLookup camp)

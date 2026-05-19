@@ -8,17 +8,8 @@ namespace Humans.Web.Middleware;
 /// on every authenticated request. Feeds the humans.active_users observable
 /// gauges and the /Admin dashboard active-users tile.
 /// </summary>
-public sealed class UserActivityTrackingMiddleware
+public sealed class UserActivityTrackingMiddleware(RequestDelegate next, IUserActivityTracker tracker)
 {
-    private readonly RequestDelegate _next;
-    private readonly IUserActivityTracker _tracker;
-
-    public UserActivityTrackingMiddleware(RequestDelegate next, IUserActivityTracker tracker)
-    {
-        _next = next;
-        _tracker = tracker;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
 #pragma warning disable CS0618 // ASP.NET principal access — local extracted so the rest of the method has no `.User` token for NoObsoleteNavReadsRule's regex to flag.
@@ -32,10 +23,10 @@ public sealed class UserActivityTrackingMiddleware
                 && Guid.TryParse(idClaim, out var userId)
                 && userId != Guid.Empty)
             {
-                _tracker.Touch(userId);
+                tracker.Touch(userId);
             }
         }
 
-        await _next(context);
+        await next(context);
     }
 }

@@ -15,15 +15,9 @@ namespace Humans.Web.Authorization.Requirements;
 /// so it picks up the existing 60-second per-user cache (CacheKeys.ShiftAuthorization)
 /// rather than hitting the DB on every request.
 /// </summary>
-public class IsAnyTeamManagerOrCoordinatorHandler : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
+public class IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementService shiftManagement)
+    : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
 {
-    private readonly IShiftManagementService _shiftManagement;
-
-    public IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementService shiftManagement)
-    {
-        _shiftManagement = shiftManagement;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         IsAnyTeamManagerOrCoordinatorRequirement requirement)
@@ -45,7 +39,7 @@ public class IsAnyTeamManagerOrCoordinatorHandler : AuthorizationHandler<IsAnyTe
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var coordinatedTeamIds = await _shiftManagement.GetCoordinatorTeamIdsAsync(userId);
+        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(userId);
         if (coordinatedTeamIds.Count > 0)
             context.Succeed(requirement);
     }

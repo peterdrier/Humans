@@ -32,41 +32,20 @@ namespace Humans.Application.Services.Notifications;
 /// per §15i. Writes elsewhere invalidate it via
 /// <see cref="INotificationMeterCacheInvalidator"/>.
 /// </remarks>
-public sealed class NotificationMeterProvider : INotificationMeterProvider
+public sealed class NotificationMeterProvider(
+    IProfileService profileService,
+    IUserService userService,
+    IGoogleSyncService googleSyncService,
+    ITeamService teamService,
+    ITicketSyncService ticketSyncService,
+    IApplicationDecisionService applicationDecisionService,
+    ICampService campService,
+    IMemoryCache cache,
+    ILogger<NotificationMeterProvider> logger) : INotificationMeterProvider
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly ITeamService _teamService;
-    private readonly ITicketSyncService _ticketSyncService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly ICampService _campService;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<NotificationMeterProvider> _logger;
-
-    public NotificationMeterProvider(
-        IProfileService profileService,
-        IUserService userService,
-        IGoogleSyncService googleSyncService,
-        ITeamService teamService,
-        ITicketSyncService ticketSyncService,
-        IApplicationDecisionService applicationDecisionService,
-        ICampService campService,
-        IMemoryCache cache,
-        ILogger<NotificationMeterProvider> logger)
-    {
-        _profileService = profileService;
-        _userService = userService;
-        _googleSyncService = googleSyncService;
-        _teamService = teamService;
-        _ticketSyncService = ticketSyncService;
-        _applicationDecisionService = applicationDecisionService;
-        _campService = campService;
-        _cache = cache;
-        _logger = logger;
-    }
+    private readonly IProfileService _profileService = profileService;
 
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
         ClaimsPrincipal user, CancellationToken cancellationToken = default)
@@ -195,16 +174,16 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
     private async Task<int> GetPerCampLeadPendingCountAsync(Guid userId, CancellationToken cancellationToken)
     {
         var cacheKey = CacheKeys.CampLeadJoinRequestsBadge(userId);
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
             try
             {
-                return await _campService.GetPendingMembershipCountForLeadAsync(userId, cancellationToken);
+                return await campService.GetPendingMembershipCountForLeadAsync(userId, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
+                logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
                 return 0;
             }
         });
@@ -212,7 +191,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
 
     private async Task<MeterCounts> GetCachedCountsAsync(CancellationToken cancellationToken)
     {
-        var counts = await _cache.GetOrCreateAsync(CacheKeys.NotificationMeters, async entry =>
+        var counts = await cache.GetOrCreateAsync(CacheKeys.NotificationMeters, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
@@ -222,7 +201,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to compute notification meter counts");
+                logger.LogError(ex, "Failed to compute notification meter counts");
                 return new MeterCounts();
             }
         });
@@ -233,17 +212,17 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
     private async Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken)
     {
         var cacheKey = CacheKeys.VotingBadge(boardMemberUserId);
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            return await _applicationDecisionService
+            return await applicationDecisionService
                 .GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
         });
     }
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
-        var allUserInfos = await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
+        var allUserInfos = await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
         var consentReviewsPending = allUserInfos.Count(u => u.NeedsConsentReview);
 
         // Pending deletions derived from the cached UserInfo snapshot —
@@ -252,16 +231,16 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
         var pendingDeletions = allUserInfos
             .Count(u => u.DeletionRequestedAt != null);
 
-        var failedSyncEvents = await _googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
+        var failedSyncEvents = await googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
 
         // Board / VolunteerCoordinator see the same review queue under a
         // different label — same predicate as consentReviewsPending.
         var onboardingPending = consentReviewsPending;
 
-        var teamJoinRequestsPending = await _teamService
+        var teamJoinRequestsPending = await teamService
             .GetTotalPendingJoinRequestCountAsync(cancellationToken);
 
-        var ticketSyncError = await _ticketSyncService.IsInErrorStateAsync(cancellationToken);
+        var ticketSyncError = await ticketSyncService.IsInErrorStateAsync(cancellationToken);
 
         return new MeterCounts
         {

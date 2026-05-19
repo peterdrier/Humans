@@ -18,16 +18,18 @@ namespace Humans.Web.Controllers;
 /// Provides comms preferences, GDPR tools, ticket status, and create-profile CTA.
 /// </summary>
 [Authorize]
-public class GuestController : HumansControllerBase
+public class GuestController(
+    IUserService userService,
+    ICommunicationPreferenceService commPrefService,
+    IProfileService profileService,
+    ITicketQueryService ticketQueryService,
+    IGdprExportService gdprExportService,
+    IOnboardingWidgetState widgetState,
+    IAccountDeletionService accountDeletionService,
+    IClock clock,
+    ILogger<GuestController> logger) : HumansControllerBase(userService)
 {
-    private readonly ICommunicationPreferenceService _commPrefService;
-    private readonly IProfileService _profileService;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IGdprExportService _gdprExportService;
-    private readonly IOnboardingWidgetState _widgetState;
-    private readonly IAccountDeletionService _accountDeletionService;
-    private readonly IClock _clock;
-    private readonly ILogger<GuestController> _logger;
+    private readonly IProfileService _profileService = profileService;
 
     private static readonly System.Text.Json.JsonSerializerOptions ExportJsonOptions = new()
     {
@@ -35,28 +37,6 @@ public class GuestController : HumansControllerBase
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
-
-    public GuestController(
-        IUserService userService,
-        ICommunicationPreferenceService commPrefService,
-        IProfileService profileService,
-        ITicketQueryService ticketQueryService,
-        IGdprExportService gdprExportService,
-        IOnboardingWidgetState widgetState,
-        IAccountDeletionService accountDeletionService,
-        IClock clock,
-        ILogger<GuestController> logger)
-        : base(userService)
-    {
-        _commPrefService = commPrefService;
-        _profileService = profileService;
-        _ticketQueryService = ticketQueryService;
-        _gdprExportService = gdprExportService;
-        _widgetState = widgetState;
-        _accountDeletionService = accountDeletionService;
-        _clock = clock;
-        _logger = logger;
-    }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -66,7 +46,7 @@ public class GuestController : HumansControllerBase
             return Challenge();
         }
 
-        var step = await _widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
+        var step = await widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
         if (step != OnboardingWidgetStep.Complete)
         {
             return RedirectToAction("Index", "OnboardingWidget");
@@ -79,7 +59,7 @@ public class GuestController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
             return View(new GuestDashboardViewModel { DisplayName = user.BurnerName });
         }
     }
@@ -104,7 +84,7 @@ public class GuestController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load communication preferences");
+            logger.LogError(ex, "Failed to load communication preferences");
             SetError("Failed to load communication preferences.");
             return RedirectToAction(nameof(Index));
         }
@@ -126,14 +106,14 @@ public class GuestController : HumansControllerBase
             if (!CanUpdatePreference(category))
                 return BadRequest("Cannot change always-on categories.");
 
-            await _commPrefService.UpdatePreferenceAsync(
+            await commPrefService.UpdatePreferenceAsync(
                 userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken));
 
             return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save communication preference for {Category}", category);
+            logger.LogError(ex, "Failed to save communication preference for {Category}", category);
             return StatusCode(500);
         }
     }
@@ -152,18 +132,18 @@ public class GuestController : HumansControllerBase
 
         try
         {
-            var export = await _gdprExportService.ExportForUserAsync(user.Id, ct);
+            var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
 
             var payload = BuildExportPayload(export);
             var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            var fileName = $"nobodies-data-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
+            var fileName = $"nobodies-data-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
             return File(bytes, "application/json", fileName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
             SetError("Failed to export data. Please try again.");
             return RedirectToAction(nameof(Index));
         }
@@ -193,7 +173,7 @@ public class GuestController : HumansControllerBase
         try
         {
             // Single orchestrator for profile + profileless deletion (see #685).
-            var result = await _accountDeletionService.RequestDeletionAsync(user.Id);
+            var result = await accountDeletionService.RequestDeletionAsync(user.Id);
             var flash = GuestDeletionRequestFlash.From(result);
             if (!flash.Success)
             {
@@ -207,7 +187,7 @@ public class GuestController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
             SetError("Failed to process deletion request. Please try again.");
             return RedirectToAction(nameof(Index));
         }
@@ -221,7 +201,7 @@ public class GuestController : HumansControllerBase
         if (user is null)
             return Challenge();
 
-        var result = await _accountDeletionService.CancelDeletionAsync(user.Id);
+        var result = await accountDeletionService.CancelDeletionAsync(user.Id);
         if (!result.Success)
         {
             SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
@@ -241,13 +221,13 @@ public class GuestController : HumansControllerBase
             DisplayName = user.BurnerName,
         };
 
-        var hasTickets = await _ticketQueryService.HasTicketAttendeeMatchAsync(user.Id);
+        var hasTickets = await ticketQueryService.HasTicketAttendeeMatchAsync(user.Id);
 
         if (hasTickets)
         {
             viewModel.HasTickets = true;
 
-            var orderSummaries = await _ticketQueryService.GetUserTicketOrderSummariesAsync(user.Id);
+            var orderSummaries = await ticketQueryService.GetUserTicketOrderSummariesAsync(user.Id);
             viewModel.TicketOrders = orderSummaries
                 .Select(s => new GuestTicketOrderSummary
                 {
@@ -278,7 +258,7 @@ public class GuestController : HumansControllerBase
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);
 
-        var result = _commPrefService.ValidateUnsubscribeToken(utoken);
+        var result = commPrefService.ValidateUnsubscribeToken(utoken);
         if (result.Status != TokenValidationStatus.Valid)
             return (null, null, false);
 
@@ -290,10 +270,10 @@ public class GuestController : HumansControllerBase
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
     {
-        var prefs = await _commPrefService.GetPreferencesReadOnlyAsync(userId);
+        var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
+        var hasTicketOrder = await ticketQueryService.HasTicketAttendeeMatchAsync(userId);
 
         var categories = new List<CategoryPreferenceItem>();
 
@@ -307,7 +287,7 @@ public class GuestController : HumansControllerBase
             {
                 Category = category,
                 DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {_clock.GetCurrentInstant().InUtc().Year}"
+                    ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
                 EmailEnabled = pref is null || !pref.OptedOut,

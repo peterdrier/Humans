@@ -13,49 +13,26 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services.Agent;
 
-public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
+public sealed class AgentUserSnapshotProvider(
+    IUserService users,
+    IRoleAssignmentService roles,
+    ITeamService teams,
+    IConsentService consents,
+    IFeedbackService feedback,
+    ITicketQueryService tickets,
+    IShiftView shiftView,
+    IShiftManagementService shiftManagement,
+    IClock clock) : IAgentUserSnapshotProvider
 {
-    private readonly IUserService _users;
-    private readonly IRoleAssignmentService _roles;
-    private readonly ITeamService _teams;
-    private readonly IConsentService _consents;
-    private readonly IFeedbackService _feedback;
-    private readonly ITicketQueryService _tickets;
-    private readonly IShiftView _shiftView;
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly IClock _clock;
-
-    public AgentUserSnapshotProvider(
-        IUserService users,
-        IRoleAssignmentService roles,
-        ITeamService teams,
-        IConsentService consents,
-        IFeedbackService feedback,
-        ITicketQueryService tickets,
-        IShiftView shiftView,
-        IShiftManagementService shiftManagement,
-        IClock clock)
-    {
-        _users = users;
-        _roles = roles;
-        _teams = teams;
-        _consents = consents;
-        _feedback = feedback;
-        _tickets = tickets;
-        _shiftView = shiftView;
-        _shiftManagement = shiftManagement;
-        _clock = clock;
-    }
-
     public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var user = await _users.GetUserInfoAsync(userId, cancellationToken);
+        var user = await users.GetUserInfoAsync(userId, cancellationToken);
         var profile = user?.Profile;
-        var activeRoles = await _roles.GetActiveForUserAsync(userId, cancellationToken);
-        var teamMemberships = await _teams.GetActiveTeamMembershipsForUserAsync(userId, cancellationToken);
-        var pendingDocs = await _consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
-        var openFeedback = await _feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
-        var openTickets = await _tickets.GetOpenTicketIdsForUserAsync(userId, cancellationToken);
+        var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
+        var teamMemberships = await teams.GetActiveTeamMembershipsForUserAsync(userId, cancellationToken);
+        var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
+        var openFeedback = await feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
+        var openTickets = await tickets.GetOpenTicketIdsForUserAsync(userId, cancellationToken);
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
@@ -79,19 +56,19 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
     private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var activeEvent = await _shiftManagement.GetActiveAsync();
+        var activeEvent = await shiftManagement.GetActiveAsync();
         if (activeEvent is null)
             return [];
 
         // T-09 (issue #720): read signups from the cached ShiftUserView
         // rather than IShiftSignupService.GetByUserAsync. The view already
         // filters Signups to the active event (see ShiftViewService).
-        var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
+        var userView = await shiftView.GetUserAsync(userId, cancellationToken);
         var signups = userView.Signups;
         if (signups.Count == 0)
             return [];
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var upcoming = signups
             .Where(s => s.Shift.GetAbsoluteEnd(activeEvent) > now
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)

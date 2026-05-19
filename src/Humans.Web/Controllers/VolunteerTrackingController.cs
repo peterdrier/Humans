@@ -18,25 +18,13 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Route("Shifts/Dashboard/VolunteerTracking")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
-public sealed class VolunteerTrackingController : HumansControllerBase
+public sealed class VolunteerTrackingController(
+    IVolunteerTrackingService service,
+    IUserService userService,
+    IAuditLogService auditLogService,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IVolunteerTrackingService _service;
-    private readonly IUserService _userService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public VolunteerTrackingController(
-        IVolunteerTrackingService service,
-        IUserService userService,
-        IAuditLogService auditLogService,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService)
-    {
-        _service = service;
-        _userService = userService;
-        _auditLogService = auditLogService;
-        _localizer = localizer;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -45,7 +33,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         bool hideUnbookedSection = false,
         CancellationToken ct = default)
     {
-        var data = await _service.GetTrackingDataAsync(ct);
+        var data = await service.GetTrackingDataAsync(ct);
         if (!data.HasActiveEvent)
         {
             return View(VolunteerTrackingPageViewModel.Empty);
@@ -100,14 +88,14 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
         var parseResult = LocalDatePattern.Iso.Parse(form.Date);
         if (!parseResult.Success)
         {
-            SetError(_localizer["VolTrack_Err_BadDate"]);
+            SetError(localizer["VolTrack_Err_BadDate"]);
             return RedirectToAction(nameof(Index));
         }
         var parsed = parseResult.Value;
@@ -115,16 +103,16 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await _service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
+        var result = await service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
         if (!result.Ok)
         {
-            SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
             return RedirectToAction(nameof(Index));
         }
 
         await EmitCampSetupAuditAsync(form, current.Id, result.AutoClearedDayOffs);
 
-        SetSuccess(_localizer["VolTrack_Msg_CampSetupSaved"]);
+        SetSuccess(localizer["VolTrack_Msg_CampSetupSaved"]);
         return RedirectToAction(nameof(Index));
     }
 
@@ -132,7 +120,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         SetCampSetupForm form, Guid actorUserId,
         IReadOnlyList<int>? autoClearedDayOffs)
     {
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupSet,
             nameof(VolunteerBuildStatus),
             form.UserId,
@@ -143,7 +131,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 
         // Fresh DbContext per call → safe to fan out concurrently.
         await Task.WhenAll(autoClearedDayOffs.Select(dayOffset =>
-            _auditLogService.LogAsync(
+            auditLogService.LogAsync(
                 AuditAction.VolunteerDayOffCleared,
                 nameof(VolunteerBuildStatus),
                 form.UserId,
@@ -158,23 +146,23 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (userId == Guid.Empty)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        await _service.ClearCampSetupAsync(userId, current.Id, ct);
+        await service.ClearCampSetupAsync(userId, current.Id, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupCleared,
             nameof(VolunteerBuildStatus),
             userId,
             "BarrioSetupStartDate cleared",
             current.Id);
 
-        SetSuccess(_localizer["VolTrack_Msg_CampSetupCleared"]);
+        SetSuccess(localizer["VolTrack_Msg_CampSetupCleared"]);
         return RedirectToAction(nameof(Index));
     }
 
@@ -185,28 +173,28 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await _service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
+        var result = await service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
         if (!result.Ok)
         {
-            SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
             return RedirectToAction(nameof(Index));
         }
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerDayOffMarked,
             nameof(VolunteerBuildStatus),
             form.UserId,
             $"DayOffset={form.DayOffset}; reason={(string.IsNullOrWhiteSpace(form.Reason) ? "—" : form.Reason)}",
             current.Id);
 
-        SetSuccess(_localizer["VolTrack_Msg_DayOffMarked"]);
+        SetSuccess(localizer["VolTrack_Msg_DayOffMarked"]);
         return RedirectToAction(nameof(Index));
     }
 
@@ -217,23 +205,23 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await _service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);
+        var result = await service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);
         if (result.Removed)
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.VolunteerDayOffCleared,
                 nameof(VolunteerBuildStatus),
                 form.UserId,
                 $"DayOffset={form.DayOffset}; cleared by coordinator",
                 current.Id);
-            SetSuccess(_localizer["VolTrack_Msg_DayOffCleared"]);
+            SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
         }
 
         return RedirectToAction(nameof(Index));

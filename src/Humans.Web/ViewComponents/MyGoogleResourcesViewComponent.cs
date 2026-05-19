@@ -5,19 +5,10 @@ using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Web.ViewComponents;
 
-public class MyGoogleResourcesViewComponent : ViewComponent
+public class MyGoogleResourcesViewComponent(
+    ITeamResourceService teamResourceService,
+    ILogger<MyGoogleResourcesViewComponent> logger) : ViewComponent
 {
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly ILogger<MyGoogleResourcesViewComponent> _logger;
-
-    public MyGoogleResourcesViewComponent(
-        ITeamResourceService teamResourceService,
-        ILogger<MyGoogleResourcesViewComponent> logger)
-    {
-        _teamResourceService = teamResourceService;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync()
     {
         try
@@ -25,7 +16,7 @@ public class MyGoogleResourcesViewComponent : ViewComponent
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var resources = await _teamResourceService.GetUserTeamResourcesAsync(userId);
+            var resources = await teamResourceService.GetUserTeamResourcesAsync(userId);
 
             if (resources.Count == 0)
                 return Content(string.Empty);
@@ -49,7 +40,7 @@ public class MyGoogleResourcesViewComponent : ViewComponent
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load Google resources for current user");
+            logger.LogError(ex, "Failed to load Google resources for current user");
             return Content(string.Empty);
         }
     }

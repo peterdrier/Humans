@@ -15,22 +15,11 @@ namespace Humans.Web.ViewComponents;
 /// (e.g. ticket-transfer detail) where the reviewer needs identity context
 /// without having to hover.
 /// </summary>
-public sealed class HumanSummaryViewComponent : ViewComponent
+public sealed class HumanSummaryViewComponent(IUserService userService, ITeamService teamService) : ViewComponent
 {
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-
-    public HumanSummaryViewComponent(
-        IUserService userService,
-        ITeamService teamService)
-    {
-        _userService = userService;
-        _teamService = teamService;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var info = await _userService.GetUserInfoAsync(userId);
+        var info = await userService.GetUserInfoAsync(userId);
         if (info is null)
         {
             return View("Default", new ProfileSummaryViewModel
@@ -56,7 +45,7 @@ public sealed class HumanSummaryViewComponent : ViewComponent
         }
 
         var profile = info.Profile;
-        var memberships = (await _teamService.GetActiveTeamMembershipsForUserAsync(userId))
+        var memberships = (await teamService.GetActiveTeamMembershipsForUserAsync(userId))
             .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();

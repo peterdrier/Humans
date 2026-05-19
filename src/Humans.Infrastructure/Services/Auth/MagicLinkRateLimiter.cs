@@ -11,30 +11,23 @@ namespace Humans.Infrastructure.Services.Auth;
 /// <c>TryReserveAsync</c> extension so Auth's short-TTL replay-protection and
 /// signup-cooldown state can live behind the Application-layer interface.
 /// </summary>
-public sealed class MagicLinkRateLimiter : IMagicLinkRateLimiter
+public sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateLimiter
 {
-    private readonly IMemoryCache _cache;
-
-    public MagicLinkRateLimiter(IMemoryCache cache)
-    {
-        _cache = cache;
-    }
-
     public Task<bool> TryConsumeLoginTokenAsync(string token, TimeSpan lifetime)
     {
         var cacheKey = CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
-        return _cache.TryReserveAsync(cacheKey, lifetime);
+        return cache.TryReserveAsync(cacheKey, lifetime);
     }
 
     public Task<bool> TryReserveSignupSendAsync(string email, TimeSpan cooldown)
     {
         var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
-        return _cache.TryReserveAsync(cacheKey, cooldown);
+        return cache.TryReserveAsync(cacheKey, cooldown);
     }
 
     public void ReleaseSignupReservation(string email)
     {
         var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
-        _cache.Remove(cacheKey);
+        cache.Remove(cacheKey);
     }
 }

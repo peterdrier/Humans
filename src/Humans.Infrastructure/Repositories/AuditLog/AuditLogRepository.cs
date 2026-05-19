@@ -18,22 +18,15 @@ namespace Humans.Infrastructure.Repositories.AuditLog;
 /// <see cref="AddAsync"/> is exposed; there are no <c>UpdateAsync</c> or
 /// <c>DeleteAsync</c>.
 /// </remarks>
-internal sealed class AuditLogRepository : IAuditLogRepository
+internal sealed class AuditLogRepository(IDbContextFactory<HumansDbContext> factory) : IAuditLogRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public AuditLogRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Writes — append-only
     // ==========================================================================
 
     public async Task AddAsync(AuditLogEntry entry, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.AuditLogEntries.Add(entry);
         await ctx.SaveChangesAsync(ct);
     }
@@ -44,7 +37,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId == resourceId)
@@ -55,7 +48,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId != null && e.RelatedEntityId == userId)
@@ -71,7 +64,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId != null
@@ -85,7 +78,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             // arch:db-sort-ok top-N audit selector
@@ -97,7 +90,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
     public async Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         AuditAction? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.AuditLogEntries.AsNoTracking().AsQueryable();
 
@@ -125,7 +118,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e =>
@@ -143,7 +136,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e =>
@@ -163,7 +156,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
         int limit,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.AuditLogEntries.AsNoTracking().AsQueryable();
 
@@ -191,7 +184,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetAllForUserContributorAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
@@ -206,7 +199,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(a =>
@@ -224,7 +217,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
         AuditAction action,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.Action == action
@@ -240,7 +233,7 @@ internal sealed class AuditLogRepository : IAuditLogRepository
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.EntityType == entityType && actions.Contains(e.Action))

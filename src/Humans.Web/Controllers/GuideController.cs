@@ -10,17 +10,8 @@ using Humans.Web.Models;
 namespace Humans.Web.Controllers;
 
 [Route("Guide")]
-public class GuideController : Controller
+public class GuideController(IGuideContentService content, IGuideRoleResolver roles) : Controller
 {
-    private readonly IGuideContentService _content;
-    private readonly IGuideRoleResolver _roles;
-
-    public GuideController(IGuideContentService content, IGuideRoleResolver roles)
-    {
-        _content = content;
-        _roles = roles;
-    }
-
     [HttpGet("")]
     [AllowAnonymous]
     public Task<IActionResult> Index(CancellationToken cancellationToken) =>
@@ -38,7 +29,7 @@ public class GuideController : Controller
     {
         try
         {
-            await _content.RefreshAllAsync(cancellationToken);
+            await content.RefreshAllAsync(cancellationToken);
             TempData["GuideRefreshStatus"] = "Guide refreshed from GitHub.";
         }
         catch (GuideContentUnavailableException ex)
@@ -62,7 +53,7 @@ public class GuideController : Controller
         string rendered;
         try
         {
-            rendered = await _content.GetRenderedAsync(canonical, cancellationToken);
+            rendered = await content.GetRenderedAsync(canonical, cancellationToken);
         }
         catch (GuideContentUnavailableException)
         {
@@ -70,7 +61,7 @@ public class GuideController : Controller
             return View("Unavailable", BuildSidebar(canonical));
         }
 
-        var roleContext = await _roles.ResolveAsync(User, cancellationToken);
+        var roleContext = await roles.ResolveAsync(User, cancellationToken);
         var filtered = GuideFilter.Apply(rendered, roleContext);
 
         var viewModel = new GuideViewModel

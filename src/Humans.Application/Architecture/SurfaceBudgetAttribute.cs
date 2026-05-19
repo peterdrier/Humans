@@ -66,9 +66,7 @@ namespace Humans.Application.Architecture;
     AttributeTargets.Interface | AttributeTargets.Class | AttributeTargets.Struct,
     AllowMultiple = false,
     Inherited = false)]
-public sealed class SurfaceBudgetAttribute : Attribute
+public sealed class SurfaceBudgetAttribute(int methodCount) : Attribute
 {
-    public SurfaceBudgetAttribute(int methodCount) => MethodCount = methodCount;
-
-    public int MethodCount { get; }
+    public int MethodCount { get; } = methodCount;
 }

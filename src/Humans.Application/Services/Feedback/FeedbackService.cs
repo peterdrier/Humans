@@ -26,52 +26,25 @@ namespace Humans.Application.Services.Feedback;
 /// <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>.
 /// Nav-badge invalidation routes through <see cref="INavBadgeCacheInvalidator"/>.
 /// </summary>
-public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IUserMerge
+public sealed class FeedbackService(
+    IFeedbackRepository repository,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    ITeamService teamService,
+    IEmailService emailService,
+    INotificationService notificationService,
+    IAuditLogService auditLogService,
+    INavBadgeCacheInvalidator navBadge,
+    IClock clock,
+    IHostEnvironment env,
+    ILogger<FeedbackService> logger) : IFeedbackService, IUserDataContributor, IUserMerge
 {
-    private readonly IFeedbackRepository _repository;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ITeamService _teamService;
-    private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly INavBadgeCacheInvalidator _navBadge;
-    private readonly IClock _clock;
-    private readonly IHostEnvironment _env;
-    private readonly ILogger<FeedbackService> _logger;
-
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg", "image/png", "image/webp"
     };
 
     private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
-
-    public FeedbackService(
-        IFeedbackRepository repository,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        ITeamService teamService,
-        IEmailService emailService,
-        INotificationService notificationService,
-        IAuditLogService auditLogService,
-        INavBadgeCacheInvalidator navBadge,
-        IClock clock,
-        IHostEnvironment env,
-        ILogger<FeedbackService> logger)
-    {
-        _repository = repository;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _teamService = teamService;
-        _emailService = emailService;
-        _notificationService = notificationService;
-        _auditLogService = auditLogService;
-        _navBadge = navBadge;
-        _clock = clock;
-        _env = env;
-        _logger = logger;
-    }
 
     public Task<FeedbackReport> SubmitUserFeedbackAsync(
         Guid userId, FeedbackCategory category, string description,
@@ -93,7 +66,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         string pageUrl, string? userAgent, string? additionalContext,
         IFormFile? screenshot, CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var reportId = Guid.NewGuid();
 
         var report = new FeedbackReport
@@ -128,7 +101,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
             var fileName = $"{Guid.NewGuid()}{ext}";
             var relativePath = Path.Combine("uploads", "feedback", reportId.ToString(), fileName);
-            var absolutePath = Path.Combine(_env.ContentRootPath, "wwwroot", relativePath);
+            var absolutePath = Path.Combine(env.ContentRootPath, "wwwroot", relativePath);
 
             Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
 
@@ -140,10 +113,10 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             report.ScreenshotContentType = screenshot.ContentType;
         }
 
-        await _repository.AddReportAsync(report, cancellationToken);
-        _navBadge.Invalidate();
+        await repository.AddReportAsync(report, cancellationToken);
+        navBadge.Invalidate();
 
-        _logger.LogInformation("Feedback {ReportId} submitted by {UserId}: {Category}", reportId, userId, category);
+        logger.LogInformation("Feedback {ReportId} submitted by {UserId}: {Category}", reportId, userId, category);
 
         return report;
     }
@@ -151,7 +124,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     public async Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
         Guid id, CancellationToken cancellationToken = default)
     {
-        var report = await _repository.GetByIdAsync(id, cancellationToken);
+        var report = await repository.GetByIdAsync(id, cancellationToken);
         if (report is null) return null;
 
         var displayNames = await StitchCrossDomainNavsAsync([report], cancellationToken);
@@ -174,7 +147,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         int limit = 50,
         CancellationToken cancellationToken = default)
     {
-        var reports = await _repository.GetListAsync(
+        var reports = await repository.GetListAsync(
             status, category, reporterUserId, assignedToUserId, assignedToTeamId,
             unassignedOnly, limit, cancellationToken);
 
@@ -186,10 +159,10 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         Guid id, FeedbackStatus status, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var report = await _repository.FindForMutationAsync(id, cancellationToken)
+        var report = await repository.FindForMutationAsync(id, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         report.Status = status;
         report.UpdatedAt = now;
 
@@ -204,44 +177,44 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             report.ResolvedByUserId = null;
         }
 
-        await _repository.SaveTrackedReportAsync(report, cancellationToken);
+        await repository.SaveTrackedReportAsync(report, cancellationToken);
 
         // Audit after the business save so a rollback never leaves a ghost audit row.
         if (actorUserId.HasValue)
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
                 $"Feedback {id} status changed to {status}",
                 actorUserId.Value);
         }
         else
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
                 $"Feedback {id} status changed to {status}",
                 "API");
         }
 
-        _navBadge.Invalidate();
+        navBadge.Invalidate();
     }
 
     public async Task SetGitHubIssueNumberAsync(
         Guid id, int? issueNumber, CancellationToken cancellationToken = default)
     {
-        var report = await _repository.FindForMutationAsync(id, cancellationToken)
+        var report = await repository.FindForMutationAsync(id, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
 
         report.GitHubIssueNumber = issueNumber;
-        report.UpdatedAt = _clock.GetCurrentInstant();
+        report.UpdatedAt = clock.GetCurrentInstant();
 
-        await _repository.SaveTrackedReportAsync(report, cancellationToken);
+        await repository.SaveTrackedReportAsync(report, cancellationToken);
     }
 
     public async Task<FeedbackMessage> PostMessageAsync(
         Guid reportId, Guid? senderUserId, string content, bool isAdmin,
         CancellationToken cancellationToken = default)
     {
-        var report = await _repository.FindForMutationAsync(reportId, cancellationToken)
+        var report = await repository.FindForMutationAsync(reportId, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
 
         if (!isAdmin && senderUserId != report.UserId)
@@ -249,7 +222,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             throw new InvalidOperationException($"Feedback report {reportId} not found for user {senderUserId}");
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var message = new FeedbackMessage
         {
             Id = Guid.NewGuid(),
@@ -276,15 +249,15 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             await SendAdminResponseEmailAsync(report, content, cancellationToken);
         }
 
-        await _repository.AddMessageAndSaveReportAsync(message, report, cancellationToken);
+        await repository.AddMessageAndSaveReportAsync(message, report, cancellationToken);
 
         if (isAdmin)
         {
             await DispatchAdminReplyNotificationAsync(report, cancellationToken);
         }
 
-        _navBadge.Invalidate();
-        _logger.LogInformation(
+        navBadge.Invalidate();
+        logger.LogInformation(
             "Feedback message posted on {ReportId} by {UserId} (admin: {IsAdmin})",
             reportId, senderUserId, isAdmin);
         return message;
@@ -295,21 +268,21 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         var reportLink = $"/Feedback/{report.Id}";
 
-        var reporter = await _userService.GetUserInfoAsync(report.UserId, ct);
-        var emails = await _userEmailService.GetNotificationTargetEmailsAsync(
+        var reporter = await userService.GetUserInfoAsync(report.UserId, ct);
+        var emails = await userEmailService.GetNotificationTargetEmailsAsync(
             [report.UserId], ct);
 
         if (reporter is not null && emails.TryGetValue(report.UserId, out var recipientEmail) &&
             !string.IsNullOrWhiteSpace(recipientEmail))
         {
-            await _emailService.SendFeedbackResponseAsync(
+            await emailService.SendFeedbackResponseAsync(
                 recipientEmail, reporter.BurnerName,
                 report.Description, content, reportLink,
                 reporter.PreferredLanguage, ct);
         }
         else
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Skipping feedback response email for report {ReportId} because user {UserId} has no effective email",
                 report.Id, report.UserId);
         }
@@ -322,7 +295,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.FeedbackResponse,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -335,7 +308,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch FeedbackResponse notification for report {ReportId}", report.Id);
+            logger.LogError(ex, "Failed to dispatch FeedbackResponse notification for report {ReportId}", report.Id);
         }
     }
 
@@ -343,7 +316,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var report = await _repository.FindForMutationAsync(id, cancellationToken)
+        var report = await repository.FindForMutationAsync(id, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
 
         var changes = new List<string>();
@@ -354,13 +327,13 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         if (report.AssignedToUserId != assignedToUserId && report.AssignedToUserId.HasValue)
         {
-            var old = await _userService.GetUserInfoAsync(report.AssignedToUserId.Value, cancellationToken);
+            var old = await userService.GetUserInfoAsync(report.AssignedToUserId.Value, cancellationToken);
             oldAssigneeName = old?.BurnerName;
         }
 
         if (report.AssignedToTeamId != assignedToTeamId && report.AssignedToTeamId.HasValue)
         {
-            var team = await _teamService.GetTeamAsync(report.AssignedToTeamId.Value, cancellationToken);
+            var team = await teamService.GetTeamAsync(report.AssignedToTeamId.Value, cancellationToken);
             oldTeamName = team?.Name;
         }
 
@@ -370,7 +343,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             string toLabel = "Unassigned";
             if (assignedToUserId.HasValue)
             {
-                var newUser = await _userService.GetUserInfoAsync(assignedToUserId.Value, cancellationToken);
+                var newUser = await userService.GetUserInfoAsync(assignedToUserId.Value, cancellationToken);
                 toLabel = newUser?.BurnerName ?? assignedToUserId.Value.ToString();
             }
             changes.Add($"Assignee: {fromLabel} → {toLabel}");
@@ -383,7 +356,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             string toLabel = "Unassigned";
             if (assignedToTeamId.HasValue)
             {
-                var team = await _teamService.GetTeamAsync(assignedToTeamId.Value, cancellationToken);
+                var team = await teamService.GetTeamAsync(assignedToTeamId.Value, cancellationToken);
                 toLabel = team?.Name ?? assignedToTeamId.Value.ToString();
             }
             changes.Add($"Team: {fromLabel} → {toLabel}");
@@ -393,38 +366,38 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         if (changes.Count == 0)
             return;
 
-        report.UpdatedAt = _clock.GetCurrentInstant();
+        report.UpdatedAt = clock.GetCurrentInstant();
 
-        await _repository.SaveTrackedReportAsync(report, cancellationToken);
+        await repository.SaveTrackedReportAsync(report, cancellationToken);
 
         // Audit after the business save so a rollback never leaves a ghost audit row.
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
         if (actorUserId.HasValue)
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.FeedbackAssignmentChanged, nameof(FeedbackReport), id,
                 description, actorUserId.Value);
         }
         else
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.FeedbackAssignmentChanged, nameof(FeedbackReport), id,
                 description, "API");
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Feedback {ReportId} assignment updated by {ActorId}: {Changes}",
             id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
     }
 
     public Task<int> GetActionableCountAsync(
         CancellationToken cancellationToken = default) =>
-        _repository.GetActionableCountAsync(cancellationToken);
+        repository.GetActionableCountAsync(cancellationToken);
 
     public async Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.GetReporterCountsAsync(cancellationToken);
+        var rows = await repository.GetReporterCountsAsync(cancellationToken);
         if (rows.Count == 0)
             return [];
 
@@ -443,12 +416,12 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
-        => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        => repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public async Task<IReadOnlyList<Guid>> GetOpenFeedbackIdsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var reports = await _repository.GetListAsync(
+        var reports = await repository.GetListAsync(
             status: FeedbackStatus.Open,
             category: null,
             reporterUserId: userId,
@@ -462,7 +435,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var reports = await _repository.GetForUserExportAsync(userId, ct);
+        var reports = await repository.GetForUserExportAsync(userId, ct);
 
         var shaped = reports
             .OrderByDescending(fr => fr.CreatedAt)
@@ -511,11 +484,11 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         var users = userIds.Count == 0
             ? null
-            : await _userService.GetByIdsAsync(userIds, ct);
+            : await userService.GetByIdsAsync(userIds, ct);
         IReadOnlyDictionary<Guid, string>? teamNames = null;
         if (teamIds.Count > 0)
         {
-            var teamsById = await _teamService.GetTeamsAsync(ct);
+            var teamsById = await teamService.GetTeamsAsync(ct);
             teamNames = teamIds
                 .Where(teamsById.ContainsKey)
                 .ToDictionary(id => id, id => teamsById[id].Name);
@@ -547,7 +520,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         if (userIds.Count == 0) return EmptyDisplayUsers;
 
-        var infos = await _userService.GetUserInfosAsync(userIds, ct);
+        var infos = await userService.GetUserInfosAsync(userIds, ct);
         var result = new Dictionary<Guid, DisplayUser>(userIds.Count);
         foreach (var id in userIds)
         {

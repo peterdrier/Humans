@@ -6,27 +6,14 @@ using NodaTime;
 
 namespace Humans.Application.Services.Profiles;
 
-public sealed class EmailProblemsService : IEmailProblemsService
+public sealed class EmailProblemsService(IUserEmailService userEmailService, IUserService userService, IClock clock)
+    : IEmailProblemsService
 {
-    private readonly IUserEmailService _userEmailService;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-
-    public EmailProblemsService(
-        IUserEmailService userEmailService,
-        IUserService userService,
-        IClock clock)
-    {
-        _userEmailService = userEmailService;
-        _userService = userService;
-        _clock = clock;
-    }
-
     public async Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default)
     {
         var problems = new List<EmailProblem>();
 
-        var allInfos = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var profiled = allInfos.Where(i => i.Profile is not null).ToList();
 
         foreach (var p in profiled)
@@ -91,14 +78,14 @@ public sealed class EmailProblemsService : IEmailProblemsService
             }
         }
 
-        var orphans = await _userEmailService.GetOrphanUserEmailsAsync(ct);
+        var orphans = await userEmailService.GetOrphanUserEmailsAsync(ct);
         foreach (var o in orphans)
         {
             problems.Add(new EmailProblem(
                 EmailProblemKind.OrphanUserEmail, o.UserId, null, o.EmailId, o.Email, null));
         }
 
-        var ghosts = await _userService.GetUsersWithLoginsButNoEmailsAsync(ct);
+        var ghosts = await userService.GetUsersWithLoginsButNoEmailsAsync(ct);
         foreach (var ghostId in ghosts)
         {
             problems.Add(new EmailProblem(
@@ -120,15 +107,15 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 info.Id, null, null, legacy, null));
         }
 
-        return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
+        return new EmailProblemsReport(clock.GetCurrentInstant(), problems);
     }
 
     public async Task<bool> UsersShareAnyEmailAsync(Guid user1Id, Guid user2Id, CancellationToken ct = default)
     {
         if (user1Id == user2Id) return false;
 
-        var info1 = await _userService.GetUserInfoAsync(user1Id, ct);
-        var info2 = await _userService.GetUserInfoAsync(user2Id, ct);
+        var info1 = await userService.GetUserInfoAsync(user1Id, ct);
+        var info2 = await userService.GetUserInfoAsync(user2Id, ct);
         if (info1 is null || info2 is null) return false;
 
         var norms1 = info1.UserEmails
@@ -140,7 +127,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
 
     public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var ghosts = await _userService.GetUsersWithLoginsButNoEmailsAsync(ct);
+        var ghosts = await userService.GetUsersWithLoginsButNoEmailsAsync(ct);
         return ghosts.Contains(userId);
     }
 
@@ -150,7 +137,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
         // actorUserId captured by caller's audit row; per-row audit at controller.
         _ = actorUserId;
 
-        var allInfos = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var backfilled = new List<(Guid, string)>();
 
         foreach (var info in allInfos)
@@ -163,7 +150,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 continue;
 
             // see nobodies-collective/Humans#697 — plain verified row; reconcile attaches tag on next OAuth sign-in.
-            await _userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
+            await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
             backfilled.Add((info.Id, legacy));
         }
 

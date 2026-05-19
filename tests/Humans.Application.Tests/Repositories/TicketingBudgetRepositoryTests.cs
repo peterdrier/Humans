@@ -26,7 +26,6 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     private async Task<TicketOrder> SeedOrderAsync(

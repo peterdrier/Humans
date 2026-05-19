@@ -11,32 +11,19 @@ namespace Humans.Application.Services.Tickets;
 /// <summary>
 /// Tickets→Budget bridge: reads paid ticket sales, delegates BudgetLineItem/Projection writes to IBudgetService.
 /// </summary>
-public sealed class TicketingBudgetService : ITicketingBudgetService
+public sealed class TicketingBudgetService(
+    ITicketingBudgetRepository ticketRepo,
+    IBudgetService budgetService,
+    IClock clock,
+    ILogger<TicketingBudgetService> logger) : ITicketingBudgetService
 {
-    private readonly ITicketingBudgetRepository _ticketRepo;
-    private readonly IBudgetService _budgetService;
-    private readonly IClock _clock;
-    private readonly ILogger<TicketingBudgetService> _logger;
-
-    public TicketingBudgetService(
-        ITicketingBudgetRepository ticketRepo,
-        IBudgetService budgetService,
-        IClock clock,
-        ILogger<TicketingBudgetService> logger)
-    {
-        _ticketRepo = ticketRepo;
-        _budgetService = budgetService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default)
     {
         try
         {
-            var orders = await _ticketRepo.GetPaidOrderSummariesAsync(ct);
+            var orders = await ticketRepo.GetPaidOrderSummariesAsync(ct);
 
-            var today = _clock.GetCurrentInstant().InUtc().Date;
+            var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 
             var weeklyActuals = orders
@@ -58,11 +45,11 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
                 })
                 .ToList();
 
-            return await _budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
+            return await budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to sync ticketing actuals for budget year {YearId}", budgetYearId);
+            logger.LogError(ex, "Failed to sync ticketing actuals for budget year {YearId}", budgetYearId);
             throw;
         }
     }
@@ -71,11 +58,11 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
     {
         try
         {
-            return await _budgetService.RefreshTicketingProjectionsAsync(budgetYearId, ct);
+            return await budgetService.RefreshTicketingProjectionsAsync(budgetYearId, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh ticketing projections for budget year {YearId}", budgetYearId);
+            logger.LogError(ex, "Failed to refresh ticketing projections for budget year {YearId}", budgetYearId);
             throw;
         }
     }
@@ -85,7 +72,7 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        await _budgetService.UpdateTicketingProjectionAsync(
+        await budgetService.UpdateTicketingProjectionAsync(
             command.BudgetGroupId,
             command.StartDate,
             command.EventDate,
@@ -103,12 +90,12 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
 
     public Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
     {
-        return _budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);
+        return budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);
     }
 
     public int GetActualTicketsSold(BudgetGroup ticketingGroup)
     {
-        return _budgetService.GetActualTicketsSold(ticketingGroup);
+        return budgetService.GetActualTicketsSold(ticketingGroup);
     }
 
     // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.

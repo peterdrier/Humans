@@ -5,31 +5,20 @@ using NodaTime;
 
 namespace Humans.Application.Services.Auth;
 
-public sealed class AdminAuthorizationService : IAdminAuthorizationService
+public sealed class AdminAuthorizationService(
+    ICurrentUserContext currentUser,
+    IRoleAssignmentRepository roleAssignments,
+    IClock clock) : IAdminAuthorizationService
 {
-    private readonly ICurrentUserContext _currentUser;
-    private readonly IRoleAssignmentRepository _roleAssignments;
-    private readonly IClock _clock;
-
-    public AdminAuthorizationService(
-        ICurrentUserContext currentUser,
-        IRoleAssignmentRepository roleAssignments,
-        IClock clock)
-    {
-        _currentUser = currentUser;
-        _roleAssignments = roleAssignments;
-        _clock = clock;
-    }
-
     public async Task RequireCurrentUserIsAdminAsync(CancellationToken cancellationToken = default)
     {
-        var userId = _currentUser.UserId
+        var userId = currentUser.UserId
             ?? throw new UnauthorizedAccessException("An authenticated user is required.");
 
-        var isAdmin = await _roleAssignments.HasActiveRoleAsync(
+        var isAdmin = await roleAssignments.HasActiveRoleAsync(
             userId,
             RoleNames.Admin,
-            _clock.GetCurrentInstant(),
+            clock.GetCurrentInstant(),
             cancellationToken);
 
         if (!isAdmin)

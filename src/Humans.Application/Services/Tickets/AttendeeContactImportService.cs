@@ -12,48 +12,25 @@ using NodaTime;
 
 namespace Humans.Application.Services.Tickets;
 
-public sealed class AttendeeContactImportService : IAttendeeContactImportService
+public sealed class AttendeeContactImportService(
+    ITicketRepository ticketRepository,
+    IUserEmailService userEmails,
+    IAccountProvisioningService provisioning,
+    IUserService users,
+    IShiftManagementService shifts,
+    ITicketQueryService ticketQuery,
+    IAuditLogService audit,
+    IClock clock,
+    ILogger<AttendeeContactImportService> logger) : IAttendeeContactImportService
 {
-    private readonly ITicketRepository _ticketRepository;
-    private readonly IUserEmailService _userEmails;
-    private readonly IAccountProvisioningService _provisioning;
-    private readonly IUserService _users;
-    private readonly IShiftManagementService _shifts;
-    private readonly ITicketQueryService _ticketQuery;
-    private readonly IAuditLogService _audit;
-    private readonly IClock _clock;
-    private readonly ILogger<AttendeeContactImportService> _logger;
-
-    public AttendeeContactImportService(
-        ITicketRepository ticketRepository,
-        IUserEmailService userEmails,
-        IAccountProvisioningService provisioning,
-        IUserService users,
-        IShiftManagementService shifts,
-        ITicketQueryService ticketQuery,
-        IAuditLogService audit,
-        IClock clock,
-        ILogger<AttendeeContactImportService> logger)
-    {
-        _ticketRepository = ticketRepository;
-        _userEmails = userEmails;
-        _provisioning = provisioning;
-        _users = users;
-        _shifts = shifts;
-        _ticketQuery = ticketQuery;
-        _audit = audit;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<AttendeeImportPlan> BuildPlanAsync(CancellationToken ct = default)
     {
-        var state = await _ticketRepository.GetSyncStateAsync(ct);
+        var state = await ticketRepository.GetSyncStateAsync(ct);
         var eventId = state?.VendorEventId;
         if (string.IsNullOrEmpty(eventId))
             throw new InvalidOperationException("No active vendor event id — sync has not run.");
 
-        var unmatched = await _ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
+        var unmatched = await ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
         var decisions = new List<AttendeeImportDecision>();
 
         // No email = one decision each (ungroupable).
@@ -91,15 +68,15 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        var start = _clock.GetCurrentInstant();
+        var start = clock.GetCurrentInstant();
 
-        var state = await _ticketRepository.GetSyncStateAsync(ct);
+        var state = await ticketRepository.GetSyncStateAsync(ct);
         var eventId = state?.VendorEventId;
         if (string.IsNullOrEmpty(eventId))
             throw new InvalidOperationException("No active vendor event id — sync has not run.");
 
         // Re-query so plan/apply are stateless (a sync between plan and apply is tolerated).
-        var freshUnmatched = await _ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
+        var freshUnmatched = await ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
         var freshById = freshUnmatched.ToDictionary(a => a.Id);
 
         var toUpsert = new List<TicketAttendee>();
@@ -121,7 +98,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             {
                 if (!freshById.TryGetValue(gid, out var ga))
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Attendee {AttendeeId} ({Email}) vanished between plan and apply",
                         gid, d.Email);
                     continue;
@@ -129,7 +106,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 // Trim+OrdinalIgnoreCase to match plan-time grouping.
                 if (!string.Equals(ga.AttendeeEmail?.Trim(), d.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); skipping",
                         gid, d.Email, ga.AttendeeEmail);
                     continue;
@@ -156,7 +133,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
                     case AttendeeImportOutcome.AmbiguousMultipleVerified:
                         ambiguous++;
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Attendee {AttendeeId} email {Email} verified by multiple users {UserIds}",
                             d.AttendeeId, d.Email, d.AmbiguousUserIds);
                         break;
@@ -179,9 +156,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                             if (d.UnverifiedRowUserId is Guid uid &&
                                 d.UnverifiedEmailIdToDelete is Guid eid)
                             {
-                                await _userEmails.DeleteEmailAsync(uid, eid, ct);
+                                await userEmails.DeleteEmailAsync(uid, eid, ct);
                             }
-                            var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                            var (newUser, wasCreated) = await provisioning.FindOrCreateUserByEmailAsync(
                                 d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
                             foreach (var ga in resolved)
                             {
@@ -196,7 +173,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
                     case AttendeeImportOutcome.CreateNewUser:
                         {
-                            var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                            var (newUser, wasCreated) = await provisioning.FindOrCreateUserByEmailAsync(
                                 d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
                             foreach (var ga in resolved)
                             {
@@ -212,7 +189,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 errors++;
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Attendee contact import failed for {AttendeeId} ({Email})",
                     d.AttendeeId, d.Email);
             }
@@ -220,23 +197,23 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
         if (toUpsert.Count > 0)
         {
-            await _ticketRepository.UpsertAttendeesAsync(toUpsert, ct);
+            await ticketRepository.UpsertAttendeesAsync(toUpsert, ct);
         }
 
         // Evict before participation loop so attendee mutation always invalidates caches.
-        _ticketQuery.InvalidateAfterContactImport();
+        ticketQuery.InvalidateAfterContactImport();
 
-        var active = await _shifts.GetActiveAsync();
+        var active = await shifts.GetActiveAsync();
         if (active is not null && newlyMatchedUserIds.Count > 0)
         {
             foreach (var userId in newlyMatchedUserIds)
             {
-                await _users.SetParticipationFromTicketSyncAsync(
+                await users.SetParticipationFromTicketSyncAsync(
                     userId, active.Year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
 
-        var elapsed = _clock.GetCurrentInstant() - start;
+        var elapsed = clock.GetCurrentInstant() - start;
         var result = new AttendeeImportResult(
             TotalAttempted: attempted,
             UsersCreated: created,
@@ -248,7 +225,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             Errors: errors,
             Elapsed: elapsed);
 
-        await _audit.LogAsync(
+        await audit.LogAsync(
             AuditAction.TicketContactsImported,
             "Tickets", Guid.Empty,
             description: result.FormatSummary(),
@@ -280,7 +257,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 ObservedNames: names);
         }
 
-        var verifiedUserIds = await _userEmails.GetDistinctVerifiedUserIdsAsync(a.AttendeeEmail, ct);
+        var verifiedUserIds = await userEmails.GetDistinctVerifiedUserIdsAsync(a.AttendeeEmail, ct);
 
         if (verifiedUserIds.Count > 1)
         {
@@ -309,7 +286,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 ObservedNames: names);
         }
 
-        var existingRow = await _userEmails.FindAnyEmailRowByAddressAsync(a.AttendeeEmail, ct);
+        var existingRow = await userEmails.FindAnyEmailRowByAddressAsync(a.AttendeeEmail, ct);
         if (existingRow is var (uid, emailId))
         {
             return new AttendeeImportDecision(
@@ -340,7 +317,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         var current = userId;
         while (true)
         {
-            var user = await _users.GetUserInfoAsync(current, ct);
+            var user = await users.GetUserInfoAsync(current, ct);
             if (user?.MergedToUserId is not Guid next) return current;
             if (!visited.Add(next)) return current;
             current = next;

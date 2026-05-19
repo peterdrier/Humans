@@ -423,6 +423,15 @@ public interface ICampRepository : IRepository
         Guid campSeasonId, CancellationToken ct = default);
 
     /// <summary>
+    /// Year-scoped bulk variant of <see cref="GetSeasonMembersAsync"/>. Returns
+    /// every non-Removed <c>CampMember</c> across every <c>CampSeason</c> of
+    /// <paramref name="year"/>, grouped by <c>CampSeasonId</c>. Seasons with no
+    /// members are absent from the dictionary. One SQL round-trip. Read-only.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampMember>>> GetMembersForYearAsync(
+        int year, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all active-or-pending memberships for the user, with their
     /// <c>CampSeason</c> and the season's parent <c>Camp</c> loaded so the
     /// caller can build display summaries. Read-only.

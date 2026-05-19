@@ -14,6 +14,7 @@ namespace Humans.Application.Interfaces.Camps;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>55→55 — onsite-roster N+1 fix: added <see cref="GetCampMembersByYearAsync"/> (year-scoped bulk member fetch) for <c>OnsiteRosterService</c>; net-zero by dropping obsolete <c>GetCampsWithLeadsForYearAsync</c> (T-06 alias of <see cref="GetCampsForYearAsync"/>, zero external callers).</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(55)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>52→55 — issue-490 Early Entry (camps consumer): added SetEeStartDateAsync, SetCampSeasonEeSlotCountAsync, SetEarlyEntryAsync. Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/CampSettings — tables ICampService already owns — so the methods belong here per design-rules §6 (no service split).</item>
 ///   <item>51→52 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against camps must live in the owning section per design-rules §6.</item>
@@ -73,19 +74,6 @@ public interface ICampService : IApplicationService
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
-    /// <summary>
-    /// Gets camps with their active leads for a given year. Optionally filters
-    /// to specific season statuses.
-    /// </summary>
-    /// <remarks>
-    /// T-06: deprecated alias of <see cref="GetCampsForYearAsync"/> with an
-    /// extra status filter. <see cref="CampInfo.Leads"/> is always populated
-    /// (non-null) on every code path now. New callers should use
-    /// <see cref="GetCampsForYearAsync"/> and filter on
-    /// <c>CampInfo.Seasons[].Status</c> in-memory.
-    /// </remarks>
-    [Obsolete("T-06: GetCampsForYearAsync now always populates leads; filter by season Status in-memory.")]
-    Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -204,6 +192,19 @@ public interface ICampService : IApplicationService
     /// <summary>Raw rows (no display-name stitching, no lead union). Privileged — caller must authorize.</summary>
     Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Year-scoped bulk variant of <see cref="GetSeasonMembersAsync"/>. Returns
+    /// every non-Removed <c>CampMember</c> across every <c>CampSeason</c> of
+    /// <paramref name="year"/>, grouped by <c>CampSeasonId</c>. Seasons with no
+    /// members are absent from the dictionary. Read-only; no display-name
+    /// stitching or lead union. Used by cross-section composers (e.g.
+    /// <c>OnsiteRosterService</c>) that need camp membership for many seasons
+    /// in one query instead of N per-season calls. Privileged — caller must
+    /// authorize.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
+        int year, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);

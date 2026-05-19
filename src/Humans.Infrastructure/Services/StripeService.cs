@@ -47,16 +47,9 @@ public class StripeSettings
 
 }
 
-public class StripeService : IStripeService
+public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger) : IStripeService
 {
-    private readonly StripeSettings _settings;
-    private readonly ILogger<StripeService> _logger;
-
-    public StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly StripeSettings _settings = settings.Value;
 
     public bool IsConfigured => _settings.IsConfigured;
 
@@ -125,7 +118,7 @@ public class StripeService : IStripeService
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe permission_error creating Checkout Session for order {OrderId}: the Store key is missing checkout_session:write scope. {Message}",
                 storeOrderId, ex.Message);
             throw;
@@ -148,7 +141,7 @@ public class StripeService : IStripeService
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe permission_error fetching PaymentIntent {Id}: the Tickets key is missing required scope. {Message}",
                 paymentIntentId, ex.Message);
             return null;
@@ -157,7 +150,7 @@ public class StripeService : IStripeService
         var charge = pi.LatestCharge;
         if (charge is null)
         {
-            _logger.LogDebug("PaymentIntent {Id} has no charge", paymentIntentId);
+            logger.LogDebug("PaymentIntent {Id} has no charge", paymentIntentId);
             return null;
         }
 
@@ -194,7 +187,7 @@ public class StripeService : IStripeService
     {
         if (!_settings.IsStoreWebhookConfigured)
         {
-            _logger.LogWarning("Store webhook parse attempted while STRIPE_STORE_WEBHOOK_SECRET is unset.");
+            logger.LogWarning("Store webhook parse attempted while STRIPE_STORE_WEBHOOK_SECRET is unset.");
             return null;
         }
 
@@ -209,7 +202,7 @@ public class StripeService : IStripeService
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
+            logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
             return null;
         }
 

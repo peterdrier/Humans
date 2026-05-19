@@ -33,102 +33,69 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SuspendNonCompliantMembersJob : IRecurringJob
+public class SuspendNonCompliantMembersJob(
+    IUserService userService,
+    IProfileService profileService,
+    ITeamService teamService,
+    IMembershipCalculator membershipCalculator,
+    IEmailService emailService,
+    INotificationService notificationService,
+    IGoogleSyncService googleSyncService,
+    IAuditLogService auditLogService,
+    IUserInfoInvalidator userInfoInvalidator,
+    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
+    IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
+    IHumansMetrics metrics,
+    ILogger<SuspendNonCompliantMembersJob> logger,
+    IClock clock) : IRecurringJob
 {
-    private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
-    private readonly ITeamService _teamService;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IUserInfoInvalidator _userInfoInvalidator;
-    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
-    private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
-    private readonly IClock _clock;
-
-    public SuspendNonCompliantMembersJob(
-        IUserService userService,
-        IProfileService profileService,
-        ITeamService teamService,
-        IMembershipCalculator membershipCalculator,
-        IEmailService emailService,
-        INotificationService notificationService,
-        IGoogleSyncService googleSyncService,
-        IAuditLogService auditLogService,
-        IUserInfoInvalidator userInfoInvalidator,
-        IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-        IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
-        IHumansMetrics metrics,
-        ILogger<SuspendNonCompliantMembersJob> logger,
-        IClock clock)
-    {
-        _userService = userService;
-        _profileService = profileService;
-        _teamService = teamService;
-        _membershipCalculator = membershipCalculator;
-        _emailService = emailService;
-        _notificationService = notificationService;
-        _googleSyncService = googleSyncService;
-        _auditLogService = auditLogService;
-        _userInfoInvalidator = userInfoInvalidator;
-        _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
-        _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
-        _metrics = metrics;
-        _logger = logger;
-        _clock = clock;
-    }
-
     /// <summary>
     /// Checks and updates membership status for users missing required consents past grace period.
     /// </summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Starting non-compliant member suspension check at {Time}",
-            _clock.GetCurrentInstant());
+            clock.GetCurrentInstant());
 
         try
         {
             // Get users who are now Inactive (missing consents + grace period expired)
-            var usersToSuspend = await _membershipCalculator
+            var usersToSuspend = await membershipCalculator
                 .GetUsersRequiringStatusUpdateAsync(cancellationToken);
 
             if (usersToSuspend.Count == 0)
             {
-                _logger.LogInformation("Completed suspension check, no users require suspension");
+                logger.LogInformation("Completed suspension check, no users require suspension");
                 return;
             }
 
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
 
             // Apply the suspension write through IProfileService — returns the
             // subset of user ids whose profile was actually mutated (skips
             // already-suspended / profileless users).
-            var suspendedIds = await _profileService
+            var suspendedIds = await profileService
                 .SuspendForMissingConsentAsync(usersToSuspend, now, cancellationToken);
 
             if (suspendedIds.Count == 0)
             {
-                _metrics.RecordJobRun("suspend_noncompliant_members", "success");
-                _logger.LogInformation(
+                metrics.RecordJobRun("suspend_noncompliant_members", "success");
+                logger.LogInformation(
                     "Completed non-compliant member check, no eligible users to suspend");
                 return;
             }
 
             // Fan out user + email hydration for notifications, and team membership
             // lookup for Google-sync cleanup.
-            var usersById = await _userService
+            var usersById = await userService
                 .GetUserInfosAsync(suspendedIds, cancellationToken);
 
             foreach (var userId in suspendedIds)
             {
                 if (!usersById.TryGetValue(userId, out var user))
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Suspended user {UserId} not found in user lookup — skipping downstream side effects",
                         userId);
                     continue;
@@ -140,7 +107,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 {
                     try
                     {
-                        await _emailService.SendAccessSuspendedAsync(
+                        await emailService.SendAccessSuspendedAsync(
                             effectiveEmail,
                             user.BurnerName,
                             "Missing required document consent (grace period expired)",
@@ -149,14 +116,14 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to send suspension email for user {UserId}", user.Id);
+                        logger.LogError(ex, "Failed to send suspension email for user {UserId}", user.Id);
                     }
                 }
 
                 // 2. Send in-app notification (best-effort)
                 try
                 {
-                    await _notificationService.SendAsync(
+                    await notificationService.SendAsync(
                         NotificationSource.AccessSuspended,
                         NotificationClass.Actionable,
                         NotificationPriority.Critical,
@@ -169,54 +136,54 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
+                    logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
                 }
 
                 // 3. Remove from all team resources (Google Drive/Groups) via ITeamService lookup.
-                var memberships = await _teamService.GetUserTeamsAsync(user.Id, cancellationToken);
+                var memberships = await teamService.GetUserTeamsAsync(user.Id, cancellationToken);
                 foreach (var membership in memberships)
                 {
                     try
                     {
-                        await _googleSyncService.RemoveUserFromTeamResourcesAsync(
+                        await googleSyncService.RemoveUserFromTeamResourcesAsync(
                             membership.TeamId,
                             user.Id,
                             cancellationToken);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to remove user {UserId} from team {TeamId} resources during suspension",
+                        logger.LogError(ex, "Failed to remove user {UserId} from team {TeamId} resources during suspension",
                             user.Id, membership.TeamId);
                     }
                 }
 
-                _logger.LogWarning(
+                logger.LogWarning(
                     "User {UserId} ({Email}) suspended and flagged for removal from {Count} teams",
                     user.Id, effectiveEmail, memberships.Count);
 
-                _metrics.RecordMemberSuspended("job");
+                metrics.RecordMemberSuspended("job");
 
                 // 4. Audit log + cross-cutting cache invalidation.
-                await _auditLogService.LogAsync(
+                await auditLogService.LogAsync(
                     AuditAction.MemberSuspended, nameof(User), user.Id,
                     $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
-                await _userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);
-                _roleAssignmentClaimsInvalidator.Invalidate(user.Id);
-                _shiftAuthorizationInvalidator.Invalidate(user.Id);
-                _teamService.RemoveMemberFromAllTeamsCache(user.Id);
+                await userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);
+                roleAssignmentClaimsInvalidator.Invalidate(user.Id);
+                shiftAuthorizationInvalidator.Invalidate(user.Id);
+                teamService.RemoveMemberFromAllTeamsCache(user.Id);
             }
 
-            _metrics.RecordJobRun("suspend_noncompliant_members", "success");
-            _logger.LogInformation(
+            metrics.RecordJobRun("suspend_noncompliant_members", "success");
+            logger.LogInformation(
                 "Completed non-compliant member check, suspended {Count} members",
                 suspendedIds.Count);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("suspend_noncompliant_members", "failure");
-            _logger.LogError(ex, "Error checking non-compliant members");
+            metrics.RecordJobRun("suspend_noncompliant_members", "failure");
+            logger.LogError(ex, "Error checking non-compliant members");
             throw;
         }
     }

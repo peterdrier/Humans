@@ -201,7 +201,7 @@ public static class CalendarOccurrenceExpander
     }
 
     /// <summary>Maps domain <c>CalendarEvent</c> (with Exceptions) to the immutable projection.</summary>
-    public static CalendarEventInfo ToInfo(Humans.Domain.Entities.CalendarEvent ev) => new(
+    public static CalendarEventInfo ToInfo(Domain.Entities.CalendarEvent ev) => new(
         Id: ev.Id,
         Title: ev.Title,
         Description: ev.Description,

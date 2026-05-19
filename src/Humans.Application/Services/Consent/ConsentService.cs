@@ -20,45 +20,22 @@ using NodaTime;
 namespace Humans.Application.Services.Consent;
 
 // consent_records is append-only (design-rules §12). Legal-doc repo migration #547a still pending.
-public sealed class ConsentService : IConsentService, IUserDataContributor
+public sealed class ConsentService(
+    IConsentRepository repo,
+    ILegalDocumentSyncService legalDocumentSyncService,
+    INotificationInboxService notificationInboxService,
+    ISystemTeamSync syncJob,
+    IUserService userService,
+    IServiceProvider serviceProvider,
+    IHumansMetrics metrics,
+    IClock clock,
+    ILogger<ConsentService> logger) : IConsentService, IUserDataContributor
 {
-    private readonly IConsentRepository _repo;
-    private readonly ILegalDocumentSyncService _legalDocumentSyncService;
-    private readonly INotificationInboxService _notificationInboxService;
-    private readonly ISystemTeamSync _syncJob;
-    private readonly IUserService _userService;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IHumansMetrics _metrics;
-    private readonly IClock _clock;
-    private readonly ILogger<ConsentService> _logger;
-
-    public ConsentService(
-        IConsentRepository repo,
-        ILegalDocumentSyncService legalDocumentSyncService,
-        INotificationInboxService notificationInboxService,
-        ISystemTeamSync syncJob,
-        IUserService userService,
-        IServiceProvider serviceProvider,
-        IHumansMetrics metrics,
-        IClock clock,
-        ILogger<ConsentService> logger)
-    {
-        _repo = repo;
-        _legalDocumentSyncService = legalDocumentSyncService;
-        _notificationInboxService = notificationInboxService;
-        _syncJob = syncJob;
-        _userService = userService;
-        _serviceProvider = serviceProvider;
-        _metrics = metrics;
-        _clock = clock;
-        _logger = logger;
-    }
-
     // Chain-follow: returns {merged-source-ids ∪ userId} if userId is a fold target, else null.
     private async Task<IReadOnlyCollection<Guid>?> GetChainFollowIdsAsync(
         Guid userId, CancellationToken ct)
     {
-        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
         if (sourceIds.Count == 0)
             return null;
 
@@ -70,18 +47,18 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
     public async Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var membershipCalculator = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
         var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
 
         // Doc listing still goes through ILegalDocumentSyncService (#547a not yet done).
-        var documents = await _legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
+        var documents = await legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var userConsents = chainIds is null
-            ? await _repo.GetAllForUserAsync(userId, ct)
-            : await _repo.GetAllForUserIdsAsync(chainIds, ct);
+            ? await repo.GetAllForUserAsync(userId, ct)
+            : await repo.GetAllForUserIdsAsync(chainIds, ct);
 
         var groups = documents
             .GroupBy(d => d.TeamId)
@@ -128,18 +105,18 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     public async Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
         Guid documentVersionId, Guid userId, CancellationToken ct = default)
     {
-        var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
+        var version = await legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
         if (version is null)
             return null;
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var consentRecord = chainIds is null
-            ? await _repo.GetByUserAndVersionAsync(userId, documentVersionId, ct)
-            : await _repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
+            ? await repo.GetByUserAndVersionAsync(userId, documentVersionId, ct)
+            : await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         // Profile is owned by Profiles section — go through UserInfo cache, not the DbSet.
-        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
+        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         return new ConsentReviewDetail(
             DocumentVersionId: version.Id,
@@ -158,19 +135,19 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
         // Defense-in-depth Stub gate: never write a ConsentRecord for a profile without verified legal name.
-        var info = await _userService.GetUserInfoAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
 
-        var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
+        var version = await legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
         if (version is null)
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var alreadyConsented = chainIds is null
-            ? await _repo.ExistsForUserAndVersionAsync(userId, documentVersionId, ct)
-            : await _repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
+            ? await repo.ExistsForUserAndVersionAsync(userId, documentVersionId, ct)
+            : await repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
@@ -183,42 +160,42 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             Id = Guid.NewGuid(),
             UserId = userId,
             DocumentVersionId = documentVersionId,
-            ConsentedAt = _clock.GetCurrentInstant(),
+            ConsentedAt = clock.GetCurrentInstant(),
             IpAddress = ipAddress,
             UserAgent = userAgent.Length > 500 ? userAgent[..500] : userAgent,
             ContentHash = contentHash,
             ExplicitConsent = explicitConsent
         };
 
-        await _repo.AddAsync(consentRecord, ct);
-        _metrics.RecordConsentGiven();
+        await repo.AddAsync(consentRecord, ct);
+        metrics.RecordConsentGiven();
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",
             userId, version.LegalDocumentName, version.VersionNumber);
 
 
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
 
         // Promote parked Pending shift signups; lazy-resolved to keep cross-section edge soft.
         // See docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
-        var shiftSignupService = _serviceProvider.GetRequiredService<IShiftSignupService>();
+        var shiftSignupService = serviceProvider.GetRequiredService<IShiftSignupService>();
         await shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, ct);
 
-        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, ct);
+        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, ct);
 
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
         try
         {
-            var membershipCalc = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
             if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
             {
-                await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+                await notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
+            logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
         }
 
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
@@ -229,8 +206,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var records = chainIds is null
-            ? await _repo.GetAllForUserAsync(userId, ct)
-            : await _repo.GetAllForUserIdsAsync(chainIds, ct);
+            ? await repo.GetAllForUserAsync(userId, ct)
+            : await repo.GetAllForUserIdsAsync(chainIds, ct);
 
         return records
             .Select(c => new ConsentRecordSnapshot(
@@ -246,8 +223,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         return chainIds is null
-            ? await _repo.GetCountForUserAsync(userId, ct)
-            : await _repo.GetCountForUserIdsAsync(chainIds, ct);
+            ? await repo.GetCountForUserAsync(userId, ct)
+            : await repo.GetCountForUserIdsAsync(chainIds, ct);
     }
 
     public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
@@ -255,8 +232,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         return chainIds is null
-            ? await _repo.GetExplicitlyConsentedVersionIdsAsync(userId, ct)
-            : await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
+            ? await repo.GetExplicitlyConsentedVersionIdsAsync(userId, ct)
+            : await repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
@@ -270,7 +247,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         var sourcesByTarget = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
-            sourcesByTarget[userId] = await _userService.GetMergedSourceIdsAsync(userId, ct);
+            sourcesByTarget[userId] = await userService.GetMergedSourceIdsAsync(userId, ct);
         }
 
         var hasAnySources = sourcesByTarget.Values.Any(s => s.Count > 0);
@@ -278,7 +255,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         {
             // Common case: no merged sources. Dedup defensively — callers may pass overlapping ids.
             var distinctInputs = userIds.Distinct().ToList();
-            return await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
+            return await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
         }
 
         // Build {target ∪ source ids} for the repo batch + reverse source→target map for re-keying.
@@ -294,7 +271,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             }
         }
 
-        var raw = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
+        var raw = await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
 
         var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         foreach (var userId in userIds)
@@ -317,9 +294,9 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     public async Task<IReadOnlyList<RequiredConsentRow>> GetRequiredConsentRowsForUserAsync(
         Guid userId, Guid teamId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        var documents = await _legalDocumentSyncService
+        var documents = await legalDocumentSyncService
             .GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
 
         var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
@@ -349,7 +326,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
     public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
     {
-        var membershipCalculator = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
         var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
 
         if (missingVersionIds.Count == 0)
@@ -358,7 +335,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var versionId in missingVersionIds)
         {
-            var version = await _legalDocumentSyncService.GetVersionByIdAsync(versionId, ct);
+            var version = await legalDocumentSyncService.GetVersionByIdAsync(versionId, ct);
             if (version is not null)
                 names.Add(version.LegalDocumentName);
         }
@@ -377,8 +354,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         // Chain-follow for GDPR export. Source User rows are anonymized by AnonymizeForMergeAsync.
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var consents = chainIds is null
-            ? await _repo.GetAllForUserAsync(userId, ct)
-            : await _repo.GetAllForUserIdsAsync(chainIds, ct);
+            ? await repo.GetAllForUserAsync(userId, ct)
+            : await repo.GetAllForUserIdsAsync(chainIds, ct);
 
         var shaped = consents.Select(c => new
         {

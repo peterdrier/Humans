@@ -17,22 +17,15 @@ namespace Humans.Infrastructure.Repositories.Store;
 /// <see cref="IDbContextFactory{TContext}"/>, and opens a fresh short-lived
 /// <see cref="HumansDbContext"/> per method.
 /// </remarks>
-internal sealed class StoreRepository : IStoreRepository
+internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory) : IStoreRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public StoreRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Products
     // ==========================================================================
 
     public async Task<IReadOnlyList<StoreProduct>> GetActiveProductsForYearAsync(int year, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreProducts.AsNoTracking()
             .Where(p => p.Year == year && p.IsActive)
             .ToListAsync(ct);
@@ -40,7 +33,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<IReadOnlyList<StoreProduct>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreProducts.AsNoTracking()
             .Where(p => p.Year == year)
             .ToListAsync(ct);
@@ -48,14 +41,14 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<StoreProduct?> GetProductByIdAsync(Guid productId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreProducts.AsNoTracking().FirstOrDefaultAsync(p => p.Id == productId, ct);
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
     {
         if (ids.Count == 0) return new Dictionary<Guid, string>();
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.StoreProducts.AsNoTracking()
             .Where(p => ids.Contains(p.Id))
             .Select(p => new { p.Id, p.Name })
@@ -65,14 +58,14 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task AddProductAsync(StoreProduct product, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreProducts.Add(product);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateProductAsync(StoreProduct product, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreProducts.Update(product);
         await ctx.SaveChangesAsync(ct);
     }
@@ -83,7 +76,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<IReadOnlyList<StoreOrder>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking()
             .Include(o => o.Lines)
             .Include(o => o.Payments)
@@ -93,13 +86,13 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<StoreOrder?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId, ct);
     }
 
     public async Task<StoreOrder?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking()
             .Include(o => o.Lines)
             .Include(o => o.Payments)
@@ -108,7 +101,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<IReadOnlyList<StoreOrder>> GetAllOrdersAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking()
             .Include(o => o.Lines)
             .Include(o => o.Payments)
@@ -122,7 +115,7 @@ internal sealed class StoreRepository : IStoreRepository
         if (campSeasonIds.Count == 0)
             return Array.Empty<StoreOrder>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking()
             .Where(o => campSeasonIds.Contains(o.CampSeasonId))
             .Include(o => o.Lines)
@@ -132,14 +125,14 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task AddOrderAsync(StoreOrder order, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreOrders.Add(order);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateOrderAsync(StoreOrder order, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreOrders.Update(order);
         await ctx.SaveChangesAsync(ct);
     }
@@ -150,14 +143,14 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task AddLineAsync(StoreOrderLine line, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreOrderLines.Add(line);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task RemoveLineAsync(Guid lineId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var line = await ctx.StoreOrderLines.FirstOrDefaultAsync(l => l.Id == lineId, ct);
         if (line is null) return;
         ctx.StoreOrderLines.Remove(line);
@@ -166,7 +159,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<StoreLineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.StoreOrderLines.AsNoTracking()
             .Where(l => l.Id == lineId)
             .Join(ctx.StoreOrders.AsNoTracking(),
@@ -186,14 +179,14 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task AddPaymentAsync(StorePayment payment, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StorePayments.Add(payment);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<bool> StripePaymentIntentExistsAsync(string paymentIntentId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StorePayments.AnyAsync(p => p.StripePaymentIntentId == paymentIntentId, ct);
     }
 
@@ -203,7 +196,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task AddInvoiceAsync(StoreInvoice invoice, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreInvoices.Add(invoice);
         await ctx.SaveChangesAsync(ct);
     }
@@ -214,7 +207,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task<StoreTreasurySyncState> GetOrCreateTreasurySyncStateAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var s = await ctx.StoreTreasurySyncStates.FirstOrDefaultAsync(x => x.Id == 1, ct);
         if (s is null)
         {
@@ -227,7 +220,7 @@ internal sealed class StoreRepository : IStoreRepository
 
     public async Task UpdateTreasurySyncStateAsync(StoreTreasurySyncState state, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreTreasurySyncStates.Update(state);
         await ctx.SaveChangesAsync(ct);
     }

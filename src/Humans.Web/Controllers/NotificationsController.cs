@@ -9,24 +9,12 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Notifications")]
-public class NotificationsController : HumansControllerBase
+public class NotificationsController(
+    INotificationInboxService inboxService,
+    IUserService userService,
+    INotificationMeterProvider meterProvider,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly INotificationInboxService _inboxService;
-    private readonly INotificationMeterProvider _meterProvider;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public NotificationsController(
-        INotificationInboxService inboxService,
-        IUserService userService,
-        INotificationMeterProvider meterProvider,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService)
-    {
-        _inboxService = inboxService;
-        _meterProvider = meterProvider;
-        _localizer = localizer;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(
         string? search, string filter = "all", string tab = "unread")
@@ -38,11 +26,11 @@ public class NotificationsController : HumansControllerBase
         if (string.Equals(filter, "resolved", StringComparison.OrdinalIgnoreCase))
             tab = "all";
 
-        var result = await _inboxService.GetInboxAsync(userId.Value, search, filter, tab);
+        var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab);
 
-        var defaultActionLabel = _localizer["Notification_DefaultActionLabel"].Value;
+        var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
 
-        var meters = await _meterProvider.GetMetersForUserAsync(User);
+        var meters = await meterProvider.GetMetersForUserAsync(User);
 
         return View(new NotificationInboxViewModel
         {
@@ -63,11 +51,11 @@ public class NotificationsController : HumansControllerBase
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await _inboxService.GetPopupAsync(userId.Value);
+        var result = await inboxService.GetPopupAsync(userId.Value);
 
-        var defaultActionLabel = _localizer["Notification_DefaultActionLabel"].Value;
+        var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
 
-        var meters = await _meterProvider.GetMetersForUserAsync(User);
+        var meters = await meterProvider.GetMetersForUserAsync(User);
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
@@ -85,7 +73,7 @@ public class NotificationsController : HumansControllerBase
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await _inboxService.ResolveAsync(id, userId.Value);
+        var result = await inboxService.ResolveAsync(id, userId.Value);
 
         if (result.NotFound) return NotFound();
         if (result.Forbidden) return Forbid();
@@ -103,7 +91,7 @@ public class NotificationsController : HumansControllerBase
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await _inboxService.DismissAsync(id, userId.Value);
+        var result = await inboxService.DismissAsync(id, userId.Value);
 
         if (result.NotFound) return NotFound();
         if (result.Forbidden) return StatusCode(403);
@@ -121,7 +109,7 @@ public class NotificationsController : HumansControllerBase
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await _inboxService.MarkReadAsync(id, userId.Value);
+        var result = await inboxService.MarkReadAsync(id, userId.Value);
 
         if (result.NotFound) return NotFound();
 
@@ -138,7 +126,7 @@ public class NotificationsController : HumansControllerBase
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        await _inboxService.MarkAllReadAsync(userId.Value);
+        await inboxService.MarkAllReadAsync(userId.Value);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -156,7 +144,7 @@ public class NotificationsController : HumansControllerBase
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
-        await _inboxService.BulkResolveAsync(selectedIds, userId.Value);
+        await inboxService.BulkResolveAsync(selectedIds, userId.Value);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -174,7 +162,7 @@ public class NotificationsController : HumansControllerBase
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
-        await _inboxService.BulkDismissAsync(selectedIds, userId.Value);
+        await inboxService.BulkDismissAsync(selectedIds, userId.Value);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -188,7 +176,7 @@ public class NotificationsController : HumansControllerBase
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var url = await _inboxService.ClickThroughAsync(id, userId.Value);
+        var url = await inboxService.ClickThroughAsync(id, userId.Value);
 
         if (url is null) return NotFound();
 

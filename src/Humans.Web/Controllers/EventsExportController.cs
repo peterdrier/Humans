@@ -17,36 +17,24 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Export")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsExportController : HumansControllerBase
+public class EventsExportController(
+    IEventService guide,
+    ICampService camps,
+    IUserService users,
+    IUserService userService) : HumansControllerBase(userService)
 {
-    private readonly IEventService _guide;
-    private readonly ICampService _camps;
-    private readonly IUserService _users;
-
-    public EventsExportController(
-        IEventService guide,
-        ICampService camps,
-        IUserService users,
-        IUserService userService)
-        : base(userService)
-    {
-        _guide = guide;
-        _camps = camps;
-        _users = users;
-    }
-
     [HttpGet("")]
     public IActionResult Index() => View();
 
     [HttpGet("Csv")]
     public async Task<IActionResult> DownloadCsv()
     {
-        var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
+        var (events, settings) = await guide.GetApprovedEventsForExportAsync();
         var eventSettings = settings != null
-            ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
+            ? await guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
             : null;
         var tz = GetTimeZone(eventSettings);
-        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
 
         var sb = new StringBuilder();
         sb.Append('﻿');
@@ -61,7 +49,7 @@ public class EventsExportController : HumansControllerBase
             var submitterName = "";
             if (e.CampId == null)
             {
-                var submitter = await _users.GetUserInfoAsync(e.SubmitterUserId);
+                var submitter = await users.GetUserInfoAsync(e.SubmitterUserId);
                 submitterName = submitter?.BurnerName ?? "";
             }
 
@@ -93,13 +81,13 @@ public class EventsExportController : HumansControllerBase
     [HttpGet("PrintGuide")]
     public async Task<IActionResult> PrintGuide()
     {
-        var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
+        var (events, settings) = await guide.GetApprovedEventsForExportAsync();
         var eventSettings = settings != null
-            ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
+            ? await guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
             : null;
         var tz = GetTimeZone(eventSettings);
         var maxSlots = settings?.MaxPrintSlots;
-        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
 
         var allOccurrences = new List<PrintGuideEntry>();
         foreach (var e in events)

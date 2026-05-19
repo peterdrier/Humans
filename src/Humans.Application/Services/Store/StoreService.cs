@@ -13,50 +13,31 @@ using NodaTime.Text;
 
 namespace Humans.Application.Services.Store;
 
-public class StoreService : IStoreService
+public class StoreService(
+    IStoreRepository repo,
+    IAuditLogService audit,
+    ICampService campService,
+    IClock clock,
+    IShiftManagementService shifts,
+    IStripeService stripeService,
+    ILogger<StoreService> logger) : IStoreService
 {
-    private readonly IStoreRepository _repo;
-    private readonly IAuditLogService _audit;
-    private readonly ICampService _campService;
-    private readonly IClock _clock;
-    private readonly IShiftManagementService _shifts;
-    private readonly IStripeService _stripeService;
-    private readonly ILogger<StoreService> _logger;
-
-    public StoreService(
-        IStoreRepository repo,
-        IAuditLogService audit,
-        ICampService campService,
-        IClock clock,
-        IShiftManagementService shifts,
-        IStripeService stripeService,
-        ILogger<StoreService> logger)
-    {
-        _repo = repo;
-        _audit = audit;
-        _campService = campService;
-        _clock = clock;
-        _shifts = shifts;
-        _stripeService = stripeService;
-        _logger = logger;
-    }
-
     public async Task<StoreIndexData> GetIndexDataAsync(
         Guid userId,
         bool isPrivilegedReader,
         CancellationToken ct = default)
     {
-        var activeEvent = await _shifts.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
+        var activeEvent = await shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var catalog = (await GetActiveCatalogAsync(year, ct))
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
 
         var sections = new List<StoreCampSeasonOrders>();
-        var leadSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
+        var leadSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
         if (leadSeasonId is { } seasonId)
         {
-            var season = await _campService.GetCampSeasonByIdAsync(seasonId, ct);
+            var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
             if (season is not null)
             {
                 var orders = await GetOrdersForCampSeasonAsync(season.Id, ct);
@@ -73,7 +54,7 @@ public class StoreService : IStoreService
 
     public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
     {
-        var products = await _repo.GetActiveProductsForYearAsync(year, ct);
+        var products = await repo.GetActiveProductsForYearAsync(year, ct);
         return products
             .Select(MapProduct)
             .ToList();
@@ -88,14 +69,14 @@ public class StoreService : IStoreService
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var activeEvent = await _shifts.GetActiveAsync();
-            var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
+            var activeEvent = await shifts.GetActiveAsync();
+            var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
             catalog = (await GetActiveCatalogAsync(year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
         }
 
-        var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
+        var season = await campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
 
         return new StoreOrderPageData(
             order,
@@ -103,12 +84,12 @@ public class StoreService : IStoreService
             season?.Name ?? "(unknown camp)",
             canEdit,
             canPayAuthorized && order.BalanceEur > 0,
-            _stripeService.IsStoreCheckoutConfigured);
+            stripeService.IsStoreCheckoutConfigured);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
     {
-        var products = await _repo.GetAllProductsForYearAsync(year, ct);
+        var products = await repo.GetAllProductsForYearAsync(year, ct);
         return products
             .Select(MapProduct)
             .ToList();
@@ -116,7 +97,7 @@ public class StoreService : IStoreService
 
     public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
     {
-        var p = await _repo.GetProductByIdAsync(productId, ct);
+        var p = await repo.GetProductByIdAsync(productId, ct);
         return p is null ? null : MapProduct(p);
     }
 
@@ -124,7 +105,7 @@ public class StoreService : IStoreService
     {
         ValidateProductDraft(draft);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var product = new StoreProduct
         {
             Id = Guid.NewGuid(),
@@ -139,8 +120,8 @@ public class StoreService : IStoreService
             CreatedAt = now,
             UpdatedAt = now
         };
-        await _repo.AddProductAsync(product, ct);
-        await _audit.LogAsync(
+        await repo.AddProductAsync(product, ct);
+        await audit.LogAsync(
             AuditAction.StoreProductCreated, nameof(StoreProduct), product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
@@ -151,7 +132,7 @@ public class StoreService : IStoreService
     {
         ValidateProductDraft(draft);
 
-        var product = await _repo.GetProductByIdAsync(draft.Id, ct)
+        var product = await repo.GetProductByIdAsync(draft.Id, ct)
             ?? throw new InvalidOperationException($"Product {draft.Id} not found");
 
         product.Year = draft.Year;
@@ -162,10 +143,10 @@ public class StoreService : IStoreService
         product.DepositAmountEur = draft.DepositAmountEur;
         product.OrderableUntil = draft.OrderableUntil;
         product.IsActive = draft.IsActive;
-        product.UpdatedAt = _clock.GetCurrentInstant();
+        product.UpdatedAt = clock.GetCurrentInstant();
 
-        await _repo.UpdateProductAsync(product, ct);
-        await _audit.LogAsync(
+        await repo.UpdateProductAsync(product, ct);
+        await audit.LogAsync(
             AuditAction.StoreProductUpdated, nameof(StoreProduct), product.Id,
             $"Updated store product '{product.Name}'",
             actorUserId);
@@ -204,26 +185,26 @@ public class StoreService : IStoreService
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
+            logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
             return StoreCatalogSaveResult.Failure(null, ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
+            logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
             return StoreCatalogSaveResult.Failure(null, ex.Message);
         }
     }
 
     public async Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
     {
-        var product = await _repo.GetProductByIdAsync(productId, ct)
+        var product = await repo.GetProductByIdAsync(productId, ct)
             ?? throw new InvalidOperationException($"Product {productId} not found");
 
         product.IsActive = false;
-        product.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpdateProductAsync(product, ct);
+        product.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateProductAsync(product, ct);
 
-        await _audit.LogAsync(
+        await audit.LogAsync(
             AuditAction.StoreProductDeactivated, nameof(StoreProduct), productId,
             $"Deactivated store product '{product.Name}'",
             actorUserId);
@@ -243,24 +224,24 @@ public class StoreService : IStoreService
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
-        var orders = await _repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
+        var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await _repo.GetProductNamesByIdsAsync(productIds, ct);
+        var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
         return orders.Select(o => MapOrder(o, productNames)).ToList();
     }
 
     public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
     {
-        var o = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await _repo.GetProductNamesByIdsAsync(productIds, ct);
+        var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
         return MapOrder(o, productNames);
     }
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var order = new StoreOrder
         {
             Id = Guid.NewGuid(),
@@ -270,8 +251,8 @@ public class StoreService : IStoreService
             CreatedAt = now,
             UpdatedAt = now
         };
-        await _repo.AddOrderAsync(order, ct);
-        await _audit.LogAsync(
+        await repo.AddOrderAsync(order, ct);
+        await audit.LogAsync(
             AuditAction.StoreOrderCreated, nameof(StoreOrder), order.Id,
             $"Created store order for camp season {campSeasonId}" +
             (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
@@ -284,13 +265,13 @@ public class StoreService : IStoreService
         if (qty <= 0)
             throw new ArgumentException("Qty must be positive", nameof(qty));
 
-        var order = await _repo.GetOrderByIdAsync(orderId, ct)
+        var order = await repo.GetOrderByIdAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found");
 
         if (order.State != StoreOrderState.Open)
             throw new InvalidOperationException("Cannot add lines to an issued order");
 
-        var product = await _repo.GetProductByIdAsync(productId, ct)
+        var product = await repo.GetProductByIdAsync(productId, ct)
             ?? throw new InvalidOperationException($"Product {productId} not found");
 
         if (!product.IsActive)
@@ -311,11 +292,11 @@ public class StoreService : IStoreService
             UnitPriceSnapshot = product.UnitPriceEur,
             VatRateSnapshot = product.VatRatePercent,
             DepositAmountSnapshot = product.DepositAmountEur,
-            AddedAt = _clock.GetCurrentInstant(),
+            AddedAt = clock.GetCurrentInstant(),
             AddedByUserId = actorUserId
         };
-        await _repo.AddLineAsync(line, ct);
-        await _audit.LogAsync(
+        await repo.AddLineAsync(line, ct);
+        await audit.LogAsync(
             AuditAction.StoreLineAdded, nameof(StoreOrderLine), line.Id,
             $"Added {qty} × '{product.Name}' to order {order.Id}",
             actorUserId, order.Id, nameof(StoreOrder));
@@ -335,19 +316,19 @@ public class StoreService : IStoreService
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
+            logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
             return StoreMutationResult.Failure(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
+            logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
             return StoreMutationResult.Failure(ex.Message);
         }
     }
 
     public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
-        var ctx = await _repo.GetLineWithOrderAndProductAsync(lineId, ct)
+        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
             ?? throw new InvalidOperationException($"Line {lineId} not found");
 
         if (ctx.OrderId != orderId)
@@ -361,8 +342,8 @@ public class StoreService : IStoreService
             throw new InvalidOperationException(
                 $"Line's product order deadline ({ctx.ProductOrderableUntil}) has passed");
 
-        await _repo.RemoveLineAsync(lineId, ct);
-        await _audit.LogAsync(
+        await repo.RemoveLineAsync(lineId, ct);
+        await audit.LogAsync(
             AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
             $"Removed line {lineId} from order {ctx.OrderId}",
             actorUserId, ctx.OrderId, nameof(StoreOrder));
@@ -381,14 +362,14 @@ public class StoreService : IStoreService
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
+            logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
             return StoreMutationResult.Failure(ex.Message);
         }
     }
 
     public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await _repo.GetOrderByIdAsync(orderId, ct)
+        var order = await repo.GetOrderByIdAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found");
 
         order.CounterpartyName = input.Name;
@@ -396,10 +377,10 @@ public class StoreService : IStoreService
         order.CounterpartyAddress = input.Address;
         order.CounterpartyCountryCode = input.CountryCode;
         order.CounterpartyEmail = input.Email;
-        order.UpdatedAt = _clock.GetCurrentInstant();
+        order.UpdatedAt = clock.GetCurrentInstant();
 
-        await _repo.UpdateOrderAsync(order, ct);
-        await _audit.LogAsync(
+        await repo.UpdateOrderAsync(order, ct);
+        await audit.LogAsync(
             AuditAction.StoreCounterpartyEdited, nameof(StoreOrder), orderId,
             $"Updated counterparty on order {orderId}",
             actorUserId);
@@ -418,18 +399,18 @@ public class StoreService : IStoreService
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
+            logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
             return StoreMutationResult.Failure(ex.Message);
         }
     }
 
     private async Task<LocalDate> TodayInEventZoneAsync()
     {
-        var activeEvent = await _shifts.GetActiveAsync();
+        var activeEvent = await shifts.GetActiveAsync();
         var tz = activeEvent is null
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
-        return _clock.GetCurrentInstant().InZone(tz).Date;
+        return clock.GetCurrentInstant().InZone(tz).Date;
     }
 
     public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, StorePaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
@@ -441,7 +422,7 @@ public class StoreService : IStoreService
         string returnUrl,
         CancellationToken ct = default)
     {
-        if (!_stripeService.IsStoreCheckoutConfigured)
+        if (!stripeService.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
 
         if (amountEur <= 0)
@@ -453,7 +434,7 @@ public class StoreService : IStoreService
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}"
             + (string.IsNullOrWhiteSpace(order.Label) ? string.Empty : $" ({order.Label})");
 
-        return _stripeService.CreateCheckoutSessionAsync(
+        return stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
             amountEur: amountEur,
             successUrl: returnUrl,
@@ -470,7 +451,7 @@ public class StoreService : IStoreService
         if (string.IsNullOrWhiteSpace(paymentIntentId))
             throw new ArgumentException("PaymentIntent id is required.", nameof(paymentIntentId));
 
-        if (await _repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
+        if (await repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
             return; // idempotent: duplicate Stripe webhook delivery
 
         var payment = new StorePayment
@@ -480,11 +461,11 @@ public class StoreService : IStoreService
             AmountEur = amountEur,
             Method = StorePaymentMethod.Stripe,
             StripePaymentIntentId = paymentIntentId,
-            ReceivedAt = _clock.GetCurrentInstant(),
+            ReceivedAt = clock.GetCurrentInstant(),
             RecordedByUserId = null,
         };
-        await _repo.AddPaymentAsync(payment, ct);
-        await _audit.LogAsync(
+        await repo.AddPaymentAsync(payment, ct);
+        await audit.LogAsync(
             AuditAction.StorePaymentRecorded, nameof(StorePayment), payment.Id,
             $"Recorded Stripe payment of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
             "StripeWebhook",
@@ -502,13 +483,13 @@ public class StoreService : IStoreService
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed:
             case StoreCheckoutEventKind.CheckoutSessionExpired:
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Stripe webhook event {Kind} (id={EventId}) received but not yet handled - async-payment state machine pending (nobodies-collective/Humans#638).",
                     evt.Kind, evt.EventId);
                 break;
 
             default:
-                _logger.LogDebug("Ignoring Stripe webhook event {EventId} of unhandled kind {Kind}", evt.EventId, evt.Kind);
+                logger.LogDebug("Ignoring Stripe webhook event {EventId} of unhandled kind {Kind}", evt.EventId, evt.Kind);
                 break;
         }
     }
@@ -517,13 +498,13 @@ public class StoreService : IStoreService
     {
         if (evt.Session is not { } session)
         {
-            _logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
+            logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
             return;
         }
 
         if (session.OrderId is not { } orderId)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no humans_store_order_id metadata; skipping.",
                 session.SessionId);
             return;
@@ -531,7 +512,7 @@ public class StoreService : IStoreService
 
         if (session.PaymentIntentId is not { } paymentIntentId)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
                 session.SessionId);
             return;
@@ -539,7 +520,7 @@ public class StoreService : IStoreService
 
         if (session.AmountEur is not { } amountEur || amountEur <= 0)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has non-positive AmountTotal; skipping.",
                 session.SessionId);
             return;
@@ -548,13 +529,13 @@ public class StoreService : IStoreService
         try
         {
             await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, ct);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Recorded Stripe payment for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
                 orderId, session.SessionId, paymentIntentId, amountEur);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            logger.LogError(ex,
                 "Failed to record Stripe payment for order {OrderId} (session {SessionId})",
                 orderId, session.SessionId);
         }

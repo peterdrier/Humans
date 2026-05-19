@@ -19,37 +19,18 @@ public enum ProfileCardViewMode
     Admin
 }
 
-public class ProfileCardViewComponent : ViewComponent
+public class ProfileCardViewComponent(
+    IUserService userService,
+    IContactFieldService contactFieldService,
+    IUserEmailService userEmailService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService,
+    IMembershipCalculator membershipCalculator,
+    ICommunicationPreferenceService commPrefService) : ViewComponent
 {
-    private readonly IUserService _userService;
-    private readonly IContactFieldService _contactFieldService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly ICommunicationPreferenceService _commPrefService;
-
-    public ProfileCardViewComponent(
-        IUserService userService,
-        IContactFieldService contactFieldService,
-        IUserEmailService userEmailService,
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
-        IMembershipCalculator membershipCalculator,
-        ICommunicationPreferenceService commPrefService)
-    {
-        _userService = userService;
-        _contactFieldService = contactFieldService;
-        _userEmailService = userEmailService;
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-        _membershipCalculator = membershipCalculator;
-        _commPrefService = commPrefService;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
-        var info = await _userService.GetUserInfoAsync(userId);
+        var info = await userService.GetUserInfoAsync(userId);
         if (info is null)
         {
             return Content(string.Empty);
@@ -65,11 +46,11 @@ public class ProfileCardViewComponent : ViewComponent
             && Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
         {
             viewerUserId = viewerId;
-            canViewLegalName = await _roleAssignmentService.IsUserBoardMemberAsync(viewerId);
+            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerId);
         }
 
         var contactFields = profile is not null
-            ? await _contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId)
+            ? await contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId)
             : [];
 
         // Get visible user emails based on access level
@@ -80,11 +61,11 @@ public class ProfileCardViewComponent : ViewComponent
         }
         else
         {
-            accessLevel = await _contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId);
+            accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId);
         }
-        var visibleEmails = await _userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
+        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
 
-        var userTeams = await _teamService.GetUserTeamsAsync(userId);
+        var userTeams = await teamService.GetUserTeamsAsync(userId);
         var displayableTeams = userTeams
             .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers
                 && (viewMode != ProfileCardViewMode.Public || !tm.Team.IsHidden))
@@ -99,7 +80,7 @@ public class ProfileCardViewComponent : ViewComponent
             })
             .ToList();
 
-        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
+        var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
 
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var pictureUrl = hasCustomPicture
@@ -163,7 +144,7 @@ public class ProfileCardViewComponent : ViewComponent
             PreferredLanguage = info.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
-                && await _commPrefService.AcceptsFacilitatedMessagesAsync(userId)
+                && await commPrefService.AcceptsFacilitatedMessagesAsync(userId)
         };
 
         return View(model);

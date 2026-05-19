@@ -22,15 +22,8 @@ namespace Humans.Infrastructure.Repositories.Notifications;
 /// display names through <c>IUserService</c> and stitch results in memory,
 /// preserving table ownership (§2c) and eliminating cross-domain joins (§6).
 /// </remarks>
-internal sealed class NotificationRepository : INotificationRepository
+internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> factory) : INotificationRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public NotificationRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Writes — notifications
     // ==========================================================================
@@ -38,14 +31,14 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task AddRangeAsync(IReadOnlyList<Notification> notifications, CancellationToken ct = default)
     {
         if (notifications.Count == 0) return;
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Notifications.AddRange(notifications);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task AddAsync(Notification notification, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Notifications.Add(notification);
         await ctx.SaveChangesAsync(ct);
     }
@@ -53,7 +46,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<NotificationMutationOutcome> ResolveAsync(
         Guid notificationId, Guid actorUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var notification = await ctx.Notifications
             .Include(n => n.Recipients)
             .FirstOrDefaultAsync(n => n.Id == notificationId, ct);
@@ -79,7 +72,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<NotificationMutationOutcome> DismissAsync(
         Guid notificationId, Guid actorUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var notification = await ctx.Notifications
             .Include(n => n.Recipients)
             .FirstOrDefaultAsync(n => n.Id == notificationId, ct);
@@ -108,7 +101,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<NotificationMutationOutcome> MarkReadAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var recipient = await ctx.NotificationRecipients
             .FirstOrDefaultAsync(nr => nr.NotificationId == notificationId && nr.UserId == userId, ct);
 
@@ -126,7 +119,7 @@ internal sealed class NotificationRepository : INotificationRepository
 
     public async Task<int> MarkAllReadAsync(Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var unread = await ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId && nr.ReadAt == null)
             .ToListAsync(ct);
@@ -147,7 +140,7 @@ internal sealed class NotificationRepository : INotificationRepository
     {
         if (notificationIds.Count == 0) return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var notifications = await ctx.Notifications
             .Include(n => n.Recipients)
             .Where(n => notificationIds.Contains(n.Id) &&
@@ -179,7 +172,7 @@ internal sealed class NotificationRepository : INotificationRepository
     {
         if (notificationIds.Count == 0) return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var notifications = await ctx.Notifications
             .Include(n => n.Recipients)
             .Where(n => notificationIds.Contains(n.Id) &&
@@ -209,7 +202,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<ClickThroughOutcome> ClickThroughAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var recipient = await ctx.NotificationRecipients
             .Include(nr => nr.Notification)
             .FirstOrDefaultAsync(nr => nr.NotificationId == notificationId && nr.UserId == userId, ct);
@@ -231,7 +224,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<bool> ResolveBySourceAsync(
         Guid userId, NotificationSource source, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var notifications = await ctx.Notifications
             .Where(n => n.Source == source
                         && n.ResolvedAt == null
@@ -252,7 +245,7 @@ internal sealed class NotificationRepository : INotificationRepository
 
     public async Task<int> DeleteResolvedOlderThanAsync(Instant resolvedCutoff, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var toDelete = await ctx.Notifications
             .Where(n => n.ResolvedAt != null && n.ResolvedAt < resolvedCutoff)
             .ToListAsync(ct);
@@ -267,7 +260,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<int> DeleteUnresolvedInformationalOlderThanAsync(
         Instant createdCutoff, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var toDelete = await ctx.Notifications
             .Where(n => n.ResolvedAt == null &&
                         n.Class == NotificationClass.Informational &&
@@ -293,7 +286,7 @@ internal sealed class NotificationRepository : INotificationRepository
         Instant resolvedCutoff,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId)
@@ -357,7 +350,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<IReadOnlyList<NotificationRecipient>> GetPopupAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId && nr.Notification.ResolvedAt == null)
             .Include(nr => nr.Notification)
@@ -370,7 +363,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var counts = await ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId && nr.ReadAt == null && nr.Notification.ResolvedAt == null)
             .GroupBy(nr => nr.Notification.Class)
@@ -385,7 +378,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<IReadOnlyList<NotificationRecipient>> GetAllForUserContributorAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.NotificationRecipients
             .AsNoTracking()
             .Include(nr => nr.Notification)
@@ -399,7 +392,7 @@ internal sealed class NotificationRepository : INotificationRepository
     {
         if (notificationIds.Count == 0) return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.NotificationRecipients
             .AsNoTracking()
             .Where(nr => notificationIds.Contains(nr.NotificationId))
@@ -416,7 +409,7 @@ internal sealed class NotificationRepository : INotificationRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var sourceRows = await ctx.NotificationRecipients
             .Where(nr => nr.UserId == sourceUserId)

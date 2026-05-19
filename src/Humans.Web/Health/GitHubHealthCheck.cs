@@ -9,18 +9,9 @@ namespace Humans.Web.Health;
 /// Health check that validates GitHub API connectivity and repository access.
 /// Verifies authentication and that the configured repository is accessible.
 /// </summary>
-public class GitHubHealthCheck : IHealthCheck
+public class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHubHealthCheck> logger) : IHealthCheck
 {
-    private readonly GitHubSettings _settings;
-    private readonly ILogger<GitHubHealthCheck> _logger;
-
-    public GitHubHealthCheck(
-        IOptions<GitHubSettings> settings,
-        ILogger<GitHubHealthCheck> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly GitHubSettings _settings = settings.Value;
 
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -72,7 +63,7 @@ public class GitHubHealthCheck : IHealthCheck
         }
         catch (NotFoundException ex)
         {
-            _logger.LogWarning(ex, "GitHub repository not found: {Owner}/{Repo}",
+            logger.LogWarning(ex, "GitHub repository not found: {Owner}/{Repo}",
                 _settings.Owner, _settings.Repository);
             return HealthCheckResult.Unhealthy(
                 $"Repository not found: {_settings.Owner}/{_settings.Repository}",
@@ -80,21 +71,21 @@ public class GitHubHealthCheck : IHealthCheck
         }
         catch (AuthorizationException ex)
         {
-            _logger.LogWarning(ex, "GitHub authentication failed");
+            logger.LogWarning(ex, "GitHub authentication failed");
             return HealthCheckResult.Unhealthy(
                 "GitHub authentication failed - check access token",
                 ex);
         }
         catch (RateLimitExceededException ex)
         {
-            _logger.LogWarning(ex, "GitHub rate limit exceeded");
+            logger.LogWarning(ex, "GitHub rate limit exceeded");
             return HealthCheckResult.Unhealthy(
                 $"GitHub rate limit exceeded. Resets at {ex.Reset:HH:mm:ss}",
                 ex);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "GitHub health check failed");
+            logger.LogWarning(ex, "GitHub health check failed");
             return HealthCheckResult.Unhealthy(
                 $"GitHub connection failed: {ex.Message}",
                 ex);

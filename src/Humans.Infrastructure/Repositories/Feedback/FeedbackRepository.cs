@@ -14,22 +14,15 @@ namespace Humans.Infrastructure.Repositories.Feedback;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class FeedbackRepository : IFeedbackRepository
+internal sealed class FeedbackRepository(IDbContextFactory<HumansDbContext> factory) : IFeedbackRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public FeedbackRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Reads
     // ==========================================================================
 
     public async Task<FeedbackReport?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.FeedbackReports
             .AsNoTracking()
             .Include(f => f.Messages.OrderBy(m => m.CreatedAt))
@@ -38,7 +31,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
 
     public async Task<FeedbackReport?> FindForMutationAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.FeedbackReports
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == id, ct);
@@ -54,7 +47,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
         int limit,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.FeedbackReports
             .AsNoTracking()
             .Include(f => f.Messages)
@@ -86,7 +79,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
 
     public async Task<int> GetActionableCountAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.FeedbackReports
             .Where(f => f.Status != FeedbackStatus.Resolved && f.Status != FeedbackStatus.WontFix)
             .CountAsync(f =>
@@ -99,7 +92,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
     public async Task<IReadOnlyList<(Guid UserId, int Count)>> GetReporterCountsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.FeedbackReports
             .AsNoTracking()
             .GroupBy(f => f.UserId)
@@ -112,7 +105,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
     public async Task<IReadOnlyList<FeedbackReport>> GetForUserExportAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.FeedbackReports
             .AsNoTracking()
             .Include(fr => fr.Messages)
@@ -126,14 +119,14 @@ internal sealed class FeedbackRepository : IFeedbackRepository
 
     public async Task AddReportAsync(FeedbackReport report, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.FeedbackReports.Add(report);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task SaveTrackedReportAsync(FeedbackReport report, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(report);
         ctx.Entry(report).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -142,7 +135,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
     public async Task AddMessageAndSaveReportAsync(
         FeedbackMessage message, FeedbackReport report, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Attach the report (mutated by the caller) and mark it modified so
         // timestamp/status fields are persisted in the same transaction as the
         // new message.
@@ -164,7 +157,7 @@ internal sealed class FeedbackRepository : IFeedbackRepository
         // Reports and messages are unique events — no dedup. Both UserId and
         // SenderUserId are init-only on the entities, so we mutate via
         // EF's Entry().Property().CurrentValue to bypass the init setter.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var reports = await ctx.FeedbackReports
             .Where(r => r.UserId == sourceUserId)

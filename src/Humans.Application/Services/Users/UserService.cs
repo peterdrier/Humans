@@ -13,67 +13,43 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
+public sealed class UserService(
+    IUserRepository repo,
+    IUserEmailRepository userEmailRepo,
+    IProfileRepository profileRepo,
+    IContactFieldRepository contactFieldRepo,
+    ICommunicationPreferenceRepository communicationPreferenceRepo,
+    IUserInfoInvalidator userInfoInvalidator,
+    IAdminAuthorizationService adminAuthorization,
+    IClock clock,
+    ILogger<UserService> logger) : IUserService, IUserDataContributor, IUserMerge
 {
-    private readonly IUserRepository _repo;
-    private readonly IUserInfoInvalidator _userInfoInvalidator;
-    private readonly IAdminAuthorizationService _adminAuthorization;
-    private readonly IClock _clock;
-    private readonly ILogger<UserService> _logger;
-
-    private readonly IUserEmailRepository _userEmailRepo;
-    private readonly IProfileRepository _profileRepo;
-    private readonly IContactFieldRepository _contactFieldRepo;
-    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepo;
-
-    public UserService(
-        IUserRepository repo,
-        IUserEmailRepository userEmailRepo,
-        IProfileRepository profileRepo,
-        IContactFieldRepository contactFieldRepo,
-        ICommunicationPreferenceRepository communicationPreferenceRepo,
-        IUserInfoInvalidator userInfoInvalidator,
-        IAdminAuthorizationService adminAuthorization,
-        IClock clock,
-        ILogger<UserService> logger)
-    {
-        _repo = repo;
-        _userEmailRepo = userEmailRepo;
-        _profileRepo = profileRepo;
-        _contactFieldRepo = contactFieldRepo;
-        _communicationPreferenceRepo = communicationPreferenceRepo;
-        _userInfoInvalidator = userInfoInvalidator;
-        _adminAuthorization = adminAuthorization;
-        _clock = clock;
-        _logger = logger;
-    }
-
     // --- User reads ---
 
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _repo.GetByIdAsync(userId, ct);
+        var user = await repo.GetByIdAsync(userId, ct);
         if (user is null) return null;
 
-        var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
-        var participations = await _repo.GetEventParticipationsByUserIdAsync(userId, ct);
-        var externalLoginsMap = await _repo.GetExternalLoginsByUserIdsAsync([userId], ct);
+        var userEmails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
+        var externalLoginsMap = await repo.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
             ? logins
             : [];
 
-        var profile = await _profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
         IReadOnlyList<ContactField> contactFields = [];
         IReadOnlyList<ProfileLanguage> languages = [];
         IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
-            contactFields = await _contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            contactFields = await contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
             languages = profile.Languages.ToList();
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
 
-        var communicationPreferences = await _communicationPreferenceRepo
+        var communicationPreferences = await communicationPreferenceRepo
             .GetByUserIdReadOnlyAsync(userId, ct);
 
         return UserInfo.Create(
@@ -105,25 +81,25 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "to CachingUserService.");
 
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
-        _repo.GetByIdAsync(userId, ct);
+        repo.GetByIdAsync(userId, ct);
 
     public Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetByIdsAsync(userIds, ct);
+        repo.GetByIdsAsync(userIds, ct);
 
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
-        _repo.GetAllAsync(ct);
+        repo.GetAllAsync(ct);
 
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
-        var displayName = await _repo.PurgeAsync(userId, ct);
+        var displayName = await repo.PurgeAsync(userId, ct);
         if (displayName is null)
             return null;
 
         // Cross-section invalidations belong to IAccountDeletionService.PurgeAsync.
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
 
-        _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
+        logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 
         return displayName;
     }
@@ -132,9 +108,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Guid userId, CancellationToken ct = default)
     {
         // Own-data only — cross-section cascade lives in IAccountDeletionService.
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
+        var result = await repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (result is not null)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         return result;
     }
 
@@ -142,17 +118,17 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateEmail(normalized);
-        return _repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
+        return repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
     }
 
     [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync.")]
     public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default) =>
-        _repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
+        repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
-        _repo.GetAccountsDueForAnonymizationAsync(now, ct);
+        repo.GetAccountsDueForAnonymizationAsync(now, ct);
 
     // --- User writes ---
 
@@ -161,7 +137,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         if (status == GoogleEmailStatus.Valid)
         {
-            var user = await _repo.GetByIdAsync(userId, ct);
+            var user = await repo.GetByIdAsync(userId, ct);
             if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
                 return false;
         }
@@ -173,55 +149,55 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     private async Task<bool> SetGoogleEmailStatusInternalAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {
-        var set = await _repo.SetGoogleEmailStatusAsync(userId, status, ct);
+        var set = await repo.SetGoogleEmailStatusAsync(userId, status, ct);
         if (set)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         return set;
     }
 
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
     {
-        var updated = await _repo.UpdateDisplayNameAsync(userId, displayName, ct);
+        var updated = await repo.UpdateDisplayNameAsync(userId, displayName, ct);
         if (updated)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
-        var updated = await _repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
+        var updated = await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
         if (updated)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
-        var updated = await _repo.SetICalTokenAsync(userId, token, ct);
+        var updated = await repo.SetICalTokenAsync(userId, token, ct);
         if (updated)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)
     {
-        var updated = await _repo.SetDeletionPendingAsync(
+        var updated = await repo.SetDeletionPendingAsync(
             userId, requestedAt, scheduledFor, eligibleAfter, ct);
         if (updated)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         return updated;
     }
 
     public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var updated = await _repo.ClearDeletionAsync(userId, ct);
+        var updated = await repo.ClearDeletionAsync(userId, ct);
         if (updated)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         return updated;
     }
 
     public Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default) =>
-        _repo.SetLastConsentReminderSentAsync(userId, sentAt, ct);
+        repo.SetLastConsentReminderSentAsync(userId, sentAt, ct);
 
     // --- EventParticipation reads ---
 
@@ -235,22 +211,22 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public async Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var persisted = await _repo.UpsertParticipationAsync(
+        var now = clock.GetCurrentInstant();
+        var persisted = await repo.UpsertParticipationAsync(
             userId, year, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
             declaredAt: now, checkedInAt: null, ct);
 
         if (persisted is null)
         {
             // Blocked by Attended.
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cannot declare NotAttending for user {UserId} year {Year} — already Attended",
                 userId, year);
             // Re-read because upsert returned null.
-            return (await _repo.GetParticipationAsync(userId, year, ct))!;
+            return (await repo.GetParticipationAsync(userId, year, ct))!;
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "User {UserId} declared NotAttending for year {Year}",
             userId, year);
         return persisted;
@@ -258,25 +234,25 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
-        var existing = await _repo.GetParticipationAsync(userId, year, ct);
+        var existing = await repo.GetParticipationAsync(userId, year, ct);
         if (existing is null)
             return false;
 
         if (existing.Status != ParticipationStatus.NotAttending ||
             existing.Source != ParticipationSource.UserDeclared)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cannot undo NotAttending for user {UserId} year {Year} — status is {Status} from {Source}",
                 userId, year, existing.Status, existing.Source);
             return false;
         }
 
-        var removed = await _repo.RemoveParticipationAsync(
+        var removed = await repo.RemoveParticipationAsync(
             userId, year, ParticipationSource.UserDeclared, ct);
 
         if (removed)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "User {UserId} undid NotAttending declaration for year {Year}",
                 userId, year);
         }
@@ -288,7 +264,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default) =>
         // Attended-is-permanent, source-override and CheckedInAt-never-overwrite
         // semantics live in repo upsert.
-        _repo.UpsertParticipationAsync(
+        repo.UpsertParticipationAsync(
             userId, year, status, ParticipationSource.TicketSync,
             declaredAt: null, checkedInAt: checkedInAt, ct);
 
@@ -299,15 +275,15 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "UserService indicates a DI registration mistake.");
 
     public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        _repo.RemoveParticipationAsync(userId, year, ParticipationSource.TicketSync, ct);
+        repo.RemoveParticipationAsync(userId, year, ParticipationSource.TicketSync, ct);
 
     public async Task<int> BackfillParticipationsAsync(
         int year,
         List<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default)
     {
-        var count = await _repo.BackfillParticipationsAsync(year, entries, ct);
-        _logger.LogInformation(
+        var count = await repo.BackfillParticipationsAsync(year, entries, ct);
+        logger.LogInformation(
             "Backfilled {Count} participation records for year {Year}",
             count, year);
         return count;
@@ -317,14 +293,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var user = await _repo.GetByIdAsync(userId, ct);
+        var user = await repo.GetByIdAsync(userId, ct);
         if (user is null)
         {
             return [new UserDataSlice(GdprExportSections.Account, null)];
         }
 
         // see nobodies-collective/Humans#687 — User.GoogleEmail deprecated, not exported.
-        var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var userEmails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
         var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
@@ -346,7 +322,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
         };
 
-        var participations = await _repo.GetEventParticipationsByUserIdAsync(userId, ct);
+        var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var participationsShaped = participations
             .Select(ep => new
             {
@@ -378,7 +354,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default)
     {
-        return await _repo.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
+        return await repo.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
     }
 
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
@@ -387,8 +363,8 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         // `now` and `actorUserId` unused — kept for IUserMerge contract.
         _ = actorUserId;
         _ = now;
-        await _repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await _repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
+        await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
+        await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
     }
 
     public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
@@ -399,24 +375,24 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "being called on the inner UserService it indicates a DI registration mistake.");
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
-        _repo.GetUsersWithLoginsButNoEmailsAsync(ct);
+        repo.GetUsersWithLoginsButNoEmailsAsync(ct);
 
     public async Task<int> DeleteUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default)
     {
-        await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        var deleted = await _repo.DeleteUsersAsync(userIds, ct);
+        await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
+        var deleted = await repo.DeleteUsersAsync(userIds, ct);
         foreach (var userId in userIds)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await userInfoInvalidator.InvalidateAsync(userId, ct);
         return deleted;
     }
 
     public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
+        repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
+        repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
 }

@@ -15,27 +15,18 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class ProfileRepository : IProfileRepository
+internal sealed class ProfileRepository(IDbContextFactory<HumansDbContext> factory, IClock clock) : IProfileRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly IClock _clock;
-
-    public ProfileRepository(IDbContextFactory<HumansDbContext> factory, IClock clock)
-    {
-        _factory = factory;
-        _clock = clock;
-    }
-
     public async Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
     }
 
     public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
             .Include(p => p.VolunteerHistory)
@@ -45,7 +36,7 @@ internal sealed class ProfileRepository : IProfileRepository
 
     public async Task<IReadOnlyList<Profile>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
             .Include(p => p.VolunteerHistory)
@@ -55,7 +46,7 @@ internal sealed class ProfileRepository : IProfileRepository
 
     public async Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.Id == profileId)
@@ -66,7 +57,7 @@ internal sealed class ProfileRepository : IProfileRepository
     public async Task<string?> GetProfilePictureContentTypeAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.Id == profileId)
@@ -77,7 +68,7 @@ internal sealed class ProfileRepository : IProfileRepository
     public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
         GetCustomPictureRowsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.ProfilePictureContentType != null)
@@ -91,7 +82,7 @@ internal sealed class ProfileRepository : IProfileRepository
 
     public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.IsApproved && !p.IsSuspended)
@@ -102,7 +93,7 @@ internal sealed class ProfileRepository : IProfileRepository
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ProfileLanguages
             .AsNoTracking()
             .Where(pl => pl.ProfileId == profileId)
@@ -113,7 +104,7 @@ internal sealed class ProfileRepository : IProfileRepository
 
     public async Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.ProfileLanguages
             .Where(pl => pl.ProfileId == profileId)
             .ToListAsync(ct);
@@ -127,14 +118,14 @@ internal sealed class ProfileRepository : IProfileRepository
 
     public async Task AddAsync(Profile profile, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Profiles.Add(profile);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateAsync(Profile profile, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Attach the detached entity and mark only its own scalar properties as
         // Modified — do NOT use ctx.Profiles.Update(profile) which would cascade
         // to navigation collections (VolunteerHistory, Languages) and could delete
@@ -158,7 +149,7 @@ internal sealed class ProfileRepository : IProfileRepository
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         var profiles = await ctx.Profiles
@@ -191,7 +182,7 @@ internal sealed class ProfileRepository : IProfileRepository
             Instant now,
             CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var keepList = userIdsToKeep is IList<Guid> list ? list : userIdsToKeep.ToList();
         var profiles = await ctx.Profiles
             .Where(p => p.MembershipTier == currentTier && !keepList.Contains(p.UserId))
@@ -220,7 +211,7 @@ internal sealed class ProfileRepository : IProfileRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var sourceProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
@@ -327,7 +318,7 @@ internal sealed class ProfileRepository : IProfileRepository
     private async Task<bool> AnonymizeProfileInternalAsync(
         Guid userId, string firstName, string lastName, CancellationToken ct)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var profile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
@@ -372,7 +363,7 @@ internal sealed class ProfileRepository : IProfileRepository
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Load tracked entities so the change tracker can detect in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
@@ -391,7 +382,7 @@ internal sealed class ProfileRepository : IProfileRepository
             .Where(e => e.Id != Guid.Empty)
             .Select(e => e.Id)
             .ToHashSet();
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
         // Remove entries whose Id is not in the incoming set
         var toRemove = existing
@@ -442,7 +433,7 @@ internal sealed class ProfileRepository : IProfileRepository
         ProfileState state,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // ExecuteUpdate with the State IS NULL guard is the lazy-write
         // discipline: idempotent across concurrent backfill (admin button
         // + lazy reads), zero impact on already-set rows, no UpdatedAt bump.

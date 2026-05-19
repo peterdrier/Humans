@@ -18,28 +18,19 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class DriveActivityMonitorRepository : IDriveActivityMonitorRepository
+internal sealed class DriveActivityMonitorRepository(
+    IDbContextFactory<HumansDbContext> factory,
+    ILogger<DriveActivityMonitorRepository> logger) : IDriveActivityMonitorRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly ILogger<DriveActivityMonitorRepository> _logger;
-
     /// <summary>
     /// <c>system_settings</c> key under which the monitor stores the instant
     /// of its last fully-successful run. Shared with no other consumer.
     /// </summary>
     internal const string LastRunSettingKey = "DriveActivityMonitor:LastRunAt";
 
-    public DriveActivityMonitorRepository(
-        IDbContextFactory<HumansDbContext> factory,
-        ILogger<DriveActivityMonitorRepository> logger)
-    {
-        _factory = factory;
-        _logger = logger;
-    }
-
     public async Task<Instant?> GetLastRunTimestampAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var setting = await ctx.SystemSettings
             .AsNoTracking()
@@ -57,7 +48,7 @@ internal sealed class DriveActivityMonitorRepository : IDriveActivityMonitorRepo
             return result.Value;
         }
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Could not parse stored Drive activity monitor timestamp '{Value}', falling back to default lookback",
             setting.Value);
         return null;
@@ -74,7 +65,7 @@ internal sealed class DriveActivityMonitorRepository : IDriveActivityMonitorRepo
             return;
         }
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         if (anomalies.Count > 0)
         {
@@ -109,7 +100,7 @@ internal sealed class DriveActivityMonitorRepository : IDriveActivityMonitorRepo
     {
         try
         {
-            await using var ctx = await _factory.CreateDbContextAsync(ct);
+            await using var ctx = await factory.CreateDbContextAsync(ct);
 
             // ASP.NET Identity user logins for Google provider key → user id.
             var login = await ctx.Set<IdentityUserLogin<Guid>>()
@@ -134,7 +125,7 @@ internal sealed class DriveActivityMonitorRepository : IDriveActivityMonitorRepo
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Error resolving Google user id {GoogleUserId} via local DB", googleUserId);
             return null;
         }

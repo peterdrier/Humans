@@ -17,19 +17,9 @@ namespace Humans.Web.Controllers.Api;
 [Route("api/events")]
 [EnableCors("EventsApi")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsApiController : ControllerBase
+public class EventsApiController(IEventService guide, ICampService camps, UserManager<User> userManager)
+    : ControllerBase
 {
-    private readonly IEventService _guide;
-    private readonly ICampService _camps;
-    private readonly UserManager<User> _userManager;
-
-    public EventsApiController(IEventService guide, ICampService camps, UserManager<User> userManager)
-    {
-        _guide = guide;
-        _camps = camps;
-        _userManager = userManager;
-    }
-
     [HttpGet("events")]
     public async Task<IActionResult> GetEvents(
         [FromQuery] int? day,
@@ -37,7 +27,7 @@ public class EventsApiController : ControllerBase
         [FromQuery] Guid? barrioId,
         [FromQuery] string? q)
     {
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
@@ -45,7 +35,7 @@ public class EventsApiController : ControllerBase
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var excludedSlugs = await GetExcludedSlugsAsync();
-        var events = await _guide.GetApprovedEventsAsync(barrioId, null, null, q, excludedSlugs);
+        var events = await guide.GetApprovedEventsAsync(barrioId, null, null, q, excludedSlugs);
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
 
         var results = new List<GuideEventApiDto>();
@@ -70,13 +60,13 @@ public class EventsApiController : ControllerBase
     [HttpGet("events/{id:guid}")]
     public async Task<IActionResult> GetEvent(Guid id)
     {
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
-        var e = await _guide.GetApprovedEventByIdAsync(id);
+        var e = await guide.GetApprovedEventByIdAsync(id);
         if (e == null) return NotFound();
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
@@ -89,11 +79,11 @@ public class EventsApiController : ControllerBase
     [HttpGet("barrios")]
     public async Task<IActionResult> GetBarrios()
     {
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
 
-        var events = await _guide.GetApprovedEventsAsync(null, null, null, null, []);
+        var events = await guide.GetApprovedEventsAsync(null, null, null, null, []);
         var barrioGroups = events
             .Where(e => e.CampId.HasValue)
             .GroupBy(e => e.CampId!.Value)
@@ -114,14 +104,14 @@ public class EventsApiController : ControllerBase
     [HttpGet("barrios/{id:guid}")]
     public async Task<IActionResult> GetBarrio(Guid id)
     {
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
-        var events = await _guide.GetApprovedEventsAsync(id, null, null, null, []);
+        var events = await guide.GetApprovedEventsAsync(id, null, null, null, []);
         if (!events.Any()) return NotFound();
 
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
@@ -143,7 +133,7 @@ public class EventsApiController : ControllerBase
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories()
     {
-        var categories = await _guide.GetActiveCategoriesAsync();
+        var categories = await guide.GetActiveCategoriesAsync();
         return Ok(categories.Select(c => new GuideCategoryApiDto(
             c.Id,
             c.Name,
@@ -159,10 +149,10 @@ public class EventsApiController : ControllerBase
     [HttpGet("preferences")]
     public async Task<IActionResult> GetPreferences()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user == null) return Unauthorized();
 
-        var slugs = await _guide.GetExcludedCategorySlugsAsync(user.Id);
+        var slugs = await guide.GetExcludedCategorySlugsAsync(user.Id);
         return Ok(new { excludedCategorySlugs = slugs });
     }
 
@@ -171,10 +161,10 @@ public class EventsApiController : ControllerBase
     [HttpPut("preferences")]
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesRequest request)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user == null) return Unauthorized();
 
-        var activeCategories = await _guide.GetActiveCategoriesAsync();
+        var activeCategories = await guide.GetActiveCategoriesAsync();
         var activeSlugs = activeCategories.Select(c => c.Slug).ToList();
         var invalidSlugs = request.ExcludedCategorySlugs
             .Where(s => !activeSlugs.Contains(s, StringComparer.OrdinalIgnoreCase))
@@ -183,7 +173,7 @@ public class EventsApiController : ControllerBase
         if (invalidSlugs.Count > 0)
             return BadRequest(new { error = $"Invalid category slugs: {string.Join(", ", invalidSlugs)}" });
 
-        await _guide.SavePreferenceAsync(user.Id, request.ExcludedCategorySlugs);
+        await guide.SavePreferenceAsync(user.Id, request.ExcludedCategorySlugs);
         return Ok(new { excludedCategorySlugs = request.ExcludedCategorySlugs });
     }
 
@@ -199,17 +189,17 @@ public class EventsApiController : ControllerBase
     [HttpGet("favourites")]
     public async Task<IActionResult> GetFavourites()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user == null) return Unauthorized();
 
-        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
-        var favourites = await _guide.GetFavouritesWithEventsAsync(user.Id);
+        var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var results = favourites.Select(f =>
         {
@@ -226,10 +216,10 @@ public class EventsApiController : ControllerBase
     [HttpPost("favourites/{eventId:guid}")]
     public async Task<IActionResult> AddFavourite(Guid eventId)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user == null) return Unauthorized();
 
-        var added = await _guide.AddFavouriteAsync(user.Id, eventId);
+        var added = await guide.AddFavouriteAsync(user.Id, eventId);
         if (!added) return Conflict(new { error = "Already favourited" });
         return Ok(new { favourited = true });
     }
@@ -239,10 +229,10 @@ public class EventsApiController : ControllerBase
     [HttpDelete("favourites/{eventId:guid}")]
     public async Task<IActionResult> RemoveFavourite(Guid eventId)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user == null) return Unauthorized();
 
-        var removed = await _guide.RemoveFavouriteAsync(user.Id, eventId);
+        var removed = await guide.RemoveFavouriteAsync(user.Id, eventId);
         if (!removed) return NotFound();
         return Ok(new { unfavourited = true });
     }
@@ -252,22 +242,22 @@ public class EventsApiController : ControllerBase
     private async Task<List<string>> GetExcludedSlugsAsync()
     {
         if (User.Identity?.IsAuthenticated != true) return [];
-        var user = await _userManager.GetUserAsync(User);
+        var user = await userManager.GetUserAsync(User);
         if (user == null) return [];
-        return await _guide.GetExcludedCategorySlugsAsync(user.Id);
+        return await guide.GetExcludedCategorySlugsAsync(user.Id);
     }
 
     private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettings? guideSettings)
     {
         if (guideSettings == null) return null;
-        return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
+        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
     }
 
     private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
     {
         if (year is null) return [];
-        var camps = await _camps.GetCampsForYearAsync(year.Value);
-        return camps.ToDictionary(c => c.Id);
+        var camps1 = await camps.GetCampsForYearAsync(year.Value);
+        return camps1.ToDictionary(c => c.Id);
     }
 
     private static string? ResolveCampName(Guid? campId, IReadOnlyDictionary<Guid, CampInfo> campsById)

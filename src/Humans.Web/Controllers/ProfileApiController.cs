@@ -13,27 +13,16 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/profiles")]
-public class ProfileApiController : ApiControllerBase
+public class ProfileApiController(
+    IProfileService profileService,
+    IUserService userService,
+    IContactFieldService contactFieldService,
+    IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
     private const int MaxResults = 10;
 
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IContactFieldService _contactFieldService;
-    private readonly IUserEmailService _userEmailService;
-
-    public ProfileApiController(
-        IProfileService profileService,
-        IUserService userService,
-        IContactFieldService contactFieldService,
-        IUserEmailService userEmailService)
-        : base(userService)
-    {
-        _profileService = profileService;
-        _userService = userService;
-        _contactFieldService = contactFieldService;
-        _userEmailService = userEmailService;
-    }
+    private readonly IProfileService _profileService = profileService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("search")]
     public async Task<IActionResult> Search(
@@ -107,11 +96,11 @@ public class ProfileApiController : ApiControllerBase
         Guid viewerUserId,
         CancellationToken ct)
     {
-        var accessLevel = await _contactFieldService.GetViewerAccessLevelAsync(
+        var accessLevel = await contactFieldService.GetViewerAccessLevelAsync(
             userId,
             viewerUserId,
             ct);
-        var visibleEmails = await _userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
+        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
         var visibleEmail = visibleEmails
             .OrderByDescending(e => e.IsPrimary)
             .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
@@ -121,7 +110,7 @@ public class ProfileApiController : ApiControllerBase
         if (!string.IsNullOrWhiteSpace(visibleEmail))
             return visibleEmail;
 
-        var visibleContactFields = await _contactFieldService.GetVisibleContactFieldsAsync(
+        var visibleContactFields = await contactFieldService.GetVisibleContactFieldsAsync(
             userId,
             viewerUserId,
             ct);

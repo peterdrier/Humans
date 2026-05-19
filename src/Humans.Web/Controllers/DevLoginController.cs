@@ -14,40 +14,19 @@ public record DevPersonaInfo(string Slug, string DisplayName);
 
 // Dev/preview sign-in. Gated by DevAuth:Enabled=true AND non-Production env. Personas from RoleNames.
 [Route("dev/login")]
-public class DevLoginController : Controller
+public class DevLoginController(
+    UserManager<User> userManager,
+    SignInManager<User> signInManager,
+    IUserEmailService userEmailService,
+    DevPersonaSeeder personaSeeder,
+    IWebHostEnvironment env,
+    IConfiguration config,
+    ConfigurationRegistry configRegistry,
+    ILogger<DevLoginController> logger) : Controller
 {
     public static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
 
     private static readonly SemaphoreSlim SeedLock = new(1, 1);
-
-    private readonly UserManager<User> _userManager;
-    private readonly SignInManager<User> _signInManager;
-    private readonly IUserEmailService _userEmailService;
-    private readonly DevPersonaSeeder _personaSeeder;
-    private readonly IWebHostEnvironment _env;
-    private readonly IConfiguration _config;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly ILogger<DevLoginController> _logger;
-
-    public DevLoginController(
-        UserManager<User> userManager,
-        SignInManager<User> signInManager,
-        IUserEmailService userEmailService,
-        DevPersonaSeeder personaSeeder,
-        IWebHostEnvironment env,
-        IConfiguration config,
-        ConfigurationRegistry configRegistry,
-        ILogger<DevLoginController> logger)
-    {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _userEmailService = userEmailService;
-        _personaSeeder = personaSeeder;
-        _env = env;
-        _config = config;
-        _configRegistry = configRegistry;
-        _logger = logger;
-    }
 
     [HttpGet("{persona}")]
     public async Task<IActionResult> SignIn(string persona, string? returnUrl = null)
@@ -67,12 +46,12 @@ public class DevLoginController : Controller
         var (resolvedUserId, user) = await ResolveSeededPersonaUserAsync(info);
         if (user is null)
         {
-            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
+            logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
             return StatusCode(500, "Dev persona seeding failed");
         }
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
+        await signInManager.SignInAsync(user, isPersistent: false);
+        logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
         return RedirectToLocalOrHome(returnUrl);
     }
@@ -85,28 +64,28 @@ public class DevLoginController : Controller
         await SeedLock.WaitAsync();
         try
         {
-            resolvedUserId = await _personaSeeder.EnsurePersonaAsync(info.Slug, info.DisplayName, id);
+            resolvedUserId = await personaSeeder.EnsurePersonaAsync(info.Slug, info.DisplayName, id);
             if (string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase))
-                await _personaSeeder.EnsureCoordinatorTeamsAsync(resolvedUserId);
+                await personaSeeder.EnsureCoordinatorTeamsAsync(resolvedUserId);
             if (DevPersonaSeeder.IsBarrioLeadSlug(info.Slug))
-                await _personaSeeder.EnsureBarrioCampAsync(info.Slug, resolvedUserId);
+                await personaSeeder.EnsureBarrioCampAsync(info.Slug, resolvedUserId);
             if (DevPersonaSeeder.IsCityPlanningSlug(info.Slug))
-                await _personaSeeder.EnsureCityPlanningTeamAsync(resolvedUserId);
+                await personaSeeder.EnsureCityPlanningTeamAsync(resolvedUserId);
         }
         finally
         {
             SeedLock.Release();
         }
 
-        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString());
+        var user = await userManager.FindByIdAsync(resolvedUserId.ToString());
         if (user is not null)
             return (resolvedUserId, user);
 
         var email = $"dev-{info.Slug}@localhost";
-        var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
+        var byEmailUserId = await userEmailService.GetUserIdByVerifiedEmailAsync(email);
         user = byEmailUserId is null
             ? null
-            : await _userManager.FindByIdAsync(byEmailUserId.Value.ToString());
+            : await userManager.FindByIdAsync(byEmailUserId.Value.ToString());
 
         return (resolvedUserId, user);
     }
@@ -117,7 +96,7 @@ public class DevLoginController : Controller
         if (!IsDevAuthEnabled())
             return NotFound();
 
-        var users = await _personaSeeder.GetUsersForChooserAsync();
+        var users = await personaSeeder.GetUsersForChooserAsync();
 
         ViewData["ReturnUrl"] = returnUrl;
         return View(users.ToList());
@@ -129,12 +108,12 @@ public class DevLoginController : Controller
         if (!IsDevAuthEnabled())
             return NotFound();
 
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await userManager.FindByIdAsync(id.ToString());
         if (user is null)
             return NotFound();
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
+        await signInManager.SignInAsync(user, isPersistent: false);
+        logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
         return RedirectToLocalOrHome(returnUrl);
     }
@@ -146,26 +125,26 @@ public class DevLoginController : Controller
 
     private bool IsDevAuthEnabled()
     {
-        if (_env.IsProduction())
+        if (env.IsProduction())
             return false;
 
-        return _config.GetSettingValue(
-            _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
+        return config.GetSettingValue(
+            configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
     private async Task<IActionResult> SignInAsFreshGuestAsync(DevPersonaInfo info, string? returnUrl)
     {
-        var newId = await _personaSeeder.EnsureFreshGuestAsync(info.DisplayName);
+        var newId = await personaSeeder.EnsureFreshGuestAsync(info.DisplayName);
 
-        var user = await _userManager.FindByIdAsync(newId.ToString());
+        var user = await userManager.FindByIdAsync(newId.ToString());
         if (user is null)
         {
-            _logger.LogError("Fresh guest persona ({Id}) not found after seeding", newId);
+            logger.LogError("Fresh guest persona ({Id}) not found after seeding", newId);
             return StatusCode(500, "Dev guest seeding failed");
         }
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", user.Id);
+        await signInManager.SignInAsync(user, isPersistent: false);
+        logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", user.Id);
         return RedirectToLocalOrHome(returnUrl);
     }
 

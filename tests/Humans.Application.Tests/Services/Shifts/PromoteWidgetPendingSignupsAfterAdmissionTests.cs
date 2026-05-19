@@ -9,23 +9,17 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
+public sealed class PromoteWidgetPendingSignupsAfterAdmissionTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
-    private readonly IAuditLogService _auditLog;
     private readonly IMembershipCalculator _membership;
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftSignupRepository _repo;
@@ -38,14 +32,8 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
     private readonly Team _team;
 
     public PromoteWidgetPendingSignupsAfterAdmissionTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(TestNow);
-        _auditLog = Substitute.For<IAuditLogService>();
         _membership = Substitute.For<IMembershipCalculator>();
         // Default: user has all required consents — exercises the existing
         // promotion logic. Tests that need the missing-consents guard override
@@ -56,33 +44,34 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(teamService)
+            .With(roleAssignmentService)
+            .Build();
 
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var shiftRepo = new ShiftManagementRepository(DbFactory);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
-            _auditLog,
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
+            Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            _clock,
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftSignupRepository(_dbContext, _clock);
+        _repo = new ShiftSignupRepository(Db, Clock);
         _service = new ShiftSignupService(
             _repo,
             _shiftMgmt,
             _membership,
-            _auditLog,
+            AuditLog,
             Substitute.For<INotificationService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
-            _clock,
+            Clock,
             NullLogger<ShiftSignupService>.Instance);
 
         _activeEvent = new EventSettings
@@ -99,7 +88,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.EventSettings.Add(_activeEvent);
+        Db.EventSettings.Add(_activeEvent);
 
         _team = new Team
         {
@@ -111,14 +100,8 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(_team);
-        _dbContext.SaveChanges();
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        Db.Teams.Add(_team);
+        Db.SaveChanges();
     }
 
     [HumansFact]
@@ -128,7 +111,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 
-        var reloaded = await _dbContext.ShiftSignups.AsNoTracking()
+        var reloaded = await Db.ShiftSignups.AsNoTracking()
             .FirstAsync(s => s.Id == signup.Id);
         Assert.Equal(SignupStatus.Confirmed, reloaded.Status);
     }
@@ -146,7 +129,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 
-        var reloaded = await _dbContext.ShiftSignups.AsNoTracking()
+        var reloaded = await Db.ShiftSignups.AsNoTracking()
             .FirstAsync(s => s.Id == signup.Id);
         Assert.Equal(SignupStatus.Pending, reloaded.Status);
     }
@@ -158,7 +141,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 
-        var reloaded = await _dbContext.ShiftSignups.AsNoTracking()
+        var reloaded = await Db.ShiftSignups.AsNoTracking()
             .FirstAsync(s => s.Id == signup.Id);
         Assert.Equal(SignupStatus.Pending, reloaded.Status);
     }
@@ -171,7 +154,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 
-        var block = await _dbContext.ShiftSignups.AsNoTracking()
+        var block = await Db.ShiftSignups.AsNoTracking()
             .Where(s => s.SignupBlockId == blockId)
             .ToListAsync();
         Assert.Equal(3, block.Count);
@@ -187,7 +170,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 
-        var reloaded = await _dbContext.ShiftSignups.AsNoTracking()
+        var reloaded = await Db.ShiftSignups.AsNoTracking()
             .FirstAsync(s => s.Id == signup.Id);
         Assert.Equal(SignupStatus.Pending, reloaded.Status);
     }
@@ -205,7 +188,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
 
         for (var i = 0; i < confirmedSoFar; i++)
         {
-            _dbContext.ShiftSignups.Add(new ShiftSignup
+            Db.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 UserId = Guid.NewGuid(),
@@ -225,8 +208,8 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.ShiftSignups.Add(signup);
-        _dbContext.SaveChanges();
+        Db.ShiftSignups.Add(signup);
+        Db.SaveChanges();
         return signup;
     }
 
@@ -249,10 +232,10 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
                 CreatedAt = TestNow,
                 UpdatedAt = TestNow
             };
-            _dbContext.ShiftSignups.Add(signup);
+            Db.ShiftSignups.Add(signup);
             ids.Add(signup.Id);
         }
-        _dbContext.SaveChanges();
+        Db.SaveChanges();
         return ids;
     }
 
@@ -271,7 +254,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
             UpdatedAt = TestNow,
             EventSettings = _activeEvent
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
         return rota;
     }
 
@@ -291,7 +274,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
             UpdatedAt = TestNow,
             Rota = rota
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 }

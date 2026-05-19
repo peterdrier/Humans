@@ -22,49 +22,23 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams")]
-public class TeamController : HumansControllerBase
+public class TeamController(
+    ITeamService teamService,
+    ITeamPageService teamPageService,
+    IProfileService profileService,
+    IUserService userService,
+    INotificationService notificationService,
+    IGoogleSyncService googleSyncService,
+    ITeamResourceService teamResourceService,
+    IStringLocalizer<SharedResource> localizer,
+    IConfiguration configuration,
+    ConfigurationRegistry configRegistry,
+    IClock clock,
+    ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
-    private readonly ITeamService _teamService;
-    private readonly ITeamPageService _teamPageService;
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly INotificationService _notificationService;
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly IConfiguration _configuration;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly ILogger<TeamController> _logger;
-    private readonly IClock _clock;
-
-    public TeamController(
-        ITeamService teamService,
-        ITeamPageService teamPageService,
-        IProfileService profileService,
-        IUserService userService,
-        INotificationService notificationService,
-        IGoogleSyncService googleSyncService,
-        ITeamResourceService teamResourceService,
-        IStringLocalizer<SharedResource> localizer,
-        IConfiguration configuration,
-        ConfigurationRegistry configRegistry,
-        IClock clock,
-        ILogger<TeamController> logger)
-        : base(userService)
-    {
-        _teamService = teamService;
-        _teamPageService = teamPageService;
-        _profileService = profileService;
-        _userService = userService;
-        _notificationService = notificationService;
-        _googleSyncService = googleSyncService;
-        _teamResourceService = teamResourceService;
-        _localizer = localizer;
-        _configuration = configuration;
-        _configRegistry = configRegistry;
-        _clock = clock;
-        _logger = logger;
-    }
+    private readonly IProfileService _profileService = profileService;
+    private readonly IUserService _userService = userService;
+    private readonly INotificationService _notificationService = notificationService;
 
     [AllowAnonymous]
     [HttpGet("")]
@@ -74,7 +48,7 @@ public class TeamController : HumansControllerBase
         var hasProfile = User.HasClaim(
             RoleAssignmentClaimsTransformation.HasProfileClaimType,
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
-        var directory = await _teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null, ct);
+        var directory = await teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null, ct);
 
         ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
 
@@ -131,7 +105,7 @@ public class TeamController : HumansControllerBase
             RoleAssignmentClaimsTransformation.HasProfileClaimType,
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
         var effectiveUserId = hasProfile ? user?.Id : null;
-        var teamPage = await _teamPageService.GetTeamPageDetailAsync(
+        var teamPage = await teamPageService.GetTeamPageDetailAsync(
             slug,
             effectiveUserId,
             ShiftRoleChecks.CanManageDepartment(User),
@@ -199,9 +173,9 @@ public class TeamController : HumansControllerBase
             var addedUserIds = new HashSet<Guid>();
 
             var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
-            var managementRolesByTeam = await _teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
+            var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
 
-            var teamsById = await _teamService.GetTeamsAsync();
+            var teamsById = await teamService.GetTeamsAsync();
             var childMembersByTeam = childTeamIds
                 .Where(teamsById.ContainsKey)
                 .ToDictionary(
@@ -213,11 +187,6 @@ public class TeamController : HumansControllerBase
                             m.GoogleEmailStatus, m.Role, m.JoinedAt))
                         .ToList());
 
-            var childUserIds = childMembersByTeam.Values.SelectMany(m => m).Select(m => m.UserId).Distinct().ToList();
-            var childUserInfos = childUserIds.Count > 0
-                ? await _userService.GetUserInfosAsync(childUserIds, ct)
-                : new Dictionary<Guid, UserInfo>();
-
             foreach (var child in teamPage.ChildTeams)
             {
                 if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
@@ -227,15 +196,12 @@ public class TeamController : HumansControllerBase
                 foreach (var cm in childMembers)
                 {
                     var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
-                    var pictureUrl = childUserInfos.GetValueOrDefault(cm.UserId)?.ProfilePictureUrl;
 
                     if (isCoordinator)
                     {
                         viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
                         {
                             UserId = cm.UserId,
-                            DisplayName = cm.DisplayName,
-                            ProfilePictureUrl = pictureUrl,
                             ChildTeamName = child.Name,
                             ChildTeamSlug = child.Slug,
                             IsCoordinator = true,
@@ -249,8 +215,6 @@ public class TeamController : HumansControllerBase
                     viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
                     {
                         UserId = cm.UserId,
-                        DisplayName = cm.DisplayName,
-                        ProfilePictureUrl = pictureUrl,
                         ChildTeamName = child.Name,
                         ChildTeamSlug = child.Slug,
                         IsCoordinator = isCoordinator,
@@ -280,9 +244,7 @@ public class TeamController : HumansControllerBase
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        DisplayName = member.DisplayName,
         Email = member.Email ?? string.Empty,
-        ProfilePictureUrl = member.ProfilePictureUrl,
         Role = member.Role,
         JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
@@ -317,9 +279,9 @@ public class TeamController : HumansControllerBase
         }
 
         var currentZone = HttpContext.Session.GetUserTimeZone();
-        var currentMonth = month ?? _clock.GetCurrentInstant().InZone(currentZone).Month;
+        var currentMonth = month ?? clock.GetCurrentInstant().InZone(currentZone).Month;
         if (currentMonth < 1 || currentMonth > 12)
-            currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
+            currentMonth = clock.GetCurrentInstant().InZone(currentZone).Month;
 
         var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.Profile is { IsApproved: true, State: not ProfileState.Suspended }
@@ -338,7 +300,7 @@ public class TeamController : HumansControllerBase
 
         var userIds = profilesWithBirthdays.Select(p => p.UserId).ToList();
         var userIdSet = userIds.ToHashSet();
-        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var teamsById = await teamService.GetTeamsAsync(ct);
         var teamsByUser = new Dictionary<Guid, List<string>>();
         foreach (var team in teamsById.Values
             .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
@@ -363,8 +325,6 @@ public class TeamController : HumansControllerBase
             Birthdays = profilesWithBirthdays.Select(p => new BirthdayEntryViewModel
             {
                 UserId = p.UserId,
-                DisplayName = p.DisplayName,
-                EffectiveProfilePictureUrl = p.ProfilePictureUrl,
                 DayOfMonth = p.Day,
                 Month = p.Month,
                 MonthName = monthName,
@@ -378,7 +338,7 @@ public class TeamController : HumansControllerBase
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
     {
-        var roster = await _teamService.GetRosterAsync(priority, status, period, ct);
+        var roster = await teamService.GetRosterAsync(priority, status, period, ct);
 
         var slots = roster.Select(slot => new RosterSlotViewModel
         {
@@ -425,8 +385,8 @@ public class TeamController : HumansControllerBase
             CountryCode = p.CountryCode
         }).ToList();
 
-        ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(
-            _configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(
+            configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 
         return View(new MapViewModel { Markers = markers });
     }
@@ -440,7 +400,7 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var membershipVMs = (await _teamService.GetMyTeamMembershipsAsync(user.Id, ct))
+        var membershipVMs = (await teamService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
                 TeamId = m.TeamId,
@@ -472,7 +432,7 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -480,7 +440,7 @@ public class TeamController : HumansControllerBase
 
         if (team.IsSystemTeam)
         {
-            SetError(_localizer["Team_CannotJoinSystem"].Value);
+            SetError(localizer["Team_CannotJoinSystem"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -489,18 +449,18 @@ public class TeamController : HumansControllerBase
             return NotFound();
         }
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var teamInfo = await teamService.GetTeamAsync(team.Id);
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
-            SetError(_localizer["Team_AlreadyMember"].Value);
+            SetError(localizer["Team_AlreadyMember"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        var pendingRequest = await _teamService.GetUserPendingRequestAsync(team.Id, user.Id);
+        var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id);
         if (pendingRequest is not null)
         {
-            SetError(_localizer["Team_AlreadyPendingRequest"].Value);
+            SetError(localizer["Team_AlreadyPendingRequest"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -525,7 +485,7 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -545,20 +505,20 @@ public class TeamController : HumansControllerBase
         {
             if (team.RequiresApproval)
             {
-                await _teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
-                SetSuccess(_localizer["Team_JoinRequestSubmitted"].Value);
+                await teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
+                SetSuccess(localizer["Team_JoinRequestSubmitted"].Value);
             }
             else
             {
-                await _teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
-                SetSuccess(_localizer["Team_Joined"].Value);
+                await teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
+                SetSuccess(localizer["Team_Joined"].Value);
             }
 
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to join team {TeamId} for user {UserId}", team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to join team {TeamId} for user {UserId}", team.Id, user.Id);
             SetError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
@@ -574,7 +534,7 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -582,13 +542,13 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            await _teamService.LeaveTeamAsync(team.Id, user.Id);
-            SetSuccess(_localizer["Team_Left"].Value);
+            await teamService.LeaveTeamAsync(team.Id, user.Id);
+            SetSuccess(localizer["Team_Left"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to leave team {TeamId} for user {UserId}", team.Id, user.Id);
+            logger.LogWarning(ex, "Failed to leave team {TeamId} for user {UserId}", team.Id, user.Id);
             SetError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
@@ -606,12 +566,12 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            await _teamService.WithdrawJoinRequestAsync(id, user.Id);
-            SetSuccess(_localizer["Team_RequestWithdrawn"].Value);
+            await teamService.WithdrawJoinRequestAsync(id, user.Id);
+            SetSuccess(localizer["Team_RequestWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to withdraw join request {RequestId} for user {UserId}", id, user.Id);
+            logger.LogWarning(ex, "Failed to withdraw join request {RequestId} for user {UserId}", id, user.Id);
             SetError(ex.Message);
         }
 
@@ -622,7 +582,7 @@ public class TeamController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary(CancellationToken ct)
     {
-        var result = await _teamService.GetAdminTeamListAsync(1, 500, ct);
+        var result = await teamService.GetAdminTeamListAsync(1, 500, ct);
 
         var viewModel = new AdminTeamListViewModel();
 
@@ -667,47 +627,47 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            var team = await _teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
+            var team = await teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
             var currentUser = await GetCurrentUserInfoAsync();
-            _logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
+            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
 
             if (!string.IsNullOrEmpty(model.GoogleGroupPrefix))
             {
                 try
                 {
-                    await _googleSyncService.EnsureTeamGroupAsync(team.Id);
+                    await googleSyncService.EnsureTeamGroupAsync(team.Id);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
-                    await _teamService.UpdateTeamAsync(team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive, team.ParentTeamId, googleGroupPrefix: null);
-                    SetSuccess(string.Format(_localizer["Admin_TeamCreated"].Value, team.Name));
+                    logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
+                    await teamService.UpdateTeamAsync(team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive, team.ParentTeamId, googleGroupPrefix: null);
+                    SetSuccess(string.Format(localizer["Admin_TeamCreated"].Value, team.Name));
                     SetError($"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.");
                     return RedirectToAction(nameof(Summary));
                 }
             }
 
-            SetSuccess(string.Format(_localizer["Admin_TeamCreated"].Value, team.Name));
+            SetSuccess(string.Format(localizer["Admin_TeamCreated"].Value, team.Name));
             return RedirectToAction(nameof(Summary));
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to create team: {Message}", ex.Message);
+            logger.LogWarning(ex, "Failed to create team: {Message}", ex.Message);
             SetError(ex.Message);
             await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
+            logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
             ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
             await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating team");
-            ModelState.AddModelError("", _localizer["Admin_TeamCreateError"].Value);
+            logger.LogError(ex, "Error creating team");
+            ModelState.AddModelError("", localizer["Admin_TeamCreateError"].Value);
             await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
@@ -717,7 +677,7 @@ public class TeamController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
-        var team = await _teamService.GetTeamByIdAsync(id, cancellationToken);
+        var team = await teamService.GetTeamByIdAsync(id, cancellationToken);
         if (team is null)
         {
             return NotFound();
@@ -764,47 +724,47 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory);
+            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory);
             var currentUser = await GetCurrentUserInfoAsync();
-            _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
+            logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
             try
             {
-                var groupResult = await _googleSyncService.EnsureTeamGroupAsync(id);
+                var groupResult = await googleSyncService.EnsureTeamGroupAsync(id);
                 if (!groupResult.Success)
                 {
                     if (groupResult.RequiresConfirmation)
                     {
-                        SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                        SetSuccess(localizer["Admin_TeamUpdated"].Value);
                         SetError(groupResult.WarningMessage ?? "Confirmation required for group reactivation.");
                         return RedirectToAction(nameof(Summary));
                     }
-                    SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                    SetSuccess(localizer["Admin_TeamUpdated"].Value);
                     SetError(groupResult.ErrorMessage ?? "Google Group linking failed.");
                     return RedirectToAction(nameof(Summary));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to sync Google Group for team {TeamId}", id);
-                SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                logger.LogError(ex, "Failed to sync Google Group for team {TeamId}", id);
+                SetSuccess(localizer["Admin_TeamUpdated"].Value);
                 SetError($"Team updated but Google Group setup failed: {ex.Message}");
                 return RedirectToAction(nameof(Summary));
             }
 
-            SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+            SetSuccess(localizer["Admin_TeamUpdated"].Value);
             return RedirectToAction(nameof(Summary));
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to update team {TeamId}", id);
+            logger.LogWarning(ex, "Failed to update team {TeamId}", id);
             ModelState.AddModelError("", ex.Message);
             await PopulateEligibleParentsAsync(model, id);
             return View(model);
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogWarning(ex, "Failed to update team {TeamId}", id);
+            logger.LogWarning(ex, "Failed to update team {TeamId}", id);
             var message = ex.InnerException?.Message ?? "";
             if (message.Contains("CustomSlug", StringComparison.OrdinalIgnoreCase))
             {
@@ -826,15 +786,15 @@ public class TeamController : HumansControllerBase
     {
         try
         {
-            await _teamService.DeleteTeamAsync(id);
+            await teamService.DeleteTeamAsync(id);
             var currentUser = await GetCurrentUserInfoAsync();
-            _logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
+            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
 
-            SetSuccess(_localizer["Admin_TeamDeactivated"].Value);
+            SetSuccess(localizer["Admin_TeamDeactivated"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to deactivate team {TeamId}", id);
+            logger.LogWarning(ex, "Failed to deactivate team {TeamId}", id);
             SetError(ex.Message);
         }
 
@@ -866,7 +826,7 @@ public class TeamController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
     {
-        var resources = await _teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
+        var resources = await teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
         var result = resources.Select(r => new
         {
             name = r.Name,
@@ -885,7 +845,7 @@ public class TeamController : HumansControllerBase
     private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetEligibleParentTeamsAsync(
         Guid? excludeTeamId, CancellationToken cancellationToken)
     {
-        var allTeams = await _teamService.GetAllTeamsAsync(cancellationToken);
+        var allTeams = await teamService.GetAllTeamsAsync(cancellationToken);
         return allTeams
             .Where(t => t.IsActive && !t.IsSystemTeam
                 && t.ParentTeamId is null  // Can't nest >1 level

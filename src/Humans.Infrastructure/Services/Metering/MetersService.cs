@@ -14,17 +14,10 @@ namespace Humans.Infrastructure.Services.Metering;
 /// the existing <c>AddMeter("Humans.Metrics")</c> subscription in
 /// <c>Program.cs</c>.
 /// </summary>
-public sealed class MetersService : IMeters, IDisposable
+public sealed class MetersService(ILogger<MetersService> logger) : IMeters, IDisposable
 {
-    private readonly Meter _otelMeter;
+    private readonly Meter _otelMeter = new("Humans.Metrics");
     private readonly ConcurrentDictionary<string, Registration> _registrations = new(StringComparer.Ordinal);
-    private readonly ILogger<MetersService> _logger;
-
-    public MetersService(ILogger<MetersService> logger)
-    {
-        _logger = logger;
-        _otelMeter = new Meter("Humans.Metrics");
-    }
 
     public IMeter Declare(string name, MeterMetadata metadata)
     {
@@ -41,7 +34,7 @@ public sealed class MetersService : IMeters, IDisposable
                 unit: metadata.Unit,
                 description: metadata.Description);
 
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Registered gauge {GaugeName} (unit={Unit}, description={Description})",
                 n, metadata.Unit, metadata.Description);
 
@@ -50,7 +43,7 @@ public sealed class MetersService : IMeters, IDisposable
 
         if (registration.Metadata != metadata)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Gauge {GaugeName} re-declared with different metadata; keeping original. " +
                 "Original: unit={OriginalUnit}, description={OriginalDescription}. " +
                 "Ignored: unit={IgnoredUnit}, description={IgnoredDescription}",
@@ -67,18 +60,12 @@ public sealed class MetersService : IMeters, IDisposable
         _otelMeter.Dispose();
     }
 
-    private sealed class Registration : IMeter
+    private sealed class Registration(string name, MeterMetadata metadata) : IMeter
     {
         private int _current;
 
-        public Registration(string name, MeterMetadata metadata)
-        {
-            Name = name;
-            Metadata = metadata;
-        }
-
-        public string Name { get; }
-        public MeterMetadata Metadata { get; }
+        public string Name { get; } = name;
+        public MeterMetadata Metadata { get; } = metadata;
         public int Current => Volatile.Read(ref _current);
 
         public void Set(int value) => Volatile.Write(ref _current, value);

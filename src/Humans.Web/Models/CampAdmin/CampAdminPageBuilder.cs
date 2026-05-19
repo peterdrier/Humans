@@ -1,35 +1,20 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models.CampAdmin;
 
-public sealed class CampAdminPageBuilder
+public sealed class CampAdminPageBuilder(ICampService campService, ICityPlanningService cityPlanningService)
 {
-    private readonly ICampService _campService;
-    private readonly ICityPlanningService _cityPlanningService;
-    private readonly IUserService _userService;
-
-    public CampAdminPageBuilder(
-        ICampService campService,
-        ICityPlanningService cityPlanningService,
-        IUserService userService)
-    {
-        _campService = campService;
-        _cityPlanningService = cityPlanningService;
-        _userService = userService;
-    }
-
     public async Task<CampAdminViewModel> BuildAsync()
     {
-        var settings = await _campService.GetSettingsAsync();
-        var registrationInfo = await _cityPlanningService.GetRegistrationInfoAsync();
-        var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
-        var pendingSeasons = await _campService.GetPendingSeasonsAsync();
+        var settings = await campService.GetSettingsAsync();
+        var registrationInfo = await cityPlanningService.GetRegistrationInfoAsync();
+        var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear);
+        var pendingSeasons = await campService.GetPendingSeasonsAsync();
         var openSeasons = settings.OpenSeasons.ToList();
         var nameLockDates = openSeasons.Count > 0
-            ? await _campService.GetNameLockDatesAsync(openSeasons)
+            ? await campService.GetNameLockDatesAsync(openSeasons)
             : new Dictionary<int, NodaTime.LocalDate?>();
 
         var withdrawnSeasons = allCamps
@@ -47,10 +32,9 @@ public sealed class CampAdminPageBuilder
             .ToList();
 
         // T-06: GetCampsForYearAsync always populates leads; filter by season
-        // status in-memory (was previously a repo-side filter via the now-
-        // deprecated GetCampsWithLeadsForYearAsync).
+        // status in-memory.
         var activeStatuses = new HashSet<CampSeasonStatus> { CampSeasonStatus.Active, CampSeasonStatus.Full };
-        var campsWithLeads = (await _campService.GetCampsForYearAsync(settings.PublicYear))
+        var campsWithLeads = (await campService.GetCampsForYearAsync(settings.PublicYear))
             .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
             .ToList();
         var summaries = await BuildSummariesAsync(campsWithLeads);
@@ -79,15 +63,9 @@ public sealed class CampAdminPageBuilder
         };
     }
 
-    private async Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
+    private Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
     {
-        var leadUserIds = campsWithLeads
-            .SelectMany(c => c.Leads.Select(l => l.UserId))
-            .Distinct()
-            .ToList();
-        var leadUsers = await _userService.GetUserInfosAsync(leadUserIds);
-
-        return campsWithLeads.Select(c =>
+        return Task.FromResult(campsWithLeads.Select(c =>
         {
             var season = c.Seasons.FirstOrDefault();
             return new CampSummaryRowViewModel
@@ -107,10 +85,9 @@ public sealed class CampAdminPageBuilder
                     .Select(l => new CampLeadViewModel
                     {
                         LeadId = l.Id,
-                        UserId = l.UserId,
-                        DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.BurnerName : string.Empty
+                        UserId = l.UserId
                     }).ToList()
             };
-        }).ToList();
+        }).ToList());
     }
 }

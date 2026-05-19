@@ -7,31 +7,22 @@ using Humans.Application.Interfaces.GoogleIntegration;
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>Per-service sync-mode settings (Drive/Groups/Discord). Owns sync_service_settings via repository.</summary>
-public sealed class SyncSettingsService : ISyncSettingsService
+public sealed class SyncSettingsService(ISyncSettingsRepository repository, IClock clock) : ISyncSettingsService
 {
-    private readonly ISyncSettingsRepository _repository;
-    private readonly IClock _clock;
-
-    public SyncSettingsService(ISyncSettingsRepository repository, IClock clock)
-    {
-        _repository = repository;
-        _clock = clock;
-    }
-
     public async Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)
     {
-        var rows = await _repository.GetAllAsync(ct);
+        var rows = await repository.GetAllAsync(ct);
         return rows.Select(CreateSyncServiceSettingsInfo).ToList();
     }
 
     public Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
-        => _repository.GetModeAsync(serviceType, ct);
+        => repository.GetModeAsync(serviceType, ct);
 
     public async Task UpdateModeAsync(
         SyncServiceType serviceType, SyncMode mode, Guid actorUserId, CancellationToken ct = default)
     {
-        var updated = await _repository.UpdateModeAsync(
-            serviceType, mode, actorUserId, _clock.GetCurrentInstant(), ct);
+        var updated = await repository.UpdateModeAsync(
+            serviceType, mode, actorUserId, clock.GetCurrentInstant(), ct);
         if (!updated)
         {
             throw new InvalidOperationException($"No sync setting found for {serviceType}");

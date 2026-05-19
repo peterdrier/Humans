@@ -19,41 +19,23 @@ namespace Humans.Web.Controllers;
 
 [Route("Barrios")]
 [Route("Camps")]
-public class CampController : HumansCampControllerBase
+public class CampController(
+    ICampService campService,
+    ICampContactService campContactService,
+    ICampRoleService campRoleService,
+    ICityPlanningService cityPlanningService,
+    INotificationService notificationService,
+    IUserService userService,
+    IAuthorizationService authorizationService,
+    IClock clock,
+    ILogger<CampController> logger,
+    IStringLocalizer<SharedResource> localizer)
+    : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly ICampService _campService;
-    private readonly ICampContactService _campContactService;
-    private readonly ICampRoleService _campRoleService;
-    private readonly ICityPlanningService _cityPlanningService;
-    private readonly INotificationService _notificationService;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly ILogger<CampController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public CampController(
-        ICampService campService,
-        ICampContactService campContactService,
-        ICampRoleService campRoleService,
-        ICityPlanningService cityPlanningService,
-        INotificationService notificationService,
-        IUserService userService,
-        IAuthorizationService authorizationService,
-        IClock clock,
-        ILogger<CampController> logger,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService, campService, authorizationService)
-    {
-        _campService = campService;
-        _campContactService = campContactService;
-        _campRoleService = campRoleService;
-        _cityPlanningService = cityPlanningService;
-        _notificationService = notificationService;
-        _userService = userService;
-        _clock = clock;
-        _logger = logger;
-        _localizer = localizer;
-    }
+    private readonly ICampService _campService = campService;
+    private readonly INotificationService _notificationService = notificationService;
+    private readonly IUserService _userService = userService;
+    private readonly IClock _clock = clock;
 
     // --- Public routes ---
 
@@ -109,41 +91,41 @@ public class CampController : HumansCampControllerBase
 
     private async Task PopulateRegistrationInfoAsync()
     {
-        ViewData["RegistrationInfo"] = await _cityPlanningService.GetRegistrationInfoAsync();
+        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync();
     }
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
-    public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
+    public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
-        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: cancellationToken);
+        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: ct);
         if (campDetail is null)
             return NotFound();
 
-        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserInfoAsync() : null;
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
+        var currentUser = await GetCurrentUserInfoAsync(ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
-        await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
+        await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
     }
 
     [AllowAnonymous]
     [HttpGet("{slug}/Season/{year:int}")]
-    public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken cancellationToken)
+    public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken ct)
     {
         var campDetail = await _campService.BuildCampDetailDataBySlugAsync(
             slug,
             preferredYear: year,
             fallbackToLatestSeason: false,
-            cancellationToken: cancellationToken);
+            cancellationToken: ct);
         if (campDetail is null)
             return NotFound();
 
-        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserInfoAsync() : null;
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
+        var currentUser = await GetCurrentUserInfoAsync(ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
-        await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
+        await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
     }
@@ -215,7 +197,7 @@ public class CampController : HumansCampControllerBase
 
         try
         {
-            var result = await _campContactService.SendFacilitatedMessageAsync(
+            var result = await campContactService.SendFacilitatedMessageAsync(
                 camp.Id,
                 camp.ContactEmail,
                 campDisplayName,
@@ -229,16 +211,16 @@ public class CampController : HumansCampControllerBase
 
             if (result.RateLimited)
             {
-                SetError(_localizer["Camp_Contact_RateLimited"].Value);
+                SetError(localizer["Camp_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-            SetSuccess(string.Format(_localizer["Camp_Contact_Success"].Value, campDisplayName));
+            SetSuccess(string.Format(localizer["Camp_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
+            SetError(localizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -316,7 +298,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
+            logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, ex.Message);
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
@@ -325,7 +307,7 @@ public class CampController : HumansCampControllerBase
         catch (DbUpdateException ex)
         {
             // Belt-and-suspenders: friendly error if downstream sync races (primary fix lives in owning service).
-            _logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
+            logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, "We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.");
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
@@ -388,7 +370,7 @@ public class CampController : HumansCampControllerBase
     private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(
         string campSlug, Guid campSeasonId, bool canManage, CancellationToken ct)
     {
-        var panelData = await _campRoleService.BuildPanelAsync(campSeasonId, ct);
+        var panelData = await campRoleService.BuildPanelAsync(campSeasonId, ct);
         var members = await _campService.GetSeasonMembersAsync(campSeasonId, ct);
         var activeMemberUserIds = members
             .Where(m => m.Status == CampMemberStatus.Active)
@@ -445,7 +427,6 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead,
@@ -458,7 +439,6 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead,
@@ -533,7 +513,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
+            logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
             SetError(ex.Message);
         }
 
@@ -558,7 +538,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
+            logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
@@ -583,7 +563,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
+            logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
@@ -616,7 +596,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Adding lead {LeadUserId} failed for camp {CampId} and slug {Slug}", userId, camp.Id, slug);
+            logger.LogWarning(ex, "Adding lead {LeadUserId} failed for camp {CampId} and slug {Slug}", userId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -641,7 +621,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Removing lead {LeadId} failed for camp {CampId} and slug {Slug}", leadId, camp.Id, slug);
+            logger.LogWarning(ex, "Removing lead {LeadId} failed for camp {CampId} and slug {Slug}", leadId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -673,7 +653,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Adding historical name failed for camp {CampId}", camp.Id);
+            logger.LogWarning(ex, "Adding historical name failed for camp {CampId}", camp.Id);
             SetError(ex.Message);
         }
 
@@ -696,7 +676,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
+            logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -759,7 +739,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
+            logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -784,7 +764,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Reordering images failed for camp {CampId} and slug {Slug}", camp.Id, slug);
+            logger.LogWarning(ex, "Reordering images failed for camp {CampId} and slug {Slug}", camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -845,7 +825,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
+            logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
             SetError(ex.Message);
         }
 
@@ -892,7 +872,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -914,7 +894,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -936,7 +916,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -991,7 +971,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError("Failed to add human to camp.");
         }
 
@@ -1011,7 +991,7 @@ public class CampController : HumansCampControllerBase
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         var outcome = openSeason is null
             ? AssignCampRoleOutcome.SeasonNotFound
-            : await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
+            : await campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
 
         ApplyAssignRoleOutcomeFlash(outcome);
 
@@ -1041,7 +1021,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError("Failed to assign role.");
             return RedirectToAction(nameof(Members), new { slug });
         }
@@ -1082,17 +1062,17 @@ public class CampController : HumansCampControllerBase
         if (errorResult is not null) return errorResult;
 
         // C2: verify the assignment belongs to a season of THIS camp before delegating to the service.
-        var assignment = await _campRoleService.GetAssignmentByIdAsync(assignmentId, ct);
+        var assignment = await campRoleService.GetAssignmentByIdAsync(assignmentId, ct);
         var seasonIds = camp.Seasons.Select(s => s.Id).ToHashSet();
         if (assignment is null || !seasonIds.Contains(assignment.CampSeasonId))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cross-camp UnassignRole blocked: actor {ActorId} attempted assignment {AssignmentId} from camp {CampSlug}.",
                 user.Id, assignmentId, slug);
             return Forbid();
         }
 
-        var ok = await _campRoleService.UnassignAsync(assignmentId, user.Id, ct);
+        var ok = await campRoleService.UnassignAsync(assignmentId, user.Id, ct);
         if (ok)
         {
             SetSuccess("Role unassigned.");
@@ -1115,9 +1095,9 @@ public class CampController : HumansCampControllerBase
         }
 
         ViewBag.IsCityPlanningTeamMember =
-            await _cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
+            await cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
 
-        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         ViewBag.PlacementIsOpen = settings.IsPlacementOpen;
         ViewBag.PlacementOpensAt = settings.PlacementOpensAt;
         ViewBag.PlacementClosesAt = settings.PlacementClosesAt;
@@ -1157,8 +1137,7 @@ public class CampController : HumansCampControllerBase
             .Select(lead => new CampLeadViewModel
             {
                 LeadId = lead.LeadId,
-                UserId = lead.UserId,
-                DisplayName = lead.DisplayName
+                UserId = lead.UserId
             })
             .ToList();
         model.Images = editData.Images
@@ -1206,8 +1185,7 @@ public class CampController : HumansCampControllerBase
                 .Select(lead => new CampLeadViewModel
                 {
                     LeadId = lead.LeadId,
-                    UserId = lead.UserId,
-                    DisplayName = lead.DisplayName
+                    UserId = lead.UserId
                 }).ToList(),
             Images = editData.Images
                 .Select(image => new CampImageViewModel
@@ -1245,8 +1223,7 @@ public class CampController : HumansCampControllerBase
             .Select(lead => new CampLeadViewModel
             {
                 LeadId = lead.LeadId,
-                UserId = lead.UserId,
-                DisplayName = lead.DisplayName
+                UserId = lead.UserId
             }).ToList(),
             CurrentSeason = campDetail.CurrentSeason is null
             ? null
@@ -1283,7 +1260,7 @@ public class CampController : HumansCampControllerBase
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                _localizer["Validation_PhoneE164", "Contact Phone"].Value);
+                localizer["Validation_PhoneE164", "Contact Phone"].Value);
         }
     }
 

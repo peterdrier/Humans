@@ -40,24 +40,17 @@ namespace Humans.Domain.Architecture;
 /// </code>
 /// </example>
 [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = false)]
-public sealed class ExpiresOnAttribute : Attribute
+public sealed class ExpiresOnAttribute(string date, int graceDays = 7, string? reason = null) : Attribute
 {
-    public ExpiresOnAttribute(string date, int graceDays = 7, string? reason = null)
-    {
-        Date = date;
-        GraceDays = graceDays;
-        Reason = reason;
-    }
-
     /// <summary>ISO date (<c>yyyy-MM-dd</c>) on which callers start erroring.</summary>
-    public string Date { get; }
+    public string Date { get; } = date;
 
     /// <summary>
     /// Additional days after <see cref="Date"/> during which the declaration
     /// itself is only a warning. After this window the declaration also errors.
     /// </summary>
-    public int GraceDays { get; }
+    public int GraceDays { get; } = graceDays;
 
     /// <summary>Optional context shown in the diagnostic message.</summary>
-    public string? Reason { get; }
+    public string? Reason { get; } = reason;
 }

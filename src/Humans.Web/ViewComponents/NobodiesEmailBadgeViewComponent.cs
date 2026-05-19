@@ -16,29 +16,20 @@ namespace Humans.Web.ViewComponents;
 ///   "provision" — show email or provisioning form (TeamAdmin/Members)
 ///   "detail"    — show email + linked badge, or provisioning form (AdminDetail)
 /// </summary>
-public class NobodiesEmailBadgeViewComponent : ViewComponent
+public class NobodiesEmailBadgeViewComponent(IUserService userService) : ViewComponent
 {
-    private readonly IUserService _userService;
-
-    public NobodiesEmailBadgeViewComponent(IUserService userService)
-    {
-        _userService = userService;
-    }
-
     /// <summary>
     /// Renders a nobodies.team email badge for the given user.
     /// </summary>
     /// <param name="userId">The user to check.</param>
     /// <param name="mode">Display mode — see class doc.</param>
     /// <param name="teamSlug">Team slug for provisioning form (provision mode only).</param>
-    /// <param name="displayName">User display name for confirm dialog (provision mode only).</param>
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         string mode = "badge",
-        string? teamSlug = null,
-        string? displayName = null)
+        string? teamSlug = null)
     {
-        var info = await _userService.GetUserInfoAsync(userId);
+        var info = await userService.GetUserInfoAsync(userId);
         var nobodies = info?.UserEmails.FirstOrDefault(e => e.IsVerified
             && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
@@ -48,7 +39,9 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
         ViewBag.IsPrimary = nobodies?.IsPrimary == true;
         ViewBag.Mode = mode;
         ViewBag.TeamSlug = teamSlug;
-        ViewBag.DisplayName = displayName;
+        ViewBag.DisplayName = string.Equals(mode, "provision", StringComparison.Ordinal) && nobodies is null
+            ? info?.BurnerName
+            : null;
 
         return View();
     }

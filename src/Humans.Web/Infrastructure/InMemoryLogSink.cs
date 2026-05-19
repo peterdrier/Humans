@@ -9,20 +9,13 @@ namespace Humans.Web.Infrastructure;
 /// Used by the Admin/Logs page to display recent warnings and errors
 /// without needing to query Docker logs.
 /// </summary>
-public sealed class InMemoryLogSink : ILogEventSink
+public sealed class InMemoryLogSink(int capacity = 1000) : ILogEventSink
 {
     private readonly ConcurrentQueue<LogEvent> _events = new();
-    private readonly int _capacity;
     private readonly ConcurrentDictionary<LogEventLevel, long> _lifetimeCounts = new();
 
-    public InMemoryLogSink(int capacity = 1000)
-    {
-        _capacity = capacity;
-        StartedAt = DateTimeOffset.UtcNow;
-    }
-
     /// <summary>UTC timestamp captured when the sink (and process) started.</summary>
-    public DateTimeOffset StartedAt { get; }
+    public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
 
     /// <summary>Total events emitted since startup, summed across all log levels.</summary>
     public long TotalEvents => _lifetimeCounts.Values.Sum();
@@ -31,7 +24,7 @@ public sealed class InMemoryLogSink : ILogEventSink
     {
         _lifetimeCounts.AddOrUpdate(logEvent.Level, 1, (_, count) => count + 1);
         _events.Enqueue(logEvent);
-        while (_events.Count > _capacity)
+        while (_events.Count > capacity)
             _events.TryDequeue(out _);
     }
 

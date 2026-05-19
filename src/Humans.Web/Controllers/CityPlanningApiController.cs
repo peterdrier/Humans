@@ -17,37 +17,18 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("api/city-planning")]
 [ApiController]
-public class CityPlanningApiController : ControllerBase
+public class CityPlanningApiController(
+    ICityPlanningService cityPlanningService,
+    ICampService campService,
+    IContainerService containerService,
+    IAuthorizationService authorizationService,
+    IHubContext<CityPlanningHub> hubContext,
+    UserManager<User> userManager,
+    ILogger<CityPlanningApiController> logger) : ControllerBase
 {
-    private readonly ICityPlanningService _cityPlanningService;
-    private readonly ICampService _campService;
-    private readonly IContainerService _containerService;
-    private readonly IAuthorizationService _authorizationService;
-    private readonly IHubContext<CityPlanningHub> _hubContext;
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<CityPlanningApiController> _logger;
-
-    public CityPlanningApiController(
-        ICityPlanningService cityPlanningService,
-        ICampService campService,
-        IContainerService containerService,
-        IAuthorizationService authorizationService,
-        IHubContext<CityPlanningHub> hubContext,
-        UserManager<User> userManager,
-        ILogger<CityPlanningApiController> logger)
-    {
-        _cityPlanningService = cityPlanningService;
-        _campService = campService;
-        _containerService = containerService;
-        _authorizationService = authorizationService;
-        _hubContext = hubContext;
-        _userManager = userManager;
-        _logger = logger;
-    }
-
     private Guid CurrentUserId()
     {
-        var id = _userManager.GetUserId(User)
+        var id = userManager.GetUserId(User)
                  ?? throw new InvalidOperationException("Authenticated user has no ID claim.");
         return Guid.Parse(id);
     }
@@ -55,12 +36,12 @@ public class CityPlanningApiController : ControllerBase
     private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)
     {
         return RoleChecks.IsCampAdmin(User) ||
-               await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
+               await cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
     }
 
     private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
     {
-        var camps = await _campService.GetCampsForYearAsync(year, ct);
+        var camps = await campService.GetCampsForYearAsync(year, ct);
         return camps
             .FirstOrDefault(c => c.Leads.Any(l => l.UserId == userId))?.Id;
     }
@@ -69,9 +50,9 @@ public class CityPlanningApiController : ControllerBase
     [HttpGet("state")]
     public async Task<IActionResult> GetState(CancellationToken cancellationToken)
     {
-        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-        var campPolygons = await _cityPlanningService.GetCampPolygonsAsync(settings.Year, cancellationToken);
-        var seasonsWithout = await _cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        var campPolygons = await cityPlanningService.GetCampPolygonsAsync(settings.Year, cancellationToken);
+        var seasonsWithout = await cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
 
         return Ok(new
         {
@@ -87,7 +68,7 @@ public class CityPlanningApiController : ControllerBase
     [HttpGet("camp-polygons/{campSeasonId:guid}/history")]
     public async Task<IActionResult> GetCampPolygonHistory(Guid campSeasonId, CancellationToken cancellationToken)
     {
-        var history = await _cityPlanningService.GetCampPolygonHistoryAsync(campSeasonId, cancellationToken);
+        var history = await cityPlanningService.GetCampPolygonHistoryAsync(campSeasonId, cancellationToken);
         var response = history.Select(h => new
         {
             id = h.Id,
@@ -110,7 +91,7 @@ public class CityPlanningApiController : ControllerBase
     {
         var userId = CurrentUserId();
         if (!RoleChecks.IsCampAdmin(User) &&
-            !await _cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
+            !await cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
         {
             return Forbid();
         }
@@ -120,22 +101,22 @@ public class CityPlanningApiController : ControllerBase
             return BadRequest("Invalid GeoJSON.");
         }
 
-        var (polygon, _) = await _cityPlanningService.SaveCampPolygonAsync(
+        var (polygon, _) = await cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
             note: request.Note ?? "Saved",
             cancellationToken: cancellationToken);
 
-        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
         var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
         var campName = season?.Name ?? string.Empty;
         try
         {
-            await _hubContext.Clients.All.SendAsync(
+            await hubContext.Clients.All.SendAsync(
                 "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
+            logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
         }
 
         return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
@@ -155,20 +136,20 @@ public class CityPlanningApiController : ControllerBase
             return Forbid();
         }
 
-        var (polygon, _) = await _cityPlanningService.RestoreCampPolygonVersionAsync(
+        var (polygon, _) = await cityPlanningService.RestoreCampPolygonVersionAsync(
             campSeasonId, historyId, userId, cancellationToken);
 
-        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
         var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
         var campName = season?.Name ?? string.Empty;
         try
         {
-            await _hubContext.Clients.All.SendAsync(
+            await hubContext.Clients.All.SendAsync(
                 "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
+            logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
         }
 
         return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
@@ -184,9 +165,9 @@ public class CityPlanningApiController : ControllerBase
             return Forbid();
         }
 
-        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var exportYear = year ?? settings.Year;
-        var geoJson = await _cityPlanningService.ExportAsGeoJsonAsync(exportYear, cancellationToken);
+        var geoJson = await cityPlanningService.ExportAsGeoJsonAsync(exportYear, cancellationToken);
 
         return Content(geoJson, "application/geo+json");
     }
@@ -197,13 +178,13 @@ public class CityPlanningApiController : ControllerBase
     {
         var userId = CurrentUserId();
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
-        var containers = await _containerService.GetAllAsync(cancellationToken);
-        var placements = await _containerService.GetPlacementsByYearAsync(year, cancellationToken);
+        var containers = await containerService.GetAllAsync(cancellationToken);
+        var placements = await containerService.GetPlacementsByYearAsync(year, cancellationToken);
         var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
-        var camps = await _campService.GetCampsForYearAsync(year, cancellationToken);
+        var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
         var campNameById = camps.ToDictionary(c => c.Id, c => c.Seasons.First(s => s.Year == year).Name);
 
         var result = containers.Select(c =>
@@ -241,8 +222,8 @@ public class CityPlanningApiController : ControllerBase
             return Forbid();
         }
 
-        var allContainers = await _containerService.GetAllAsync(cancellationToken);
-        var placements = await _containerService.GetPlacementsByYearAsync(year, cancellationToken);
+        var allContainers = await containerService.GetAllAsync(cancellationToken);
+        var placements = await containerService.GetPlacementsByYearAsync(year, cancellationToken);
         var containersById = allContainers.ToDictionary(c => c.Id, c => c);
 
         var placed = placements
@@ -284,10 +265,10 @@ public class CityPlanningApiController : ControllerBase
         [FromBody] SaveContainerPlacementRequest request,
         CancellationToken cancellationToken)
     {
-        var container = await _containerService.GetByIdAsync(id, cancellationToken);
+        var container = await containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(
+        var authResult = await authorizationService.AuthorizeAsync(
             User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
@@ -296,7 +277,7 @@ public class CityPlanningApiController : ControllerBase
             return UnprocessableEntity("Invalid container placement GeoJSON.");
         }
 
-        var updated = await _containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
+        var updated = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
         return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
     }
 
@@ -309,10 +290,10 @@ public class CityPlanningApiController : ControllerBase
         [FromForm] UpdateContainerPlacementNotesRequest request,
         CancellationToken cancellationToken)
     {
-        var container = await _containerService.GetByIdAsync(id, cancellationToken);
+        var container = await containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(
+        var authResult = await authorizationService.AuthorizeAsync(
             User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
@@ -324,7 +305,7 @@ public class CityPlanningApiController : ControllerBase
 
         try
         {
-            var updated = await _containerService.UpdatePlacementNotesAsync(
+            var updated = await containerService.UpdatePlacementNotesAsync(
                 id, year, request.PlacementNotes, imageUpload, request.RemovePlacementImage,
                 CurrentUserId(), cancellationToken);
             return Ok(new
@@ -347,14 +328,14 @@ public class CityPlanningApiController : ControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearContainerPlacement(Guid id, int year, CancellationToken cancellationToken)
     {
-        var container = await _containerService.GetByIdAsync(id, cancellationToken);
+        var container = await containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(
+        var authResult = await authorizationService.AuthorizeAsync(
             User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
-        await _containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
+        await containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
         return NoContent();
     }
 

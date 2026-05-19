@@ -11,30 +11,14 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("dev/seed")]
-public class DevSeedController : HumansControllerBase
+public class DevSeedController(
+    IWebHostEnvironment environment,
+    IConfiguration configuration,
+    ConfigurationRegistry configRegistry,
+    IServiceProvider serviceProvider,
+    IUserService userService,
+    ILogger<DevSeedController> logger) : HumansControllerBase(userService)
 {
-    private readonly IWebHostEnvironment _environment;
-    private readonly IConfiguration _configuration;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<DevSeedController> _logger;
-
-    public DevSeedController(
-        IWebHostEnvironment environment,
-        IConfiguration configuration,
-        ConfigurationRegistry configRegistry,
-        IServiceProvider serviceProvider,
-        IUserService userService,
-        ILogger<DevSeedController> logger)
-        : base(userService)
-    {
-        _environment = environment;
-        _configuration = configuration;
-        _configRegistry = configRegistry;
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
-
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     [HttpPost("budget")]
     [ValidateAntiForgeryToken]
@@ -53,13 +37,13 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
+            var seeder = serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
             var result = await seeder.SeedAsync(user.Id, cancellationToken);
             SetSuccess(result.SuccessMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed budget demo data for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to seed budget demo data for user {UserId}", user.Id);
             SetError("Budget seeding failed. Check logs for details.");
         }
 
@@ -84,13 +68,13 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentCampRoleSeeder>();
+            var seeder = serviceProvider.GetRequiredService<DevelopmentCampRoleSeeder>();
             var result = await seeder.SeedAsync(user.Id, cancellationToken);
             SetSuccess(result.SuccessMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed camp roles for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to seed camp roles for user {UserId}", user.Id);
             SetError("Camp role seeding failed. Check logs for details.");
         }
 
@@ -99,13 +83,13 @@ public class DevSeedController : HumansControllerBase
 
     private bool IsDevSeedEnabled()
     {
-        if (_environment.IsProduction())
+        if (environment.IsProduction())
         {
             return false;
         }
 
-        return _configuration.GetSettingValue(
-            _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
+        return configuration.GetSettingValue(
+            configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
@@ -128,7 +112,7 @@ public class DevSeedController : HumansControllerBase
     {
         // Stricter than IsDevSeedEnabled: dashboard seed runs only on local Development
         // (ASPNETCORE_ENVIRONMENT=Development), never on QA / preview / prod.
-        if (!_environment.IsDevelopment() || !IsDevSeedEnabled())
+        if (!environment.IsDevelopment() || !IsDevSeedEnabled())
         {
             return NotFound();
         }
@@ -141,7 +125,7 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
+            var seeder = serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
 
             DashboardResetResult? resetResult = null;
             if (reset)
@@ -165,7 +149,7 @@ public class DevSeedController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed dashboard demo data.");
+            logger.LogError(ex, "Failed to seed dashboard demo data.");
             SetError("Dashboard seeding failed. Check logs for details.");
         }
 

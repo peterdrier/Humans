@@ -19,13 +19,9 @@ namespace Humans.Infrastructure.Data;
 /// Test projects access this type via <c>InternalsVisibleTo</c>.
 /// </para>
 /// </remarks>
-internal sealed class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>, IDataProtectionKeyContext
+internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
+    : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
 {
-    public HumansDbContext(DbContextOptions<HumansDbContext> options)
-        : base(options)
-    {
-    }
-
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public DbSet<Profile> Profiles => Set<Profile>();

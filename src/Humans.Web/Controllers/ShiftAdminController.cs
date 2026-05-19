@@ -18,43 +18,20 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}/Shifts")]
-public class ShiftAdminController : HumansTeamControllerBase
+public class ShiftAdminController(
+    ITeamService teamService,
+    IShiftManagementService shiftMgmt,
+    IShiftSignupService signupService,
+    IShiftView shiftView,
+    IGeneralAvailabilityService availabilityService,
+    IUserService userService,
+    IAuthorizationService authorizationService,
+    IClock clock,
+    ShiftAdminPageBuilder pageBuilder,
+    IRotaCoordinatorMessageService rotaMessenger,
+    ILogger<ShiftAdminController> logger) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly ITeamService _teamService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftSignupService _signupService;
-    private readonly IShiftView _shiftView;
-    private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly IClock _clock;
-    private readonly ShiftAdminPageBuilder _pageBuilder;
-    private readonly ILogger<ShiftAdminController> _logger;
-
-    private readonly IRotaCoordinatorMessageService _rotaMessenger;
-
-    public ShiftAdminController(
-        ITeamService teamService,
-        IShiftManagementService shiftMgmt,
-        IShiftSignupService signupService,
-        IShiftView shiftView,
-        IGeneralAvailabilityService availabilityService,
-        IUserService userService,
-        IAuthorizationService authorizationService,
-        IClock clock,
-        ShiftAdminPageBuilder pageBuilder,
-        IRotaCoordinatorMessageService rotaMessenger,
-        ILogger<ShiftAdminController> logger)
-        : base(userService, teamService, authorizationService)
-    {
-        _teamService = teamService;
-        _shiftMgmt = shiftMgmt;
-        _signupService = signupService;
-        _shiftView = shiftView;
-        _availabilityService = availabilityService;
-        _clock = clock;
-        _pageBuilder = pageBuilder;
-        _rotaMessenger = rotaMessenger;
-        _logger = logger;
-    }
+    private readonly ITeamService _teamService = teamService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false)
@@ -68,7 +45,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         var canManage = await CanManageDepartmentAsync(user, team);
         var canApprove = await CanApproveDepartmentAsync(user, team);
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null)
         {
             SetError("No active event settings configured.");
@@ -78,14 +55,14 @@ public class ShiftAdminController : HumansTeamControllerBase
         var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
         if (teamEntity is null) return NotFound();
 
-        var model = await _pageBuilder.BuildAsync(new ShiftAdminPageRequest(
+        var model = await pageBuilder.BuildAsync(new ShiftAdminPageRequest(
             teamEntity,
             es,
             canManage,
             canApprove,
             ShiftRoleChecks.CanViewMedical(User),
             incompleteOnboarding,
-            _clock.GetCurrentInstant()));
+            clock.GetCurrentInstant()));
 
         return View(model);
     }
@@ -97,7 +74,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null) return BadRequest("No active event.");
 
         if (!ModelState.IsValid)
@@ -117,15 +94,15 @@ public class ShiftAdminController : HumansTeamControllerBase
             Policy = model.Policy,
             Period = model.Period,
             PracticalInfo = model.PracticalInfo,
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = clock.GetCurrentInstant()
         };
 
-        await _shiftMgmt.CreateRotaAsync(rota);
+        await shiftMgmt.CreateRotaAsync(rota);
 
         if (!string.IsNullOrWhiteSpace(model.TagIds))
         {
             var tagIdList = ParseTagIds(model.TagIds);
-            await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
+            await shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
         }
 
         SetSuccess($"Rota '{model.Name}' created.");
@@ -149,10 +126,10 @@ public class ShiftAdminController : HumansTeamControllerBase
         rota.Period = model.Period;
         rota.PracticalInfo = model.PracticalInfo;
 
-        await _shiftMgmt.UpdateRotaAsync(rota);
+        await shiftMgmt.UpdateRotaAsync(rota);
 
         var tagIdList = ParseTagIds(model.TagIds);
-        await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
+        await shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
 
         SetSuccess($"Rota '{model.Name}' updated.");
         return RedirectToAction(nameof(Index), new { slug });
@@ -167,7 +144,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            var result = await _shiftMgmt.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
+            var result = await shiftMgmt.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
                 rotaId,
                 team.Id,
                 model.Days
@@ -180,7 +157,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to configure staffing for rota {RotaId} in team {TeamId}", rotaId, team.Id);
+            logger.LogWarning(ex, "Failed to configure staffing for rota {RotaId} in team {TeamId}", rotaId, team.Id);
             SetError(ex.Message);
         }
 
@@ -208,7 +185,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            var result = await _shiftMgmt.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
+            var result = await shiftMgmt.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
                 rotaId,
                 team.Id,
                 model.StartDayOffset,
@@ -223,7 +200,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to generate shifts for rota {RotaId} in team {TeamId}", rotaId, team.Id);
+            logger.LogWarning(ex, "Failed to generate shifts for rota {RotaId} in team {TeamId}", rotaId, team.Id);
             SetError(ex.Message);
         }
 
@@ -251,7 +228,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            var result = await _shiftMgmt.CreateShiftAsync(new CreateShiftInput(
+            var result = await shiftMgmt.CreateShiftAsync(new CreateShiftInput(
                 model.RotaId,
                 team.Id,
                 model.Description,
@@ -269,7 +246,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to create shift for rota {RotaId} in team {TeamId}", model.RotaId, team.Id);
+            logger.LogWarning(ex, "Failed to create shift for rota {RotaId} in team {TeamId}", model.RotaId, team.Id);
             SetError(ex.Message);
         }
 
@@ -289,7 +266,7 @@ public class ShiftAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        var result = await _shiftMgmt.UpdateShiftAsync(new UpdateShiftInput(
+        var result = await shiftMgmt.UpdateShiftAsync(new UpdateShiftInput(
             shiftId,
             team.Id,
             model.Description,
@@ -318,7 +295,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         if (rota is null) return NotFound();
 
         rota.IsVisibleToVolunteers = !rota.IsVisibleToVolunteers;
-        await _shiftMgmt.UpdateRotaAsync(rota);
+        await shiftMgmt.UpdateRotaAsync(rota);
 
         var label = rota.IsVisibleToVolunteers ? "visible to" : "hidden from";
         SetSuccess($"Rota '{rota.Name}' is now {label} volunteers.");
@@ -337,7 +314,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            var result = await _shiftMgmt.MoveRotaToTeamAsync(new MoveRotaInput(
+            var result = await shiftMgmt.MoveRotaToTeamAsync(new MoveRotaInput(
                 rotaId,
                 team.Id,
                 model.TargetTeamId,
@@ -352,7 +329,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to move rota {RotaId} to team {TargetTeamId}", rotaId, model.TargetTeamId);
+            logger.LogWarning(ex, "Failed to move rota {RotaId} to team {TargetTeamId}", rotaId, model.TargetTeamId);
             SetError(ex.Message);
             return RedirectToAction(nameof(Index), new { slug });
         }
@@ -404,7 +381,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         if (!ModelState.IsValid)
             return View(model);
 
-        var result = await _rotaMessenger.SendRotaMessageAsync(rota.Id, user.Id, model.Message);
+        var result = await rotaMessenger.SendRotaMessageAsync(rota.Id, user.Id, model.Message);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue rota emails.");
@@ -417,7 +394,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
     private async Task<IReadOnlyList<string>> GetRotaRecipientNamesAsync(Guid rotaId)
     {
-        var view = await _shiftView.GetRotaAsync(rotaId);
+        var view = await shiftView.GetRotaAsync(rotaId);
         var userIds = view.Signups
             .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Select(s => s.UserId)
@@ -443,12 +420,12 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            await _shiftMgmt.DeleteRotaAsync(rotaId);
+            await shiftMgmt.DeleteRotaAsync(rotaId);
             SetSuccess("Rota deleted.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to delete rota {RotaId} in team {Slug}", rotaId, slug);
+            logger.LogWarning(ex, "Failed to delete rota {RotaId} in team {Slug}", rotaId, slug);
             SetError(ex.Message);
         }
 
@@ -464,12 +441,12 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            await _shiftMgmt.DeleteShiftAsync(shiftId);
+            await shiftMgmt.DeleteShiftAsync(shiftId);
             SetSuccess("Shift deleted.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning("Rejected shift delete for shift {ShiftId} in team {Slug}: {Reason}", shiftId, slug, ex.Message);
+            logger.LogWarning("Rejected shift delete for shift {ShiftId} in team {Slug}: {Reason}", shiftId, slug, ex.Message);
             SetError(ex.Message);
         }
 
@@ -485,12 +462,12 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            await _signupService.BailRangeAsync(signupBlockId, user.Id, reason);
+            await signupService.BailRangeAsync(signupBlockId, user.Id, reason);
             SetSuccess("Range bail completed.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to bail signup block {SignupBlockId} in team {Slug}", signupBlockId, slug);
+            logger.LogWarning(ex, "Failed to bail signup block {SignupBlockId} in team {Slug}", signupBlockId, slug);
             SetError(ex.Message);
         }
 
@@ -507,7 +484,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
         if (probe is null) return NotFound();
 
-        var result = await _signupService.ApproveRangeAsync(signupBlockId, user.Id);
+        var result = await signupService.ApproveRangeAsync(signupBlockId, user.Id);
         if (result.Success)
             SetSuccess(result.Warning ?? "Range approved.");
         else
@@ -526,7 +503,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
         if (probe is null) return NotFound();
 
-        var result = await _signupService.RefuseRangeAsync(signupBlockId, user.Id, reason);
+        var result = await signupService.RefuseRangeAsync(signupBlockId, user.Id, reason);
         if (result.Success)
             SetSuccess("Range refused.");
         else
@@ -545,7 +522,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var signup = await GetSignupForTeamAsync(signupId, team.Id);
         if (signup is null) return NotFound();
 
-        var result = await _signupService.ApproveAsync(signupId, user.Id);
+        var result = await signupService.ApproveAsync(signupId, user.Id);
         if (result.Success)
         {
             SetSuccess(result.Warning ?? "Signup approved.");
@@ -568,7 +545,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var signup = await GetSignupForTeamAsync(signupId, team.Id);
         if (signup is null) return NotFound();
 
-        var result = await _signupService.RefuseAsync(signupId, user.Id, reason);
+        var result = await signupService.RefuseAsync(signupId, user.Id, reason);
         if (result.Success)
         {
             SetSuccess("Signup refused.");
@@ -591,7 +568,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
         if (signupCheck is null) return NotFound();
 
-        var result = await _signupService.MarkNoShowAsync(signupId, user.Id);
+        var result = await signupService.MarkNoShowAsync(signupId, user.Id);
         if (result.Success)
         {
             SetSuccess("Marked as no-show.");
@@ -614,7 +591,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
         if (signupCheck is null) return NotFound();
 
-        var result = await _signupService.RemoveSignupAsync(signupId, user.Id, reason);
+        var result = await signupService.RemoveSignupAsync(signupId, user.Id, reason);
         if (result.Success)
             SetSuccess("Signup removed.");
         else
@@ -634,17 +611,17 @@ public class ShiftAdminController : HumansTeamControllerBase
             var result = await ShiftVolunteerSearchBuilder.BuildForShiftAsync(
                 await GetShiftForTeamAsync(shiftId, team.Id),
                 query,
-                _shiftMgmt.GetActiveAsync,
+                shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
                 UserService,
-                _shiftView,
-                _signupService,
-                _availabilityService);
+                shiftView,
+                signupService,
+                availabilityService);
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Volunteer search failed for shift {ShiftId}, query '{Query}'", shiftId, query);
+            logger.LogError(ex, "Volunteer search failed for shift {ShiftId}, query '{Query}'", shiftId, query);
             return StatusCode(500, new { error = "Search failed." });
         }
     }
@@ -668,7 +645,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
 
-        var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
+        var result = await signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
         if (result.Success)
         {
             SetSuccess("Volunteer assigned to shift.");
@@ -691,7 +668,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        var result = await _signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
+        var result = await signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
         if (result.Success)
         {
             SetSuccess(result.Warning is not null
@@ -719,7 +696,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return Forbid();
 
-        var tags = await _shiftMgmt.GetTagsAsync(q);
+        var tags = await shiftMgmt.GetTagsAsync(q);
 
         return Json(tags
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
@@ -736,7 +713,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
             return BadRequest("Tag name is required and must be 100 characters or fewer.");
 
-        var tag = await _shiftMgmt.GetOrCreateTagAsync(name);
+        var tag = await shiftMgmt.GetOrCreateTagAsync(name);
         return Json(new { tag.Id, tag.Name });
     }
 
@@ -749,25 +726,25 @@ public class ShiftAdminController : HumansTeamControllerBase
 
     private async Task<Rota?> GetRotaForTeamAsync(Guid rotaId, Guid teamId)
     {
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await shiftMgmt.GetRotaByIdAsync(rotaId);
         return rota is not null && rota.TeamId == teamId ? rota : null;
     }
 
     private async Task<Shift?> GetShiftForTeamAsync(Guid shiftId, Guid teamId)
     {
-        var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
         return shift is not null && shift.Rota.TeamId == teamId ? shift : null;
     }
 
     private async Task<ShiftSignupTeamProbe?> GetSignupForTeamAsync(Guid signupId, Guid teamId)
     {
-        var signup = await _signupService.GetByIdAsync(signupId);
+        var signup = await signupService.GetByIdAsync(signupId);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 
     private async Task<ShiftSignupTeamProbe?> GetSignupBlockForTeamAsync(Guid signupBlockId, Guid teamId)
     {
-        var signup = await _signupService.GetByBlockIdFirstAsync(signupBlockId);
+        var signup = await signupService.GetByBlockIdFirstAsync(signupBlockId);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 
@@ -788,14 +765,14 @@ public class ShiftAdminController : HumansTeamControllerBase
         // Management: Admin + VolunteerCoordinator + dept coordinator
         // Explicitly excludes NoInfoAdmin — they can approve signups but not manage rotas/shifts
         return RoleChecks.IsVolunteerManager(User) ||
-               await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 
     private async Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team)
     {
         // Approval: Admin + NoInfoAdmin + VolunteerCoordinator + dept coordinator
         return ShiftRoleChecks.CanManageDepartment(User) ||
-               await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 }
 

@@ -24,13 +24,13 @@ namespace Humans.Infrastructure.Services.Teams;
 /// recorded; the meaningful diagnostics here are entry count and invalidation
 /// count.
 /// </summary>
-public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamService, IUserMerge
+public sealed class CachingTeamService(
+    ITeamRepository teamRepository,
+    IServiceScopeFactory scopeFactory,
+    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamInfo>("Team.TeamInfo", warmOnStartup: true, logger),
+    ITeamService, IUserMerge
 {
     public const string InnerServiceKey = "team-inner";
-
-    private readonly ITeamRepository _teamRepository;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<CachingTeamService> _logger;
 
     /// <summary>
     /// Secondary user→teams index, populated during <see cref="WarmAllAsync"/>
@@ -55,17 +55,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     /// warmup; readers iterate the set without locking.</para>
     /// </summary>
     private readonly ConcurrentDictionary<Guid, HashSet<Guid>> _teamIdsByUserId = new();
-
-    public CachingTeamService(
-        ITeamRepository teamRepository,
-        IServiceScopeFactory scopeFactory,
-        ILogger<CachingTeamService> logger)
-        : base("Team.TeamInfo", warmOnStartup: true, logger)
-    {
-        _teamRepository = teamRepository;
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
 
     public async Task<Team> CreateTeamAsync(
         string name,
@@ -113,7 +102,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
         return await TeamDirectoryBuilder.BuildAsync(
             teamsById,
@@ -184,7 +173,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         var isCurrentUserMember = team.Members.Any(m => m.UserId == currentUserId);
         var isCurrentUserCoordinator = IsUserCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamService>(InnerServiceKey);
 
@@ -378,7 +367,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         if (!_teamIdsByUserId.TryGetValue(userId, out var teamIds) || teamIds.Count == 0)
             return [];
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
         var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
 
@@ -979,19 +968,19 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var teams = await _teamRepository.GetAllWithMembersAsync(ct);
+        var teams = await teamRepository.GetAllWithMembersAsync(ct);
         var allUserIds = teams
             .SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
             .Distinct()
             .ToList();
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
         var users = allUserIds.Count == 0
             ? new Dictionary<Guid, Application.UserInfo>()
             : await userService.GetUserInfosAsync(allUserIds, ct);
-        var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
-        var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
+        var managementHolders = await teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+        var roleDefinitionsByTeam = await teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
 
         // Build the child-team index once from the parent FK so each TeamInfo
         // can cheaply enumerate its children without walking the whole map.
@@ -1003,7 +992,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         // Bulk pending-request counts so TeamInfo.PendingRequestCount is part of
         // the cache projection. Teams with zero pending requests are absent from
         // the dictionary; BuildTeamInfo defaults to 0 in that case.
-        var pendingCounts = await _teamRepository.GetPendingCountsByTeamIdsAsync(
+        var pendingCounts = await teamRepository.GetPendingCountsByTeamIdsAsync(
             teams.Select(t => t.Id).ToList(), ct);
 
         // No defensive Clear() — InvalidateTeamsCache already emptied the cache
@@ -1036,7 +1025,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     {
         if (!teams.TryGetValue(teamId, out var team) || !team.IsActive)
         {
-            _logger.LogDebug("Coordinator check: team {TeamId} not found in team cache for user {UserId}", teamId, userId);
+            logger.LogDebug("Coordinator check: team {TeamId} not found in team cache for user {UserId}", teamId, userId);
             return false;
         }
 
@@ -1129,21 +1118,21 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamService>(InnerServiceKey);
         return await action(inner);
     }
 
     private async Task WithInner(Func<ITeamService, Task> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamService>(InnerServiceKey);
         await action(inner);
     }
 
     private async Task WithInnerMerge(Func<IUserMerge, Task> action)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserMerge>(InnerServiceKey);
         await action(inner);
     }

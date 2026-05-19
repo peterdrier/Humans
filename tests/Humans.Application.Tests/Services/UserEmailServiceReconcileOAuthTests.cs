@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
@@ -30,7 +31,7 @@ public class UserEmailServiceReconcileOAuthTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
+    private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
     private const string Provider = "Google";
@@ -41,7 +42,7 @@ public class UserEmailServiceReconcileOAuthTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider.GetService(typeof(IAccountMergeService)).Returns(_mergeService);
+        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).Build();
 
         _service = new UserEmailService(
             _repository,

@@ -13,22 +13,15 @@ namespace Humans.Infrastructure.Repositories.Legal;
 /// lands. Uses <see cref="IDbContextFactory{TContext}"/> so the repository
 /// can be registered as Singleton.
 /// </summary>
-internal sealed class LegalDocumentRepository : ILegalDocumentRepository
+internal sealed class LegalDocumentRepository(IDbContextFactory<HumansDbContext> factory) : ILegalDocumentRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public LegalDocumentRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Reads — LegalDocument
     // ==========================================================================
 
     public async Task<LegalDocument?> GetByIdAsync(Guid documentId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Include(d => d.Versions)
@@ -38,7 +31,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
     public async Task<IReadOnlyList<LegalDocument>> GetDocumentsAsync(
         Guid? teamId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.LegalDocuments
             .AsNoTracking()
@@ -55,7 +48,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
 
     public async Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Include(d => d.Versions)
@@ -66,7 +59,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
     public async Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Include(d => d.Versions)
@@ -77,7 +70,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
     public async Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamAsync(
         Guid teamId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Include(d => d.Versions)
@@ -90,7 +83,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
     {
         if (teamIds.Count == 0) return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // LegalDocument.Team is a cross-section nav — callers stitch team
         // names via ITeamService (memory/architecture/no-cross-section-ef-joins.md).
         return await ctx.LegalDocuments
@@ -106,7 +99,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
 
     public async Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.DocumentVersions
             .AsNoTracking()
             .Include(v => v.LegalDocument)
@@ -119,7 +112,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
 
     public async Task<LegalDocument> AddAsync(LegalDocument document, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.LegalDocuments.Add(document);
         await ctx.SaveChangesAsync(ct);
         ctx.Entry(document).State = EntityState.Detached;
@@ -136,7 +129,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
         string? gitHubFolderPath,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var document = await ctx.LegalDocuments.FindAsync([documentId], ct);
         if (document is null) return false;
 
@@ -153,7 +146,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
 
     public async Task<LegalDocument?> ArchiveAsync(Guid documentId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var document = await ctx.LegalDocuments.FindAsync([documentId], ct);
         if (document is null) return null;
 
@@ -166,7 +159,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
     public async Task<bool> TouchLastSyncedAtAsync(
         Guid documentId, Instant lastSyncedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var document = await ctx.LegalDocuments.FindAsync([documentId], ct);
         if (document is null) return false;
 
@@ -182,7 +175,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
         Instant lastSyncedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var document = await ctx.LegalDocuments.FindAsync([documentId], ct);
         if (document is null) return false;
 
@@ -208,7 +201,7 @@ internal sealed class LegalDocumentRepository : ILegalDocumentRepository
         string? changesSummary,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var version = await ctx.DocumentVersions
             .FirstOrDefaultAsync(v => v.Id == versionId && v.LegalDocumentId == documentId, ct);
 

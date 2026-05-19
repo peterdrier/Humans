@@ -7,38 +7,23 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Application.Services.Dashboard;
 
 /// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership. Owns no tables.</summary>
-public sealed class AdminDashboardService : IAdminDashboardService
+public sealed class AdminDashboardService(
+    IUserService userService,
+    IMembershipCalculator membershipCalculator,
+    IApplicationDecisionService applicationDecisionService,
+    IShiftManagementService shiftManagement,
+    IShiftView shiftView) : IAdminDashboardService
 {
-    private readonly IUserService _userService;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly IShiftView _shiftView;
-
-    public AdminDashboardService(
-        IUserService userService,
-        IMembershipCalculator membershipCalculator,
-        IApplicationDecisionService applicationDecisionService,
-        IShiftManagementService shiftManagement,
-        IShiftView shiftView)
-    {
-        _userService = userService;
-        _membershipCalculator = membershipCalculator;
-        _applicationDecisionService = applicationDecisionService;
-        _shiftManagement = shiftManagement;
-        _shiftView = shiftView;
-    }
-
     public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var snapshot = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var allUserIds = snapshot.Select(u => u.Id).ToList();
         var totalMembers = allUserIds.Count;
-        var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
+        var partition = await membershipCalculator.PartitionUsersAsync(allUserIds, ct);
 
         var pendingApplications =
-            await _applicationDecisionService.GetPendingApplicationCountAsync(ct);
-        var appStats = await _applicationDecisionService.GetAdminStatsAsync(ct);
+            await applicationDecisionService.GetPendingApplicationCountAsync(ct);
+        var appStats = await applicationDecisionService.GetAdminStatsAsync(ct);
 
         // Language distribution chart: Active ∪ MissingConsents (pending-deletion split off earlier).
         var approvedNotSuspended = new HashSet<Guid>(
@@ -72,7 +57,7 @@ public sealed class AdminDashboardService : IAdminDashboardService
 
     public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
     {
-        var count = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);
+        var count = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);
         return count;
     }
 
@@ -80,9 +65,9 @@ public sealed class AdminDashboardService : IAdminDashboardService
         IReadOnlyCollection<UserInfo> snapshot,
         CancellationToken ct)
     {
-        var activeEvent = await _shiftManagement.GetActiveAsync();
+        var activeEvent = await shiftManagement.GetActiveAsync();
         var activeYear = activeEvent?.Year ?? 0;
-        var shiftViews = await _shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
+        var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
 
         var counts = new Dictionary<int, int>(capacity: 16);
         foreach (var u in snapshot)

@@ -30,7 +30,6 @@ public sealed class UserRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     private async Task<User> SeedUserAsync(string? googleEmail = null)

@@ -5,34 +5,23 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsService
+public sealed class AdminDatabaseDiagnosticsService(
+    IAdminDatabaseDiagnosticsRepository repository,
+    IUserService userService,
+    ITicketQueryService ticketQueryService) : IAdminDatabaseDiagnosticsService
 {
-    private readonly IAdminDatabaseDiagnosticsRepository _repository;
-    private readonly IUserService _userService;
-    private readonly ITicketQueryService _ticketQueryService;
-
-    public AdminDatabaseDiagnosticsService(
-        IAdminDatabaseDiagnosticsRepository repository,
-        IUserService userService,
-        ITicketQueryService ticketQueryService)
-    {
-        _repository = repository;
-        _userService = userService;
-        _ticketQueryService = ticketQueryService;
-    }
-
     public Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default) =>
-        _repository.GetMigrationStatusAsync(ct);
+        repository.GetMigrationStatusAsync(ct);
 
     public Task<int> ClearHangfireLocksAsync(CancellationToken ct = default) =>
-        _repository.ClearHangfireLocksAsync(ct);
+        repository.ClearHangfireLocksAsync(ct);
 
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
-        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         IReadOnlySet<Guid> ticketUserIds = year.HasValue
-            ? await _ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
-            : await _ticketQueryService.GetAllMatchedUserIdsAsync();
+            ? await ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
+            : await ticketQueryService.GetAllMatchedUserIdsAsync();
 
         var withProfile = 0;
         var withTicket = 0;
@@ -50,7 +39,7 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var years = await _ticketQueryService.GetMatchedTicketYearsAsync(ct);
+        var years = await ticketQueryService.GetMatchedTicketYearsAsync(ct);
 
         return new AudienceSegmentation(
             TotalAccounts: allUsers.Count,

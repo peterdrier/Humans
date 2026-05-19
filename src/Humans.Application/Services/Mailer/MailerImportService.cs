@@ -9,42 +9,21 @@ using NodaTime;
 
 namespace Humans.Application.Services.Mailer;
 
-public sealed class MailerImportService : IMailerImportService
+public sealed class MailerImportService(
+    IMailerLiteService ml,
+    IUserEmailService userEmails,
+    IUserService users,
+    IAccountProvisioningService provisioning,
+    ICommunicationPreferenceService prefs,
+    IAuditLogService audit,
+    IClock clock,
+    ILogger<MailerImportService> logger) : IMailerImportService
 {
-    private readonly IMailerLiteService _ml;
-    private readonly IUserEmailService _userEmails;
-    private readonly IUserService _users;
-    private readonly IAccountProvisioningService _provisioning;
-    private readonly ICommunicationPreferenceService _prefs;
-    private readonly IAuditLogService _audit;
-    private readonly IClock _clock;
-    private readonly ILogger<MailerImportService> _logger;
-
-    public MailerImportService(
-        IMailerLiteService ml,
-        IUserEmailService userEmails,
-        IUserService users,
-        IAccountProvisioningService provisioning,
-        ICommunicationPreferenceService prefs,
-        IAuditLogService audit,
-        IClock clock,
-        ILogger<MailerImportService> logger)
-    {
-        _ml = ml;
-        _userEmails = userEmails;
-        _users = users;
-        _provisioning = provisioning;
-        _prefs = prefs;
-        _audit = audit;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default)
     {
         var decisions = new List<SubscriberDecision>();
         var subs = new List<MailerLiteSubscriber>();
-        await foreach (var s in _ml.ListSubscribersAsync(ct)) subs.Add(s);
+        await foreach (var s in ml.ListSubscribersAsync(ct)) subs.Add(s);
 
         foreach (var s in subs)
         {
@@ -57,7 +36,7 @@ public sealed class MailerImportService : IMailerImportService
             }
 
             // 2. Verified match — count distinct owners so uniqueness drift surfaces as Ambiguous.
-            var verifiedUserIds = await _userEmails.GetDistinctVerifiedUserIdsAsync(s.Email, ct);
+            var verifiedUserIds = await userEmails.GetDistinctVerifiedUserIdsAsync(s.Email, ct);
             if (verifiedUserIds.Count > 1)
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
@@ -67,7 +46,7 @@ public sealed class MailerImportService : IMailerImportService
             if (verifiedUserIds.Count == 1)
             {
                 var targetId = await ResolveTombstoneAsync(verifiedUserIds[0], ct);
-                var existing = await _prefs.GetPreferenceOrNullAsync(targetId, MessageCategory.Marketing, ct);
+                var existing = await prefs.GetPreferenceOrNullAsync(targetId, MessageCategory.Marketing, ct);
                 var outcome = ClassifyVerifiedMatch(s, existing);
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
                     outcome, targetId, null, null));
@@ -75,7 +54,7 @@ public sealed class MailerImportService : IMailerImportService
             }
 
             // 3. Unverified match
-            var row = await _userEmails.FindAnyEmailRowByAddressAsync(s.Email, ct);
+            var row = await userEmails.FindAnyEmailRowByAddressAsync(s.Email, ct);
             if (row is var (uid, emailId))
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
@@ -132,7 +111,7 @@ public sealed class MailerImportService : IMailerImportService
         var current = userId;
         while (true)
         {
-            var user = await _users.GetUserInfoAsync(current, ct);
+            var user = await users.GetUserInfoAsync(current, ct);
             if (user?.MergedToUserId is not Guid next) return current;
             if (!visited.Add(next)) return current;
             current = next;
@@ -142,14 +121,14 @@ public sealed class MailerImportService : IMailerImportService
     public async Task<ImportResult> ApplyAsync(
         ImportPlan plan, int? maxPerOutcome = null, CancellationToken ct = default)
     {
-        var start = _clock.GetCurrentInstant();
+        var start = clock.GetCurrentInstant();
         int created = 0, flippedIn = 0, flippedOut = 0, preserved = 0,
             replacedUnverified = 0, vanishedBetweenPlanAndApply = 0, errors = 0;
         var pulledIds = new HashSet<string>(StringComparer.Ordinal);
 
         // Re-pull ML so plan/apply are stateless.
         var subsByEmail = new Dictionary<string, MailerLiteSubscriber>(StringComparer.OrdinalIgnoreCase);
-        await foreach (var s in _ml.ListSubscribersAsync(ct))
+        await foreach (var s in ml.ListSubscribersAsync(ct))
         {
             subsByEmail[s.Email] = s;
             pulledIds.Add(s.Id);
@@ -164,7 +143,7 @@ public sealed class MailerImportService : IMailerImportService
                 if (!subsByEmail.TryGetValue(d.Email, out var subscriber))
                 {
                     vanishedBetweenPlanAndApply++;
-                    _logger.LogWarning("Subscriber {Email} vanished between plan and apply", d.Email);
+                    logger.LogWarning("Subscriber {Email} vanished between plan and apply", d.Email);
                     continue;
                 }
 
@@ -189,8 +168,8 @@ public sealed class MailerImportService : IMailerImportService
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
                         {
                             if (d.UnverifiedEmailIdToDelete is Guid emailId && d.TargetUserId is Guid uid)
-                                await _userEmails.DeleteEmailAsync(uid, emailId, ct);
-                            var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                                await userEmails.DeleteEmailAsync(uid, emailId, ct);
+                            var (provUser, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
                             var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
@@ -202,7 +181,7 @@ public sealed class MailerImportService : IMailerImportService
 
                     case SubscriberOutcome.CreateNewHuman:
                         {
-                            var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                            var (provUser, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
                             var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
@@ -215,11 +194,11 @@ public sealed class MailerImportService : IMailerImportService
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 errors++;
-                _logger.LogError(ex, "Mailer apply failed for {Email}", d.Email);
+                logger.LogError(ex, "Mailer apply failed for {Email}", d.Email);
             }
         }
 
-        var elapsed = _clock.GetCurrentInstant() - start;
+        var elapsed = clock.GetCurrentInstant() - start;
         var result = new ImportResult(
             TotalPulled: pulledIds.Count,
             HumansCreated: created,
@@ -234,7 +213,7 @@ public sealed class MailerImportService : IMailerImportService
             Errors: errors,
             Elapsed: elapsed);
 
-        await _audit.LogAsync(
+        await audit.LogAsync(
             AuditAction.MailerLiteReconciliationCompleted,
             entityType: "Mailer", entityId: Guid.Empty,
             description: result.FormatSummary(),
@@ -287,7 +266,7 @@ public sealed class MailerImportService : IMailerImportService
         Guid userId, MailerLiteSubscriber ml, CancellationToken ct)
     {
         var mlOptedOut = !string.Equals(ml.Status, "active", StringComparison.OrdinalIgnoreCase);
-        var marketing = await _prefs.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct);
+        var marketing = await prefs.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct);
 
         var outcome = ClassifyVerifiedMatch(ml, marketing);
         switch (outcome)
@@ -298,7 +277,7 @@ public sealed class MailerImportService : IMailerImportService
                 return DeltaResult.NoChange;
         }
 
-        await _prefs.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+        await prefs.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
             optedOut: mlOptedOut, source: "MailerLiteSync", ct);
         return mlOptedOut ? DeltaResult.FlippedToOptOut : DeltaResult.FlippedToOptIn;
     }

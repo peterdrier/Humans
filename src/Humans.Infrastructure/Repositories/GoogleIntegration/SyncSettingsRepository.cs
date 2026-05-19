@@ -14,18 +14,11 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class SyncSettingsRepository : ISyncSettingsRepository
+internal sealed class SyncSettingsRepository(IDbContextFactory<HumansDbContext> factory) : ISyncSettingsRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public SyncSettingsRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<IReadOnlyList<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Cross-domain nav UpdatedByUser intentionally NOT loaded — callers
         // resolve display names via IUserService (design-rules §6).
         return await ctx.SyncServiceSettings
@@ -36,7 +29,7 @@ internal sealed class SyncSettingsRepository : ISyncSettingsRepository
 
     public async Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var mode = await ctx.SyncServiceSettings
             .AsNoTracking()
             .Where(s => s.ServiceType == serviceType)
@@ -52,7 +45,7 @@ internal sealed class SyncSettingsRepository : ISyncSettingsRepository
         Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var setting = await ctx.SyncServiceSettings
             .FirstOrDefaultAsync(s => s.ServiceType == serviceType, ct);
         if (setting is null) return false;

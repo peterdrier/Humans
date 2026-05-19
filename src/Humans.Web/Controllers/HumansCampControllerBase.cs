@@ -7,29 +7,19 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public abstract class HumansCampControllerBase : HumansControllerBase
+public abstract class HumansCampControllerBase(
+    IUserService userService,
+    ICampService campService,
+    IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
-    private readonly ICampService _campService;
-    private readonly IAuthorizationService _authorizationService;
-
-    protected HumansCampControllerBase(
-        IUserService userService,
-        ICampService campService,
-        IAuthorizationService authorizationService)
-        : base(userService)
-    {
-        _campService = campService;
-        _authorizationService = authorizationService;
-    }
-
     protected Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
-        return _campService.GetCampBySlugAsync(slug, cancellationToken);
+        return campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
     protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, UserInfo? user, CancellationToken cancellationToken = default)
     {
-        var canManage = (await _authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
+        var canManage = (await authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
         {
             return (false, false);
@@ -40,7 +30,7 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (false, false);
         }
 
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
+        var isLead = await campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
         var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);
@@ -60,7 +50,7 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (currentUserError, null!, camp);
         }
 
-        var result = await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage);
+        var result = await authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage);
         if (result.Succeeded)
         {
             return (null, user, camp);

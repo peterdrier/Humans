@@ -5,26 +5,15 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-public sealed class UserParticipationBackfillService : IUserParticipationBackfillService
+public sealed class UserParticipationBackfillService(
+    IUserService userService,
+    IShiftManagementService shiftManagementService,
+    IClock clock) : IUserParticipationBackfillService
 {
-    private readonly IUserService _userService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly IClock _clock;
-
-    public UserParticipationBackfillService(
-        IUserService userService,
-        IShiftManagementService shiftManagementService,
-        IClock clock)
-    {
-        _userService = userService;
-        _shiftManagementService = shiftManagementService;
-        _clock = clock;
-    }
-
     public async Task<int> GetDefaultYearAsync(CancellationToken ct = default)
     {
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
-        return activeEvent?.Year ?? _clock.GetCurrentInstant().InUtc().Year;
+        var activeEvent = await shiftManagementService.GetActiveAsync();
+        return activeEvent?.Year ?? clock.GetCurrentInstant().InUtc().Year;
     }
 
     public async Task<ParticipationBackfillResult> BackfillFromCsvAsync(
@@ -39,7 +28,7 @@ public sealed class UserParticipationBackfillService : IUserParticipationBackfil
         if (entries.Count == 0)
             return ParticipationBackfillResult.Failure("No valid entries found in the CSV data.");
 
-        var count = await _userService.BackfillParticipationsAsync(year, entries, ct);
+        var count = await userService.BackfillParticipationsAsync(year, entries, ct);
         return ParticipationBackfillResult.Success(count, year);
     }
 

@@ -20,37 +20,17 @@ namespace Humans.Web.Controllers;
 /// layout banner all link here without needing to know which step a user is on.
 /// </summary>
 [Authorize]
-public class OnboardingWidgetController : HumansControllerBase
+public class OnboardingWidgetController(
+    IUserService userService,
+    IOnboardingWidgetState state,
+    IProfileService profileService,
+    IShiftSignupService signupService,
+    IShiftManagementService shiftMgmt,
+    IConsentService consents,
+    IOnboardingService onboardingService,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IOnboardingWidgetState _state;
-    private readonly IProfileService _profileService;
-    private readonly IShiftSignupService _signupService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IConsentService _consents;
-    private readonly IOnboardingService _onboardingService;
-    private readonly IUserService _userService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public OnboardingWidgetController(
-        IUserService userService,
-        IOnboardingWidgetState state,
-        IProfileService profileService,
-        IShiftSignupService signupService,
-        IShiftManagementService shiftMgmt,
-        IConsentService consents,
-        IOnboardingService onboardingService,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userService)
-    {
-        _state = state;
-        _profileService = profileService;
-        _signupService = signupService;
-        _shiftMgmt = shiftMgmt;
-        _consents = consents;
-        _onboardingService = onboardingService;
-        _userService = userService;
-        _localizer = localizer;
-    }
+    private readonly IUserService _userService = userService;
 
     // [Authorize] guarantees NameIdentifier is present.
     private Guid CurrentUserId() =>
@@ -58,7 +38,7 @@ public class OnboardingWidgetController : HumansControllerBase
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var step = await _state.GetCurrentStepAsync(CurrentUserId(), ct);
+        var step = await state.GetCurrentStepAsync(CurrentUserId(), ct);
         return step switch
         {
             OnboardingWidgetStep.Names => RedirectToAction(nameof(Names)),
@@ -86,7 +66,7 @@ public class OnboardingWidgetController : HumansControllerBase
         var userId = CurrentUserId();
 
         // SaveProfileAsync does a full-field overwrite — bail if past Names step or we'd wipe data.
-        var currentStep = await _state.GetCurrentStepAsync(userId, ct);
+        var currentStep = await state.GetCurrentStepAsync(userId, ct);
         if (currentStep != OnboardingWidgetStep.Names)
             return RedirectToAction(nameof(Index));
 
@@ -105,8 +85,8 @@ public class OnboardingWidgetController : HumansControllerBase
             NoPriorBurnExperience: false,
             ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
-        await _profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
-        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        await profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
+        await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));
     }
@@ -114,15 +94,15 @@ public class OnboardingWidgetController : HumansControllerBase
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null)
             return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 
         // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
-        var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
+        var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(
             es.Id, includeAdminOnly: false, includeSignups: true,
             includeHidden: false, priorityOnly: false);
-        var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
+        var (shiftIds, statuses) = await signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
         var vm = OnboardingShiftsBrowseModelBuilder.Build(
             es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
         return View(vm);
@@ -133,7 +113,7 @@ public class OnboardingWidgetController : HumansControllerBase
     public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
     {
         var userId = CurrentUserId();
-        var result = await _signupService.SignUpAsync(userId, shiftId, userId, false);
+        var result = await signupService.SignUpAsync(userId, shiftId, userId, false);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up.");
@@ -147,7 +127,7 @@ public class OnboardingWidgetController : HumansControllerBase
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
     {
         // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
-        var result = await _signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset, isPrivileged: false);
+        var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset, isPrivileged: false);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up for date range.");
@@ -173,13 +153,13 @@ public class OnboardingWidgetController : HumansControllerBase
         if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
-        var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
+        var rows = await consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
         var unsigned = rows.Where(r => !r.Signed).ToList();
         if (unsigned.Count == 0)
             return RedirectToAction(nameof(Index));
 
         var next = unsigned[0];
-        var detail = await _consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
+        var detail = await consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
         if (detail is null)
             return RedirectToAction(nameof(Index));
 
@@ -205,7 +185,7 @@ public class OnboardingWidgetController : HumansControllerBase
     {
         if (!explicitConsent)
         {
-            SetError(_localizer["Consent_MustCheck"].Value);
+            SetError(localizer["Consent_MustCheck"].Value);
             return RedirectToAction(nameof(Consents));
         }
 
@@ -218,11 +198,11 @@ public class OnboardingWidgetController : HumansControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 
-        var result = await _consents.SubmitConsentAsync(
+        var result = await consents.SubmitConsentAsync(
             userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
 
         if (result.Success)
-            await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+            await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         if (!result.Success)
         {
@@ -231,7 +211,7 @@ public class OnboardingWidgetController : HumansControllerBase
                 case "StubProfile":
                     return RedirectToNamesForStub();
                 case "AlreadyConsented":
-                    SetInfo(_localizer["Consent_AlreadyConsented"].Value);
+                    SetInfo(localizer["Consent_AlreadyConsented"].Value);
                     break;
             }
         }
@@ -249,7 +229,7 @@ public class OnboardingWidgetController : HumansControllerBase
 
     private IActionResult RedirectToNamesForStub()
     {
-        SetInfo(_localizer["Consent_StubProfile_AddName"].Value);
+        SetInfo(localizer["Consent_StubProfile_AddName"].Value);
         return RedirectToAction(nameof(Names));
     }
 }

@@ -12,21 +12,13 @@ namespace Humans.Infrastructure.Services;
 /// Renders email subject + body HTML for all system email types.
 /// Body text is localized via SharedResource resx keys.
 /// </summary>
-public class EmailRenderer : IEmailRenderer
+public class EmailRenderer(
+    IOptions<EmailSettings> settings,
+    IStringLocalizerFactory localizerFactory,
+    ILogger<EmailRenderer> logger) : IEmailRenderer
 {
-    private readonly EmailSettings _settings;
-    private readonly IStringLocalizer _localizer;
-    private readonly ILogger<EmailRenderer> _logger;
-
-    public EmailRenderer(
-        IOptions<EmailSettings> settings,
-        IStringLocalizerFactory localizerFactory,
-        ILogger<EmailRenderer> logger)
-    {
-        _settings = settings.Value;
-        _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
-        _logger = logger;
-    }
+    private readonly EmailSettings _settings = settings.Value;
+    private readonly IStringLocalizer _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
 
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
     {
@@ -232,7 +224,7 @@ public class EmailRenderer : IEmailRenderer
 
     private CultureScope WithCulture(string? culture)
     {
-        return new CultureScope(culture, _logger);
+        return new CultureScope(culture, logger);
     }
 
     private EmailContent RenderLocalized(string? culture, Func<EmailContent> render)

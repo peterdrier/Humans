@@ -44,8 +44,8 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         ? Math.Round(Hits * 100.0 / (Hits + Misses), 1)
         : 0;
 
-    /// <summary>True once WarmAllAsync has completed; resets on Clear. Readers use EnsureWarmedAsync, not this directly.</summary>
-    protected bool IsWarmedUp => _warmedUp;
+    /// <summary>True once WarmAllAsync has completed; resets on Clear. Readers use EnsureWarmedAsync, not this directly. Surfaced on <c>/Admin/CacheStats</c> as a "Warmed" indicator.</summary>
+    public bool IsWarmedUp => _warmedUp;
 
     /// <summary>Live snapshot of cached values; concurrent-safe iteration, not a copy.</summary>
     public ICollection<TValue> Values => _dict.Values;

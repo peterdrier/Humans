@@ -10,13 +10,8 @@ namespace Humans.Web.ExceptionHandlers;
 /// Registered AFTER <see cref="CancellationExceptionHandler"/> so client-cancelled
 /// requests are already handled and do not get logged at Error level.
 /// </summary>
-public sealed class GlobalLoggingExceptionHandler : IExceptionHandler
+public sealed class GlobalLoggingExceptionHandler(ILogger<GlobalLoggingExceptionHandler> logger) : IExceptionHandler
 {
-    private readonly ILogger<GlobalLoggingExceptionHandler> _logger;
-
-    public GlobalLoggingExceptionHandler(ILogger<GlobalLoggingExceptionHandler> logger)
-        => _logger = logger;
-
     public ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
@@ -26,7 +21,7 @@ public sealed class GlobalLoggingExceptionHandler : IExceptionHandler
         var controller = routeValues.TryGetValue("controller", out var c) ? c : null;
         var action = routeValues.TryGetValue("action", out var a) ? a : null;
 
-        _logger.LogError(
+        logger.LogError(
             exception,
             "Unhandled exception on {Method} {Path} (controller={Controller}, action={Action})",
             httpContext.Request.Method,

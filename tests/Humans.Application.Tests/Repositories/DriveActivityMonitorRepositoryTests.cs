@@ -39,7 +39,6 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
     public void Dispose()
     {
         _seedContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]

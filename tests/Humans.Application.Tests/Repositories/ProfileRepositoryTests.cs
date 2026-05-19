@@ -29,7 +29,6 @@ public sealed class ProfileRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact(Timeout = 10000)]

@@ -14,16 +14,11 @@ namespace Humans.Infrastructure.Services;
 /// Delegates the actual wrapping to
 /// <see cref="BrandedEmailTemplate"/> + <see cref="HtmlPlainTextConverter"/>.
 /// </summary>
-public sealed class BrandedEmailBodyComposer : IEmailBodyComposer
+public sealed class BrandedEmailBodyComposer(IOptions<EmailSettings> settings, IHostEnvironment hostEnvironment)
+    : IEmailBodyComposer
 {
-    private readonly string _baseUrl;
-    private readonly string _environmentName;
-
-    public BrandedEmailBodyComposer(IOptions<EmailSettings> settings, IHostEnvironment hostEnvironment)
-    {
-        _baseUrl = settings.Value.BaseUrl;
-        _environmentName = hostEnvironment.EnvironmentName;
-    }
+    private readonly string _baseUrl = settings.Value.BaseUrl;
+    private readonly string _environmentName = hostEnvironment.EnvironmentName;
 
     public (string HtmlBody, string PlainTextBody) Compose(string htmlContent, string? unsubscribeUrl = null)
     {

@@ -13,21 +13,11 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Email")]
-public class EmailController : HumansControllerBase
+public class EmailController(
+    IUserService userService,
+    IEmailOutboxService outboxService,
+    ILogger<EmailController> logger) : HumansControllerBase(userService)
 {
-    private readonly IEmailOutboxService _outboxService;
-    private readonly ILogger<EmailController> _logger;
-
-    public EmailController(
-        IUserService userService,
-        IEmailOutboxService outboxService,
-        ILogger<EmailController> logger)
-        : base(userService)
-    {
-        _outboxService = outboxService;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public IActionResult Index()
     {
@@ -37,7 +27,7 @@ public class EmailController : HumansControllerBase
     [HttpGet("EmailOutbox")]
     public async Task<IActionResult> EmailOutbox()
     {
-        var stats = await _outboxService.GetOutboxStatsAsync();
+        var stats = await outboxService.GetOutboxStatsAsync();
 
         var viewModel = new EmailOutboxViewModel
         {
@@ -56,8 +46,8 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PauseEmailSending()
     {
-        await _outboxService.SetEmailPausedAsync(true);
-        _logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
+        await outboxService.SetEmailPausedAsync(true);
+        logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
         SetSuccess("Email sending paused.");
         return RedirectToAction(nameof(EmailOutbox));
     }
@@ -66,8 +56,8 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeEmailSending()
     {
-        await _outboxService.SetEmailPausedAsync(false);
-        _logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
+        await outboxService.SetEmailPausedAsync(false);
+        logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
         SetSuccess("Email sending resumed.");
         return RedirectToAction(nameof(EmailOutbox));
     }
@@ -76,7 +66,7 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RetryEmailOutboxMessage(Guid id)
     {
-        var recipient = await _outboxService.RetryMessageAsync(id);
+        var recipient = await outboxService.RetryMessageAsync(id);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} queued for retry.");
@@ -87,7 +77,7 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id)
     {
-        var recipient = await _outboxService.DiscardMessageAsync(id);
+        var recipient = await outboxService.DiscardMessageAsync(id);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} discarded.");

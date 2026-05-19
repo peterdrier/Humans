@@ -335,19 +335,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
-    /// <inheritdoc />
-#pragma warning disable CS0618
-    public async Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(
-        int year,
-        IReadOnlyList<CampSeasonStatus>? statusFilter = null,
-        CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetCampsWithLeadsForYearAsync(
-            year, statusFilter, cancellationToken);
-        return camps.Select(CreateCampInfo).ToList();
-    }
-#pragma warning restore CS0618
-
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
@@ -370,6 +357,15 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var settings = await GetSettingsAsync(cancellationToken);
         var year = settings.PublicYear;
+
+        if (Guid.TryParse(query, out var id))
+        {
+            var camp = await _repo.GetByIdAsync(id, cancellationToken);
+            if (camp is null) return [];
+            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+            return [new CampSearchHit(camp.Slug, season?.Name ?? camp.Slug)];
+        }
+
         var camps = await _repo.SearchForYearAsync(
             query, year, onlyPublicStatus: true, max, cancellationToken);
 
@@ -1782,6 +1778,18 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
         return members.Select(CreateCampSeasonMemberInfo).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
+        int year, CancellationToken cancellationToken = default)
+    {
+        var grouped = await _repo.GetMembersForYearAsync(year, cancellationToken);
+        var result = new Dictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>(grouped.Count);
+        foreach (var (seasonId, members) in grouped)
+        {
+            result[seasonId] = members.Select(CreateCampSeasonMemberInfo).ToList();
+        }
+        return result;
     }
 
     public Task<int> GetPendingMembershipCountForLeadAsync(

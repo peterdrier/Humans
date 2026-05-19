@@ -16,37 +16,17 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Expenses")]
-public sealed class ExpensesController : HumansControllerBase
+public sealed class ExpensesController(
+    IUserService userService,
+    IExpenseReportService service,
+    IBudgetService budgetService,
+    IClock clock,
+    IAuthorizationService authService,
+    ISepaPaymentFileBuilder sepaBuilder,
+    IOptions<SepaConfig> sepaConfig,
+    ILogger<ExpensesController> logger) : HumansControllerBase(userService)
 {
-    private readonly IExpenseReportService _service;
-    private readonly IBudgetService _budgetService;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly IAuthorizationService _authService;
-    private readonly ISepaPaymentFileBuilder _sepaBuilder;
-    private readonly IOptions<SepaConfig> _sepaConfig;
-    private readonly ILogger<ExpensesController> _logger;
-
-    public ExpensesController(
-        IUserService userService,
-        IExpenseReportService service,
-        IBudgetService budgetService,
-        IClock clock,
-        IAuthorizationService authService,
-        ISepaPaymentFileBuilder sepaBuilder,
-        IOptions<SepaConfig> sepaConfig,
-        ILogger<ExpensesController> logger)
-        : base(userService)
-    {
-        _service = service;
-        _budgetService = budgetService;
-        _userService = userService;
-        _clock = clock;
-        _authService = authService;
-        _sepaBuilder = sepaBuilder;
-        _sepaConfig = sepaConfig;
-        _logger = logger;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -56,8 +36,8 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var reports = await _service.GetForSubmitterAsync(user.Id);
-            var activeYear = await _budgetService.GetActiveYearAsync();
+            var reports = await service.GetForSubmitterAsync(user.Id);
+            var activeYear = await budgetService.GetActiveYearAsync();
             var info = await _userService.GetUserInfoAsync(user.Id);
 
             var categoryNames = activeYear?.Groups
@@ -76,7 +56,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading expense reports index for user");
+            logger.LogError(ex, "Error loading expense reports index for user");
             SetError("Failed to load expense reports.");
             return View(new ExpensesIndexViewModel
             {
@@ -106,7 +86,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading new expense report form");
+            logger.LogError(ex, "Error loading new expense report form");
             SetError("Failed to load the form.");
             return RedirectToAction(nameof(Index));
         }
@@ -127,13 +107,13 @@ public sealed class ExpensesController : HumansControllerBase
                 return View(model);
             }
 
-            var id = await _service.CreateDraftAsync(user.Id, model.BudgetCategoryId, model.Note);
+            var id = await service.CreateDraftAsync(user.Id, model.BudgetCategoryId, model.Note);
             SetSuccess("Draft created.");
             return RedirectToAction(nameof(Edit), new { id });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating draft expense report for user {UserId}", user.Id);
+            logger.LogError(ex, "Error creating draft expense report for user {UserId}", user.Id);
             SetError("Failed to create draft.");
             model.Categories = await BuildCategoryOptionsAsync();
             return View(model);
@@ -148,14 +128,14 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var report = await _service.GetAsync(id);
+            var report = await service.GetAsync(id);
             if (report is null) return NotFound();
 
-            var authResult = await _authService.AuthorizeAsync(User, report,
+            var authResult = await authService.AuthorizeAsync(User, report,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return Forbid();
 
-            var detail = await _service.GetDetailViewDataAsync(user.Id, report);
+            var detail = await service.GetDetailViewDataAsync(user.Id, report);
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
@@ -170,7 +150,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading expense report {ReportId}", id);
+            logger.LogError(ex, "Error loading expense report {ReportId}", id);
             SetError("Failed to load the expense report.");
             return RedirectToAction(nameof(Index));
         }
@@ -184,7 +164,7 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var report = await _service.GetAsync(id);
+            var report = await service.GetAsync(id);
             if (report is null) return NotFound();
             if (report.SubmitterUserId != user.Id) return Forbid();
 
@@ -205,7 +185,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading edit form for report {ReportId}", id);
+            logger.LogError(ex, "Error loading edit form for report {ReportId}", id);
             SetError("Failed to load the edit form.");
             return RedirectToAction(nameof(Detail), new { id });
         }
@@ -218,7 +198,7 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
@@ -228,7 +208,7 @@ public sealed class ExpensesController : HumansControllerBase
             return View(model);
         }
 
-        var result = await _service.UpdateDraftWithResultAsync(id, user.Id, model.BudgetCategoryId, model.Note);
+        var result = await service.UpdateDraftWithResultAsync(id, user.Id, model.BudgetCategoryId, model.Note);
         if (result.Succeeded)
         {
             SetSuccess("Report updated.");
@@ -247,7 +227,7 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
@@ -257,7 +237,7 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        var result = await _service.AddLineWithResultAsync(id, user.Id, input.Description, input.Amount);
+        var result = await service.AddLineWithResultAsync(id, user.Id, input.Description, input.Amount);
         if (!result.Succeeded)
             SetError($"Failed to add line: {result.ErrorMessage}");
         else
@@ -273,7 +253,7 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
@@ -283,7 +263,7 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        var result = await _service.UpdateLineWithResultAsync(id, user.Id, input.LineId, input.Description, input.Amount);
+        var result = await service.UpdateLineWithResultAsync(id, user.Id, input.LineId, input.Description, input.Amount);
         if (!result.Succeeded)
             SetError($"Failed to update line: {result.ErrorMessage}");
         else
@@ -299,11 +279,11 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        var result = await _service.RemoveLineWithResultAsync(id, user.Id, lineId);
+        var result = await service.RemoveLineWithResultAsync(id, user.Id, lineId);
         if (!result.Succeeded)
             SetError($"Failed to remove line: {result.ErrorMessage}");
         else
@@ -320,7 +300,7 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
@@ -331,7 +311,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _service.AttachFileToLineWithResultAsync(
+        var result = await service.AttachFileToLineWithResultAsync(
             id, user.Id, lineId, file.FileName, file.ContentType, stream);
 
         if (result.Succeeded)
@@ -349,18 +329,18 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
         try
         {
-            await _service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
+            await service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
             SetSuccess("Attachment removed.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing attachment from line {LineId} on report {ReportId}", lineId, id);
+            logger.LogError(ex, "Error removing attachment from line {LineId} on report {ReportId}", lineId, id);
             SetError($"Failed to remove attachment: {ex.Message}");
         }
         return RedirectToAction(nameof(Edit), new { id });
@@ -373,11 +353,11 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        var result = await _service.SubmitWithResultAsync(id, user.Id);
+        var result = await service.SubmitWithResultAsync(id, user.Id);
         if (result.Succeeded)
             SetSuccess("Report submitted.");
         else
@@ -393,9 +373,9 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid(); var result = await _service.WithdrawWithResultAsync(id, user.Id);
+        if (report.SubmitterUserId != user.Id) return Forbid(); var result = await service.WithdrawWithResultAsync(id, user.Id);
         if (result.Succeeded)
             SetSuccess("Report withdrawn.");
         else
@@ -411,11 +391,11 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var report = await _service.GetAsync(id);
+            var report = await service.GetAsync(id);
             if (report is null) return NotFound();
             if (report.SubmitterUserId != user.Id) return Forbid();
 
-            var iban = await _service.GetSubmitterIbanViewAsync(user.Id);
+            var iban = await service.GetSubmitterIbanViewAsync(user.Id);
             var model = new ExpenseIbanViewModel
             {
                 ReportId = id,
@@ -426,7 +406,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading IBAN modal for report {ReportId}", id);
+            logger.LogError(ex, "Error loading IBAN modal for report {ReportId}", id);
             SetError("Failed to load IBAN form.");
             return RedirectToAction(nameof(Detail), new { id });
         }
@@ -439,11 +419,11 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        var result = await _service.SaveSubmitterIbanWithResultAsync(user.Id, model.Iban);
+        var result = await service.SaveSubmitterIbanWithResultAsync(user.Id, model.Iban);
         if (result.Succeeded)
         {
             SetSuccess(result.Message);
@@ -470,21 +450,21 @@ public sealed class ExpensesController : HumansControllerBase
             if (errorResult is not null) return errorResult;
 
             // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
-            var owningReport = await _service.GetReportOwningAttachmentAsync(attachmentId);
+            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId);
             if (owningReport is null) return NotFound();
 
-            var authResult = await _authService.AuthorizeAsync(User, owningReport,
+            var authResult = await authService.AuthorizeAsync(User, owningReport,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return NotFound();
 
-            var attachment = await _service.TryReadAttachmentAsync(owningReport, attachmentId);
+            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId);
             if (attachment is null) return NotFound();
 
             return File(attachment.Bytes, attachment.ContentType, attachment.OriginalFileName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error streaming attachment {AttachmentId}", attachmentId);
+            logger.LogError(ex, "Error streaming attachment {AttachmentId}", attachmentId);
             return NotFound();
         }
     }
@@ -497,13 +477,13 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var reports = await _service.GetCoordinatorQueueAsync(user.Id);
+            var reports = await service.GetCoordinatorQueueAsync(user.Id);
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
             return View(new ExpenseCoordinatorViewModel { Reports = reports, SubmitterNames = submitterNames });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading coordinator queue");
+            logger.LogError(ex, "Error loading coordinator queue");
             SetError("Failed to load the coordinator queue.");
             return RedirectToAction(nameof(Index));
         }
@@ -516,14 +496,14 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
-        var authResult = await _authService.AuthorizeAsync(User, report,
+        var authResult = await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
         if (!authResult.Succeeded) return Forbid();
 
-        var result = await _service.CoordinatorEndorseWithResultAsync(id, user.Id);
+        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id);
         if (result.Succeeded)
             SetSuccess("Report endorsed.");
         else
@@ -539,10 +519,10 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
-        var authResult = await _authService.AuthorizeAsync(User, report,
+        var authResult = await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(ExpenseReportOperation.CoordinatorReject));
         if (!authResult.Succeeded) return Forbid();
 
@@ -552,7 +532,7 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Coordinator));
         }
 
-        var result = await _service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
+        var result = await service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
         if (result.Succeeded)
             SetSuccess("Report rejected.");
         else
@@ -567,13 +547,13 @@ public sealed class ExpensesController : HumansControllerBase
     {
         try
         {
-            var reports = await _service.GetReviewQueueAsync();
+            var reports = await service.GetReviewQueueAsync();
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
             return View(new ExpenseReviewViewModel { Reports = reports, SubmitterNames = submitterNames });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading finance admin review queue");
+            logger.LogError(ex, "Error loading finance admin review queue");
             SetError("Failed to load the review queue.");
             return RedirectToAction(nameof(Index));
         }
@@ -587,14 +567,14 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
-        var authResult = await _authService.AuthorizeAsync(User, report,
+        var authResult = await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
         if (!authResult.Succeeded) return Forbid();
 
-        var result = await _service.ApproveWithResultAsync(id, user.Id, input.OverrideCategoryId);
+        var result = await service.ApproveWithResultAsync(id, user.Id, input.OverrideCategoryId);
         if (result.Succeeded)
             SetSuccess("Report approved.");
         else
@@ -611,10 +591,10 @@ public sealed class ExpensesController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await _service.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
-        var authResult = await _authService.AuthorizeAsync(User, report,
+        var authResult = await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(ExpenseReportOperation.FinanceReject));
         if (!authResult.Succeeded) return Forbid();
 
@@ -624,7 +604,7 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Review));
         }
 
-        var result = await _service.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
+        var result = await service.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
         if (result.Succeeded)
             SetSuccess("Report rejected.");
         else
@@ -655,7 +635,7 @@ public sealed class ExpensesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating SEPA pain.001 for user {UserId}", user.Id);
+            logger.LogError(ex, "Error generating SEPA pain.001 for user {UserId}", user.Id);
             SetError("Failed to generate SEPA file.");
             return RedirectToAction(nameof(Review));
         }
@@ -672,10 +652,10 @@ public sealed class ExpensesController : HumansControllerBase
         }
 
         // XML before flip so failure at either step leaves a retry-safe state.
-        var now = _clock.GetCurrentInstant();
-        var xml = _sepaBuilder.BuildPain001(_sepaConfig.Value, now, eligible);
+        var now = clock.GetCurrentInstant();
+        var xml = sepaBuilder.BuildPain001(sepaConfig.Value, now, eligible);
 
-        var flippedIds = await _service.MarkSepaSentAsync(
+        var flippedIds = await service.MarkSepaSentAsync(
             eligible.Select(r => r.Id).ToList(), actorUserId, ct);
         if (flippedIds.Count == 0)
         {
@@ -685,7 +665,7 @@ public sealed class ExpensesController : HumansControllerBase
 
         var fileName = $"sepa-{now.InUtc().LocalDateTime:yyyy-MM-dd-HHmm}.xml";
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "SEPA pain.001 generated by {UserId}: {EligibleCount} eligible, {FlippedCount} flipped to SepaSent",
             actorUserId, eligible.Count, flippedIds.Count);
 
@@ -698,10 +678,10 @@ public sealed class ExpensesController : HumansControllerBase
         var result = new List<ExpenseReportDto>();
         foreach (var id in ids)
         {
-            var report = await _service.GetAsync(id, ct);
+            var report = await service.GetAsync(id, ct);
             if (report is null || report.Status != ExpenseReportStatus.Approved) continue;
 
-            var authResult = await _authService.AuthorizeAsync(User, report,
+            var authResult = await authService.AuthorizeAsync(User, report,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.IncludeInSepaPayout));
             if (authResult.Succeeded) result.Add(report);
         }
@@ -733,7 +713,7 @@ public sealed class ExpensesController : HumansControllerBase
 
     private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync()
     {
-        var activeYear = await _budgetService.GetActiveYearAsync();
+        var activeYear = await budgetService.GetActiveYearAsync();
         if (activeYear is null) return [];
 
         return activeYear.Groups
