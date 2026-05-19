@@ -106,6 +106,35 @@ public class EventsModerationController(
         return await ProcessActionAsync(model.EventId, EventModerationActionType.Rejected, model.Reason);
     }
 
+    [HttpPost("Withdraw")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Withdraw(ModerationActionFormModel model)
+    {
+        var moderator = await GetCurrentUserInfoAsync();
+        if (moderator == null) return Challenge();
+
+        var guideEvent = await guide.GetEventForModerationAsync(model.EventId);
+        if (guideEvent == null)
+        {
+            SetError("Event not found.");
+            return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
+        }
+
+        if (guideEvent.Status != EventStatus.Approved)
+        {
+            SetError("This event is not in an approved state.");
+            return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
+        }
+
+        await guide.WithdrawEventAsync(guideEvent);
+
+        logger.LogInformation("Moderator {UserId} withdrew event '{Title}' ({EventId})",
+            moderator.Id, guideEvent.Title, model.EventId);
+
+        SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
+        return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
+    }
+
     [HttpPost("RequestEdit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestEdit(ModerationActionFormModel model)

@@ -60,7 +60,7 @@ public class BarrioEventsController(
                 Status = e.Status,
                 PriorityRank = e.PriorityRank,
                 CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
-                CanWithdraw = e.Status == EventStatus.Pending
+                CanWithdraw = e.Status is EventStatus.Pending or EventStatus.Approved
             }).ToList()
         };
 
@@ -265,7 +265,7 @@ public class BarrioEventsController(
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status != EventStatus.Pending)
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Approved))
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(Index), new { slug });

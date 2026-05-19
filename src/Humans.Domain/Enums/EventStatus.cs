@@ -20,6 +20,6 @@ public enum EventStatus
     /// <summary>Moderator requested edits before approval.</summary>
     ResubmitRequested = 4,
 
-    /// <summary>Withdrawn by the submitter.</summary>
+    /// <summary>Withdrawn by the submitter or a moderator — hidden from published guide.</summary>
     Withdrawn = 5
 }

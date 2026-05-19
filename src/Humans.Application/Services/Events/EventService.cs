@@ -208,7 +208,7 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
+public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
         => repo.GetAllEventsForDashboardAsync(ct);
 
     public async Task<(IReadOnlyList<Event> Events, EventGuideSettings? Settings)> GetApprovedEventsForExportAsync(CancellationToken ct = default)

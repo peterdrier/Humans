@@ -62,7 +62,7 @@ public class EventsController(
                 DurationMinutes = e.DurationMinutes,
                 Status = e.Status,
                 CanEdit = e.Status is EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested,
-                CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending
+                CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Approved
             }).ToList()
         };
 
@@ -262,7 +262,7 @@ public class EventsController(
         var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending))
+        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Approved))
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(MySubmissions));
