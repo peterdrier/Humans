@@ -51,7 +51,7 @@ public sealed class ProfileBackfillAdminController(
     private async Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
     {
         IReadOnlyList<MissingProfileRow> rows = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is null)
+            .Where(u => u.Profile is null && !u.IsTombstone)
             .Select(u => new MissingProfileRow(
                 u.Id,
                 u.Email ?? string.Empty,
