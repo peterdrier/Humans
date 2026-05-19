@@ -20,24 +20,19 @@ namespace Humans.Application.Tests.Services;
 public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 {
     private readonly CampService _service;
-    private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
     private readonly InMemoryFileStorage _fileStorage;
-    private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampRoleService _campRoleService;
 
     public CampServiceEarlyEntryTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
     {
-        _auditLog = Substitute.For<IAuditLogService>();
         _fileStorage = new InMemoryFileStorage();
 
         var repo = new CampRepository(DbFactory);
         var roleRepo = new CampRoleRepository(DbFactory);
 
         _userService = NewDbBackedUserService();
-
-        _notificationEmitter = Substitute.For<INotificationEmitter>();
 
         _campRoleService = Substitute.For<ICampRoleService>();
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -47,10 +42,10 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             repo,
             roleRepo,
             _userService,
-            _auditLog,
+            AuditLog,
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
-            _notificationEmitter,
+            Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             Clock,
@@ -73,7 +68,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var settings = await _service.GetSettingsAsync();
         settings.EeStartDate.Should().Be(date);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampSettingsEeStartDateChanged,
             nameof(CampSettings), Arg.Any<Guid>(),
             Arg.Any<string>(), actorUserId,
@@ -96,7 +91,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var reloaded = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
         reloaded.EeSlotCount.Should().Be(13);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampSeasonEeSlotCountChanged,
             nameof(CampSeason), season.Id,
             Arg.Any<string>(), actor,
@@ -239,7 +234,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeTrue();
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampEarlyEntryGranted,
             nameof(CampMember), member.Id,
             Arg.Any<string>(), actor,
@@ -260,7 +255,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampEarlyEntryRevoked,
             nameof(CampMember), member.Id,
             Arg.Any<string>(), actor,
@@ -283,7 +278,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == newMember.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
 
-        await _auditLog.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             AuditAction.CampEarlyEntryGranted,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
@@ -325,7 +320,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         outcome.Should().Be(SetEarlyEntryOutcome.NoChange);
 
-        await _auditLog.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             AuditAction.CampEarlyEntryGranted,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),

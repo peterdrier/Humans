@@ -24,7 +24,6 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -86,11 +85,10 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         var repo = new ShiftManagementRepository(DbFactory);
 
-        _auditLog = Substitute.For<IAuditLogService>();
         _service = new ShiftManagementService(
             repo,
-            _auditLog,
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
@@ -123,7 +121,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         var service = new ShiftManagementService(
             repo,
-            Substitute.For<IAuditLogService>(),
+            AuditLog,
             adminAuthorization,
             new ServiceLocatorBuilder().Build(),
             cache,
@@ -1267,7 +1265,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         result.RedirectSlug.Should().Be("target-dept");
 
         // Assert: audit entry written with action=RotaMovedToTeam, related team=target.
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.RotaMovedToTeam,
             nameof(Rota),
             rota.Id,

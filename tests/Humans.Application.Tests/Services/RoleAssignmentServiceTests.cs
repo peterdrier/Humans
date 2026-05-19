@@ -38,8 +38,8 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         _service = new RoleAssignmentService(
             _repository,
             _userService,
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             Substitute.For<ISystemTeamSync>(),
             _navBadge,
             _claimsInvalidator,

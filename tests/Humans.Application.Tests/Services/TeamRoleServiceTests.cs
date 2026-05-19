@@ -28,15 +28,14 @@ namespace Humans.Application.Tests.Services;
 public sealed class TeamRoleServiceTests : ServiceTestHarness
 {
     private readonly TeamService _service;
-    private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
 
     public TeamRoleServiceTests() : base(Instant.FromUtc(2026, 3, 11, 12, 0))
     {
         var roleAssignmentService = new RoleAssignmentService(
             new RoleAssignmentRepository(DbFactory),
             Substitute.For<IUserService>(),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             Substitute.For<ISystemTeamSync>(),
             Substitute.For<INavBadgeCacheInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
@@ -58,22 +57,21 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftManagementRepository(DbFactory),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
-        _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _service = new TeamService(
             new TeamRepository(DbFactory),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            _shiftAuthInvalidator,
-            Substitute.For<IAdminAuthorizationService>(),
+            ShiftAuthInvalidator,
+            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
@@ -254,8 +252,8 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             [SlotPriority.Critical, SlotPriority.Critical], 0,
             isManagement: true, RolePeriod.YearRound, admin.Id);
 
-        _shiftAuthInvalidator.Received(1).Invalidate(user1.Id);
-        _shiftAuthInvalidator.Received(1).Invalidate(user2.Id);
+        ShiftAuthInvalidator.Received(1).Invalidate(user1.Id);
+        ShiftAuthInvalidator.Received(1).Invalidate(user2.Id);
     }
 
     // ==========================================================================

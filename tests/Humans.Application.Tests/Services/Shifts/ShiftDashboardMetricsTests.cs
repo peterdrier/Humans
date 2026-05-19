@@ -46,8 +46,8 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 
         _service = new ShiftManagementService(
             repo,
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),

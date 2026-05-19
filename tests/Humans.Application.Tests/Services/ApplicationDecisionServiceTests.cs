@@ -27,7 +27,6 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     private readonly ApplicationRepository _repository;
     private readonly IUserService _userService;
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
@@ -53,7 +52,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
             _userService,
             _profileService,
             _roleAssignmentService,
-            _auditLogService,
+            AuditLog,
             _emailService,
             _userEmailService,
             _notificationService,

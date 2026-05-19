@@ -20,7 +20,6 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class PromoteWidgetPendingSignupsAfterAdmissionTests : ServiceTestHarness
 {
-    private readonly IAuditLogService _auditLog;
     private readonly IMembershipCalculator _membership;
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftSignupRepository _repo;
@@ -35,7 +34,6 @@ public sealed class PromoteWidgetPendingSignupsAfterAdmissionTests : ServiceTest
     public PromoteWidgetPendingSignupsAfterAdmissionTests()
         : base(TestNow)
     {
-        _auditLog = Substitute.For<IAuditLogService>();
         _membership = Substitute.For<IMembershipCalculator>();
         // Default: user has all required consents — exercises the existing
         // promotion logic. Tests that need the missing-consents guard override
@@ -55,8 +53,8 @@ public sealed class PromoteWidgetPendingSignupsAfterAdmissionTests : ServiceTest
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
-            _auditLog,
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
@@ -68,9 +66,9 @@ public sealed class PromoteWidgetPendingSignupsAfterAdmissionTests : ServiceTest
             _repo,
             _shiftMgmt,
             _membership,
-            _auditLog,
+            AuditLog,
             Substitute.For<INotificationService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             Clock,
