@@ -28,7 +28,8 @@
     }
 
     <p class="text-muted">
-        Shift-based workload aggregations across the whole event. Role hours are
+        Shift-based workload aggregations across the whole event, sliced by person, rota, and
+        department. Per-person hours are split by <strong>Build / Event / Strike</strong>; role hours are
         deferred to a follow-up — see
         <a href="https://github.com/nobodies-collective/Humans/issues/734">issue #734</a>.
         Counts and hours derive from <strong>Confirmed</strong> shift signups; pending signups
@@ -51,10 +52,10 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="shifts-tab" data-bs-toggle="tab"
-                    data-bs-target="#shifts" type="button" role="tab"
-                    aria-controls="shifts" aria-selected="false">
-                By shift <span class="badge text-bg-light ms-1">@Model.ByShift.Count</span>
+            <button class="nav-link" id="rotas-tab" data-bs-toggle="tab"
+                    data-bs-target="#rotas" type="button" role="tab"
+                    aria-controls="rotas" aria-selected="false">
+                By rota <span class="badge text-bg-light ms-1">@Model.ByRota.Count</span>
             </button>
         </li>
     </ul>
@@ -66,8 +67,8 @@
         <div class="tab-pane fade" id="departments" role="tabpanel" aria-labelledby="departments-tab">
             <partial name="_WorkloadByDepartment" model="Model.ByDepartment" />
         </div>
-        <div class="tab-pane fade" id="shifts" role="tabpanel" aria-labelledby="shifts-tab">
-            <partial name="_WorkloadByShift" model="Model.ByShift" />
+        <div class="tab-pane fade" id="rotas" role="tabpanel" aria-labelledby="rotas-tab">
+            <partial name="_WorkloadByRota" model="Model.ByRota" />
         </div>
     </div>
 </div>
