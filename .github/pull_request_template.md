@@ -17,11 +17,12 @@ Tick items as you go, or strike through (`~~item~~`) with a reason if a row genu
 
 ## Checklist
 
-- [ ] **Section labeled** — issue and PR carry a section label (Camps / Teams / Legal / Shifts / Tickets / Board / Onboarding / Admin / etc.). See `memory/process/issues-need-section.md`.
+- [ ] **Section labeled** — issue and PR carry a section label (Camps / Teams / Legal / Shifts / Tickets / Board / Onboarding / Admin / etc.).
 - [ ] **Targeting `main` on `peterdrier/Humans`** (the QA fork). No direct commits to `main` — `memory/process/no-direct-to-main.md`.
-- [ ] **Branched off `origin/main`**, not `upstream/main` — `memory/process/worktrees-off-origin-main.md`.
+- [ ] **Branched off `origin/main`**, not `upstream/main`.
 - [ ] **Issue refs are qualified** (`owner/repo#N`) when crossing repo boundaries — `memory/process/issue-refs-qualified.md`.
-- [ ] **EF migrations** (if any) live in the correct directory and were generated, not hand-edited — `memory/architecture/migration-*` and `memory/process/never-hand-edit-migrations.md`.
+- [ ] **EF migrations** (if any) auto-generated, not hand-edited — `memory/architecture/no-hand-edited-migrations.md` and `memory/architecture/migration-regen-after-rebase.md`.
+- [ ] **NuGet packages updated?** If yes, `Views/About/Index.cshtml` updated with new versions + licenses — `memory/process/about-page-license-attribution.md`.
 - [ ] **New project rule?** Captured as a `memory/<bucket>/<name>.md` atom **in this PR**, with a one-line entry added to `memory/INDEX.md`. See `memory/META.md`.
 - [ ] **Build + test pass locally**: `dotnet build Humans.slnx -v quiet` and `dotnet test Humans.slnx -v quiet`.
 - [ ] **Nav coverage** — any new page is reachable from navigation (no orphan pages).
