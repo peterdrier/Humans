@@ -121,11 +121,20 @@ $rows = foreach ($file in $testFiles) {
                 if ($prefixCounts.ContainsKey($prefix)) { $prefixCounts[$prefix]++ } else { $prefixCounts[$prefix] = 1 }
             }
             $methodMatchedCounts = @{}
+            $publicMethodSet = New-Object System.Collections.Generic.HashSet[string]
+            foreach ($pmName in $publicMethodNames) { [void]$publicMethodSet.Add($pmName) }
             foreach ($pmName in $publicMethodNames) {
-                $stripped = if ($pmName.EndsWith('Async', [StringComparison]::Ordinal)) { $pmName.Substring(0, $pmName.Length - 5) } else { $null }
                 $count = 0
                 if ($prefixCounts.ContainsKey($pmName)) { $count += $prefixCounts[$pmName] }
-                if ($stripped -and $prefixCounts.ContainsKey($stripped)) { $count += $prefixCounts[$stripped] }
+                if ($pmName.EndsWith('Async', [StringComparison]::Ordinal)) {
+                    $stripped = $pmName.Substring(0, $pmName.Length - 5)
+                    # Only attribute the stripped (sync-shaped) prefix to this async method
+                    # when there is no sync sibling on the same SUT — otherwise the sync
+                    # method already claims those tests via the exact-match branch above.
+                    if (-not $publicMethodSet.Contains($stripped) -and $prefixCounts.ContainsKey($stripped)) {
+                        $count += $prefixCounts[$stripped]
+                    }
+                }
                 if ($count -gt 0) { $methodMatchedCounts[$pmName] = $count }
             }
             if ($methodMatchedCounts.Count -gt 0) {
