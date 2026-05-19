@@ -136,7 +136,6 @@ public sealed class SearchService(
             q: query, excludedSlugs: Array.Empty<string>(), ct);
 
         return hits
-            .Take(limit)
             .Select(e =>
             {
                 var titleScore = ScoreNameField(e.Title, query);
@@ -147,6 +146,8 @@ public sealed class SearchService(
                     Url: $"/Events/Browse?q={Uri.EscapeDataString(e.Title)}",
                     Score: titleScore > 0 ? titleScore : ScoreContainsName);
             })
+            .OrderByDescending(r => r.Score) // arch:db-sort-ok top-N relevance selector
+            .Take(limit)
             .ToList();
     }
 
