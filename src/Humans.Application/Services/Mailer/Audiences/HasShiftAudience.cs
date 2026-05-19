@@ -1,17 +1,17 @@
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
 /// <summary>
-/// "Humans - Has Shift" — humans who have signed up for at least one shift
-/// in the active EventSettings event. Pending and Confirmed signups count;
-/// Refused/Bailed/Cancelled/NoShow do not (see
-/// <see cref="IShiftSignupService.GetActiveCommittedUserIdsForEventAsync"/>).
+/// "Humans - Has Shift" — humans with at least one Pending/Confirmed signup
+/// in the active event, surfaced via the cached <see cref="IShiftView"/>
+/// (<see cref="DTOs.Shifts.ShiftUserView.HasShift"/>).
 /// </summary>
 public sealed class HasShiftAudience(
-    IShiftSignupService shiftSignups,
-    IShiftManagementService shiftManagement) : IMailerAudience
+    IShiftView shiftView,
+    IUserService users) : IMailerAudience
 {
     public string Key => "has-shift";
     public string DisplayName => "Volunteers with a shift signup";
@@ -19,9 +19,12 @@ public sealed class HasShiftAudience(
 
     public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
     {
-        var activeEvent = await shiftManagement.GetActiveAsync();
-        if (activeEvent is null) return new HashSet<Guid>();
-
-        return await shiftSignups.GetActiveCommittedUserIdsForEventAsync(activeEvent.Id, ct);
+        var allUsers = await users.GetAllUserInfosAsync(ct);
+        var ids = allUsers.Select(u => u.Id).ToList();
+        var views = await shiftView.GetUsersAsync(ids, ct);
+        return views
+            .Where(kv => kv.Value.HasShift)
+            .Select(kv => kv.Key)
+            .ToHashSet();
     }
 }

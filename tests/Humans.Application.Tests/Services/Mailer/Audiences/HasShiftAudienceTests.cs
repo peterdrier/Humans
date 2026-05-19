@@ -1,23 +1,32 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Mailer.Audiences;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using NodaTime;
+using Humans.Domain.Enums;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Mailer.Audiences;
 
 public class HasShiftAudienceTests
 {
-    private static readonly Guid EventId = Guid.NewGuid();
-
     [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_ReturnsCommittedShiftUsers()
+    public async Task ComputeMemberUserIdsAsync_ReturnsUsersWithHasShiftTrue()
     {
-        var userA = Guid.NewGuid();
-        var userB = Guid.NewGuid();
+        var userA = Guid.NewGuid(); // Confirmed   → IN
+        var userB = Guid.NewGuid(); // Pending     → IN
+        var userC = Guid.NewGuid(); // Cancelled   → OUT
+        var userD = Guid.NewGuid(); // no signups  → OUT
 
-        var audience = NewAudience(shiftCommitted: [userA, userB]);
+        var audience = NewAudience(new Dictionary<Guid, ShiftUserView>
+        {
+            [userA] = ViewWith(userA, SignupStatus.Confirmed),
+            [userB] = ViewWith(userB, SignupStatus.Pending),
+            [userC] = ViewWith(userC, SignupStatus.Cancelled),
+            [userD] = ShiftUserView.Empty(userD),
+        });
 
         var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
 
@@ -25,12 +34,9 @@ public class HasShiftAudienceTests
     }
 
     [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_NoActiveEvent_ReturnsEmpty()
+    public async Task ComputeMemberUserIdsAsync_NoUsers_ReturnsEmpty()
     {
-        var audience = NewAudience(
-            shiftCommitted: [Guid.NewGuid()],
-            activeEvent: null,
-            useDefaultEvent: false);
+        var audience = NewAudience(new Dictionary<Guid, ShiftUserView>());
 
         var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
 
@@ -40,44 +46,38 @@ public class HasShiftAudienceTests
     [HumansFact]
     public void Metadata_UsesHumansPrefix()
     {
-        var audience = NewAudience([]);
+        var audience = NewAudience(new Dictionary<Guid, ShiftUserView>());
         audience.Key.Should().Be("has-shift");
         audience.MailerLiteGroupName.Should().Be("Humans - Has Shift");
         audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
-    private static HasShiftAudience NewAudience(
-        HashSet<Guid> shiftCommitted,
-        EventSettings? activeEvent = null,
-        bool useDefaultEvent = true)
+    private static HasShiftAudience NewAudience(IReadOnlyDictionary<Guid, ShiftUserView> viewsByUser)
     {
-        var signups = Substitute.For<IShiftSignupService>();
-        signups.GetActiveCommittedUserIdsForEventAsync(EventId, Arg.Any<CancellationToken>())
-            .Returns(shiftCommitted);
+        var users = Substitute.For<IUserService>();
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(viewsByUser.Keys
+                .Select(id => new User { Id = id }.ToUserInfo())
+                .ToList());
 
-        var mgmt = Substitute.For<IShiftManagementService>();
-        var resolved = activeEvent ?? (useDefaultEvent ? FakeEventSettings(EventId) : null);
-        mgmt.GetActiveAsync().Returns(resolved);
+        var shiftView = Substitute.For<IShiftView>();
+        shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(viewsByUser));
 
-        return new HasShiftAudience(signups, mgmt);
+        return new HasShiftAudience(shiftView, users);
     }
 
-    private static EventSettings FakeEventSettings(Guid id)
-    {
-        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
-        return new EventSettings
+    private static ShiftUserView ViewWith(Guid userId, SignupStatus status) => new(
+        UserId: userId,
+        Profile: null,
+        Availability: null,
+        BuildStatus: null,
+        TagPreferences: [],
+        Signups: [new ShiftSignup
         {
-            Id = id,
-            EventName = "Test Event",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
-            IsActive = true,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-    }
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftId = Guid.NewGuid(),
+            Status = status,
+        }]);
 }
