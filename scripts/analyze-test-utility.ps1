@@ -71,9 +71,13 @@ $rows = foreach ($file in $testFiles) {
     $lineCount = ($text -split "`n").Count
     $testCount = Count-Matches $text '(?m)^\s*\[(HumansFact|Fact|HumansTheory|Theory)\b'
     $classCount = Count-Matches $text '\b(public\s+)?(sealed\s+|static\s+|abstract\s+|partial\s+)*class\s+\w+'
-    $assertionCount = Count-Matches $text '(\.Should\(|\bAssert\.|\bReceived\(|\bDidNotReceive\(|\bVerify\(|\bMustHaveHappened)'
+    $assertionCount = Count-Matches $text '(\.Should\(|\bAssert\.|\b(?:Received|DidNotReceive)(?:WithAnyArgs)?\(|\bVerify\(|\bMustHaveHappened)'
     $weakAssertionCount = Count-Matches $text '(\.Should\(\)\.(NotBeNull|BeNull|BeOfType|BeAssignableTo|NotThrow|BeTrue|BeFalse)\b|\bAssert\.(NotNull|Null|IsType|IsAssignableFrom|True|False)\b)'
     $substituteCount = Count-Matches $text '\bSubstitute\.For<|\bMock<|\bNSubstitute\.'
+    $distinctMockTypes = @([regex]::Matches($text, '\bSubstitute\.For<([^>(]+(?:<[^>]+>)?)') |
+        ForEach-Object { $_.Groups[1].Value.Trim() } |
+        Sort-Object -Unique).Count
+    $isCoordinatorSut = $distinctMockTypes -ge 8
     $reflectionCount = Count-Matches $text '\btypeof\(|\.Get(Constructor|Method|Property|Properties|Interfaces|GenericArguments|CustomAttributes)|\.Namespace\b|\.Assembly\b'
     $diCount = Count-Matches $text '\bServiceCollection\b|\bBuildServiceProvider\b|\bGetRequiredService\b|\bIServiceCollection\b'
     $snapshotCount = Count-Matches $text '\bEnum\.GetValues\b|\.ToString\(\)\.Should\(\)\.Be\(|\.Should\(\)\.BeEquivalentTo\(new\[\]'
@@ -82,6 +86,46 @@ $rows = foreach ($file in $testFiles) {
     $subject = Get-TestSubjectName $repoPath
     $productionMatches = Find-ProductionMatches $subject
     $category = Get-Category $repoPath
+
+    $publicMethodNames = @()
+    $untestedPublicMethods = @()
+    $testsPerPublicMethod = 0.0
+    if ($productionMatches.Count -gt 0) {
+        $methodSet = New-Object System.Collections.Generic.HashSet[string]
+        foreach ($prodRepoPath in $productionMatches) {
+            $prodFullPath = Join-Path $Root $prodRepoPath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+            if (-not (Test-Path $prodFullPath)) { continue }
+            $prodText = Get-Content -Raw -Path $prodFullPath
+            $prodClassName = [System.IO.Path]::GetFileNameWithoutExtension($prodFullPath)
+            $methodMatches = [regex]::Matches($prodText,
+                '(?m)^\s+public\s+(?:(?:async|virtual|override|static|sealed|new|unsafe|extern|partial)\s+)*(?:(?!class\b|interface\b|enum\b|struct\b|record\b)[\w<>?,\.\[\]]+\s+)+(\w+)\s*\(')
+            foreach ($mm in $methodMatches) {
+                $methodName = $mm.Groups[1].Value
+                if ($methodName -eq $prodClassName) { continue }
+                [void]$methodSet.Add($methodName)
+            }
+        }
+        $publicMethodNames = @($methodSet | Sort-Object)
+        if ($publicMethodNames.Count -gt 0 -and $testCount -gt 0) {
+            $testNameMatches = [regex]::Matches($text,
+                '(?m)^\s+public\s+(?:async\s+)?(?:Task<[^>]+>|Task|void|ValueTask|ValueTask<[^>]+>)\s+(\w+)\s*\(')
+            $testedPrefixes = New-Object System.Collections.Generic.HashSet[string]
+            foreach ($tm in $testNameMatches) {
+                $tn = $tm.Groups[1].Value
+                $idx = $tn.IndexOf('_')
+                $prefix = if ($idx -gt 0) { $tn.Substring(0, $idx) } else { $tn }
+                [void]$testedPrefixes.Add($prefix)
+            }
+            $untestedPublicMethods = @($publicMethodNames | Where-Object {
+                $name = $_
+                $stripped = if ($name.EndsWith('Async', [StringComparison]::Ordinal)) {
+                    $name.Substring(0, $name.Length - 5)
+                } else { $null }
+                -not $testedPrefixes.Contains($name) -and -not ($stripped -and $testedPrefixes.Contains($stripped))
+            })
+            $testsPerPublicMethod = [math]::Round($testCount / $publicMethodNames.Count, 2)
+        }
+    }
     $isPolicyRatchet = $category -eq 'Architecture' -and $ratchetCount -gt 0
     $isDiCycleSafetyNet =
         $repoPath -match 'DependencyCycle|DiResolution' -or
@@ -121,7 +165,10 @@ $rows = foreach ($file in $testFiles) {
                 $reasons.Add('mostly-shape-or-boolean-assertions')
             }
 
-            if ($substituteCount -ge 8 -and $substituteCount -gt $assertionCount) {
+            if ($isCoordinatorSut) {
+                $reasons.Add("coordinator-sut-$distinctMockTypes-mocks")
+            }
+            elseif ($substituteCount -ge 8 -and $substituteCount -gt $assertionCount) {
                 $score += 20
                 $reasons.Add('mock-heavy-relative-to-assertions')
             }
@@ -154,7 +201,7 @@ $rows = foreach ($file in $testFiles) {
                 $reasons.Add('large-test-file')
             }
 
-            if ($linesPerTest -ge 35) {
+            if ($linesPerTest -ge 35 -and -not $isCoordinatorSut) {
                 $score += 12
                 $reasons.Add('high-lines-per-test')
             }
@@ -200,6 +247,8 @@ $rows = foreach ($file in $testFiles) {
         Assertions = $assertionCount
         WeakAssertions = $weakAssertionCount
         Substitutes = $substituteCount
+        DistinctMockTypes = $distinctMockTypes
+        IsCoordinatorSut = $isCoordinatorSut
         ReflectionUses = $reflectionCount
         DiUses = $diCount
         IsDiCycleSafetyNet = $isDiCycleSafetyNet
@@ -207,6 +256,9 @@ $rows = foreach ($file in $testFiles) {
         RatchetUses = $ratchetCount
         AssertionsPerTest = if ($testCount -gt 0) { [math]::Round($assertionCount / $testCount, 2) } else { 0 }
         LinesPerTest = if ($testCount -gt 0) { [math]::Round($lineCount / $testCount, 1) } else { 0 }
+        PublicMethodCount = $publicMethodNames.Count
+        UntestedPublicMethods = $untestedPublicMethods
+        TestsPerPublicMethod = $testsPerPublicMethod
         DebtScore = $score
         Recommendation = $recommendation
         Reasons = @($reasons)
@@ -311,6 +363,31 @@ $md.Add('| Score | File | Tests | Assertions/Test | Lines/Test | Reasons |')
 $md.Add('| ---: | --- | ---: | ---: | ---: | --- |')
 foreach ($item in $highConfidence) {
     $md.Add(('| {0} | `{1}` | {2} | {3} | {4} | {5} |' -f $item.DebtScore, $item.Path, $item.Tests, $item.AssertionsPerTest, $item.LinesPerTest, ($item.Reasons -join ', ')))
+}
+
+$gapCandidates = @($rows |
+    Where-Object {
+        $_.PublicMethodCount -ge 3 -and
+        $_.UntestedPublicMethods.Count -ge 1 -and
+        $_.Category -ne 'Architecture' -and
+        -not $_.IsDiCycleSafetyNet
+    } |
+    Sort-Object @{Expression = { $_.UntestedPublicMethods.Count }; Descending = $true }, @{Expression = { $_.TestsPerPublicMethod } } |
+    Select-Object -First $Top)
+
+$md.Add('')
+$md.Add('## Coverage Gap Candidates')
+$md.Add('')
+$md.Add('Test files where the SUT''s public surface has methods with no direct test (test name does not start with `MethodName_`). Attribution is conservative — tests that exercise a method indirectly are not credited. Use this list to find missing tests, not bloated ones.')
+$md.Add('')
+$md.Add('| Untested | Tests/Method | File | Public Methods | Untested Method Names |')
+$md.Add('| ---: | ---: | --- | ---: | --- |')
+foreach ($item in $gapCandidates) {
+    $untestedNames = ($item.UntestedPublicMethods | Select-Object -First 8) -join ', '
+    if ($item.UntestedPublicMethods.Count -gt 8) {
+        $untestedNames += ", ... +$($item.UntestedPublicMethods.Count - 8) more"
+    }
+    $md.Add(('| {0} | {1} | `{2}` | {3} | {4} |' -f $item.UntestedPublicMethods.Count, $item.TestsPerPublicMethod, $item.Path, $item.PublicMethodCount, $untestedNames))
 }
 
 if (-not [string]::IsNullOrWhiteSpace($StrykerReport)) {
