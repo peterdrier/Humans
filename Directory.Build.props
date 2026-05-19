@@ -89,8 +89,8 @@
   </ItemGroup>
 
   <!--
-    NuGet audit suppressions for Magick.NET-Q8-AnyCPU 14.12.0.
-    14.12.0 is the latest published version; these are upstream ImageMagick
+    NuGet audit suppressions for Magick.NET-Q8-AnyCPU 14.13.1.
+    14.13.1 is the latest published version; these are upstream ImageMagick
     native-library CVEs awaiting a new Magick.NET release. Revisit on each
     Magick.NET bump and prune entries that are no longer reported.
   -->
