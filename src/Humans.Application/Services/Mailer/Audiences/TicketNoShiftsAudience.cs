@@ -10,10 +10,15 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// shift in the active EventSettings event (Pending and Confirmed signups
 /// count as "has a shift"; Refused/Bailed/Cancelled/NoShow do not).
 /// </summary>
+/// <remarks>
+/// Reads shifts state through <see cref="IShiftView"/> — the cached read
+/// surface — so opening the Mailer audience debug page doesn't burn DB
+/// queries on every render. <see cref="Dtos.Shifts.ShiftUserView.HasShift"/>
+/// already encodes the Pending/Confirmed-on-active-event rule.
+/// </remarks>
 public sealed class TicketNoShiftsAudience(
     ITicketQueryService tickets,
-    IShiftSignupService shiftSignups,
-    IShiftManagementService shiftManagement) : IMailerAudience
+    IShiftView shiftView) : IMailerAudience
 {
     public string Key => "ticket-no-shifts";
     public string DisplayName => "Ticket holders without a shift";
@@ -21,15 +26,17 @@ public sealed class TicketNoShiftsAudience(
 
     public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
     {
-        var activeEvent = await shiftManagement.GetActiveAsync();
-        if (activeEvent is null) return new HashSet<Guid>();
-
         // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketQueryService.
         var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
-        var shiftHavers = await shiftSignups.GetActiveCommittedUserIdsForEventAsync(activeEvent.Id, ct);
+        if (ticketHolders.Count == 0) return new HashSet<Guid>();
 
-        var audience = new HashSet<Guid>(ticketHolders);
-        audience.ExceptWith(shiftHavers);
+        var views = await shiftView.GetUsersAsync(ticketHolders, ct);
+        var audience = new HashSet<Guid>();
+        foreach (var uid in ticketHolders)
+        {
+            if (!views.TryGetValue(uid, out var view) || !view.HasShift)
+                audience.Add(uid);
+        }
         return audience;
     }
 }

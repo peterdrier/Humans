@@ -1,0 +1,11 @@
+@using Humans.Web.Models.Mailer
+@model DebugSortHeader
+@{
+    var isActive = Model.State.Sort == Model.Column;
+    var icon = isActive ? (Model.State.Descending ? "fa-arrow-down-short-wide" : "fa-arrow-up-wide-short") : "fa-sort";
+    var href = Model.Url(Model.State, 1, null, Model.Column, null);
+}
+<a href="@href" class="text-decoration-none text-reset d-inline-flex align-items-center gap-1">
+    @Model.Label
+    <i class="fa-solid @icon small @(isActive ? "" : "text-muted")"></i>
+</a>

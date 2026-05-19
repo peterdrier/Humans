@@ -19,6 +19,7 @@ Mailer owns no tables. MailerLite is the system of record for subscriber state; 
 - `/Mailer/Admin/Import` — preview (GET)
 - `/Mailer/Admin/Import/Commit` — apply (POST)
 - `/Mailer/Admin/Audiences/{key}/Sync` — on-demand audience push (POST)
+- `/Mailer/Admin/Audiences/{key}/Debug` — per-audience debug (GET) — five paged/sortable sections (expected, currently-in-ML, to-add, to-remove, non-primary diagnostic); Apply button posts to the existing `/Sync` action
 
 All routes are `AdminOnly`.
 
@@ -62,7 +63,7 @@ All routes are `AdminOnly`.
 - **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
 - **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads `IUserService.GetByIdAsync` (tombstone follow), `IUserService.GetCountByContactSourceAsync`.
 - **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`.
-- **Shifts**: `IShiftSignupService.GetActiveCommittedUserIdsForEventAsync` and `IShiftManagementService.GetActiveAsync` — audience-side shift commitment + active-event lookup.
+- **Shifts**: `IShiftView.GetUsersAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` (encodes Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`). Replaces the prior `IShiftSignupService` + `IShiftManagementService` injections so opening the audience debug page doesn't burn DB queries.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
 
 ## Architecture
@@ -73,5 +74,5 @@ All routes are `AdminOnly`.
 
 - Services live in `Humans.Application.Services.Mailer/` and never import `Microsoft.EntityFrameworkCore`. `MailerLiteClient` lives in `Humans.Infrastructure.Services.Mailer/` (it owns the `HttpClient` + JSON parsing). `MailerAudienceSyncJob` lives in `Humans.Infrastructure.Jobs/`.
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at 500 users.
-- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketQueryService`, `IShiftSignupService`, `IShiftManagementService`, `IAuditLogService`.
+- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketQueryService`, `IShiftView`, `IAuditLogService`.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/MailerArchitectureTests.cs` pins: namespace, no-EF on `MailerImportService` and `MailerAudienceSyncService`, allowed-write surface on `IMailerLiteService`, audience group-name prefix + uniqueness, and no cross-section repository injection in `MailerImportService`. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard.

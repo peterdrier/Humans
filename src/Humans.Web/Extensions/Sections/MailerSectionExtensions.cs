@@ -45,8 +45,8 @@ internal static class MailerSectionExtensions
         services.AddScoped<IMailerImportService, MailerImportService>();
 
         // Audience framework — orchestrator + audience registrations + recurring job.
-        // Audiences are Scoped (not Singleton) because their constructor dependencies
-        // (ITicketQueryService, IShiftSignupService, IShiftManagementService) are Scoped.
+        // Audiences are Scoped because their dependencies (ITicketQueryService,
+        // IShiftView) are Scoped/decorated-Singleton.
         services.AddScoped<IMailerAudienceSyncService, MailerAudienceSyncService>();
         services.AddScoped<IMailerAudience, TicketNoShiftsAudience>();
         services.AddTransient<MailerAudienceSyncJob>();
