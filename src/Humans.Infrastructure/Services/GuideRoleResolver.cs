@@ -7,7 +7,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class GuideRoleResolver(ITeamService teamService) : IGuideRoleResolver
+public sealed class GuideRoleResolver(ITeamServiceRead teamService) : IGuideRoleResolver
 {
     private static readonly IReadOnlyList<string> KnownRoles =
     [

@@ -46,6 +46,7 @@ public sealed class PromoteWidgetPendingSignupsAfterAdmissionTests : ServiceTest
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
+            .With<ITeamServiceRead>(teamService)
             .With(roleAssignmentService)
             .Build();
 

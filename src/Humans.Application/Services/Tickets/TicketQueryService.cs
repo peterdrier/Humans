@@ -25,7 +25,7 @@ public sealed class TicketQueryService(
     ICampaignService campaignService,
     IUserService userService,
     IUserEmailService userEmailService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IShiftManagementService shiftManagementService,
     IClock clock) : ITicketQueryService, IUserDataContributor
 {

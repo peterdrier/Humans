@@ -48,13 +48,13 @@ public class CalendarArchitectureTests
     }
 
     [HumansFact]
-    public void CalendarService_TakesTeamService()
+    public void CalendarService_TakesTeamServiceRead()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(ITeamService),
-            because: "owning-team display names are resolved via ITeamService cross-section (design-rules §6b, §9); CalendarEvent.OwningTeam nav is [Obsolete]");
+        paramTypes.Should().Contain(typeof(ITeamServiceRead),
+            because: "owning-team display names are resolved via the cross-section ITeamServiceRead surface (design-rules §6b, §9); CalendarEvent.OwningTeam nav is [Obsolete]");
     }
 
     [HumansFact]

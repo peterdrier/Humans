@@ -624,7 +624,7 @@ public class GoogleController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
         [FromServices] IUserService userService,
-        [FromServices] ITeamService teamService)
+        [FromServices] ITeamServiceRead teamService)
     {
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 

@@ -21,7 +21,7 @@ namespace Humans.Application.Services.Feedback;
 /// <summary>
 /// Application-layer implementation of <see cref="IFeedbackService"/>.
 /// Cross-section reads (display names, team names, effective emails) go through
-/// <see cref="IUserService"/>, <see cref="ITeamService"/>, and
+/// <see cref="IUserService"/>, <see cref="ITeamServiceRead"/>, and
 /// <see cref="IUserEmailService"/> and are projected into
 /// <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>.
 /// Nav-badge invalidation routes through <see cref="INavBadgeCacheInvalidator"/>.
@@ -30,7 +30,7 @@ public sealed class FeedbackService(
     IFeedbackRepository repository,
     IUserService userService,
     IUserEmailService userEmailService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IEmailService emailService,
     INotificationService notificationService,
     IAuditLogService auditLogService,

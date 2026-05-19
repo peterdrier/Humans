@@ -37,7 +37,7 @@ public class CachingCalendarServiceTests
 {
     private readonly ICalendarRepository _repo = Substitute.For<ICalendarRepository>();
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 
     private CachingCalendarService CreateSut()
     {

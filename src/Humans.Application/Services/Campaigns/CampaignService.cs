@@ -21,7 +21,7 @@ namespace Humans.Application.Services.Campaigns;
 /// </summary>
 public sealed class CampaignService(
     ICampaignRepository repository,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserEmailService userEmailService,
     IUserService userService,
     INotificationService notificationService,

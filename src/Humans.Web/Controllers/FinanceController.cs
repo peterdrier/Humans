@@ -17,7 +17,7 @@ namespace Humans.Web.Controllers;
 [Route("Finance")]
 public class FinanceController(
     IBudgetService budgetService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ITicketingBudgetService ticketingBudgetService,
     ITicketQueryService ticketQueryService,
     IClock clock,

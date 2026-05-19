@@ -16,11 +16,11 @@ namespace Humans.Application.Services.Calendar;
 
 /// <summary>
 /// Inner service behind <c>CachingCalendarService</c> (§15). Mutations call the repo and return;
-/// the decorator handles invalidation. Owning-team names resolved via <see cref="ITeamService"/> (§6b).
+/// the decorator handles invalidation. Owning-team names resolved via <see cref="ITeamServiceRead"/> (§6b).
 /// </summary>
 public sealed class CalendarService(
     ICalendarRepository repo,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IClock clock,
     IAuditLogService audit,
     ILogger<CalendarService> logger) : ICalendarService

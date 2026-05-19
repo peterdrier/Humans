@@ -34,7 +34,7 @@ public sealed class ShiftSignupService(
     ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge
 {
     // Lazy-resolved for notification coordinator / team-name lookups.
-    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+    private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
 
     public async Task<SignupResult> SignUpAsync(Guid userId, Guid shiftId, Guid? actorUserId = null, bool isPrivileged = false)
     {
