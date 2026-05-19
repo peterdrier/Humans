@@ -22,7 +22,6 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
 {
-    private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftSignupRepository _repo;
     private readonly ShiftSignupService _service;
@@ -32,8 +31,6 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
     public ShiftSignupServiceEarlyEntryTests()
         : base(TestNow)
     {
-        _auditLog = Substitute.For<IAuditLogService>();
-
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
@@ -45,8 +42,8 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
-            _auditLog,
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
@@ -62,9 +59,9 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             _repo,
             _shiftMgmt,
             membership,
-            _auditLog,
+            AuditLog,
             Substitute.For<INotificationService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             Clock,

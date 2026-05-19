@@ -22,7 +22,6 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class ShiftSignupServiceTests : ServiceTestHarness
 {
-    private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftSignupRepository _repo;
     private readonly ShiftSignupService _service;
@@ -33,8 +32,6 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     public ShiftSignupServiceTests()
         : base(TestNow)
     {
-        _auditLog = Substitute.For<IAuditLogService>();
-
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
@@ -46,8 +43,8 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
-            _auditLog,
-            Substitute.For<IAdminAuthorizationService>(),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
@@ -63,9 +60,9 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             _repo,
             _shiftMgmt,
             membership,
-            _auditLog,
+            AuditLog,
             Substitute.For<INotificationService>(),
-            Substitute.For<IAdminAuthorizationService>(),
+            AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             Clock,
@@ -827,7 +824,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup!.Id,
             Arg.Is<string>(s => s.Contains("(confirmed)")),
             userId,
@@ -845,7 +842,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         result.Success.Should().BeTrue();
         result.Signup!.Status.Should().Be(SignupStatus.Pending);
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup.Id,
             Arg.Is<string>(s => s.Contains("(pending)")),
             userId,
@@ -865,7 +862,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
 
         result.Success.Should().BeTrue();
-        await _auditLog.Received(3).LogAsync(
+        await AuditLog.Received(3).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Arg.Any<Guid>(),
             Arg.Is<string>(s => s.Contains("(range, pending)")),
             userId,
@@ -888,7 +885,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, CancellationToken.None);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,
             Arg.Is<string>(s => s.Contains("Reassigned 1")),
             actorUserId,
@@ -906,7 +903,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, CancellationToken.None);
 
-        await _auditLog.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             AuditAction.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
