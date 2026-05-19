@@ -22,10 +22,13 @@ public interface ITicketQueryService : IApplicationService
     Task<int> GetUserTicketCountAsync(Guid userId);
 
     /// <summary>
-    /// Get the set of user IDs that have at least one valid ticket as an attendee,
-    /// using MatchedUserId on attendees (valid/checked-in only).
-    /// A buyer who purchased tickets for others does NOT count.
-    /// Used for aggregate reporting like volunteer ticket coverage.
+    /// Get the set of user IDs that have at least one valid ticket as an
+    /// attendee <b>in the active vendor event</b> (per
+    /// <c>TicketSyncState.VendorEventId</c>), using MatchedUserId on attendees
+    /// (valid/checked-in only). A buyer who purchased tickets for others does
+    /// NOT count. Returns empty when no current vendor event is configured.
+    /// Used for current-event aggregate reporting (volunteer ticket coverage,
+    /// MailerLite "Humans - Has Ticket" / "Humans - Ticket no Shifts" audiences).
     /// </summary>
     Task<HashSet<Guid>> GetUserIdsWithTicketsAsync();
 

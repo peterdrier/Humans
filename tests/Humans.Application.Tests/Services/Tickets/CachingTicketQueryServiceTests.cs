@@ -65,6 +65,12 @@ public sealed class CachingTicketQueryServiceTests
         // SeedOrders(...) which re-stubs the repo and re-warms.
         _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
             .Returns([]);
+
+        // Default sync state: VendorEventId matches the "ev_test" id stamped on
+        // MakeOrder/MakeAttendee, so event-scoped reads (GetUserIdsWithTicketsAsync)
+        // see the seeded orders.
+        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>())
+            .Returns(new TicketSyncState { Id = 1, VendorEventId = "ev_test" });
     }
 
     [HumansFact]
