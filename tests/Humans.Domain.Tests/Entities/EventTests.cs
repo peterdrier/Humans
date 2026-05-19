@@ -94,6 +94,17 @@ public class EventTests
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
+    [HumansFact]
+    public void ApplyModerationAction_Withdrawn_FromApproved_TransitionsToWithdrawn()
+    {
+        var guideEvent = CreateEvent(EventStatus.Approved);
+
+        guideEvent.ApplyModerationAction(EventModerationActionType.Withdrawn, _clock);
+
+        guideEvent.Status.Should().Be(EventStatus.Withdrawn);
+        guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
     [HumansTheory]
     [InlineData(EventStatus.Draft)]
     [InlineData(EventStatus.Approved)]
@@ -105,6 +116,22 @@ public class EventTests
         var guideEvent = CreateEvent(source);
 
         var action = () => guideEvent.ApplyModerationAction(EventModerationActionType.Approved, _clock);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage($"Cannot moderate event in {source} state");
+    }
+
+    [HumansTheory]
+    [InlineData(EventStatus.Draft)]
+    [InlineData(EventStatus.Pending)]
+    [InlineData(EventStatus.Rejected)]
+    [InlineData(EventStatus.ResubmitRequested)]
+    [InlineData(EventStatus.Withdrawn)]
+    public void ApplyModerationAction_Withdrawn_FromNonApprovedState_Throws(EventStatus source)
+    {
+        var guideEvent = CreateEvent(source);
+
+        var action = () => guideEvent.ApplyModerationAction(EventModerationActionType.Withdrawn, _clock);
 
         action.Should().Throw<InvalidOperationException>()
             .WithMessage($"Cannot moderate event in {source} state");

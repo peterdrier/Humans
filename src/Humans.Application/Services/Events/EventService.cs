@@ -208,6 +208,27 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
+    public async Task WithdrawApprovedEventAsync(
+        Guid eventId, Guid actorUserId, string? reason, CancellationToken ct = default)
+    {
+        var guideEvent = await repo.GetEventForModerationAsync(eventId, ct)
+            ?? throw new InvalidOperationException($"Event {eventId} not found.");
+
+        guideEvent.ApplyModerationAction(EventModerationActionType.Withdrawn, clock);
+
+        var action = new EventModerationAction
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = eventId,
+            ActorUserId = actorUserId,
+            Action = EventModerationActionType.Withdrawn,
+            Reason = reason,
+            CreatedAt = clock.GetCurrentInstant()
+        };
+
+        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+    }
+
     public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
         => repo.GetAllEventsForDashboardAsync(ct);
 

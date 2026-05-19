@@ -104,6 +104,21 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetApprovedEventsAsync_ExcludesWithdrawnEvents()
+    {
+        var category = SeedCategory("Workshop", "workshop", 1);
+        var approved = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Withdrawn, _clock.GetCurrentInstant());
+        await _db.SaveChangesAsync();
+
+        var result = await _repo.GetApprovedEventsAsync(
+            campId: null, venueId: null, categoryId: null, q: null, excludedSlugs: []);
+
+        result.Should().ContainSingle();
+        result[0].Id.Should().Be(approved.Id);
+    }
+
+    [HumansFact]
     public async Task GetModerationStatusCountsAsync_CountsOnlyModerationStatuses()
     {
         var category = SeedCategory("Workshop", "workshop", 1);
@@ -118,8 +133,8 @@ public sealed class EventRepositoryTests : IDisposable
 
         result.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(2);
         result.Should().ContainKey(EventStatus.Approved).WhoseValue.Should().Be(1);
+        result.Should().ContainKey(EventStatus.Withdrawn).WhoseValue.Should().Be(1);
         result.Should().NotContainKey(EventStatus.Draft);
-        result.Should().NotContainKey(EventStatus.Withdrawn);
     }
 
     [HumansFact]

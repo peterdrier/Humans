@@ -13,10 +13,11 @@ namespace Humans.Application.Interfaces.Events;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>2026-05-19 — +1 (47) for <see cref="WithdrawApprovedEventAsync"/>; audited moderation-style withdrawal of an Approved event (US-26.4b, issue #26 / PR #667).</item>
 ///   <item>2026-05-14 — initial budget pinned at 46 after Stage 3 cross-section strip and Stage 5 IUserDataContributor add-on (section-align Events, issue #539).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(46)]
+[SurfaceBudget(47)]
 public interface IEventService : IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
@@ -91,6 +92,14 @@ public interface IEventService : IApplicationService
     Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
     Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Withdraws an Approved event with audit. Writes an
+    /// <see cref="EventModerationActionType.Withdrawn"/> moderation action so the
+    /// removal of a published event is traceable. For Draft/Pending self-withdraw
+    /// (no moderation decision), use <see cref="WithdrawEventAsync"/>.
+    /// </summary>
+    Task WithdrawApprovedEventAsync(Guid eventId, Guid actorUserId, string? reason, CancellationToken ct = default);
 
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default);

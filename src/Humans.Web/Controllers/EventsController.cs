@@ -268,7 +268,13 @@ public class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        await guide.WithdrawEventAsync(guideEvent);
+        // Audit submitter-initiated withdrawal of a published (Approved) event
+        // so the moderation history reflects the removal (US-26.4b). Draft and
+        // Pending self-withdraw are not moderation decisions and stay unaudited.
+        if (guideEvent.Status == EventStatus.Approved)
+            await guide.WithdrawApprovedEventAsync(eventId, user.Id, reason: null);
+        else
+            await guide.WithdrawEventAsync(guideEvent);
 
         logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
         SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");

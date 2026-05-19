@@ -12,5 +12,8 @@ public enum EventModerationActionType
     Rejected = 1,
 
     /// <summary>Moderator requested edits — reason required.</summary>
-    ResubmitRequested = 2
+    ResubmitRequested = 2,
+
+    /// <summary>Approved event withdrawn (by moderator or submitter) — hidden from the public guide.</summary>
+    Withdrawn = 3
 }

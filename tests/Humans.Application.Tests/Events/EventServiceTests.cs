@@ -222,6 +222,47 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task WithdrawApprovedEventAsync_TransitionsAndAppendsWithdrawnModerationAction()
+    {
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            Status = EventStatus.Approved,
+            LastUpdatedAt = Instant.FromUtc(2026, 5, 1, 12, 0)
+        };
+        _repo.Events.Add(guideEvent);
+        var actorUserId = Guid.NewGuid();
+
+        await _service.WithdrawApprovedEventAsync(guideEvent.Id, actorUserId, reason: "Cancelled by organiser");
+
+        guideEvent.Status.Should().Be(EventStatus.Withdrawn);
+        guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        _repo.EventModerationActions.Should().ContainSingle(action =>
+            action.GuideEventId == guideEvent.Id
+            && action.ActorUserId == actorUserId
+            && action.Action == EventModerationActionType.Withdrawn
+            && action.Reason == "Cancelled by organiser"
+            && action.CreatedAt == _clock.GetCurrentInstant());
+        _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task WithdrawApprovedEventAsync_FromNonApprovedState_Throws()
+    {
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            Status = EventStatus.Pending
+        };
+        _repo.Events.Add(guideEvent);
+
+        var act = () => _service.WithdrawApprovedEventAsync(guideEvent.Id, Guid.NewGuid(), reason: null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_EmitsEventsSliceWithFavouritesAndPreference()
     {
         var userId = Guid.NewGuid();

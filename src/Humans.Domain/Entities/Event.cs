@@ -148,10 +148,16 @@ public class Event
 
     /// <summary>
     /// Apply a moderation decision to this event.
+    /// Approve/Reject/RequestEdit require <see cref="EventStatus.Pending"/>;
+    /// <see cref="EventModerationActionType.Withdrawn"/> requires <see cref="EventStatus.Approved"/>.
     /// </summary>
     public void ApplyModerationAction(EventModerationActionType actionType, IClock clock)
     {
-        if (Status is not EventStatus.Pending)
+        var requiredStatus = actionType == EventModerationActionType.Withdrawn
+            ? EventStatus.Approved
+            : EventStatus.Pending;
+
+        if (Status != requiredStatus)
             throw new InvalidOperationException($"Cannot moderate event in {Status} state");
 
         Status = actionType switch
@@ -159,6 +165,7 @@ public class Event
             EventModerationActionType.Approved => EventStatus.Approved,
             EventModerationActionType.Rejected => EventStatus.Rejected,
             EventModerationActionType.ResubmitRequested => EventStatus.ResubmitRequested,
+            EventModerationActionType.Withdrawn => EventStatus.Withdrawn,
             _ => throw new ArgumentOutOfRangeException(nameof(actionType))
         };
         LastUpdatedAt = clock.GetCurrentInstant();

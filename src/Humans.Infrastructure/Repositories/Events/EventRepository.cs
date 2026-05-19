@@ -318,6 +318,7 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             EventStatus.Approved,
             EventStatus.Rejected,
             EventStatus.ResubmitRequested,
+            EventStatus.Withdrawn,
         };
 
         var groups = await ctx.Events

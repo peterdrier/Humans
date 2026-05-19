@@ -391,6 +391,14 @@ public sealed class CachingEventService(
         await RefreshEventEntryAsync(eventId, ct);
     }
 
+    public async Task WithdrawApprovedEventAsync(
+        Guid eventId, Guid actorUserId, string? reason, CancellationToken ct = default)
+    {
+        await WithInner(inner => inner.WithdrawApprovedEventAsync(eventId, actorUserId, reason, ct));
+        // Approved → Withdrawn — drop the entry from the approved-events cache.
+        _eventCache.Invalidate(eventId);
+    }
+
     // ==========================================================================
     // Dashboard / Export — moderator-only, must show fresh pending count
     // ==========================================================================

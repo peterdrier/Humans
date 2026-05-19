@@ -271,7 +271,13 @@ public class BarrioEventsController(
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        await guide.WithdrawEventAsync(guideEvent);
+        // Audit submitter-initiated withdrawal of a published (Approved) event
+        // so the moderation history reflects the removal (US-26.4b). Pending
+        // self-withdraw is not a moderation decision and stays unaudited.
+        if (guideEvent.Status == EventStatus.Approved)
+            await guide.WithdrawApprovedEventAsync(eventId, user.Id, reason: null);
+        else
+            await guide.WithdrawEventAsync(guideEvent);
 
         logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})",
             user.Id, guideEvent.Title, eventId);

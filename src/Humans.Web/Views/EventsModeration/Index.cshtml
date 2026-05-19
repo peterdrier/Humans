@@ -32,6 +32,12 @@
             Resubmit <span class="badge bg-info">@Model.ResubmitRequestedCount</span>
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.ActiveTab == EventStatus.Withdrawn ? "active" : "")"
+           asp-action="Index" asp-route-tab="@EventStatus.Withdrawn">
+            Withdrawn <span class="badge bg-dark">@Model.WithdrawnCount</span>
+        </a>
+    </li>
 </ul>
 
 @if (Model.Events.Count == 0)
