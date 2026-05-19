@@ -87,18 +87,25 @@ From Phase 0's candidate file, identify the test methods inside that match slop 
 - Tests of trivial code (auto-property getters, single-line delegations, simple mappers)
 - Names ending in `_DoesNotThrow` where the production code can't throw
 
+**Trap to avoid — same output, different code path.** Two tests that produce the same observable output (same return value, same expected string) can still exercise different branches in the SUT (different `if`-arms, distinct early returns, distinct try/catch paths, distinct prefix-strip / fragment-handling branches). Before deleting a test as "cosmetic variant of another," briefly trace its inputs through the SUT. If it's the only test that enters a particular conditional branch, keep it — Stryker may not have a mutator covering that branch, and the score-delta gate will pass while the coverage gap quietly opens. Phrase the check explicitly to yourself: *"is this test the only one whose inputs satisfy condition X in the SUT?"* If yes, don't delete.
+
 Form a deletion batch (start with everything flagged). Delete. Build. If build fails, the test was load-bearing in a way that wasn't visible — revert that specific test, try again.
 
-Re-run Stryker. Compare the new score to baseline.
+Re-run Stryker. Compare both score AND per-mutant kill diff against baseline.
 
-**Bisection gate:** if score dropped by more than 2 percentage points, the deletion batch was too aggressive. Don't accept it. Bisect:
+**Bisection gate — two conditions, BOTH must hold:**
+
+1. **Score must not drop by more than 2 percentage points.** Score gate is necessary but not sufficient — timeout reclassification can inflate it while real kills regress.
+2. **No mutant may go from Killed → Survived.** Compare mutant IDs across runs. A net-positive score with one or more Killed→Survived shifts means the deletion silently lost real coverage. The score-only gate misses this when timeouts shift in your favor.
+
+If either gate fails, bisect:
 
 1. Restore half the deleted tests (the half most likely to have killed a unique mutant based on assertion strength).
 2. Re-run Stryker.
-3. If score still dropped >2pts: keep bisecting (restore half of the remaining deletions).
-4. If score recovered: the restored set contains the load-bearing test(s); freeze them and try to delete the other half again in a separate batch (sometimes the issue is one specific test, not the half).
+3. If gate still fails: keep bisecting (restore half of the remaining deletions).
+4. If gate passes: the restored set contains the load-bearing test(s); freeze them and try to delete the other half again in a separate batch (sometimes the issue is one specific test, not the half).
 
-After at most 3 bisection rounds, accept whatever deletion batch holds the score within tolerance. Commit:
+After at most 3 bisection rounds, accept whatever deletion batch passes both gates. Commit:
 
 ```
 test(<section>): drop N redundant tests in <ServiceName>Tests
