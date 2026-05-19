@@ -1,13 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Shifts.Workload;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -21,23 +19,14 @@ namespace Humans.Application.Tests.Services.Shifts.Workload;
 /// and per-department roll-ups match what the spec at
 /// nobodies-collective/Humans#734 promises.
 /// </summary>
-public class WorkloadServiceTests : IDisposable
+public sealed class WorkloadServiceTests : ServiceTestHarness
 {
-    private static readonly Instant TestNow = Instant.FromUtc(2026, 7, 1, 12, 0);
-
-    private readonly HumansDbContext _dbContext;
     private readonly WorkloadService _service;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
 
-    public WorkloadServiceTests()
+    public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-
-        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var repo = new ShiftManagementRepository(DbFactory);
 
         // IShiftView source-of-truth path uses GetRotaAsync only — the inner
         // ShiftViewService also takes signup/availability/tracking repos for
@@ -48,48 +37,17 @@ public class WorkloadServiceTests : IDisposable
             Substitute.For<IGeneralAvailabilityRepository>(),
             Substitute.For<IVolunteerTrackingRepository>());
 
-        // Wire team/user lookups against the same in-memory DB so test seeds
-        // drive both the EF reads and the cross-section name stitching.
         _teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => GetTeamsByIdsAsync(call.Arg<IReadOnlyCollection<Guid>>()));
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => GetUserInfosAsync(call.Arg<IReadOnlyCollection<Guid>>()));
 
-        _service = new WorkloadService(repo, view, _teamService, _userService);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        _service = new WorkloadService(repo, view, _teamService, NewDbBackedUserService());
     }
 
     private async Task<IReadOnlyDictionary<Guid, Team>> GetTeamsByIdsAsync(IReadOnlyCollection<Guid> ids)
     {
         if (ids.Count == 0) return new Dictionary<Guid, Team>();
-        var teams = await _dbContext.Teams.Where(t => ids.Contains(t.Id)).ToListAsync();
+        var teams = await Db.Teams.Where(t => ids.Contains(t.Id)).ToListAsync();
         return teams.ToDictionary(t => t.Id);
-    }
-
-    private async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(IReadOnlyCollection<Guid> ids)
-    {
-        if (ids.Count == 0) return new Dictionary<Guid, UserInfo>();
-        var users = await _dbContext.Users.Where(u => ids.Contains(u.Id)).ToListAsync();
-        var profiles = await _dbContext.Profiles
-            .Where(p => ids.Contains(p.UserId))
-            .ToDictionaryAsync(p => p.UserId);
-        return users.ToDictionary(
-            u => u.Id,
-            u => UserInfo.Create(
-                u,
-                userEmails: [],
-                eventParticipations: [],
-                externalLogins: [],
-                profile: profiles.GetValueOrDefault(u.Id),
-                contactFields: [],
-                profileLanguages: [],
-                volunteerHistory: [],
-                communicationPreferences: []));
     }
 
     [HumansFact]
@@ -118,13 +76,13 @@ public class WorkloadServiceTests : IDisposable
     public async Task ByPerson_SumsConfirmedHours_PendingDoesNotInflateHours()
     {
         var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
+        var team = await SeedWorkloadTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es);
         var s1 = await SeedShiftAsync(rota, dayOffset: 1, hours: 4);
         var s2 = await SeedShiftAsync(rota, dayOffset: 2, hours: 6);
 
-        var alice = await SeedUserAsync("Alice");
-        var bob = await SeedUserAsync("Bob");
+        var alice = await SeedUserWithProfileAsync("Alice");
+        var bob = await SeedUserWithProfileAsync("Bob");
         await SeedSignupAsync(s1, alice.Id, SignupStatus.Confirmed);
         await SeedSignupAsync(s2, alice.Id, SignupStatus.Confirmed);
         await SeedSignupAsync(s1, bob.Id, SignupStatus.Pending);
@@ -152,13 +110,13 @@ public class WorkloadServiceTests : IDisposable
         // EventEndOffset=6 / StrikeEndOffset=9 from SeedEventAsync.
         // DayOffset<0 → Build, 0..6 → Event, 7+ → Strike.
         var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
+        var team = await SeedWorkloadTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es);
         var buildShift = await SeedShiftAsync(rota, dayOffset: -2, hours: 4);
         var eventShift = await SeedShiftAsync(rota, dayOffset: 1, hours: 5);
         var strikeShift = await SeedShiftAsync(rota, dayOffset: 8, hours: 3);
 
-        var alice = await SeedUserAsync("Alice");
+        var alice = await SeedUserWithProfileAsync("Alice");
         await SeedSignupAsync(buildShift, alice.Id, SignupStatus.Confirmed);
         await SeedSignupAsync(eventShift, alice.Id, SignupStatus.Confirmed);
         await SeedSignupAsync(strikeShift, alice.Id, SignupStatus.Confirmed);
@@ -177,13 +135,13 @@ public class WorkloadServiceTests : IDisposable
     public async Task ByDepartment_CountsFilledSlotsAndHoursCappedAtMax_AndIncludesSlug()
     {
         var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
+        var team = await SeedWorkloadTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es);
         var shift = await SeedShiftAsync(rota, dayOffset: 1, hours: 4, max: 3);
 
         for (var i = 0; i < 5; i++)
         {
-            var u = await SeedUserAsync($"u{i}");
+            var u = await SeedUserWithProfileAsync($"u{i}");
             await SeedSignupAsync(shift, u.Id, SignupStatus.Confirmed);
         }
 
@@ -203,7 +161,7 @@ public class WorkloadServiceTests : IDisposable
         // Workload view is admin-only — coordinators need full visibility for
         // balancing, including admin-only shifts and hidden rotas.
         var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
+        var team = await SeedWorkloadTeamAsync("Gate");
         var hiddenRota = await SeedRotaAsync(team, es, isVisible: false);
         var visibleRota = await SeedRotaAsync(team, es);
         await SeedShiftAsync(visibleRota, dayOffset: 1, hours: 4, adminOnly: true);
@@ -219,7 +177,7 @@ public class WorkloadServiceTests : IDisposable
     public async Task ByRota_RollsUpShiftsPerRota()
     {
         var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
+        var team = await SeedWorkloadTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es);
         await SeedShiftAsync(rota, dayOffset: 1, hours: 4, max: 2);
         await SeedShiftAsync(rota, dayOffset: 2, hours: 6, max: 3);
@@ -241,11 +199,11 @@ public class WorkloadServiceTests : IDisposable
         // All-day shifts contribute the standard 08:00–18:00 window
         // regardless of nominal Duration.
         var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Build");
+        var team = await SeedWorkloadTeamAsync("Build");
         var rota = await SeedRotaAsync(team, es);
         var allDay = await SeedAllDayShiftAsync(rota, dayOffset: -3, nominalHours: 24);
 
-        var alice = await SeedUserAsync("Alice");
+        var alice = await SeedUserWithProfileAsync("Alice");
         await SeedSignupAsync(allDay, alice.Id, SignupStatus.Confirmed);
 
         var report = await _service.GetForActiveEventAsync();
@@ -253,10 +211,11 @@ public class WorkloadServiceTests : IDisposable
         report.ByPerson.Single(p => p.UserId == alice.Id).BuildHours.Should().Be(10m); // 18:00 - 08:00
     }
 
-    // ── Seed helpers ────────────────────────────────────────────────────────
+    // ── Test-local seeders (Workload-specific shape; harness covers User/Team/etc.) ─
 
     private async Task<EventSettings> SeedEventAsync()
     {
+        var now = Clock.GetCurrentInstant();
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
@@ -268,32 +227,26 @@ public class WorkloadServiceTests : IDisposable
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
-            CreatedAt = TestNow.Minus(Duration.FromDays(60)),
-            UpdatedAt = TestNow,
+            CreatedAt = now.Minus(Duration.FromDays(60)),
+            UpdatedAt = now,
         };
-        _dbContext.EventSettings.Add(es);
-        await _dbContext.SaveChangesAsync();
+        Db.EventSettings.Add(es);
+        await Db.SaveChangesAsync();
         return es;
     }
 
-    private async Task<Team> SeedTeamAsync(string name)
+    // Harness SeedTeam returns synchronously and doesn't save; workload tests use
+    // an async save-then-return shape so the entity is queryable by the service.
+    private async Task<Team> SeedWorkloadTeamAsync(string name)
     {
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant(),
-            IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow,
-        };
-        _dbContext.Teams.Add(team);
-        await _dbContext.SaveChangesAsync();
+        var team = SeedTeam(name);
+        await Db.SaveChangesAsync();
         return team;
     }
 
     private async Task<Rota> SeedRotaAsync(Team team, EventSettings es, bool isVisible = true)
     {
+        var now = Clock.GetCurrentInstant();
         var rota = new Rota
         {
             Id = Guid.NewGuid(),
@@ -304,16 +257,17 @@ public class WorkloadServiceTests : IDisposable
             Policy = SignupPolicy.Public,
             Period = RotaPeriod.Event,
             IsVisibleToVolunteers = isVisible,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
-        _dbContext.Rotas.Add(rota);
-        await _dbContext.SaveChangesAsync();
+        Db.Rotas.Add(rota);
+        await Db.SaveChangesAsync();
         return rota;
     }
 
     private async Task<Shift> SeedShiftAsync(Rota rota, int dayOffset, int hours, int max = 5, bool adminOnly = false)
     {
+        var now = Clock.GetCurrentInstant();
         var shift = new Shift
         {
             Id = Guid.NewGuid(),
@@ -325,16 +279,17 @@ public class WorkloadServiceTests : IDisposable
             MinVolunteers = 1,
             MaxVolunteers = max,
             AdminOnly = adminOnly,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
-        _dbContext.Shifts.Add(shift);
-        await _dbContext.SaveChangesAsync();
+        Db.Shifts.Add(shift);
+        await Db.SaveChangesAsync();
         return shift;
     }
 
     private async Task<Shift> SeedAllDayShiftAsync(Rota rota, int dayOffset, double nominalHours)
     {
+        var now = Clock.GetCurrentInstant();
         var shift = new Shift
         {
             Id = Guid.NewGuid(),
@@ -345,50 +300,44 @@ public class WorkloadServiceTests : IDisposable
             IsAllDay = true,
             MinVolunteers = 1,
             MaxVolunteers = 3,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
-        _dbContext.Shifts.Add(shift);
-        await _dbContext.SaveChangesAsync();
+        Db.Shifts.Add(shift);
+        await Db.SaveChangesAsync();
         return shift;
     }
 
-    private async Task<User> SeedUserAsync(string displayName)
+    // Workload reads display name from Profile.BurnerName (not User.DisplayName).
+    // Harness SeedUser doesn't create a Profile, so this test class layers one on.
+    private async Task<User> SeedUserWithProfileAsync(string burnerName)
     {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            UserName = $"{displayName}@test",
-            NormalizedUserName = $"{displayName.ToUpperInvariant()}@TEST",
-            Email = $"{displayName}@test",
-            NormalizedEmail = $"{displayName.ToUpperInvariant()}@TEST",
-            SecurityStamp = Guid.NewGuid().ToString(),
-            CreatedAt = TestNow,
-        };
-        _dbContext.Users.Add(user);
-        _dbContext.Profiles.Add(new Profile
+        var now = Clock.GetCurrentInstant();
+        var user = SeedUser(displayName: burnerName);
+        Db.Profiles.Add(new Profile
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            BurnerName = displayName,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow,
+            BurnerName = burnerName,
+            CreatedAt = now,
+            UpdatedAt = now,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         return user;
     }
 
     private async Task SeedSignupAsync(Shift shift, Guid userId, SignupStatus status)
     {
-        _dbContext.ShiftSignups.Add(new ShiftSignup
+        var now = Clock.GetCurrentInstant();
+        Db.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
             UserId = userId,
             Status = status,
-            CreatedAt = TestNow.Minus(Duration.FromHours(1)),
-            UpdatedAt = TestNow,
+            CreatedAt = now.Minus(Duration.FromHours(1)),
+            UpdatedAt = now,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 }
