@@ -6,6 +6,8 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models.Mailer;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -44,7 +46,7 @@ public class MailerAudienceDebugSnapshotBuilderTests
             ]);
         var users = StubUsers([frank]);
 
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
 
         snap.NonPrimary.Should().ContainSingle();
         var row = snap.NonPrimary[0];
@@ -71,16 +73,17 @@ public class MailerAudienceDebugSnapshotBuilderTests
             typeof(IMailerAudience),
             typeof(IMailerLiteService),
             typeof(IUserService),
+            typeof(ILogger),
             typeof(CancellationToken));
-        paramTypes.Should().HaveCount(4,
-            "the debug snapshot must reach Humans-side state only via cached IUserService — no IUserEmailService, no DbContext, no preference service.");
+        paramTypes.Should().HaveCount(5,
+            "the debug snapshot must reach Humans-side state only via cached IUserService + a logger — no IUserEmailService, no DbContext, no preference service.");
 
         // Also exercise the path so we catch any later regression that
         // sneaks a DB-touching service in via a side door.
         var audience = StubAudience("k", "Humans - k", members: []);
         var ml = StubMl(groups: [], subscribers: []);
         var users = StubUsers([]);
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
         snap.Expected.Should().BeEmpty();
         snap.CurrentlyInMl.Should().BeEmpty();
     }
@@ -95,12 +98,53 @@ public class MailerAudienceDebugSnapshotBuilderTests
         var ml = StubMl(groups: [], subscribers: []);
         var users = StubUsers([u]);
 
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
 
         snap.Expected.Should().ContainSingle();
         snap.Expected[0].UserId.Should().Be(uid);
         snap.Expected[0].Email.Should().Be("alice@example.com");
         snap.Expected[0].Name.Should().Be("Alice");
+    }
+
+    [HumansFact]
+    public async Task Build_CurrentlyInMl_SkipsSuppressedStatuses()
+    {
+        // Subscribers with status unsubscribed/bounced/junk are filtered by
+        // MailerAudienceSyncService and must be filtered here too so the
+        // diff preview doesn't lie about what Apply will do.
+        var aliceId = Guid.NewGuid();
+        var bobId = Guid.NewGuid();
+        var carolId = Guid.NewGuid();
+        var darioId = Guid.NewGuid();
+
+        var alice = MakeUserInfo(aliceId, "Alice", primary: "alice@example.com");
+        var bob = MakeUserInfo(bobId, "Bob", primary: "bob@example.com");
+        var carol = MakeUserInfo(carolId, "Carol", primary: "carol@example.com");
+        var dario = MakeUserInfo(darioId, "Dario", primary: "dario@example.com");
+
+        static MailerLiteSubscriber Sub(string id, string email, string status) =>
+            new(id, email, status, "manual",
+                SubscribedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+                UnsubscribedAt: null, OptedInAt: null,
+                FirstName: null, LastName: null,
+                GroupIds: ["g1"]);
+
+        var audience = StubAudience("k", "Humans - k", members: [aliceId]);
+        var ml = StubMl(
+            groups: [new MailerLiteGroup("g1", "Humans - k", Instant.FromUtc(2026, 1, 1, 0, 0), 4, 0, 0, 0, 0)],
+            subscribers: [
+                Sub("s-alice", "alice@example.com", "active"),
+                Sub("s-bob", "bob@example.com", "unsubscribed"),
+                Sub("s-carol", "carol@example.com", "bounced"),
+                Sub("s-dario", "dario@example.com", "junk"),
+            ]);
+        var users = StubUsers([alice, bob, carol, dario]);
+
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
+
+        snap.CurrentlyInMl.Should().ContainSingle().Which.Email.Should().Be("alice@example.com");
+        snap.ToRemove.Should().BeEmpty("suppressed-status subscribers must not appear as removable");
+        snap.ToAdd.Should().BeEmpty("Alice is already in §2 and is the only expected member");
     }
 
     [HumansFact]

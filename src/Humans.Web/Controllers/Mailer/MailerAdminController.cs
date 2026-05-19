@@ -119,7 +119,7 @@ public sealed class MailerAdminController(
             .Select(a => new MailerAudienceListItem(a.Key, a.DisplayName))
             .ToList();
 
-        var snapshot = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, _users, ct);
+        var snapshot = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, _users, logger, ct);
 
         var options = new DebugTableOptions(PageSizes: [50, 100, 200], DefaultPageSize: 50);
         var vm = new MailerAudienceDebugViewModel(

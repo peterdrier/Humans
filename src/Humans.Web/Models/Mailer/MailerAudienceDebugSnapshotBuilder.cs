@@ -2,6 +2,7 @@ using Humans.Application;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Users;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Web.Models.Mailer;
@@ -20,10 +21,16 @@ namespace Humans.Web.Models.Mailer;
 /// </remarks>
 internal static class MailerAudienceDebugSnapshotBuilder
 {
+    // Mirrors MailerAudienceSyncService.UnsubscribedStatuses so the debug page
+    // previews what Sync will actually do. If you change one, change both.
+    private static readonly HashSet<string> SuppressedSubscriberStatuses =
+        new(StringComparer.OrdinalIgnoreCase) { "unsubscribed", "bounced", "junk" };
+
     public static async Task<DebugSnapshot> BuildAsync(
         IMailerAudience audience,
         IMailerLiteService ml,
         IUserService users,
+        ILogger logger,
         CancellationToken ct)
     {
         var expectedIds = await audience.ComputeMemberUserIdsAsync(ct);
@@ -42,17 +49,24 @@ internal static class MailerAudienceDebugSnapshotBuilder
                 string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal));
             groupExists = group is not null;
 
-            subscribers = [];
+            var fetched = new List<MailerLiteSubscriber>();
             await foreach (var s in ml.ListSubscribersAsync(ct).WithCancellation(ct))
-                subscribers.Add(s);
+                fetched.Add(s);
+            // Only assign on successful completion — a partial fetch must not
+            // back §2/§3/§4 computation.
+            subscribers = fetched;
         }
         catch (HttpRequestException ex)
         {
+            logger.LogWarning(ex, "MailerLite read failed for audience {AudienceKey}", audience.Key);
             mlError = $"MailerLite read failed: {ex.StatusCode?.ToString() ?? "no response"}.";
+            subscribers = null;
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
+            logger.LogWarning(ex, "MailerLite read timed out for audience {AudienceKey}", audience.Key);
             mlError = "MailerLite read timed out.";
+            subscribers = null;
         }
 
         // Cached UserInfo — covers expected users plus every user we need to
@@ -84,12 +98,17 @@ internal static class MailerAudienceDebugSnapshotBuilder
         }
 
         // §2 Currently in ML — subscribers whose GroupIds include our group.
+        // Mirror MailerAudienceSyncService's status filter: unsubscribed /
+        // bounced / junk are skipped by Sync (line 127 there), so they must
+        // not appear in the diff preview either or §3/§4 counts will lie
+        // about what Apply will do.
         var currentlyInMl = new List<DebugMlRow>();
         if (subscribers is not null && group is not null)
         {
             foreach (var s in subscribers)
             {
                 if (!s.GroupIds.Contains(group.Id, StringComparer.Ordinal)) continue;
+                if (SuppressedSubscriberStatuses.Contains(s.Status)) continue;
                 UserInfo? matchedUser = null;
                 emailToUser.TryGetValue(s.Email, out matchedUser);
                 var name = matchedUser?.BurnerName ?? "—";
