@@ -18,12 +18,20 @@ public sealed class CampAuthorizationHandlerTests
     private static readonly Guid LeadCampId = Guid.NewGuid();
     private static readonly Guid OtherCampId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
+    private static readonly Guid WorkshopUserId = Guid.NewGuid();
 
     public CampAuthorizationHandlerTests()
     {
         _handler = new CampAuthorizationHandler(_campService);
         _campService.IsUserCampLeadAsync(UserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
         _campService.IsUserCampLeadAsync(UserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
+
+        // SubmitEvent flows through IsUserCampEventManagerAsync (Lead OR Workshop).
+        // Lead users also satisfy the event-manager check for the camp they lead.
+        _campService.IsUserCampEventManagerAsync(UserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
+        _campService.IsUserCampEventManagerAsync(UserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
+        _campService.IsUserCampEventManagerAsync(WorkshopUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
+        _campService.IsUserCampEventManagerAsync(WorkshopUserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
     }
 
     public static TheoryData<string, string, bool> CampAuthorizationCases => new()
@@ -52,18 +60,54 @@ public sealed class CampAuthorizationHandlerTests
         var campLookup = CreateCampLookup(campKind);
         var campId = camp.Id;
 
-        var result = await EvaluateAsync(user, camp);
-        var lookupResult = await EvaluateAsync(user, campLookup);
-        var idResult = await EvaluateAsync(user, campId);
+        var result = await EvaluateAsync(user, camp, CampOperationRequirement.Manage);
+        var lookupResult = await EvaluateAsync(user, campLookup, CampOperationRequirement.Manage);
+        var idResult = await EvaluateAsync(user, campId, CampOperationRequirement.Manage);
 
         result.Should().Be(expected);
         lookupResult.Should().Be(expected);
         idResult.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, object resource)
+    public static TheoryData<string, string, bool> SubmitEventCases => new()
     {
-        var requirement = CampOperationRequirement.Manage;
+        { "admin", "other", true },
+        { "camp-admin", "other", true },
+        { "lead", "lead", true },          // Lead role holder
+        { "lead", "other", false },
+        { "workshop", "lead", true },      // Workshop role holder for the camp
+        { "workshop", "other", false },    // Workshop role holder, but not for THIS camp
+        { "regular", "lead", false },      // role holder for a non-Lead/Workshop role
+        { "anonymous", "lead", false },
+        { "invalid-id", "lead", false },
+    };
+
+    [HumansTheory]
+    [MemberData(nameof(SubmitEventCases))]
+    public async Task SubmitEvent_authorization_matches_expected_scenarios(
+        string userKind,
+        string campKind,
+        bool expected)
+    {
+        var regularUserId = Guid.NewGuid();
+        _campService.IsUserCampEventManagerAsync(regularUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var user = CreateUser(userKind, regularUserId);
+        var camp = CreateCamp(campKind);
+        var campLookup = CreateCampLookup(campKind);
+        var campId = camp.Id;
+
+        var result = await EvaluateAsync(user, camp, CampOperationRequirement.SubmitEvent);
+        var lookupResult = await EvaluateAsync(user, campLookup, CampOperationRequirement.SubmitEvent);
+        var idResult = await EvaluateAsync(user, campId, CampOperationRequirement.SubmitEvent);
+
+        result.Should().Be(expected);
+        lookupResult.Should().Be(expected);
+        idResult.Should().Be(expected);
+    }
+
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, object resource, CampOperationRequirement requirement)
+    {
         var context = new AuthorizationHandlerContext([requirement], user, resource);
 
         await _handler.HandleAsync(context);
@@ -100,6 +144,7 @@ public sealed class CampAuthorizationHandlerTests
             "admin" => CreateUserWithRoles(RoleNames.Admin),
             "camp-admin" => CreateUserWithRoles(RoleNames.CampAdmin),
             "lead" => CreateUserWithId(UserId),
+            "workshop" => CreateUserWithId(WorkshopUserId),
             "regular" => CreateUserWithId(regularUserId),
             "anonymous" => new ClaimsPrincipal(new ClaimsIdentity()),
             "invalid-id" => new ClaimsPrincipal(new ClaimsIdentity(
