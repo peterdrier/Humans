@@ -987,7 +987,7 @@ public sealed class GoogleWorkspaceSyncService(
         // group, auto-provisions it (with enforced settings) when missing, and
         // syncs membership. Returns a diff carrying the Google numeric id on
         // success — we use it to write the team-side GoogleResource row.
-        var diff = await googleGroupSync.ReconcileOneAsync(email, SyncAction.Execute, cancellationToken);
+        var diff = await googleGroupSync.ReconcileOneAsync(email, SyncAction.Execute, cancellationToken, scheduleRetries: false);
         if (string.IsNullOrEmpty(diff.GoogleId))
         {
             logger.LogWarning(
@@ -1821,21 +1821,8 @@ public sealed class GoogleWorkspaceSyncService(
     // Group settings helpers
     // ==========================================================================
 
-    private GroupSettingsExpected BuildExpectedGroupSettings() => new(
-        WhoCanJoin: _options.Groups.WhoCanJoin,
-        WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
-        WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
-        WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
-        WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
-        WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
-        AllowExternalMembers: _options.Groups.AllowExternalMembers,
-        IsArchived: true,
-        MembersCanPostAsTheGroup: true,
-        IncludeInGlobalAddressList: true,
-        AllowWebPosting: true,
-        MessageModerationLevel: "MODERATE_NONE",
-        SpamModerationLevel: "MODERATE",
-        EnableCollaborativeInbox: true);
+    private GroupSettingsExpected BuildExpectedGroupSettings() =>
+        GroupSettingsPolicy.BuildExpected(_options.Groups);
 
     private Dictionary<string, string> BuildExpectedSettingsDictionary()
     {

@@ -85,7 +85,8 @@ public sealed class GoogleGroupSyncService(
         string groupKey,
         SyncAction action,
         CancellationToken ct = default,
-        int retryAttempt = 0)
+        int retryAttempt = 0,
+        bool scheduleRetries = true)
     {
         var claims = await LoadClaimsAsync(groupKey, ct);
         var claim = claims.SingleOrDefault(c =>
@@ -111,7 +112,7 @@ public sealed class GoogleGroupSyncService(
             claim,
             action,
             resourcesByGroup.GetValueOrDefault(claim.GroupKey),
-            scheduleRetryOnFailure: action == SyncAction.Execute && retryAttempt < MaxScopedRetryAttempts,
+            scheduleRetryOnFailure: action == SyncAction.Execute && retryAttempt < MaxScopedRetryAttempts && scheduleRetries,
             nextRetryAttempt: retryAttempt + 1,
             expectedMembersByUserId: null,
             ct);
@@ -189,21 +190,7 @@ public sealed class GoogleGroupSyncService(
                     {
                         var settingsError = await provisioningClient.UpdateGroupSettingsAsync(
                             claim.GroupKey,
-                            new GroupSettingsExpected(
-                                WhoCanJoin: _options.Groups.WhoCanJoin,
-                                WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
-                                WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
-                                WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
-                                WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
-                                WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
-                                AllowExternalMembers: _options.Groups.AllowExternalMembers,
-                                IsArchived: true,
-                                MembersCanPostAsTheGroup: true,
-                                IncludeInGlobalAddressList: true,
-                                AllowWebPosting: true,
-                                MessageModerationLevel: "MODERATE_NONE",
-                                SpamModerationLevel: "MODERATE",
-                                EnableCollaborativeInbox: true),
+                            GroupSettingsPolicy.BuildExpected(_options.Groups),
                             ct);
                         if (settingsError is not null)
                         {
