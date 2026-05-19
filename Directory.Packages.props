@@ -35,7 +35,7 @@
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.74.0.4128" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.74.0.4030" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.74.0.4150" />
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.74.0.4135" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
