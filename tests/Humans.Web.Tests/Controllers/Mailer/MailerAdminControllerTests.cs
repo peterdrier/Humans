@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Mailer;
@@ -45,10 +46,12 @@ public class MailerAdminControllerTests
             userStore, null, null, null, null, null, null, null, null);
     }
 
-    private MailerAdminController BuildSut(ImportPlanCounts? snapshotCounts = null)
+    private MailerAdminController BuildSut(
+        ImportPlanCounts? snapshotCounts = null,
+        IEnumerable<IMailerAudience>? audiences = null)
     {
         var ctrl = new MailerAdminController(
-            _mlService, _importService, _audienceSync, [],
+            _mlService, _importService, _audienceSync, audiences ?? [],
             _userService, _prefs, _audit,
             NullLogger<MailerAdminController>.Instance);
 
@@ -322,6 +325,108 @@ public class MailerAdminControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
         await _importService.Received(1).ApplyAsync(freshPlan, 1, Arg.Any<CancellationToken>());
+    }
+
+    // -----------------------------------------------------------------------
+    // Debug — renders the per-audience debug VM with the five paged sections.
+    // -----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task Debug_RendersFiveSections_AndListsAvailableAudiencesInDropdown()
+    {
+        var memberId = Guid.NewGuid();
+        var audience = Substitute.For<IMailerAudience>();
+        audience.Key.Returns("ticket-no-shifts");
+        audience.DisplayName.Returns("Ticket holders without a shift");
+        audience.MailerLiteGroupName.Returns("Humans - Ticket no Shifts");
+        audience.ComputeMemberUserIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { memberId } as IReadOnlySet<Guid>);
+
+        var other = Substitute.For<IMailerAudience>();
+        other.Key.Returns("other-key");
+        other.DisplayName.Returns("Other Audience");
+        other.MailerLiteGroupName.Returns("Humans - Other");
+        other.ComputeMemberUserIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>() as IReadOnlySet<Guid>);
+
+        _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new MailerLiteGroup("g1", "Humans - Ticket no Shifts", Instant.FromUtc(2026, 1, 1, 0, 0), 0, 0, 0, 0, 0),
+            ]);
+        _mlService.ListSubscribersAsync(Arg.Any<CancellationToken>())
+            .Returns(EmptyAsync());
+
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
+                [MakeUserInfoWithPrimaryEmail(memberId, "member@example.com")]));
+
+        var ctrl = BuildSut(audiences: [audience, other]);
+
+        var result = await ctrl.Debug(
+            "ticket-no-shifts",
+            ct: CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<MailerAudienceDebugViewModel>(view.Model);
+
+        vm.SelectedKey.Should().Be("ticket-no-shifts");
+        vm.AvailableAudiences.Select(a => a.Key).Should().Equal("ticket-no-shifts", "other-key");
+        vm.Expected.Total.Should().Be(1);
+        vm.Expected.Rows[0].UserId.Should().Be(memberId);
+        vm.Expected.Rows[0].Email.Should().Be("member@example.com");
+        vm.ToAdd.Total.Should().Be(1, "member is expected but not yet in ML");
+        vm.ToRemove.Total.Should().Be(0);
+        vm.CurrentlyInMl.Total.Should().Be(0);
+        vm.NonPrimary.Total.Should().Be(0);
+        vm.GroupExists.Should().BeTrue();
+        vm.Options.PageSizes.Should().Equal(50, 100, 200);
+    }
+
+    [HumansFact]
+    public async Task Debug_UnknownAudienceKey_Returns404()
+    {
+        var ctrl = BuildSut(audiences: []);
+
+        var result = await ctrl.Debug("missing", ct: CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    private static UserInfo MakeUserInfoWithPrimaryEmail(Guid userId, string email)
+    {
+        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
+        return UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "Member",
+                PreferredLanguage = "en",
+                CreatedAt = now,
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+            },
+            userEmails: [new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Email = email,
+                IsVerified = true,
+                IsPrimary = true,
+                CreatedAt = now,
+                UpdatedAt = now,
+            }],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+    }
+
+    private static async IAsyncEnumerable<MailerLiteSubscriber> EmptyAsync()
+    {
+        await Task.CompletedTask;
+        yield break;
     }
 
     private static UserInfo MakeUserInfoWithContactSource(ContactSource source)

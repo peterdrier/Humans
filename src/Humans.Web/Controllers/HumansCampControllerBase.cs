@@ -58,4 +58,39 @@ public abstract class HumansCampControllerBase(
 
         return (Forbid(), user, camp);
     }
+
+    /// <summary>
+    /// Like <see cref="ResolveCampManagementAsync"/> but authorizes via
+    /// <see cref="ICampService.IsUserCampEventManagerAsync"/> — Lead OR Workshop
+    /// (plus CampAdmin/Admin). Used by <c>BarrioEventsController</c> so Workshop
+    /// Leads can submit camp events on behalf of their camp without inheriting
+    /// the broader Camp Lead authority surface.
+    /// </summary>
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampLookup Camp)> ResolveCampEventManagementAsync(string slug)
+    {
+        var camp = await GetCampBySlugAsync(slug);
+        if (camp is null)
+        {
+            return (NotFound(), null!, null!);
+        }
+
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return (currentUserError, null!, camp);
+        }
+
+        // CampAdmin / Admin retain blanket authority — same shape as the Manage handler.
+        if (Authorization.RoleChecks.IsCampAdmin(User))
+        {
+            return (null, user, camp);
+        }
+
+        if (await campService.IsUserCampEventManagerAsync(user.Id, camp.Id))
+        {
+            return (null, user, camp);
+        }
+
+        return (Forbid(), user, camp);
+    }
 }

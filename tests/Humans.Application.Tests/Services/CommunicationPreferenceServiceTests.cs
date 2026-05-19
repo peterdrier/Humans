@@ -3,11 +3,11 @@ using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using NSubstitute;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.AspNetCore.DataProtection;
@@ -15,7 +15,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services;
@@ -70,21 +69,13 @@ file sealed class StubAuditLogService : IAuditLogService
         Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 
-public class CommunicationPreferenceServiceTests : IDisposable
+public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CommunicationPreferenceService _service;
 
     public CommunicationPreferenceServiceTests()
+        : base(Instant.FromUtc(2026, 4, 1, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
-
         var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
 
         var emailSettings = Options.Create(new EmailSettings
@@ -92,8 +83,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
             BaseUrl = "https://test.example.com"
         });
 
-        var repository = new CommunicationPreferenceRepository(
-            new Infrastructure.TestDbContextFactory(options));
+        var repository = new CommunicationPreferenceRepository(DbFactory);
 
         var tokenProvider = new UnsubscribeTokenProvider(
             dataProtectionProvider, emailSettings,
@@ -107,7 +97,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
             .Returns(ci =>
             {
                 var userId = ci.Arg<Guid>();
-                var prefs = _dbContext.CommunicationPreferences
+                var prefs = Db.CommunicationPreferences
                     .Where(cp => cp.UserId == userId)
                     .ToList();
                 return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, prefs));
@@ -117,7 +107,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
             repository,
             userService,
             tokenProvider,
-            _clock,
+            Clock,
             new StubAuditLogService(),
             NullLogger<CommunicationPreferenceService>.Instance);
     }
@@ -141,12 +131,6 @@ public class CommunicationPreferenceServiceTests : IDisposable
             volunteerHistory: [],
             communicationPreferences: prefs);
 
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
     [HumansFact]
     public async Task GetPreferencesAsync_CreatesDefaultsForActiveCategories()
     {
@@ -162,7 +146,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         prefs.Should().NotContain(p => p.Category == MessageCategory.CommunityUpdates);
 
         // Rows should be persisted in the database
-        var dbCount = await _dbContext.CommunicationPreferences
+        var dbCount = await Db.CommunicationPreferences
             .Where(cp => cp.UserId == userId)
             .CountAsync();
         dbCount.Should().Be(8);
@@ -189,9 +173,9 @@ public class CommunicationPreferenceServiceTests : IDisposable
         await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true, source: "Test");
 
         // No rows should have been created (update was silently rejected)
-        var systemPref = await _dbContext.CommunicationPreferences
+        var systemPref = await Db.CommunicationPreferences
             .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.System);
-        var campaignPref = await _dbContext.CommunicationPreferences
+        var campaignPref = await Db.CommunicationPreferences
             .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.CampaignCodes);
 
         systemPref.Should().BeNull();

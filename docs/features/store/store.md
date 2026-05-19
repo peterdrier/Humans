@@ -100,6 +100,21 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 - Unmatched entries are flagged for Treasurer attention.
 - *Note: implementation of US-30.6 is paused alongside US-30.5.*
 
+### US-30.7: Admin Aggregate Summary (StoreAdmin / FinanceAdmin / Admin)
+
+**As** a `StoreAdmin`, `FinanceAdmin`, or `Admin`, **I want** a single page that aggregates a year's store activity across all camps, **so that** I can read top-line totals, spot under-paid camps, and audit per-product demand without opening order pages one by one.
+
+**Acceptance Criteria:**
+- `/Store/Admin/Summary` is gated by `PolicyNames.StoreCatalogAdmin` (the same policy as `/Store/Admin/Catalog` and `/Store/Admin/Orders`); volunteers receive 403/redirect.
+- Year selector at the top defaults to the active event year via `IShiftManagementService.GetActiveAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
+- Three projections render in this order, each as its own card:
+  - **By-camp** — one row per order with Camp / Label / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid.
+  - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year.
+  - **Cross-tab** — camps × products matrix with qty cells (blank for 0), row totals, column totals, grand total. Both axes alphabetical. Column totals are consistent with by-item totals.
+- Service surface: `IStoreService.GetStoreSummaryAsync(int year, CancellationToken)` returns a `StoreSummaryDto` composing the three projections. Replaces the earlier `GetAllOrderSummariesAsync` stub (no production callers existed).
+- Single repository round-trip via `IStoreRepository.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampService.GetCampSeasonDisplayDataForYearAsync` and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
+- Reachable from the admin nav under Money → "Store summary" (gated by the same policy so it stays hidden for non-admins).
+
 ## Data Model
 
 See [`docs/sections/Store.md`](../../sections/Store.md) for the full table schema. Summary:

@@ -4,12 +4,10 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
@@ -22,10 +20,8 @@ using Humans.Infrastructure.Repositories.Consent;
 
 namespace Humans.Application.Tests.Services;
 
-public class ConsentServiceTests : IDisposable
+public sealed class ConsentServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly ConsentService _service;
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
@@ -37,20 +33,14 @@ public class ConsentServiceTests : IDisposable
 
     public ConsentServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IMembershipCalculator)).Returns(_membershipCalculator);
-        serviceProvider.GetService(typeof(IShiftSignupService)).Returns(_shiftSignupService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_membershipCalculator)
+            .With(_shiftSignupService)
+            .Build();
 
         _legalDocumentSyncService
             .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => _dbContext.DocumentVersions
+            .Returns(callInfo => Db.DocumentVersions
                 .Include(v => v.LegalDocument)
                 .Where(v => v.Id == callInfo.ArgAt<Guid>(0))
                 .Select(v => new LegalDocumentVersionSnapshot(
@@ -75,7 +65,7 @@ public class ConsentServiceTests : IDisposable
                     return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)[];
 
 #pragma warning disable CS0618 // Test stub uses LegalDocument.Team to populate the snapshot's TeamName; production stitches via ITeamService.
-                var documents = await _dbContext.LegalDocuments
+                var documents = await Db.LegalDocuments
                     .AsNoTracking()
                     .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
                     .Include(d => d.Team)
@@ -86,8 +76,7 @@ public class ConsentServiceTests : IDisposable
 #pragma warning restore CS0618
             });
 
-        var factory = new TestDbContextFactory(options);
-        var consentRepository = new ConsentRepository(factory);
+        var consentRepository = new ConsentRepository(DbFactory);
 
         // Default: no merge tombstones — chain-follow short-circuits to the
         // single-id repo path.
@@ -107,8 +96,8 @@ public class ConsentServiceTests : IDisposable
                 FirstName = "First",
                 LastName = "Last",
                 State = ProfileState.Active,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant()
             }));
 
         _service = new ConsentService(
@@ -119,14 +108,8 @@ public class ConsentServiceTests : IDisposable
             _userService,
             serviceProvider,
             _metrics,
-            _clock,
+            Clock,
             NullLogger<ConsentService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
@@ -157,13 +140,13 @@ public class ConsentServiceTests : IDisposable
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "192.168.1.1", "TestAgent");
 
         result.Success.Should().BeTrue();
-        var record = await _dbContext.ConsentRecords.FirstAsync();
+        var record = await Db.ConsentRecords.FirstAsync();
         record.UserId.Should().Be(userId);
         record.DocumentVersionId.Should().Be(versionId);
         record.IpAddress.Should().Be("192.168.1.1");
         record.UserAgent.Should().Be("TestAgent");
         record.ExplicitConsent.Should().BeTrue();
-        record.ConsentedAt.Should().Be(_clock.GetCurrentInstant());
+        record.ConsentedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -175,7 +158,7 @@ public class ConsentServiceTests : IDisposable
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
-        var record = await _dbContext.ConsentRecords.FirstAsync();
+        var record = await Db.ConsentRecords.FirstAsync();
         var expectedHash = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes("Spanish text"))).ToLowerInvariant();
         record.ContentHash.Should().Be(expectedHash);
@@ -187,18 +170,18 @@ public class ConsentServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        _dbContext.ConsentRecords.Add(new ConsentRecord
+        Db.ConsentRecords.Add(new ConsentRecord
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             DocumentVersionId = versionId,
-            ConsentedAt = _clock.GetCurrentInstant(),
+            ConsentedAt = Clock.GetCurrentInstant(),
             IpAddress = "127.0.0.1",
             UserAgent = "Agent",
             ContentHash = "abc",
             ExplicitConsent = true
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -225,7 +208,7 @@ public class ConsentServiceTests : IDisposable
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", longAgent);
 
-        var record = await _dbContext.ConsentRecords.FirstAsync();
+        var record = await Db.ConsentRecords.FirstAsync();
         record.UserAgent.Should().HaveLength(500);
     }
 
@@ -332,8 +315,8 @@ public class ConsentServiceTests : IDisposable
             FirstName = "",
             LastName = "",
             State = ProfileState.Stub,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(stubProfile));
@@ -342,7 +325,7 @@ public class ConsentServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("StubProfile");
-        (await _dbContext.ConsentRecords.CountAsync()).Should().Be(0);
+        (await Db.ConsentRecords.CountAsync()).Should().Be(0);
     }
 
     [HumansFact]
@@ -360,8 +343,8 @@ public class ConsentServiceTests : IDisposable
             FirstName = "First",
             LastName = "Last",
             State = ProfileState.Active,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(activeProfile));
@@ -369,7 +352,7 @@ public class ConsentServiceTests : IDisposable
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
         result.Success.Should().BeTrue();
-        (await _dbContext.ConsentRecords.CountAsync()).Should().Be(1);
+        (await Db.ConsentRecords.CountAsync()).Should().Be(1);
     }
 
     // --- GetConsentDashboardAsync ---
@@ -387,7 +370,7 @@ public class ConsentServiceTests : IDisposable
         SeedTeam(teamId2, "Team B");
         SeedDocument(teamId1, "Doc A");
         SeedDocument(teamId2, "Doc B");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
@@ -405,7 +388,7 @@ public class ConsentServiceTests : IDisposable
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Active Doc");
         SeedDocument(teamId, "Inactive Doc", isActive: false);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
@@ -418,7 +401,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { teamId });
 
@@ -426,7 +409,7 @@ public class ConsentServiceTests : IDisposable
         var docId = Guid.NewGuid();
         var olderVersionId = Guid.NewGuid();
         var newerVersionId = Guid.NewGuid();
-        _dbContext.LegalDocuments.Add(new LegalDocument
+        Db.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = "Versioned Doc",
@@ -437,7 +420,7 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = now,
             LastSyncedAt = now
         });
-        _dbContext.DocumentVersions.Add(new DocumentVersion
+        Db.DocumentVersions.Add(new DocumentVersion
         {
             Id = olderVersionId,
             LegalDocumentId = docId,
@@ -447,7 +430,7 @@ public class ConsentServiceTests : IDisposable
             Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
             CreatedAt = now
         });
-        _dbContext.DocumentVersions.Add(new DocumentVersion
+        Db.DocumentVersions.Add(new DocumentVersion
         {
             Id = newerVersionId,
             LegalDocumentId = docId,
@@ -457,7 +440,7 @@ public class ConsentServiceTests : IDisposable
             Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "new" },
             CreatedAt = now
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
@@ -477,7 +460,7 @@ public class ConsentServiceTests : IDisposable
         SeedTeam(teamId, "Team");
         var versionId = SeedDocument(teamId, "Doc");
         SeedConsentRecord(userId, versionId);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
@@ -495,7 +478,7 @@ public class ConsentServiceTests : IDisposable
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Doc");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
@@ -508,7 +491,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { teamId });
 
@@ -517,7 +500,7 @@ public class ConsentServiceTests : IDisposable
         var v2 = SeedDocument(teamId, "Doc B");
         SeedConsentRecord(userId, v1, now - Duration.FromHours(2));
         SeedConsentRecord(userId, v2, now - Duration.FromHours(1));
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (_, history) = await _service.GetConsentDashboardAsync(userId);
 
@@ -530,13 +513,13 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { teamId });
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Future Doc", effectiveFrom: now + Duration.FromDays(30));
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
@@ -574,11 +557,11 @@ public class ConsentServiceTests : IDisposable
             BurnerName = "Test",
             FirstName = "Jane",
             LastName = "Doe",
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
@@ -601,11 +584,11 @@ public class ConsentServiceTests : IDisposable
             BurnerName = "Test",
             FirstName = "Jane",
             LastName = "Doe",
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
@@ -651,7 +634,7 @@ public class ConsentServiceTests : IDisposable
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         SeedConsentRecord(sourceId, versionId);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Target's chain-follow set includes the source.
         _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
@@ -673,27 +656,12 @@ public class ConsentServiceTests : IDisposable
 
     // --- Helpers ---
 
-    private Team SeedTeam(Guid teamId, string name)
-    {
-        var team = new Team
-        {
-            Id = teamId,
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(' ', '-'),
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Teams.Add(team);
-        return team;
-    }
-
     private Guid SeedDocument(Guid teamId, string name, bool isActive = true, bool isRequired = true, Instant? effectiveFrom = null)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         var docId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        _dbContext.LegalDocuments.Add(new LegalDocument
+        Db.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = name,
@@ -704,7 +672,7 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = now,
             LastSyncedAt = now
         });
-        _dbContext.DocumentVersions.Add(new DocumentVersion
+        Db.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = docId,
@@ -719,13 +687,13 @@ public class ConsentServiceTests : IDisposable
 
     private void SeedConsentRecord(Guid userId, Guid versionId, Instant? consentedAt = null)
     {
-        _dbContext.ConsentRecords.Add(new ConsentRecord
+        Db.ConsentRecords.Add(new ConsentRecord
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             DocumentVersionId = versionId,
             ExplicitConsent = true,
-            ConsentedAt = consentedAt ?? _clock.GetCurrentInstant(),
+            ConsentedAt = consentedAt ?? Clock.GetCurrentInstant(),
             IpAddress = "127.0.0.1",
             UserAgent = "test",
             ContentHash = "testhash"
@@ -735,17 +703,17 @@ public class ConsentServiceTests : IDisposable
     private void SeedDocumentVersion(Guid versionId, string documentName, Dictionary<string, string> content)
     {
         var teamId = Guid.NewGuid();
-        _dbContext.Teams.Add(new Team
+        Db.Teams.Add(new Team
         {
             Id = teamId,
             Name = "Volunteers",
             Slug = "volunteers",
             IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         });
         var docId = Guid.NewGuid();
-        _dbContext.LegalDocuments.Add(new LegalDocument
+        Db.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = documentName,
@@ -753,19 +721,19 @@ public class ConsentServiceTests : IDisposable
             IsRequired = true,
             IsActive = true,
             CurrentCommitSha = "abc123",
-            CreatedAt = _clock.GetCurrentInstant(),
-            LastSyncedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            LastSyncedAt = Clock.GetCurrentInstant()
         });
-        _dbContext.DocumentVersions.Add(new DocumentVersion
+        Db.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = docId,
             VersionNumber = "1.0",
             CommitSha = "abc123",
             Content = content,
-            EffectiveFrom = _clock.GetCurrentInstant() - Duration.FromDays(1),
-            CreatedAt = _clock.GetCurrentInstant()
+            EffectiveFrom = Clock.GetCurrentInstant() - Duration.FromDays(1),
+            CreatedAt = Clock.GetCurrentInstant()
         });
-        _dbContext.SaveChanges();
+        Db.SaveChanges();
     }
 }

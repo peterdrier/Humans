@@ -11,13 +11,11 @@ using Humans.Application.Services.Tickets;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
@@ -29,11 +27,8 @@ namespace Humans.Application.Tests.Services;
 /// the vendor; the service must fall back to the existing local row's parent,
 /// or skip with a warning when no local row exists.
 /// </summary>
-public class TicketSyncServiceNullOrderTests : IDisposable
+public sealed class TicketSyncServiceNullOrderTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly TestDbContextFactory _factory;
-    private readonly FakeClock _clock;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
@@ -44,13 +39,6 @@ public class TicketSyncServiceNullOrderTests : IDisposable
 
     public TicketSyncServiceNullOrderTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _factory = new TestDbContextFactory(options);
-        _dbContext = _factory.CreateDbContext();
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _vendorService = Substitute.For<ITicketVendorService>();
 
         var settings = Options.Create(new TicketVendorSettings
@@ -67,14 +55,14 @@ public class TicketSyncServiceNullOrderTests : IDisposable
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IShiftManagementService>();
 
-        _ticketRepository = new TicketRepository(_factory);
+        _ticketRepository = new TicketRepository(DbFactory);
 
         _service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(_factory),
+            new TicketTransferRepository(DbFactory),
             _vendorService,
             _stripeService,
-            _clock,
+            Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
             Substitute.For<ITicketCacheInvalidator>(),
@@ -83,19 +71,13 @@ public class TicketSyncServiceNullOrderTests : IDisposable
             _shiftManagementService);
 
         // Seed the singleton TicketSyncState row (required by the service)
-        _dbContext.TicketSyncStates.Add(new TicketSyncState
+        Db.TicketSyncStates.Add(new TicketSyncState
         {
             Id = 1,
             SyncStatus = TicketSyncStatus.Idle,
             VendorEventId = string.Empty
         });
-        _dbContext.SaveChanges();
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        Db.SaveChanges();
     }
 
     // ==========================================================================
@@ -125,7 +107,7 @@ public class TicketSyncServiceNullOrderTests : IDisposable
             PurchasedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             SyncedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         };
-        _dbContext.TicketOrders.Add(parentOrder);
+        Db.TicketOrders.Add(parentOrder);
 
         var existingAttendeeId = Guid.NewGuid();
         var existingAttendee = new TicketAttendee
@@ -141,8 +123,8 @@ public class TicketSyncServiceNullOrderTests : IDisposable
             VendorEventId = "ev_test_123",
             SyncedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         };
-        _dbContext.TicketAttendees.Add(existingAttendee);
-        await _dbContext.SaveChangesAsync();
+        Db.TicketAttendees.Add(existingAttendee);
+        await Db.SaveChangesAsync();
 
         // Vendor returns the same ticket, but now with null VendorOrderId
         // (as happens when TT returns API-issued tickets with no order association).
@@ -166,7 +148,7 @@ public class TicketSyncServiceNullOrderTests : IDisposable
         // Assert — the attendee row was upserted (not skipped)
         result.AttendeesSynced.Should().Be(1);
 
-        var dbAttendees = await _dbContext.TicketAttendees.AsNoTracking().ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync();
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].VendorTicketId.Should().Be("tkt_api_issued");
         dbAttendees[0].AttendeeName.Should().Be("Bob Recipient Updated");
@@ -206,7 +188,7 @@ public class TicketSyncServiceNullOrderTests : IDisposable
         // Assert — skipped; no attendee rows written
         result.AttendeesSynced.Should().Be(0);
 
-        var dbAttendees = await _dbContext.TicketAttendees.AsNoTracking().ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync();
         dbAttendees.Should().BeEmpty();
     }
 
@@ -260,11 +242,11 @@ public class TicketSyncServiceNullOrderTests : IDisposable
         result.OrdersSynced.Should().Be(1);
         result.AttendeesSynced.Should().Be(1);
 
-        var dbAttendees = await _dbContext.TicketAttendees.AsNoTracking().ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync();
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].VendorTicketId.Should().Be("tkt_normal");
 
-        var dbOrders = await _dbContext.TicketOrders.AsNoTracking().ToListAsync();
+        var dbOrders = await Db.TicketOrders.AsNoTracking().ToListAsync();
         dbOrders.Should().ContainSingle();
         dbOrders[0].VendorOrderId.Should().Be("ord_normal");
     }

@@ -1,27 +1,33 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Search;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Microsoft.Extensions.Configuration;
 
 namespace Humans.Application.Services.Search;
 
 /// <summary>
-/// Names-only search orchestrator: each section runs its own ILike, this scores hits and returns four buckets (unsorted).
+/// Names-only search orchestrator: each section runs its own ILike, this scores hits and returns five buckets (unsorted).
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
 public sealed class SearchService(
     IUserService userService,
     ITeamService teamService,
     ICampService campService,
-    IShiftManagementService shiftService) : ISearchService
+    IShiftManagementService shiftService,
+    IEventService eventService,
+    IConfiguration configuration) : ISearchService
 {
     // Name-match scoring: exact > prefix > contains.
     private const int ScoreExactName = 100;
     private const int ScorePrefixName = 80;
     private const int ScoreContainsName = 60;
+
+    private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");
 
     public async Task<GlobalSearchResults> SearchAsync(
         string query,
@@ -34,6 +40,7 @@ public sealed class SearchService(
         {
             return new GlobalSearchResults(
                 trimmed,
+                [],
                 [],
                 [],
                 [],
@@ -52,8 +59,11 @@ public sealed class SearchService(
         var shifts = onlyType is null or SearchResultType.Shift
             ? await SearchShiftsAsync(trimmed, perTypeLimit, ct)
             : Array.Empty<GlobalSearchResult>();
+        var events = _eventsFeatureEnabled && onlyType is null or SearchResultType.Event
+            ? await SearchEventsAsync(trimmed, perTypeLimit, ct)
+            : Array.Empty<GlobalSearchResult>();
 
-        return new GlobalSearchResults(trimmed, humans, teams, camps, shifts);
+        return new GlobalSearchResults(trimmed, humans, teams, camps, shifts, events);
     }
 
     private async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
@@ -110,6 +120,34 @@ public sealed class SearchService(
                 Url: $"/Shifts?departmentId={r.TeamId}",
                 Score: isGuidQuery ? ScoreExactName : ScoreNameField(r.Name, query)))
             .Where(r => r.Score > 0)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<GlobalSearchResult>> SearchEventsAsync(
+        string query, int limit, CancellationToken ct)
+    {
+        // Reuse the public Browse query — Approved-only, filtered server-side by title/description.
+        // We re-score on Title here so the global "exact > prefix > contains" rubric still ranks the
+        // bucket; rows that only matched via Description fall through to a contains score so they
+        // still appear (matches what users expect from event search, which is more free-form than
+        // the other entity types).
+        var hits = await eventService.GetApprovedEventsAsync(
+            campId: null, venueId: null, categoryId: null,
+            q: query, excludedSlugs: Array.Empty<string>(), ct);
+
+        return hits
+            .Select(e =>
+            {
+                var titleScore = ScoreNameField(e.Title, query);
+                return new GlobalSearchResult(
+                    Type: SearchResultType.Event,
+                    Title: e.Title,
+                    Subtitle: e.Category?.Name ?? string.Empty,
+                    Url: $"/Events/Browse?q={Uri.EscapeDataString(e.Title)}",
+                    Score: titleScore > 0 ? titleScore : ScoreContainsName);
+            })
+            .OrderByDescending(r => r.Score) // arch:db-sort-ok top-N relevance selector
+            .Take(limit)
             .ToList();
     }
 

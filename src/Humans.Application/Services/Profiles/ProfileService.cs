@@ -63,6 +63,15 @@ public sealed class ProfileService(IProfileRepository profileRepository,
             var existing = await profileRepository.GetByUserIdAsync(userId, ct);
             if (existing is not null) return;
 
+            var info = await userService.GetUserInfoAsync(userId, ct);
+            if (info is { IsTombstone: true })
+            {
+                logger.LogError(
+                    "EnsureStubProfileAsync called for tombstone user {UserId} (MergedAt={MergedAt}) — refusing to create Stub Profile",
+                    userId, info.MergedAt);
+                return;
+            }
+
             var now = clock.GetCurrentInstant();
             var profile = new Profile
             {

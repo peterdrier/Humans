@@ -2,42 +2,32 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Legal;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Legal;
 
 namespace Humans.Application.Tests.Services;
 
-public class AdminLegalDocumentServiceTests : IDisposable
+public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly ILegalDocumentRepository _repository;
-    private readonly FakeClock _clock;
     private readonly FakeLegalDocumentSyncService _syncService;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly AdminLegalDocumentService _service;
     private readonly Team _team;
 
     public AdminLegalDocumentServiceTests()
+        : base(Instant.FromUtc(2026, 2, 15, 18, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _factory = new FakeDbContextFactory(options);
-        _repository = new LegalDocumentRepository(_factory);
-        _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 18, 0));
+        _repository = new LegalDocumentRepository(DbFactory);
         _syncService = new FakeLegalDocumentSyncService();
 
         _team = new Team
@@ -47,12 +37,12 @@ public class AdminLegalDocumentServiceTests : IDisposable
             Slug = "volunteers",
             IsActive = true,
             SystemTeamType = SystemTeamType.None,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
 
-        _dbContext.Teams.Add(_team);
-        _dbContext.SaveChanges();
+        Db.Teams.Add(_team);
+        Db.SaveChanges();
 
         // Team-name stitch: return the seed team when queried.
         _teamService
@@ -76,13 +66,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
                 Repository = "repo",
                 Branch = "main"
             }),
-            _clock);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+            Clock);
     }
 
     [HumansFact]
@@ -167,23 +151,23 @@ public class AdminLegalDocumentServiceTests : IDisposable
         var document = await SeedDocumentAsync("Code of Conduct");
         var versionId = Guid.NewGuid();
 
-        _dbContext.DocumentVersions.Add(new DocumentVersion
+        Db.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = document.Id,
             VersionNumber = "v1",
             CommitSha = "abc123",
-            EffectiveFrom = _clock.GetCurrentInstant(),
-            CreatedAt = _clock.GetCurrentInstant()
+            EffectiveFrom = Clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var updated = await _service.UpdateVersionSummaryAsync(document.Id, versionId, "  Clarified scope  ");
 
         // Repository created its own DbContext via the factory; read the
         // refreshed value through a fresh context rather than the test's
         // change-tracker-polluted one.
-        await using var verifyCtx = _factory.CreateDbContext();
+        await using var verifyCtx = DbFactory.CreateDbContext();
         var version = await verifyCtx.DocumentVersions
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == versionId);
@@ -217,19 +201,13 @@ public class AdminLegalDocumentServiceTests : IDisposable
             GracePeriodDays = 0,
             CurrentCommitSha = "seed",
             GitHubFolderPath = $"{name.ToLowerInvariant()}/",
-            CreatedAt = _clock.GetCurrentInstant(),
-            LastSyncedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            LastSyncedAt = Clock.GetCurrentInstant()
         };
 
-        _dbContext.LegalDocuments.Add(document);
-        await _dbContext.SaveChangesAsync();
+        Db.LegalDocuments.Add(document);
+        await Db.SaveChangesAsync();
         return document;
-    }
-
-    private sealed class FakeDbContextFactory(DbContextOptions<HumansDbContext> options)
-        : IDbContextFactory<HumansDbContext>
-    {
-        public HumansDbContext CreateDbContext() => new(options);
     }
 
     private sealed class FakeLegalDocumentSyncService : ILegalDocumentSyncService

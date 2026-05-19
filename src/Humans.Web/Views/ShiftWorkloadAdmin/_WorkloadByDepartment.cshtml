@@ -28,7 +28,16 @@
                     ? (decimal)row.FilledSlots * 100m / row.PlannedSlots
                     : 0m;
                 <tr>
-                    <td data-value="@row.TeamName">@row.TeamName</td>
+                    <td data-value="@row.TeamName">
+                        @if (!string.IsNullOrEmpty(row.TeamSlug))
+                        {
+                            <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@row.TeamSlug">@row.TeamName</a>
+                        }
+                        else
+                        {
+                            @row.TeamName
+                        }
+                    </td>
                     <td class="text-end" data-value="@row.RotaCount">@row.RotaCount</td>
                     <td class="text-end" data-value="@row.ShiftCount">@row.ShiftCount</td>
                     <td class="text-end" data-value="@row.PlannedSlots">@row.PlannedSlots</td>

@@ -729,6 +729,13 @@ public class VolunteerTrackingServiceTests
             => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
                 BuildStatuses.Where(b => b.EventSettingsId == eventSettingsId).ToList());
 
+        public Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
+            IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
+                BuildStatuses
+                    .Where(b => b.EventSettingsId == eventSettingsId && userIds.Contains(b.UserId))
+                    .ToList());
+
         public Task<IReadOnlyList<int>> UpsertCampSetupAsync(
             Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
             string? notes, Guid? setByUserId, Instant? setAt,

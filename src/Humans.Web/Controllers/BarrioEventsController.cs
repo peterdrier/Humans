@@ -30,7 +30,7 @@ public class BarrioEventsController(
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug)
     {
-        var (error, _, camp) = await ResolveCampManagementAsync(slug);
+        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
         var guideSettings = await guide.GetGuideSettingsAsync();
@@ -60,7 +60,7 @@ public class BarrioEventsController(
                 Status = e.Status,
                 PriorityRank = e.PriorityRank,
                 CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
-                CanWithdraw = e.Status == EventStatus.Pending
+                CanWithdraw = e.Status is EventStatus.Pending or EventStatus.Approved
             }).ToList()
         };
 
@@ -70,7 +70,7 @@ public class BarrioEventsController(
     [HttpGet("New")]
     public async Task<IActionResult> New(string slug)
     {
-        var (error, _, camp) = await ResolveCampManagementAsync(slug);
+        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
         var guideSettings = await guide.GetGuideSettingsAsync();
@@ -90,7 +90,7 @@ public class BarrioEventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string slug, CampEventFormViewModel model)
     {
-        var (error, user, camp) = await ResolveCampManagementAsync(slug);
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
         var guideSettings = await guide.GetGuideSettingsAsync();
@@ -157,7 +157,7 @@ public class BarrioEventsController(
     [HttpGet("{eventId:guid}/Edit")]
     public async Task<IActionResult> Edit(string slug, Guid eventId)
     {
-        var (error, _, camp) = await ResolveCampManagementAsync(slug);
+        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
@@ -202,7 +202,7 @@ public class BarrioEventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(string slug, Guid eventId, CampEventFormViewModel model)
     {
-        var (error, user, camp) = await ResolveCampManagementAsync(slug);
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
@@ -259,13 +259,13 @@ public class BarrioEventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(string slug, Guid eventId)
     {
-        var (error, user, camp) = await ResolveCampManagementAsync(slug);
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status != EventStatus.Pending)
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Approved))
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(Index), new { slug });

@@ -137,7 +137,7 @@ Unique constraint on (UserId, GuideEventId).
 | Controller | Route prefix | Audience |
 |-----------|--------------|----------|
 | `EventGuideController` | `/Events/` | All active members |
-| `CampEventsController` | `/Barrios/{slug}/Events/` | Barrio coordinators |
+| `BarrioEventsController` | `/Barrios/{slug}/Events/` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
 | `ModerationController` | `/Events/Moderate/` | GuideModerator, Admin |
 | `EventGuideDashboardController` | `/Events/Dashboard/` | GuideModerator, Admin |
 | `EventGuideExportController` | `/Events/Export/` | GuideModerator, Admin |
@@ -149,7 +149,7 @@ Unique constraint on (UserId, GuideEventId).
 | Actor | Capabilities |
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
-| Barrio coordinator (CampAdmin role) | Submit events on behalf of their barrio |
+| Camp Lead or Workshop Lead | Submit events on behalf of their camp via `BarrioEventsController` (`/Barrios/{slug}/Events/*`); authority resolved by `ICampService.IsUserCampEventManagerAsync` (Lead OR Workshop OR CampAdmin / Admin). Workshop Leads do NOT gain general camp-management authority. |
 | GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
 
 ## Invariants
@@ -179,7 +179,7 @@ Unique constraint on (UserId, GuideEventId).
 ## Cross-Section Dependencies
 
 - **Users**: controllers call `IUserService.GetUserInfoAsync(userId)` for submitter display name and email (replaces the dropped `Event.SubmitterUser` navigation). `UserManager<User>` (Identity) still resolves the current user.
-- **Camps**: controllers call `ICampService.GetCampsForYearAsync(year)` to resolve camp display data per event (replaces the dropped `Event.Camp` navigation). `Event.CampId` remains a bare FK column.
+- **Camps**: controllers call `ICampService.GetCampsForYearAsync(year)` to resolve camp display data per event (replaces the dropped `Event.Camp` navigation). `Event.CampId` remains a bare FK column. Camp-event submission authority on `BarrioEventsController` is sourced from `ICampService.IsUserCampEventManagerAsync` — the Lead OR Workshop OR-check that consumes `CampRoleAssignment` rows whose `CampRoleDefinition.SpecialRole` is `Lead` or `Workshop` (issue nobodies-collective/Humans#753). Moderation authority remains global (GuideModerator / Admin) — no camp-scoped moderation.
 - **Shifts (burn settings)** — `EventGuideSettings.EventSettings` navigation was dropped along with the cross-section FK. The Events section reads the linked burn (`event_settings` row owned by Shifts) via `IBurnSettingsService.GetByIdAsync(EventGuideSettings.EventSettingsId)`, which returns a `BurnSettingsInfo` DTO (identity, timezone, gate-opening date, build-calendar offsets, EE capacity) — the Shifts-internal entity never crosses the section boundary. Issue [#719](https://github.com/nobodies-collective/Humans/issues/719).
 - **Email**: `IEmailService` for moderation outcome notifications.
 

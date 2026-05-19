@@ -235,7 +235,15 @@ public interface ITicketRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Returns distinct <c>MatchedUserId</c> values for attendees in
+    /// <c>Valid</c> or <c>CheckedIn</c> state whose owning order's
+    /// <c>VendorEventId</c> equals <paramref name="vendorEventId"/>. Used by
+    /// audience-side ticket-holder enumeration and the dashboard volunteer
+    /// coverage stat — both want "current event" semantics.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsForEventAsync(
+        string vendorEventId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Guid>> GetAllMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
 

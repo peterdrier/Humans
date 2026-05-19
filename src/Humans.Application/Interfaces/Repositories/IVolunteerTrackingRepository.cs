@@ -22,6 +22,14 @@ public interface IVolunteerTrackingRepository : IRepository
         Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns <see cref="VolunteerBuildStatus"/> rows for the supplied user
+    /// ids in the given event, in one query. Read-only. Backs the bulk path
+    /// on <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
     /// Upsert (UserId, EventSettingsId): mutate or insert the row's camp set-up
     /// fields and, in the same save, optionally trim day-off entries that the
     /// new camp-setup span newly covers.

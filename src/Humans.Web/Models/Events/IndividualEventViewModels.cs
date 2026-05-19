@@ -50,7 +50,7 @@ public class IndividualEventFormViewModel
     public string Title { get; set; } = string.Empty;
 
     [Required]
-    [MaxLength(300)]
+    [MaxLength(450)]
     public string Description { get; set; } = string.Empty;
 
     [Required]

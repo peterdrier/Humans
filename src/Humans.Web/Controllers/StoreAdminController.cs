@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.Models.Store;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -32,6 +33,17 @@ public class StoreAdminController(
             .ThenBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
         return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
+    }
+
+    [HttpGet("Summary")]
+    public async Task<IActionResult> Summary(int? year, CancellationToken ct)
+    {
+        var activeEvent = await shifts.GetActiveAsync();
+        var defaultYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var selectedYear = year ?? defaultYear;
+
+        var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
+        return View(new StoreSummaryViewModel { Summary = summary });
     }
 
     [HttpGet("Catalog/Edit")]

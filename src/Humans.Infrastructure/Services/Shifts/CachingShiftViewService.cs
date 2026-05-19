@@ -17,16 +17,16 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// <see cref="IServiceScopeFactory"/> and lazily populate the cache.
 /// </summary>
 /// <remarks>
-/// This decorator owns two caches with different value types, so it composes
-/// <see cref="TrackedCache{TKey,TValue}"/> rather than inheriting it. The two
-/// caches are exposed via <see cref="UserCacheStats"/> / <see cref="RotaCacheStats"/>
-/// and registered as <see cref="ICacheStats"/> in DI so /Admin/CacheStats can
-/// surface their counters.
-///
+/// This decorator only ever talks to its inner <see cref="IShiftView"/>; it
+/// never reaches sideways into repositories or sibling services. Single-id
+/// misses delegate to <see cref="IShiftView.GetUserAsync"/>; batch reads
+/// gather all cache-misses into one <see cref="IShiftView.GetUsersAsync"/>
+/// call so a cold /Admin first-hit collapses to one inner round-trip per
+/// surface, not N (issue #720).
 /// <para>
-/// Cold-build strategy: lazy per-key. No startup warmup — at ~500-user scale
-/// the first-touch cost is acceptable, and a warm path can be added later if
-/// measurements call for it (issue #720, open Q 2).
+/// The two caches are exposed via <see cref="UserCacheStats"/> /
+/// <see cref="RotaCacheStats"/> and registered as <see cref="ICacheStats"/>
+/// in DI so /Admin/CacheStats can surface their counters.
 /// </para>
 /// </remarks>
 public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)
@@ -59,16 +59,42 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
         return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, ct));
     }
 
+    /// <summary>
+    /// Batches all cache-misses into a single <see cref="IShiftView.GetUsersAsync"/>
+    /// call on the inner — the inner is responsible for bulk-loading every
+    /// contributing table in one round-trip per table. This is the hot path
+    /// for /Admin first-hit (set-membership across ~500 users); a per-id
+    /// fan-out here is what made the page slow before issue #720.
+    /// </summary>
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         var ids = userIds as IList<Guid> ?? userIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, ShiftUserView>();
+
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
+        List<Guid>? misses = null;
         foreach (var id in ids)
         {
-            if (!result.ContainsKey(id))
-                result[id] = await GetUserAsync(id, ct).ConfigureAwait(false);
+            if (_userCache.TryGet(id, out var hit))
+                result[id] = hit;
+            else
+                (misses ??= []).Add(id);
         }
+
+        if (misses is not null)
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
+            var loaded = await inner.GetUsersAsync(misses, ct).ConfigureAwait(false);
+            foreach (var (id, view) in loaded)
+            {
+                _userCache.Set(id, view);
+                result[id] = view;
+            }
+        }
+
         return result;
     }
 
@@ -161,11 +187,9 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
 
     // ==========================================================================
     // IHostedService — composition forces the decorator to own this directly
-    // (can't multi-inherit TrackedCache). Today both inner caches are
-    // lazy-per-key, so StartAsync is a no-op; the surface exists so DI
-    // registration parallels CachingUserService / CachingTeamService and so
-    // any future warmup strategy plugs in here rather than as a separate
-    // hosted service.
+    // (can't multi-inherit TrackedCache). No startup warm-up: misses go through
+    // the inner's batch path, which collapses a cold /Admin first-hit to a
+    // fixed number of bulk inner reads.
     // ==========================================================================
 
     Task IHostedService.StartAsync(CancellationToken ct) => Task.CompletedTask;

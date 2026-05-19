@@ -170,7 +170,7 @@ Stored as int via `HasConversion<int>()`.
 - `/Store/Admin/Catalog/Save` — POST save product.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
 - `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice. **Not yet implemented (Phase 5 stub).**
-- `/Store/Summary` — FinanceAdmin per-camp + per-item summary. **Not yet implemented (Phase 5 stub).**
+- `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-camp, by-item, camps × products cross-tab for a given year. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
 
 ## Actors & Roles
@@ -245,4 +245,4 @@ The Store section uses `IStripeService` (Application-layer abstraction; Infrastr
 - **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
 - **Architecture test:** none yet. `tests/Humans.Application.Tests/Architecture/StoreArchitectureTests.cs` is not present — gap to fill in a follow-up.
 
-Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, and Stripe payment recording are live. `RecordManualPaymentAsync`, `IssueInvoiceAsync`, `GetAllOrderSummariesAsync`, treasury sync, and the Orders/Summary admin views throw `NotSupportedException("Phase 5")`. See `docs/superpowers/specs/2026-04-30-store-section-design.md` and `docs/superpowers/plans/2026-04-30-store-section.md`.
+Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, and Stripe payment recording are live. `RecordManualPaymentAsync`, `IssueInvoiceAsync`, treasury sync, and the Orders admin view throw `NotSupportedException("Phase 5")`. See `docs/superpowers/specs/2026-04-30-store-section-design.md` and `docs/superpowers/plans/2026-04-30-store-section.md`.

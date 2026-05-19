@@ -14,7 +14,7 @@
 
 ## Business Context
 
-Members regularly want to find a person, team, camp, or shift without first guessing which list page to start from. As membership grows and camps/teams multiply, the friction of "which area do I look in?" gets worse. A single magnifying-glass entry point in the top nav routes to `/Search`, which fans out across the four searchable sections and renders type-grouped results.
+Members regularly want to find a person, team, camp, shift, or event without first guessing which list page to start from. As membership grows and camps/teams multiply, the friction of "which area do I look in?" gets worse. A single magnifying-glass entry point in the top nav routes to `/Search`, which fans out across the searchable sections and renders type-grouped results. The Events bucket is only included when the `Features:Events` flag is on (it gates the section's nav and routes the same way).
 
 The feature is deliberately scoped to **name-only matching**. Earlier drafts proposed cross-modal pull-ins (a person → their teams; a team → its rotas) and a unified ranked list, but those were dropped:
 
@@ -39,11 +39,11 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 **So that** I can jump to the right entity without remembering which list page owns it
 
 **Acceptance Criteria:**
-- `/Search?q=<query>` returns four type-grouped sections: Humans, Teams, Camps, Shifts.
+- `/Search?q=<query>` returns type-grouped sections: Humans, Teams, Camps, Shifts, and (when `Features:Events` is enabled) Events.
 - Each section is independently ranked by score within itself; no cross-type ranking.
 - Each section is capped at 10 results in the unified view; 50 when a single-type filter chip is active.
-- Each result clearly shows its type via section header + icon, and links to the canonical detail page.
-- Per-type filter chips (All | Humans | Teams | Camps | Shifts) hide the other sections and bump the cap.
+- Each result clearly shows its type via section header + icon, and links to the canonical detail page (for Events, the link is `/Events/Browse?q=<title>` — there is no per-event detail page).
+- Per-type filter chips (All | Humans | Teams | Camps | Shifts | Events) hide the other sections and bump the cap. The Events chip is hidden when `Features:Events` is off.
 - A query with no matches renders "No results for <query>." (not 500).
 
 ### US-GS.3: Match by the right fields
@@ -56,6 +56,7 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
+- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to names-only: the orchestrator reuses `IEventService.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
 - All matchers run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
 ### US-GS.4: Search surfaces the public-visibility set, never more
@@ -67,6 +68,7 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 - Hidden teams (`Team.IsHidden = true`) are excluded for everyone.
 - Camps are filtered to the public-status set (`CampSeasonStatus.Active` or `Full`) for the public year — same gate as the public camp directory.
 - Rotas are filtered to `IsVisibleToVolunteers = true` for everyone.
+- Events are filtered to `Status = Approved`; submissions in `Draft`, `Pending`, `Rejected`, `ResubmitRequested`, or `Withdrawn` are never returned, matching the public `/Events/Browse` surface.
 - Admin-only profile fields (verified emails, non-public ContactFields) are never returned through `/Search`, regardless of role. Admins use the existing per-section admin pages (`/Teams` admin, `/Camps` admin, `/Profile/Admin`) for privileged views.
 
 ## Authorization Model
@@ -90,7 +92,8 @@ SearchController
          ├── IProfileService.SearchProfilesAsync(query, PersonSearchFields.PublicAll, limit) → IReadOnlyList<HumanSearchResult>
          ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
          ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
-         └── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
+         ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
+         └── IEventService.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
 ```
 
 Each section's repository runs the case-insensitive Postgres `ILike` filter against the entity's name field at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
@@ -115,17 +118,17 @@ Counts are post-cap by design — they reflect what the user actually sees in th
 | `TeamSearchHit (Name, Slug)` | `ITeamService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `CampSearchHit (Slug, Name)` | `ICampService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `GlobalSearchResult (Type, Title, Subtitle, Url, Score)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts |
-| `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts)` | `ISearchService` | View-model / view |
+| `GlobalSearchResult (Type, Title, Subtitle, Url, Score)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts / Events |
+| `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |
 
 ## UI
 
-`/Search` renders four type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**. Each section is hidden when its bucket is empty.
+`/Search` renders type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**, **Events**. Each section is hidden when its bucket is empty. The Events section and chip are also hidden when `Features:Events` is off (the view reads `IConfiguration` directly for this gate).
 
 - **Humans** are rendered by the canonical `_HumanSearchResults` partial (see `memory/architecture/person-search.md`). The controller projects each `HumanSearchResult` to `HumanSearchResultViewModel` via the existing `ToHumanSearchViewModel` extension, matching `/Profile/Search` and `/Profile/Admin`.
-- **Teams / Camps / Shifts** are rendered by `_GlobalSearchSection` — a small, deliberately-minimal partial. This is not a third person-search surface (the `_HumanSearchResults` rule applies only to person rendering); it's a generic list-row template for the simpler types.
+- **Teams / Camps / Shifts / Events** are rendered by `_GlobalSearchSection` — a small, deliberately-minimal partial. This is not a third person-search surface (the `_HumanSearchResults` rule applies only to person rendering); it's a generic list-row template for the simpler types.
 
-A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts) preserves the query and toggles the active filter. Counts on each chip reflect the post-cap result count.
+A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the post-cap result count.
 
 ## Out of Scope
 

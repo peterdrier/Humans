@@ -36,9 +36,17 @@ public class StaffViewModel
             "Stewards of the purse. They manage budgets, track expenditures, and ensure every euro is accounted for with the transparency a nonprofit deserves.",
             "fa-solid fa-coins"),
 
+        new(RoleNames.StoreAdmin, "Store Keepers",
+            "Quartermasters of the collective shop. They curate the catalog, mind the orders, reconcile the payments, and keep the treasury in sync.",
+            "fa-solid fa-store"),
+
         new(RoleNames.TicketAdmin, "Ticket Alchemists",
             "They conjure tickets from vendor APIs, match purchases to humans, and make sure the numbers add up before the gates open.",
             "fa-solid fa-ticket"),
+
+        new(RoleNames.EventsAdmin, "Guide Curators",
+            "Tastemakers of the program. They review event guide submissions, request edits, and shepherd the schedule from rough draft to ready-for-prime-time.",
+            "fa-solid fa-book-open"),
 
         new(RoleNames.FeedbackAdmin, "Feedback Whisperers",
             "Listeners of the community voice. They triage bug reports, field feature requests, and make sure every piece of feedback finds its way to the right hands.",

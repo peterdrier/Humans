@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -30,9 +31,10 @@ public class ShiftUrgencyTests
 
     public ShiftUrgencyTests()
     {
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(Substitute.For<IRoleAssignmentService>());
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamService>()
+            .With<IRoleAssignmentService>()
+            .Build();
 
         _service = new ShiftManagementService(
             Substitute.For<IShiftManagementRepository>(),

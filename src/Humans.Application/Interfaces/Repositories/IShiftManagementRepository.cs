@@ -361,6 +361,14 @@ public interface IShiftManagementRepository : IRepository
     Task<VolunteerEventProfile?> GetVolunteerEventProfileAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads <see cref="VolunteerEventProfile"/> rows for the supplied user ids
+    /// in one query (read-only). Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
     Task AddVolunteerEventProfileAsync(
         VolunteerEventProfile profile, CancellationToken ct = default);
 

@@ -78,6 +78,29 @@
             </div>
         </div>
     </div>
+    @if (Model.HasMissingSpecialRoles)
+    {
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-user-shield me-2"></i>Seed system roles</h5>
+                    <p class="card-text">
+                        Idempotent: inserts any missing <code>CampSpecialRole</code>
+                        definitions (<strong>Camp Lead</strong>, <strong>Workshop Lead</strong>) and
+                        migrates any remaining legacy <code>CampLead</code> rows into the unified
+                        role-assignment system. The card hides automatically once every special
+                        role exists.
+                    </p>
+                    <form asp-action="SeedSystemRoles" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-primary" data-confirm="Seed missing system roles and migrate any remaining legacy camp leads?">
+                            Run seed
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @* Pending Approvals *@

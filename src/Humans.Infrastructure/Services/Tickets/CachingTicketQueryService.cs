@@ -109,10 +109,21 @@ public sealed class CachingTicketQueryService(
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
+        // Scope to the active vendor event: the orders projection holds every
+        // order ever pulled from TicketTailor, so an unfiltered walk would
+        // include historical ticket holders in current-event audiences /
+        // dashboard stats.
+        var syncState = await ticketRepository.GetSyncStateAsync();
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return [];
+        var currentEventId = syncState.VendorEventId;
+
         var orders = await GetOrdersAsync();
         var ids = new HashSet<Guid>();
         foreach (var order in orders.Values)
         {
+            if (!string.Equals(order.VendorEventId, currentEventId, StringComparison.Ordinal))
+                continue;
             foreach (var a in order.Attendees)
             {
                 if (a.MatchedUserId is { } uid && IsValidOrCheckedIn(a.Status))

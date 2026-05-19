@@ -1,5 +1,6 @@
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Camps;
@@ -60,6 +61,57 @@ public interface ICampRoleService : IApplicationService
     // Reporting
 
     Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Idempotent admin action: ensures every non-<see cref="CampSpecialRole.None"/>
+    /// value of <see cref="CampSpecialRole"/> has a matching system role definition
+    /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>), then walks the
+    /// legacy <c>camp_leads</c> table and creates a <see cref="CampRoleAssignment"/>
+    /// for the Camp Lead role on the camp's open (or most-recent-open) season,
+    /// creating <see cref="CampMember"/>(<c>Status = Active</c>) as needed. Camps
+    /// with no season are skipped and logged. Safe to run multiple times — the
+    /// second run is a no-op for already-seeded definitions and already-migrated
+    /// leads.
+    /// </summary>
+    Task<SeedSystemRolesResult> SeedSystemRolesAndMigrateLeadsAsync(Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the set of <see cref="CampSpecialRole"/> values (excluding
+    /// <see cref="CampSpecialRole.None"/>) that do NOT yet have a matching row in
+    /// <c>camp_role_definitions</c>. The admin "Seed system roles" button is hidden
+    /// on <c>/Camps/Admin</c> when this returns empty.
+    /// </summary>
+    Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default);
+}
+
+/// <summary>
+/// Well-known display defaults for system-managed camp role definitions.
+/// Rows are looked up by <see cref="CampRoleDefinition.SpecialRole"/>; the names
+/// and slugs here are seeding defaults only — admins may not rename or change
+/// the slug of a seeded special-role row (rejected by <c>CampRoleService</c>).
+/// </summary>
+public static class CampSystemRoles
+{
+    public const string CampLeadName = "Camp Lead";
+    public const string CampLeadSlug = "camp-lead";
+    public const int CampLeadSortOrder = -1000;
+    public const int CampLeadSlotCount = 2;
+    public const int CampLeadMinimumRequired = 1;
+
+    public const string WorkshopLeadName = "Workshop Lead";
+    public const string WorkshopLeadSlug = "workshop-lead";
+    public const int WorkshopLeadSortOrder = -990;
+    public const int WorkshopLeadSlotCount = 2;
+    public const int WorkshopLeadMinimumRequired = 0;
+}
+
+public sealed record SeedSystemRolesResult(
+    int DefinitionsCreated,
+    int LeadsMigrated,
+    int LeadsAlreadyMigrated,
+    IReadOnlyList<string> SkippedCampSlugs)
+{
+    public int LeadsSkipped => SkippedCampSlugs.Count;
 }
 
 public sealed record CreateCampRoleDefinitionInput(
@@ -103,9 +155,11 @@ public sealed record CampRoleDefinitionInfo(
     int SortOrder,
     Instant CreatedAt,
     Instant UpdatedAt,
-    Instant? DeactivatedAt)
+    Instant? DeactivatedAt,
+    CampSpecialRole SpecialRole)
 {
     public bool IsActive => DeactivatedAt is null;
+    public bool IsSpecial => SpecialRole != CampSpecialRole.None;
 }
 
 public sealed record CampRoleAssignmentInfo(

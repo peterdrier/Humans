@@ -1,41 +1,28 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces.Users;
 using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services.Profiles;
 
-public class CommunicationPreferenceSubscribedAtTests : IDisposable
+public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CommunicationPreferenceService _service;
-    private readonly Instant _start = Instant.FromUtc(2026, 5, 1, 12, 0);
 
     public CommunicationPreferenceSubscribedAtTests()
+        : base(Instant.FromUtc(2026, 5, 1, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(_start);
-
-        var factory = new TestDbContextFactory(options);
-        var repository = new CommunicationPreferenceRepository(factory);
+        var repository = new CommunicationPreferenceRepository(DbFactory);
 
         var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
         var emailSettings = Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" });
@@ -43,21 +30,13 @@ public class CommunicationPreferenceSubscribedAtTests : IDisposable
             dataProtectionProvider, emailSettings,
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
-        var auditLog = Substitute.For<IAuditLogService>();
-
         _service = new CommunicationPreferenceService(
             repository,
             Substitute.For<IUserService>(),
             tokenProvider,
-            _clock,
-            auditLog,
+            Clock,
+            AuditLog,
             NullLogger<CommunicationPreferenceService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -85,7 +64,7 @@ public class CommunicationPreferenceSubscribedAtTests : IDisposable
         var firstStamp = (await _service.GetPreferencesAsync(userId))
             .Single(p => p.Category == MessageCategory.Marketing).SubscribedAt;
 
-        _clock.Advance(Duration.FromMilliseconds(10));
+        Clock.Advance(Duration.FromMilliseconds(10));
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "Profile");
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
         var laterStamp = (await _service.GetPreferencesAsync(userId))
@@ -106,7 +85,7 @@ public class CommunicationPreferenceSubscribedAtTests : IDisposable
         var firstStamp = (await _service.GetPreferencesAsync(userId))
             .Single(p => p.Category == MessageCategory.Marketing).SubscribedAt;
 
-        _clock.Advance(Duration.FromMilliseconds(10));
+        Clock.Advance(Duration.FromMilliseconds(10));
 
         // No-op: already opted in, calling again with optedOut:false is idempotent — no state change, no overwrite
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");

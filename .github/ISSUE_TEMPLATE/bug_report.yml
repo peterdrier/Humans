@@ -1,0 +1,77 @@
+name: Bug report
+description: Something is broken or behaving incorrectly.
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please fill in the fields below — it speeds up triage a lot.
+
+  - type: dropdown
+    id: section
+    attributes:
+      label: Section
+      description: Which area of the app does this affect? See `docs/sections/` for the full list.
+      options:
+        - Camps
+        - Teams
+        - Legal
+        - Shifts
+        - Tickets
+        - Board
+        - Onboarding
+        - Admin
+        - Governance
+        - Profile / Account
+        - Auth / Sign-in
+        - Infrastructure / Build / CI
+        - Other / Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the bug.
+      placeholder: When I do X, Y happens.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Where did this happen? QA / Production / local / preview-env URL (`{pr}.n.burn.camp`).
+      placeholder: "QA (n.burn.camp), Chrome 130, signed in as Volunteer"
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: From `GET /api/version` (the build footer also has it). Skip if local dev.
+      placeholder: "v… or commit sha"
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Logs / screenshots / extra context

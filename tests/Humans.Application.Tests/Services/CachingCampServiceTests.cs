@@ -3,14 +3,11 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
@@ -26,22 +23,14 @@ namespace Humans.Application.Tests.Services;
 ///   inner service instead of returning an empty list (PR #583 Codex P2).</item>
 /// </list>
 /// </summary>
-public sealed class CachingCampServiceTests : IDisposable
+public sealed class CachingCampServiceTests : ServiceTestHarness
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampService _innerSubstitute;
     private readonly CachingCampService _service;
 
     public CachingCampServiceTests()
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(_options);
-
         _innerSubstitute = Substitute.For<ICampService>();
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(
@@ -49,18 +38,18 @@ public sealed class CachingCampServiceTests : IDisposable
             (_, _) => _innerSubstitute);
         _serviceProvider = services.BuildServiceProvider();
 
-        var repo = new CampRepository(new TestDbContextFactory(_options));
+        var repo = new CampRepository(DbFactory);
         _service = new CachingCampService(
             repo,
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            _clock,
+            Clock,
             NullLogger<CachingCampService>.Instance);
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
-        _dbContext.Dispose();
         _serviceProvider.Dispose();
+        base.Dispose();
     }
 
     // ==========================================================================
@@ -90,10 +79,10 @@ public sealed class CachingCampServiceTests : IDisposable
         // call InvalidateCampAsync — this is the exact path the decorator's
         // write methods (SetEarlyEntryAsync, RemoveCampMemberAsync, …) take:
         // RefreshEntryAsync → _repo.GetByIdAsync → projection.
-        var third = _dbContext.CampMembers
+        var third = Db.CampMembers
             .First(m => m.CampSeasonId == season.Id && !m.HasEarlyEntry);
         third.HasEarlyEntry = true;
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.InvalidateCampAsync(camp.Id);
 
@@ -164,15 +153,15 @@ public sealed class CachingCampServiceTests : IDisposable
 
     private async Task SeedSettingsAsync(int publicYear, List<int> openSeasons)
     {
-        if (!await _dbContext.CampSettings.AnyAsync())
+        if (!await Db.CampSettings.AnyAsync())
         {
-            _dbContext.CampSettings.Add(new CampSettings
+            Db.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = publicYear,
                 OpenSeasons = openSeasons
             });
-            await _dbContext.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
     }
 
@@ -185,8 +174,8 @@ public sealed class CachingCampServiceTests : IDisposable
             ContactEmail = "test@camp.com",
             ContactPhone = "+34600000000",
             CreatedByUserId = Guid.NewGuid(),
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
         var season = new CampSeason
         {
@@ -206,27 +195,27 @@ public sealed class CachingCampServiceTests : IDisposable
             Vibes = [CampVibe.LiveMusic],
             AdultPlayspace = AdultPlayspacePolicy.No,
             MemberCount = 10,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
         return (camp, season);
     }
 
     private async Task SeedActiveMemberAsync(Guid campSeasonId, bool hasEarlyEntry)
     {
-        _dbContext.CampMembers.Add(new CampMember
+        Db.CampMembers.Add(new CampMember
         {
             Id = Guid.NewGuid(),
             CampSeasonId = campSeasonId,
             UserId = Guid.NewGuid(),
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             HasEarlyEntry = hasEarlyEntry,
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
     }
 }

@@ -508,6 +508,34 @@ public class CampAdminController(
         return RedirectToAction(nameof(Roles));
     }
 
+    [HttpPost("SeedSystemRoles")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SeedSystemRoles(CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync();
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            var result = await campRoleService.SeedSystemRolesAndMigrateLeadsAsync(user.Id, ct);
+            var summary =
+                $"System roles: {result.DefinitionsCreated} created. " +
+                $"Camp leads: {result.LeadsMigrated} migrated, " +
+                $"{result.LeadsAlreadyMigrated} already migrated, " +
+                $"{result.LeadsSkipped} skipped" +
+                (result.SkippedCampSlugs.Count == 0
+                    ? "."
+                    : $" ({string.Join(", ", result.SkippedCampSlugs)}).");
+            SetSuccess(summary);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "SeedSystemRoles failed.");
+            SetError("Failed to seed system roles and migrate leads.");
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpGet("Compliance")]
     public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
     {

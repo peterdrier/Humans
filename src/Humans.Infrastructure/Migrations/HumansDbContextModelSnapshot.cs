@@ -1157,6 +1157,13 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SpecialRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValueSql("'None'");
+
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1870,8 +1877,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
 
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("integer");

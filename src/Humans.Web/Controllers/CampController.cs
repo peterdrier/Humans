@@ -429,7 +429,6 @@ public class CampController(
                 UserId = m.UserId,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead,
                 HasEarlyEntry = m.HasEarlyEntry,
                 Status = m.Status
             })
@@ -441,7 +440,6 @@ public class CampController(
                 UserId = m.UserId,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead,
                 HasEarlyEntry = m.HasEarlyEntry,
                 Status = m.Status
             })
@@ -571,62 +569,11 @@ public class CampController(
     }
 
     // --- Lead management ---
-
-    [Authorize]
-    [HttpPost("{slug}/Leads/Add")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddLead(string slug, Guid userId)
-    {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        if (userId == Guid.Empty)
-        {
-            SetError("Please search and select a human first.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
-        try
-        {
-            await _campService.AddLeadAsync(camp.Id, userId);
-            SetSuccess("Co-lead added.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Adding lead {LeadUserId} failed for camp {CampId} and slug {Slug}", userId, camp.Id, slug);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Members), new { slug });
-    }
-
-    [Authorize]
-    [HttpPost("{slug}/Leads/Remove/{leadId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RemoveLead(string slug, Guid leadId)
-    {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        try
-        {
-            await _campService.RemoveLeadAsync(leadId);
-            SetSuccess("Lead removed.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Removing lead {LeadId} failed for camp {CampId} and slug {Slug}", leadId, camp.Id, slug);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Members), new { slug });
-    }
+    //
+    // The legacy AddLead / RemoveLead actions were retired in
+    // issue nobodies-collective/Humans#753 (Camp Lead retired into the
+    // CampRoleAssignment system role). Lead assignment is now performed via
+    // the Camp Lead row in the unified Roles panel on the Members page.
 
 
     // --- Historical name management ---

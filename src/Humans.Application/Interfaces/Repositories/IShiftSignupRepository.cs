@@ -205,6 +205,24 @@ public interface IShiftSignupRepository : IRepository
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUserAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
+    /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
+    /// bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads <see cref="ShiftSignup"/> rows for the supplied user ids in the
+    /// given event in one query, with <c>Shift.Rota.EventSettings</c> included
+    /// (read-only). Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+
     // ============================================================
     // Writes — ShiftSignup
     // ============================================================

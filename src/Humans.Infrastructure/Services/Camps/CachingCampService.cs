@@ -78,35 +78,29 @@ public sealed class CachingCampService(
         return await LoadSettingsAsync(cancellationToken);
     }
 
-    public async Task<bool> IsUserCampLeadAsync(
+    // Lead authz delegates straight to the inner service. CampInfo.Leads is
+    // still built from the legacy CampLead table, but the source of truth is
+    // now CampRoleAssignment with SpecialRole = Lead (issue
+    // nobodies-collective/Humans#753). Answering from camp.Leads would
+    // false-negative every role-assigned lead. The follow-up PR that retires
+    // CampLead re-introduces a smarter cached path.
+    public Task<bool> IsUserCampLeadAsync(
+        Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.IsUserCampLeadAsync(userId, campId, cancellationToken));
+
+    public Task<bool> IsUserCampEventManagerAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default)
     {
-        await EnsureWarmedAsync(cancellationToken);
-        if (TryGet(campId, out var camp))
-        {
-            return camp.Leads.Any(l => l.UserId == userId);
-        }
-        // Cache miss — fall through to avoid a false-negative auth check.
-        return await WithInner(inner => inner.IsUserCampLeadAsync(userId, campId, cancellationToken));
+        // Workshop-role holders are not modeled in CampInfo.Leads (which is
+        // strictly Camp Lead). Delegate to the inner service so the Lead OR
+        // Workshop check sees the role-assignment table directly.
+        return WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
     }
 
-    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default)
-    {
-        await EnsureWarmedAsync(cancellationToken);
-        // Cold-year fallback — see GetCampsForYearAsync.
-        if (!IsWarmYear(year))
-        {
-            return await WithInner(inner => inner.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken));
-        }
-        foreach (var camp in Values)
-        {
-            if (!camp.Leads.Any(l => l.UserId == userId)) continue;
-            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            if (season is not null) return season.Id;
-        }
-        return null;
-    }
+    // Same rationale as IsUserCampLeadAsync above.
+    public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
+        Guid userId, int year, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken));
 
     // Pass-through reads
 
@@ -387,6 +381,16 @@ public sealed class CachingCampService(
         var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsLeadAsync(campId, userId, actorUserId, cancellationToken));
         await InvalidateCampAsync(campId, cancellationToken);
         return result;
+    }
+
+    public async Task<Guid> EnsureActiveMemberForMigrationAsync(
+        Guid campSeasonId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var memberId = await WithInner(inner => inner.EnsureActiveMemberForMigrationAsync(
+            campSeasonId, userId, actorUserId, cancellationToken));
+        await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+        return memberId;
     }
 
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(

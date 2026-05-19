@@ -270,6 +270,26 @@ public interface ICampRepository : IRepository
     Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns a snapshot of every active <c>CampLead</c> row, projected to
+    /// (LeadId, CampId, UserId, CampSlug). Used by the one-shot Camp Lead
+    /// retirement admin button — the seed action walks this list and creates
+    /// CampMember + CampRoleAssignment rows on the migration target side.
+    /// AsNoTracking. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Picks the season for Camp Lead retirement migration: prefers the open
+    /// (Pending/Active/Full) season with the latest year; falls back to the
+    /// most-recent season of any status. Returns null if the camp has no
+    /// seasons at all (legacy stale leads with no camp seasons — caller logs
+    /// and skips). Read-only.
+    /// </summary>
+    Task<Guid?> GetCampSeasonForLeadMigrationAsync(
+        Guid campId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns true if the user currently leads any camp.
     /// </summary>
     Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default);
@@ -511,3 +531,14 @@ public enum CampMemberInsertOutcome
 }
 
 public record CampMemberInsertResult(Guid MemberId, CampMemberInsertOutcome Outcome);
+
+/// <summary>
+/// Read-only snapshot for the one-shot Camp Lead retirement migration —
+/// projects an active <c>CampLead</c> row to its identifying fields and the
+/// camp slug used for logging skipped (no-season) cases.
+/// </summary>
+public sealed record LeadMigrationSnapshot(
+    Guid LeadId,
+    Guid CampId,
+    Guid UserId,
+    string CampSlug);

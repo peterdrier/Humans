@@ -37,6 +37,17 @@ internal sealed class GeneralAvailabilityRepository(IDbContextFactory<HumansDbCo
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<GeneralAvailability>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GeneralAvailability
+            .AsNoTracking()
+            .Where(g => g.EventSettingsId == eventSettingsId && userIds.Contains(g.UserId))
+            .ToListAsync(ct);
+    }
+
     public async Task UpsertAsync(
         Guid userId,
         Guid eventSettingsId,

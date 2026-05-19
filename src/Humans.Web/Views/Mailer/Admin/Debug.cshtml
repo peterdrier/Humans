@@ -1,0 +1,331 @@
+@using Humans.Web.Models.Mailer
+@model MailerAudienceDebugViewModel
+@{
+    ViewData["Title"] = $"Audience Debug — {Model.SelectedGroupName}";
+
+    static string SortToken(DebugSortColumn s) => s switch
+    {
+        DebugSortColumn.Email => "email",
+        DebugSortColumn.InMlSince => "since",
+        _ => "name",
+    };
+
+    var allStates = new[]
+    {
+        Model.Expected.State,
+        Model.CurrentlyInMl.State,
+        Model.ToAdd.State,
+        Model.ToRemove.State,
+        Model.NonPrimary.State,
+    };
+
+    DebugUrlBuilder UrlFor = (state, page, size, sort, desc) =>
+    {
+        var ns = state.Section;
+        bool newDesc;
+        if (sort.HasValue && sort.Value == state.Sort && !desc.HasValue) newDesc = !state.Descending;
+        else newDesc = desc ?? state.Descending;
+
+        var args = new List<string>(20)
+        {
+            $"{ns}.page={page ?? state.Page}",
+            $"{ns}.size={size ?? state.PageSize}",
+            $"{ns}.sort={SortToken(sort ?? state.Sort)}",
+            $"{ns}.desc={(newDesc ? "true" : "false")}",
+        };
+        foreach (var other in allStates)
+        {
+            if (other.Section == ns) continue;
+            args.Add($"{other.Section}.page={other.Page}");
+            args.Add($"{other.Section}.size={other.PageSize}");
+            args.Add($"{other.Section}.sort={SortToken(other.Sort)}");
+            args.Add($"{other.Section}.desc={(other.Descending ? "true" : "false")}");
+        }
+        return $"/Mailer/Admin/Audiences/{Model.SelectedKey}/Debug?{string.Join("&", args)}";
+    };
+
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Audience Debug</h1>
+    <a href="/Mailer/Admin" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex align-items-center gap-2">
+            <label for="audienceKey" class="form-label mb-0 fw-semibold">Audience</label>
+            <select id="audienceKey"
+                    class="form-select"
+                    style="max-width: 28rem;"
+                    data-debug-nav="/Mailer/Admin/Audiences/{key}/Debug">
+                @foreach (var a in Model.AvailableAudiences)
+                {
+                    <option value="@a.Key" selected="@(a.Key == Model.SelectedKey)">@a.GroupName</option>
+                }
+            </select>
+            <span class="text-muted small ms-2">→ <code>@Model.SelectedMailerLiteGroupName</code></span>
+            @if (!Model.GroupExists)
+            {
+                <span class="badge bg-warning text-dark ms-2">Group not yet in MailerLite</span>
+            }
+        </div>
+    </div>
+</div>
+
+@if (Model.MlError is not null)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>MailerLite unavailable.</strong> @Model.MlError Humans-side state shown below; ML-side tables may be empty.
+    </div>
+}
+
+@{
+    var expected = Model.Expected;
+    var inMl = Model.CurrentlyInMl;
+    var toAdd = Model.ToAdd;
+    var toRemove = Model.ToRemove;
+    var np = Model.NonPrimary;
+}
+
+@* §1 Should be on list *@
+<section class="card mb-4">
+    <header class="card-header d-flex align-items-center justify-content-between">
+        <div>
+            <strong>1. Should be on list</strong>
+            <span class="badge bg-secondary ms-2">@expected.Total.ToString("N0")</span>
+        </div>
+        <small class="text-muted">From <code>@Model.SelectedKey</code> · resolved to notification-target email per human</small>
+    </header>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in expected.Rows)
+                {
+                    <tr>
+                        <td><vc:human user-id="@r.UserId" link="Admin" /></td>
+                        <td class="font-monospace">@r.Email</td>
+                    </tr>
+                }
+                @if (expected.Rows.Count == 0)
+                {
+                    <tr><td colspan="2" class="text-center text-muted py-3">No humans expected on this list.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(expected.State, expected.Total, Model.Options, UrlFor))
+</section>
+
+@* §2 Currently in ML *@
+<section class="card mb-4">
+    <header class="card-header d-flex align-items-center justify-content-between">
+        <div>
+            <strong>2. Currently on list in MailerLite</strong>
+            <span class="badge bg-secondary ms-2">@inMl.Total.ToString("N0")</span>
+        </div>
+        <small class="text-muted">Subscribers whose <code>GroupIds</code> contain this audience's group</small>
+    </header>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.InMlSince, "In ML since", UrlFor))</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in inMl.Rows)
+                {
+                    <tr>
+                        <td>
+                            @if (r.UserId is Guid uid)
+                            {
+                                <vc:human user-id="@uid" link="Admin" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">— unmatched</span>
+                            }
+                        </td>
+                        <td class="font-monospace">@r.Email</td>
+                        <td class="text-muted small">@(r.InMlSince?.ToAuditTimestamp() ?? "—")</td>
+                    </tr>
+                }
+                @if (inMl.Rows.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-3">No subscribers in this group.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(inMl.State, inMl.Total, Model.Options, UrlFor))
+</section>
+
+@* §3 To add *@
+<section class="card mb-4 border-success">
+    <header class="card-header d-flex align-items-center justify-content-between">
+        <div>
+            <strong class="text-success">3. To add</strong>
+            <span class="badge bg-success ms-2">@toAdd.Total.ToString("N0")</span>
+        </div>
+        <small class="text-muted">Expected − Currently-in-ML, normalized by email</small>
+    </header>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in toAdd.Rows)
+                {
+                    <tr>
+                        <td><vc:human user-id="@r.UserId" link="Admin" /></td>
+                        <td class="font-monospace">@r.Email</td>
+                    </tr>
+                }
+                @if (toAdd.Rows.Count == 0)
+                {
+                    <tr><td colspan="2" class="text-center text-muted py-3">No additions needed.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(toAdd.State, toAdd.Total, Model.Options, UrlFor))
+</section>
+
+@* §4 To remove *@
+<section class="card mb-4 border-danger">
+    <header class="card-header d-flex align-items-center justify-content-between">
+        <div>
+            <strong class="text-danger">4. To remove</strong>
+            <span class="badge bg-danger ms-2">@toRemove.Total.ToString("N0")</span>
+        </div>
+        <small class="text-muted">Currently-in-ML − Expected, normalized by email</small>
+    </header>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in toRemove.Rows)
+                {
+                    <tr>
+                        <td>
+                            @if (r.UserId is Guid uid)
+                            {
+                                <vc:human user-id="@uid" link="Admin" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">— unmatched</span>
+                            }
+                        </td>
+                        <td class="font-monospace">@r.Email</td>
+                    </tr>
+                }
+                @if (toRemove.Rows.Count == 0)
+                {
+                    <tr><td colspan="2" class="text-center text-muted py-3">No removals needed.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(toRemove.State, toRemove.Total, Model.Options, UrlFor))
+</section>
+
+@* §5 Non-primary diagnostic *@
+<section class="card mb-4 border-warning">
+    <header class="card-header d-flex align-items-center justify-content-between">
+        <div>
+            <strong class="text-warning-emphasis">5. Subscribed under non-primary email</strong>
+            <span class="badge bg-warning text-dark ms-2">@np.Total.ToString("N0")</span>
+        </div>
+        <small class="text-muted">Diagnostic — these will swap naturally when §3 + §4 apply</small>
+    </header>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Name, "Human", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/Mailer/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Email, "Subscribed under", UrlFor))</th>
+                    <th>Their current primary</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in np.Rows)
+                {
+                    <tr>
+                        <td><vc:human user-id="@r.UserId" link="Admin" /></td>
+                        <td class="font-monospace text-warning-emphasis">@r.SubscribedEmail</td>
+                        <td class="font-monospace">@r.PrimaryEmail</td>
+                    </tr>
+                }
+                @if (np.Rows.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-3">No mismatches.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @await Html.PartialAsync("~/Views/Mailer/Admin/_DebugPager.cshtml", new DebugPagerModel(np.State, np.Total, Model.Options, UrlFor))
+</section>
+
+@* Apply button — posts to existing Sync action *@
+<div class="d-flex justify-content-end my-4">
+    <form method="post"
+          action="/Mailer/Admin/Audiences/@Model.SelectedKey/Sync"
+          data-confirm="Apply @toAdd.Total adds, @toRemove.Total removes to MailerLite?">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fa-solid fa-bolt me-1"></i>
+            Apply @toAdd.Total adds, @toRemove.Total removes
+        </button>
+    </form>
+</div>
+
+<script>
+    (function () {
+        var sel = document.getElementById('audienceKey');
+        if (sel) {
+            sel.addEventListener('change', function () {
+                var tpl = sel.getAttribute('data-debug-nav');
+                if (tpl) window.location.href = tpl.replace('{key}', encodeURIComponent(sel.value));
+            });
+        }
+        document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+            form.addEventListener('submit', function (ev) {
+                var msg = form.getAttribute('data-confirm');
+                if (msg && !window.confirm(msg)) ev.preventDefault();
+            });
+        });
+    })();
+</script>

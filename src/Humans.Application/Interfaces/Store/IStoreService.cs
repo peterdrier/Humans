@@ -61,7 +61,11 @@ public interface IStoreService : IApplicationService
     Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default);
 
     // Summary
-    Task<IReadOnlyList<OrderSummaryDto>> GetAllOrderSummariesAsync(int year, CancellationToken ct = default);
+    /// <summary>
+    /// Builds the admin aggregate report (by-camp, by-item, camps x products cross-tab)
+    /// for the given event year. Used by <c>/Store/Summary</c>.
+    /// </summary>
+    Task<StoreSummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default);
 }
 
 public sealed record StoreMutationResult(bool Succeeded, string? ErrorMessage)

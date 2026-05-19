@@ -14,19 +14,15 @@ namespace Humans.Application.Interfaces.Camps;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes BarrioEventsController (replaces IsUserCampLeadAsync there). Once the legacy CampLead table drops, AddLeadAsync/RemoveLeadAsync/EnsureActiveMemberForMigrationAsync retire (57→54 net).</item>
+///   <item>55→56 — Camp Lead retirement (issue nobodies-collective/Humans#753): added EnsureActiveMemberForMigrationAsync — needed by the admin "Seed system roles" button to land legacy CampLead rows on the role-assignment side. Once the follow-up table-drop PR lands, this and the AddLeadAsync/RemoveLeadAsync pair (55→52 net) will both retire.</item>
 ///   <item>55→55 — onsite-roster N+1 fix: added <see cref="GetCampMembersByYearAsync"/> (year-scoped bulk member fetch) for <c>OnsiteRosterService</c>; net-zero by dropping obsolete <c>GetCampsWithLeadsForYearAsync</c> (T-06 alias of <see cref="GetCampsForYearAsync"/>, zero external callers).</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(55)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>52→55 — issue-490 Early Entry (camps consumer): added SetEeStartDateAsync, SetCampSeasonEeSlotCountAsync, SetEarlyEntryAsync. Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/CampSettings — tables ICampService already owns — so the methods belong here per design-rules §6 (no service split).</item>
 ///   <item>51→52 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against camps must live in the owning section per design-rules §6.</item>
-///   <item>54→51 — barrio-mgmt-fixes audit (peterdrier#390). Net -3 after adding AddMemberAndAssignRoleAsync (+1) and removing 4 dead methods: GetCampDetailAsync, GetCampsByLeadUserIdAsync, SetSeasonFullAsync, GetCampSeasonBriefsForYearAsync.</item>
-///   <item>55→54 — account-merge fold final consolidation: removed ReassignAssignmentsToUserAsync from ICampService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
-///   <item>55→55 — account-merge fold redesign Phase 3.3: added ReassignAssignmentsToUserAsync; removed GetCampByIdAsync (pure passthrough to ICampRepository.GetByIdAsync — zero production callers; CampDetail/Edit flows resolve by slug, not id).</item>
-///   <item>56→55 — collapsed GetCampsForYearAsync + GetAllCampsForYearAsync into one method; callers filter via Camp.IsPublic predicate.</item>
-///   <item>57→56 — simplify pass: added BuildCampDetailDataAsync, replaced 3 scoped CampSeason getters (SoundZone/Name/Info) with single GetCampSeasonByIdAsync.</item>
-///   <item>53→57 — per-camp roles feature (peterdrier#489): AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync, GetCampSeasonsForComplianceAsync — needed by ICampRoleService and the Camp Edit page roles panel.</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(55)]
+[SurfaceBudget(57)]
 public interface ICampService : IApplicationService
 {
     // Registration
@@ -119,6 +115,18 @@ public interface ICampService : IApplicationService
 
     // Authorization checks
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns true when the user holds a <c>CampRoleAssignment</c> on the given
+    /// camp (current season) whose <c>CampRoleDefinition.SpecialRole</c> is
+    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Lead"/> OR
+    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Workshop"/>. Authorizes
+    /// camp-event submission via <c>BarrioEventsController</c>
+    /// (<c>/Barrios/{slug}/Events/*</c>). Camp leads automatically satisfy this
+    /// check because the role set is the OR — no separate "lead-implies-workshop"
+    /// logic.
+    /// </summary>
+    Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
@@ -216,6 +224,19 @@ public interface ICampService : IApplicationService
 
     Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Idempotent — ensures a <c>CampMember</c>(<c>Status = Active</c>) row
+    /// exists for the given <paramref name="campSeasonId"/> + <paramref name="userId"/>.
+    /// Promotes an existing Pending row to Active; no-ops if already Active.
+    /// Returns the CampMember id. Used by the Camp Lead retirement admin
+    /// button (issue nobodies-collective/Humans#753) to land legacy leads on
+    /// the role-assignment side without going through the request/approve
+    /// flow.
+    /// </summary>
+    Task<Guid> EnsureActiveMemberForMigrationAsync(
+        Guid campSeasonId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Early Entry (issue nobodies-collective#490)
@@ -451,18 +472,12 @@ public record CampMemberListData(
     IReadOnlyList<CampMemberRow> Pending,
     IReadOnlyList<CampMemberRow> Active);
 
-// TEMP: `IsLead` is a display-only flag populated by unioning active `CampLead`
-// rows into the active-members list. It'll be superseded by the upcoming camp
-// roles PR (Team-style role assignments on CampMember), which will subsume the
-// CampLead concept entirely. Remove this flag + the union logic in
-// CampService.GetCampMembersAsync when that lands.
 public record CampMemberRow(
     Guid CampMemberId,
     Guid UserId,
     string DisplayName,
     Instant RequestedAt,
     Instant? ConfirmedAt,
-    bool IsLead,
     bool HasEarlyEntry,
     CampMemberStatus Status);
 

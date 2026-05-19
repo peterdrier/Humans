@@ -87,6 +87,80 @@ public sealed class MailerAdminController(
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
     }
 
+    [HttpGet("Audiences/{key}/Debug")]
+    public async Task<IActionResult> Debug(
+        string key,
+        [FromQuery(Name = "exp.page")] int expectedPage = 1,
+        [FromQuery(Name = "exp.size")] int expectedSize = 50,
+        [FromQuery(Name = "exp.sort")] string expectedSort = "name",
+        [FromQuery(Name = "exp.desc")] bool expectedDesc = false,
+        [FromQuery(Name = "ml.page")] int mlPage = 1,
+        [FromQuery(Name = "ml.size")] int mlSize = 50,
+        [FromQuery(Name = "ml.sort")] string mlSort = "name",
+        [FromQuery(Name = "ml.desc")] bool mlDesc = false,
+        [FromQuery(Name = "add.page")] int addPage = 1,
+        [FromQuery(Name = "add.size")] int addSize = 50,
+        [FromQuery(Name = "add.sort")] string addSort = "name",
+        [FromQuery(Name = "add.desc")] bool addDesc = false,
+        [FromQuery(Name = "rem.page")] int removePage = 1,
+        [FromQuery(Name = "rem.size")] int removeSize = 50,
+        [FromQuery(Name = "rem.sort")] string removeSort = "name",
+        [FromQuery(Name = "rem.desc")] bool removeDesc = false,
+        [FromQuery(Name = "np.page")] int nonPrimaryPage = 1,
+        [FromQuery(Name = "np.size")] int nonPrimarySize = 50,
+        [FromQuery(Name = "np.sort")] string nonPrimarySort = "name",
+        [FromQuery(Name = "np.desc")] bool nonPrimaryDesc = false,
+        CancellationToken ct = default)
+    {
+        var audience = _audiences.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.Ordinal));
+        if (audience is null) return NotFound();
+
+        var available = _audiences
+            .Select(a => new MailerAudienceListItem(a.Key, a.DisplayName))
+            .ToList();
+
+        var snapshot = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, _users, logger, ct);
+
+        var options = new DebugTableOptions(PageSizes: [50, 100, 200], DefaultPageSize: 50);
+        var vm = new MailerAudienceDebugViewModel(
+            SelectedKey: audience.Key,
+            SelectedGroupName: audience.DisplayName,
+            SelectedMailerLiteGroupName: audience.MailerLiteGroupName,
+            AvailableAudiences: available,
+            GroupExists: snapshot.GroupExists,
+            MlError: snapshot.MlError,
+            Expected: MailerAudienceDebugSnapshotBuilder.PageExpected(
+                snapshot.Expected,
+                new DebugTableState("exp", expectedPage, expectedSize, ParseSort(expectedSort), expectedDesc),
+                options),
+            CurrentlyInMl: MailerAudienceDebugSnapshotBuilder.PageMl(
+                snapshot.CurrentlyInMl,
+                new DebugTableState("ml", mlPage, mlSize, ParseSort(mlSort), mlDesc),
+                options),
+            ToAdd: MailerAudienceDebugSnapshotBuilder.PageExpected(
+                snapshot.ToAdd,
+                new DebugTableState("add", addPage, addSize, ParseSort(addSort), addDesc),
+                options),
+            ToRemove: MailerAudienceDebugSnapshotBuilder.PageMl(
+                snapshot.ToRemove,
+                new DebugTableState("rem", removePage, removeSize, ParseSort(removeSort), removeDesc),
+                options),
+            NonPrimary: MailerAudienceDebugSnapshotBuilder.PageNonPrimary(
+                snapshot.NonPrimary,
+                new DebugTableState("np", nonPrimaryPage, nonPrimarySize, ParseSort(nonPrimarySort), nonPrimaryDesc),
+                options),
+            Options: options);
+
+        return View("~/Views/Mailer/Admin/Debug.cshtml", vm);
+    }
+
+    private static DebugSortColumn ParseSort(string raw) => raw?.ToLowerInvariant() switch
+    {
+        "email" => DebugSortColumn.Email,
+        "since" => DebugSortColumn.InMlSince,
+        _ => DebugSortColumn.Name,
+    };
+
     [HttpPost("Audiences/{key}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncAudience(string key, CancellationToken ct)

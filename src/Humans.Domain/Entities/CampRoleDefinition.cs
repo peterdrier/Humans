@@ -1,4 +1,5 @@
 using Humans.Domain.Attributes;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Domain.Entities;
@@ -36,6 +37,16 @@ public class CampRoleDefinition
 
     /// <summary>Soft-delete: deactivated roles preserve historical assignments but are hidden from new-assignment UI.</summary>
     public Instant? DeactivatedAt { get; set; }
+
+    /// <summary>
+    /// Marker for special, system-managed role definitions with extra authorization
+    /// semantics (Camp Lead, Workshop Lead). <see cref="CampSpecialRole.None"/> is
+    /// the default for regular admin-managed rows. Non-<c>None</c> rows are seeded
+    /// by the CampAdmin "Seed system roles" admin button and are immutable except
+    /// for <see cref="SlotCount"/> and <see cref="Description"/>. Enforced in
+    /// <c>CampRoleService</c>.
+    /// </summary>
+    public CampSpecialRole SpecialRole { get; set; } = CampSpecialRole.None;
 
     public ICollection<CampRoleAssignment> Assignments { get; } = new List<CampRoleAssignment>();
 

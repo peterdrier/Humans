@@ -52,7 +52,11 @@ public sealed class TicketQueryService(
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
-        var ids = await ticketRepository.GetValidMatchedAttendeeUserIdsAsync();
+        var syncState = await ticketRepository.GetSyncStateAsync();
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return [];
+
+        var ids = await ticketRepository.GetValidMatchedAttendeeUserIdsForEventAsync(syncState.VendorEventId);
         return ids.ToHashSet();
     }
 

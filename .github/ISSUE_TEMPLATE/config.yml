@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project rules catalog
+    url: https://github.com/peterdrier/Humans/blob/main/memory/INDEX.md
+    about: Before filing — check if there's already a project rule covering this.
+  - name: Architecture story
+    url: https://github.com/peterdrier/Humans/blob/main/docs/architecture/design-rules.md
+    about: The constitution — layers, ownership, caching, auth patterns.
+  - name: Section invariants
+    url: https://github.com/peterdrier/Humans/tree/main/docs/sections
+    about: Per-section concepts, actors, invariants, and triggers.

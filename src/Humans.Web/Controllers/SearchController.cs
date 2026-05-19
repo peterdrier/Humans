@@ -9,7 +9,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>Global search: name-only hits across humans/teams/camps/rotas. Public-visibility surface only (docs/features/global/global-search.md).</summary>
+/// <summary>Global search: name-only hits across humans/teams/camps/rotas/events. Public-visibility surface only (docs/features/global/global-search.md).</summary>
 [Authorize]
 [Route("Search")]
 public sealed class SearchController(
@@ -71,6 +71,7 @@ public sealed class SearchController(
             TeamResults = SortByScore(results.Teams),
             CampResults = SortByScore(results.Camps),
             ShiftResults = SortByScore(results.Shifts),
+            EventResults = SortByScore(results.Events),
         };
 
     private static IReadOnlyList<GlobalSearchResult> SortByScore(

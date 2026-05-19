@@ -18,10 +18,10 @@ using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,18 +29,14 @@ using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class DependencyCycleResolutionTests
+public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 {
     [HumansFact]
     public void IUserService_Resolves_WhenTeamServiceAndRoleAssignmentServiceAreRegistered()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
         var services = new ServiceCollection();
 
-        services.AddScoped(_ => new HumansDbContext(options));
+        services.AddScoped(_ => new HumansDbContext(DbOptions));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
@@ -51,16 +47,16 @@ public class DependencyCycleResolutionTests
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
-        services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
+        services.AddScoped<IAuditLogService>(_ => AuditLog);
         services.AddScoped<IEmailService>(_ => Substitute.For<IEmailService>());
-        services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
+        services.AddScoped<INotificationEmitter>(_ => Notifier);
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
         services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
-        services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
-        services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
+        services.AddScoped<IShiftAuthorizationInvalidator>(_ => ShiftAuthInvalidator);
+        services.AddScoped<IAdminAuthorizationService>(_ => AdminAuthorization);
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 
         services.AddScoped<UserService>();
@@ -93,14 +89,10 @@ public class DependencyCycleResolutionTests
     [HumansFact]
     public void IUserService_And_IEmailService_Resolve_WhenRealEmailChainIsRegistered()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
         var services = new ServiceCollection();
         var userStore = Substitute.For<IUserStore<User>>();
 
-        services.AddScoped(_ => new HumansDbContext(options));
+        services.AddScoped(_ => new HumansDbContext(DbOptions));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
@@ -111,15 +103,15 @@ public class DependencyCycleResolutionTests
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
-        services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
-        services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
+        services.AddScoped<IAuditLogService>(_ => AuditLog);
+        services.AddScoped<INotificationEmitter>(_ => Notifier);
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
         services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
-        services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
-        services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
+        services.AddScoped<IShiftAuthorizationInvalidator>(_ => ShiftAuthInvalidator);
+        services.AddScoped<IAdminAuthorizationService>(_ => AdminAuthorization);
         services.AddScoped<IEmailOutboxRepository>(_ => Substitute.For<IEmailOutboxRepository>());
         services.AddScoped<IEmailRenderer>(_ => Substitute.For<IEmailRenderer>());
         services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());

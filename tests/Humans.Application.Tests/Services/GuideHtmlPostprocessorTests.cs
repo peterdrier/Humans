@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Constants;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
+using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -17,46 +18,32 @@ public class GuideHtmlPostprocessorTests
 
     private static readonly GuideHtmlPostprocessor Processor = new();
 
-    [HumansFact]
-    public void Rewrite_SiblingMdLink_BecomesGuideRoute()
+    [HumansTheory]
+    [InlineData("Profiles.md", "href=\"/Guide/Profiles\"")]
+    [InlineData("Glossary.md#coordinator", "href=\"/Guide/Glossary#coordinator\"")]
+    [InlineData("profiles.md", "href=\"/Guide/Profiles\"")]
+    public void Rewrite_KnownSiblingMdLink_MapsToGuideRoute(string href, string expectedHrefSnippet)
     {
-        const string html = """<a href="Profiles.md">Profiles</a>""";
+        var html = $"""<a href="{href}">text</a>""";
 
         var result = Processor.Rewrite(html, Settings, GuideFiles.All);
 
-        result.Should().Contain("""href="/Guide/Profiles" """.Trim());
+        result.Should().Contain(expectedHrefSnippet);
     }
 
-    [HumansFact]
-    public void Rewrite_SiblingMdWithFragment_PreservesFragment()
+    [HumansTheory]
+    [InlineData("NonExistent.md", "https://github.com/nobodies-collective/Humans/blob/main/docs/guide/NonExistent.md")]
+    [InlineData("https://example.com/foo", "https://example.com/foo")]
+    [InlineData("../sections/Teams.md", "https://github.com/nobodies-collective/Humans/blob/main/docs/sections/Teams.md")]
+    public void Rewrite_ExternalHref_GetsNewTabAttrs(string href, string expectedHrefSubstring)
     {
-        const string html = """<a href="Glossary.md#coordinator">Coordinator</a>""";
+        var html = $"""<a href="{href}">x</a>""";
 
         var result = Processor.Rewrite(html, Settings, GuideFiles.All);
 
-        result.Should().Contain("""href="/Guide/Glossary#coordinator" """.Trim());
-    }
-
-    [HumansFact]
-    public void Rewrite_SiblingMdCaseInsensitive_MatchesKnown()
-    {
-        const string html = """<a href="profiles.md">Profiles</a>""";
-
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
-
-        result.Should().Contain("/Guide/Profiles");
-    }
-
-    [HumansFact]
-    public void Rewrite_UnknownSiblingMd_LeftAsExternal()
-    {
-        const string html = """<a href="NonExistent.md">Link</a>""";
-
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
-
-        // Unknown siblings fall through to external github.com URL.
-        result.Should().Contain("https://github.com/nobodies-collective/Humans/blob/main/docs/guide/NonExistent.md");
+        result.Should().Contain(expectedHrefSubstring);
         result.Should().Contain("target=\"_blank\"");
+        result.Should().Contain("rel=\"noopener\"");
     }
 
     [HumansFact]
@@ -71,17 +58,6 @@ public class GuideHtmlPostprocessorTests
     }
 
     [HumansFact]
-    public void Rewrite_ExternalHttpLink_GetsNewTabAttrs()
-    {
-        const string html = """<a href="https://example.com/foo">x</a>""";
-
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
-
-        result.Should().Contain("target=\"_blank\"");
-        result.Should().Contain("rel=\"noopener\"");
-    }
-
-    [HumansFact]
     public void Rewrite_MailtoLink_LeftAsIs()
     {
         const string html = """<a href="mailto:a@b.com">a</a>""";
@@ -92,35 +68,20 @@ public class GuideHtmlPostprocessorTests
         result.Should().NotContain("target=\"_blank\"");
     }
 
-    [HumansFact]
-    public void Rewrite_ParentRelativePath_BecomesGitHubBlobUrl()
+    // Both rows must produce the same raw URL — row 2 exercises the
+    // prefix-stripping branch in RewriteImgSrc (line ~137) where the input
+    // already starts with the guide folder; without stripping, the result
+    // would have a doubled "docs/guide/" segment.
+    [HumansTheory]
+    [InlineData("img/screenshot.png")]
+    [InlineData("docs/guide/img/screenshot.png")]
+    public void Rewrite_ImageShortOrPrefixedPath_BecomesRawGitHubUrl(string src)
     {
-        const string html = """<a href="../sections/Teams.md">Section invariants</a>""";
-
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
-
-        result.Should().Contain("https://github.com/nobodies-collective/Humans/blob/main/docs/sections/Teams.md");
-        result.Should().Contain("target=\"_blank\"");
-    }
-
-    [HumansFact]
-    public void Rewrite_ImageShortPath_BecomesRawGitHubUrl()
-    {
-        const string html = """<img src="img/screenshot.png" alt="x" />""";
+        var html = $"""<img src="{src}" alt="x" />""";
 
         var result = Processor.Rewrite(html, Settings, GuideFiles.All);
 
         result.Should().Contain("""src="https://raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png" """.Trim());
-    }
-
-    [HumansFact]
-    public void Rewrite_ImageWithDocsGuidePrefix_AlsoRewritten()
-    {
-        const string html = """<img src="docs/guide/img/screenshot.png" alt="x" />""";
-
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
-
-        result.Should().Contain("https://raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png");
     }
 
     [HumansFact]
@@ -133,24 +94,14 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""src="https://cdn.example.com/x.png" """.Trim());
     }
 
-    [HumansFact]
-    public void Rewrite_InlineCodeAppPath_WrappedInAnchor()
+    [HumansTheory]
+    [InlineData("<p>Go to <code>/Profile/Me</code> to view your profile.</p>", "/Profile/Me")]
+    [InlineData("<code>/Profile/Me/Edit</code>", "/Profile/Me/Edit")]
+    public void Rewrite_InlineCodeAppPath_WrappedInAnchor(string html, string path)
     {
-        const string html = "<p>Go to <code>/Profile/Me</code> to view your profile.</p>";
-
         var result = Processor.Rewrite(html, Settings, GuideFiles.All);
 
-        result.Should().Contain("""<a href="/Profile/Me" class="guide-app-path"><code>/Profile/Me</code></a>""");
-    }
-
-    [HumansFact]
-    public void Rewrite_InlineCodeAppPathWithSegments_WrappedInAnchor()
-    {
-        const string html = "<code>/Profile/Me/Edit</code>";
-
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
-
-        result.Should().Contain("""href="/Profile/Me/Edit" """.Trim());
+        result.Should().Contain($"""<a href="{path}" class="guide-app-path"><code>{path}</code></a>""");
     }
 
     [HumansFact]

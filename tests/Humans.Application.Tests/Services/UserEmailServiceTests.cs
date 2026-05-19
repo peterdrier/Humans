@@ -3,6 +3,7 @@ using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
@@ -24,7 +25,7 @@ public class UserEmailServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
+    private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
     public UserEmailServiceTests()
@@ -32,7 +33,7 @@ public class UserEmailServiceTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider.GetService(typeof(IAccountMergeService)).Returns(_mergeService);
+        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).Build();
 
         _service = new UserEmailService(
             _repository,

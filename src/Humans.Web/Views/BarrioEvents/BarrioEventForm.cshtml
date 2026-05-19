@@ -47,8 +47,8 @@
 
             <div class="mb-3">
                 <label asp-for="Description" class="form-label"></label>
-                <textarea asp-for="Description" class="form-control" rows="3" maxlength="300"></textarea>
-                <div class="form-text">@(300 - (Model.Description?.Length ?? 0)) characters remaining</div>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="450"></textarea>
+                <div class="form-text">@(450 - (Model.Description?.Length ?? 0)) characters remaining</div>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 

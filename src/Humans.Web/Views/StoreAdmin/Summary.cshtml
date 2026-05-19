@@ -1,0 +1,213 @@
+@model Humans.Web.Models.Store.StoreSummaryViewModel
+@{
+    ViewData["Title"] = "Store summary";
+    var s = Model.Summary;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Store summary</h1>
+    <form method="get" class="d-flex gap-2 align-items-center mb-0">
+        <label for="year" class="form-label mb-0">Year</label>
+        <input type="number" name="year" id="year" value="@s.Year"
+               class="form-control form-control-sm" style="width: 6rem;" />
+        <button type="submit" class="btn btn-sm btn-secondary">Go</button>
+    </form>
+</div>
+
+<vc:temp-data-alerts />
+
+@* =====================  By camp  ===================== *@
+<section class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">By camp</h2>
+        <div class="d-flex gap-2 align-items-center">
+            <label for="paid-filter" class="form-label mb-0 small">Show</label>
+            <select id="paid-filter" class="form-select form-select-sm" style="width: 9rem;">
+                <option value="all" selected>All</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partial</option>
+                <option value="unpaid">Unpaid</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (s.ByCamp.Count == 0)
+        {
+            <p class="text-muted m-3 mb-3">No orders for @s.Year.</p>
+        }
+        else
+        {
+            <table class="table table-sm mb-0" id="by-camp-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort-key="camp" data-sort-type="text" role="button">Camp <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable" data-sort-key="label" data-sort-type="text" role="button">Label <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable" data-sort-key="state" data-sort-type="text" role="button">State <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable text-end" data-sort-key="due" data-sort-type="number" role="button">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable text-end" data-sort-key="paid" data-sort-type="number" role="button">Paid (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable text-end" data-sort-key="balance" data-sort-type="number" role="button">Balance (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in s.ByCamp)
+                {
+                    string paidClass =
+                        row.BalanceEur <= 0m ? "paid" :
+                        row.PaymentsTotalEur > 0m ? "partial" : "unpaid";
+                    <tr data-paid-status="@paidClass"
+                        data-camp="@row.CampName"
+                        data-label="@row.Label"
+                        data-state="@row.State"
+                        data-due="@row.TotalDueEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        data-paid="@row.PaymentsTotalEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        data-balance="@row.BalanceEur.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                        <td>
+                            <a asp-controller="Store" asp-action="Order" asp-route-id="@row.OrderId">
+                                @row.CampName
+                            </a>
+                        </td>
+                        <td>@row.Label</td>
+                        <td>@row.State</td>
+                        <td class="text-end">@row.TotalDueEur.ToString("F2")</td>
+                        <td class="text-end">@row.PaymentsTotalEur.ToString("F2")</td>
+                        <td class="text-end">@row.BalanceEur.ToString("F2")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>
+
+@* =====================  By item  ===================== *@
+<section class="card mb-4">
+    <div class="card-header"><h2 class="h5 mb-0">By item</h2></div>
+    <div class="card-body p-0">
+        @if (s.ByItem.Count == 0)
+        {
+            <p class="text-muted m-3 mb-3">No lines for @s.Year.</p>
+        }
+        else
+        {
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="text-end">Total qty</th>
+                        <th class="text-end">Total revenue (€)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in s.ByItem)
+                {
+                    <tr>
+                        <td>@row.ProductName</td>
+                        <td class="text-end">@row.TotalQty</td>
+                        <td class="text-end">@row.TotalRevenueEur.ToString("F2")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>
+
+@* =====================  Cross-tab  ===================== *@
+<section class="card mb-4">
+    <div class="card-header"><h2 class="h5 mb-0">Camps × products (qty)</h2></div>
+    <div class="card-body p-0 table-responsive">
+        @if (s.CrossTab.Camps.Count == 0 || s.CrossTab.Products.Count == 0)
+        {
+            <p class="text-muted m-3 mb-3">Nothing to plot for @s.Year.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>Camp</th>
+                        @foreach (var col in s.CrossTab.Products)
+                        {
+                            <th class="text-end">@col.ProductName</th>
+                        }
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var camp in s.CrossTab.Camps)
+                {
+                    <tr>
+                        <td>@camp.CampName</td>
+                        @foreach (var col in s.CrossTab.Products)
+                        {
+                            var qty = camp.QtyByProduct.TryGetValue(col.ProductId, out var q) ? q : 0;
+                            <td class="text-end">@(qty == 0 ? "" : qty.ToString())</td>
+                        }
+                        <td class="text-end fw-semibold">@camp.TotalQty</td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-semibold">
+                        <td>Total</td>
+                        @foreach (var col in s.CrossTab.Products)
+                        {
+                            <td class="text-end">@col.TotalQty</td>
+                        }
+                        <td class="text-end">@s.CrossTab.Products.Sum(c => c.TotalQty)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        (function () {
+            const table = document.getElementById('by-camp-table');
+            if (!table) return;
+            const tbody = table.tBodies[0];
+
+            const select = document.getElementById('paid-filter');
+            if (select) {
+                select.addEventListener('change', function () {
+                    const v = select.value;
+                    tbody.querySelectorAll('tr').forEach(tr => {
+                        tr.style.display = (v === 'all' || tr.dataset.paidStatus === v) ? '' : 'none';
+                    });
+                });
+            }
+
+            let sortKey = null;
+            let sortDir = 1;
+            table.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', function () {
+                    const key = th.dataset.sortKey;
+                    const type = th.dataset.sortType;
+                    if (sortKey === key) {
+                        sortDir = -sortDir;
+                    } else {
+                        sortKey = key;
+                        sortDir = 1;
+                    }
+                    table.querySelectorAll('th.sortable .sort-indicator').forEach(i => { i.textContent = ''; });
+                    th.querySelector('.sort-indicator').textContent = sortDir === 1 ? ' ▲' : ' ▼';
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort(function (a, b) {
+                        const av = a.dataset[key] || '';
+                        const bv = b.dataset[key] || '';
+                        let cmp;
+                        if (type === 'number') {
+                            cmp = parseFloat(av) - parseFloat(bv);
+                        } else {
+                            cmp = av.localeCompare(bv);
+                        }
+                        return cmp * sortDir;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                });
+            });
+        })();
+    </script>
+}
