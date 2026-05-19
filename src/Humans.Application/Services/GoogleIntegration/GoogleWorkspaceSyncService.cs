@@ -1881,21 +1881,8 @@ public sealed class GoogleWorkspaceSyncService(
     // Group settings helpers
     // ==========================================================================
 
-    private GroupSettingsExpected BuildExpectedGroupSettings() => new(
-        WhoCanJoin: _options.Groups.WhoCanJoin,
-        WhoCanViewMembership: _options.Groups.WhoCanViewMembership,
-        WhoCanContactOwner: _options.Groups.WhoCanContactOwner,
-        WhoCanPostMessage: _options.Groups.WhoCanPostMessage,
-        WhoCanViewGroup: _options.Groups.WhoCanViewGroup,
-        WhoCanModerateMembers: _options.Groups.WhoCanModerateMembers,
-        AllowExternalMembers: _options.Groups.AllowExternalMembers,
-        IsArchived: true,
-        MembersCanPostAsTheGroup: true,
-        IncludeInGlobalAddressList: true,
-        AllowWebPosting: true,
-        MessageModerationLevel: "MODERATE_NONE",
-        SpamModerationLevel: "MODERATE",
-        EnableCollaborativeInbox: true);
+    private GroupSettingsExpected BuildExpectedGroupSettings() =>
+        GroupSettingsPolicy.BuildExpected(_options.Groups);
 
     private Dictionary<string, string> BuildExpectedSettingsDictionary()
     {

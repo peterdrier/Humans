@@ -178,6 +178,25 @@ public sealed class GoogleGroupSyncService(
                     logger.LogInformation(
                         "Auto-provisioned Google Group for {GroupKey}",
                         claim.GroupKey);
+
+                    // Apply enforced settings — mirrors the Teams provisioning
+                    // path so auto-provisioned groups (e.g. Camp role groups)
+                    // don't sit on Google's defaults until manual remediation.
+                    // Non-fatal: the group exists either way; drift detection
+                    // will catch any failed application.
+                    var settingsError = await provisioningClient.UpdateGroupSettingsAsync(
+                        claim.GroupKey,
+                        GroupSettingsPolicy.BuildExpected(_options.Groups),
+                        ct);
+                    if (settingsError is not null)
+                    {
+                        logger.LogWarning(
+                            "Failed to apply group settings to auto-provisioned {GroupKey} (HTTP {StatusCode}): {Message}. Group was created with Google defaults",
+                            claim.GroupKey,
+                            settingsError.StatusCode,
+                            settingsError.RawMessage);
+                    }
+
                     lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
                 }
                 else
