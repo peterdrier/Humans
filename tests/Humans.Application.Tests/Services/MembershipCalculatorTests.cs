@@ -3,6 +3,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Services.Governance;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -33,8 +34,9 @@ public class MembershipCalculatorTests
     {
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 16, 0));
 
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_consentService)
+            .Build();
 
         _service = new MembershipCalculator(
             _membershipQuery,

@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
@@ -109,7 +110,7 @@ public class TeamServiceSlugRaceTests
             Substitute.For<INotificationMeterCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
-            Substitute.For<IServiceProvider>(),
+            new ServiceLocatorBuilder().Build(),
             clock,
             NullLogger<TeamService>.Instance);
     }

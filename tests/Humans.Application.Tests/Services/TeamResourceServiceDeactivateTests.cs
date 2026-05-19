@@ -42,7 +42,7 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
             drivePermissions: _drivePermissions,
             teamService: Substitute.For<ITeamService>(),
-            serviceProvider: Substitute.For<IServiceProvider>(),
+            serviceProvider: new ServiceLocatorBuilder().Build(),
             auditLogService: _auditLogService,
             resourceOptions: new TeamResourceManagementOptions(),
             clock: Clock,

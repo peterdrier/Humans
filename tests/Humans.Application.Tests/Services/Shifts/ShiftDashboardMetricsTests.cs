@@ -35,11 +35,12 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(new FakeTeamService(Db));
-        serviceProvider.GetService(typeof(ITicketQueryService)).Returns(new FakeTicketQueryService(Db));
-        serviceProvider.GetService(typeof(IUserService)).Returns(new FakeUserService(Db));
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(Substitute.For<IRoleAssignmentService>());
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamService>(new FakeTeamService(Db))
+            .With<ITicketQueryService>(new FakeTicketQueryService(Db))
+            .With<IUserService>(new FakeUserService(Db))
+            .With<IRoleAssignmentService>()
+            .Build();
 
         var repo = new ShiftManagementRepository(DbFactory);
 

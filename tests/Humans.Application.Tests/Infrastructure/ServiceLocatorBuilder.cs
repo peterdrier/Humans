@@ -21,6 +21,13 @@ namespace Humans.Application.Tests.Infrastructure;
 /// The <see cref="With{T}()"/> overload allocates a bare substitute; pass an
 /// instance to <see cref="With{T}(T)"/> when the test needs to assert on it
 /// or pre-configure behavior.
+///
+/// <para><b>Inference footgun:</b> <c>.With(instance)</c> infers <c>T</c> from
+/// the argument's static type — if you pass a concrete class (e.g.
+/// <c>RoleAssignmentService</c>), the registration is under the concrete type
+/// and <c>GetRequiredService&lt;IRoleAssignmentService&gt;()</c> will fail.
+/// Always spell out the interface when passing a concrete instance:
+/// <c>.With&lt;IRoleAssignmentService&gt;(roleAssignmentService)</c>.</para>
 /// </summary>
 public sealed class ServiceLocatorBuilder
 {

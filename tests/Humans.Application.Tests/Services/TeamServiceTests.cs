@@ -53,16 +53,23 @@ public sealed class TeamServiceTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
-        serviceProvider.GetService(typeof(IEmailService)).Returns(Substitute.For<IEmailService>());
-        serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(Substitute.For<ISystemTeamSync>());
         _teamResourceService = Substitute.For<ITeamResourceService>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
-        serviceProvider.GetService(typeof(ITeamResourceService)).Returns(_teamResourceService);
+
+        // Capture the user service to a local before threading it into the locator
+        // builder — NSubstitute can't attach an outer .Returns() to a factory that
+        // itself configures substitute calls.
+        var userService = NewDbBackedUserService();
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamService>()
+            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With<IEmailService>()
+            .With<ISystemTeamSync>()
+            .With(_teamResourceService)
+            .With(userService)
+            .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftManagementRepository(DbFactory),
             Substitute.For<IAuditLogService>(),
@@ -82,11 +89,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
             .When(s => s.Invalidate(Arg.Any<Guid>()))
             .Do(ci => Cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
 
-        // Build the user service before wiring it into the locator — NSubstitute
-        // can't attach an outer .Returns() to a factory that itself configures
-        // substitute calls.
-        var userService = NewDbBackedUserService();
-        serviceProvider.GetService(typeof(IUserService)).Returns(userService);
         _service = new TeamService(
             new TeamRepository(DbFactory),
             Substitute.For<IAuditLogService>(),

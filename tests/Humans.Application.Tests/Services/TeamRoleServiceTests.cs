@@ -43,16 +43,19 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
-        serviceProvider.GetService(typeof(IEmailService)).Returns(Substitute.For<IEmailService>());
-        serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(Substitute.For<ISystemTeamSync>());
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
-        serviceProvider.GetService(typeof(ITeamResourceService)).Returns(teamResourceService);
+        var userService = NewDbBackedUserService();
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamService>()
+            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With<IEmailService>()
+            .With<ISystemTeamSync>()
+            .With(teamResourceService)
+            .With(userService)
+            .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftManagementRepository(DbFactory),
             Substitute.For<IAuditLogService>(),
@@ -62,8 +65,6 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
-        var userService = NewDbBackedUserService();
-        serviceProvider.GetService(typeof(IUserService)).Returns(userService);
         _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _service = new TeamService(
             new TeamRepository(DbFactory),

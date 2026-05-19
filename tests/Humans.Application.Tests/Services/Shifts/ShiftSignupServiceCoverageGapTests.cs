@@ -44,9 +44,10 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
         var auditLog = Substitute.For<IAuditLogService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(_teamService);
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_teamService)
+            .With(roleAssignmentService)
+            .Build();
 
         var shiftRepo = new ShiftManagementRepository(DbFactory);
         var shiftMgmt = new ShiftManagementService(

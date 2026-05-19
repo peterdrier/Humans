@@ -33,9 +33,10 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
     public ConsentServiceTests()
     {
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IMembershipCalculator)).Returns(_membershipCalculator);
-        serviceProvider.GetService(typeof(IShiftSignupService)).Returns(_shiftSignupService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_membershipCalculator)
+            .With(_shiftSignupService)
+            .Build();
 
         _legalDocumentSyncService
             .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

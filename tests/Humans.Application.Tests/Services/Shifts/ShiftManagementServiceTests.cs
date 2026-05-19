@@ -78,10 +78,11 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
                         Members: [],
                         ParentTeamId: t.ParentTeamId))));
 
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(_teamService);
-        serviceProvider.GetService(typeof(IUserService)).Returns(_userService);
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_teamService)
+            .With(_userService)
+            .With(_roleAssignmentService)
+            .Build();
 
         var repo = new ShiftManagementRepository(DbFactory);
 
@@ -124,7 +125,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             repo,
             Substitute.For<IAuditLogService>(),
             adminAuthorization,
-            Substitute.For<IServiceProvider>(),
+            new ServiceLocatorBuilder().Build(),
             cache,
             Substitute.For<IShiftViewInvalidator>(),
             Clock,
