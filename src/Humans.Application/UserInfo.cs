@@ -192,6 +192,18 @@ public sealed record UserInfo(
     /// <summary>Deletion request pending — mirrors <see cref="User.IsDeletionPending"/>.</summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
+    /// <summary>
+    /// True when the user row is a tombstone — either a merge-source
+    /// (<see cref="MergedAt"/> set) or a GDPR-anonymized record (DisplayName
+    /// rewritten to <c>"Deleted User"</c> by
+    /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>).
+    /// Callers that materialize new per-user rows (Stub Profile, etc.) MUST
+    /// short-circuit on this so they don't resurrect the tombstone.
+    /// </summary>
+    public bool IsTombstone =>
+        MergedAt is not null
+        || string.Equals(DisplayName, "Deleted User", StringComparison.Ordinal);
+
     /// <summary>First verified primary email; null when none loaded.</summary>
     public string? PrimaryEmail => UserEmails
         .Where(e => e.IsPrimary && e.IsVerified)

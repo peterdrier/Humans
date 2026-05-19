@@ -49,6 +49,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             NullLogger<ProfileService>.Instance);
 
         _userService.StubGetUserInfosFromContext(Db);
+        _userService.StubGetUserInfoFromContext(Db);
     }
 
     // --- Profile save flow ---
@@ -609,6 +610,32 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 #pragma warning restore VSTHRD003
 
         await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureStubProfileAsync_MergedTombstone_NoOps()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        user.MergedAt = Clock.GetCurrentInstant();
+        await Db.SaveChangesAsync();
+
+        await _service.EnsureStubProfileAsync(userId);
+
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task EnsureStubProfileAsync_DeletedTombstone_NoOps()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        user.DisplayName = "Deleted User";
+        await Db.SaveChangesAsync();
+
+        await _service.EnsureStubProfileAsync(userId);
+
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
     }
 
     // ==========================================================================
