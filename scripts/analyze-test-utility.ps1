@@ -90,6 +90,8 @@ $rows = foreach ($file in $testFiles) {
     $publicMethodNames = @()
     $untestedPublicMethods = @()
     $testsPerPublicMethod = 0.0
+    $maxTestsPerMethod = 0
+    $topMethodsByTestCount = ''
     if ($productionMatches.Count -gt 0) {
         $methodSet = New-Object System.Collections.Generic.HashSet[string]
         foreach ($prodRepoPath in $productionMatches) {
@@ -110,11 +112,28 @@ $rows = foreach ($file in $testFiles) {
             $testNameMatches = [regex]::Matches($text,
                 '(?m)^\s+public\s+(?:async\s+)?(?:Task<[^>]+>|Task|void|ValueTask|ValueTask<[^>]+>)\s+(\w+)\s*\(')
             $testedPrefixes = New-Object System.Collections.Generic.HashSet[string]
+            $prefixCounts = @{}
             foreach ($tm in $testNameMatches) {
                 $tn = $tm.Groups[1].Value
                 $idx = $tn.IndexOf('_')
                 $prefix = if ($idx -gt 0) { $tn.Substring(0, $idx) } else { $tn }
                 [void]$testedPrefixes.Add($prefix)
+                if ($prefixCounts.ContainsKey($prefix)) { $prefixCounts[$prefix]++ } else { $prefixCounts[$prefix] = 1 }
+            }
+            $methodMatchedCounts = @{}
+            foreach ($pmName in $publicMethodNames) {
+                $stripped = if ($pmName.EndsWith('Async', [StringComparison]::Ordinal)) { $pmName.Substring(0, $pmName.Length - 5) } else { $null }
+                $count = 0
+                if ($prefixCounts.ContainsKey($pmName)) { $count += $prefixCounts[$pmName] }
+                if ($stripped -and $prefixCounts.ContainsKey($stripped)) { $count += $prefixCounts[$stripped] }
+                if ($count -gt 0) { $methodMatchedCounts[$pmName] = $count }
+            }
+            if ($methodMatchedCounts.Count -gt 0) {
+                $maxTestsPerMethod = ($methodMatchedCounts.Values | Measure-Object -Maximum).Maximum
+                $topMethodsByTestCount = (($methodMatchedCounts.GetEnumerator() |
+                    Sort-Object Value -Descending |
+                    Select-Object -First 3 |
+                    ForEach-Object { "$($_.Key)($($_.Value))" }) -join ', ')
             }
             $untestedPublicMethods = @($publicMethodNames | Where-Object {
                 $name = $_
@@ -259,6 +278,8 @@ $rows = foreach ($file in $testFiles) {
         PublicMethodCount = $publicMethodNames.Count
         UntestedPublicMethods = $untestedPublicMethods
         TestsPerPublicMethod = $testsPerPublicMethod
+        MaxTestsPerMethod = $maxTestsPerMethod
+        TopMethodsByTestCount = $topMethodsByTestCount
         DebtScore = $score
         Recommendation = $recommendation
         Reasons = @($reasons)
@@ -388,6 +409,26 @@ foreach ($item in $gapCandidates) {
         $untestedNames += ", ... +$($item.UntestedPublicMethods.Count - 8) more"
     }
     $md.Add(('| {0} | {1} | `{2}` | {3} | {4} |' -f $item.UntestedPublicMethods.Count, $item.TestsPerPublicMethod, $item.Path, $item.PublicMethodCount, $untestedNames))
+}
+
+$concentrationCandidates = @($rows |
+    Where-Object {
+        $_.MaxTestsPerMethod -ge 5 -and
+        $_.Category -ne 'Architecture' -and
+        -not $_.IsDiCycleSafetyNet
+    } |
+    Sort-Object @{Expression = { $_.MaxTestsPerMethod }; Descending = $true }, @{Expression = { $_.Tests }; Descending = $true } |
+    Select-Object -First $Top)
+
+$md.Add('')
+$md.Add('## Test Concentration Candidates')
+$md.Add('')
+$md.Add('Files where a single SUT method has 5+ attributed tests. High concentration often means cosmetic-variation tests that could collapse to a `[Theory]` or be culled outright. Inspect the top method''s tests — if 8 of them differ only in input values with the same assertion shape, that''s a consolidation target.')
+$md.Add('')
+$md.Add('| Max Tests/Method | Tests | File | Top Methods (test count) |')
+$md.Add('| ---: | ---: | --- | --- |')
+foreach ($item in $concentrationCandidates) {
+    $md.Add(('| {0} | {1} | `{2}` | {3} |' -f $item.MaxTestsPerMethod, $item.Tests, $item.Path, $item.TopMethodsByTestCount))
 }
 
 if (-not [string]::IsNullOrWhiteSpace($StrykerReport)) {
