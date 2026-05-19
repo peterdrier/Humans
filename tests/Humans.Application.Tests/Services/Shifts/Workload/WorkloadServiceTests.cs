@@ -17,8 +17,9 @@ namespace Humans.Application.Tests.Services.Shifts.Workload;
 
 /// <summary>
 /// Behaviour tests for <see cref="WorkloadService"/> — verifies that
-/// per-person hour totals, per-shift counts, and per-department roll-ups
-/// match what the spec at nobodies-collective/Humans#734 promises.
+/// per-person hour totals (split by Build/Event/Strike), per-rota roll-ups,
+/// and per-department roll-ups match what the spec at
+/// nobodies-collective/Humans#734 promises.
 /// </summary>
 public class WorkloadServiceTests : IDisposable
 {
@@ -109,7 +110,7 @@ public class WorkloadServiceTests : IDisposable
         report.EventSettingsId.Should().Be(es.Id);
         report.EventYear.Should().Be(2026);
         report.ByPerson.Should().BeEmpty();
-        report.ByShift.Should().BeEmpty();
+        report.ByRota.Should().BeEmpty();
         report.ByDepartment.Should().BeEmpty();
     }
 
@@ -132,41 +133,48 @@ public class WorkloadServiceTests : IDisposable
         report.Should().NotBeNull();
 
         var aliceRow = report.ByPerson.Single(p => p.UserId == alice.Id);
-        aliceRow.ConfirmedHours.Should().Be(10m);
+        aliceRow.TotalHours.Should().Be(10m);
+        aliceRow.EventHours.Should().Be(10m); // both day offsets 1 and 2 → Event phase
+        aliceRow.BuildHours.Should().Be(0m);
+        aliceRow.StrikeHours.Should().Be(0m);
         aliceRow.ConfirmedSignupCount.Should().Be(2);
         aliceRow.PendingSignupCount.Should().Be(0);
 
         var bobRow = report.ByPerson.Single(p => p.UserId == bob.Id);
-        bobRow.ConfirmedHours.Should().Be(0m);
+        bobRow.TotalHours.Should().Be(0m);
         bobRow.ConfirmedSignupCount.Should().Be(0);
         bobRow.PendingSignupCount.Should().Be(1);
     }
 
     [HumansFact]
-    public async Task ByPerson_TotalsConfirmedHoursPerUser()
+    public async Task ByPerson_SplitsHoursByPeriod_BuildEventStrike()
     {
-        // Service no longer sorts (display ordering belongs in the controller —
-        // memory/architecture/display-sort-in-controllers.md). Verify the
-        // per-user hour totals are correct regardless of row order.
+        // EventEndOffset=6 / StrikeEndOffset=9 from SeedEventAsync.
+        // DayOffset<0 → Build, 0..6 → Event, 7+ → Strike.
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es);
-        var s1 = await SeedShiftAsync(rota, dayOffset: 1, hours: 8);
-        var s2 = await SeedShiftAsync(rota, dayOffset: 2, hours: 2);
+        var buildShift = await SeedShiftAsync(rota, dayOffset: -2, hours: 4);
+        var eventShift = await SeedShiftAsync(rota, dayOffset: 1, hours: 5);
+        var strikeShift = await SeedShiftAsync(rota, dayOffset: 8, hours: 3);
 
         var alice = await SeedUserAsync("Alice");
-        var bob = await SeedUserAsync("Bob");
-        await SeedSignupAsync(s2, alice.Id, SignupStatus.Confirmed); // 2h
-        await SeedSignupAsync(s1, bob.Id, SignupStatus.Confirmed);   // 8h
+        await SeedSignupAsync(buildShift, alice.Id, SignupStatus.Confirmed);
+        await SeedSignupAsync(eventShift, alice.Id, SignupStatus.Confirmed);
+        await SeedSignupAsync(strikeShift, alice.Id, SignupStatus.Confirmed);
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        report.ByPerson.Single(p => p.UserId == alice.Id).ConfirmedHours.Should().Be(2m);
-        report.ByPerson.Single(p => p.UserId == bob.Id).ConfirmedHours.Should().Be(8m);
+        var row = report.ByPerson.Single(p => p.UserId == alice.Id);
+        row.BuildHours.Should().Be(4m);
+        row.EventHours.Should().Be(5m);
+        row.StrikeHours.Should().Be(3m);
+        row.TotalHours.Should().Be(12m);
+        row.ConfirmedSignupCount.Should().Be(3);
     }
 
     [HumansFact]
-    public async Task ByDepartment_CountsFilledSlotsAndHoursCappedAtMax()
+    public async Task ByDepartment_CountsFilledSlotsAndHoursCappedAtMax_AndIncludesSlug()
     {
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
@@ -186,10 +194,11 @@ public class WorkloadServiceTests : IDisposable
         dept.FilledSlots.Should().Be(3); // capped at MaxVolunteers
         dept.PlannedHours.Should().Be(12m); // 4h * 3 slots
         dept.FilledHours.Should().Be(12m); // capped
+        dept.TeamSlug.Should().Be("gate");
     }
 
     [HumansFact]
-    public async Task ByShift_IncludesAdminOnlyAndHiddenRotas()
+    public async Task ByRota_IncludesAdminOnlyAndHiddenRotas()
     {
         // Workload view is admin-only — coordinators need full visibility for
         // balancing, including admin-only shifts and hidden rotas.
@@ -197,17 +206,37 @@ public class WorkloadServiceTests : IDisposable
         var team = await SeedTeamAsync("Gate");
         var hiddenRota = await SeedRotaAsync(team, es, isVisible: false);
         var visibleRota = await SeedRotaAsync(team, es);
-        var adminShift = await SeedShiftAsync(visibleRota, dayOffset: 1, hours: 4, adminOnly: true);
-        var hiddenShift = await SeedShiftAsync(hiddenRota, dayOffset: 2, hours: 4);
+        await SeedShiftAsync(visibleRota, dayOffset: 1, hours: 4, adminOnly: true);
+        await SeedShiftAsync(hiddenRota, dayOffset: 2, hours: 4);
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        report.ByShift.Should().HaveCount(2);
-        report.ByShift.Select(s => s.ShiftId).Should().BeEquivalentTo([adminShift.Id, hiddenShift.Id]);
+        report.ByRota.Should().HaveCount(2);
+        report.ByRota.Select(r => r.RotaId).Should().BeEquivalentTo([visibleRota.Id, hiddenRota.Id]);
     }
 
     [HumansFact]
-    public async Task ByShift_AllDayShiftUsesEightToSixWindow()
+    public async Task ByRota_RollsUpShiftsPerRota()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es);
+        await SeedShiftAsync(rota, dayOffset: 1, hours: 4, max: 2);
+        await SeedShiftAsync(rota, dayOffset: 2, hours: 6, max: 3);
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        var row = report.ByRota.Single(r => r.RotaId == rota.Id);
+        row.ShiftCount.Should().Be(2);
+        row.PlannedSlots.Should().Be(5);
+        row.PlannedHours.Should().Be(4m * 2 + 6m * 3);
+        row.FilledSlots.Should().Be(0);
+        row.FilledHours.Should().Be(0m);
+        row.TeamName.Should().Be("Gate");
+    }
+
+    [HumansFact]
+    public async Task AllDayShift_UsesEightToSixWindow()
     {
         // All-day shifts contribute the standard 08:00–18:00 window
         // regardless of nominal Duration.
@@ -216,11 +245,12 @@ public class WorkloadServiceTests : IDisposable
         var rota = await SeedRotaAsync(team, es);
         var allDay = await SeedAllDayShiftAsync(rota, dayOffset: -3, nominalHours: 24);
 
+        var alice = await SeedUserAsync("Alice");
+        await SeedSignupAsync(allDay, alice.Id, SignupStatus.Confirmed);
+
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
-        var row = report.ByShift.Single(s => s.ShiftId == allDay.Id);
-        row.IsAllDay.Should().BeTrue();
-        row.DurationHours.Should().Be(10m); // 18:00 - 08:00
+        report.ByPerson.Single(p => p.UserId == alice.Id).BuildHours.Should().Be(10m); // 18:00 - 08:00
     }
 
     // ── Seed helpers ────────────────────────────────────────────────────────

@@ -25,10 +25,9 @@ public class ShiftWorkloadAdminController(IUserService userService, IWorkloadSer
     {
         if (report is null) return null;
 
-        var byShift = report.ByShift
-            .OrderBy(r => r.DayOffset)
-            .ThenBy(r => r.StartTime)
-            .ThenBy(r => r.TeamName, StringComparer.Ordinal)
+        var byRota = report.ByRota
+            .OrderBy(r => r.TeamName, StringComparer.Ordinal)
+            .ThenBy(r => r.RotaName, StringComparer.Ordinal)
             .ToList();
 
         var byDepartment = report.ByDepartment
@@ -36,14 +35,14 @@ public class ShiftWorkloadAdminController(IUserService userService, IWorkloadSer
             .ToList();
 
         var byPerson = report.ByPerson
-            .OrderByDescending(r => r.ConfirmedHours)
+            .OrderByDescending(r => r.TotalHours)
             .ThenBy(r => r.DisplayName, StringComparer.Ordinal)
             .ToList();
 
         return report with
         {
             ByPerson = byPerson,
-            ByShift = byShift,
+            ByRota = byRota,
             ByDepartment = byDepartment,
         };
     }
