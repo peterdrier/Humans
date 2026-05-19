@@ -38,11 +38,11 @@ public class StoreAdminController(
     [HttpGet("Summary")]
     public async Task<IActionResult> Summary(int? year, CancellationToken ct)
     {
-        var activeEvent = await _shifts.GetActiveAsync();
-        var defaultYear = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
+        var activeEvent = await shifts.GetActiveAsync();
+        var defaultYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var selectedYear = year ?? defaultYear;
 
-        var summary = await _storeService.GetStoreSummaryAsync(selectedYear, ct);
+        var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
         return View(new StoreSummaryViewModel { Summary = summary });
     }
 
