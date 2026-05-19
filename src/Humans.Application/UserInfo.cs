@@ -193,16 +193,25 @@ public sealed record UserInfo(
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
     /// <summary>
+    /// Sentinel <see cref="DisplayName"/> value written by
+    /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+    /// to mark GDPR-deleted users. Read by <see cref="IsTombstone"/>; the
+    /// shared constant ties write-path and read-path together so a rename
+    /// can't silently break tombstone detection.
+    /// </summary>
+    public const string GdprAnonymizedDisplayName = "Deleted User";
+
+    /// <summary>
     /// True when the user row is a tombstone — either a merge-source
     /// (<see cref="MergedAt"/> set) or a GDPR-anonymized record (DisplayName
-    /// rewritten to <c>"Deleted User"</c> by
+    /// rewritten to <see cref="GdprAnonymizedDisplayName"/> by
     /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>).
     /// Callers that materialize new per-user rows (Stub Profile, etc.) MUST
     /// short-circuit on this so they don't resurrect the tombstone.
     /// </summary>
     public bool IsTombstone =>
         MergedAt is not null
-        || string.Equals(DisplayName, "Deleted User", StringComparison.Ordinal);
+        || string.Equals(DisplayName, GdprAnonymizedDisplayName, StringComparison.Ordinal);
 
     /// <summary>First verified primary email; null when none loaded.</summary>
     public string? PrimaryEmail => UserEmails

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -538,7 +539,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
-        user.DisplayName = "Deleted User";
+        user.DisplayName = UserInfo.GdprAnonymizedDisplayName;
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
