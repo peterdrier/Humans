@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -240,6 +241,55 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
+    }
+
+    [HumansTheory]
+    [InlineData(null, 0, null, false)]
+    [InlineData(RoleNames.Admin, -10, null, true)]
+    [InlineData(RoleNames.Admin, -30, -1, false)]
+    [InlineData(RoleNames.Admin, 1, null, false)]
+    [InlineData(RoleNames.Board, -10, null, false)]
+    public async Task IsUserAdminAsync_HonorsActiveAdminWindow(
+        string? seededRole, int validFromDays, int? validToDays, bool expected)
+    {
+        var user = SeedUser();
+        if (seededRole is not null)
+        {
+            SeedRoleAssignment(
+                user.Id,
+                seededRole,
+                Clock.GetCurrentInstant() + Duration.FromDays(validFromDays),
+                validToDays.HasValue ? Clock.GetCurrentInstant() + Duration.FromDays(validToDays.Value) : null);
+        }
+        await Db.SaveChangesAsync();
+
+        var result = await _service.IsUserAdminAsync(user.Id);
+
+        result.Should().Be(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(null, 0, null, false)]
+    [InlineData(RoleNames.Board, -10, null, true)]
+    [InlineData(RoleNames.Board, -30, -1, false)]
+    [InlineData(RoleNames.Admin, -10, null, false)]
+    public async Task IsUserBoardMemberAsync_HonorsActiveBoardWindow(
+        string? seededRole, int validFromDays, int? validToDays, bool expected)
+    {
+        var user = SeedUser();
+        if (seededRole is not null)
+        {
+            SeedRoleAssignment(
+                user.Id,
+                seededRole,
+                Clock.GetCurrentInstant() + Duration.FromDays(validFromDays),
+                validToDays.HasValue ? Clock.GetCurrentInstant() + Duration.FromDays(validToDays.Value) : null);
+        }
+        await Db.SaveChangesAsync();
+
+        var result = await _service.IsUserBoardMemberAsync(user.Id);
+
+        result.Should().Be(expected);
     }
 
     [HumansFact]
