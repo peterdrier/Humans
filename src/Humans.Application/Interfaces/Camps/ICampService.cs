@@ -14,6 +14,7 @@ namespace Humans.Application.Interfaces.Camps;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes BarrioEventsController (replaces IsUserCampLeadAsync there). Once the legacy CampLead table drops, AddLeadAsync/RemoveLeadAsync/EnsureActiveMemberForMigrationAsync retire (57→54 net).</item>
 ///   <item>55→56 — Camp Lead retirement (issue nobodies-collective/Humans#753): added EnsureActiveMemberForMigrationAsync — needed by the admin "Seed system roles" button to land legacy CampLead rows on the role-assignment side. Once the follow-up table-drop PR lands, this and the AddLeadAsync/RemoveLeadAsync pair (55→52 net) will both retire.</item>
 ///   <item>55→55 — onsite-roster N+1 fix: added <see cref="GetCampMembersByYearAsync"/> (year-scoped bulk member fetch) for <c>OnsiteRosterService</c>; net-zero by dropping obsolete <c>GetCampsWithLeadsForYearAsync</c> (T-06 alias of <see cref="GetCampsForYearAsync"/>, zero external callers).</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(55)] (issue nobodies-collective/Humans#700).</item>
@@ -21,7 +22,7 @@ namespace Humans.Application.Interfaces.Camps;
 ///   <item>51→52 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against camps must live in the owning section per design-rules §6.</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(56)]
+[SurfaceBudget(57)]
 public interface ICampService : IApplicationService
 {
     // Registration
@@ -114,6 +115,18 @@ public interface ICampService : IApplicationService
 
     // Authorization checks
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns true when the user holds a <c>CampRoleAssignment</c> on the given
+    /// camp (current season) whose <c>CampRoleDefinition.SpecialRole</c> is
+    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Lead"/> OR
+    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Workshop"/>. Authorizes
+    /// camp-event submission via <c>BarrioEventsController</c>
+    /// (<c>/Barrios/{slug}/Events/*</c>). Camp leads automatically satisfy this
+    /// check because the role set is the OR — no separate "lead-implies-workshop"
+    /// logic.
+    /// </summary>
+    Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);

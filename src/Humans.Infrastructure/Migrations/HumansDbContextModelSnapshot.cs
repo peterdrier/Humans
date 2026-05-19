@@ -1138,9 +1138,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<bool>("IsSystem")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("MinimumRequired")
                         .HasColumnType("integer");
 
@@ -1159,6 +1156,13 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SpecialRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValueSql("'None'");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

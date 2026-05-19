@@ -1153,29 +1153,49 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {
-        // Post-migration source of truth: CampRoleAssignment against the system
-        // Camp Lead role. Legacy CampLead fallback covers the deploy window
-        // before the "Seed system roles" admin button runs on this env
-        // (issue nobodies-collective/Humans#753). Removed when the legacy
-        // table drops in the follow-up PR.
-        var fromRole = await _roleRepo.GetCampSystemRoleSeasonIdForYearAsync(
-            userId, year, CampSystemRoles.CampLeadName, cancellationToken);
+        // Post-migration source of truth: CampRoleAssignment against the Camp Lead
+        // special role. Legacy CampLead fallback covers the deploy window before
+        // the "Seed system roles" admin button runs on this env (issue
+        // nobodies-collective/Humans#753). Removed when the legacy table drops in
+        // the follow-up PR.
+        var fromRole = await _roleRepo.GetCampSpecialRoleSeasonIdForYearAsync(
+            userId, year, CampSpecialRole.Lead, cancellationToken);
         if (fromRole is not null) return fromRole;
         return await _repo.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
     }
 
     // --- Authorization checks ---
 
+    private static readonly IReadOnlyCollection<CampSpecialRole> LeadOnly = [CampSpecialRole.Lead];
+    private static readonly IReadOnlyCollection<CampSpecialRole> LeadOrWorkshop =
+        [CampSpecialRole.Lead, CampSpecialRole.Workshop];
+
     public async Task<bool> IsUserCampLeadAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default)
     {
-        // Post-migration source of truth: CampRoleAssignment against the system
-        // Camp Lead role. Legacy CampLead fallback covers the deploy window
-        // before the "Seed system roles" admin button runs on this env
-        // (issue nobodies-collective/Humans#753). Removed when the legacy
-        // table drops in the follow-up PR.
-        if (await _roleRepo.IsUserSystemRoleHolderForCampAsync(
-            userId, campId, CampSystemRoles.CampLeadName, cancellationToken))
+        // Post-migration source of truth: CampRoleAssignment against the Camp Lead
+        // special role. Legacy CampLead fallback covers the deploy window before
+        // the "Seed system roles" admin button runs on this env (issue
+        // nobodies-collective/Humans#753). Removed when the legacy table drops in
+        // the follow-up PR.
+        if (await _roleRepo.IsUserSpecialRoleHolderForCampAsync(
+            userId, campId, LeadOnly, cancellationToken))
+        {
+            return true;
+        }
+        return await _repo.IsUserActiveLeadAsync(userId, campId, cancellationToken);
+    }
+
+    public async Task<bool> IsUserCampEventManagerAsync(
+        Guid userId, Guid campId, CancellationToken cancellationToken = default)
+    {
+        // Authorizes camp-event submission (BarrioEventsController). Lead OR
+        // Workshop on the camp's current season. Camp leads inherit Workshop
+        // power because the role set is the OR — no separate "lead-implies-
+        // workshop" logic. Legacy CampLead fallback covers the deploy window
+        // before the "Seed system roles" admin button runs.
+        if (await _roleRepo.IsUserSpecialRoleHolderForCampAsync(
+            userId, campId, LeadOrWorkshop, cancellationToken))
         {
             return true;
         }

@@ -211,6 +211,12 @@ public class CampAdminViewModel
     public string? RegistrationInfo { get; set; }
     /// <summary>Global EE start date for the public year. Null until set by CampAdmin.</summary>
     public NodaTime.LocalDate? EeStartDate { get; set; }
+    /// <summary>
+    /// True when at least one <c>CampSpecialRole</c> value (other than
+    /// <c>None</c>) does not yet have a <c>CampRoleDefinition</c> row. The
+    /// "Seed system roles" admin card is rendered only when this is true.
+    /// </summary>
+    public bool HasMissingSpecialRoles { get; set; }
 }
 
 public class CampSummaryRowViewModel

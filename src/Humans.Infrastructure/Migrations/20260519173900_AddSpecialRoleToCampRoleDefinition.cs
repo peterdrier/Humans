@@ -5,24 +5,25 @@
 namespace Humans.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddIsSystemToCampRoleDefinition : Migration
+    public partial class AddSpecialRoleToCampRoleDefinition : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "IsSystem",
+            migrationBuilder.AddColumn<string>(
+                name: "SpecialRole",
                 table: "camp_role_definitions",
-                type: "boolean",
+                type: "character varying(50)",
+                maxLength: 50,
                 nullable: false,
-                defaultValue: false);
+                defaultValueSql: "'None'");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsSystem",
+                name: "SpecialRole",
                 table: "camp_role_definitions");
         }
     }

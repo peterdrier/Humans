@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260518164350_AddIsSystemToCampRoleDefinition")]
-    partial class AddIsSystemToCampRoleDefinition
+    [Migration("20260519173900_AddSpecialRoleToCampRoleDefinition")]
+    partial class AddSpecialRoleToCampRoleDefinition
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1141,9 +1141,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<bool>("IsSystem")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("MinimumRequired")
                         .HasColumnType("integer");
 
@@ -1162,6 +1159,13 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SpecialRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValueSql("'None'");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1876,8 +1880,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
 
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("integer");

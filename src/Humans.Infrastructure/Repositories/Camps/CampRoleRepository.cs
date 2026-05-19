@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -33,72 +34,92 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 #pragma warning restore MA0011
     }
 
-    public async Task<CampRoleDefinition?> GetSystemDefinitionByNameAsync(string name, CancellationToken ct = default)
+    public async Task<CampRoleDefinition?> GetSpecialDefinitionAsync(CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        if (specialRole == CampSpecialRole.None)
+            throw new ArgumentException("CampSpecialRole.None has no special definition.", nameof(specialRole));
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleDefinitions.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.IsSystem && d.Name == name, ct);
+            .FirstOrDefaultAsync(d => d.SpecialRole == specialRole, ct);
     }
 
-    public async Task<bool> IsUserSystemRoleHolderForCampAsync(
-        Guid userId, Guid campId, string systemRoleName, CancellationToken ct = default)
+    public async Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleDefinitions.AsNoTracking()
+            .Where(d => d.SpecialRole != CampSpecialRole.None)
+            .Select(d => d.SpecialRole)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<bool> IsUserSpecialRoleHolderForCampAsync(
+        Guid userId, Guid campId, IReadOnlyCollection<CampSpecialRole> specialRoles, CancellationToken ct = default)
+    {
+        if (specialRoles.Count == 0) return false;
+        var roleList = specialRoles.ToList();
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .AnyAsync(a => a.CampMember.UserId == userId
                 && a.CampSeason.CampId == campId
-                && a.Definition.IsSystem
-                && a.Definition.Name == systemRoleName
+                && roleList.Contains(a.Definition.SpecialRole)
                 && a.Definition.DeactivatedAt == null, ct);
     }
 
-    public async Task<Guid?> GetCampSystemRoleSeasonIdForYearAsync(
-        Guid userId, int year, string systemRoleName, CancellationToken ct = default)
+    public async Task<Guid?> GetCampSpecialRoleSeasonIdForYearAsync(
+        Guid userId, int year, CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.CampMember.UserId == userId
                 && a.CampSeason.Year == year
-                && a.Definition.IsSystem
-                && a.Definition.Name == systemRoleName
+                && a.Definition.SpecialRole == specialRole
                 && a.Definition.DeactivatedAt == null)
             .OrderBy(a => a.CampSeasonId) // arch:db-sort-ok — top-1 deterministic pick
             .Select(a => (Guid?)a.CampSeasonId)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<int> CountPendingMembershipsForSystemRoleHolderAsync(
-        Guid userId, string systemRoleName, CancellationToken ct = default)
+    public async Task<int> CountPendingMembershipsForSpecialRoleHolderAsync(
+        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Camps where the user holds the named system role on any active season.
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Camps where the user holds the given special role on any active season.
         var leadCampIds = ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.CampMember.UserId == userId
-                && a.Definition.IsSystem
-                && a.Definition.Name == systemRoleName
+                && a.Definition.SpecialRole == specialRole
                 && a.Definition.DeactivatedAt == null)
             .Select(a => a.CampSeason.CampId)
             .Distinct();
 
         return await ctx.CampMembers.AsNoTracking()
-            .Where(m => m.Status == Humans.Domain.Enums.CampMemberStatus.Pending
+            .Where(m => m.Status == CampMemberStatus.Pending
                 && leadCampIds.Contains(m.CampSeason.CampId)
-                && (m.CampSeason.Status == Humans.Domain.Enums.CampSeasonStatus.Active
-                    || m.CampSeason.Status == Humans.Domain.Enums.CampSeasonStatus.Full))
+                && (m.CampSeason.Status == CampSeasonStatus.Active
+                    || m.CampSeason.Status == CampSeasonStatus.Full))
             .CountAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetSystemRoleHolderUserIdsAsync(
-        string systemRoleName, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
+        CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.Definition.IsSystem
-                && a.Definition.Name == systemRoleName
+            .Where(a => a.Definition.SpecialRole == specialRole
                 && a.Definition.DeactivatedAt == null)
             .Select(a => a.CampMember.UserId)
             .Distinct()
             .ToListAsync(ct);
+    }
+
+    public async Task<bool> IsSpecialRoleHolderAnywhereAsync(
+        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .AnyAsync(a => a.CampMember.UserId == userId
+                && a.Definition.SpecialRole == specialRole
+                && a.Definition.DeactivatedAt == null, ct);
     }
 
     public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)

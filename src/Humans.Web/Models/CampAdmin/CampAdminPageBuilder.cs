@@ -4,7 +4,10 @@ using Humans.Domain.Enums;
 
 namespace Humans.Web.Models.CampAdmin;
 
-public sealed class CampAdminPageBuilder(ICampService campService, ICityPlanningService cityPlanningService)
+public sealed class CampAdminPageBuilder(
+    ICampService campService,
+    ICampRoleService campRoleService,
+    ICityPlanningService cityPlanningService)
 {
     public async Task<CampAdminViewModel> BuildAsync()
     {
@@ -39,9 +42,12 @@ public sealed class CampAdminPageBuilder(ICampService campService, ICityPlanning
             .ToList();
         var summaries = await BuildSummariesAsync(campsWithLeads);
 
+        var missingSpecialRoles = await campRoleService.GetMissingSpecialRolesAsync();
+
         return new CampAdminViewModel
         {
             PublicYear = settings.PublicYear,
+            HasMissingSpecialRoles = missingSpecialRoles.Count > 0,
             OpenSeasons = openSeasons,
             TotalCamps = allCamps.Count,
             ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>

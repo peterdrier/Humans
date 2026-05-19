@@ -90,6 +90,15 @@ public sealed class CachingCampService(
         return await WithInner(inner => inner.IsUserCampLeadAsync(userId, campId, cancellationToken));
     }
 
+    public Task<bool> IsUserCampEventManagerAsync(
+        Guid userId, Guid campId, CancellationToken cancellationToken = default)
+    {
+        // Workshop-role holders are not modeled in CampInfo.Leads (which is
+        // strictly Camp Lead). Delegate to the inner service so the Lead OR
+        // Workshop check sees the role-assignment table directly.
+        return WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
+    }
+
     public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {

@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -25,11 +26,19 @@ public class CampRoleDefinitionConfiguration : IEntityTypeConfiguration<CampRole
 
         builder.HasIndex(d => d.SortOrder);
 
-        // IsSystem: do NOT use HasDefaultValue(false) — EF Core would treat
-        // explicit false as the sentinel "unset" and send the default value.
-        // The CLR default is already false on the entity. The column-level
-        // default is only relevant for the migration's backfill on existing
-        // rows, which is handled directly in the migration's AddColumn call.
+        // SpecialRole stored as string per the Camps enum convention. The
+        // SQL-level default ('None') backfills the AddColumn migration so
+        // existing rows land on the enum's None member, not the empty string
+        // EF would otherwise generate. SQL-level default (not
+        // HasDefaultValue(CampSpecialRole.None)) avoids the EF sentinel trap
+        // documented in code-review-rules.md "EF Core Bool Sentinel" —
+        // explicit None on a CLR instance still serializes correctly because
+        // EF doesn't treat the SQL default as the unset sentinel here.
+        builder.Property(d => d.SpecialRole)
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .IsRequired()
+            .HasDefaultValueSql("'None'");
 
         builder.Ignore(d => d.IsActive);
     }

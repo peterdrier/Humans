@@ -1,5 +1,6 @@
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Camps;
@@ -62,36 +63,46 @@ public interface ICampRoleService : IApplicationService
     Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Idempotent admin action: ensures the Camp Lead and Events Lead system role
-    /// definitions exist (matched by <see cref="CampSystemRoles"/> constants and
-    /// <c>IsSystem = true</c>), then walks the legacy <c>camp_leads</c> table and
-    /// creates a <see cref="CampRoleAssignment"/> for the Camp Lead role on the
-    /// camp's open (or most-recent-open) season, creating
-    /// <see cref="CampMember"/>(<c>Status = Active</c>) as needed. Camps with no
-    /// season are skipped and logged. Safe to run multiple times — the second
-    /// run is a no-op for already-seeded definitions and already-migrated leads.
+    /// Idempotent admin action: ensures every non-<see cref="CampSpecialRole.None"/>
+    /// value of <see cref="CampSpecialRole"/> has a matching system role definition
+    /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>), then walks the
+    /// legacy <c>camp_leads</c> table and creates a <see cref="CampRoleAssignment"/>
+    /// for the Camp Lead role on the camp's open (or most-recent-open) season,
+    /// creating <see cref="CampMember"/>(<c>Status = Active</c>) as needed. Camps
+    /// with no season are skipped and logged. Safe to run multiple times — the
+    /// second run is a no-op for already-seeded definitions and already-migrated
+    /// leads.
     /// </summary>
     Task<SeedSystemRolesResult> SeedSystemRolesAndMigrateLeadsAsync(Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the set of <see cref="CampSpecialRole"/> values (excluding
+    /// <see cref="CampSpecialRole.None"/>) that do NOT yet have a matching row in
+    /// <c>camp_role_definitions</c>. The admin "Seed system roles" button is hidden
+    /// on <c>/Camps/Admin</c> when this returns empty.
+    /// </summary>
+    Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default);
 }
 
 /// <summary>
-/// Well-known identifiers for system-managed camp role definitions.
-/// Names + slugs are the stable match key (rows are looked up by name + IsSystem,
-/// not by GUID, because seeding generates a fresh GUID per environment).
+/// Well-known display defaults for system-managed camp role definitions.
+/// Rows are looked up by <see cref="CampRoleDefinition.SpecialRole"/>; the names
+/// and slugs here are seeding defaults only — admins may not rename or change
+/// the slug of a seeded special-role row (rejected by <c>CampRoleService</c>).
 /// </summary>
 public static class CampSystemRoles
 {
     public const string CampLeadName = "Camp Lead";
     public const string CampLeadSlug = "camp-lead";
-    public const int CampLeadSortOrder = 0;
+    public const int CampLeadSortOrder = -1000;
     public const int CampLeadSlotCount = 2;
     public const int CampLeadMinimumRequired = 1;
 
-    public const string EventsLeadName = "Events Lead";
-    public const string EventsLeadSlug = "events-lead";
-    public const int EventsLeadSortOrder = 10;
-    public const int EventsLeadSlotCount = 2;
-    public const int EventsLeadMinimumRequired = 0;
+    public const string WorkshopLeadName = "Workshop Lead";
+    public const string WorkshopLeadSlug = "workshop-lead";
+    public const int WorkshopLeadSortOrder = -990;
+    public const int WorkshopLeadSlotCount = 2;
+    public const int WorkshopLeadMinimumRequired = 0;
 }
 
 public sealed record SeedSystemRolesResult(
@@ -145,9 +156,10 @@ public sealed record CampRoleDefinitionInfo(
     Instant CreatedAt,
     Instant UpdatedAt,
     Instant? DeactivatedAt,
-    bool IsSystem)
+    CampSpecialRole SpecialRole)
 {
     public bool IsActive => DeactivatedAt is null;
+    public bool IsSpecial => SpecialRole != CampSpecialRole.None;
 }
 
 public sealed record CampRoleAssignmentInfo(

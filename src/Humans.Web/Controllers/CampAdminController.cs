@@ -517,7 +517,7 @@ public class CampAdminController(
 
         try
         {
-            var result = await _campRoleService.SeedSystemRolesAndMigrateLeadsAsync(user.Id, ct);
+            var result = await campRoleService.SeedSystemRolesAndMigrateLeadsAsync(user.Id, ct);
             var summary =
                 $"System roles: {result.DefinitionsCreated} created. " +
                 $"Camp leads: {result.LeadsMigrated} migrated, " +
@@ -530,7 +530,7 @@ public class CampAdminController(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "SeedSystemRoles failed.");
+            logger.LogError(ex, "SeedSystemRoles failed.");
             SetError("Failed to seed system roles and migrate leads.");
         }
         return RedirectToAction(nameof(Index));

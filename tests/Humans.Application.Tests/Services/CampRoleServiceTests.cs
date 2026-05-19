@@ -765,12 +765,12 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             SlotCount = CampSystemRoles.CampLeadSlotCount,
             MinimumRequired = CampSystemRoles.CampLeadMinimumRequired,
             SortOrder = CampSystemRoles.CampLeadSortOrder,
-            IsSystem = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
 
         var input = new UpdateCampRoleDefinitionInput(
             Name: "Renamed", Slug: CampSystemRoles.CampLeadSlug, Description: null,
@@ -793,12 +793,12 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             SlotCount = 2,
             MinimumRequired = CampSystemRoles.CampLeadMinimumRequired,
             SortOrder = CampSystemRoles.CampLeadSortOrder,
-            IsSystem = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
 
         var input = new UpdateCampRoleDefinitionInput(
             Name: def.Name, Slug: def.Slug, Description: "new description",
@@ -823,12 +823,12 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             SlotCount = CampSystemRoles.CampLeadSlotCount,
             MinimumRequired = CampSystemRoles.CampLeadMinimumRequired,
             SortOrder = CampSystemRoles.CampLeadSortOrder,
-            IsSystem = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
-        _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
 
         var act = async () => await _service.DeactivateDefinitionAsync(def.Id, _actorUserId);
 
@@ -846,12 +846,12 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         result.DefinitionsCreated.Should().Be(2);
         result.LeadsMigrated.Should().Be(0);
 
-        var defs = await _dbContext.CampRoleDefinitions
-            .Where(d => d.IsSystem)
+        var defs = await Db.CampRoleDefinitions
+            .Where(d => d.SpecialRole != CampSpecialRole.None)
             .ToListAsync();
         defs.Should().HaveCount(2);
-        defs.Should().Contain(d => d.Name == CampSystemRoles.CampLeadName);
-        defs.Should().Contain(d => d.Name == CampSystemRoles.EventsLeadName);
+        defs.Should().Contain(d => d.SpecialRole == CampSpecialRole.Lead && d.Name == CampSystemRoles.CampLeadName);
+        defs.Should().Contain(d => d.SpecialRole == CampSpecialRole.Workshop && d.Name == CampSystemRoles.WorkshopLeadName);
     }
 
     [HumansFact]
@@ -865,7 +865,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         second.LeadsMigrated.Should().Be(0);
         second.LeadsAlreadyMigrated.Should().Be(0);
 
-        (await _dbContext.CampRoleDefinitions.CountAsync(d => d.IsSystem))
+        (await Db.CampRoleDefinitions.CountAsync(d => d.SpecialRole != CampSpecialRole.None))
             .Should().Be(2);
     }
 }
