@@ -104,14 +104,37 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         var season = CreateSeasonFromData(camp.Id, year, name, seasonData, now);
 
-        var lead = new CampLead
+        var member = new CampMember
         {
             Id = Guid.NewGuid(),
-            CampId = camp.Id,
+            CampSeasonId = season.Id,
             UserId = createdByUserId,
-            Role = CampLeadRole.CoLead,
-            JoinedAt = now
+            Status = CampMemberStatus.Active,
+            RequestedAt = now,
+            ConfirmedAt = now,
+            ConfirmedByUserId = createdByUserId,
         };
+
+        var leadDef = await _roleRepo.GetSpecialDefinitionAsync(CampSpecialRole.Lead, cancellationToken);
+        CampRoleAssignment? leadAssignment = null;
+        if (leadDef is not null)
+        {
+            leadAssignment = new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = leadDef.Id,
+                CampMemberId = member.Id,
+                AssignedAt = now,
+                AssignedByUserId = createdByUserId,
+            };
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Camp Lead role definition missing while creating camp {CampId}; creator added as Active member without a lead assignment. Run 'Seed system roles'.",
+                camp.Id);
+        }
 
         List<CampHistoricalName>? historicalNameEntities = null;
         if (historicalNames is { Count: > 0 })
@@ -126,7 +149,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             }).ToList();
         }
 
-        await _repo.CreateCampAsync(camp, season, lead, historicalNameEntities, cancellationToken);
+        await _repo.CreateCampAsync(camp, season, member, leadAssignment, historicalNameEntities, cancellationToken);
 
         await _auditLog.LogAsync(
             AuditAction.CampCreated, nameof(Camp), camp.Id,

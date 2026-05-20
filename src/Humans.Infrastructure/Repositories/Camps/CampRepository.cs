@@ -167,14 +167,19 @@ internal sealed class CampRepository : ICampRepository
     public async Task CreateCampAsync(
         Camp camp,
         CampSeason initialSeason,
-        CampLead creatorLead,
+        CampMember creatorMember,
+        CampRoleAssignment? creatorLeadAssignment,
         IReadOnlyList<CampHistoricalName>? historicalNames,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Camps.Add(camp);
         ctx.CampSeasons.Add(initialSeason);
-        ctx.CampLeads.Add(creatorLead);
+        ctx.CampMembers.Add(creatorMember);
+        if (creatorLeadAssignment is not null)
+        {
+            ctx.CampRoleAssignments.Add(creatorLeadAssignment);
+        }
         if (historicalNames is { Count: > 0 })
         {
             foreach (var name in historicalNames)

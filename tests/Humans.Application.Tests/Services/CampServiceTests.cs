@@ -61,6 +61,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     public async Task CreateCampAsync_NewCamp_CreatesCampWithPendingSeason()
     {
         await SeedSettingsAsync();
+        var leadDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
         var userId = Guid.NewGuid();
 
         var camp = await _service.CreateCampAsync(
@@ -72,18 +73,39 @@ public sealed class CampServiceTests : ServiceTestHarness
         camp.Slug.Should().Be("camp-funhouse");
         camp.CreatedByUserId.Should().Be(userId);
 
-        var season = await Db.CampSeasons
+        var season = await Db.CampSeasons.AsNoTracking()
             .FirstOrDefaultAsync(s => s.CampId == camp.Id);
         season.Should().NotBeNull();
         season.Status.Should().Be(CampSeasonStatus.Pending);
         season.Year.Should().Be(2026);
         season.Name.Should().Be("Camp Funhouse");
 
-        var lead = await Db.CampLeads
-            .FirstOrDefaultAsync(l => l.CampId == camp.Id);
-        lead.Should().NotBeNull();
-        lead.UserId.Should().Be(userId);
-        lead.Role.Should().Be(CampLeadRole.CoLead);
+        var member = await Db.CampMembers.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.CampSeasonId == season.Id && m.UserId == userId);
+        member.Should().NotBeNull();
+        member!.Status.Should().Be(CampMemberStatus.Active);
+
+        var assignment = await Db.CampRoleAssignments.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.CampMemberId == member.Id);
+        assignment.Should().NotBeNull();
+        assignment!.CampRoleDefinitionId.Should().Be(leadDef.Id);
+    }
+
+    [HumansFact]
+    public async Task CreateCampAsync_NoLeadDefinition_CreatesCampAndActiveMemberWithoutAssignment()
+    {
+        await SeedSettingsAsync();
+        var userId = Guid.NewGuid();
+
+        var camp = await _service.CreateCampAsync(
+            userId, "Camp Seedless", "c@s.com", "+34600000001", null, null,
+            false, 0, MakeSeasonData(), null, 2026);
+
+        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        (await Db.CampMembers.AsNoTracking().AnyAsync(m => m.CampSeasonId == season.Id && m.UserId == userId))
+            .Should().BeTrue();
+        (await Db.CampRoleAssignments.AsNoTracking().AnyAsync(a => a.CampSeasonId == season.Id))
+            .Should().BeFalse();
     }
 
     [HumansFact]
@@ -210,30 +232,6 @@ public sealed class CampServiceTests : ServiceTestHarness
         var lead = await _service.AddLeadAsync(camp.Id, newLeadId);
 
         lead.UserId.Should().Be(newLeadId);
-    }
-
-    [HumansFact]
-    public async Task AddLeadAsync_AtMaxLeads_Throws()
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        // Add 4 more leads (1 creator + 4 = 5 max)
-        for (var i = 0; i < 4; i++)
-            await _service.AddLeadAsync(camp.Id, Guid.NewGuid());
-
-        var act = () => _service.AddLeadAsync(camp.Id, Guid.NewGuid());
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*maximum*");
-    }
-
-    [HumansFact]
-    public async Task RemoveLeadAsync_LastLead_Throws()
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        var lead = await Db.CampLeads.FirstAsync(l => l.CampId == camp.Id);
-
-        var act = () => _service.RemoveLeadAsync(lead.Id);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*last lead*");
     }
 
     // ==========================================================================
@@ -584,7 +582,6 @@ public sealed class CampServiceTests : ServiceTestHarness
         detail.Links.Should().ContainSingle(link => link.Url == "https://example.com/fallback");
         detail.HistoricalNames.Should().Contain("Old Fallback");
         detail.ImageUrls.Should().ContainSingle("/uploads/camps/fallback.jpg");
-        detail.Leads.Should().ContainSingle(lead => lead.DisplayName == "Camp Lead");
         detail.CurrentSeason.Should().NotBeNull();
         detail.CurrentSeason!.Year.Should().Be(2026);
         detail.CurrentSeason.IsNameLocked.Should().BeTrue();
@@ -745,7 +742,8 @@ public sealed class CampServiceTests : ServiceTestHarness
         result.Outcome.Should().Be(CampMemberRequestOutcome.NoOpenSeason);
         result.Message.Should().Be("Camp is not open for membership this year.");
         result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Error);
-        (await Db.CampMembers.AsNoTracking().AnyAsync()).Should().BeFalse();
+        // The creator is an Active member; assert no row was created for the requester.
+        (await Db.CampMembers.AsNoTracking().AnyAsync(m => m.UserId == userId)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -763,7 +761,8 @@ public sealed class CampServiceTests : ServiceTestHarness
         second.Outcome.Should().Be(CampMemberRequestOutcome.AlreadyPending);
         second.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Info);
         second.CampMemberId.Should().Be(first.CampMemberId);
-        (await Db.CampMembers.AsNoTracking().CountAsync()).Should().Be(1);
+        // Scope to the requester — the camp creator also has an Active member row.
+        (await Db.CampMembers.AsNoTracking().CountAsync(m => m.UserId == userId)).Should().Be(1);
     }
 
     [HumansFact]
@@ -1183,6 +1182,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     public async Task GetPendingMembershipCountForLeadAsync_CountsPendingOnActiveSeasonsForLeadsCamps()
     {
         await SeedSettingsAsync();
+        await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
         var leadUserId = Guid.NewGuid();
         await SeedUserAsync(leadUserId, "Lead Larry");
         var camp = await _service.CreateCampAsync(
@@ -1216,12 +1216,15 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampMembersAsync_NoLongerSynthesizesLeadRows_AfterCampLeadRetirement()
+    public async Task GetCampMembersAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
     {
         // Issue nobodies-collective/Humans#753: the IsLead union into the
-        // active-members list was removed. Active members come only from
-        // CampMember rows. Leads now show up via the Roles panel.
+        // active-members list was removed. Active members come only from real
+        // CampMember rows — no synthesis. The camp creator is now a real Active
+        // member (+ Camp Lead role assignment), so they appear via their own row,
+        // not a synthesized one.
         await SeedSettingsAsync();
+        await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
         var leadUserId = Guid.NewGuid();
         await SeedUserAsync(leadUserId, "Lead Larry");
         var camp = await _service.CreateCampAsync(
@@ -1237,12 +1240,11 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         var members = await _service.GetCampMembersAsync(season.Id);
 
-        // Only the approved member appears — the lead (who has no CampMember row)
-        // is no longer synthesized.
-        members.Active.Should().HaveCount(1);
-        members.Active[0].UserId.Should().Be(memberUserId);
-        members.Active[0].CampMemberId.Should().Be(req.CampMemberId);
-        members.Active.Should().NotContain(r => r.UserId == leadUserId);
+        // Two real Active members: the creator-lead (real row) + the approved member.
+        members.Active.Should().HaveCount(2);
+        members.Active.Should().Contain(r => r.UserId == memberUserId && r.CampMemberId == req.CampMemberId);
+        var creatorRow = members.Active.Should().ContainSingle(r => r.UserId == leadUserId).Subject;
+        creatorRow.CampMemberId.Should().NotBe(Guid.Empty);
     }
 
     [HumansFact]
@@ -1286,6 +1288,14 @@ public sealed class CampServiceTests : ServiceTestHarness
 
     private async Task<Camp> CreateTestCamp()
     {
+        // Production seeds the Camp Lead special role in every env, so creation
+        // produces a role-based lead. Mirror that here (idempotent) so the
+        // creator is an Active member + Camp Lead assignment.
+        if (!await Db.CampRoleDefinitions.AnyAsync(d => d.SpecialRole == CampSpecialRole.Lead))
+        {
+            await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
+        }
+
         return await _service.CreateCampAsync(
             Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
             null, null, false, 1, MakeSeasonData(), null, 2026);

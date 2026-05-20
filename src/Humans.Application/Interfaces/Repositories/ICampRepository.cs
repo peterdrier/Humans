@@ -99,13 +99,15 @@ public interface ICampRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Persist a new camp with its initial season, creator lead, and optional
-    /// historical names in a single transaction.
+    /// Persist a new camp with its initial season, the creator's Active CampMember,
+    /// an optional Camp Lead role assignment (null when the Lead role definition is
+    /// not yet seeded), and optional historical names in a single transaction.
     /// </summary>
     Task CreateCampAsync(
         Camp camp,
         CampSeason initialSeason,
-        CampLead creatorLead,
+        CampMember creatorMember,
+        CampRoleAssignment? creatorLeadAssignment,
         IReadOnlyList<CampHistoricalName>? historicalNames,
         CancellationToken ct = default);
 
