@@ -1189,21 +1189,10 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     private static readonly IReadOnlyCollection<CampSpecialRole> LeadOrWorkshop =
         [CampSpecialRole.Lead, CampSpecialRole.Workshop];
 
-    public async Task<bool> IsUserCampLeadAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default)
-    {
-        // Post-migration source of truth: CampRoleAssignment against the Camp Lead
-        // special role. Legacy CampLead fallback covers the deploy window before
-        // the "Seed system roles" admin button runs on this env (issue
-        // nobodies-collective/Humans#753). Removed when the legacy table drops in
-        // the follow-up PR.
-        if (await _roleRepo.IsUserSpecialRoleHolderForCampAsync(
-            userId, campId, LeadOnly, cancellationToken))
-        {
-            return true;
-        }
-        return await _repo.IsUserActiveLeadAsync(userId, campId, cancellationToken);
-    }
+    public Task<bool> IsUserCampLeadAsync(
+        Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
+        // Source of truth: CampRoleAssignment against the Camp Lead special role.
+        _roleRepo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOnly, cancellationToken);
 
     public async Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
@@ -1212,11 +1201,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var roleCampIds = await _roleRepo.GetCampIdsBySpecialRolesForUserAsync(
             userId, LeadOrWorkshop, cancellationToken);
 
-        // Legacy fallback: camps where the user is an active lead via the old CampLead table.
-        var legacyCamps = await _repo.GetCampsByLeadUserIdAsync(userId, cancellationToken);
-        var legacyCampIds = legacyCamps.Select(c => c.Id);
-
-        var allCampIds = roleCampIds.Union(legacyCampIds).ToHashSet();
+        var allCampIds = roleCampIds.ToHashSet();
         if (allCampIds.Count == 0) return [];
 
         // Filter the year's full camp list down to the ones the user manages.
@@ -1228,21 +1213,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
-    public async Task<bool> IsUserCampEventManagerAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default)
-    {
-        // Authorizes camp-event submission (EventsController). Lead OR
-        // Workshop on the camp's current season. Camp leads inherit Workshop
-        // power because the role set is the OR — no separate "lead-implies-
-        // workshop" logic. Legacy CampLead fallback covers the deploy window
-        // before the "Seed system roles" admin button runs.
-        if (await _roleRepo.IsUserSpecialRoleHolderForCampAsync(
-            userId, campId, LeadOrWorkshop, cancellationToken))
-        {
-            return true;
-        }
-        return await _repo.IsUserActiveLeadAsync(userId, campId, cancellationToken);
-    }
+    public Task<bool> IsUserCampEventManagerAsync(
+        Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
+        // Authorizes camp-event submission (EventsController). Lead OR Workshop on
+        // the camp's current season. Camp leads inherit Workshop power because the
+        // role set is the OR — no separate "lead-implies-workshop" logic.
+        _roleRepo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOrWorkshop, cancellationToken);
 
     public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
     {
@@ -1845,19 +1821,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return result;
     }
 
-    public async Task<int> GetPendingMembershipCountForLeadAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        // Post-migration source of truth: pending-membership count over camps
-        // where the user holds the Camp Lead special role. Falls back to the
-        // legacy CampLead count during the seed-button transition window so
-        // unmigrated leads still see their badge (issue
-        // nobodies-collective/Humans#753).
-        var roleSide = await _roleRepo.CountPendingMembershipsForSpecialRoleHolderAsync(
+    public Task<int> GetPendingMembershipCountForLeadAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        // Source of truth: pending-membership count over camps where the user
+        // holds the Camp Lead special role.
+        _roleRepo.CountPendingMembershipsForSpecialRoleHolderAsync(
             userId, CampSpecialRole.Lead, cancellationToken);
-        if (roleSide > 0) return roleSide;
-        return await _repo.CountPendingMembershipsForLeadAsync(userId, cancellationToken);
-    }
 
     public async Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)

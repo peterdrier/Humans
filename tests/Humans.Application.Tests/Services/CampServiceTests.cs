@@ -290,6 +290,27 @@ public sealed class CampServiceTests : ServiceTestHarness
         result.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task IsUserCampLeadAsync_LegacyCampLeadRowOnly_ReturnsFalse()
+    {
+        // Locks the removal of the legacy CampLead fallback: a camp_leads row with
+        // no matching CampRoleAssignment no longer confers lead status.
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var legacyUserId = Guid.NewGuid();
+        Db.CampLeads.Add(new CampLead
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            UserId = legacyUserId,
+            Role = CampLeadRole.CoLead,
+            JoinedAt = Clock.GetCurrentInstant(),
+        });
+        await Db.SaveChangesAsync();
+
+        (await _service.IsUserCampLeadAsync(legacyUserId, camp.Id)).Should().BeFalse();
+    }
+
     // ==========================================================================
     // IsUserCampEventManagerAsync (issue nobodies-collective/Humans#753)
     // ==========================================================================
