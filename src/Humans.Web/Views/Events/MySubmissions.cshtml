@@ -9,44 +9,9 @@
     </ol>
 </nav>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">My Event Submissions</h2>
-    @if (Model.IsSubmissionOpen)
-    {
-        <a asp-action="Submit" class="btn btn-primary">
-            <i class="fa-solid fa-plus me-1"></i>Submit New Event
-        </a>
-    }
-</div>
+<h2 class="mb-4">My Event Submissions</h2>
 
 <vc:temp-data-alerts />
-
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <div class="fs-4 fw-bold">@Model.SubmittedCount</div>
-                <small class="text-muted">Submitted</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <div class="fs-4 fw-bold text-warning">@Model.PendingCount</div>
-                <small class="text-muted">Pending</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <div class="fs-4 fw-bold text-success">@Model.ApprovedCount</div>
-                <small class="text-muted">Approved</small>
-            </div>
-        </div>
-    </div>
-</div>
 
 @if (!Model.IsSubmissionOpen)
 {
@@ -67,57 +32,187 @@
     </div>
 }
 
-@if (Model.Events.Count == 0)
-{
-    <div class="alert alert-secondary">
-        You haven't submitted any events yet.
+@* ── Personal events block ── *@
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-user me-1"></i> My personal events</span>
+        @if (Model.IsSubmissionOpen)
+        {
+            <a asp-action="Submit" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-plus me-1"></i>Submit new event
+            </a>
+        }
     </div>
-}
-else
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-4">
+                <div class="card text-center border-0 bg-light">
+                    <div class="card-body py-2">
+                        <div class="fs-5 fw-bold">@Model.Personal.SubmittedCount</div>
+                        <small class="text-muted">Submitted</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card text-center border-0 bg-light">
+                    <div class="card-body py-2">
+                        <div class="fs-5 fw-bold text-warning">@Model.Personal.PendingCount</div>
+                        <small class="text-muted">Pending</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card text-center border-0 bg-light">
+                    <div class="card-body py-2">
+                        <div class="fs-5 fw-bold text-success">@Model.Personal.ApprovedCount</div>
+                        <small class="text-muted">Approved</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Personal.Events.Count == 0)
+        {
+            <p class="text-muted mb-0">You haven't submitted any personal events yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Event name</th>
+                            <th>Category</th>
+                            <th>Date &amp; time</th>
+                            <th>Status</th>
+                            <th style="width: 130px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var evt in Model.Personal.Events)
+                        {
+                            <tr>
+                                <td>@evt.Title</td>
+                                <td>@evt.CategoryName</td>
+                                <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
+                                <td>
+                                    @if (evt.CanEdit)
+                                    {
+                                        <a asp-action="Edit" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
+                                            <i class="fa-solid fa-pen me-1"></i>Edit
+                                        </a>
+                                    }
+                                    @if (evt.CanWithdraw)
+                                    {
+                                        <form method="post" asp-action="Withdraw" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── Barrio blocks (one per led barrio) ── *@
+@foreach (var barrio in Model.Barrios)
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Venue</th>
-                    <th>Category</th>
-                    <th>Date / Time</th>
-                    <th>Duration</th>
-                    <th>Status</th>
-                    <th style="width: 160px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var evt in Model.Events)
-                {
-                    <tr>
-                        <td>@evt.Title</td>
-                        <td>@evt.VenueName</td>
-                        <td>@evt.CategoryName</td>
-                        <td>@evt.StartAt.ToString("d MMM HH:mm")</td>
-                        <td>@evt.DurationMinutes min</td>
-                        <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
-                        <td>
-                            @if (evt.CanEdit)
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fa-solid fa-flag me-1"></i> @barrio.CampName</span>
+            @if (Model.IsSubmissionOpen)
+            {
+                <a asp-action="BarrioSubmit" asp-route-slug="@barrio.CampSlug" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i>Add barrio event
+                </a>
+            }
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-4">
+                    <div class="card text-center border-0 bg-light">
+                        <div class="card-body py-2">
+                            <div class="fs-5 fw-bold">@barrio.SubmittedCount</div>
+                            <small class="text-muted">Submitted</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card text-center border-0 bg-light">
+                        <div class="card-body py-2">
+                            <div class="fs-5 fw-bold text-warning">@barrio.PendingCount</div>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card text-center border-0 bg-light">
+                        <div class="card-body py-2">
+                            <div class="fs-5 fw-bold text-success">@barrio.ApprovedCount</div>
+                            <small class="text-muted">Approved</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (barrio.Events.Count == 0)
+            {
+                <p class="text-muted mb-0">No events submitted yet for this barrio.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Event name</th>
+                                <th>Category</th>
+                                <th>Date &amp; time</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th style="width: 130px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var evt in barrio.Events)
                             {
-                                <a asp-action="Edit" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
-                                    <i class="fa-solid fa-pen"></i>
-                                </a>
+                                <tr>
+                                    <td>@evt.Title</td>
+                                    <td>@evt.CategoryName</td>
+                                    <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                    <td>@evt.PriorityRank</td>
+                                    <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
+                                    <td>
+                                        @if (evt.CanEdit)
+                                        {
+                                            <a asp-action="BarrioEdit" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
+                                                <i class="fa-solid fa-pen me-1"></i>Edit
+                                            </a>
+                                        }
+                                        @if (evt.CanWithdraw)
+                                        {
+                                            <form method="post" asp-action="BarrioWithdraw" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
                             }
-                            @if (evt.CanWithdraw)
-                            {
-                                <form method="post" asp-action="Withdraw" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="fa-solid fa-xmark"></i>
-                                    </button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </div>
 }

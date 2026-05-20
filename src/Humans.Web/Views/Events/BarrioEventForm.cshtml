@@ -8,7 +8,7 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
-        <li class="breadcrumb-item"><a asp-controller="BarrioEvents" asp-action="Index" asp-route-slug="@Model.CampSlug">Events</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Events" asp-action="MySubmissions">My Event Submissions</a></li>
         <li class="breadcrumb-item active" aria-current="page">@(isEdit ? "Edit" : "New")</li>
     </ol>
 </nav>
@@ -32,8 +32,8 @@
 <div class="card" style="max-width: 700px;">
     <div class="card-body">
         <form method="post"
-              asp-controller="BarrioEvents"
-              asp-action="@(isEdit ? "Update" : "Create")"
+              asp-controller="Events"
+              asp-action="@(isEdit ? "BarrioUpdate" : "BarrioCreate")"
               asp-route-slug="@Model.CampSlug"
               asp-route-eventId="@Model.Id">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -129,6 +129,13 @@
             </div>
 
             <div class="mb-3">
+                <label asp-for="Host" class="form-label"></label>
+                <input asp-for="Host" class="form-control" maxlength="40" placeholder="e.g. Luna" />
+                <div class="form-text">Optional — names the person running this event.</div>
+                <span asp-validation-for="Host" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
                 <label asp-for="PriorityRank" class="form-label"></label>
                 <input asp-for="PriorityRank" type="number" class="form-control" style="max-width: 120px;" min="1" max="100" />
                 <div class="form-text">1 = highest priority for print guide selection.</div>
@@ -138,7 +145,7 @@
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? "Resubmit" : "Submit for Review")
             </button>
-            <a asp-controller="BarrioEvents" asp-action="Index" asp-route-slug="@Model.CampSlug" class="btn btn-outline-secondary ms-2">Cancel</a>
+            <a asp-controller="Events" asp-action="MySubmissions" class="btn btn-outline-secondary ms-2">Cancel</a>
         </form>
     </div>
 </div>

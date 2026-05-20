@@ -80,13 +80,12 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void EventsRoutes_UseEventsAndBarriosSlugs()
+    public void EventsRoutes_UseEventsSlug()
     {
         RouteFor<EventsController>().Should().Be("Events");
         RouteFor<EventsDashboardController>().Should().Be("Events/Dashboard");
         RouteFor<EventsExportController>().Should().Be("Events/Export");
         RouteFor<EventsModerationController>().Should().Be("Events/Moderate");
-        RouteFor<BarrioEventsController>().Should().Be("Barrios/{slug}/Events");
         RouteFor<EventsApiController>().Should().Be("api/events");
     }
 
@@ -99,7 +98,6 @@ public class EventsArchitectureTests
             RouteFor<EventsDashboardController>(),
             RouteFor<EventsExportController>(),
             RouteFor<EventsModerationController>(),
-            RouteFor<BarrioEventsController>(),
             RouteFor<EventsApiController>()
         };
 

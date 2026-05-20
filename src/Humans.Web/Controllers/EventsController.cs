@@ -20,12 +20,12 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsController(
     IEventService guide,
-    ICampService camps,
     IUserService users,
-    IUserService userService,
+    ICampService camps,
+    IAuthorizationService authorizationService,
     IClock clock,
     IEmailService emailService,
-    ILogger<EventsController> logger) : HumansControllerBase(userService)
+    ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
@@ -41,7 +41,40 @@ public class EventsController(
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
-        var events = await guide.GetUserSubmissionsAsync(user.Id);
+        // Personal block
+        var individualEvents = await guide.GetUserSubmissionsAsync(user.Id);
+
+        // Barrio blocks — camps the user leads/workshops
+        var campSettings = await CampService.GetSettingsAsync();
+        var managedCamps = await CampService.GetEventManagedCampsAsync(user.Id, campSettings.PublicYear);
+
+        var barrioBlocks = new List<BarrioSubmissionsBlock>();
+        foreach (var camp in managedCamps)
+        {
+            var campEvents = await guide.GetCampSubmissionsAsync(camp.Id);
+            var campName = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name ?? camp.Slug;
+            barrioBlocks.Add(new BarrioSubmissionsBlock
+            {
+                CampId = camp.Id,
+                CampName = campName,
+                CampSlug = camp.Slug,
+                SubmittedCount = campEvents.Count,
+                ApprovedCount = campEvents.Count(e => e.Status == EventStatus.Approved),
+                PendingCount = campEvents.Count(e => e.Status == EventStatus.Pending),
+                Events = campEvents.Select(e => new CampEventRowViewModel
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    CategoryName = e.Category.Name,
+                    StartAt = ToLocalDateTime(e.StartAt, tz),
+                    DurationMinutes = e.DurationMinutes,
+                    Status = e.Status,
+                    PriorityRank = e.PriorityRank,
+                    CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
+                    CanWithdraw = e.Status is EventStatus.Pending or EventStatus.Approved
+                }).ToList()
+            });
+        }
 
         var model = new MySubmissionsViewModel
         {
@@ -49,21 +82,25 @@ public class EventsController(
             SubmissionOpenAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionOpenAt, tz) : null,
             SubmissionCloseAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionCloseAt, tz) : null,
             TimeZoneId = eventSettings?.TimeZoneId,
-            SubmittedCount = events.Count,
-            ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
-            PendingCount = events.Count(e => e.Status == EventStatus.Pending),
-            Events = events.Select(e => new IndividualEventRowViewModel
+            Personal = new PersonalSubmissionsBlock
             {
-                Id = e.Id,
-                Title = e.Title,
-                VenueName = e.EventVenue?.Name ?? "—",
-                CategoryName = e.Category.Name,
-                StartAt = ToLocalDateTime(e.StartAt, tz),
-                DurationMinutes = e.DurationMinutes,
-                Status = e.Status,
-                CanEdit = e.Status is EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested,
-                CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Approved
-            }).ToList()
+                SubmittedCount = individualEvents.Count,
+                ApprovedCount = individualEvents.Count(e => e.Status == EventStatus.Approved),
+                PendingCount = individualEvents.Count(e => e.Status == EventStatus.Pending),
+                Events = individualEvents.Select(e => new IndividualEventRowViewModel
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    VenueName = e.EventVenue?.Name ?? "—",
+                    CategoryName = e.Category.Name,
+                    StartAt = ToLocalDateTime(e.StartAt, tz),
+                    DurationMinutes = e.DurationMinutes,
+                    Status = e.Status,
+                    CanEdit = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested,
+                    CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Approved
+                }).ToList()
+            },
+            Barrios = barrioBlocks
         };
 
         return View(model);
@@ -122,6 +159,7 @@ public class EventsController(
             Title = model.Title,
             Description = model.Description,
             LocationNote = model.LocationNote,
+            Host = model.Host,
             StartAt = ToInstant(model.StartDate.Add(startTime), tz),
             DurationMinutes = durationMinutes,
             IsRecurring = model.IsRecurring,
@@ -137,7 +175,7 @@ public class EventsController(
         var userEmail = user.Email;
         if (userEmail != null)
         {
-            var userInfo = await users.GetUserInfoAsync(user.Id);
+            var userInfo = await UserService.GetUserInfoAsync(user.Id);
             var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
             await emailService.SendEventLifecycleNotificationAsync(
                 new EventLifecycleNotification(
@@ -161,7 +199,7 @@ public class EventsController(
         var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -190,6 +228,7 @@ public class EventsController(
         model.IsAllDay = guideEvent.DurationMinutes == 1440;
         model.DurationMinutes = guideEvent.DurationMinutes;
         model.LocationNote = guideEvent.LocationNote;
+        model.Host = guideEvent.Host;
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
         model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
@@ -207,7 +246,7 @@ public class EventsController(
         var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -241,6 +280,7 @@ public class EventsController(
         guideEvent.StartAt = ToInstant(model.StartDate.Add(startTime), tz);
         guideEvent.DurationMinutes = durationMinutes;
         guideEvent.LocationNote = model.LocationNote;
+        guideEvent.Host = model.Host;
         guideEvent.IsRecurring = model.IsRecurring;
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
 
@@ -289,7 +329,7 @@ public class EventsController(
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
 
         var scheduleItems = favourites.Select(f =>
         {
@@ -380,9 +420,9 @@ public class EventsController(
         var favouriteEventIds = await guide.GetFavouriteEventIdsAsync(user.Id);
         var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs);
 
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
         var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
-        var submitterInfoById = await LoadSubmittersAsync(users, individualSubmitterIds);
+        var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds);
 
         var items = new List<BrowseEventItem>();
         foreach (var e in events)
@@ -420,7 +460,10 @@ public class EventsController(
                     DurationMinutes = e.DurationMinutes,
                     DayOffset = eventDayOffset,
                     IsFavourited = favouriteEventIds.Contains(e.Id),
-                    SubmitterName = submitterName
+                    SubmitterName = submitterName,
+                    DisplayHost = e.CampId == null
+                        ? (e.Host ?? submitterName)
+                        : e.Host
                 });
             }
         }
@@ -529,6 +572,241 @@ public class EventsController(
                 ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
                 : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
 
+            model.EventDays.Add(new EventDayOptionViewModel
+            {
+                DayOffset = offset,
+                Label = date.ToString("ddd d MMM", null),
+                Date = dt
+            });
+        }
+    }
+
+    // ─── Barrio event actions (replaces /Barrios/{slug}/Events/*) ────────────
+
+    [HttpGet("Barrio/{slug}/Submit")]
+    public async Task<IActionResult> BarrioSubmit(string slug)
+    {
+        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideSettings = await guide.GetGuideSettingsAsync();
+        if (!IsSubmissionOpen(guideSettings))
+        {
+            SetError("The submission window is not currently open.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var model = await BuildBarrioFormAsync(slug, camp, eventSettings);
+        return View("BarrioEventForm", model);
+    }
+
+    [HttpPost("Barrio/{slug}/Submit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BarrioCreate(string slug, CampEventFormViewModel model)
+    {
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideSettings = await guide.GetGuideSettingsAsync();
+        if (!IsSubmissionOpen(guideSettings))
+        {
+            SetError("The submission window is not currently open.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+
+        if (!ModelState.IsValid)
+        {
+            model.CampId = camp.Id;
+            model.CampName = ResolveCampDisplayName(camp);
+            model.CampSlug = slug;
+            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            return View("BarrioEventForm", model);
+        }
+
+        var tz = GetTimeZone(eventSettings);
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            SubmitterUserId = user.Id,
+            CategoryId = model.CategoryId,
+            Title = model.Title,
+            Description = model.Description,
+            LocationNote = model.LocationNote,
+            Host = model.Host,
+            StartAt = ToInstant(model.StartDate.Add(model.StartTime), tz),
+            DurationMinutes = model.DurationMinutes,
+            IsRecurring = model.IsRecurring,
+            RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
+            PriorityRank = model.PriorityRank
+        };
+        guideEvent.Submit(clock);
+
+        await guide.SubmitEventAsync(guideEvent);
+        logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
+
+        var userEmail = user.Email;
+        if (userEmail != null)
+        {
+            var userInfo = await UserService.GetUserInfoAsync(user.Id);
+            var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
+            await emailService.SendEventLifecycleNotificationAsync(
+                new EventLifecycleNotification(EventStatus.Pending, userInfo?.BurnerName ?? userEmail, model.Title, viewUrl),
+                userEmail);
+        }
+
+        SetSuccess($"Event \"{model.Title}\" submitted for review.");
+        return RedirectToAction(nameof(MySubmissions));
+    }
+
+    [HttpGet("Barrio/{slug}/{eventId:guid}/Edit")]
+    public async Task<IActionResult> BarrioEdit(string slug, Guid eventId)
+    {
+        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        if (guideEvent == null) return NotFound();
+
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        {
+            SetError("This event cannot be edited in its current state.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var guideSettings = await guide.GetGuideSettingsAsync()
+            ?? throw new InvalidOperationException("Guide settings not configured.");
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var tz = GetTimeZone(eventSettings);
+        var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
+
+        var model = await BuildBarrioFormAsync(slug, camp, eventSettings);
+        model.Id = guideEvent.Id;
+        model.Title = guideEvent.Title;
+        model.Description = guideEvent.Description;
+        model.CategoryId = guideEvent.CategoryId;
+        model.StartDate = localStart.Date;
+        model.StartTime = localStart.TimeOfDay;
+        model.DurationMinutes = guideEvent.DurationMinutes;
+        model.LocationNote = guideEvent.LocationNote;
+        model.Host = guideEvent.Host;
+        model.IsRecurring = guideEvent.IsRecurring;
+        model.RecurrenceDays = guideEvent.RecurrenceDays;
+        model.PriorityRank = guideEvent.PriorityRank;
+        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
+
+        return View("BarrioEventForm", model);
+    }
+
+    [HttpPost("Barrio/{slug}/{eventId:guid}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
+    {
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        if (guideEvent == null) return NotFound();
+
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        {
+            SetError("This event cannot be edited in its current state.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var guideSettings = await guide.GetGuideSettingsAsync()
+            ?? throw new InvalidOperationException("Guide settings not configured.");
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+
+        if (!ModelState.IsValid)
+        {
+            model.Id = eventId;
+            model.CampId = camp.Id;
+            model.CampName = ResolveCampDisplayName(camp);
+            model.CampSlug = slug;
+            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            return View("BarrioEventForm", model);
+        }
+
+        var tz = GetTimeZone(eventSettings);
+        guideEvent.Title = model.Title;
+        guideEvent.Description = model.Description;
+        guideEvent.CategoryId = model.CategoryId;
+        guideEvent.StartAt = ToInstant(model.StartDate.Add(model.StartTime), tz);
+        guideEvent.DurationMinutes = model.DurationMinutes;
+        guideEvent.LocationNote = model.LocationNote;
+        guideEvent.Host = model.Host;
+        guideEvent.IsRecurring = model.IsRecurring;
+        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
+        guideEvent.PriorityRank = model.PriorityRank;
+
+        await guide.UpdateAndResubmitAsync(guideEvent);
+        logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
+
+        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        return RedirectToAction(nameof(MySubmissions));
+    }
+
+    [HttpPost("Barrio/{slug}/{eventId:guid}/Withdraw")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BarrioWithdraw(string slug, Guid eventId)
+    {
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        if (guideEvent == null) return NotFound();
+
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Approved))
+        {
+            SetError("This event cannot be withdrawn in its current state.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        await guide.WithdrawEventAsync(guideEvent);
+        logger.LogInformation("User {UserId} withdrew barrio event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
+
+        SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
+        return RedirectToAction(nameof(MySubmissions));
+    }
+
+    private static string ResolveCampDisplayName(CampLookup camp) =>
+        camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name ?? camp.Slug;
+
+    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampLookup camp, BurnSettingsInfo burn)
+    {
+        var model = new CampEventFormViewModel
+        {
+            CampId = camp.Id,
+            CampName = ResolveCampDisplayName(camp),
+            CampSlug = slug,
+            TimeZoneId = burn.TimeZoneId
+        };
+        await PopulateBarrioDropdownsAsync(model, burn);
+        return model;
+    }
+
+    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, BurnSettingsInfo burn)
+    {
+        var categories = await guide.GetActiveCategoriesAsync();
+        model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        model.TimeZoneId = burn.TimeZoneId;
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
+        model.EventDays = [];
+        for (var offset = 0; offset <= burn.EventEndOffset; offset++)
+        {
+            var date = burn.GateOpeningDate.PlusDays(offset);
+            var dt = tz != null
+                ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
+                : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,

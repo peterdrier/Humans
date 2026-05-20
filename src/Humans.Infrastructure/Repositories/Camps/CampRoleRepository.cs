@@ -66,6 +66,21 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
                 && a.Definition.DeactivatedAt == null, ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetCampIdsBySpecialRolesForUserAsync(
+        Guid userId, IReadOnlyCollection<CampSpecialRole> specialRoles, CancellationToken ct = default)
+    {
+        if (specialRoles.Count == 0) return [];
+        var roleList = specialRoles.ToList();
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .Where(a => a.CampMember.UserId == userId
+                && roleList.Contains(a.Definition.SpecialRole)
+                && a.Definition.DeactivatedAt == null)
+            .Select(a => a.CampSeason.CampId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task<Guid?> GetCampSpecialRoleSeasonIdForYearAsync(
         Guid userId, int year, CampSpecialRole specialRole, CancellationToken ct = default)
     {

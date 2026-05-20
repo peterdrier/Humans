@@ -289,6 +289,7 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
                 ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.EventVenue.Name)
                 : null,
             e.LocationNote,
+            e.Host,
             e.PriorityRank);
     }
 

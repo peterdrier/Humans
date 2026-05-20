@@ -81,6 +81,10 @@ public class CampEventFormViewModel
     [Display(Name = "Location Note")]
     public string? LocationNote { get; set; }
 
+    [MaxLength(40)]
+    [Display(Name = "Host")]
+    public string? Host { get; set; }
+
     [Display(Name = "Recurring")]
     public bool IsRecurring { get; set; }
 

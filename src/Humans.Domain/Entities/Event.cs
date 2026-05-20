@@ -52,6 +52,12 @@ public class Event
     public string? LocationNote { get; set; }
 
     /// <summary>
+    /// Optional display name for the person running this event (max 40 chars).
+    /// For individual events: shown in the guide instead of the submitter's name when set.
+    /// </summary>
+    public string? Host { get; set; }
+
+    /// <summary>
     /// Event start date/time.
     /// </summary>
     public Instant StartAt { get; set; }

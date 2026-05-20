@@ -12,6 +12,7 @@ public sealed record GuideEventApiDto(
     GuideEventCampApiDto? Camp,
     GuideEventVenueApiDto? Venue,
     string? LocationNote,
+    string? Host,
     int PriorityRank);
 
 public sealed record GuideEventCategoryApiDto(

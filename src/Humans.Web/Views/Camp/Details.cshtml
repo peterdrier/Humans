@@ -397,7 +397,7 @@
                             <text>Edit @Localizer["Camp_Singular"]</text>
                         }
                     </a>
-                    <a asp-controller="BarrioEvents" asp-action="Index" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
+                    <a asp-controller="Events" asp-action="MySubmissions" class="btn btn-outline-primary">
                         <i class="fa-solid fa-calendar-days me-1"></i> Manage Events
                     </a>
                     @if (Model.CurrentSeason != null)

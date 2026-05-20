@@ -5,16 +5,32 @@ namespace Humans.Web.Models.Events;
 
 public class MySubmissionsViewModel
 {
-    public int SubmittedCount { get; set; }
-    public int ApprovedCount { get; set; }
-    public int PendingCount { get; set; }
-
     public bool IsSubmissionOpen { get; set; }
     public DateTime? SubmissionOpenAt { get; set; }
     public DateTime? SubmissionCloseAt { get; set; }
     public string? TimeZoneId { get; set; }
 
+    public PersonalSubmissionsBlock Personal { get; set; } = new();
+    public List<BarrioSubmissionsBlock> Barrios { get; set; } = [];
+}
+
+public class PersonalSubmissionsBlock
+{
+    public int SubmittedCount { get; set; }
+    public int ApprovedCount { get; set; }
+    public int PendingCount { get; set; }
     public List<IndividualEventRowViewModel> Events { get; set; } = [];
+}
+
+public class BarrioSubmissionsBlock
+{
+    public Guid CampId { get; set; }
+    public string CampName { get; set; } = string.Empty;
+    public string CampSlug { get; set; } = string.Empty;
+    public int SubmittedCount { get; set; }
+    public int ApprovedCount { get; set; }
+    public int PendingCount { get; set; }
+    public List<CampEventRowViewModel> Events { get; set; } = [];
 }
 
 public class IndividualEventRowViewModel
@@ -80,6 +96,10 @@ public class IndividualEventFormViewModel
     [MaxLength(120)]
     [Display(Name = "Location Note")]
     public string? LocationNote { get; set; }
+
+    [MaxLength(40)]
+    [Display(Name = "Host")]
+    public string? Host { get; set; }
 
     [Display(Name = "Recurring")]
     public bool IsRecurring { get; set; }
@@ -168,6 +188,7 @@ public class BrowseEventItem
     public int DayOffset { get; set; }
     public bool IsFavourited { get; set; }
     public string? SubmitterName { get; set; }
+    public string? DisplayHost { get; set; }
 }
 
 public class BrowseCampOption

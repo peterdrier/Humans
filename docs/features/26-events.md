@@ -6,6 +6,8 @@ Elsewhere publishes a digital event guide (currently a standalone PWA) listing a
 
 Two types of events exist: **camp events** (submitted by a team Lead, anchored to a GuideCamp) and **individual events** (submitted by any registered human, anchored to a communal GuideSharedVenue such as "The Middle of Elsewhere").
 
+Both kinds of submission are managed from a single page — **My Event Submissions** (`/Events/MySubmissions`). It shows the human's own individual events in one block, plus one block per barrio they lead for managing that barrio's events. There is no separate per-barrio events page.
+
 ## User Stories
 
 ### US-26.1: Moderator Configures the Guide
@@ -25,13 +27,14 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 **So that** they appear in the digital and print event guide
 
 **Acceptance Criteria:**
-- Submission form accessible from the team page
-- Fields: title (≤ 80 chars), description (≤ 450 chars), category, date/time, duration, location note, is_recurring, recurrence pattern, priority rank
+- Submission form reached from the barrio's block on **My Event Submissions** (`/Events/MySubmissions`)
+- Fields: title (≤ 80 chars), description (≤ 450 chars), category, date/time, duration, location note, host (optional), is_recurring, recurrence pattern, priority rank
+- **Host** is an optional free-text field (≤ 40 chars) naming who runs the event. For camp events it is supplementary detail — when blank, the published guide shows no host line and the event remains attributed to the barrio.
 - Event is anchored to the team's GuideCamp; GuideCamp is auto-created on first submission if not yet present
 - Submission creates a GuideEvent in `Pending` status
 - Submitter receives email confirmation on submission
 - Submitter can edit a Pending or ResubmitRequested event
-- Status of all team submissions visible on the team page
+- Status of all the barrio's submissions visible in the barrio block on My Event Submissions
 
 ### US-26.3: Individual Human Submits an Event
 **As any** registered human
@@ -39,11 +42,11 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 **So that** individually organised activities appear in the guide
 
 **Acceptance Criteria:**
-- Submission form accessible from profile page or a dedicated link
+- Submission form reached from the "My personal events" block on **My Event Submissions** (`/Events/MySubmissions`)
 - Same fields as barrio events except location is chosen from the GuideSharedVenue list, not a barrio
 - An optional location note can add specificity (e.g. "near the fire pit")
-- Event is attributed to the submitter's name (or chosen display name) in the published guide
-- Same email notifications and status visibility as barrio organiser flow
+- **Host** (optional, ≤ 40 chars) names who runs the event. In the published guide the event is attributed to the host when provided; when blank it falls back to the submitter's name (or chosen display name).
+- Same email notifications and status visibility as barrio organiser flow; individual events appear in the "My personal events" block on My Event Submissions
 
 ### US-26.4: Moderator Reviews Submissions
 **As a** moderator
@@ -68,7 +71,7 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 **Acceptance Criteria:**
 
 - Withdraw action available to GuideModerator/Admin on any Approved event (moderation queue)
-- Withdraw action available to the original submitter on their own Approved event (barrio events page or individual submission view)
+- Withdraw action available to the original submitter on their own Approved event (the relevant block on My Event Submissions)
 - Transitions status to `Withdrawn`; event no longer returned by the public API
 - No email sent on withdrawal
 
@@ -91,7 +94,7 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 - Published API (`/api/events/events`, `/api/events/barrios`, `/api/events/categories`) returns only Approved events
 - Filter by day, time of day, and category
 - Keyword search across title and description
-- Event detail includes barrio name or shared venue name, grid address, time, duration, full description
+- Event detail includes barrio name or shared venue name, host (barrio events: when provided; individual events: host or submitter name), grid address, time, duration, full description
 - Recurring events expanded into one entry per occurrence in API responses
 
 ### US-26.7: Attendee Opts Out of Sensitive Categories
@@ -135,7 +138,7 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 | `EventCategory` | Lookup: name, slug, is_sensitive, display order, is_active |
 | `GuideCamp` | Links a `Team` to guide-specific fields: camp name, description, grid address, is_published |
 | `GuideSharedVenue` | Moderator-curated communal spaces (e.g. "The Middle of Elsewhere"): name, description, grid address, is_active |
-| `GuideEvent` | Single event submission: anchored to GuideCamp OR GuideSharedVenue (exactly one), plus SubmitterUserId |
+| `GuideEvent` | Single event submission: anchored to GuideCamp OR GuideSharedVenue (exactly one), plus SubmitterUserId. Optional `Host` (≤ 40 chars) names who runs the event |
 | `ModerationAction` | Append-only log of every moderation decision per GuideEvent |
 | `UserGuidePreference` | Per-user excluded category slugs (JSON array), upserted on change |
 | `UserEventFavourite` | User-to-GuideEvent favourite link; deleted on unfavourite |
@@ -180,11 +183,12 @@ All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infra
 
 | Route | Purpose |
 |-------|---------|
+| `/Events/MySubmissions` | Any human: unified view — own individual events plus a block per led barrio |
 | `/Events/Submit` | Any human: individual event submission form |
 | `/Events/Moderate` | GuideModerator: pending submissions queue |
 | `/Admin/Guide*` | GuideModerator/Admin: GuideSettings, categories, venues |
 | `/Events/Export` | GuideModerator/Admin: CSV and print-guide exports |
-| `/Barrios/{slug}/Events` | Lead: submit and manage barrio events |
+| `/Events/Barrio/{slug}/Submit` | Lead: submit/edit a barrio event (barrio block on My Event Submissions) |
 | `/api/events/events` | Public API: approved events (PWA data source) |
 | `/api/events/barrios` | Public API: published barrios with hosted events |
 | `/api/events/categories` | Public API: event categories |

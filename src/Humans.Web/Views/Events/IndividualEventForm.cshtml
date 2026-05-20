@@ -142,6 +142,13 @@
                 <span asp-validation-for="LocationNote" class="text-danger"></span>
             </div>
 
+            <div class="mb-3">
+                <label asp-for="Host" class="form-label"></label>
+                <input asp-for="Host" class="form-control" maxlength="40" placeholder="e.g. The Tea Collective" />
+                <div class="form-text">Shown in the guide instead of your name when filled in.</div>
+                <span asp-validation-for="Host" class="text-danger"></span>
+            </div>
+
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? "Resubmit" : "Submit for Review")
             </button>

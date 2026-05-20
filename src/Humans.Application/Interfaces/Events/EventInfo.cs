@@ -37,6 +37,7 @@ public sealed record ApprovedEventView(
     string Title,
     string Description,
     string? LocationNote,
+    string? Host,
     Instant StartAt,
     int DurationMinutes,
     bool IsRecurring,

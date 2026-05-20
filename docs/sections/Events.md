@@ -34,6 +34,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 | IsRecurring | bool | |
 | RecurrenceDays | string? | comma-separated day offsets, e.g. "0,1,2" |
 | LocationNote | string? | max 120 |
+| Host | string? | max 40; optional display name for the person running the event |
 | PriorityRank | int | 0 = unprioritised; lower = higher priority in print guide |
 | Status | GuideEventStatus | enum (see below) |
 | SubmittedAt | Instant | set on first Submit(); updated on resubmit |
@@ -136,20 +137,20 @@ Unique constraint on (UserId, GuideEventId).
 
 | Controller | Route prefix | Audience |
 |-----------|--------------|----------|
-| `EventGuideController` | `/Events/` | All active members |
-| `BarrioEventsController` | `/Barrios/{slug}/Events/` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
-| `ModerationController` | `/Events/Moderate/` | GuideModerator, Admin |
-| `EventGuideDashboardController` | `/Events/Dashboard/` | GuideModerator, Admin |
-| `EventGuideExportController` | `/Events/Export/` | GuideModerator, Admin |
-| `GuideAdminController` | `/Admin/Guide*/` | GuideModerator, Admin |
-| `GuideApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
+| `EventsController` | `/Events/` | All active members |
+| `EventsController` (barrio actions) | `/Events/Barrio/{slug}/` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
+| `EventsModerationController` | `/Events/Moderate/` | GuideModerator, Admin |
+| `EventsDashboardController` | `/Events/Dashboard/` | GuideModerator, Admin |
+| `EventsExportController` | `/Events/Export/` | GuideModerator, Admin |
+| `EventsAdminController` | `/Events/Admin/` | GuideModerator, Admin |
+| `EventsApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
-| Camp Lead or Workshop Lead | Submit events on behalf of their camp via `BarrioEventsController` (`/Barrios/{slug}/Events/*`); authority resolved by `ICampService.IsUserCampEventManagerAsync` (Lead OR Workshop OR CampAdmin / Admin). Workshop Leads do NOT gain general camp-management authority. |
+| Camp Lead or Workshop Lead | Submit and manage barrio events via `EventsController` (`/Events/Barrio/{slug}/*`), shown in their **My Submissions** page alongside personal submissions; authority resolved via `ICampService.GetEventManagedCampsAsync` (unions `CampRoleAssignment` Lead/Workshop rows + legacy `CampLead` table). Workshop Leads do NOT gain general camp-management authority. |
 | GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
 
 ## Invariants
@@ -169,7 +170,7 @@ Unique constraint on (UserId, GuideEventId).
 - A submitter **cannot** moderate their own event.
 - The public API (`/api/events/events`, `/api/events/barrios`, `/api/events/categories`) **cannot** return unapproved events.
 - Favourites and preferences endpoints **cannot** be accessed cross-origin (enforced by `[DisableCors]` on all `[Authorize]` API actions).
-- Barrio events **cannot** be submitted or withdrawn via the individual `EventGuideController`; those use `CampEventsController`.
+- Barrio events **cannot** be submitted by a user who is not a Camp Lead, Workshop Lead, CampAdmin, or Admin for that camp.
 
 ## Triggers
 
@@ -196,4 +197,4 @@ Unique constraint on (UserId, GuideEventId).
 - **Decorator decision** — **§15 caching decorator** (T-03, 2026-05-16). The earlier "no decorator" rationale (mutable, moderated, stale = rejected-shown-as-approved) was correct in shape but was answered by making **only approved events** cacheable and routing every write through the decorator so post-moderation invalidation is inline. The public CORS API (`/api/events/events`) is the read path the cache absorbs; the moderation dashboard (`GetAllEventsForDashboardAsync`) stays direct-DB because it needs a fresh pending count the approved-only cache cannot answer. Split projections: `ApprovedEventView` (per-event dict keyed by id, pre-stitched with `Category.Slug/Name/IsSensitive` and `Venue.Name`), flat `EventCategoryView[]`, flat `EventVenueView[]`, and the `EventGuideSettingsView` singleton (pre-stitched with foreign `EventSettings.TimeZoneId`). In-memory filtering in C# handles the `(campId, venueId, categoryId, q)` browse params against the cached snapshot. No `SaveChangesInterceptor` — every event_* write flows through `IEventService` by design (enforced by the `Only_EventRepository_Writes_Event_DbSets` arch test), so the decorator handles invalidation inline after each delegated write. `IEventViewInvalidator` exposes the future cross-section hook for `EventSettings` edits (issue [#719](https://github.com/nobodies-collective/Humans/issues/719)). Warmed eagerly at startup via `EventCacheWarmupHostedService`; warmup failures are logged and swallowed (lazy population on miss still works).
 - **Cross-domain navs** — Stripped (PR #539, Stage 3). `Event.CampId`, `Event.SubmitterUserId`, `EventModerationAction.ActorUserId`, `EventFavourite.UserId`, `EventPreference.UserId`, and `EventGuideSettings.EventSettingsId` are bare FK columns — no navigation properties, no DB-level FK constraints, no cross-section `.Include()` chains. Camp / User / burn-settings data is fetched via supplier services (`ICampService`, `IUserService`, `IBurnSettingsService`). `TimeZoneId` is cached at warm time on `EventGuideSettingsView` and stays stale on direct burn-settings edits until the next event-section write or process restart — invalidation hook still pending under [#719](https://github.com/nobodies-collective/Humans/issues/719).
 - **Cross-section calls** — `UserManager<User>` (Identity, in controllers only), `ICampService.GetCampsForYearAsync`, `IUserService.GetUserInfoAsync`, `IEmailService` (in `EventsModerationController`).
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/EventsArchitectureTests.cs` pins the service/repository split, the canonical `Events` / `Barrios` / `api/events` route names, and the T-03 caching invariants (decorator wraps `IEventService`, `IEventViewInvalidator` shares the decorator's Singleton, inner `EventService` injects no caching abstraction).
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/EventsArchitectureTests.cs` pins the service/repository split, the canonical `Events` / `Events/Dashboard` / `Events/Export` / `Events/Moderate` / `api/events` route names, and the T-03 caching invariants (decorator wraps `IEventService`, `IEventViewInvalidator` shares the decorator's Singleton, inner `EventService` injects no caching abstraction).

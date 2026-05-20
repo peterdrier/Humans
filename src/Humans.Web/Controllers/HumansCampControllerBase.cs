@@ -12,6 +12,8 @@ public abstract class HumansCampControllerBase(
     ICampService campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
+    protected ICampService CampService => campService;
+
     protected Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         return campService.GetCampBySlugAsync(slug, cancellationToken);

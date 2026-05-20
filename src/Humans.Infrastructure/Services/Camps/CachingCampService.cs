@@ -97,6 +97,10 @@ public sealed class CachingCampService(
         return WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
     }
 
+    public Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(
+        Guid userId, int year, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetEventManagedCampsAsync(userId, year, cancellationToken));
+
     // Same rationale as IsUserCampLeadAsync above.
     public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default) =>

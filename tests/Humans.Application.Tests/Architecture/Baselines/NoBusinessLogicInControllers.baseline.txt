@@ -11,8 +11,8 @@ src/Humans.Web/Controllers/AdminController.cs:Index/6
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:CreateLegalDocument/1
 src/Humans.Web/Controllers/AgentController.cs:Ask/2
 src/Humans.Web/Controllers/Api/EventsApiController.cs:GetEvents/4
-src/Humans.Web/Controllers/BarrioEventsController.cs:Create/2
-src/Humans.Web/Controllers/BarrioEventsController.cs:Update/3
+src/Humans.Web/Controllers/EventsController.cs:BarrioCreate/2
+src/Humans.Web/Controllers/EventsController.cs:BarrioUpdate/3
 src/Humans.Web/Controllers/BudgetController.cs:CreateLineItem/7
 src/Humans.Web/Controllers/BudgetController.cs:UpdateLineItem/8
 src/Humans.Web/Controllers/CalendarController.cs:Create/2
