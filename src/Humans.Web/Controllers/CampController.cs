@@ -402,6 +402,7 @@ public class CampController(
             EmptySlotCount = r.EmptySlotCount,
             OverCapacity = r.OverCapacity,
             CurrentCount = r.CurrentCount,
+            IsLeadRole = r.Definition.SpecialRole == CampSpecialRole.Lead,
         }).ToList();
 
         return new CampRolesPanelViewModel

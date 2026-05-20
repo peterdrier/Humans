@@ -11,4 +11,6 @@ public sealed class CampRoleRowViewModel
     public required int EmptySlotCount { get; init; }
     public required bool OverCapacity { get; init; }
     public required int CurrentCount { get; init; }
+    /// <summary>True when the backing definition's SpecialRole is Lead — the only row shown to non-member viewers on the public detail page.</summary>
+    public required bool IsLeadRole { get; init; }
 }
