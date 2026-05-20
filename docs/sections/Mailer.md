@@ -62,9 +62,9 @@ All routes are `AdminOnly`.
 
 - **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
 - **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads `IUserService.GetByIdAsync` (tombstone follow), `IUserService.GetCountByContactSourceAsync`.
-- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience` and `HasTicketAudience`. Scoped to the active vendor event by the cached decorator (see `TicketSyncState.VendorEventId`).
+- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`, `HasTicketAudience`, and `MarketingNoTicketAudience`. Scoped to the active vendor event by the cached decorator (see `TicketSyncState.VendorEventId`).
 - **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`).
-- **Users**: `IUserService.GetAllUserInfosAsync` — audience-side enumeration of explicit Marketing opt-ins for `MarketingAudience` (`UserInfo.MarketingOptedOut == false`).
+- **Users**: `IUserService.GetAllUserInfosAsync` — audience-side enumeration of explicit Marketing opt-ins for `MarketingAudience` and `MarketingNoTicketAudience` (`UserInfo.MarketingOptedOut == false`).
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
 
 ## Architecture
