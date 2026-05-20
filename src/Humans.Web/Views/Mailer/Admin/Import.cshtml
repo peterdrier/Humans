@@ -47,6 +47,10 @@
                     <td>Human exists — keep Humans' pref (user touched recently)</td>
                     <td class="text-end">@Model.Plan.Counts.VerifiedKeepHumansPref.ToString("N0")</td>
                 </tr>
+                <tr>
+                    <td>Human exists — reset marketing flag (opt-in, not in Website group → null)</td>
+                    <td class="text-end">@Model.Plan.Counts.ResetMarketingFlag.ToString("N0")</td>
+                </tr>
                 <tr class="text-muted">
                     <td>Skipped — same email on multiple humans</td>
                     <td class="text-end">@Model.Plan.Counts.AmbiguousMultipleVerified.ToString("N0")</td>
@@ -73,6 +77,7 @@
         (Outcome: SubscriberOutcome.VerifiedFlipToOptIn,       Label: "Human Exists — Flip Marketing to Opt-In"),
         (Outcome: SubscriberOutcome.VerifiedFlipToOptOut,      Label: "Human Exists — Flip Marketing to Opt-Out"),
         (Outcome: SubscriberOutcome.VerifiedKeepHumansPref,    Label: "Human Exists — Keep Humans' Pref"),
+        (Outcome: SubscriberOutcome.ResetMarketingFlag,        Label: "Human Exists — Reset Marketing Flag"),
         (Outcome: SubscriberOutcome.AmbiguousMultipleVerified, Label: "Skipped — Same Email on Multiple Humans"),
         (Outcome: SubscriberOutcome.UnconfirmedSkipped,        Label: "Skipped — Unconfirmed in ML"),
     };

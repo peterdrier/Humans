@@ -24,7 +24,7 @@ public class MailerImportServiceConflictRuleTests
 
         var bounced = new MailerLiteSubscriber(
             "ml-id", "user@x.com", "bounced", "api",
-            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null, []);
+            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null, [ApplyHarness.WebsiteGroupId]);
 
         harness.MlReturns(bounced);
         harness.SetVerifiedMatch("user@x.com", userId);
@@ -50,7 +50,7 @@ public class MailerImportServiceConflictRuleTests
             "ml-id", "user@x.com", "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 4, 1, 0, 0), // UnsubscribedAt = 2026-04-01 (older than Humans)
-            null, null, null, []);
+            null, null, null, [ApplyHarness.WebsiteGroupId]);
 
         harness.MlReturns(unsubscribed);
         harness.SetVerifiedMatch("user@x.com", userId);
@@ -76,7 +76,7 @@ public class MailerImportServiceConflictRuleTests
             "ml-id", "user@x.com", "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 4, 1, 0, 0), // UnsubscribedAt = 2026-04-01
-            null, null, null, []);
+            null, null, null, [ApplyHarness.WebsiteGroupId]);
 
         harness.MlReturns(unsubscribed);
         harness.SetVerifiedMatch("user@x.com", userId);
@@ -106,6 +106,8 @@ public class MailerImportServiceConflictRuleTests
 /// </summary>
 internal sealed class ApplyHarness
 {
+    public const string WebsiteGroupId = "grp-website";
+
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
@@ -121,6 +123,11 @@ internal sealed class ApplyHarness
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.CompletedTask);
+
+        // ApplyAsync resolves + filters by the Website group.
+        _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
+                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
 
         Prefs = new PrefsVerifier(_prefs);
 

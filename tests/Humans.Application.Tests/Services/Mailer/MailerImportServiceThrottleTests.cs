@@ -141,6 +141,8 @@ public class MailerImportServiceThrottleTests
 
 internal sealed class ThrottleHarness
 {
+    public const string WebsiteGroupId = "grp-website";
+
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
@@ -164,6 +166,11 @@ internal sealed class ThrottleHarness
             .GetPreferenceOrNullAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(null));
 
+        // ApplyAsync resolves + filters by the Website group.
+        _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
+                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
+
         Service = new MailerImportService(
             _ml, _userEmails, Substitute.For<IUserService>(),
             _provisioning, _prefs, _audit,
@@ -174,17 +181,17 @@ internal sealed class ThrottleHarness
     public static MailerLiteSubscriber Active(string email) =>
         new("ml-id", email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null,
-            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, []);
+            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, [WebsiteGroupId]);
 
     public static MailerLiteSubscriber Unsubscribed(string email) =>
         new("ml-id", email, "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 3, 1, 0, 0),
-            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, []);
+            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, [WebsiteGroupId]);
 
     public static MailerLiteSubscriber Unconfirmed(string email) =>
         new("ml-id", email, "unconfirmed", "form",
-            null, null, null, null, null, []);
+            null, null, null, null, null, [WebsiteGroupId]);
 
     public void SetMlSubscribers(params MailerLiteSubscriber[] subscribers)
     {

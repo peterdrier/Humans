@@ -82,6 +82,17 @@ public interface ICommunicationPreferenceService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes the preference row for a user+category, reverting the category to
+    /// the "no preference recorded" (null) state — distinct from an explicit
+    /// opt-out. No-op if no row exists. Logs an audit entry when a row is
+    /// removed. Used by the Mailer import GDPR remediation to undo Marketing
+    /// opt-ins the erroneous whole-account import set.
+    /// </summary>
+    Task ResetPreferenceAsync(
+        Guid userId, MessageCategory category, string source,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generates a time-limited unsubscribe token encoding userId + category.
     /// Token expires after ~90 days.
     /// </summary>

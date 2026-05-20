@@ -8,6 +8,7 @@ public sealed record ImportResult(
     int PrefsFlippedToOptIn,
     int PrefsFlippedToOptOut,
     int PrefsKeptByConflict,
+    int MarketingFlagsReset,
     int UnverifiedEmailsReplaced,
     int AmbiguousSkipped,
     int UnconfirmedSkipped,
@@ -21,6 +22,7 @@ public sealed record ImportResult(
         $"{HumansCreated} humans created, " +
         $"{PrefsFlippedToOptIn} flipped to opt-in, {PrefsFlippedToOptOut} flipped to opt-out, " +
         $"{PrefsKeptByConflict} kept by conflict-rule, " +
+        $"{MarketingFlagsReset} marketing flags reset, " +
         $"{UnverifiedEmailsReplaced} unverified emails replaced, " +
         $"{AmbiguousSkipped} ambiguous skipped, " +
         $"{UnconfirmedSkipped} unconfirmed skipped, " +

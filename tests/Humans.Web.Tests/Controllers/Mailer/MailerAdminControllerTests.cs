@@ -78,7 +78,8 @@ public class MailerAdminControllerTests
     private static ImportResult StubResult() =>
         new(TotalPulled: 10, HumansCreated: 2,
             PrefsFlippedToOptIn: 2, PrefsFlippedToOptOut: 1,
-            PrefsKeptByConflict: 0, UnverifiedEmailsReplaced: 0,
+            PrefsKeptByConflict: 0, MarketingFlagsReset: 0,
+            UnverifiedEmailsReplaced: 0,
             AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
             VanishedBetweenPlanAndApply: 0, DecisionsThrottled: 0,
             Errors: 0, Elapsed: Duration.Zero);
@@ -98,6 +99,7 @@ public class MailerAdminControllerTests
             VerifiedFlipToOptIn: 0,
             VerifiedFlipToOptOut: 0,
             VerifiedKeepHumansPref: 0,
+            ResetMarketingFlag: 0,
             AmbiguousMultipleVerified: 0,
             UnconfirmedSkipped: 0);
 
@@ -303,6 +305,7 @@ public class MailerAdminControllerTests
             VerifiedFlipToOptIn: 5,
             VerifiedFlipToOptOut: 0,
             VerifiedKeepHumansPref: 0,
+            ResetMarketingFlag: 0,
             AmbiguousMultipleVerified: 0,
             UnconfirmedSkipped: 0);
 

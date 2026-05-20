@@ -19,11 +19,33 @@ public sealed class MailerImportService(
     IClock clock,
     ILogger<MailerImportService> logger) : IMailerImportService
 {
+    // The erroneous import pulled the whole MailerLite account; it must only ever
+    // ingest the "Website" group. Resolved by name at runtime (group ids aren't
+    // stable across environments). Reads of this group bypass the client's
+    // "Humans - " write-guard — it's a source, never written to.
+    private const string WebsiteGroupName = "Website";
+
+    // UpdateSource the import stamps on Marketing prefs it writes.
+    private const string SyncSource = "MailerLiteSync";
+
+    // Source label recorded on the audit entry when a flag is reset to null.
+    private const string ResetSource = "MailerLiteSyncReset";
+
+    // Marketing opt-ins written by the erroneous whole-account import carry no
+    // genuine prior consent. A Marketing pref whose SubscribedAt predates this
+    // instant was opted-in before the bad import and is preserved (≤5 known
+    // cases). Hardcoded — one-time GDPR remediation cutoff.
+    private static readonly Instant BadImportCutoff = Instant.FromUtc(2026, 5, 19, 0, 1, 1);
+
     public async Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default)
     {
+        var websiteGroupId = await ResolveWebsiteGroupIdAsync(ct);
+
         var decisions = new List<SubscriberDecision>();
         var subs = new List<MailerLiteSubscriber>();
-        await foreach (var s in ml.ListSubscribersAsync(ct)) subs.Add(s);
+        await foreach (var s in ml.ListSubscribersAsync(ct))
+            if (s.GroupIds.Contains(websiteGroupId, StringComparer.Ordinal))
+                subs.Add(s);
 
         foreach (var s in subs)
         {
@@ -66,6 +88,17 @@ public sealed class MailerImportService(
             decisions.Add(new SubscriberDecision(s.Email, s.Status,
                 SubscriberOutcome.CreateNewHuman, null, null, null));
         }
+
+        // GDPR remediation: revert Marketing opt-ins the erroneous whole-account
+        // import set on people who aren't in the Website group at all. Discovered
+        // from the Humans side — these users have no Website subscriber row, so they
+        // never appear in the subscriber loop above.
+        var websiteEmails = WebsiteSubscriberEmails(subs);
+        foreach (var u in await users.GetAllUserInfosAsync(ct))
+            if (IsResetCandidate(u, websiteEmails))
+                decisions.Add(new SubscriberDecision(
+                    u.Email ?? "(no verified email)", "n/a",
+                    SubscriberOutcome.ResetMarketingFlag, u.Id, null, null));
 
         return new ImportPlan(decisions, subs.Count);
     }
@@ -123,16 +156,22 @@ public sealed class MailerImportService(
     {
         var start = clock.GetCurrentInstant();
         int created = 0, flippedIn = 0, flippedOut = 0, preserved = 0,
-            replacedUnverified = 0, vanishedBetweenPlanAndApply = 0, errors = 0;
+            replacedUnverified = 0, vanishedBetweenPlanAndApply = 0, marketingReset = 0, errors = 0;
         var pulledIds = new HashSet<string>(StringComparer.Ordinal);
 
-        // Re-pull ML so plan/apply are stateless.
+        var websiteGroupId = await ResolveWebsiteGroupIdAsync(ct);
+
+        // Re-pull ML so plan/apply are stateless. Website group only.
         var subsByEmail = new Dictionary<string, MailerLiteSubscriber>(StringComparer.OrdinalIgnoreCase);
+        var websiteSubs = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct))
         {
+            if (!s.GroupIds.Contains(websiteGroupId, StringComparer.Ordinal)) continue;
             subsByEmail[s.Email] = s;
+            websiteSubs.Add(s);
             pulledIds.Add(s.Id);
         }
+        var websiteEmails = WebsiteSubscriberEmails(websiteSubs);
 
         var (toProcess, throttled) = ApplyThrottle(plan.Decisions, maxPerOutcome);
 
@@ -140,6 +179,14 @@ public sealed class MailerImportService(
         {
             try
             {
+                // Reset candidates aren't ML subscribers — handle before the subsByEmail guard.
+                if (d.Outcome == SubscriberOutcome.ResetMarketingFlag)
+                {
+                    if (await TryResetMarketingFlagAsync(d.TargetUserId!.Value, websiteEmails, ct))
+                        marketingReset++;
+                    continue;
+                }
+
                 if (!subsByEmail.TryGetValue(d.Email, out var subscriber))
                 {
                     vanishedBetweenPlanAndApply++;
@@ -205,6 +252,7 @@ public sealed class MailerImportService(
             PrefsFlippedToOptIn: flippedIn,
             PrefsFlippedToOptOut: flippedOut,
             PrefsKeptByConflict: preserved,
+            MarketingFlagsReset: marketingReset,
             UnverifiedEmailsReplaced: replacedUnverified,
             AmbiguousSkipped: plan.Counts.AmbiguousMultipleVerified,
             UnconfirmedSkipped: plan.Counts.UnconfirmedSkipped,
@@ -278,7 +326,56 @@ public sealed class MailerImportService(
         }
 
         await prefs.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
-            optedOut: mlOptedOut, source: "MailerLiteSync", ct);
+            optedOut: mlOptedOut, source: SyncSource, ct);
         return mlOptedOut ? DeltaResult.FlippedToOptOut : DeltaResult.FlippedToOptIn;
+    }
+
+    private async Task<string> ResolveWebsiteGroupIdAsync(CancellationToken ct)
+    {
+        var groups = await ml.ListGroupsAsync(ct);
+        var website = groups.FirstOrDefault(g =>
+            string.Equals(g.Name, WebsiteGroupName, StringComparison.OrdinalIgnoreCase));
+        return website?.Id
+            ?? throw new InvalidOperationException(
+                $"MailerLite group '{WebsiteGroupName}' not found — refusing to import or reset " +
+                "(would otherwise sweep the whole account / reset every opted-in human).");
+    }
+
+    private static HashSet<string> WebsiteSubscriberEmails(IEnumerable<MailerLiteSubscriber> websiteSubs) =>
+        websiteSubs
+            .Select(s => s.Email)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A user is a reset candidate when their Marketing pref was opted-in by the
+    /// erroneous import (<see cref="SyncSource"/>), they have no genuine prior
+    /// consent (a <c>SubscribedAt</c> predating <see cref="BadImportCutoff"/>),
+    /// and they are not a member of the Website group at all (by any of their
+    /// emails). Website members — active or not — are owned by the import loop
+    /// (active → opt-in, unsubscribed/bounced → opt-out), so opt-ins survive only
+    /// for active members and an explicit unsubscribe stays opt-out rather than
+    /// being nulled here. Non-members are pure collateral: the row is deleted to
+    /// revert to "no preference" (null).
+    /// </summary>
+    private static bool IsResetCandidate(UserInfo user, HashSet<string> websiteEmails)
+    {
+        var marketing = user.CommunicationPreferences
+            .FirstOrDefault(c => c.Category == MessageCategory.Marketing);
+        if (marketing is null || marketing.OptedOut) return false;
+        if (!string.Equals(marketing.UpdateSource, SyncSource, StringComparison.Ordinal)) return false;
+        if (marketing.SubscribedAt is { } subscribedAt && subscribedAt < BadImportCutoff) return false;
+        return !user.UserEmails.Any(e => websiteEmails.Contains(e.Email));
+    }
+
+    // Re-checks the predicate against current cache state so a pref the user set
+    // between preview and commit isn't clobbered, then deletes the row (→ null).
+    private async Task<bool> TryResetMarketingFlagAsync(
+        Guid userId, HashSet<string> websiteEmails, CancellationToken ct)
+    {
+        var info = await users.GetUserInfoAsync(userId, ct);
+        if (info is null || !IsResetCandidate(info, websiteEmails))
+            return false;
+        await prefs.ResetPreferenceAsync(userId, MessageCategory.Marketing, ResetSource, ct);
+        return true;
     }
 }
