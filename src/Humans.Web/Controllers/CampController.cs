@@ -1087,18 +1087,10 @@ public class CampController(
         var editData = await _campService.GetCampEditDataAsync(model.CampId, model.Year);
         if (editData is null)
         {
-            model.Leads = [];
             model.Images = [];
             return;
         }
 
-        model.Leads = editData.Leads
-            .Select(lead => new CampLeadViewModel
-            {
-                LeadId = lead.LeadId,
-                UserId = lead.UserId
-            })
-            .ToList();
         model.Images = editData.Images
             .Select(image => new CampImageViewModel
             {
@@ -1140,12 +1132,6 @@ public class CampController(
             SpaceRequirement = editData.SpaceRequirement,
             SoundZone = editData.SoundZone,
             ElectricalGrid = editData.ElectricalGrid,
-            Leads = editData.Leads
-                .Select(lead => new CampLeadViewModel
-                {
-                    LeadId = lead.LeadId,
-                    UserId = lead.UserId
-                }).ToList(),
             Images = editData.Images
                 .Select(image => new CampImageViewModel
                 {

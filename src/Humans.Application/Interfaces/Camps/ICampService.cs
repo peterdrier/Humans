@@ -586,7 +586,6 @@ public record CampEditData(
     SpaceSize? SpaceRequirement,
     SoundZone? SoundZone,
     ElectricalGrid? ElectricalGrid,
-    IReadOnlyList<CampLeadSummary> Leads,
     IReadOnlyList<CampImageSummary> Images,
     IReadOnlyList<CampHistoricalNameSummary> HistoricalNames);
 

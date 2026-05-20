@@ -147,7 +147,6 @@ public class CampEditViewModel : CampRegisterViewModel
     public Guid SeasonId { get; set; }
     public int Year { get; set; }
     public bool IsNameLocked { get; set; }
-    public List<CampLeadViewModel> Leads { get; set; } = [];
     public List<CampImageViewModel> Images { get; set; } = [];
     public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = [];
     public List<CampMemberRowViewModel> PendingMembers { get; set; } = [];

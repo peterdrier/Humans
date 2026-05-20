@@ -259,8 +259,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             return null;
         }
 
-        var leadSummaries = await BuildLeadSummariesAsync(camp.Leads, cancellationToken);
-        return CreateCampEditData(camp, season, leadSummaries);
+        return CreateCampEditData(camp, season);
     }
 
     public async Task<CampDirectoryResult> GetCampDirectoryAsync(
@@ -597,7 +596,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season.NameLockDate.HasValue && today >= season.NameLockDate.Value);
     }
 
-    private CampEditData CreateCampEditData(Camp camp, CampSeason season, IReadOnlyList<CampLeadSummary> leads)
+    private CampEditData CreateCampEditData(Camp camp, CampSeason season)
     {
         var today = _clock.GetCurrentInstant().InUtc().Date;
 
@@ -633,7 +632,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season.SpaceRequirement,
             season.SoundZone,
             season.ElectricalGrid,
-            leads,
             camp.Images
                 .OrderBy(i => i.SortOrder)
                 .Select(i => new CampImageSummary(i.Id, $"/{i.StoragePath}", i.SortOrder))
@@ -1899,16 +1897,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var leadAssignments = await _repo.GetAllLeadAssignmentsForUserAsync(userId, ct);
-
-        var shapedLeads = leadAssignments.Select(cl => new
-        {
-            CampSlug = cl.Camp.Slug,
-            cl.Role,
-            JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
-            LeftAt = cl.LeftAt.ToInvariantInstantString()
-        }).ToList();
-
+        // Camp Lead is now a CampRoleAssignment (special role Lead), so the GDPR
+        // export carries leads inside the role-assignment slice — no separate
+        // legacy camp_leads slice.
         var roleAssignments = await _roleRepo.GetAllAssignmentsForUserAsync(userId, ct);
 
         var shapedRoles = roleAssignments.Select(a => new
@@ -1922,7 +1913,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         return
         [
-            new UserDataSlice(GdprExportSections.CampLeadAssignments, shapedLeads),
             new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
         ];
     }
