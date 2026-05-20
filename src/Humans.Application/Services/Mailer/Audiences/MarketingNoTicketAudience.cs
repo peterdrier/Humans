@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 
@@ -12,16 +11,16 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </summary>
 public sealed class MarketingNoTicketAudience(
     IUserService users,
-    ITicketQueryService tickets) : IMailerAudience
+    ITicketQueryService tickets) : MailerAudienceBase(users)
 {
-    public string Key => "marketing-no-ticket";
-    public string DisplayName => "Marketing opt-ins without a ticket";
-    public string MailerLiteGroupName => "Humans - Marketing no Ticket";
+    public override string Key => "marketing-no-ticket";
+    public override string DisplayName => "Marketing opt-ins without a ticket";
+    public override string MailerLiteGroupName => "Humans - Marketing no Ticket";
 
-    public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
+    protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
         var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
-        var allUsers = await users.GetAllUserInfosAsync(ct);
+        var allUsers = await Users.GetAllUserInfosAsync(ct);
         return allUsers
             .Where(u => u.MarketingOptedOut == false && !ticketHolders.Contains(u.Id))
             .Select(u => u.Id)

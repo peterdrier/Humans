@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Mailer.Audiences;
 using NSubstitute;
 
@@ -44,6 +45,9 @@ public class HasTicketAudienceTests
         var tickets = Substitute.For<ITicketQueryService>();
         tickets.GetUserIdsWithTicketsAsync().Returns(ticketHolders);
 
-        return new HasTicketAudience(tickets);
+        var users = Substitute.For<IUserService>();
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>());
+
+        return new HasTicketAudience(tickets, users);
     }
 }
