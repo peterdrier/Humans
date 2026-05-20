@@ -306,7 +306,6 @@ public class EventsApiController(IEventService guide, ICampService camps, IUserS
                 ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.EventVenue.Name)
                 : null,
             e.LocationNote,
-            // Individual events fall back to the submitter's name when no host is set (US-26.3 / US-26.6).
             e.CampId == null ? (e.Host ?? submitterName) : e.Host,
             e.PriorityRank);
     }
