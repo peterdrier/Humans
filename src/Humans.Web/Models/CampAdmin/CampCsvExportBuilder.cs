@@ -7,7 +7,8 @@ namespace Humans.Web.Models.CampAdmin;
 
 public sealed record CampCsvExport(byte[] Content, string ContentType, string FileName);
 
-public sealed class CampCsvExportBuilder(ICampService campService, IUserService userService)
+public sealed class CampCsvExportBuilder(
+    ICampService campService, ICampRoleService campRoleService, IUserService userService)
 {
     public async Task<CampCsvExport> BuildAsync()
     {
@@ -15,8 +16,17 @@ public sealed class CampCsvExportBuilder(ICampService campService, IUserService 
         var year = settings.PublicYear;
         var camps = await campService.GetCampsForYearAsync(year);
 
-        var leadUserIds = camps
-            .SelectMany(c => c.Leads.Select(l => l.UserId))
+        // Leads come from the role system (Camp Lead special role on the season).
+        var leadsBySeason = new Dictionary<Guid, IReadOnlyList<Guid>>();
+        foreach (var camp in camps)
+        {
+            var season = camp.Seasons.FirstOrDefault();
+            if (season is null) continue;
+            leadsBySeason[season.Id] = await campRoleService.GetSeasonLeadUserIdsAsync(season.Id);
+        }
+
+        var leadUserIds = leadsBySeason.Values
+            .SelectMany(ids => ids)
             .Distinct()
             .ToList();
         var leadUsers = await userService.GetUserInfosAsync(leadUserIds);
@@ -34,10 +44,11 @@ public sealed class CampCsvExportBuilder(ICampService campService, IUserService 
             var season = camp.Seasons.FirstOrDefault();
             if (season is null) continue;
 
-            var leads = string.Join("; ", camp.Leads
-                .Select(l =>
+            var seasonLeadIds = leadsBySeason.TryGetValue(season.Id, out var ids) ? ids : [];
+            var leads = string.Join("; ", seasonLeadIds
+                .Select(id =>
                 {
-                    var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;
+                    var user = leadUsers.TryGetValue(id, out var u) ? u : null;
                     return $"{user?.BurnerName ?? string.Empty} <{user?.Email ?? string.Empty}>";
                 }));
 
