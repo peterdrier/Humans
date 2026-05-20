@@ -73,6 +73,17 @@ public static class MessageCategoryExtensions
         MessageCategory.System or MessageCategory.CampaignCodes;
 
     /// <summary>
+    /// Whether a category is opted-out when the user has no preference row.
+    /// Marketing is the only opt-in-required category (GDPR); every other category
+    /// defaults to on. Single source of truth consumed by
+    /// <c>CommunicationPreferenceService</c> (default-row seeding +
+    /// <c>IsOptedOutAsync</c> fallback) and the preferences UI (rendering a missing
+    /// row) — so a category with no row reads the same everywhere.
+    /// </summary>
+    public static bool DefaultOptedOut(this MessageCategory category) =>
+        category is MessageCategory.Marketing;
+
+    /// <summary>
     /// The active categories shown in the Communication Preferences UI, in display order.
     /// </summary>
     public static IReadOnlyList<MessageCategory> ActiveCategories { get; } =

@@ -129,7 +129,7 @@ public sealed class MailerImportService(
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
         // No pref row + ML opt-out: Marketing defaults to opted-out (see
-        // CommunicationPreferenceService.DefaultOptedOut), so already in sync.
+        // MessageCategoryExtensions.DefaultOptedOut), so already in sync.
         if (existingMarketing is null && mlOptedOut)
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
