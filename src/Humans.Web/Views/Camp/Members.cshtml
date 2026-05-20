@@ -81,13 +81,11 @@
                                         <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 mb-1">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
-                                            <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
-                                                { "FieldName", "userId" },
-                                                { "InstanceKey", $"role-{role.DefinitionId:N}-slot-{i}" },
-                                                { "Placeholder", "Search humans…" },
-                                                { "ExcludeUserIds", alreadyInRole },
-                                                { "Scope", "name" }
-                                            })' />
+                                            <vc:human-search field-name="userId"
+                                                             instance-key="@($"role-{role.DefinitionId:N}-slot-{i}")"
+                                                             placeholder="Search humans…"
+                                                             exclude-user-ids="@alreadyInRole"
+                                                             scope="Name" />
                                             <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign — adds to camp if not yet a member">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
@@ -113,10 +111,7 @@
                 <div class="card-body">
                     <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
                         @Html.AntiForgeryToken()
-                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
-                            { "FieldName", "userId" },
-                            { "Scope", "name" }
-                        })' />
+                        <vc:human-search field-name="userId" scope="Name" />
                         <button type="submit" class="btn btn-outline-success" title="Add active member">
                             <i class="fa-solid fa-user-plus"></i>
                         </button>

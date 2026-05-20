@@ -183,7 +183,7 @@
 
 @if (Model.CanManageRoles)
 {
-    @* Inline picker — _HumanSearchInput posts UserId into a hidden input for AddMember. *@
+    @* Inline picker — <vc:human-search> posts UserId into a hidden input for AddMember. *@
     <div class="card mb-4 position-relative" style="z-index: 2;">
         <div class="card-header">@Localizer["TeamAdmin_AddMember"]</div>
         <div class="card-body">
@@ -191,14 +191,11 @@
                 @Html.AntiForgeryToken()
                 <div class="col-md-8">
                     <label class="form-label">@Localizer["TeamAdmin_SearchHumans"]</label>
-                    @await Html.PartialAsync("_HumanSearchInput", (object?)null, new ViewDataDictionary(ViewData)
-                    {
-                        ["FieldName"] = "UserId",
-                        ["InstanceKey"] = "team-add-member",
-                        ["Placeholder"] = Localizer["TeamAdmin_SearchPlaceholder"].Value,
-                        ["Scope"] = "name",
-                        ["ExcludeUserIds"] = Model.AllMemberUserIds,
-                    })
+                    <vc:human-search field-name="UserId"
+                                     instance-key="team-add-member"
+                                     placeholder="@Localizer["TeamAdmin_SearchPlaceholder"].Value"
+                                     scope="Name"
+                                     exclude-user-ids="@Model.AllMemberUserIds" />
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-success">@Localizer["TeamAdmin_Add"]</button>

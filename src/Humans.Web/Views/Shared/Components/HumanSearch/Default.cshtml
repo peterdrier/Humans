@@ -1,10 +1,11 @@
+@model Humans.Web.Models.HumanSearchPickerViewModel
 @{
-    var fieldName = ViewData["FieldName"] as string ?? "userId";
-    // Multiple instances of this partial can render on the same page (e.g. one per
+    var fieldName = Model.FieldName;
+    // Multiple instances of this component can render on the same page (e.g. one per
     // role slot in the camp roles panel). Element IDs need to be unique even when
     // they share the same form field name. Caller can pass an InstanceKey, otherwise
     // we fall back to a random suffix.
-    var instanceKey = ViewData["InstanceKey"] as string;
+    var instanceKey = Model.InstanceKey;
     if (string.IsNullOrEmpty(instanceKey))
     {
         instanceKey = fieldName + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
@@ -12,18 +13,21 @@
     var inputId = "human-search-" + instanceKey;
     var dropdownId = "human-search-dropdown-" + instanceKey;
     var hiddenId = "human-search-hidden-" + instanceKey;
-    var placeholder = ViewData["Placeholder"] as string ?? "Search by name…";
+    var placeholder = Model.Placeholder ?? "Search by name…";
     // Optional: a list of user IDs to exclude from search results (e.g. humans
     // who already hold the role this picker is being used to fill).
-    var excludeIds = ViewData["ExcludeUserIds"] as IEnumerable<Guid>;
+    var excludeIds = Model.ExcludeUserIds;
     var excludeIdsJson = excludeIds is null
         ? "[]"
         : System.Text.Json.JsonSerializer.Serialize(excludeIds.Select(g => g.ToString()).ToArray());
-    // Optional scope hint passed through to /api/profiles/search. "name" narrows
-    // matching to display name + burner name only. Default keeps the broad search
-    // (bio / city / interests / CV) so existing callers don't change behavior.
-    var scope = ViewData["Scope"] as string;
-    var scopeJson = System.Text.Json.JsonSerializer.Serialize(scope ?? "");
+    // Optional scope passed through to /api/profiles/search. Name narrows matching
+    // to burner name only. All (default) keeps the broad search (bio / city /
+    // interests / CV) so existing callers don't change behavior.
+    var scopeArg = Model.Scope == HumanSearchScope.Name ? "name" : "";
+    var scopeJson = System.Text.Json.JsonSerializer.Serialize(scopeArg);
+    // Optional prefill — visible BurnerName + hidden id (e.g. edit forms).
+    var selectedValue = Model.SelectedUserId?.ToString() ?? "";
+    var selectedBurnerName = Model.SelectedBurnerName ?? "";
 }
 
 @* Dropdown <ul> reparented to <body> on show so no parent clips it; position fixed, z-index below navbar (3000). *@
@@ -32,10 +36,12 @@
            id="@inputId"
            class="form-control"
            placeholder="@placeholder"
+           value="@selectedBurnerName"
            autocomplete="off" />
     <input type="hidden"
            id="@hiddenId"
-           name="@fieldName" />
+           name="@fieldName"
+           value="@selectedValue" />
     <ul id="@dropdownId"
         class="list-group shadow-sm"
         style="display: none; position: fixed; max-height: 260px; overflow-y: auto; z-index: 2000; background: var(--h-bg-card, #fff); border: 1px solid var(--h-border, #ccc); border-radius: 4px;">

@@ -851,29 +851,24 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">_HumanSearchInput.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
+                            <span class="wg-card-name">HumanSearchViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchInput.cshtml</span>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSearchViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Type-ahead human picker. Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form.</div>
+                    <div class="wg-card-note">Type-ahead human picker (<code>&lt;vc:human-search&gt;</code>). Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form. Pass <code>selected-user-id</code> to prefill for edit forms.</div>
                     @ParamsBlock(
-                        ("ViewData[\"FieldName\"]", "<code>string</code> — name of the hidden input (default <code>userId</code>)"),
-                        ("ViewData[\"InstanceKey\"]", "<code>string?</code> — required when multiple instances render on the same page"),
-                        ("ViewData[\"Placeholder\"]", "<code>string</code> — input placeholder (default \"Search by name…\")"),
-                        ("ViewData[\"ExcludeUserIds\"]", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
-                        ("ViewData[\"Scope\"]", "<code>string?</code> — \"name\" narrows to display/burner names; null = full-text")
+                        ("field-name", "<code>string</code> — name of the hidden input (default <code>userId</code>)"),
+                        ("instance-key", "<code>string?</code> — required when multiple instances render on the same page"),
+                        ("placeholder", "<code>string?</code> — input placeholder (default \"Search by name…\")"),
+                        ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
+                        ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
+                        ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)")
                     )
                     <div class="wg-card-example" style="max-width: 400px;">
-                        @{
-                            var humanSearchData = new ViewDataDictionary(ViewData)
-                            {
-                                ["FieldName"] = "exampleUserId",
-                                ["InstanceKey"] = "widget-gallery-demo",
-                                ["Placeholder"] = "Type a name to search…"
-                            };
-                        }
-                        @await Html.PartialAsync("_HumanSearchInput", null, humanSearchData)
+                        <vc:human-search field-name="exampleUserId"
+                                         instance-key="widget-gallery-demo"
+                                         placeholder="Type a name to search…" />
                     </div>
                 </div>
 
