@@ -751,6 +751,56 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // GetSeasonLeadUserIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetSeasonLeadUserIdsAsync_ReturnsLeadHolders_ExcludesOtherRolesAndSeasons()
+    {
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var (_, otherSeason) = await SeedCampWithSeasonAsync();
+
+        var leadDef = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = CampSystemRoles.CampLeadName,
+            Slug = CampSystemRoles.CampLeadSlug,
+            SlotCount = 2,
+            MinimumRequired = 1,
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampRoleDefinitions.Add(leadDef);
+        var regularDef = await SeedDefinitionAsync("Greeter");
+        await Db.SaveChangesAsync();
+
+        var leadUser = Guid.NewGuid();
+        var leadMember = await SeedActiveMemberAsync(season.Id, leadUser);
+        var regularMember = await SeedActiveMemberAsync(season.Id);
+        var otherSeasonLead = await SeedActiveMemberAsync(otherSeason.Id);
+
+        Db.CampRoleAssignments.Add(NewAssignment(season.Id, leadDef.Id, leadMember.Id));
+        Db.CampRoleAssignments.Add(NewAssignment(season.Id, regularDef.Id, regularMember.Id));
+        Db.CampRoleAssignments.Add(NewAssignment(otherSeason.Id, leadDef.Id, otherSeasonLead.Id));
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetSeasonLeadUserIdsAsync(season.Id);
+
+        result.Should().ContainSingle().Which.Should().Be(leadUser);
+    }
+
+    private CampRoleAssignment NewAssignment(Guid seasonId, Guid definitionId, Guid memberId) => new()
+    {
+        Id = Guid.NewGuid(),
+        CampSeasonId = seasonId,
+        CampRoleDefinitionId = definitionId,
+        CampMemberId = memberId,
+        AssignedAt = Clock.GetCurrentInstant(),
+        AssignedByUserId = _actorUserId,
+    };
+
+    // ==========================================================================
     // System role immutability + seeding (issue nobodies-collective/Humans#753)
     // ==========================================================================
 

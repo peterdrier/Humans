@@ -40,6 +40,13 @@ public interface ICampRoleService : IApplicationService
 
     Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the distinct user ids holding the Camp Lead special role on the
+    /// given season. Sources the facilitated-contact recipient list from the
+    /// role system instead of the legacy camp_leads table. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetSeasonLeadUserIdsAsync(Guid campSeasonId, CancellationToken ct = default);
+
     Task<AssignCampRoleOutcome> AssignAsync(Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>

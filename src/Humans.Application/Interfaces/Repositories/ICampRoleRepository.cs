@@ -87,6 +87,14 @@ public interface ICampRoleRepository : IRepository
         CampSpecialRole specialRole, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the distinct user ids holding the given special role on the
+    /// specified season (non-deactivated definition). Used to source the camp
+    /// detail "Contact the leads" recipient list and admin/CSV lead columns.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
+        Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns true if the user currently holds the given special role on any
     /// camp/season. Used by <c>SystemTeamSyncJob</c> for the Barrio Leads team
     /// member-check path.

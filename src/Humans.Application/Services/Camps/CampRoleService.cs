@@ -47,6 +47,9 @@ public sealed class CampRoleService(
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
 
+    public Task<IReadOnlyList<Guid>> GetSeasonLeadUserIdsAsync(Guid campSeasonId, CancellationToken ct = default) =>
+        repo.GetSpecialRoleHolderUserIdsForSeasonAsync(campSeasonId, CampSpecialRole.Lead, ct);
+
     public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
