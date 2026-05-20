@@ -69,12 +69,17 @@ public sealed class CampAdminPageBuilder(
         };
     }
 
-    private Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
+    private async Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
     {
-        return Task.FromResult(campsWithLeads.Select(c =>
+        var rows = new List<CampSummaryRowViewModel>(campsWithLeads.Count);
+        foreach (var c in campsWithLeads)
         {
             var season = c.Seasons.FirstOrDefault();
-            return new CampSummaryRowViewModel
+            // Leads come from the role system (Camp Lead special role on the season).
+            IReadOnlyList<Guid> leadUserIds = season is null
+                ? []
+                : await campRoleService.GetSeasonLeadUserIdsAsync(season.Id);
+            rows.Add(new CampSummaryRowViewModel
             {
                 Name = season?.Name ?? c.Slug,
                 Slug = c.Slug,
@@ -87,13 +92,14 @@ public sealed class CampAdminPageBuilder(
                 EeSlotCount = season?.EeSlotCount ?? 0,
                 EeGrantedCount = season?.EeGrantedCount ?? 0,
                 JoinedMemberCount = season?.JoinedMemberCount ?? 0,
-                Leads = c.Leads
-                    .Select(l => new CampLeadViewModel
+                Leads = leadUserIds
+                    .Select(id => new CampLeadViewModel
                     {
-                        LeadId = l.Id,
-                        UserId = l.UserId
+                        LeadId = Guid.Empty,
+                        UserId = id
                     }).ToList()
-            };
-        }).ToList());
+            });
+        }
+        return rows;
     }
 }
