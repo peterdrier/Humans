@@ -93,6 +93,8 @@
         {
             var season = Model.CurrentSeason;
 
+            <partial name="_CampRosterCard" model="Model" />
+
             @* Blurb *@
             <div class="card mb-4">
                 <div class="card-header">
@@ -297,23 +299,8 @@
             </div>
         }
 
-        @* Leads (only if authenticated) *@
-        @if (User.Identity?.IsAuthenticated == true && Model.Leads.Count > 0)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fa-solid fa-user-shield me-1"></i> Leads
-                </div>
-                <ul class="list-group list-group-flush">
-                    @foreach (var lead in Model.Leads)
-                    {
-                        <li class="list-group-item">
-                            <vc:human user-id="@lead.UserId" />
-                        </li>
-                    }
-                </ul>
-            </div>
-        }
+        @* Roles (replaces the legacy Leads card; sourced from CampRoleAssignment) *@
+        <partial name="_CampRolesCard" model="Model" />
 
         @* My membership (authenticated only — never shown to anonymous visitors) *@
         @if (User.Identity?.IsAuthenticated == true && Model.Membership.Status != CampMemberStatusSummaryView.NoOpenSeason)

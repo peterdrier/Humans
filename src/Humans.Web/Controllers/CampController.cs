@@ -107,7 +107,9 @@ public class CampController(
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
-        return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+        var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
+        await PopulateDetailCardsAsync(vm, campDetail, isCampAdmin, ct);
+        return View(vm);
     }
 
     [AllowAnonymous]
@@ -127,7 +129,9 @@ public class CampController(
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
-        return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+        var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
+        await PopulateDetailCardsAsync(vm, campDetail, isCampAdmin, ct);
+        return View(nameof(Details), vm);
     }
 
     private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId, UserInfo? currentUser)
@@ -1167,12 +1171,6 @@ public class CampController(
             TimesAtNowhere = campDetail.TimesAtNowhere,
             HistoricalNames = [.. campDetail.HistoricalNames],
             ImageUrls = [.. campDetail.ImageUrls],
-            Leads = campDetail.Leads
-            .Select(lead => new CampLeadViewModel
-            {
-                LeadId = lead.LeadId,
-                UserId = lead.UserId
-            }).ToList(),
             CurrentSeason = campDetail.CurrentSeason is null
             ? null
             : new CampSeasonDetailViewModel
@@ -1202,6 +1200,44 @@ public class CampController(
             IsCurrentUserCampAdmin = isCampAdmin,
             Membership = membership
         };
+
+    /// <summary>
+    /// Fills the read-only Roles panel and (for full-camp viewers) the Roster on the
+    /// detail VM. Sourced from CampRoleAssignment — the same data as /Edit/Members —
+    /// so the detail page never disagrees with the roles panel. No-op for anonymous
+    /// viewers or seasonless camps.
+    /// </summary>
+    private async Task PopulateDetailCardsAsync(
+        CampDetailViewModel vm, CampDetailData campDetail, bool isCampAdmin,
+        CancellationToken ct)
+    {
+        if (User.Identity?.IsAuthenticated != true || campDetail.CurrentSeason is null)
+        {
+            return; // anonymous / no season → no cards
+        }
+
+        vm.CanSeeFullCamp = isCampAdmin || vm.Membership.Status == CampMemberStatusSummaryView.Active;
+
+        // Read-only roles panel (same source as /Edit/Members).
+        vm.RolesPanel = await BuildRolesPanelAsync(
+            campDetail.Slug, campDetail.CurrentSeason.Id, canManage: false, ct);
+
+        if (vm.CanSeeFullCamp)
+        {
+            var members = await _campService.GetCampMembersAsync(campDetail.CurrentSeason.Id);
+            vm.Roster = members.Active
+                .Select(m => new CampMemberRowViewModel
+                {
+                    CampMemberId = m.CampMemberId,
+                    UserId = m.UserId,
+                    RequestedAt = m.RequestedAt,
+                    ConfirmedAt = m.ConfirmedAt,
+                    HasEarlyEntry = m.HasEarlyEntry,
+                    Status = m.Status,
+                })
+                .ToList();
+        }
+    }
 
     private void ValidatePhoneE164(string? phone, string fieldName)
     {

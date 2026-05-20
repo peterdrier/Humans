@@ -50,7 +50,12 @@ public class CampDetailViewModel
     public int TimesAtNowhere { get; set; }
     public List<string> HistoricalNames { get; set; } = [];
     public List<string> ImageUrls { get; set; } = [];
-    public List<CampLeadViewModel> Leads { get; set; } = [];
+    /// <summary>Read-only roles panel for the displayed season (null when anonymous or no season). Sourced from CampRoleAssignment.</summary>
+    public Camp.CampRolesPanelViewModel? RolesPanel { get; set; }
+    /// <summary>Active members of the displayed season. Populated only when CanSeeFullCamp is true.</summary>
+    public List<CampMemberRowViewModel> Roster { get; set; } = [];
+    /// <summary>True when the viewer may see all roles + the roster: CampAdmin (any camp) or an Active member of this camp.</summary>
+    public bool CanSeeFullCamp { get; set; }
     public CampSeasonDetailViewModel? CurrentSeason { get; set; }
     public bool IsCurrentUserLead { get; set; }
     public bool IsCurrentUserCampAdmin { get; set; }
