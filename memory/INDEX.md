@@ -40,7 +40,6 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
 - [`slug-routes-fallback-to-guid`](architecture/slug-routes-fallback-to-guid.md) — slug-keyed URLs accept the entity GUID in the same slot and look up by Id when the slug doesn't match; new routes only, pre-existing routes migrate opportunistically
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
-- [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
 
 - [`users-profiles-one-section`](architecture/users-profiles-one-section.md) — HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between Users/Profile just to satisfy section-boundary cleanup.
 

@@ -19,7 +19,11 @@ using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
+/// <summary>
+/// Public-rota signups auto-confirm at creation regardless of the volunteer's
+/// admission/consent status; only RequireApproval rotas park signups as Pending.
+/// </summary>
+public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTestHarness
 {
     private readonly IMembershipCalculator _membership;
     private readonly ShiftManagementService _shiftMgmt;
@@ -30,7 +34,7 @@ public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
 
     private readonly Guid _userId = Guid.NewGuid();
 
-    public ShiftSignupServiceForcePendingTests()
+    public ShiftSignupServiceAutoConfirmIgnoresConsentTests()
         : base(TestNow)
     {
         _membership = Substitute.For<IMembershipCalculator>();
@@ -69,7 +73,7 @@ public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_PublicRota_UserMissingConsents_ReturnsPending()
+    public async Task SignUp_PublicRota_UserMissingConsents_ReturnsConfirmed()
     {
         SetUserConsents(false);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -78,7 +82,7 @@ public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
         Assert.True(result.Success);
-        Assert.Equal(SignupStatus.Pending, result.Signup!.Status);
+        Assert.Equal(SignupStatus.Confirmed, result.Signup!.Status);
     }
 
     [HumansFact]
@@ -108,7 +112,7 @@ public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SignUpRange_PublicBuildRota_UserMissingConsents_AllBlockShiftsPending()
+    public async Task SignUpRange_PublicBuildRota_UserMissingConsents_AllBlockShiftsConfirmed()
     {
         SetUserConsents(false);
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -126,7 +130,7 @@ public sealed class ShiftSignupServiceForcePendingTests : ServiceTestHarness
             .Where(s => s.UserId == _userId)
             .ToListAsync();
         Assert.Equal(3, blockSignups.Count);
-        Assert.All(blockSignups, s => Assert.Equal(SignupStatus.Pending, s.Status));
+        Assert.All(blockSignups, s => Assert.Equal(SignupStatus.Confirmed, s.Status));
         Assert.NotNull(blockSignups[0].SignupBlockId);
         Assert.True(blockSignups.All(s => s.SignupBlockId == blockSignups[0].SignupBlockId));
     }

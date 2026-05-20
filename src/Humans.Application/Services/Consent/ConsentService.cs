@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -176,11 +175,6 @@ public sealed class ConsentService(
 
 
         await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
-
-        // Promote parked Pending shift signups; lazy-resolved to keep cross-section edge soft.
-        // See docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
-        var shiftSignupService = serviceProvider.GetRequiredService<IShiftSignupService>();
-        await shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, ct);
 
         await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, ct);
 
