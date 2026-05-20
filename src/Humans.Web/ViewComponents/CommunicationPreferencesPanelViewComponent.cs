@@ -42,7 +42,10 @@ public sealed class CommunicationPreferencesPanelViewComponent(
                     ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
-                EmailEnabled = pref is null || !pref.OptedOut,
+                // No row → fall back to the category's domain default (Marketing is
+                // opt-out-by-default, so a missing row renders unchecked, matching what
+                // the send path treats null as). Other categories default on.
+                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,
