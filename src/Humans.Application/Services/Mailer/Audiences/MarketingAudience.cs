@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Mailer.Audiences;
@@ -8,15 +7,15 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// communication category (<see cref="UserInfo.MarketingOptedOut"/> == false).
 /// Users with no Marketing preference row (default-off) are excluded.
 /// </summary>
-public sealed class MarketingAudience(IUserService users) : IMailerAudience
+public sealed class MarketingAudience(IUserService users) : MailerAudienceBase(users)
 {
-    public string Key => "marketing";
-    public string DisplayName => "Marketing opt-ins";
-    public string MailerLiteGroupName => "Humans - Marketing";
+    public override string Key => "marketing";
+    public override string DisplayName => "Marketing opt-ins";
+    public override string MailerLiteGroupName => "Humans - Marketing";
 
-    public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
+    protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        var allUsers = await users.GetAllUserInfosAsync(ct);
+        var allUsers = await Users.GetAllUserInfosAsync(ct);
         return allUsers
             .Where(u => u.MarketingOptedOut == false)
             .Select(u => u.Id)

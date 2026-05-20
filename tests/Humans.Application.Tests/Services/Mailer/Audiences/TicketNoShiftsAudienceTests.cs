@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Mailer.Audiences;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -103,7 +104,10 @@ public class TicketNoShiftsAudienceTests
                 return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(map);
             });
 
-        return new TicketNoShiftsAudience(tickets, shiftView);
+        var users = Substitute.For<IUserService>();
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>());
+
+        return new TicketNoShiftsAudience(tickets, shiftView, users);
     }
 
     private static ShiftUserView ViewWithShift(Guid userId) => new(

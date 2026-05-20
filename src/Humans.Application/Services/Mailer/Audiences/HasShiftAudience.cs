@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 
@@ -11,15 +10,15 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </summary>
 public sealed class HasShiftAudience(
     IShiftView shiftView,
-    IUserService users) : IMailerAudience
+    IUserService users) : MailerAudienceBase(users)
 {
-    public string Key => "has-shift";
-    public string DisplayName => "Volunteers with a shift signup";
-    public string MailerLiteGroupName => "Humans - Has Shift";
+    public override string Key => "has-shift";
+    public override string DisplayName => "Volunteers with a shift signup";
+    public override string MailerLiteGroupName => "Humans - Has Shift";
 
-    public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
+    protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        var allUsers = await users.GetAllUserInfosAsync(ct);
+        var allUsers = await Users.GetAllUserInfosAsync(ct);
         var ids = allUsers.Select(u => u.Id).ToList();
         var views = await shiftView.GetUsersAsync(ids, ct);
         return views

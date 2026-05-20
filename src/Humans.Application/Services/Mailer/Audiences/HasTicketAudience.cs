@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
@@ -9,13 +9,14 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// <see cref="ITicketQueryService.GetUserIdsWithTicketsAsync"/>).
 /// </summary>
 public sealed class HasTicketAudience(
-    ITicketQueryService tickets) : IMailerAudience
+    ITicketQueryService tickets,
+    IUserService users) : MailerAudienceBase(users)
 {
-    public string Key => "has-ticket";
-    public string DisplayName => "Ticket holders";
-    public string MailerLiteGroupName => "Humans - Has Ticket";
+    public override string Key => "has-ticket";
+    public override string DisplayName => "Ticket holders";
+    public override string MailerLiteGroupName => "Humans - Has Ticket";
 
-    public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
+    protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
         _ = ct;
         return await tickets.GetUserIdsWithTicketsAsync();

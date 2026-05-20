@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
@@ -18,13 +18,14 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </remarks>
 public sealed class TicketNoShiftsAudience(
     ITicketQueryService tickets,
-    IShiftView shiftView) : IMailerAudience
+    IShiftView shiftView,
+    IUserService users) : MailerAudienceBase(users)
 {
-    public string Key => "ticket-no-shifts";
-    public string DisplayName => "Ticket holders without a shift";
-    public string MailerLiteGroupName => "Humans - Ticket no Shifts";
+    public override string Key => "ticket-no-shifts";
+    public override string DisplayName => "Ticket holders without a shift";
+    public override string MailerLiteGroupName => "Humans - Ticket no Shifts";
 
-    public async Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct)
+    protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
         // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketQueryService.
         var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
