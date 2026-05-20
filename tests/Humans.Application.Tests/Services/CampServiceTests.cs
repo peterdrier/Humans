@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
@@ -272,6 +273,31 @@ public sealed class CampServiceTests : ServiceTestHarness
         var camp = await CreateTestCamp();
         var result = await _service.IsUserCampLeadAsync(Guid.NewGuid(), camp.Id);
         result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_ExportsLegacyCampLeadRows_UntilTableDrops()
+    {
+        // §8a GDPR completeness: the legacy camp_leads table still holds per-user
+        // rows until #774 drops it, so the Article 15 export must include them.
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var userId = Guid.NewGuid();
+        Db.CampLeads.Add(new CampLead
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            UserId = userId,
+            Role = CampLeadRole.CoLead,
+            JoinedAt = Clock.GetCurrentInstant(),
+        });
+        await Db.SaveChangesAsync();
+
+        var slices = await ((IUserDataContributor)_service).ContributeForUserAsync(userId, CancellationToken.None);
+
+        var leadSlice = slices.Should()
+            .ContainSingle(s => s.SectionName == GdprExportSections.CampLeadAssignments).Subject;
+        ((System.Collections.IEnumerable)leadSlice.Data!).Cast<object>().Should().ContainSingle();
     }
 
     [HumansFact]

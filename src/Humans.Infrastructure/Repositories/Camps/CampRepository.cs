@@ -435,6 +435,19 @@ internal sealed class CampRepository : ICampRepository
                 && a.Definition.DeactivatedAt == null, ct);
     }
 
+    public async Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        // GDPR export of legacy camp_leads rows until #774 drops the table.
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampLeads
+            .AsNoTracking()
+            .Include(cl => cl.Camp)
+            .Where(cl => cl.UserId == userId)
+            .OrderByDescending(cl => cl.JoinedAt) // arch:db-sort-ok — GDPR export ordering
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
         CancellationToken ct = default)
     {

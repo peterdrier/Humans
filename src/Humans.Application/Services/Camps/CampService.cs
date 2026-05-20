@@ -1787,9 +1787,18 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Camp Lead is now a CampRoleAssignment (special role Lead), so the GDPR
-        // export carries leads inside the role-assignment slice — no separate
-        // legacy camp_leads slice.
+        // Camp Lead is now a CampRoleAssignment. The legacy camp_leads table still
+        // holds per-user rows until #774 drops it, so Article 15 export must keep
+        // including them alongside the role-assignment slice (design-rules §8a).
+        var legacyLeads = await _repo.GetAllLeadAssignmentsForUserAsync(userId, ct);
+        var shapedLeads = legacyLeads.Select(cl => new
+        {
+            CampSlug = cl.Camp.Slug,
+            cl.Role,
+            JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
+            LeftAt = cl.LeftAt.ToInvariantInstantString()
+        }).ToList();
+
         var roleAssignments = await _roleRepo.GetAllAssignmentsForUserAsync(userId, ct);
 
         var shapedRoles = roleAssignments.Select(a => new
@@ -1803,6 +1812,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         return
         [
+            new UserDataSlice(GdprExportSections.CampLeadAssignments, shapedLeads),
             new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
         ];
     }

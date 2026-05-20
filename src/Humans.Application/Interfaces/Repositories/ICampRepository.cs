@@ -260,6 +260,15 @@ public interface ICampRepository : IRepository
     /// </summary>
     Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns all (read-only, AsNoTracking) legacy <c>camp_leads</c> rows — active
+    /// and historical — for the user, with parent <c>Camp</c> loaded for slug access.
+    /// Used by the GDPR export contributor: while the legacy table still holds
+    /// per-user rows (until #774 drops it), Article 15 export must include them.
+    /// </summary>
+    Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes / reads — Historical names
     // ==========================================================================

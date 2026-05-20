@@ -108,7 +108,7 @@ public class CampController(
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
-        await PopulateDetailCardsAsync(vm, campDetail, isCampAdmin, ct);
+        await PopulateDetailCardsAsync(vm, campDetail, currentUser, isCampAdmin, ct);
         return View(vm);
     }
 
@@ -130,7 +130,7 @@ public class CampController(
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
-        await PopulateDetailCardsAsync(vm, campDetail, isCampAdmin, ct);
+        await PopulateDetailCardsAsync(vm, campDetail, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
 
@@ -1201,23 +1201,26 @@ public class CampController(
     /// viewers or seasonless camps.
     /// </summary>
     private async Task PopulateDetailCardsAsync(
-        CampDetailViewModel vm, CampDetailData campDetail, bool isCampAdmin,
+        CampDetailViewModel vm, CampDetailData campDetail, UserInfo? currentUser, bool isCampAdmin,
         CancellationToken ct)
     {
-        if (User.Identity?.IsAuthenticated != true || campDetail.CurrentSeason is null)
+        if (currentUser is null || campDetail.CurrentSeason is null)
         {
             return; // anonymous / no season → no cards
         }
-
-        vm.CanSeeFullCamp = isCampAdmin || vm.Membership.Status == CampMemberStatusSummaryView.Active;
 
         // Read-only roles panel (same source as /Edit/Members).
         vm.RolesPanel = await BuildRolesPanelAsync(
             campDetail.Slug, campDetail.CurrentSeason.Id, canManage: false, ct);
 
+        // Full-camp access is decided by membership in the *displayed* season, not the
+        // open-season membership VM — that VM is NoOpenSeason for Pending/closed seasons,
+        // which would wrongly hide the roster from real members (e.g. the camp creator).
+        var members = await _campService.GetCampMembersAsync(campDetail.CurrentSeason.Id);
+        vm.CanSeeFullCamp = isCampAdmin || members.Active.Any(m => m.UserId == currentUser.Id);
+
         if (vm.CanSeeFullCamp)
         {
-            var members = await _campService.GetCampMembersAsync(campDetail.CurrentSeason.Id);
             vm.Roster = members.Active
                 .Select(m => new CampMemberRowViewModel
                 {
