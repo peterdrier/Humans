@@ -29,10 +29,14 @@ public sealed class SearchService(
 
     private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");
 
+    // No per-type cap: at ~500-user scale a name match returns a handful of rows,
+    // and capping made people miss matches (issue: too-hard-to-find-people). Each
+    // section's SearchAsync still takes a max, so pass an effectively-unbounded one.
+    private const int Unlimited = int.MaxValue;
+
     public async Task<GlobalSearchResults> SearchAsync(
         string query,
         SearchResultType? onlyType = null,
-        int perTypeLimit = 10,
         CancellationToken ct = default)
     {
         var trimmed = query.Trim();
@@ -48,19 +52,19 @@ public sealed class SearchService(
         }
 
         var humans = onlyType is null or SearchResultType.Human
-            ? await SearchHumansAsync(trimmed, perTypeLimit, ct)
+            ? await SearchHumansAsync(trimmed, Unlimited, ct)
             : Array.Empty<HumanSearchResult>();
         var teams = onlyType is null or SearchResultType.Team
-            ? await SearchTeamsAsync(trimmed, perTypeLimit, ct)
+            ? await SearchTeamsAsync(trimmed, Unlimited, ct)
             : Array.Empty<GlobalSearchResult>();
         var camps = onlyType is null or SearchResultType.Camp
-            ? await SearchCampsAsync(trimmed, perTypeLimit, ct)
+            ? await SearchCampsAsync(trimmed, Unlimited, ct)
             : Array.Empty<GlobalSearchResult>();
         var shifts = onlyType is null or SearchResultType.Shift
-            ? await SearchShiftsAsync(trimmed, perTypeLimit, ct)
+            ? await SearchShiftsAsync(trimmed, Unlimited, ct)
             : Array.Empty<GlobalSearchResult>();
         var events = _eventsFeatureEnabled && onlyType is null or SearchResultType.Event
-            ? await SearchEventsAsync(trimmed, perTypeLimit, ct)
+            ? await SearchEventsAsync(trimmed, Unlimited, ct)
             : Array.Empty<GlobalSearchResult>();
 
         return new GlobalSearchResults(trimmed, humans, teams, camps, shifts, events);

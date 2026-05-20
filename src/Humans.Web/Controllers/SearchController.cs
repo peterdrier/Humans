@@ -36,8 +36,7 @@ public sealed class SearchController(
     {
         try
         {
-            var results = await searchService.SearchAsync(
-                trimmed, filter, PerTypeLimit(filter), ct);
+            var results = await searchService.SearchAsync(trimmed, filter, ct);
             return BuildViewModel(results, filter);
         }
         catch (OperationCanceledException)
@@ -52,10 +51,6 @@ public sealed class SearchController(
             return new GlobalSearchViewModel { Query = trimmed, Filter = filter };
         }
     }
-
-    // Filter-chip view goes deeper (50); unified view stays at 10 per bucket.
-    private static int PerTypeLimit(SearchResultType? filter) =>
-        filter.HasValue ? 50 : 10;
 
     private static GlobalSearchViewModel BuildViewModel(
         GlobalSearchResults results, SearchResultType? filter) =>

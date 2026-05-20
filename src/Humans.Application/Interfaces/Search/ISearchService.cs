@@ -35,15 +35,12 @@ public interface ISearchService : IApplicationService
     /// </summary>
     /// <param name="query">User-entered text. Trimmed and matched
     /// case-insensitively per <c>memory/feedback_ef_ilike_not_toupper.md</c>.</param>
-    /// <param name="onlyType">When set, skip the other three section
-    /// queries entirely and return all matches for the chosen type up to
-    /// <paramref name="perTypeLimit"/>. Used by the per-type filter chips
-    /// on /Search.</param>
-    /// <param name="perTypeLimit">Maximum hits per type bucket.</param>
+    /// <param name="onlyType">When set, skip the other section queries
+    /// entirely and return all matches for the chosen type. Used by the
+    /// per-type filter chips on /Search.</param>
     /// <param name="ct">Cancellation token.</param>
     Task<GlobalSearchResults> SearchAsync(
         string query,
         SearchResultType? onlyType = null,
-        int perTypeLimit = 10,
         CancellationToken ct = default);
 }
