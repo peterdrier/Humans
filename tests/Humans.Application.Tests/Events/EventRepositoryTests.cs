@@ -118,8 +118,8 @@ public sealed class EventRepositoryTests : IDisposable
 
         result.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(2);
         result.Should().ContainKey(EventStatus.Approved).WhoseValue.Should().Be(1);
+        result.Should().ContainKey(EventStatus.Withdrawn).WhoseValue.Should().Be(1);
         result.Should().NotContainKey(EventStatus.Draft);
-        result.Should().NotContainKey(EventStatus.Withdrawn);
     }
 
     [HumansFact]
