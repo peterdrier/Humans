@@ -220,7 +220,7 @@ public sealed class CalendarService(
             DtStart = new CalDateTime(dtStartLocal, tz, hasTime: true),
             Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(duration.BclCompatibleTicks)),
         };
-        icalEv.RecurrenceRules.Add(new RecurrencePattern(rrule));
+        icalEv.RecurrenceRule = new RecurrencePattern(rrule);
 
         var startCalDt = new CalDateTime(dtStartLocal, tz, hasTime: true);
         var last = icalEv.GetOccurrences(startCalDt, new EvaluationOptions())

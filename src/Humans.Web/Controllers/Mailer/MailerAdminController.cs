@@ -254,6 +254,7 @@ public sealed class MailerAdminController(
             || D(a.VerifiedFlipToOptIn, b.VerifiedFlipToOptIn)
             || D(a.VerifiedFlipToOptOut, b.VerifiedFlipToOptOut)
             || D(a.VerifiedKeepHumansPref, b.VerifiedKeepHumansPref)
+            || D(a.ResetMarketingFlag, b.ResetMarketingFlag)
             || D(a.AmbiguousMultipleVerified, b.AmbiguousMultipleVerified)
             || D(a.UnconfirmedSkipped, b.UnconfirmedSkipped);
     }

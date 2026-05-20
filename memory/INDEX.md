@@ -41,7 +41,6 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
 - [`slug-routes-fallback-to-guid`](architecture/slug-routes-fallback-to-guid.md) — slug-keyed URLs accept the entity GUID in the same slot and look up by Id when the slug doesn't match; new routes only, pre-existing routes migrate opportunistically
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
-- [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
 
 - [`users-profiles-one-section`](architecture/users-profiles-one-section.md) — HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between Users/Profile just to satisfy section-boundary cleanup.
 
@@ -57,6 +56,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — reusable views/components inject `IAuthorizationService` and resolve their own gates; don't pre-compute `Can…` bools on view models
 - [`controller-base-conventions`](code/controller-base-conventions.md) — inherit `HumansControllerBase`; use `GetCurrentUserAsync`/`SetSuccess`/`SetError`. No raw `_userManager` or `TempData["..."]`.
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
+- [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — methods invoked through Hangfire need a frozen serialization signature; pin the call site to a no-defaults overload and never add/reorder/change params on it (PR #663 incident — orphaned in-flight jobs after adding an optional `bool`)
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
 - [`datetime-display-formatting`](code/datetime-display-formatting.md) — use `ToDisplayDate`/`ToDisplayDateTime`/`ToAuditTimestamp`; no inline format strings
 - [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — IBAN output to logs / audit / errors must go through IbanFormatter.Mask

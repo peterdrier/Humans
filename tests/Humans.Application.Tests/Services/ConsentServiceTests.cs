@@ -14,7 +14,6 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Consent;
 
@@ -28,14 +27,12 @@ public sealed class ConsentServiceTests : ServiceTestHarness
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
     public ConsentServiceTests()
     {
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_membershipCalculator)
-            .With(_shiftSignupService)
             .Build();
 
         _legalDocumentSyncService
@@ -230,28 +227,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
         await _syncJob.Received().SyncMembershipForUserAsync(
             userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SubmitConsentAsync_AfterAdmission_CallsPromoteHookOnceAfterSync()
-    {
-        var userId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-
-        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
-
-        await _shiftSignupService.Received(1).PromoteWidgetPendingSignupsAfterAdmissionAsync(
-            userId, Arg.Any<CancellationToken>());
-
-        // Sequence: Volunteers sync → promote hook → Coordinators sync.
-        // Record-only calls inside InOrder; discards keep the analyzers happy.
-        Received.InOrder(() =>
-        {
-            _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
-            _ = _shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, Arg.Any<CancellationToken>());
-            _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
-        });
     }
 
 #pragma warning disable CS0618 // Test stub mirrors the legacy Include(d => d.Team) read path; prod stitches via ITeamService.

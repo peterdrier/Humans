@@ -22,18 +22,6 @@ public sealed class CommunicationPreferenceService(
     IAuditLogService auditLog,
     ILogger<CommunicationPreferenceService> logger) : ICommunicationPreferenceService, IUserMerge
 {
-    private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()
-    {
-        [MessageCategory.System] = false,
-        [MessageCategory.CampaignCodes] = false,
-        [MessageCategory.FacilitatedMessages] = false,
-        [MessageCategory.Ticketing] = false,
-        [MessageCategory.VolunteerUpdates] = false,
-        [MessageCategory.TeamUpdates] = false,
-        [MessageCategory.Governance] = false,
-        [MessageCategory.Marketing] = true,
-    };
-
     public async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -42,7 +30,7 @@ public sealed class CommunicationPreferenceService(
         var now = clock.GetCurrentInstant();
         var toAdd = new List<CommunicationPreference>();
 
-        foreach (var category in DefaultOptedOut.Keys)
+        foreach (var category in MessageCategoryExtensions.ActiveCategories)
         {
             if (existing.Any(cp => cp.Category == category))
                 continue;
@@ -52,7 +40,7 @@ public sealed class CommunicationPreferenceService(
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 Category = category,
-                OptedOut = DefaultOptedOut[category],
+                OptedOut = category.DefaultOptedOut(),
                 UpdatedAt = now,
                 UpdateSource = "Default",
             };
@@ -115,7 +103,7 @@ public sealed class CommunicationPreferenceService(
 
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         var pref = info?.CommunicationPreferences.FirstOrDefault(p => p.Category == category);
-        return pref?.OptedOut ?? DefaultOptedOut.GetValueOrDefault(category, false);
+        return pref?.OptedOut ?? category.DefaultOptedOut();
     }
 
     public async Task UpdatePreferenceAsync(
@@ -224,6 +212,31 @@ public sealed class CommunicationPreferenceService(
         logger.LogInformation(
             "User {UserId} communication preference {Category} set to OptedOut={OptedOut}, InboxEnabled={InboxEnabled} via {Source}",
             userId, category, optedOut, inboxEnabled, source);
+    }
+
+    public async Task ResetPreferenceAsync(
+        Guid userId, MessageCategory category, string source,
+        CancellationToken cancellationToken = default)
+    {
+        if (category.IsAlwaysOn())
+        {
+            logger.LogWarning("Attempted to reset always-on preference {Category} for user {UserId} — ignored", category, userId);
+            return;
+        }
+
+        var deleted = await repository.DeleteByUserAndCategoryAsync(userId, category, cancellationToken);
+        if (!deleted)
+            return;
+
+        await auditLog.LogAsync(
+            AuditAction.CommunicationPreferenceChanged,
+            "User", userId,
+            $"{category} reset to no preference (null) via {source}",
+            "CommunicationPreferenceService");
+
+        logger.LogInformation(
+            "User {UserId} communication preference {Category} reset to null via {Source}",
+            userId, category, source);
     }
 
     public string GenerateUnsubscribeToken(Guid userId, MessageCategory category) =>

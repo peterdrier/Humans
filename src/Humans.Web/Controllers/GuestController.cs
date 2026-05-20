@@ -290,7 +290,9 @@ public class GuestController(
                     ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
-                EmailEnabled = pref is null || !pref.OptedOut,
+                // No row → category's domain default (Marketing is opt-out-by-default,
+                // so a missing row renders unchecked). Matches the panel view component.
+                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,

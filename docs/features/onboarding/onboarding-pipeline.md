@@ -202,9 +202,9 @@ A guided three-step UX that replaces the single-page profile form for the Volunt
 
 `OnboardingProgressBannerViewComponent` is rendered from the layout. It calls `GetCurrentStepAsync` on every page (suppressed on widget pages themselves to avoid the "you're already here" footgun). Errors are swallowed so a transient query failure never breaks a layout render.
 
-### Pending-signup promotion
+### Signup auto-confirm
 
-`ShiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync` runs on admission to Volunteers. It groups the user's `Pending` signups by `SignupBlockId` (range blocks promote together; null block IDs are treated as singletons keyed on the signup's own `Id`) and confirms any block that passes capacity + `Public` policy re-checks. RequireApproval rotas stay Pending awaiting coordinator action.
+Shift signups created in Step 2 follow the rota's normal `Policy`: Public rotas auto-confirm at signup, RequireApproval rotas create `Pending` signups for coordinator review. The user's mid-widget (pre-consent) status does **not** change this — a Public-rota slot is Confirmed immediately, before any consents are signed. There is no post-admission promotion step; chasing down committed-but-unconsented volunteers is a business/coordinator concern handled out-of-band.
 
 ### Direct-POST safety
 

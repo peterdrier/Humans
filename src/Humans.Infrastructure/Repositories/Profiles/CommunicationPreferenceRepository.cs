@@ -143,6 +143,21 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<Humans
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> DeleteByUserAndCategoryAsync(
+        Guid userId, MessageCategory category, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var pref = await ctx.CommunicationPreferences
+            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == category, ct);
+        if (pref is null) return false;
+
+        // Tracked Remove → EntityState.Deleted, so UserInfoSaveChangesInterceptor
+        // refreshes the user's cached preferences after the row is gone.
+        ctx.CommunicationPreferences.Remove(pref);
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<int> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

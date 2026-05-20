@@ -12,6 +12,7 @@ public class ImportResultTests
         int prefsFlippedToOptIn = 2,
         int prefsFlippedToOptOut = 1,
         int prefsKeptByConflict = 1,
+        int marketingFlagsReset = 0,
         int unverifiedEmailsReplaced = 0,
         int ambiguousSkipped = 0,
         int unconfirmedSkipped = 5,
@@ -25,6 +26,7 @@ public class ImportResultTests
             PrefsFlippedToOptIn: prefsFlippedToOptIn,
             PrefsFlippedToOptOut: prefsFlippedToOptOut,
             PrefsKeptByConflict: prefsKeptByConflict,
+            MarketingFlagsReset: marketingFlagsReset,
             UnverifiedEmailsReplaced: unverifiedEmailsReplaced,
             AmbiguousSkipped: ambiguousSkipped,
             UnconfirmedSkipped: unconfirmedSkipped,
@@ -48,6 +50,7 @@ public class ImportResultTests
             humansCreated: 3,
             prefsFlippedToOptIn: 2,
             prefsFlippedToOptOut: 1,
+            marketingFlagsReset: 6,
             unconfirmedSkipped: 5,
             vanishedBetweenPlanAndApply: 1,
             decisionsThrottled: 4,
@@ -60,6 +63,7 @@ public class ImportResultTests
         summary.Should().Contain("3 humans created");
         summary.Should().Contain("2 flipped to opt-in");
         summary.Should().Contain("1 flipped to opt-out");
+        summary.Should().Contain("6 marketing flags reset");
         summary.Should().Contain("5 unconfirmed skipped");
         summary.Should().Contain("1 vanished");
         summary.Should().Contain("4 throttled");

@@ -56,12 +56,13 @@ public class MailerImportServiceIdempotencyTests
 internal sealed class IdempotencyHarness
 {
     private const string Email = "idempotent@x.com";
+    private const string WebsiteGroupId = "grp-website";
 
     // The ML subscriber is active (OptedOut=false when status="active").
     private static readonly MailerLiteSubscriber ActiveSubscriber =
         new("ml-id", Email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null, []);
+            null, null, [WebsiteGroupId]);
 
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -69,6 +70,7 @@ internal sealed class IdempotencyHarness
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     public AuditCounter Audit { get; }
     public MailerImportService Service { get; }
@@ -78,6 +80,14 @@ internal sealed class IdempotencyHarness
         // ML always returns the same single active subscriber.
         _ml.ListSubscribersAsync(Arg.Any<CancellationToken>())
             .Returns(_ => new[] { ActiveSubscriber }.ToAsyncEnumerable());
+
+        // Website group resolves; reset pass finds no candidate users.
+        _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
+                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
+        _users
+            .GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
 
         // Pass 1: no verified human match → CreateContact path.
         _userEmails
@@ -106,7 +116,7 @@ internal sealed class IdempotencyHarness
         Service = new MailerImportService(
             _ml,
             _userEmails,
-            Substitute.For<IUserService>(),
+            _users,
             _provisioning,
             _prefs,
             Audit.Mock,

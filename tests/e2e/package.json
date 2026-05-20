@@ -7,7 +7,7 @@
     "report": "playwright show-report"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "typescript": "^5.8.0"
+    "@playwright/test": "^1.60.0",
+    "typescript": "^6.0.3"
   }
 }

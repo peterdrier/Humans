@@ -5,10 +5,10 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.11.0" />
+    <PackageVersion Include="Anthropic" Version="12.22.0" />
     <!-- Core Framework -->
     <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
-    <PackageVersion Include="Ical.Net" Version="5.2.1" />
+    <PackageVersion Include="Ical.Net" Version="5.2.2" />
     <PackageVersion Include="Markdig" Version="1.2.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.8" />
@@ -35,7 +35,7 @@
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.74.0.4128" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.74.0.4030" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.74.0.4150" />
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.74.0.4135" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
@@ -76,7 +76,7 @@
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.85" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
-    <PackageVersion Include="coverlet.collector" Version="10.0.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="NodaTime.Testing" Version="3.3.2" />

@@ -358,8 +358,28 @@ public class DuplicateAccountDetailViewModel
     public string SharedEmail { get; set; } = string.Empty;
     public ProfileSummaryViewModel Account1 { get; set; } = new();
     public ProfileSummaryViewModel Account2 { get; set; } = new();
-    public List<string> Account1EmailSources { get; set; } = [];
-    public List<string> Account2EmailSources { get; set; } = [];
+
+    /// <summary>Raw <c>User.Email</c> Identity column for account A (null when unset).</summary>
+    public string? Account1IdentityEmail { get; set; }
+
+    /// <summary>Raw <c>User.Email</c> Identity column for account B (null when unset).</summary>
+    public string? Account2IdentityEmail { get; set; }
+
+    /// <summary>All <c>UserEmails</c> rows for account A (full list, not just the conflicting overlap).</summary>
+    public List<DuplicateAccountEmailRowViewModel> Account1Emails { get; set; } = [];
+
+    /// <summary>All <c>UserEmails</c> rows for account B (full list, not just the conflicting overlap).</summary>
+    public List<DuplicateAccountEmailRowViewModel> Account2Emails { get; set; } = [];
+}
+
+/// <summary>One <c>UserEmail</c> row rendered on the duplicate-account detail page.</summary>
+public class DuplicateAccountEmailRowViewModel
+{
+    public string Email { get; set; } = string.Empty;
+    public bool IsPrimary { get; set; }
+    public bool IsVerified { get; set; }
+    public bool IsGoogle { get; set; }
+    public string? Provider { get; set; }
 }
 
 /// <summary>

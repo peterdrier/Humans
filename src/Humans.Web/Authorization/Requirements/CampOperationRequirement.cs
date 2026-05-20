@@ -12,6 +12,13 @@ public sealed class CampOperationRequirement : IAuthorizationRequirement
 {
     public static readonly CampOperationRequirement Manage = new(nameof(Manage));
 
+    /// <summary>
+    /// Authorizes camp-event submission (<c>BarrioEventsController</c>): Lead OR
+    /// Workshop role holder, plus CampAdmin / Admin. Resolved through
+    /// <see cref="Humans.Application.Interfaces.Camps.ICampService.IsUserCampEventManagerAsync"/>.
+    /// </summary>
+    public static readonly CampOperationRequirement SubmitEvent = new(nameof(SubmitEvent));
+
     public string OperationName { get; }
 
     private CampOperationRequirement(string operationName)

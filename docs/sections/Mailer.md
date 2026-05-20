@@ -5,9 +5,10 @@ Orchestrates Humans ↔ MailerLite synchronisation. Inbound import + outbound au
 ## Concepts
 
 - **MailerLite subscriber** — a row in ML's `subscribers` collection. Has `status ∈ {active, unsubscribed, unconfirmed, bounced, junk}` and `subscribed_at` / `unsubscribed_at` / `opted_in_at` timestamps. Tracks the `groups` the subscriber belongs to.
-- **Import plan** — the classified result of pulling every ML subscriber and matching against Humans's user/email/preference state. Built fresh on every preview/commit; never persisted between runs.
-- **Apply** — executes an import plan: creates contacts, attaches verified users, deletes unverified UserEmail rows that block contact creation, updates Marketing preferences per the conflict rule, writes one summary audit.
-- **Audience** — a code-defined `IMailerAudience` implementation whose `MailerLiteGroupName` starts with `"Humans - "`. Membership is computed from Humans state and synced into the ML group by `MailerAudienceSyncService` (daily Hangfire job + on-demand admin button).
+- **Import plan** — the classified result of pulling the MailerLite `Website` group's subscribers and matching against Humans's user/email/preference state, plus a Humans-side pass that flags Marketing opt-ins the prior whole-account import wrongly set (see **Reset**). Built fresh on every preview/commit; never persisted between runs.
+- **Apply** — executes an import plan: creates contacts, attaches verified users, deletes unverified UserEmail rows that block contact creation, updates Marketing preferences per the conflict rule, resets (deletes → null) Marketing flags caught by the reset pass, writes one summary audit.
+- **Reset (marketing flag)** — a Humans-side cleanup decision: a Marketing opt-in written by the erroneous whole-account import (`UpdateSource = "MailerLiteSync"`, opted-in, no prior consent) on someone **not** in the `Website` group is deleted, reverting the category to "no preference" (null) — never to opt-out. GDPR remediation; cutoff for "prior consent" is hardcoded in `MailerImportService.BadImportCutoff`.
+- **Audience** — a code-defined `IMailerAudience` implementation whose `MailerLiteGroupName` starts with `"Humans - "`. Membership is computed from Humans state and synced into the ML group by `MailerAudienceSyncService` (daily Hangfire job + on-demand admin button). All audiences derive from `MailerAudienceBase`, which applies a universal Marketing opt-out exclusion (see Invariants).
 
 ## Data Model
 
@@ -35,8 +36,10 @@ All routes are `AdminOnly`.
 - `IMailerLiteService` exposes reads + four narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`. The set of allowed write methods is pinned by `MailerArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
 - Every outbound write targets an ML group whose `Name` starts with `"Humans - "`. `MailerLiteClient` runtime-rejects writes against non-`"Humans - "` groups with `InvalidOperationException`. Pinned by `MailerLiteClientWriteGuardTests`.
 - All `IMailerAudience` implementations target group names starting with `"Humans - "`. Pinned by `MailerArchitectureTests.AllAudiences_UseHumansPrefix`. Audience keys and group names are unique across registrations (pinned by `AllAudiences_HaveUniqueGroupNamesAndKeys`).
+- Every audience excludes humans who have **explicitly opted out** of Marketing (`UserInfo.MarketingOptedOut == true`) — applied centrally in `MailerAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For the two Marketing audiences this is subsumed by their stricter `== false` filter. Pinned by `MailerAudienceBaseTests`.
 - `MailerImportService` and `MailerAudienceSyncService` live in `Humans.Application` and never reference `Microsoft.EntityFrameworkCore`. Pinned by architecture tests.
-- Every write to `CommunicationPreference[Marketing]` goes through `CommunicationPreferenceService.UpdatePreferenceAsync` and produces a `CommunicationPreferenceChanged` audit entry on real state changes (not idempotent confirms).
+- The import (`MailerImportService`) ingests **only** the MailerLite group named `Website` (resolved by name; throws if the group is absent) — never the whole account. The reset pass excludes anyone in that group of any status, since the import already owns their pref (active → opt-in, unsubscribed/bounced → opt-out). Pinned by `MailerImportServiceWebsiteScopeTests`.
+- Every write to `CommunicationPreference[Marketing]` goes through `CommunicationPreferenceService` — `UpdatePreferenceAsync` for opt state, `ResetPreferenceAsync` to delete the row (→ null) — and produces a `CommunicationPreferenceChanged` audit entry on real state changes (not idempotent confirms).
 - `ApplyAsync` is idempotent: a second run against unchanged ML+Humans state writes zero per-row entries and exactly one `MailerLiteReconciliationCompleted` summary entry.
 - `SyncAsync` is idempotent: a second run against unchanged audience+ML state writes zero ML mutations and exactly one `MailerLiteAudienceSyncCompleted` summary entry whose counts are all zero.
 - Bounced/junk subscribers always set `OptedOut = true` regardless of any Humans-side timestamp. Delivery facts override preferences.
@@ -62,9 +65,9 @@ All routes are `AdminOnly`.
 
 - **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
 - **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads `IUserService.GetByIdAsync` (tombstone follow), `IUserService.GetCountByContactSourceAsync`.
-- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience` and `HasTicketAudience`. Scoped to the active vendor event by the cached decorator (see `TicketSyncState.VendorEventId`).
+- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`, `HasTicketAudience`, and `MarketingNoTicketAudience`. Scoped to the active vendor event by the cached decorator (see `TicketSyncState.VendorEventId`).
 - **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`).
-- **Users**: `IUserService.GetAllUserInfosAsync` — audience-side enumeration of explicit Marketing opt-ins for `MarketingAudience` (`UserInfo.MarketingOptedOut == false`).
+- **Users**: `IUserService.GetAllUserInfosAsync` — read by `MailerAudienceBase` to drop explicit Marketing opt-outs from *every* audience, and by `MarketingAudience` / `MarketingNoTicketAudience` to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`).
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
 
 ## Architecture
