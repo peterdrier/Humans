@@ -133,9 +133,9 @@ else
                         {
                             <text> &middot; @item.LocationNote</text>
                         }
-                        @if (item.SubmitterName != null)
+                        @if (item.DisplayHost != null)
                         {
-                            <text> &middot; <i class="fa-solid fa-user me-1"></i>@item.SubmitterName</text>
+                            <text> &middot; <i class="fa-solid fa-user me-1"></i>@item.DisplayHost</text>
                         }
                     </div>
                     @if (!string.IsNullOrEmpty(item.Description))

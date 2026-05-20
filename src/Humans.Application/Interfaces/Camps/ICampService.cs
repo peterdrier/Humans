@@ -17,10 +17,6 @@ namespace Humans.Application.Interfaces.Camps;
 ///   <item>57→58 — US-26 unified MySubmissions: added GetEventManagedCampsAsync — returns the list of camps a user may manage events for (unions CampRoleAssignment Lead/Workshop rows + legacy CampLead table). Authorized by consolidating BarrioEventsController into EventsController.</item>
 ///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes barrio event actions. Once the legacy CampLead table drops, AddLeadAsync/RemoveLeadAsync/EnsureActiveMemberForMigrationAsync retire (57→54 net).</item>
 ///   <item>55→56 — Camp Lead retirement (issue nobodies-collective/Humans#753): added EnsureActiveMemberForMigrationAsync — needed by the admin "Seed system roles" button to land legacy CampLead rows on the role-assignment side. Once the follow-up table-drop PR lands, this and the AddLeadAsync/RemoveLeadAsync pair (55→52 net) will both retire.</item>
-///   <item>55→55 — onsite-roster N+1 fix: added <see cref="GetCampMembersByYearAsync"/> (year-scoped bulk member fetch) for <c>OnsiteRosterService</c>; net-zero by dropping obsolete <c>GetCampsWithLeadsForYearAsync</c> (T-06 alias of <see cref="GetCampsForYearAsync"/>, zero external callers).</item>
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(55)] (issue nobodies-collective/Humans#700).</item>
-///   <item>52→55 — issue-490 Early Entry (camps consumer): added SetEeStartDateAsync, SetCampSeasonEeSlotCountAsync, SetEarlyEntryAsync. Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/CampSettings — tables ICampService already owns — so the methods belong here per design-rules §6 (no service split).</item>
-///   <item>51→52 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against camps must live in the owning section per design-rules §6.</item>
 /// </list>
 /// </remarks>
 [SurfaceBudget(58)]
