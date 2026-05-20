@@ -194,10 +194,17 @@ public class CampController(
             return View(model);
         }
 
-        var campDisplayName = camp.Seasons
+        var latestSeason = camp.Seasons
             .OrderByDescending(s => s.Year)
-            .FirstOrDefault()?.Name ?? slug;
+            .FirstOrDefault();
+        var campDisplayName = latestSeason?.Name ?? slug;
         var senderEmail = currentUser.Email!;
+
+        // Recipients are sourced from the role system (Camp Lead special role on the
+        // latest season), not the legacy camp_leads table.
+        var leadUserIds = latestSeason is null
+            ? []
+            : await campRoleService.GetSeasonLeadUserIdsAsync(latestSeason.Id);
 
         try
         {
@@ -210,7 +217,7 @@ public class CampController(
                 senderEmail,
                 model.Message,
                 model.IncludeContactInfo,
-                camp.Leads.Select(l => l.UserId).Distinct().ToList(),
+                leadUserIds,
                 $"/Barrios/{slug}");
 
             if (result.RateLimited)
