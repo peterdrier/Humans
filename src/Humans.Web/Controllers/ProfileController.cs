@@ -2035,6 +2035,43 @@ public class ProfileController(
         return View("AdminList", viewModel);
     }
 
+    // ─── Admin: Role Assignment Roster ───────────────────────────────
+
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    [HttpGet("Admin/Roles")]
+    public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
+    {
+        var pageSize = 50;
+        var now = clock.GetCurrentInstant();
+
+        var (assignments, totalCount) = await roleAssignmentService.GetFilteredAsync(
+            role, activeOnly: !showInactive, page, pageSize, now);
+
+        var viewModel = new AdminRoleAssignmentListViewModel
+        {
+            RoleAssignments = assignments.Select(ra => new AdminRoleAssignmentViewModel
+            {
+                Id = ra.Id,
+                UserId = ra.UserId,
+                UserEmail = ra.UserEmail ?? string.Empty,
+                RoleName = ra.RoleName,
+                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
+                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
+                Notes = ra.Notes,
+                IsActive = ra.IsActive(now),
+                CreatedByName = ra.CreatedByDisplayName,
+                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+            }).ToList(),
+            RoleFilter = role,
+            ShowInactive = showInactive,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
+        };
+
+        return View("~/Views/Shared/Roles.cshtml", viewModel);
+    }
+
     // ─── Admin: Per-Person Detail ────────────────────────────────────
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]

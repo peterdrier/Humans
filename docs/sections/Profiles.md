@@ -323,6 +323,7 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/{id}/Admin/Reject` | Reject signup |
 | `/Profile/{id}/Admin/Roles/*` | Role management |
 | `/Profile/Admin` | Admin list of all humans |
+| `/Profile/Admin/Roles` | System-wide role-assignment roster, filterable by role (BoardOrAdmin). Relocated from `/Governance/Roles` — `role_assignments` is owned by Auth, not Governance; the roster lives beside the per-human role management already in this section |
 | `/Profile/Search` | People search |
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |

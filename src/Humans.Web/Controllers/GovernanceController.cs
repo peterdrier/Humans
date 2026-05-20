@@ -1,14 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 using Humans.Application.Interfaces.Governance;
-using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Auth;
-
-#pragma warning disable CS0618 // RoleAssignment.User/CreatedByUser — stitched in-memory by RoleAssignmentService (§15i).
-
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -17,9 +11,7 @@ namespace Humans.Web.Controllers;
 [Route("[controller]")]
 public class GovernanceController(
     IUserService userService,
-    IGovernanceIndexService governanceIndexService,
-    IRoleAssignmentService roleAssignmentService,
-    IClock clock) : HumansControllerBase(userService)
+    IGovernanceIndexService governanceIndexService) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index()
     {
@@ -45,40 +37,5 @@ public class GovernanceController(
         };
 
         return View(viewModel);
-    }
-
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    [HttpGet("Roles")]
-    public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
-    {
-        var pageSize = 50;
-        var now = clock.GetCurrentInstant();
-
-        var (assignments, totalCount) = await roleAssignmentService.GetFilteredAsync(
-            role, activeOnly: !showInactive, page, pageSize, now);
-
-        var viewModel = new AdminRoleAssignmentListViewModel
-        {
-            RoleAssignments = assignments.Select(ra => new AdminRoleAssignmentViewModel
-            {
-                Id = ra.Id,
-                UserId = ra.UserId,
-                UserEmail = ra.UserEmail ?? string.Empty,
-                RoleName = ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
-                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
-                Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByDisplayName,
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
-            RoleFilter = role,
-            ShowInactive = showInactive,
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize
-        };
-
-        return View("~/Views/Shared/Roles.cshtml", viewModel);
     }
 }

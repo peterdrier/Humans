@@ -119,7 +119,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
-| `GovernanceController` | `GET /Governance` — overview + tier counts + statutes | `GET /Governance/Roles` — role assignment list (BoardOrAdmin) |
+| `GovernanceController` | `GET /Governance` — overview + tier counts + statutes |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (BoardOrAdmin) |
 | `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) |
