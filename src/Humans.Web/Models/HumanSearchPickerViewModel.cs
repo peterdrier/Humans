@@ -18,10 +18,11 @@ public class HumanSearchPickerViewModel
     public string? Placeholder { get; set; }
 
     /// <summary>
-    /// Scope hint passed through to <c>/api/profiles/search</c>. "name" narrows to
-    /// display + burner name; null keeps the broad search.
+    /// Search scope passed through to <c>/api/profiles/search</c>.
+    /// <see cref="HumanSearchScope.Name"/> narrows to burner-name match;
+    /// <see cref="HumanSearchScope.All"/> (default) keeps the broad search.
     /// </summary>
-    public string? Scope { get; set; }
+    public HumanSearchScope Scope { get; set; } = HumanSearchScope.All;
 
     /// <summary>User ids to hide from the dropdown results.</summary>
     public IEnumerable<Guid>? ExcludeUserIds { get; set; }
@@ -29,6 +30,10 @@ public class HumanSearchPickerViewModel
     /// <summary>Optional prefill — the picked user id (null = empty picker).</summary>
     public Guid? SelectedUserId { get; set; }
 
-    /// <summary>Optional prefill — the picked user's display name (BurnerName).</summary>
-    public string? SelectedDisplayName { get; set; }
+    /// <summary>
+    /// Resolved BurnerName for the prefilled user, used to seed the visible search
+    /// box. Populated by the component from <see cref="SelectedUserId"/>; the
+    /// <c>internal</c> setter makes it impossible for callers to supply a name.
+    /// </summary>
+    public string? SelectedBurnerName { get; internal set; }
 }

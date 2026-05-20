@@ -16,21 +16,21 @@ public sealed class HumanSearchViewComponent(IUserService userService) : ViewCom
         string fieldName = "userId",
         string? instanceKey = null,
         string? placeholder = null,
-        string? scope = null,
+        HumanSearchScope scope = HumanSearchScope.All,
         IEnumerable<Guid>? excludeUserIds = null,
         Guid? selectedUserId = null)
     {
-        // Resolve the optional prefill. Render empty if the user doesn't resolve
-        // (deleted/rejected) — same "has profile, not rejected" gate the
-        // /api/profiles/search by-userid endpoint enforces. The visible value is
-        // BurnerName, matching what the search dropdown displays.
-        string? selectedDisplayName = null;
+        // Resolve the optional prefill to the user's BurnerName (the same value the
+        // dropdown shows). Render empty if the user doesn't resolve (deleted/rejected)
+        // — same "has profile, not rejected" gate the /api/profiles/search by-userid
+        // endpoint enforces.
+        string? selectedBurnerName = null;
         if (selectedUserId is { } id)
         {
             var info = await userService.GetUserInfoAsync(id);
             if (info?.IsActive == true)
             {
-                selectedDisplayName = info.BurnerName;
+                selectedBurnerName = info.BurnerName;
             }
             else
             {
@@ -46,7 +46,7 @@ public sealed class HumanSearchViewComponent(IUserService userService) : ViewCom
             Scope = scope,
             ExcludeUserIds = excludeUserIds,
             SelectedUserId = selectedUserId,
-            SelectedDisplayName = selectedDisplayName,
+            SelectedBurnerName = selectedBurnerName,
         };
 
         return View("Default", model);

@@ -862,7 +862,7 @@
                         ("instance-key", "<code>string?</code> — required when multiple instances render on the same page"),
                         ("placeholder", "<code>string?</code> — input placeholder (default \"Search by name…\")"),
                         ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
-                        ("scope", "<code>string?</code> — \"name\" narrows to display/burner names; null = full-text"),
+                        ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
                         ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)")
                     )
                     <div class="wg-card-example" style="max-width: 400px;">

@@ -20,14 +20,14 @@
     var excludeIdsJson = excludeIds is null
         ? "[]"
         : System.Text.Json.JsonSerializer.Serialize(excludeIds.Select(g => g.ToString()).ToArray());
-    // Optional scope hint passed through to /api/profiles/search. "name" narrows
-    // matching to display name + burner name only. Default keeps the broad search
-    // (bio / city / interests / CV) so existing callers don't change behavior.
-    var scope = Model.Scope;
-    var scopeJson = System.Text.Json.JsonSerializer.Serialize(scope ?? "");
+    // Optional scope passed through to /api/profiles/search. Name narrows matching
+    // to burner name only. All (default) keeps the broad search (bio / city /
+    // interests / CV) so existing callers don't change behavior.
+    var scopeArg = Model.Scope == HumanSearchScope.Name ? "name" : "";
+    var scopeJson = System.Text.Json.JsonSerializer.Serialize(scopeArg);
     // Optional prefill — visible BurnerName + hidden id (e.g. edit forms).
     var selectedValue = Model.SelectedUserId?.ToString() ?? "";
-    var selectedDisplayName = Model.SelectedDisplayName ?? "";
+    var selectedBurnerName = Model.SelectedBurnerName ?? "";
 }
 
 @* Dropdown <ul> reparented to <body> on show so no parent clips it; position fixed, z-index below navbar (3000). *@
@@ -36,7 +36,7 @@
            id="@inputId"
            class="form-control"
            placeholder="@placeholder"
-           value="@selectedDisplayName"
+           value="@selectedBurnerName"
            autocomplete="off" />
     <input type="hidden"
            id="@hiddenId"
