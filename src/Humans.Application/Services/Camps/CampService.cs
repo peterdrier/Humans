@@ -1851,8 +1851,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        // Section ownership splits the tables; AccountMergeService.AcceptAsync wraps both saves in its TransactionScope.
-        await _repo.ReassignLeadsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        // AccountMergeService.AcceptAsync wraps the save in its TransactionScope.
+        // Camp Lead is a CampRoleAssignment now, so the role-side reassignment moves leads too.
         await _roleRepo.ReassignAssignmentsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         // Lead moves change Barrio Leads team membership + lead-badge cache for both users.
