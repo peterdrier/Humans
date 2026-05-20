@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Application;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
@@ -63,16 +64,21 @@ public class AdminDuplicateAccountsController(
         var account1 = group.Accounts.First(a => a.UserId == userId1);
         var account2 = group.Accounts.First(a => a.UserId == userId2);
 
-        var profile1 = await BuildProfileCardAsync(userId1, account1);
-        var profile2 = await BuildProfileCardAsync(userId2, account2);
+        var info1 = await _userService.GetUserInfoAsync(userId1);
+        var info2 = await _userService.GetUserInfoAsync(userId2);
+
+        var profile1 = await BuildProfileCardAsync(userId1, account1, info1);
+        var profile2 = await BuildProfileCardAsync(userId2, account2, info2);
 
         var viewModel = new DuplicateAccountDetailViewModel
         {
             SharedEmail = group.SharedEmail,
             Account1 = profile1,
             Account2 = profile2,
-            Account1EmailSources = account1.EmailSources,
-            Account2EmailSources = account2.EmailSources
+            Account1IdentityEmail = info1?.IdentityEmailColumn,
+            Account2IdentityEmail = info2?.IdentityEmailColumn,
+            Account1Emails = MapEmails(info1),
+            Account2Emails = MapEmails(info2)
         };
 
         return View(viewModel);
@@ -100,9 +106,9 @@ public class AdminDuplicateAccountsController(
     }
 
     private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(
-        Guid userId, DuplicateAccountInfo accountInfo)
+        Guid userId, DuplicateAccountInfo accountInfo, UserInfo? info)
     {
-        var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
+        var profile = info?.Profile;
         var teams = await teamService.GetUserTeamsAsync(userId);
         var activeTeamNames = teams
             .Where(m => m.LeftAt is null)
@@ -125,4 +131,18 @@ public class AdminDuplicateAccountsController(
             Teams = activeTeamNames
         };
     }
+
+    private static List<DuplicateAccountEmailRowViewModel> MapEmails(UserInfo? info) =>
+        info is null
+            ? []
+            : info.UserEmails
+                .Select(e => new DuplicateAccountEmailRowViewModel
+                {
+                    Email = e.Email,
+                    IsPrimary = e.IsPrimary,
+                    IsVerified = e.IsVerified,
+                    IsGoogle = e.IsGoogle,
+                    Provider = e.Provider
+                })
+                .ToList();
 }
