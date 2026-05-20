@@ -273,12 +273,18 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
 
         // Lead camps: pin to top of listing + build "my pending camps" panel.
+        // Lead status comes from the role system (Camp Lead special role on any
+        // season), not the legacy camp_leads table.
         var leadCampIds = new HashSet<Guid>();
         IReadOnlyList<Camp> leadCamps = [];
         if (userId.HasValue)
         {
-            leadCamps = await _repo.GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
-            leadCampIds = leadCamps.Select(c => c.Id).ToHashSet();
+            var leadCampIdList = await _roleRepo.GetCampIdsBySpecialRolesForUserAsync(
+                userId.Value, LeadOnly, cancellationToken);
+            leadCampIds = leadCampIdList.ToHashSet();
+            // Re-derive from the already-loaded year camps (avoids a second camp load);
+            // MyCamps only needs camps that have a season for this year anyway.
+            leadCamps = camps.Where(c => leadCampIds.Contains(c.Id)).ToList();
         }
 
         var cards = ApplyCampDirectoryFilter(

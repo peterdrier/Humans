@@ -123,6 +123,25 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // GetCampDirectoryAsync — role-based lead pinning
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetCampDirectoryAsync_RoleLeadPendingCamp_AppearsInMyCamps()
+    {
+        await SeedSettingsAsync();
+        // CreateTestCamp seeds the Camp Lead role + makes the creator a role-based
+        // lead; the new camp's season is Pending (not yet public).
+        var camp = await CreateTestCamp();
+
+        var result = await _service.GetCampDirectoryAsync(camp.CreatedByUserId);
+
+        // Pending camps aren't in the public listing, but a role-lead sees theirs in MyCamps.
+        result.MyCamps.Should().ContainSingle(c => c.Id == camp.Id);
+        result.Camps.Should().NotContain(c => c.Id == camp.Id);
+    }
+
+    // ==========================================================================
     // ApproveSeasonAsync
     // ==========================================================================
 
