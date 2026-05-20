@@ -139,6 +139,7 @@ Unique constraint on (UserId, GuideEventId).
 |-----------|--------------|----------|
 | `EventsController` | `/Events/` | All active members |
 | `EventsController` (barrio actions) | `/Events/Barrio/{slug}/` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
+| `EventsController` (barrio bulk upload) | `/Events/Barrio/{slug}/BulkUpload` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
 | `EventsModerationController` | `/Events/Moderate/` | GuideModerator, Admin |
 | `EventsDashboardController` | `/Events/Dashboard/` | GuideModerator, Admin |
 | `EventsExportController` | `/Events/Export/` | GuideModerator, Admin |
@@ -150,7 +151,7 @@ Unique constraint on (UserId, GuideEventId).
 | Actor | Capabilities |
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
-| Camp Lead or Workshop Lead | Submit and manage barrio events via `EventsController` (`/Events/Barrio/{slug}/*`), shown in their **My Submissions** page alongside personal submissions; authority resolved via `ICampService.GetEventManagedCampsAsync` (unions `CampRoleAssignment` Lead/Workshop rows + legacy `CampLead` table). Workshop Leads do NOT gain general camp-management authority. |
+| Camp Lead or Workshop Lead | Submit and manage barrio events via `EventsController` (`/Events/Barrio/{slug}/*`), shown in their **My Submissions** page alongside personal submissions; authority resolved via `ICampService.GetEventManagedCampsAsync` (unions `CampRoleAssignment` Lead/Workshop rows + legacy `CampLead` table). Workshop Leads do NOT gain general camp-management authority. Can bulk-upload events via CSV at `/Events/Barrio/{slug}/BulkUpload` (US-26.10). |
 | GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
 
 ## Invariants
@@ -161,6 +162,7 @@ Unique constraint on (UserId, GuideEventId).
 - Category slugs are globally unique (unique constraint enforced at DB level; service validates before create/update).
 - `GuideApiController` is gated behind `EventGuideFeatureFilter` at class level and `[EnableCors("GuideApi")]`; the public endpoints allow unauthenticated access while `[Authorize] + [DisableCors]` endpoints are same-origin only.
 - Excluded category slugs stored in `UserGuidePreference.ExcludedCategorySlugs` are validated against active categories before save.
+- Bulk CSV upload is all-or-nothing: if any row fails validation, no events are created or updated. Rows with a non-empty `Id` update the matched camp event; rows with an empty `Id` create a new event. `Withdrawn` events cannot be modified via bulk upload.
 - `StartAt` is always stored as UTC `Instant`; timezone conversion is done at presentation layer using `GuideSettings.EventSettings.TimeZoneId`.
 
 ## Negative Access Rules

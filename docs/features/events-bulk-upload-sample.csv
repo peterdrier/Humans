@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ELSEWHERE EVENT GUIDE — Bulk Upload Template
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# HOW TO USE
+#   1. Fill in new rows leaving Id blank — a new event will be created.
+#   2. Existing rows already have an Id filled in. You may edit their fields,
+#      but DO NOT change or delete the Id — that is how we match the event.
+#      Changing an Id will cause the upload to fail.
+#   3. To leave an existing event unchanged, keep its row as-is.
+#      Events not present in the CSV are left untouched.  
+#   4. Save as CSV (comma-separated, UTF-8) before uploading.
+#      In Excel:   File → Save As → CSV UTF-8 (Comma delimited)
+#      In Numbers: File → Export To → CSV
+#
+# FIELDS
+#   Id             Leave empty for new events. Do not edit for existing ones.
+#   Barrio         Informational only — shows which camp this file belongs to. Ignored on upload.
+#   Status         Informational only — shows the current event status. Ignored on upload.
+#                  If you upload a row without changing any fields, the status is kept as-is.
+#                  If you edit fields on an existing event, it will be re-queued for moderation.
+#   Category       Must match exactly one of the valid categories listed below.
+#   Date           Format: yyyy-MM-dd  (e.g. 2026-07-08)
+#   StartTime      Format: HH:mm       (e.g. 09:30)
+#   DurationMinutes  Integer, 15–480, in 15-minute increments (e.g. 15, 30, 45, 60, 90, 120...).
+#   IsRecurring    true or false.
+#   RecurrenceDays  Only used when IsRecurring is true.
+#                  Space-separated day names: Mon Tue Wed Thu Fri Sat Sun
+#                  Example: Mon Wed Fri means the event repeats on those days.
+#
+# VALID CATEGORIES
+#   Workshop, Party, Food and drink, Chillout,
+#   Spiritual / Healing, Adults, Kids, Other
+#
+# ─────────────────────────────────────────────────────────────────────────────
+"Id","Barrio","Status","Title","Description","Category","Date","StartTime","DurationMinutes","LocationNote","Host","IsRecurring","RecurrenceDays","PriorityRank"
+"550e8400-e29b-41d4-a716-446655440001","Camp Elsewhere","Approved","Barrio Breakfast","Come share food and meet your neighbours. We cook eggs and toast every morning.","Food and drink","2026-07-08","09:00","120","Camp Elsewhere kitchen","Marta","true","Mon Tue Wed Thu Fri Sat Sun","1"
+"550e8400-e29b-41d4-a716-446655440002","Camp Elsewhere","Pending","Electronic Sunset Set","Deep and melodic techno as the sun goes down.","Party","2026-07-09","19:30","180","Camp stage","","false","","2"
+"","Camp Elsewhere","","Morning Yoga Flow","Start your day with a grounding yoga session open to all levels. Bring a mat if you have one.","Spiritual / Healing","2026-07-08","08:00","60","Outside the main dome","Luna","false","","2"
+"","Camp Elsewhere","","Sound Bath","Immersive sound healing with crystal bowls and gongs. Come and lie down.","Spiritual / Healing","2026-07-09","20:00","90","The Healing Tent","","false","","3"
+"","Camp Elsewhere","","Macramé Workshop","Learn basic macramé knots and take home a small wall hanging. Materials provided, no experience needed.","Workshop","2026-07-10","11:00","120","Camp shade structure","Iker","false","","4"

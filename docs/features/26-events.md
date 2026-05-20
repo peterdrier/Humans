@@ -119,7 +119,121 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - If logged in: favourites stored as UserEventFavourite records (survives device switch)
 - If not logged in: favourites stored in localStorage
 
+### US-26.10: Barrio Lead Bulk-Uploads Events via CSV
+
+**As a** Camp Lead or Workshop Lead
+**I want to** download my barrio's events as a CSV, add or edit rows, and upload the file back
+**So that** I can manage a full programme without submitting events one by one
+
+**Acceptance Criteria:**
+
+- Each barrio block on `/Events/MySubmissions` has a download link for the current events CSV and a file input to upload an updated CSV — no separate page
+- Downloading the template produces a CSV pre-filled with the barrio's non-Withdrawn events; comment lines at the top explain the format, valid categories, and the Id rule
+- Upload is all-or-nothing: if any row fails validation, no events are saved and a per-row error table is shown inline in the barrio block
+- New rows (empty `Id`) are submitted as new events in `Pending` status; the submitter receives the standard submission email
+- Existing rows (non-empty `Id`) that are unchanged are skipped — status is preserved; rows with changed fields update the matched event and re-queue it for moderation
+- Rows referencing a `Withdrawn` event are rejected (Withdrawn events cannot be reactivated via bulk upload)
+- Rows absent from the CSV are left untouched — bulk upload does not delete or withdraw events
+- Upload is rejected if the submission window is closed
+- Only Camp Leads, Workshop Leads, CampAdmin, and Admin may access the bulk upload routes for a given barrio slug
+
+#### Routes
+
+```text
+GET  /Events/Barrio/{slug}/BulkUpload/Template  → stream CSV of existing camp events
+POST /Events/Barrio/{slug}/BulkUpload           → parse, validate, submit (all-or-nothing); on error redirects back to MySubmissions with errors in TempData
+```
+
+Both actions use the existing `ResolveCampEventManagementAsync(slug)` guard — same auth as `BarrioSubmit`/`BarrioCreate`.
+
+#### CSV Format
+
+```text
+Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,LocationNote,Host,IsRecurring,RecurrenceDays,PriorityRank
+```
+
+| Column | Rules |
+| --- | --- |
+| `Id` | Guid or empty. **Empty** → new event. **Non-empty** → update existing event. Do not change or delete an existing Id — the upload will fail. |
+| `Barrio` | Read-only. Pre-filled with the camp name. Ignored on upload — for reference only. |
+| `Status` | Read-only. Pre-filled with the current event status. Ignored on upload — for reference only. Helps leads know which events are live before editing. |
+| `Title` | Required. Max 80 chars. |
+| `Description` | Required. Max 450 chars. |
+| `Category` | Required. Category name, case-insensitive (e.g. `Food and drink`). |
+| `Date` | Required. `yyyy-MM-dd`. |
+| `StartTime` | Required. `HH:mm`. |
+| `DurationMinutes` | Required. Integer, 15–480, in 15-minute increments. |
+| `LocationNote` | Optional. Max 120 chars. |
+| `Host` | Optional. Max 40 chars. |
+| `IsRecurring` | `true` or `false`. |
+| `RecurrenceDays` | Only used when `IsRecurring` is true. Space-separated day names: `Mon Tue Wed Thu Fri Sat Sun`. Converted to day offsets from gate-opening date on import. |
+| `PriorityRank` | Required. Integer, 1–100. |
+
+**Encoding:** comma-separated, UTF-8, RFC 4180 quoting — fields containing commas are wrapped in `"double quotes"`. `RecurrenceDays` uses spaces as the day separator (`Mon Tue Fri`) so it never needs quoting.
+
+#### Validation (all-or-nothing)
+
+All rows are parsed and validated before any event is saved. If any row fails, the upload page is returned with a per-row error table and nothing is persisted.
+
+Per-row checks:
+
+- Required fields present.
+- Field length and range constraints (see table above). `DurationMinutes` must be divisible by 15.
+- `Date` parses to a valid date; `StartTime` parses to a valid time.
+- `Category` matches an active category (case-insensitive by name).
+- If `Id` is provided: event must exist for this camp and must not be `Withdrawn`.
+
+#### Update Semantics (rows with Id)
+
+If a row with an Id is identical to the stored event (all fields unchanged), it is skipped — the status is kept as-is and no service call is made.
+
+If any field differs:
+
+| Existing status | Included in template | Action on upload |
+| --- | --- | --- |
+| Draft | Yes | Update fields → `SubmitEventAsync` |
+| Pending | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
+| Approved | Yes | Update fields → `UpdateAndResubmitAsync` (moves back to Pending for re-moderation) |
+| Rejected | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
+| ResubmitRequested | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
+| Withdrawn | No | **Validation error** — row rejected, upload fails |
+
+#### Files to Change
+
+Modified:
+
+- `src/Humans.Web/Controllers/EventsController.cs` — add `BulkUploadTemplate` (GET), `BulkUploadImport` (POST); add `ParseCsvRows` and `ValidateBulkRows` private helpers; update `MySubmissions` to read bulk upload errors from TempData
+- `src/Humans.Web/Models/Events/BarrioEventViewModels.cs` — add `BulkRowError` (row number, title, error list); add `BulkUploadErrors` to the barrio block view model
+- `src/Humans.Web/Views/Events/MySubmissions.cshtml` — add download link, file upload form, and error table to each barrio block
+
+No changes needed to domain, service interface, or repository — all existing methods are sufficient (`GetCampSubmissionsAsync`, `SubmitEventAsync`, `UpdateAndResubmitAsync`). No EF migration.
+
+#### Key Reused Pieces
+
+| What | Where |
+| --- | --- |
+| `ResolveCampEventManagementAsync(slug)` | `EventsController` base helpers — auth guard |
+| `GetCampSubmissionsAsync(campId)` | `IEventService` — fetches existing events for template |
+| `SubmitEventAsync(event)` | `IEventService` — submits new events |
+| `UpdateAndResubmitAsync(event)` | `IEventService` — updates + resubmits existing events |
+| `GetActiveCategoriesAsync()` | `IEventService` — category lookup for validation |
+| `ToInstant(date + time, tz)` | `EventsController` private helper — date+time → UTC Instant |
+
+#### Verification
+
+1. `dotnet build Humans.slnx -v quiet` — 0 errors.
+2. `dotnet test Humans.slnx -v quiet` — all pass.
+3. Manual:
+   - Camp lead opens `/Events/MySubmissions` → barrio block shows download link and file upload form.
+   - Download template → CSV has correct columns, existing events populated, Withdrawn events absent, comment lines at top.
+   - Upload CSV with one new row (empty Id) → event appears in MySubmissions as Pending.
+   - Upload same CSV again (now has an Id, fields unchanged) → event not duplicated, status preserved.
+   - Upload CSV with a changed field on an existing event → event updated and re-queued for moderation.
+   - Upload CSV with an invalid row (bad category, missing title, etc.) → error table shown, nothing saved.
+   - Non-lead user attempts upload → 403.
+
 ### US-26.9: Moderator Exports the Print Guide
+
 **As a** GuideModerator
 **I want to** generate a print-ready PDF of all approved events
 **So that** the layout team has no manual data extraction step
@@ -179,7 +293,7 @@ Hard deletion is not supported; `Withdrawn` is the terminal state for events rem
 
 All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure.
 
-## Routes
+## Route Summary
 
 | Route | Purpose |
 |-------|---------|
@@ -189,6 +303,7 @@ All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infra
 | `/Admin/Guide*` | GuideModerator/Admin: GuideSettings, categories, venues |
 | `/Events/Export` | GuideModerator/Admin: CSV and print-guide exports |
 | `/Events/Barrio/{slug}/Submit` | Lead: submit/edit a barrio event (barrio block on My Event Submissions) |
+| `/Events/Barrio/{slug}/BulkUpload` | Lead: download CSV template of existing events; upload updated CSV |
 | `/api/events/events` | Public API: approved events (PWA data source) |
 | `/api/events/barrios` | Public API: published barrios with hosted events |
 | `/api/events/categories` | Public API: event categories |
