@@ -1,8 +1,11 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
+using Humans.Web.Helpers;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
@@ -17,7 +20,7 @@ namespace Humans.Web.Controllers.Api;
 [Route("api/events")]
 [EnableCors("EventsApi")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsApiController(IEventService guide, ICampService camps, UserManager<User> userManager)
+public class EventsApiController(IEventService guide, ICampService camps, IUserService users, UserManager<User> userManager)
     : ControllerBase
 {
     [HttpGet("events")]
@@ -37,6 +40,8 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
         var excludedSlugs = await GetExcludedSlugsAsync();
         var events = await guide.GetApprovedEventsAsync(barrioId, null, null, q, excludedSlugs);
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
+            users, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct());
 
         var results = new List<GuideEventApiDto>();
         foreach (var e in events)
@@ -45,12 +50,13 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
                 continue;
 
             var campName = ResolveCampName(e.CampId, campsById);
+            var submitterName = ResolveSubmitterName(e, submitterInfoById);
 
             foreach (var occurrenceStart in e.GetOccurrenceInstants())
             {
                 var eventDayOffset = ComputeDayOffset(occurrenceStart, gateOpeningDate, tz);
                 if (day.HasValue && eventDayOffset != day.Value) continue;
-                results.Add(BuildEventDto(e, occurrenceStart, eventDayOffset, campName));
+                results.Add(BuildEventDto(e, occurrenceStart, eventDayOffset, campName, submitterName));
             }
         }
 
@@ -72,8 +78,11 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var campName = ResolveCampName(e.CampId, campsById);
+        var submitterName = e.CampId == null
+            ? (await users.GetUserInfoAsync(e.SubmitterUserId))?.BurnerName
+            : null;
 
-        return Ok(BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName));
+        return Ok(BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName, submitterName));
     }
 
     [HttpGet("barrios")]
@@ -126,7 +135,8 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
             events.Select(e =>
             {
                 var dayOffset = ComputeDayOffset(e.StartAt, gateOpeningDate, tz);
-                return BuildEventDto(e, e.StartAt, dayOffset, campName);
+                // Barrio detail returns this camp's events only — host is always the camp's own value.
+                return BuildEventDto(e, e.StartAt, dayOffset, campName, null);
             }).ToList()));
     }
 
@@ -201,11 +211,14 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
 
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
+            users, favourites.Where(f => f.Event.CampId == null).Select(f => f.Event.SubmitterUserId).Distinct());
         var results = favourites.Select(f =>
         {
             var e = f.Event;
             var campName = ResolveCampName(e.CampId, campsById);
-            return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName);
+            var submitterName = ResolveSubmitterName(e, submitterInfoById);
+            return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName, submitterName);
         }).ToList();
 
         return Ok(results);
@@ -268,8 +281,12 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
         return seasonName ?? camp?.Slug;
     }
 
+    // Individual events only — the published-guide host falls back to the submitter's burner name.
+    private static string? ResolveSubmitterName(Event e, IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
+        => e.CampId == null ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName : null;
+
     private static GuideEventApiDto BuildEventDto(
-        Event e, Instant startAt, int dayOffset, string? campName)
+        Event e, Instant startAt, int dayOffset, string? campName, string? submitterName)
     {
         return new GuideEventApiDto(
             e.Id,
@@ -289,7 +306,8 @@ public class EventsApiController(IEventService guide, ICampService camps, UserMa
                 ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.EventVenue.Name)
                 : null,
             e.LocationNote,
-            e.Host,
+            // Individual events fall back to the submitter's name when no host is set (US-26.3 / US-26.6).
+            e.CampId == null ? (e.Host ?? submitterName) : e.Host,
             e.PriorityRank);
     }
 

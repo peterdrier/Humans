@@ -118,8 +118,8 @@ public interface ICampService : IApplicationService
     /// camp (current season) whose <c>CampRoleDefinition.SpecialRole</c> is
     /// <see cref="Humans.Domain.Enums.CampSpecialRole.Lead"/> OR
     /// <see cref="Humans.Domain.Enums.CampSpecialRole.Workshop"/>. Authorizes
-    /// camp-event submission via <c>BarrioEventsController</c>
-    /// (<c>/Barrios/{slug}/Events/*</c>). Camp leads automatically satisfy this
+    /// camp-event submission via <c>EventsController</c>
+    /// (<c>/Events/Barrio/{slug}/*</c>). Camp leads automatically satisfy this
     /// check because the role set is the OR — no separate "lead-implies-workshop"
     /// logic.
     /// </summary>

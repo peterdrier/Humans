@@ -319,6 +319,92 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // GetEventManagedCampsAsync — unions role-based (Lead/Workshop) holders with
+    // the legacy CampLead table, then filters to camps with a season in the year.
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetEventManagedCampsAsync_RoleAssignmentOnly_ReturnsCamp()
+    {
+        await SeedSettingsAsync();
+        var (campId, seasonId) = await SeedCampWithSeasonAsync();
+        var leadDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
+        var userId = Guid.NewGuid();
+        await SeedRoleAssignmentAsync(seasonId, leadDef.Id, userId);
+
+        var result = await _service.GetEventManagedCampsAsync(userId, 2026);
+
+        result.Should().ContainSingle(c => c.Id == campId);
+    }
+
+    [HumansFact]
+    public async Task GetEventManagedCampsAsync_WorkshopAssignment_ReturnsCamp()
+    {
+        await SeedSettingsAsync();
+        var (campId, seasonId) = await SeedCampWithSeasonAsync();
+        var workshopDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Workshop);
+        var userId = Guid.NewGuid();
+        await SeedRoleAssignmentAsync(seasonId, workshopDef.Id, userId);
+
+        var result = await _service.GetEventManagedCampsAsync(userId, 2026);
+
+        result.Should().ContainSingle(c => c.Id == campId);
+    }
+
+    [HumansFact]
+    public async Task GetEventManagedCampsAsync_LegacyLeadOnly_ReturnsCamp()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp(); // creator is seeded as a legacy CampLead only.
+
+        var result = await _service.GetEventManagedCampsAsync(camp.CreatedByUserId, 2026);
+
+        result.Should().ContainSingle(c => c.Id == camp.Id);
+    }
+
+    [HumansFact]
+    public async Task GetEventManagedCampsAsync_RoleAndLegacyLead_ReturnsCampOnce()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp(); // creator is a legacy CampLead.
+        var seasonId = (await Db.CampSeasons
+            .Where(s => s.CampId == camp.Id)
+            .OrderByDescending(s => s.Year)
+            .FirstAsync()).Id;
+        var leadDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
+        await SeedRoleAssignmentAsync(seasonId, leadDef.Id, camp.CreatedByUserId);
+
+        var result = await _service.GetEventManagedCampsAsync(camp.CreatedByUserId, 2026);
+
+        result.Should().ContainSingle(c => c.Id == camp.Id);
+    }
+
+    [HumansFact]
+    public async Task GetEventManagedCampsAsync_RoleForCampWithoutSeasonInYear_Excluded()
+    {
+        await SeedSettingsAsync();
+        var (_, seasonId) = await SeedCampWithSeasonAsync(); // season is 2026.
+        var leadDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
+        var userId = Guid.NewGuid();
+        await SeedRoleAssignmentAsync(seasonId, leadDef.Id, userId);
+
+        var result = await _service.GetEventManagedCampsAsync(userId, 2027);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetEventManagedCampsAsync_NonManager_ReturnsEmpty()
+    {
+        await SeedSettingsAsync();
+        await SeedCampWithSeasonAsync();
+
+        var result = await _service.GetEventManagedCampsAsync(Guid.NewGuid(), 2026);
+
+        result.Should().BeEmpty();
+    }
+
+    // ==========================================================================
     // Public projections
     // ==========================================================================
 

@@ -64,7 +64,7 @@ public abstract class HumansCampControllerBase(
     /// <summary>
     /// Like <see cref="ResolveCampManagementAsync"/> but authorizes via
     /// <see cref="CampOperationRequirement.SubmitEvent"/> — Lead OR Workshop
-    /// (plus CampAdmin / Admin). Used by <c>BarrioEventsController</c> so Workshop
+    /// (plus CampAdmin / Admin). Used by <c>EventsController</c> so Workshop
     /// Leads can submit camp events on behalf of their camp without inheriting
     /// the broader Camp Lead authority surface.
     /// </summary>

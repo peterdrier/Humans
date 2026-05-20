@@ -1212,7 +1212,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task<bool> IsUserCampEventManagerAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default)
     {
-        // Authorizes camp-event submission (BarrioEventsController). Lead OR
+        // Authorizes camp-event submission (EventsController). Lead OR
         // Workshop on the camp's current season. Camp leads inherit Workshop
         // power because the role set is the OR — no separate "lead-implies-
         // workshop" logic. Legacy CampLead fallback covers the deploy window

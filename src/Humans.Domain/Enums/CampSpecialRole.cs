@@ -16,12 +16,12 @@ public enum CampSpecialRole
 
     /// <summary>
     /// Authorizes camp-management actions (Edit, members, roles, leads) and
-    /// camp-event submission via <c>BarrioEventsController</c>.
+    /// camp-event submission via <c>EventsController</c>.
     /// </summary>
     Lead = 1,
 
     /// <summary>
-    /// Authorizes camp-event submission via <c>BarrioEventsController</c>
+    /// Authorizes camp-event submission via <c>EventsController</c>
     /// alongside <see cref="Lead"/>. Does NOT confer general camp-management
     /// authority.
     /// </summary>
