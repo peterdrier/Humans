@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 /// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
 /// shared partials — rendered against real data so designers and developers can see
 /// what exists, what it's called, and how it looks filled in. Companion to
-/// <c>/ColorPalette</c>. Admin dev tool — no nav link, access via URL directly.
+/// <c>/ColorPalette</c>. Admin dev tool — linked from the admin sidebar "Design" group.
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]

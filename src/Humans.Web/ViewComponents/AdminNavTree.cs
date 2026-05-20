@@ -89,6 +89,10 @@ public static class AdminNavTree
                  EnvironmentGate: env => !env.IsProduction()),
             new("Seed camp roles", "DevSeed", "SeedCampRoles", null, null, "fa-solid fa-user-tag",  PolicyNames.AdminOnly,
                  EnvironmentGate: env => !env.IsProduction())
+        ]),
+        new("Design", [
+            new("Color palette", "ColorPalette",  "Index", null, null, "fa-solid fa-palette", PolicyNames.AdminOnly),
+            new("Components",    "WidgetGallery", "Index", null, null, "fa-solid fa-shapes",  PolicyNames.AdminOnly)
         ])
     ];
 }
