@@ -168,7 +168,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 
 | File | Purpose | Exception type |
 |------|---------|----------------|
-| `_HumanSearchInput.cshtml` | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
+| `Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
 | `_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
 | `_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |

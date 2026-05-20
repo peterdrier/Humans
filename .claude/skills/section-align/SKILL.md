@@ -234,7 +234,7 @@ The user-display family — always check first, since it is where redundancy bit
 | Full profile / baseball card | `<vc:profile-card>` / `ProfileCardViewComponent` / `_ProfileCard` |
 | Role pill / authorization indicator | `_RoleBadge.cshtml` / `_AuthorizationPill.cshtml` |
 | Nobodies email badge | `<vc:nobodies-email-badge>` |
-| User search box + results | `_HumanSearchInput.cshtml` / `_HumanSearchResults.cshtml` |
+| User search box + results | `<vc:human-search>` / `_HumanSearchResults.cshtml` |
 | User dropdown / signed-in menu | `_LoginPartial.cshtml` / `_AdminTopbarUserMenu.cshtml` |
 
 (Refresh this table from the actual `ViewComponents/` and `Views/Shared/` listing each run — components get added.)
@@ -258,7 +258,7 @@ For each hit, decide:
 |---------|------------|
 | Section renders user (avatar/name/link) inline with its own markup | **Phase 3 fix**: replace with `<vc:human user-id="..." />` or `@await Html.PartialAsync("_HumanPopover", ...)`. |
 | Section has its own role/auth badge markup | **Phase 3 fix**: replace with `_RoleBadge` / `_AuthorizationPill`. |
-| Section has its own user-search input + results panel | **Phase 3 fix**: replace with `_HumanSearchInput` / `_HumanSearchResults`. |
+| Section has its own user-search input + results panel | **Phase 3 fix**: replace with `<vc:human-search>` / `_HumanSearchResults`. |
 | Shared component is *almost* right but missing one parameter the section needs (e.g. compact mode, hide-link) | **Phase 2 fix on the shared component** (add the parameter), then Phase 3 callsite swap. Note: this means the shared component owner — typically the platform/admin shell — is the producer; flag as a follow-up if the parameter add is non-trivial. |
 | Section's renderer is genuinely different in domain meaning (not a near-duplicate, just happens to also show a user) | Keep; record the distinction in the plan so future runs don't re-flag it. |
 
@@ -597,7 +597,7 @@ Common targets:
 - View-component caches (`feedback_viewcomponent_no_cache`).
 - **Interface trimming** — methods on the section's main service that exist only for one in-section consumer; move private or to the consumer.
 - **Read-shape consolidation** — if Service and ViewerService both expose the same read names with different return shapes, move all UI reads to ViewerService and trim Service.
-- **Swap reinvented UI for shared components (A2.5a)** — replace section-local user/profile/role/search markup with the canonical `<vc:human>` / `<vc:profile-card>` / `_RoleBadge` / `_HumanSearchInput` etc. State the swap in the commit message ("Replace inline user-row markup in `Views/<Section>/Index.cshtml` with `<vc:human>` — collapses N call sites onto the shared component"). If a shared component needs a small parameter add to fit the section's case, do the parameter add as a Phase 2 producer-side fix and the call-site swap here.
+- **Swap reinvented UI for shared components (A2.5a)** — replace section-local user/profile/role/search markup with the canonical `<vc:human>` / `<vc:profile-card>` / `_RoleBadge` / `<vc:human-search>` etc. State the swap in the commit message ("Replace inline user-row markup in `Views/<Section>/Index.cshtml` with `<vc:human>` — collapses N call sites onto the shared component"). If a shared component needs a small parameter add to fit the section's case, do the parameter add as a Phase 2 producer-side fix and the call-site swap here.
 - **Test pruning** — delete redundant/over-tested cases flagged in A3.3, brittleness flagged in A3.5, and high-confidence test-debt candidates from the Stryker utility report (A3.6). Prefer deletion over refactoring: if a test isn't asserting something a reviewer would catch in code review, it's pulling its weight only if its absence would let a real regression slip. State the deletion rationale in the commit message ("redundant with X test; mock-graph assertion not behavior; Stryker survived no mutant"). Respect the test-attribute gate (`docs/testing/mutation-testing.md`): the net delta should trend down across Phase 3 commits.
 
 Push at end of phase. Bot-review sub-loop until clean.

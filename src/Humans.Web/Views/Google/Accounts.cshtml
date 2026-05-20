@@ -180,7 +180,7 @@
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="email" value="@account.PrimaryEmail" />
                                         <input type="hidden" name="userId" class="link-userId" />
-                                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", $"link-{i}" } })' />
+                                        <vc:human-search field-name="@($"link-{i}")" />
                                         <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">
                                             <i class="fa-solid fa-link"></i>
                                         </button>
@@ -329,7 +329,7 @@
 
 @section Scripts {
     <script>
-        // Sync the _HumanSearchInput hidden value to the form's userId field on submit
+        // Sync the <vc:human-search> hidden value to the form's userId field on submit
         document.querySelectorAll('.link-form').forEach(function (form) {
             form.addEventListener('submit', function (e) {
                 var searchHidden = form.querySelector('input[type="hidden"][id^="human-search-hidden-"]');

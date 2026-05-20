@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/Controllers/ProfileApiController.cs
   src/Humans.Web/Models/SearchResponseModels.cs
-  src/Humans.Web/Views/Shared/_HumanSearchInput.cshtml
+  src/Humans.Web/Views/Shared/Components/HumanSearch/Default.cshtml
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Application/DTOs/ProfileSearchResults.cs
   src/Humans.Application/Services/Profile/ContactFieldService.cs
@@ -15,7 +15,7 @@
 
 ## Business Context
 
-The shared human picker (`_HumanSearchInput`, used by barrio member setup, role-assignment, ticket-transfer admin, etc.) originally rendered each result row as a single line of burner/playa name. When multiple humans share a common Playa name — three "David"s in the same barrio is the canonical case — the picker can't be used to disambiguate without an out-of-band cross-check.
+The shared human picker (`<vc:human-search>`, used by barrio member setup, role-assignment, ticket-transfer admin, etc.) originally rendered each result row as a single line of burner/playa name. When multiple humans share a common Playa name — three "David"s in the same barrio is the canonical case — the picker can't be used to disambiguate without an out-of-band cross-check.
 
 This feature adds a second line of context to each row and an avatar thumbnail, picked per-viewer so privacy rules stay intact.
 
