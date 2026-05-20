@@ -41,9 +41,9 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 **Acceptance Criteria:**
 - `/Search?q=<query>` returns type-grouped sections: Humans, Teams, Camps, Shifts, and (when `Features:Events` is enabled) Events.
 - Each section is independently ranked by score within itself; no cross-type ranking.
-- Each section is capped at 10 results in the unified view; 50 when a single-type filter chip is active.
+- All matches are returned per section — there is no result cap (the dataset is small enough at ~500-user scale that capping only hid people users were looking for).
 - Each result clearly shows its type via section header + icon, and links to the canonical detail page (for Events, the link is `/Events/Browse?q=<title>` — there is no per-event detail page).
-- Per-type filter chips (All | Humans | Teams | Camps | Shifts | Events) hide the other sections and bump the cap. The Events chip is hidden when `Features:Events` is off.
+- Per-type filter chips (All | Humans | Teams | Camps | Shifts | Events) hide the other sections. The Events chip is hidden when `Features:Events` is off.
 - A query with no matches renders "No results for <query>." (not 500).
 
 ### US-GS.3: Match by the right fields
@@ -88,7 +88,7 @@ If privileged search is added later, the right shape is per-bucket scope (TeamsA
 
 ```
 SearchController
-   └── ISearchService.SearchAsync(query, onlyType, limit)
+   └── ISearchService.SearchAsync(query, onlyType)
          ├── IProfileService.SearchProfilesAsync(query, PersonSearchFields.PublicAll, limit) → IReadOnlyList<HumanSearchResult>
          ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
          ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
@@ -108,7 +108,7 @@ The orchestrator scores each hit by name-match strength:
 
 Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, Title asc` at the controller; the humans bucket sorts by `BurnerName asc`, matching `/Profile/Search`.
 
-Counts are post-cap by design — they reflect what the user actually sees in the page. There is no separate `CountMatchingAsync` per section; total-match counts at scale (~500 users) aren't worth the second query.
+Counts reflect every match — there is no cap, so the chip count is the true number of hits the user can scroll to. There is no separate `CountMatchingAsync` per section; the buckets are already the full result set.
 
 ## DTOs
 
@@ -128,7 +128,7 @@ Counts are post-cap by design — they reflect what the user actually sees in th
 - **Humans** are rendered by the canonical `_HumanSearchResults` partial (see `memory/architecture/person-search.md`). The controller projects each `HumanSearchResult` to `HumanSearchResultViewModel` via the existing `ToHumanSearchViewModel` extension, matching `/Profile/Search` and `/Profile/Admin`.
 - **Teams / Camps / Shifts / Events** are rendered by `_GlobalSearchSection` — a small, deliberately-minimal partial. This is not a third person-search surface (the `_HumanSearchResults` rule applies only to person rendering); it's a generic list-row template for the simpler types.
 
-A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the post-cap result count.
+A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the full match count.
 
 ## Out of Scope
 
