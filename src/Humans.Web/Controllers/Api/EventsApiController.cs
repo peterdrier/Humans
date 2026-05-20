@@ -52,7 +52,7 @@ public class EventsApiController(IEventService guide, ICampService camps, IUserS
             var campName = ResolveCampName(e.CampId, campsById);
             var submitterName = ResolveSubmitterName(e, submitterInfoById);
 
-            foreach (var occurrenceStart in e.GetOccurrenceInstants())
+            foreach (var occurrenceStart in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
             {
                 var eventDayOffset = ComputeDayOffset(occurrenceStart, gateOpeningDate, tz);
                 if (day.HasValue && eventDayOffset != day.Value) continue;

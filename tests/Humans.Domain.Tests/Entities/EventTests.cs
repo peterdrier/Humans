@@ -121,18 +121,44 @@ public class EventTests
     }
 
     [HumansFact]
-    public void GetOccurrenceInstants_ForRecurringEvent_ReturnsExpandedInstants()
+    public void GetOccurrenceInstants_Recurring_UsesGateOpeningDayOffsets()
     {
-        var guideEvent = CreateEvent(EventStatus.Draft);
+        var timeZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var gateOpeningDate = new LocalDate(2026, 7, 5);
+        var guideEvent = CreateEvent(EventStatus.Approved);
+        guideEvent.StartAt = new LocalDateTime(2026, 7, 12, 18, 30)
+            .InZoneStrictly(timeZone)
+            .ToInstant();
         guideEvent.IsRecurring = true;
-        guideEvent.RecurrenceDays = "0,2,4";
+        guideEvent.RecurrenceDays = "2,3";
 
-        var occurrences = guideEvent.GetOccurrenceInstants();
+        var occurrences = guideEvent.GetOccurrenceInstants(gateOpeningDate, timeZone);
 
-        occurrences.Should().HaveCount(3);
-        occurrences[0].Should().Be(guideEvent.StartAt);
-        occurrences[1].Should().Be(guideEvent.StartAt.Plus(Duration.FromDays(2)));
-        occurrences[2].Should().Be(guideEvent.StartAt.Plus(Duration.FromDays(4)));
+        occurrences.Should().Equal(
+            new LocalDateTime(2026, 7, 7, 18, 30).InZoneStrictly(timeZone).ToInstant(),
+            new LocalDateTime(2026, 7, 8, 18, 30).InZoneStrictly(timeZone).ToInstant());
+    }
+
+    [HumansFact]
+    public void GetOccurrenceInstants_NonRecurring_ReturnsStartAt()
+    {
+        var guideEvent = CreateEvent(EventStatus.Approved);
+
+        var occurrences = guideEvent.GetOccurrenceInstants(new LocalDate(2026, 7, 5), DateTimeZone.Utc);
+
+        occurrences.Should().Equal(guideEvent.StartAt);
+    }
+
+    [HumansFact]
+    public void GetOccurrenceInstants_RecurringWithEmptyDays_ReturnsStartAt()
+    {
+        var guideEvent = CreateEvent(EventStatus.Approved);
+        guideEvent.IsRecurring = true;
+        guideEvent.RecurrenceDays = "";
+
+        var occurrences = guideEvent.GetOccurrenceInstants(new LocalDate(2026, 7, 5), DateTimeZone.Utc);
+
+        occurrences.Should().Equal(guideEvent.StartAt);
     }
 
     private Event CreateEvent(EventStatus status)

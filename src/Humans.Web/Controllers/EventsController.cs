@@ -434,7 +434,7 @@ public class EventsController(
                 ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
                 : null;
 
-            foreach (var startInstant in e.GetOccurrenceInstants())
+            foreach (var startInstant in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
             {
                 var eventDayOffset = 0;
                 if (gateOpeningDate != null)

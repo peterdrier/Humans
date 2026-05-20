@@ -53,7 +53,7 @@ public class EventsExportController(
                 submitterName = submitter?.BurnerName ?? "";
             }
 
-            foreach (var (date, time) in GetOccurrences(e, tz))
+            foreach (var (date, time) in GetOccurrences(e, eventSettings?.GateOpeningDate, tz))
             {
                 sb.AppendLine(string.Join(",",
                     CsvEscape(e.Id.ToString()),
@@ -89,6 +89,7 @@ public class EventsExportController(
         var maxSlots = settings?.MaxPrintSlots;
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
 
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
         var allOccurrences = new List<PrintGuideEntry>();
         foreach (var e in events)
         {
@@ -97,7 +98,7 @@ public class EventsExportController(
             var campName = seasonName ?? camp?.Slug;
             var venueName = e.EventVenue?.Name;
 
-            foreach (var occ in e.GetOccurrenceInstants())
+            foreach (var occ in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
             {
                 allOccurrences.Add(new PrintGuideEntry
                 {
@@ -143,10 +144,10 @@ public class EventsExportController(
         return View(model);
     }
 
-    private static List<(string Date, string Time)> GetOccurrences(Event e, DateTimeZone? tz)
+    private static List<(string Date, string Time)> GetOccurrences(Event e, LocalDate? gateOpeningDate, DateTimeZone? tz)
     {
         var results = new List<(string, string)>();
-        foreach (var occurrence in e.GetOccurrenceInstants())
+        foreach (var occurrence in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
         {
             var local = ToLocalDateTime(occurrence, tz);
             results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));

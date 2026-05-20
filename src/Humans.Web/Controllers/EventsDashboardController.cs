@@ -54,7 +54,7 @@ public class EventsDashboardController(IEventService guide, ICampService camps, 
 
             foreach (var e in approvedEvents)
             {
-                foreach (var occ in e.GetOccurrenceInstants())
+                foreach (var occ in tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
                 {
                     var dayOffset = ComputeDayOffset(occ, gateOpeningDate.Value, tz);
                     if (dayCounts.ContainsKey(dayOffset))

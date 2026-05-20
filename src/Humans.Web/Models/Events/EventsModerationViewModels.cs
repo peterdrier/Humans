@@ -10,6 +10,7 @@ public class ModerationQueueViewModel
     public int ApprovedCount { get; set; }
     public int RejectedCount { get; set; }
     public int ResubmitRequestedCount { get; set; }
+    public int WithdrawnCount { get; set; }
     public string? TimeZoneId { get; set; }
     public List<ModerationEventRowViewModel> Events { get; set; } = [];
 }

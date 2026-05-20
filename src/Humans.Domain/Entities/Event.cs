@@ -73,7 +73,7 @@ public class Event
     public bool IsRecurring { get; set; }
 
     /// <summary>
-    /// Comma-separated day offsets from event start for recurrence (e.g. "0,2,4").
+    /// Comma-separated day offsets from gate opening for recurrence (e.g. "0,2,4").
     /// Only meaningful when <see cref="IsRecurring"/> is true.
     /// </summary>
     public string? RecurrenceDays { get; set; }
@@ -171,20 +171,23 @@ public class Event
     }
 
     /// <summary>
-    /// Returns the event start instant plus any recurrence-day offsets.
+    /// Expands this event into concrete occurrence instants.
     /// </summary>
-    public IReadOnlyList<Instant> GetOccurrenceInstants()
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone)
     {
         if (!IsRecurring || string.IsNullOrWhiteSpace(RecurrenceDays))
             return [StartAt];
 
+        var startLocal = StartAt.InZone(timeZone);
+
         return RecurrenceDays
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dayOffset)
-                ? (int?)dayOffset
-                : null)
-            .Where(dayOffset => dayOffset.HasValue)
-            .Select(dayOffset => StartAt.Plus(Duration.FromDays(dayOffset!.Value)))
+            .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
+            .Where(d => d.HasValue)
+            .Select(d => gateOpeningDate.PlusDays(d!.Value)
+                .At(startLocal.TimeOfDay)
+                .InZoneLeniently(timeZone)
+                .ToInstant())
             .ToList();
     }
 }
