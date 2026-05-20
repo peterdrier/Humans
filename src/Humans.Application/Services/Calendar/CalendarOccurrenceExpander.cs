@@ -68,7 +68,7 @@ public static class CalendarOccurrenceExpander
                     DtStart = new CalDateTime(dtStartLocal, e.RecurrenceTimezone, hasTime: true),
                     Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(dur.BclCompatibleTicks)),
                 };
-                icalEv.RecurrenceRules.Add(new RecurrencePattern(e.RecurrenceRule!));
+                icalEv.RecurrenceRule = new RecurrencePattern(e.RecurrenceRule!);
 
                 var fromLocal = from.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
                 var toLocal = to.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
