@@ -69,7 +69,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'humanAdmin',
     login: loginAsHumanAdmin,
     groups: [
-      { label: 'Members', items: ['Humans'] },
+      { label: 'Members', items: ['Humans', 'Roles'] },
     ],
   },
   {

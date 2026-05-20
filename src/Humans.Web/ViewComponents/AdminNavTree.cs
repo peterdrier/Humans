@@ -20,7 +20,7 @@ public static class AdminNavTree
         ]),
         new("Members", [
             new("Humans", "Profile", "AdminList",       null, null, "fa-solid fa-users",            PolicyNames.HumanAdminBoardOrAdmin),
-            new("Roles",  "Profile", "Roles",           null, null, "fa-solid fa-id-badge",         PolicyNames.BoardOrAdmin),
+            new("Roles",  "Profile", "Roles",           null, null, "fa-solid fa-id-badge",         PolicyNames.HumanAdminBoardOrAdmin),
             new("Review", "OnboardingReview", "Index",   null, null, "fa-solid fa-clipboard-check",  PolicyNames.ReviewQueueAccess,
                  PillCount: PillCounts.ReviewQueue)
         ]),

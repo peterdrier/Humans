@@ -2037,7 +2037,7 @@ public class ProfileController(
 
     // ─── Admin: Role Assignment Roster ───────────────────────────────
 
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     [HttpGet("Admin/Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {
