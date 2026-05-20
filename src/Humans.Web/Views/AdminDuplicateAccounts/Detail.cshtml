@@ -35,14 +35,56 @@
             </div>
             <div class="card-body">
                 <partial name="_ProfileCard" model="Model.Account1" />
-                <div class="small text-muted mt-3">
-                    <strong>Email sources:</strong>
-                    <ul class="mb-0 ps-3">
-                        @foreach (var source in Model.Account1EmailSources)
+                <div class="small mt-3">
+                    <div>
+                        <strong>User.Email</strong> <span class="text-muted">(Identity column):</span>
+                        @if (!string.IsNullOrEmpty(Model.Account1IdentityEmail))
                         {
-                            <li>@source</li>
+                            <code>@Model.Account1IdentityEmail</code>
                         }
-                    </ul>
+                        else
+                        {
+                            <span class="text-muted fst-italic">none</span>
+                        }
+                    </div>
+                    <div class="mt-2">
+                        <strong>UserEmails</strong> <span class="text-muted">(@Model.Account1Emails.Count):</span>
+                        @if (Model.Account1Emails.Count == 0)
+                        {
+                            <span class="text-muted fst-italic">none</span>
+                        }
+                        else
+                        {
+                            <ul class="list-unstyled mb-0 ps-3">
+                                @foreach (var email in Model.Account1Emails)
+                                {
+                                    <li>
+                                        <code>@email.Email</code>
+                                        @if (email.IsPrimary)
+                                        {
+                                            <span class="badge bg-primary ms-1">Primary</span>
+                                        }
+                                        @if (email.IsVerified)
+                                        {
+                                            <span class="badge bg-success ms-1">Verified</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary ms-1">Unverified</span>
+                                        }
+                                        @if (email.IsGoogle)
+                                        {
+                                            <span class="badge bg-light text-dark border ms-1">Google</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(email.Provider))
+                                        {
+                                            <span class="badge bg-light text-dark border ms-1">@email.Provider</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -54,14 +96,56 @@
             </div>
             <div class="card-body">
                 <partial name="_ProfileCard" model="Model.Account2" />
-                <div class="small text-muted mt-3">
-                    <strong>Email sources:</strong>
-                    <ul class="mb-0 ps-3">
-                        @foreach (var source in Model.Account2EmailSources)
+                <div class="small mt-3">
+                    <div>
+                        <strong>User.Email</strong> <span class="text-muted">(Identity column):</span>
+                        @if (!string.IsNullOrEmpty(Model.Account2IdentityEmail))
                         {
-                            <li>@source</li>
+                            <code>@Model.Account2IdentityEmail</code>
                         }
-                    </ul>
+                        else
+                        {
+                            <span class="text-muted fst-italic">none</span>
+                        }
+                    </div>
+                    <div class="mt-2">
+                        <strong>UserEmails</strong> <span class="text-muted">(@Model.Account2Emails.Count):</span>
+                        @if (Model.Account2Emails.Count == 0)
+                        {
+                            <span class="text-muted fst-italic">none</span>
+                        }
+                        else
+                        {
+                            <ul class="list-unstyled mb-0 ps-3">
+                                @foreach (var email in Model.Account2Emails)
+                                {
+                                    <li>
+                                        <code>@email.Email</code>
+                                        @if (email.IsPrimary)
+                                        {
+                                            <span class="badge bg-primary ms-1">Primary</span>
+                                        }
+                                        @if (email.IsVerified)
+                                        {
+                                            <span class="badge bg-success ms-1">Verified</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary ms-1">Unverified</span>
+                                        }
+                                        @if (email.IsGoogle)
+                                        {
+                                            <span class="badge bg-light text-dark border ms-1">Google</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(email.Provider))
+                                        {
+                                            <span class="badge bg-light text-dark border ms-1">@email.Provider</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
