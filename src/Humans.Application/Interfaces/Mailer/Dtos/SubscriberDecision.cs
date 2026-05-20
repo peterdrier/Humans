@@ -27,6 +27,16 @@ public enum SubscriberOutcome
 
     /// <summary>Verified human match, user touched Humans' pref more recently than ML — keep Humans' state.</summary>
     VerifiedKeepHumansPref,
+
+    /// <summary>
+    /// Existing human, opted-in to Marketing by the erroneous whole-account
+    /// MailerLite import (<c>UpdateSource = "MailerLiteSync"</c>), who is not an
+    /// active member of the Website group and has no genuine prior consent —
+    /// delete the Marketing pref row to revert to "no preference recorded"
+    /// (null), not opt-out. GDPR remediation; discovered from the Humans side,
+    /// not from an ML subscriber.
+    /// </summary>
+    ResetMarketingFlag,
 }
 
 public sealed record SubscriberDecision(

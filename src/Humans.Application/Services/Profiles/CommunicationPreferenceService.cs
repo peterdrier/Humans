@@ -226,6 +226,31 @@ public sealed class CommunicationPreferenceService(
             userId, category, optedOut, inboxEnabled, source);
     }
 
+    public async Task ResetPreferenceAsync(
+        Guid userId, MessageCategory category, string source,
+        CancellationToken cancellationToken = default)
+    {
+        if (category.IsAlwaysOn())
+        {
+            logger.LogWarning("Attempted to reset always-on preference {Category} for user {UserId} — ignored", category, userId);
+            return;
+        }
+
+        var deleted = await repository.DeleteByUserAndCategoryAsync(userId, category, cancellationToken);
+        if (!deleted)
+            return;
+
+        await auditLog.LogAsync(
+            AuditAction.CommunicationPreferenceChanged,
+            "User", userId,
+            $"{category} reset to no preference (null) via {source}",
+            "CommunicationPreferenceService");
+
+        logger.LogInformation(
+            "User {UserId} communication preference {Category} reset to null via {Source}",
+            userId, category, source);
+    }
+
     public string GenerateUnsubscribeToken(Guid userId, MessageCategory category) =>
         tokenProvider.GenerateToken(userId, category);
 

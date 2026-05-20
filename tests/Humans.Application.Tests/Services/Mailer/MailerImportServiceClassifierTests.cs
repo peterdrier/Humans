@@ -19,18 +19,18 @@ public class MailerImportServiceClassifierTests
     private static MailerLiteSubscriber Active(string email) =>
         new("ml-id", email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null, []);
+            null, null, [ClassifierHarness.WebsiteGroupId]);
 
     private static MailerLiteSubscriber Unsubscribed(string email, Instant? unsubscribedAt = null) =>
         new("ml-id", email, "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             unsubscribedAt ?? Instant.FromUtc(2026, 3, 1, 0, 0),
             Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null, []);
+            null, null, [ClassifierHarness.WebsiteGroupId]);
 
     private static MailerLiteSubscriber Unconfirmed(string email) =>
         new("ml-id", email, "unconfirmed", "form",
-            null, null, null, null, null, []);
+            null, null, null, null, null, [ClassifierHarness.WebsiteGroupId]);
 
     [HumansFact]
     public async Task Classifies_UnconfirmedAsSkipped()
@@ -207,6 +207,8 @@ public class MailerImportServiceClassifierTests
 /// </summary>
 internal sealed class ClassifierHarness
 {
+    public const string WebsiteGroupId = "grp-website";
+
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -278,6 +280,14 @@ internal sealed class ClassifierHarness
         _prefs
             .GetPreferenceOrNullAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(null));
+
+        // Website group must resolve, and BuildPlanAsync's reset pass enumerates all users.
+        _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
+                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
+        _users
+            .GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
 
         Service = new MailerImportService(
             _ml,

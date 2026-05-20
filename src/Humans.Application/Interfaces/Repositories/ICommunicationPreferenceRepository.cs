@@ -82,6 +82,15 @@ public interface ICommunicationPreferenceRepository : IRepository
     Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes the single <c>communication_preferences</c> row for a user+category,
+    /// returning the category to its "no row recorded" (null) state — distinct
+    /// from an explicit opt-out. Returns true if a row was deleted, false if none
+    /// existed. Used by the Mailer import GDPR remediation.
+    /// </summary>
+    Task<bool> DeleteByUserAndCategoryAsync(
+        Guid userId, MessageCategory category, CancellationToken ct = default);
+
+    /// <summary>
     /// Bulk-moves <c>communication_preferences</c> rows from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> for the
     /// account-merge fold flow. Conflict rule per the fold spec: when source and
