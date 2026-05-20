@@ -141,6 +141,19 @@ public sealed class CampServiceTests : ServiceTestHarness
         result.Camps.Should().NotContain(c => c.Id == camp.Id);
     }
 
+    [HumansFact]
+    public async Task GetCampLeadSeasonIdForYearAsync_RoleLeadResolvesSeason_NonLeadNull()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+
+        (await _service.GetCampLeadSeasonIdForYearAsync(camp.CreatedByUserId, 2026))
+            .Should().Be(season.Id);
+        (await _service.GetCampLeadSeasonIdForYearAsync(Guid.NewGuid(), 2026))
+            .Should().BeNull();
+    }
+
     // ==========================================================================
     // ApproveSeasonAsync
     // ==========================================================================

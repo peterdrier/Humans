@@ -1179,19 +1179,11 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 kv.Value.CampId));
     }
 
-    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default)
-    {
-        // Post-migration source of truth: CampRoleAssignment against the Camp Lead
-        // special role. Legacy CampLead fallback covers the deploy window before
-        // the "Seed system roles" admin button runs on this env (issue
-        // nobodies-collective/Humans#753). Removed when the legacy table drops in
-        // the follow-up PR.
-        var fromRole = await _roleRepo.GetCampSpecialRoleSeasonIdForYearAsync(
+    public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
+        Guid userId, int year, CancellationToken cancellationToken = default) =>
+        // Source of truth: CampRoleAssignment against the Camp Lead special role.
+        _roleRepo.GetCampSpecialRoleSeasonIdForYearAsync(
             userId, year, CampSpecialRole.Lead, cancellationToken);
-        if (fromRole is not null) return fromRole;
-        return await _repo.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
-    }
 
     // --- Authorization checks ---
 
