@@ -53,6 +53,7 @@ public class EventsModerationController(
             ApprovedCount = counts.GetValueOrDefault(EventStatus.Approved),
             RejectedCount = counts.GetValueOrDefault(EventStatus.Rejected),
             ResubmitRequestedCount = counts.GetValueOrDefault(EventStatus.ResubmitRequested),
+            WithdrawnCount = counts.GetValueOrDefault(EventStatus.Withdrawn),
             TimeZoneId = eventSettings?.TimeZoneId,
             Events = events.Select(e => BuildRow(e, tz, campsById, submitterInfoById)).ToList()
         };
