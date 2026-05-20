@@ -59,12 +59,6 @@ public interface ICampRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns camps where the user has an active lead assignment, with
-    /// seasons, images, and leads included (FK-only). Read-only.
-    /// </summary>
-    Task<IReadOnlyList<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns count of seasons in Pending status across all years.
     /// </summary>
     Task<int> CountPendingSeasonsAsync(CancellationToken ct = default);
@@ -228,46 +222,15 @@ public interface ICampRepository : IRepository
     Task<IReadOnlyList<(Guid Id, string Name, string CampSlug, SpaceSize? SpaceRequirement)>>
         GetSeasonBriefsForYearAsync(int year, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the season id where the user has an active lead assignment on
-    /// a camp participating in the given year. Null if none.
-    /// </summary>
-    Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken ct = default);
-
     // ==========================================================================
-    // Writes / reads — Lead
+    // Reads — Lead (legacy camp_leads; only the role-backed team-sync read and the
+    // one-shot seed-migration snapshot remain. Entity/table kept until #774.)
     // ==========================================================================
 
     /// <summary>
-    /// Returns true if the user currently has an active lead assignment on
-    /// the camp.
-    /// </summary>
-    Task<bool> IsUserActiveLeadAsync(Guid userId, Guid campId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of currently-active leads on the camp.
-    /// </summary>
-    Task<int> CountActiveLeadsAsync(Guid campId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Persist a new lead assignment.
-    /// </summary>
-    Task AddLeadAsync(CampLead lead, CancellationToken ct = default);
-
-    /// <summary>
-    /// Load a lead for mutation (tracked). Null if not found.
-    /// </summary>
-    Task<CampLead?> GetLeadForMutationAsync(Guid leadId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Persist changes to a previously-loaded lead.
-    /// </summary>
-    Task UpdateLeadAsync(CampLead lead, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct set of user ids who currently have an active lead
-    /// assignment on any camp. Used by <c>SystemTeamSyncJob</c> to sync the
-    /// Barrio Leads team membership.
+    /// Returns the distinct set of user ids who currently hold the Camp Lead
+    /// special role on any camp. Used by <c>SystemTeamSyncJob</c> to sync the
+    /// Barrio Leads team membership. (Reads CampRoleAssignment, not camp_leads.)
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken ct = default);
 
@@ -292,17 +255,10 @@ public interface ICampRepository : IRepository
         Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns true if the user currently leads any camp.
+    /// Returns true if the user currently holds the Camp Lead special role on any
+    /// camp. Used by <c>SystemTeamSyncJob</c>. (Reads CampRoleAssignment, not camp_leads.)
     /// </summary>
     Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns all (read-only, AsNoTracking) lead assignments — active and
-    /// historical — for the user, with parent <c>Camp</c> loaded for slug
-    /// access. Used by the GDPR export contributor.
-    /// </summary>
-    Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
-        Guid userId, CancellationToken ct = default);
 
     // ==========================================================================
     // Writes / reads — Historical names
@@ -470,13 +426,6 @@ public interface ICampRepository : IRepository
     Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Total count of Pending membership rows across all seasons belonging to
-    /// camps where <paramref name="userId"/> is an active lead. Read-only.
-    /// </summary>
-    Task<int> CountPendingMembershipsForLeadAsync(
-        Guid userId, CancellationToken ct = default);
-
     /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
     Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default);
@@ -495,28 +444,6 @@ public interface ICampRepository : IRepository
 
     Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
-
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
-
-    /// <summary>
-    /// Account-merge fold: bulk-moves <c>CampLead</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> in
-    /// a single save. Conflict on the active <c>(CampId, UserId)</c> unique
-    /// index is resolved target-wins: if target already has an active lead
-    /// row for the same camp, the source row is dropped; otherwise the
-    /// source row is re-FK'd to target. <c>CampLead</c> has no
-    /// <c>UpdatedAt</c>, so <paramref name="updatedAt"/> is unused for this
-    /// table and accepted for caller-side symmetry. Returns the count of
-    /// CampLead rows attributed to <paramref name="targetUserId"/> after the
-    /// move (active + closed combined).
-    /// </summary>
-    Task<int> ReassignLeadsToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken ct = default);
 }
 
 /// <summary>

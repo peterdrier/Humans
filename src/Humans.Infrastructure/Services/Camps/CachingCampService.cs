@@ -78,24 +78,16 @@ public sealed class CachingCampService(
         return await LoadSettingsAsync(cancellationToken);
     }
 
-    // Lead authz delegates straight to the inner service. CampInfo.Leads is
-    // still built from the legacy CampLead table, but the source of truth is
-    // now CampRoleAssignment with SpecialRole = Lead (issue
-    // nobodies-collective/Humans#753). Answering from camp.Leads would
-    // false-negative every role-assigned lead. The follow-up PR that retires
-    // CampLead re-introduces a smarter cached path.
+    // Lead authz delegates straight to the inner service — the source of truth
+    // is CampRoleAssignment (SpecialRole = Lead), not the CampInfo projection.
     public Task<bool> IsUserCampLeadAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.IsUserCampLeadAsync(userId, campId, cancellationToken));
 
     public Task<bool> IsUserCampEventManagerAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default)
-    {
-        // Workshop-role holders are not modeled in CampInfo.Leads (which is
-        // strictly Camp Lead). Delegate to the inner service so the Lead OR
-        // Workshop check sees the role-assignment table directly.
-        return WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
-    }
+        Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
+        // Delegate so the Lead OR Workshop check sees the role-assignment table directly.
+        WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
 
     public Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(
         Guid userId, int year, CancellationToken cancellationToken = default) =>
@@ -250,25 +242,6 @@ public sealed class CachingCampService(
         await WithInner(inner => inner.DeleteCampAsync(campId, cancellationToken));
         // Tombstone without flipping warmth — preserves the all-rows invariant.
         DeleteKey(campId);
-    }
-
-    public async Task<CampLead> AddLeadAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddLeadAsync(campId, userId, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
-
-    public async Task RemoveLeadAsync(Guid leadId, CancellationToken cancellationToken = default)
-    {
-        // No campId on the API surface — scan the snapshot; fall back to RefreshAll.
-        var campId = FindCampIdByLeadId(leadId);
-        await WithInner(inner => inner.RemoveLeadAsync(leadId, cancellationToken));
-        if (campId is not null)
-            await InvalidateCampAsync(campId.Value, cancellationToken);
-        else
-            RefreshAll();
     }
 
     public async Task AddHistoricalNameAsync(
@@ -616,15 +589,6 @@ public sealed class CachingCampService(
             await InvalidateCampAsync(season.CampId, ct);
     }
 
-    private Guid? FindCampIdByLeadId(Guid leadId)
-    {
-        foreach (var camp in Values)
-        {
-            if (camp.Leads.Any(l => l.Id == leadId)) return camp.Id;
-        }
-        return null;
-    }
-
     // Projection + filter helpers
 
     private static CampInfo ProjectCampInfo(Camp camp) => new(
@@ -634,8 +598,7 @@ public sealed class CachingCampService(
         camp.ContactPhone,
         camp.IsSwissCamp,
         camp.TimesAtNowhere,
-        camp.Seasons.Select(s => ProjectSeasonInfo(s, camp.Slug)).ToList(),
-        camp.Leads.Where(l => l.LeftAt is null).Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList());
+        camp.Seasons.Select(s => ProjectSeasonInfo(s, camp.Slug)).ToList());
 
     private static CampSeasonInfo ProjectSeasonInfo(CampSeason season, string campSlug) => new(
         season.Id,

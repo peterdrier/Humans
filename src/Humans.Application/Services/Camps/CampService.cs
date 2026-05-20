@@ -212,8 +212,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             return null;
         }
 
-        var leadSummaries = await BuildLeadSummariesAsync(camp.Leads, cancellationToken);
-
         return new CampDetailData(
             camp.Id,
             camp.Slug,
@@ -224,7 +222,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.HideHistoricalNames,
             camp.HistoricalNames.Select(h => h.Name).ToList(),
             camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
-            leadSummaries,
             CreateCampSeasonDetailData(season));
     }
 
@@ -469,8 +466,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.ContactPhone,
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
-            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: true)).ToList(),
-            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList());
+            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: true)).ToList());
     }
 
     private static CampLookup CreateCampLookup(Camp camp) =>
@@ -478,8 +474,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.Id,
             camp.Slug,
             camp.ContactEmail,
-            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: false)).ToList(),
-            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList());
+            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: false)).ToList());
 
     private static CampSeasonInfo CreateCampSeasonInfo(
         CampSeason season,
@@ -546,27 +541,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return camp.WebOrSocialUrl is not null
             ? [new CampLink { Url = camp.WebOrSocialUrl }]
             : [];
-    }
-
-    private async Task<IReadOnlyList<CampLeadSummary>> BuildLeadSummariesAsync(
-        IEnumerable<CampLead> leads,
-        CancellationToken cancellationToken)
-    {
-        var activeLeads = leads.Where(l => l.IsActive).ToList();
-        if (activeLeads.Count == 0)
-        {
-            return [];
-        }
-
-        var userIds = activeLeads.Select(l => l.UserId).Distinct().ToList();
-        var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
-
-        return activeLeads
-            .Select(l => new CampLeadSummary(
-                l.Id,
-                l.UserId,
-                users.TryGetValue(l.UserId, out var user) ? user.BurnerName : string.Empty))
-            .ToList();
     }
 
     private CampSeasonDetailData CreateCampSeasonDetailData(CampSeason season)
@@ -1064,69 +1038,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     }
 
-    // --- Lead management ---
-
-    public async Task<CampLead> AddLeadAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        if (await _repo.IsUserActiveLeadAsync(userId, campId, cancellationToken))
-        {
-            throw new InvalidOperationException("This user is already an active lead.");
-        }
-
-        var activeCount = await _repo.CountActiveLeadsAsync(campId, cancellationToken);
-        if (activeCount >= 5)
-        {
-            throw new InvalidOperationException("Camp already has the maximum of 5 leads.");
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var lead = new CampLead
-        {
-            Id = Guid.NewGuid(),
-            CampId = campId,
-            UserId = userId,
-            Role = CampLeadRole.CoLead,
-            JoinedAt = now
-        };
-
-        await _repo.AddLeadAsync(lead, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampLeadAdded, nameof(CampLead), lead.Id,
-            "Added as camp lead",
-            userId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
-
-        await _systemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads, cancellationToken);
-
-        return lead;
-    }
-
-    public async Task RemoveLeadAsync(Guid leadId, CancellationToken cancellationToken = default)
-    {
-        var lead = await _repo.GetLeadForMutationAsync(leadId, cancellationToken)
-            ?? throw new InvalidOperationException("Lead not found.");
-
-        var activeCount = await _repo.CountActiveLeadsAsync(lead.CampId, cancellationToken);
-        if (activeCount <= 1)
-        {
-            throw new InvalidOperationException(
-                "Cannot remove the last lead. A camp must have at least one lead.");
-        }
-
-        lead.LeftAt = _clock.GetCurrentInstant();
-        await _repo.UpdateLeadAsync(lead, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampLeadRemoved, nameof(CampLead), leadId,
-            "Removed from camp leads",
-            lead.UserId,
-            relatedEntityId: lead.CampId, relatedEntityType: nameof(Camp));
-
-        await _systemTeamSync.SyncMembershipForUserAsync(lead.UserId, SystemTeamType.BarrioLeads, cancellationToken);
-    }
-
     // --- Historical names ---
 
     public async Task AddHistoricalNameAsync(
@@ -1452,7 +1363,17 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         {
             return;
         }
-        foreach (var leadUserId in camp.Leads.Where(l => l.LeftAt is null).Select(l => l.UserId).Distinct())
+        // Leads come from the role system (Camp Lead special role on each season).
+        var leadUserIds = new HashSet<Guid>();
+        foreach (var season in camp.Seasons)
+        {
+            foreach (var leadUserId in await _roleRepo.GetSpecialRoleHolderUserIdsForSeasonAsync(
+                season.Id, CampSpecialRole.Lead, cancellationToken))
+            {
+                leadUserIds.Add(leadUserId);
+            }
+        }
+        foreach (var leadUserId in leadUserIds)
         {
             _leadBadgeInvalidator.Invalidate(leadUserId);
         }

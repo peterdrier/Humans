@@ -251,22 +251,6 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // AddLeadAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task AddLeadAsync_UnderMax_AddsLead()
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        var newLeadId = Guid.NewGuid();
-
-        var lead = await _service.AddLeadAsync(camp.Id, newLeadId);
-
-        lead.UserId.Should().Be(newLeadId);
-    }
-
-    // ==========================================================================
     // IsUserCampLeadAsync
     // ==========================================================================
 

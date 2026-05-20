@@ -218,23 +218,6 @@ public class CampsArchitectureTests
             because: "the T-06 SaveChanges interceptor was retired in favour of decorator-only invalidation pinned by ICampRepository_HasNoUnexpectedConsumers — see CachingCampService remarks");
     }
 
-    // ── CampInfo projection — leads invariant ───────────────────────────────
-
-    /// <summary>
-    /// T-06 leads invariant: <see cref="CampInfo.Leads"/> is always populated
-    /// (non-null; may be empty). The legacy "null = not loaded" branch was
-    /// retired when reads moved onto the cached projection.
-    /// </summary>
-    [HumansFact]
-    public void CampInfo_LeadsPropertyIsNonNullable()
-    {
-        var leadsProp = typeof(CampInfo).GetProperty(nameof(CampInfo.Leads))!;
-        var nullability = new System.Reflection.NullabilityInfoContext()
-            .Create(leadsProp);
-        nullability.WriteState.Should().Be(System.Reflection.NullabilityState.NotNull,
-            because: "T-06: CampInfo.Leads is always populated. The legacy 'null means not loaded' branch was retired when GetCampsForYearAsync moved onto the CachingCampService projection.");
-    }
-
     // ── CampLead ─────────────────────────────────────────────────────────────
 
     [HumansFact]
@@ -320,7 +303,6 @@ public class CampsArchitectureTests
         {
             typeof(CampDetailData),
             typeof(CampSeasonDetailData),
-            typeof(CampLeadSummary),
         };
 
         var eeProperties = publicDetailTypes

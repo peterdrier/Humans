@@ -135,8 +135,7 @@ public sealed class CampAuthorizationHandlerTests
             },
             Slug: "camp",
             ContactEmail: "camp@example.com",
-            Seasons: [],
-            Leads: []);
+            Seasons: []);
 
     private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>
         kind switch

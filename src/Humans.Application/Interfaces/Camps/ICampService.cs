@@ -14,12 +14,12 @@ namespace Humans.Application.Interfaces.Camps;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>58→56 — Camp Lead detail/roster decouple (issue nobodies-collective/Humans#753 follow-up): removed AddLeadAsync/RemoveLeadAsync — Camp Lead is now a CampRoleAssignment, managed via the Roles panel on /Edit/Members. EnsureActiveMemberForMigrationAsync stays for the still-present "Seed system roles" admin button until the table drops in #774.</item>
 ///   <item>57→58 — US-26 unified MySubmissions: added GetEventManagedCampsAsync — returns the list of camps a user may manage events for (unions CampRoleAssignment Lead/Workshop rows + legacy CampLead table). Authorized by consolidating BarrioEventsController into EventsController.</item>
-///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes barrio event actions. Once the legacy CampLead table drops, AddLeadAsync/RemoveLeadAsync/EnsureActiveMemberForMigrationAsync retire (57→54 net).</item>
-///   <item>55→56 — Camp Lead retirement (issue nobodies-collective/Humans#753): added EnsureActiveMemberForMigrationAsync — needed by the admin "Seed system roles" button to land legacy CampLead rows on the role-assignment side. Once the follow-up table-drop PR lands, this and the AddLeadAsync/RemoveLeadAsync pair (55→52 net) will both retire.</item>
+///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes barrio event actions.</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(58)]
+[SurfaceBudget(56)]
 public interface ICampService : IApplicationService
 {
     // Registration
@@ -54,15 +54,9 @@ public interface ICampService : IApplicationService
         CancellationToken cancellationToken = default);
     /// <summary>
     /// Gets camps participating in a year — every camp that has any season
-    /// for the year, with the year-filtered season(s) and active leads
-    /// populated.
+    /// for the year, with the year-filtered season(s) populated. Leads are no
+    /// longer carried here; they live in the role system (Camp Lead special role).
     /// </summary>
-    /// <remarks>
-    /// T-06: <see cref="CampInfo.Leads"/> is always populated (non-null;
-    /// may be empty). The legacy "leads not loaded" branch was retired
-    /// when this method moved onto the <c>CachingCampService</c>
-    /// projection, which always carries leads.
-    /// </remarks>
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
@@ -95,10 +89,6 @@ public interface ICampService : IApplicationService
     // Camp updates
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);
-
-    // Lead management
-    Task<CampLead> AddLeadAsync(Guid campId, Guid userId, CancellationToken cancellationToken = default);
-    Task RemoveLeadAsync(Guid leadId, CancellationToken cancellationToken = default);
 
     // Historical names
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
@@ -284,8 +274,7 @@ public sealed record CampLookup(
     Guid Id,
     string Slug,
     string ContactEmail,
-    IReadOnlyList<CampSeasonInfo> Seasons,
-    IReadOnlyList<CampLeadInfo> Leads);
+    IReadOnlyList<CampSeasonInfo> Seasons);
 
 public sealed record CampSettingsInfo(
     int PublicYear,
@@ -316,12 +305,6 @@ public sealed record CampSeasonLookup(
 /// comfortably under the ~50 MB §15 budget for a 500-user-scale projection.
 /// </para>
 /// <para>
-/// <b>Leads invariant.</b> <see cref="Leads"/> is always non-null. The
-/// legacy "null means not loaded" semantic was retired in T-06 — the
-/// cached projection always carries leads. May still be empty when the
-/// camp genuinely has no active leads.
-/// </para>
-/// <para>
 /// <b>EeGrantedCount cross-table invariant.</b>
 /// <see cref="CampSeasonInfo.EeGrantedCount"/> is computed from
 /// <c>camp_members.HasEarlyEntry</c> WHERE <c>Status = Active</c>. The
@@ -344,8 +327,7 @@ public sealed record CampInfo(
     string ContactPhone,
     bool IsSwissCamp,
     int TimesAtNowhere,
-    IReadOnlyList<CampSeasonInfo> Seasons,
-    IReadOnlyList<CampLeadInfo> Leads);
+    IReadOnlyList<CampSeasonInfo> Seasons);
 
 public sealed record CampSeasonInfo(
     Guid Id,
@@ -368,12 +350,6 @@ public sealed record CampSeasonInfo(
     int EeSlotCount,
     int? EeGrantedCount,
     int? JoinedMemberCount);
-
-// CampLookup / CampInfo.Leads is populated only from camp loads that apply the
-// filtered Include `.Include(c => c.Leads.Where(l => l.LeftAt == null))`, so
-// every CampLeadInfo in scope is active. An IsActive field here would be
-// invariantly true and misleading — leave it out.
-public sealed record CampLeadInfo(Guid Id, Guid UserId);
 
 public sealed record CampSeasonMemberInfo(
     Guid Id,
@@ -550,13 +526,7 @@ public record CampDetailData(
     bool HideHistoricalNames,
     IReadOnlyList<string> HistoricalNames,
     IReadOnlyList<string> ImageUrls,
-    IReadOnlyList<CampLeadSummary> Leads,
     CampSeasonDetailData? CurrentSeason);
-
-public record CampLeadSummary(
-    Guid LeadId,
-    Guid UserId,
-    string DisplayName);
 
 public record CampEditData(
     Guid CampId,

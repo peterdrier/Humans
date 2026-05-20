@@ -162,8 +162,7 @@ public class OnsiteRosterServiceTests
                             Humans.Domain.Enums.YesNoMaybe.Yes, Humans.Domain.Enums.YesNoMaybe.No,
                             Humans.Domain.Enums.AdultPlayspacePolicy.No,
                             1, null, null, null, 0, null, null),
-                    },
-                    new List<CampLeadInfo>()),
+                    }),
             });
 
         _camps.GetCampMembersByYearAsync(2026, Arg.Any<CancellationToken>())

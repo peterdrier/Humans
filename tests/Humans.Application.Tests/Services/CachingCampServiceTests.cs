@@ -119,8 +119,7 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
                 ContactPhone: "+34000000000",
                 IsSwissCamp: false,
                 TimesAtNowhere: 1,
-                Seasons: [],
-                Leads: [])
+                Seasons: [])
         };
         _innerSubstitute
             .GetCampsForYearAsync(2023, Arg.Any<CancellationToken>())

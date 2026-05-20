@@ -27,7 +27,6 @@ internal sealed class CampRepository : ICampRepository
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons)
-            .Include(b => b.Leads.Where(l => l.LeftAt == null))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(b => b.Slug == normalizedSlug, ct);
@@ -42,7 +41,6 @@ internal sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(b => b.Seasons)
                 .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
-            .Include(b => b.Leads.Where(l => l.LeftAt == null))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(b => b.Id == campId, ct);
@@ -71,7 +69,6 @@ internal sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
                 .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
-            .Include(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
         if (statusFilter is { Count: > 0 })
@@ -81,19 +78,6 @@ internal sealed class CampRepository : ICampRepository
 
         return await query
             .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Camp>> GetCampsByLeadUserIdAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Camps
-            .AsNoTracking()
-            .Include(b => b.Seasons)
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
-            .Include(b => b.Leads)
-            .Where(b => b.Leads.Any(l => l.UserId == userId && l.LeftAt == null))
             .ToListAsync(ct);
     }
 
@@ -111,7 +95,6 @@ internal sealed class CampRepository : ICampRepository
         return await ctx.CampSeasons
             .AsNoTracking()
             .Include(s => s.Camp)
-            .ThenInclude(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(s => s.Status == CampSeasonStatus.Pending)
             .OrderBy(s => s.CreatedAt)
             .ToListAsync(ct);
@@ -418,68 +401,9 @@ internal sealed class CampRepository : ICampRepository
         return rows.Select(r => (r.Id, r.Name, r.CampSlug, r.SpaceRequirement)).ToList();
     }
 
-    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .Where(l => l.UserId == userId && l.LeftAt == null)
-            .Join(ctx.CampSeasons,
-                l => l.CampId,
-                s => s.CampId,
-                (l, s) => s)
-            .Where(s => s.Year == year)
-            .Select(s => (Guid?)s.Id)
-            .FirstOrDefaultAsync(ct);
-    }
-
-    // Leads
-
-    public async Task<bool> IsUserActiveLeadAsync(
-        Guid userId, Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .AnyAsync(l => l.CampId == campId && l.UserId == userId && l.LeftAt == null, ct);
-    }
-
-    public async Task<int> CountActiveLeadsAsync(Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .CountAsync(l => l.CampId == campId && l.LeftAt == null, ct);
-    }
-
-    public async Task AddLeadAsync(CampLead lead, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.CampLeads.Add(lead);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<CampLead?> GetLeadForMutationAsync(
-        Guid leadId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var lead = await ctx.CampLeads.FindAsync([leadId], ct);
-        if (lead is null)
-        {
-            return null;
-        }
-
-        ctx.Entry(lead).State = EntityState.Detached;
-        return lead;
-    }
-
-    public async Task UpdateLeadAsync(CampLead lead, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.CampLeads.Update(lead);
-        await ctx.SaveChangesAsync(ct);
-    }
+    // Leads (legacy camp_leads — only the seed-migration snapshot + role-backed
+    // team-sync reads remain; mutation/query methods retired with the Camp Lead
+    // role move. Entity/table kept until nobodies-collective/Humans#774.)
 
     public async Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(
         CancellationToken ct = default)
@@ -509,18 +433,6 @@ internal sealed class CampRepository : ICampRepository
             .AnyAsync(a => a.CampMember.UserId == userId
                 && a.Definition.SpecialRole == CampSpecialRole.Lead
                 && a.Definition.DeactivatedAt == null, ct);
-    }
-
-    public async Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .Include(cl => cl.Camp)
-            .Where(cl => cl.UserId == userId)
-            .OrderByDescending(cl => cl.JoinedAt)
-            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
@@ -912,25 +824,6 @@ internal sealed class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<int> CountPendingMembershipsForLeadAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var leadCampIds = ctx.CampLeads
-            .AsNoTracking()
-            .Where(l => l.UserId == userId && l.LeftAt == null)
-            .Select(l => l.CampId);
-
-        // Only seasons still open (Active/Full) — closed seasons keep rows for audit but shouldn't nag.
-        return await ctx.CampMembers
-            .AsNoTracking()
-            .Where(m => m.Status == CampMemberStatus.Pending
-                && leadCampIds.Contains(m.CampSeason.CampId)
-                && (m.CampSeason.Status == CampSeasonStatus.Active
-                    || m.CampSeason.Status == CampSeasonStatus.Full))
-            .CountAsync(ct);
-    }
-
     public async Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default)
     {
@@ -940,46 +833,6 @@ internal sealed class CampRepository : ICampRepository
             .Select(m => new { m.CampSeasonId, m.UserId, m.Status })
             .FirstOrDefaultAsync(ct);
         return row is null ? null : (row.CampSeasonId, row.UserId, row.Status);
-    }
-
-    // Account-merge fold
-
-    public async Task<int> ReassignLeadsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        // Canonical uniqueness is the partial index on (CampId, UserId) WHERE LeftAt IS NULL —
-        // only active source rows can collide with active target rows.
-        var sourceRows = await ctx.CampLeads
-            .Where(l => l.UserId == sourceUserId)
-            .ToListAsync(ct);
-
-        var targetActiveCampIds = await ctx.CampLeads
-            .Where(l => l.UserId == targetUserId && l.LeftAt == null)
-            .Select(l => l.CampId)
-            .ToListAsync(ct);
-        var targetActiveCampIdSet = new HashSet<Guid>(targetActiveCampIds);
-
-        foreach (var src in sourceRows)
-        {
-            if (src.LeftAt == null && targetActiveCampIdSet.Contains(src.CampId))
-            {
-                // Target wins; closed source rows for the same camp still re-FK below.
-                ctx.CampLeads.Remove(src);
-            }
-            else
-            {
-                // UserId is init-only — mutate via change-tracker.
-                ctx.Entry(src).Property(nameof(CampLead.UserId)).CurrentValue = targetUserId;
-            }
-        }
-
-        await ctx.SaveChangesAsync(ct);
-
-        return await ctx.CampLeads
-            .CountAsync(l => l.UserId == targetUserId, ct);
     }
 
     // Early Entry
