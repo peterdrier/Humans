@@ -975,7 +975,7 @@ public class EventsController(
             {
                 var existing = existingEvents.First(e => e.Id == row.Id.Value);
                 var newDate = NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value;
-                var newTime = NodaTime.Text.LocalTimePattern.GeneralIso.Parse(row.StartTime).Value;
+                var newTime = NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Value;
                 var newInstant = (newDate + newTime).InZoneLeniently(tz).ToInstant();
                 var newRecDays = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
                     ? DisplayDaysToOffsets(row.RecurrenceDays, eventSettings.GateOpeningDate, eventSettings.EventEndOffset)
@@ -1034,7 +1034,7 @@ public class EventsController(
                     Description = row.Description,
                     LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
                     Host = string.IsNullOrEmpty(row.Host) ? null : row.Host,
-                    StartAt = (NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value + NodaTime.Text.LocalTimePattern.GeneralIso.Parse(row.StartTime).Value).InZoneLeniently(tz).ToInstant(),
+                    StartAt = (NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value + NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Value).InZoneLeniently(tz).ToInstant(),
                     DurationMinutes = row.DurationMinutes,
                     IsRecurring = row.IsRecurring,
                     RecurrenceDays = recDays,
@@ -1182,7 +1182,7 @@ public class EventsController(
                 rowErrors.Add("Date must be in yyyy-MM-dd format.");
 
             if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
-            else if (!NodaTime.Text.LocalTimePattern.GeneralIso.Parse(row.StartTime).Success)
+            else if (!NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Success)
                 rowErrors.Add("StartTime must be in HH:mm format.");
 
             if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
