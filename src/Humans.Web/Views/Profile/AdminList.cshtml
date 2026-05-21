@@ -46,14 +46,6 @@
                class="btn @(Model.StatusFilter == "pending" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_PendingApproval"]
             </a>
-            <a asp-action="AdminList" asp-route-filter="missingconsents" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "missingconsents" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_MissingConsents"]
-            </a>
-            <a asp-action="AdminList" asp-route-filter="incomplete" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "incomplete" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_IncompleteSignup"]
-            </a>
             <a asp-action="AdminList" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Suspended"]
@@ -62,7 +54,20 @@
                class="btn @(Model.StatusFilter == "deleting" ? "btn-danger" : "btn-outline-danger")">
                 @Localizer["AdminHumans_Deleting"]
             </a>
+            <a asp-action="AdminList" asp-route-filter="merged" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "merged" ? "btn-secondary" : "btn-outline-secondary")">
+                @Localizer["AdminHumans_Merged"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="deleted" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "deleted" ? "btn-secondary" : "btn-outline-secondary")">
+                @Localizer["AdminHumans_Deleted"]
+            </a>
         </div>
+        @* Cross-cutting data-quality filter — orthogonal to status (an Active user can still be missing name fields). *@
+        <a asp-action="AdminList" asp-route-filter="missingname" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+           class="btn @(Model.StatusFilter == "missingname" ? "btn-warning" : "btn-outline-warning")">
+            @Localizer["AdminHumans_MissingName"]
+        </a>
     </div>
 </div>
 
