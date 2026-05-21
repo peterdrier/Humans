@@ -866,7 +866,7 @@ public class EventsController(
 
         sb.AppendLine("\"Id\",\"Barrio\",\"Status\",\"Title\",\"Description\",\"Category\",\"Date\",\"StartTime\",\"DurationMinutes\",\"LocationNote\",\"Host\",\"IsRecurring\",\"RecurrenceDays\",\"PriorityRank\"");
 
-        var nonWithdrawn = campEvents.Where(e => e.Status != Domain.Enums.EventStatus.Withdrawn);
+        var nonWithdrawn = campEvents.Where(e => e.Status != Domain.Enums.EventStatus.Withdrawn).ToList();
         foreach (var e in nonWithdrawn)
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);
@@ -891,6 +891,29 @@ public class EventsController(
                 CsvField(e.IsRecurring ? "true" : "false"),
                 CsvField(recDays),
                 CsvField(e.PriorityRank.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+        }
+
+        if (nonWithdrawn.Count == 0)
+        {
+            var exampleDate = gateDate.HasValue
+                ? gateDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+                : DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            var firstCategory = categories.FirstOrDefault()?.Name ?? "Workshop";
+            sb.AppendLine(string.Join(",",
+                CsvField(string.Empty),
+                CsvField(campName),
+                CsvField(string.Empty),
+                CsvField("Example Event"),
+                CsvField("Describe your event here."),
+                CsvField(firstCategory),
+                CsvField(exampleDate),
+                CsvField("12:00"),
+                CsvField("60"),
+                CsvField(string.Empty),
+                CsvField(string.Empty),
+                CsvField("false"),
+                CsvField(string.Empty),
+                CsvField("1")));
         }
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
