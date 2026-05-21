@@ -222,6 +222,45 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateAndResubmitAsync_PendingEvent_KeepsPendingAndSaves()
+    {
+        var submittedAt = Instant.FromUtc(2026, 5, 1, 12, 0);
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            Status = EventStatus.Pending,
+            SubmittedAt = submittedAt,
+            LastUpdatedAt = Instant.FromUtc(2026, 5, 1, 13, 0)
+        };
+
+        await _service.UpdateAndResubmitAsync(guideEvent);
+
+        guideEvent.Status.Should().Be(EventStatus.Pending);
+        guideEvent.SubmittedAt.Should().Be(submittedAt);
+        guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task UpdateAndResubmitAsync_ApprovedEvent_RequeuesForModeration()
+    {
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            Status = EventStatus.Approved,
+            SubmittedAt = Instant.FromUtc(2026, 5, 1, 12, 0),
+            LastUpdatedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
+        };
+
+        await _service.UpdateAndResubmitAsync(guideEvent);
+
+        guideEvent.Status.Should().Be(EventStatus.Pending);
+        guideEvent.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
+        guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_EmitsEventsSliceWithFavouritesAndPreference()
     {
         var userId = Guid.NewGuid();

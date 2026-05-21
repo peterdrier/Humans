@@ -76,6 +76,13 @@ public class EventsController(
             });
         }
 
+        foreach (var block in barrioBlocks)
+        {
+            var key = $"BulkErrors_{block.CampSlug}";
+            if (TempData[key] is string json)
+                block.BulkUploadErrors = System.Text.Json.JsonSerializer.Deserialize<List<BulkRowError>>(json) ?? [];
+        }
+
         var model = new MySubmissionsViewModel
         {
             IsSubmissionOpen = isSubmissionOpen,
@@ -284,7 +291,17 @@ public class EventsController(
         guideEvent.IsRecurring = model.IsRecurring;
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
 
-        await guide.UpdateAndResubmitAsync(guideEvent);
+        try
+        {
+            await guide.UpdateAndResubmitAsync(guideEvent);
+        }
+        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            model.Id = eventId;
+            await PopulateDropdownsAsync(model, eventSettings);
+            return View("IndividualEventForm", model);
+        }
 
         logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
@@ -747,7 +764,21 @@ public class EventsController(
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
         guideEvent.PriorityRank = model.PriorityRank;
 
-        await guide.UpdateAndResubmitAsync(guideEvent);
+        try
+        {
+            await guide.UpdateAndResubmitAsync(guideEvent);
+        }
+        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            model.Id = eventId;
+            model.CampId = camp.Id;
+            model.CampName = ResolveCampDisplayName(camp);
+            model.CampSlug = slug;
+            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            return View("BarrioEventForm", model);
+        }
+
         logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
         SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
@@ -775,6 +806,428 @@ public class EventsController(
 
         SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
         return RedirectToAction(nameof(MySubmissions));
+    }
+
+    [HttpGet("Barrio/{slug}/BulkUpload/Template")]
+    public async Task<IActionResult> BulkUploadTemplate(string slug)
+    {
+        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideSettings = await guide.GetGuideSettingsAsync();
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
+
+        var campEvents = await guide.GetCampSubmissionsAsync(camp.Id);
+        var categories = await guide.GetActiveCategoriesAsync();
+        var campName = ResolveCampDisplayName(camp);
+
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+            : null;
+        LocalDate? gateDate = eventSettings?.GateOpeningDate;
+
+        var categoryNames = string.Join(", ", categories.Select(c => c.Name));
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("# ─────────────────────────────────────────────────────────────────────────────");
+        sb.AppendLine("# ELSEWHERE EVENT GUIDE — Bulk Upload Template");
+        sb.AppendLine("# ─────────────────────────────────────────────────────────────────────────────");
+        sb.AppendLine("#");
+        sb.AppendLine("# HOW TO USE");
+        sb.AppendLine("#   1. Fill in new rows leaving Id blank — a new event will be created.");
+        sb.AppendLine("#   2. Existing rows already have an Id filled in. You may edit their fields,");
+        sb.AppendLine("#      but DO NOT change or delete the Id — that is how we match the event.");
+        sb.AppendLine("#      Changing an Id will cause the upload to fail.");
+        sb.AppendLine("#   3. To leave an existing event unchanged, keep its row as-is.");
+        sb.AppendLine("#      Events not present in the CSV are left untouched.");
+        sb.AppendLine("#   4. Save as CSV (comma-separated, UTF-8) before uploading.");
+        sb.AppendLine("#      In Excel:   File → Save As → CSV UTF-8 (Comma delimited)");
+        sb.AppendLine("#      In Numbers: File → Export To → CSV");
+        sb.AppendLine("#");
+        sb.AppendLine("# FIELDS");
+        sb.AppendLine("#   Id             Leave empty for new events. Do not edit for existing ones.");
+        sb.AppendLine("#   Barrio         Informational only — shows which camp this file belongs to. Ignored on upload.");
+        sb.AppendLine("#   Status         Informational only — shows the current event status. Ignored on upload.");
+        sb.AppendLine("#                  If you upload a row without changing any fields, the status is kept as-is.");
+        sb.AppendLine("#                  If you edit fields on an existing event, it will be re-queued for moderation.");
+        sb.AppendLine("#   Category       Must match exactly one of the valid categories listed below.");
+        sb.AppendLine("#   Date           Format: yyyy-MM-dd  (e.g. 2026-07-08)");
+        sb.AppendLine("#   StartTime      Format: HH:mm       (e.g. 09:30)");
+        sb.AppendLine("#   DurationMinutes  Integer, 15–480, in 15-minute increments (e.g. 15, 30, 45, 60, 90, 120...).");
+        sb.AppendLine("#   IsRecurring    true or false.");
+        sb.AppendLine("#   RecurrenceDays  Only used when IsRecurring is true.");
+        sb.AppendLine("#                  Space-separated day names: Mon Tue Wed Thu Fri Sat Sun");
+        sb.AppendLine("#                  Example: Mon Wed Fri means the event repeats on those days.");
+        sb.AppendLine("#");
+        sb.AppendLine($"# VALID CATEGORIES");
+        sb.AppendLine($"#   {categoryNames}");
+        sb.AppendLine("#");
+        sb.AppendLine("# ─────────────────────────────────────────────────────────────────────────────");
+
+        sb.AppendLine("\"Id\",\"Barrio\",\"Status\",\"Title\",\"Description\",\"Category\",\"Date\",\"StartTime\",\"DurationMinutes\",\"LocationNote\",\"Host\",\"IsRecurring\",\"RecurrenceDays\",\"PriorityRank\"");
+
+        var nonWithdrawn = campEvents.Where(e => e.Status != Domain.Enums.EventStatus.Withdrawn);
+        foreach (var e in nonWithdrawn)
+        {
+            var localDt = ToLocalDateTime(e.StartAt, tz);
+            var date = localDt.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            var time = localDt.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
+                ? OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
+                : string.Empty;
+
+            sb.AppendLine(string.Join(",",
+                CsvField(e.Id.ToString("D", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(campName),
+                CsvField(e.Status.ToString()),
+                CsvField(e.Title),
+                CsvField(e.Description),
+                CsvField(e.Category.Name),
+                CsvField(date),
+                CsvField(time),
+                CsvField(e.DurationMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(e.LocationNote ?? string.Empty),
+                CsvField(e.Host ?? string.Empty),
+                CsvField(e.IsRecurring ? "true" : "false"),
+                CsvField(recDays),
+                CsvField(e.PriorityRank.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "text/csv", $"{slug}-events.csv");
+    }
+
+    [HttpPost("Barrio/{slug}/BulkUpload")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkUploadImport(string slug, IFormFile? file)
+    {
+        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
+        if (error != null) return error;
+
+        var guideSettings = await guide.GetGuideSettingsAsync();
+        if (!IsSubmissionOpen(guideSettings))
+        {
+            SetError("The submission window is not currently open.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        if (file == null || file.Length == 0)
+        {
+            SetError("Please select a CSV file to upload.");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var tz = GetTimeZone(eventSettings);
+        var categories = await guide.GetActiveCategoriesAsync();
+        var existingEvents = await guide.GetCampSubmissionsAsync(camp.Id);
+
+        List<BulkCsvRow> rows;
+        try
+        {
+            using var reader = new System.IO.StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
+            rows = ParseCsvRows(await reader.ReadToEndAsync());
+        }
+        catch (Exception ex)
+        {
+            SetError($"Could not parse CSV: {ex.Message}");
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var rowErrors = ValidateBulkRows(rows, categories, existingEvents, eventSettings.GateOpeningDate);
+        if (rowErrors.Count > 0)
+        {
+            TempData[$"BulkErrors_{slug}"] = System.Text.Json.JsonSerializer.Serialize(rowErrors);
+            return RedirectToAction(nameof(MySubmissions));
+        }
+
+        var campName = ResolveCampDisplayName(camp);
+        foreach (var row in rows)
+        {
+            if (row.Id.HasValue)
+            {
+                var existing = existingEvents.First(e => e.Id == row.Id.Value);
+                var newInstant = ToInstant(DateTime.Parse($"{row.Date} {row.StartTime}", System.Globalization.CultureInfo.InvariantCulture), tz);
+                var newRecDays = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
+                    ? DisplayDaysToOffsets(row.RecurrenceDays, eventSettings.GateOpeningDate, eventSettings.EventEndOffset)
+                    : null;
+
+                var changed =
+                    !string.Equals(existing.Title, row.Title, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Description, row.Description, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Category.Name, row.Category, StringComparison.OrdinalIgnoreCase) ||
+                    existing.StartAt != newInstant ||
+                    existing.DurationMinutes != row.DurationMinutes ||
+                    !string.Equals(existing.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
+                    existing.IsRecurring != row.IsRecurring ||
+                    !string.Equals(existing.RecurrenceDays ?? string.Empty, newRecDays ?? string.Empty, StringComparison.Ordinal) ||
+                    existing.PriorityRank != row.PriorityRank;
+
+                if (!changed) continue;
+
+                var matchedCategory = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
+                existing.Title = row.Title;
+                existing.Description = row.Description;
+                existing.CategoryId = matchedCategory.Id;
+                existing.StartAt = newInstant;
+                existing.DurationMinutes = row.DurationMinutes;
+                existing.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
+                existing.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
+                existing.IsRecurring = row.IsRecurring;
+                existing.RecurrenceDays = row.IsRecurring ? newRecDays : null;
+                existing.PriorityRank = row.PriorityRank;
+
+                if (existing.Status == Domain.Enums.EventStatus.Draft)
+                {
+                    existing.Submit(clock);
+                    await guide.SubmitEventAsync(existing);
+                }
+                else
+                {
+                    await guide.UpdateAndResubmitAsync(existing);
+                }
+                logger.LogInformation("Bulk upload: user {UserId} updated event '{Title}' ({EventId})", user.Id, existing.Title, existing.Id);
+            }
+            else
+            {
+                var matchedCategory = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
+                var recDays = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
+                    ? DisplayDaysToOffsets(row.RecurrenceDays, eventSettings.GateOpeningDate, eventSettings.EventEndOffset)
+                    : null;
+                var newEvent = new Domain.Entities.Event
+                {
+                    Id = Guid.NewGuid(),
+                    CampId = camp.Id,
+                    SubmitterUserId = user.Id,
+                    CategoryId = matchedCategory.Id,
+                    Title = row.Title,
+                    Description = row.Description,
+                    LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
+                    Host = string.IsNullOrEmpty(row.Host) ? null : row.Host,
+                    StartAt = ToInstant(DateTime.Parse($"{row.Date} {row.StartTime}", System.Globalization.CultureInfo.InvariantCulture), tz),
+                    DurationMinutes = row.DurationMinutes,
+                    IsRecurring = row.IsRecurring,
+                    RecurrenceDays = recDays,
+                    PriorityRank = row.PriorityRank
+                };
+                newEvent.Submit(clock);
+                await guide.SubmitEventAsync(newEvent);
+                logger.LogInformation("Bulk upload: user {UserId} submitted new event '{Title}' for camp {CampId}", user.Id, row.Title, camp.Id);
+
+                var userEmail = user.Email;
+                if (userEmail != null)
+                {
+                    var userInfo = await UserService.GetUserInfoAsync(user.Id);
+                    var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
+                    await emailService.SendEventLifecycleNotificationAsync(
+                        new EventLifecycleNotification(Domain.Enums.EventStatus.Pending, userInfo?.BurnerName ?? userEmail, row.Title, viewUrl),
+                        userEmail);
+                }
+            }
+        }
+
+        SetSuccess("Bulk upload complete.");
+        return RedirectToAction(nameof(MySubmissions));
+    }
+
+    private sealed record BulkCsvRow(
+        int RowNumber,
+        Guid? Id,
+        string Title,
+        string Description,
+        string Category,
+        string Date,
+        string StartTime,
+        int DurationMinutes,
+        string? LocationNote,
+        string? Host,
+        bool IsRecurring,
+        string? RecurrenceDays,
+        int PriorityRank);
+
+    private static List<BulkCsvRow> ParseCsvRows(string csvText)
+    {
+        var rows = new List<BulkCsvRow>();
+        var lines = csvText.Split('\n', StringSplitOptions.None);
+        var dataLineNumber = 0;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#')) continue;
+
+            var fields = SplitCsvLine(line);
+
+            // Header row — skip but validate column count
+            if (dataLineNumber == 0)
+            {
+                dataLineNumber++;
+                continue;
+            }
+
+            if (fields.Count < 14)
+                throw new FormatException($"Row {dataLineNumber + 1}: expected 14 columns, got {fields.Count}.");
+
+            Guid? id = string.IsNullOrWhiteSpace(fields[0]) ? null : Guid.TryParse(fields[0], out var g) ? g : throw new FormatException($"Row {dataLineNumber + 1}: Id is not a valid Guid.");
+            // fields[1] = Barrio (ignored), fields[2] = Status (ignored)
+            var title = fields[3];
+            var description = fields[4];
+            var category = fields[5];
+            var date = fields[6];
+            var startTime = fields[7];
+            var durationStr = fields[8];
+            var locationNote = fields[9];
+            var host = fields[10];
+            var isRecurringStr = fields[11];
+            var recurrenceDays = fields[12];
+            var priorityStr = fields[13];
+
+            if (!int.TryParse(durationStr, System.Globalization.CultureInfo.InvariantCulture, out var duration))
+                throw new FormatException($"Row {dataLineNumber + 1}: DurationMinutes is not an integer.");
+            if (!int.TryParse(priorityStr, System.Globalization.CultureInfo.InvariantCulture, out var priority))
+                throw new FormatException($"Row {dataLineNumber + 1}: PriorityRank is not an integer.");
+            var isRecurring = string.Equals(isRecurringStr, "true", StringComparison.OrdinalIgnoreCase);
+
+            rows.Add(new BulkCsvRow(dataLineNumber + 1, id, title, description, category, date, startTime, duration,
+                string.IsNullOrWhiteSpace(locationNote) ? null : locationNote,
+                string.IsNullOrWhiteSpace(host) ? null : host,
+                isRecurring, string.IsNullOrWhiteSpace(recurrenceDays) ? null : recurrenceDays, priority));
+            dataLineNumber++;
+        }
+
+        return rows;
+    }
+
+    private static List<string> SplitCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var i = 0;
+        while (i <= line.Length)
+        {
+            if (i == line.Length) { fields.Add(string.Empty); break; }
+            if (line[i] == '"')
+            {
+                i++;
+                var sb = new System.Text.StringBuilder();
+                while (i < line.Length)
+                {
+                    if (line[i] == '"')
+                    {
+                        i++;
+                        if (i < line.Length && line[i] == '"') { sb.Append('"'); i++; }
+                        else break;
+                    }
+                    else { sb.Append(line[i]); i++; }
+                }
+                fields.Add(sb.ToString());
+                if (i < line.Length && line[i] == ',') i++;
+            }
+            else
+            {
+                var end = line.IndexOf(',', i);
+                if (end < 0) { fields.Add(line[i..]); break; }
+                fields.Add(line[i..end]);
+                i = end + 1;
+            }
+        }
+        return fields;
+    }
+
+    private static List<BulkRowError> ValidateBulkRows(
+        List<BulkCsvRow> rows,
+        IReadOnlyList<Domain.Entities.EventCategory> categories,
+        IReadOnlyList<Domain.Entities.Event> existingEvents,
+        NodaTime.LocalDate gateOpeningDate)
+    {
+        var errors = new List<BulkRowError>();
+        foreach (var row in rows)
+        {
+            var rowErrors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(row.Title)) rowErrors.Add("Title is required.");
+            else if (row.Title.Length > 80) rowErrors.Add("Title must be 80 characters or fewer.");
+
+            if (string.IsNullOrWhiteSpace(row.Description)) rowErrors.Add("Description is required.");
+            else if (row.Description.Length > 450) rowErrors.Add("Description must be 450 characters or fewer.");
+
+            if (row.LocationNote?.Length > 120) rowErrors.Add("LocationNote must be 120 characters or fewer.");
+            if (row.Host?.Length > 40) rowErrors.Add("Host must be 40 characters or fewer.");
+
+            if (string.IsNullOrWhiteSpace(row.Category)) rowErrors.Add("Category is required.");
+            else if (!categories.Any(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase)))
+                rowErrors.Add($"Category '{row.Category}' is not a valid active category.");
+
+            if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add("Date is required.");
+            else if (!DateTime.TryParseExact(row.Date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
+                rowErrors.Add("Date must be in yyyy-MM-dd format.");
+
+            if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
+            else if (!TimeSpan.TryParseExact(row.StartTime, "hh\\:mm", System.Globalization.CultureInfo.InvariantCulture, out _))
+                rowErrors.Add("StartTime must be in HH:mm format.");
+
+            if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
+                rowErrors.Add("DurationMinutes must be between 15 and 480.");
+            else if (row.DurationMinutes % 15 != 0)
+                rowErrors.Add("DurationMinutes must be a multiple of 15.");
+
+            if (row.PriorityRank < 1 || row.PriorityRank > 100)
+                rowErrors.Add("PriorityRank must be between 1 and 100.");
+
+            if (row.Id.HasValue)
+            {
+                var existing = existingEvents.FirstOrDefault(e => e.Id == row.Id.Value);
+                if (existing == null)
+                    rowErrors.Add($"Event {row.Id.Value} not found for this barrio.");
+                else if (existing.Status == Domain.Enums.EventStatus.Withdrawn)
+                    rowErrors.Add("Withdrawn events cannot be updated via bulk upload.");
+            }
+
+            if (rowErrors.Count > 0)
+                errors.Add(new BulkRowError { RowNumber = row.RowNumber, Title = row.Title, Errors = rowErrors });
+        }
+        return errors;
+    }
+
+    private static string CsvField(string value)
+    {
+        var escaped = value.Replace("\"", "\"\"");
+        return $"\"{escaped}\"";
+    }
+
+    private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    private static string OffsetsToDisplayDays(string offsets, NodaTime.LocalDate gateOpeningDate)
+    {
+        var parts = offsets.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var names = new List<string>();
+        foreach (var part in parts)
+        {
+            if (int.TryParse(part.Trim(), System.Globalization.CultureInfo.InvariantCulture, out var offset))
+            {
+                var date = gateOpeningDate.PlusDays(offset);
+                names.Add(DayNames[((int)date.DayOfWeek - 1 + 7) % 7]);
+            }
+        }
+        return string.Join(" ", names);
+    }
+
+    private static string? DisplayDaysToOffsets(string displayDays, NodaTime.LocalDate gateOpeningDate, int eventEndOffset)
+    {
+        var requestedDays = displayDays.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(d => d.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var offsets = new List<int>();
+        for (var offset = 0; offset <= eventEndOffset; offset++)
+        {
+            var date = gateOpeningDate.PlusDays(offset);
+            var name = DayNames[((int)date.DayOfWeek - 1 + 7) % 7];
+            if (requestedDays.Contains(name))
+                offsets.Add(offset);
+        }
+        return offsets.Count > 0 ? string.Join(",", offsets) : null;
     }
 
     private static string ResolveCampDisplayName(CampLookup camp) =>
@@ -822,5 +1275,8 @@ public class EventsController(
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
     }
 
+    internal static bool IsSubmitStateException(InvalidOperationException ex) =>
+        ex.Message.StartsWith("Cannot submit event in ", StringComparison.Ordinal)
+        && ex.Message.EndsWith(" state", StringComparison.Ordinal);
 
 }

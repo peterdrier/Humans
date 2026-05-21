@@ -129,7 +129,22 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
 
     public Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)
     {
-        guideEvent.Submit(clock);
+        if (guideEvent.Status is EventStatus.Pending)
+        {
+            guideEvent.LastUpdatedAt = clock.GetCurrentInstant();
+        }
+        else if (guideEvent.Status is EventStatus.Approved)
+        {
+            var now = clock.GetCurrentInstant();
+            guideEvent.Status = EventStatus.Pending;
+            guideEvent.SubmittedAt = now;
+            guideEvent.LastUpdatedAt = now;
+        }
+        else
+        {
+            guideEvent.Submit(clock);
+        }
+
         return repo.SaveEventAsync(guideEvent, ct);
     }
 

@@ -31,6 +31,14 @@ public class BarrioSubmissionsBlock
     public int ApprovedCount { get; set; }
     public int PendingCount { get; set; }
     public List<CampEventRowViewModel> Events { get; set; } = [];
+    public List<BulkRowError> BulkUploadErrors { get; set; } = [];
+}
+
+public class BulkRowError
+{
+    public int RowNumber { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public List<string> Errors { get; set; } = [];
 }
 
 public class IndividualEventRowViewModel
