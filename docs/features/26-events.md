@@ -130,7 +130,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - Each barrio block on `/Events/MySubmissions` has a download link for the current events CSV and a file input to upload an updated CSV — no separate page
 - Downloading the template produces a CSV pre-filled with the barrio's non-Withdrawn events; comment lines at the top explain the format, valid categories, and the Id rule
 - Upload is all-or-nothing: if any row fails validation, no events are saved and a per-row error table is shown inline in the barrio block
-- New rows (empty `Id`) are submitted as new events in `Pending` status; the submitter receives the standard submission email
+- New rows (empty `Id`) are submitted as new events in `Pending` status; no submission email is sent (bulk upload may create many events at once)
 - Existing rows (non-empty `Id`) that are unchanged are skipped — status is preserved; rows with changed fields update the matched event and re-queue it for moderation
 - Rows referencing a `Withdrawn` event are rejected (Withdrawn events cannot be reactivated via bulk upload)
 - Rows absent from the CSV are left untouched — bulk upload does not delete or withdraw events
