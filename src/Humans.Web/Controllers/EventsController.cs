@@ -1038,16 +1038,6 @@ public class EventsController(
                 newEvent.Submit(clock);
                 await guide.SubmitEventAsync(newEvent);
                 logger.LogInformation("Bulk upload: user {UserId} submitted new event '{Title}' for camp {CampId}", user.Id, row.Title, camp.Id);
-
-                var userEmail = user.Email;
-                if (userEmail != null)
-                {
-                    var userInfo = await UserService.GetUserInfoAsync(user.Id);
-                    var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-                    await emailService.SendEventLifecycleNotificationAsync(
-                        new EventLifecycleNotification(Domain.Enums.EventStatus.Pending, userInfo?.BurnerName ?? userEmail, row.Title, viewUrl),
-                        userEmail);
-                }
             }
         }
 
