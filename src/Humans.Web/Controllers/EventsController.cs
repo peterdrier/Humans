@@ -10,6 +10,7 @@ using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Web.Extensions;
 using static Humans.Web.Helpers.EventsLookupHelpers;
 using static Humans.Web.Helpers.EventsTimeHelpers;
 
@@ -876,44 +877,44 @@ public class EventsController(
                 ? OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
                 : string.Empty;
 
-            sb.AppendLine(string.Join(",",
-                CsvField(e.Id.ToString("D", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(campName),
-                CsvField(e.Status.ToString()),
-                CsvField(e.Title),
-                CsvField(e.Description),
-                CsvField(e.Category.Name),
-                CsvField(date),
-                CsvField(time),
-                CsvField(e.DurationMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(e.LocationNote ?? string.Empty),
-                CsvField(e.Host ?? string.Empty),
-                CsvField(e.IsRecurring ? "true" : "false"),
-                CsvField(recDays),
-                CsvField(e.PriorityRank.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+            sb.AppendCsvRow(
+                e.Id.ToString("D", System.Globalization.CultureInfo.InvariantCulture),
+                campName,
+                e.Status.ToString(),
+                e.Title,
+                e.Description,
+                e.Category.Name,
+                date,
+                time,
+                e.DurationMinutes,
+                e.LocationNote ?? string.Empty,
+                e.Host ?? string.Empty,
+                e.IsRecurring ? "true" : "false",
+                recDays,
+                e.PriorityRank);
         }
 
         if (nonWithdrawn.Count == 0)
         {
             var exampleDate = gateDate.HasValue
                 ? gateDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
-                : DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             var firstCategory = categories.FirstOrDefault()?.Name ?? "Workshop";
-            sb.AppendLine(string.Join(",",
-                CsvField(string.Empty),
-                CsvField(campName),
-                CsvField(string.Empty),
-                CsvField("Example Event"),
-                CsvField("Describe your event here."),
-                CsvField(firstCategory),
-                CsvField(exampleDate),
-                CsvField("12:00"),
-                CsvField("60"),
-                CsvField(string.Empty),
-                CsvField(string.Empty),
-                CsvField("false"),
-                CsvField(string.Empty),
-                CsvField("1")));
+            sb.AppendCsvRow(
+                string.Empty,
+                campName,
+                string.Empty,
+                "Example Event",
+                "Describe your event here.",
+                firstCategory,
+                exampleDate,
+                "12:00",
+                60,
+                string.Empty,
+                string.Empty,
+                "false",
+                string.Empty,
+                1);
         }
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
@@ -954,6 +955,7 @@ public class EventsController(
         }
         catch (Exception ex)
         {
+            logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError($"Could not parse CSV: {ex.Message}");
             return RedirectToAction(nameof(MySubmissions));
         }
@@ -971,7 +973,9 @@ public class EventsController(
             if (row.Id.HasValue)
             {
                 var existing = existingEvents.First(e => e.Id == row.Id.Value);
-                var newInstant = ToInstant(DateTime.Parse($"{row.Date} {row.StartTime}", System.Globalization.CultureInfo.InvariantCulture), tz);
+                var newDate = NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value;
+                var newTime = NodaTime.Text.LocalTimePattern.GeneralIso.Parse(row.StartTime).Value;
+                var newInstant = (newDate + newTime).InZoneLeniently(tz).ToInstant();
                 var newRecDays = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
                     ? DisplayDaysToOffsets(row.RecurrenceDays, eventSettings.GateOpeningDate, eventSettings.EventEndOffset)
                     : null;
@@ -1029,7 +1033,7 @@ public class EventsController(
                     Description = row.Description,
                     LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
                     Host = string.IsNullOrEmpty(row.Host) ? null : row.Host,
-                    StartAt = ToInstant(DateTime.Parse($"{row.Date} {row.StartTime}", System.Globalization.CultureInfo.InvariantCulture), tz),
+                    StartAt = (NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value + NodaTime.Text.LocalTimePattern.GeneralIso.Parse(row.StartTime).Value).InZoneLeniently(tz).ToInstant(),
                     DurationMinutes = row.DurationMinutes,
                     IsRecurring = row.IsRecurring,
                     RecurrenceDays = recDays,
@@ -1173,11 +1177,11 @@ public class EventsController(
                 rowErrors.Add($"Category '{row.Category}' is not a valid active category.");
 
             if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add("Date is required.");
-            else if (!DateTime.TryParseExact(row.Date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
+            else if (!NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Success)
                 rowErrors.Add("Date must be in yyyy-MM-dd format.");
 
             if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
-            else if (!TimeSpan.TryParseExact(row.StartTime, "hh\\:mm", System.Globalization.CultureInfo.InvariantCulture, out _))
+            else if (!NodaTime.Text.LocalTimePattern.GeneralIso.Parse(row.StartTime).Success)
                 rowErrors.Add("StartTime must be in HH:mm format.");
 
             if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
@@ -1201,12 +1205,6 @@ public class EventsController(
                 errors.Add(new BulkRowError { RowNumber = row.RowNumber, Title = row.Title, Errors = rowErrors });
         }
         return errors;
-    }
-
-    private static string CsvField(string value)
-    {
-        var escaped = value.Replace("\"", "\"\"");
-        return $"\"{escaped}\"";
     }
 
     private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
