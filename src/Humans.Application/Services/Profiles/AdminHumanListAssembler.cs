@@ -49,7 +49,7 @@ public static class AdminHumanListAssembler
     // must not also read as Suspended/Pending), then the lifecycle states. Genuine no-profile or rejected rows
     // get an empty label (no badge) — they surface via the "missing name" filter, not a status bucket.
     internal static string StatusLabel(UserInfo u) =>
-        u.MergedAt is not null ? MembershipStatusLabels.Merged :
+        u.IsMerged ? MembershipStatusLabels.Merged :
         u.IsTombstone ? MembershipStatusLabels.Deleted :
         u.IsDeletionPending ? MembershipStatusLabels.PendingDeletion :
         u.IsSuspended ? MembershipStatusLabels.Suspended :
