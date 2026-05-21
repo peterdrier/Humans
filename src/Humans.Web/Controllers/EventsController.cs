@@ -943,7 +943,8 @@ public class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings);
+        var tz = GetTimeZone(eventSettings)
+            ?? throw new InvalidOperationException("Event timezone not configured.");
         var categories = await guide.GetActiveCategoriesAsync();
         var existingEvents = await guide.GetCampSubmissionsAsync(camp.Id);
 
