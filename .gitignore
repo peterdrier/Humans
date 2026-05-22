@@ -1,8 +1,6 @@
-# Build results
-[Dd]ebug/
-# Re-include source-tree "Debug" paths (the Debug section, not build output) — see memory/architecture/debug-section.md
-!docs/features/debug/
-!src/Humans.Web/Views/Debug/
+# Build results. NOTE: we intentionally do NOT ignore directories merely named
+# "Debug" — build output lands under bin/ and obj/ (ignored below), and /Debug is a
+# real source section (src/Humans.Web/Views/Debug, docs/features/debug).
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
