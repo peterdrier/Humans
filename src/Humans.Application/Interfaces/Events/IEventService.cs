@@ -14,9 +14,10 @@ namespace Humans.Application.Interfaces.Events;
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
 ///   <item>2026-05-14 — initial budget pinned at 46 after Stage 3 cross-section strip and Stage 5 IUserDataContributor add-on (section-align Events, issue #539).</item>
+///   <item>2026-05-22 — +1 (47) for <c>BulkImportAsync</c>: barrio CSV bulk import moved out of EventsController per no-business-logic-in-controllers (PR #704).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(46)]
+[SurfaceBudget(47)]
 public interface IEventService : IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
@@ -66,6 +67,16 @@ public interface IEventService : IApplicationService
     Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default);
     Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default);
     Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
+
+    /// <summary>
+    /// All-or-nothing barrio bulk import: validates every parsed row first and,
+    /// if all pass, creates new events (empty Id) and re-queues edited existing
+    /// ones. Returns per-row errors with nothing written when validation fails.
+    /// </summary>
+    Task<BulkImportResult> BulkImportAsync(
+        Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
+        LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
+        CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
     Task<IReadOnlyList<Event>> GetApprovedEventsAsync(

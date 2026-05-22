@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Humans.Application.DTOs.Events;
+using Humans.Application.Events;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
@@ -152,6 +153,155 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     {
         guideEvent.Withdraw(clock);
         return repo.SaveEventAsync(guideEvent, ct);
+    }
+
+    public async Task<BulkImportResult> BulkImportAsync(
+        Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
+        LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
+        CancellationToken ct = default)
+    {
+        var categories = await repo.GetActiveCategoriesAsync(ct);
+        var existingEvents = await repo.GetCampSubmissionsAsync(campId, ct);
+
+        var errors = ValidateBulkRows(rows, categories, existingEvents);
+        if (errors.Count > 0)
+            return new BulkImportResult(errors, 0, 0);
+
+        var created = 0;
+        var updated = 0;
+        foreach (var row in rows)
+        {
+            var category = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
+            var date = NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value;
+            var time = NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Value;
+            var startAt = (date + time).InZoneLeniently(timeZone).ToInstant();
+            var recurrenceOffsets = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
+                ? EventRecurrenceDays.DisplayDaysToOffsets(row.RecurrenceDays, gateOpeningDate, eventEndOffset)
+                : null;
+
+            if (row.Id.HasValue)
+            {
+                var existing = existingEvents.First(e => e.Id == row.Id.Value);
+
+                // Compare recurrence by day-name set, not the raw offset string, so a
+                // lossless round-trip ("0" ⇄ "Mon") isn't mistaken for an edit and the
+                // event isn't needlessly re-queued for moderation.
+                var existingDays = existing.IsRecurring && !string.IsNullOrEmpty(existing.RecurrenceDays)
+                    ? EventRecurrenceDays.OffsetsToDisplayDays(existing.RecurrenceDays, gateOpeningDate)
+                    : string.Empty;
+                var rowDays = row.IsRecurring ? row.RecurrenceDays ?? string.Empty : string.Empty;
+
+                var changed =
+                    !string.Equals(existing.Title, row.Title, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Description, row.Description, StringComparison.Ordinal) ||
+                    existing.CategoryId != category.Id ||
+                    existing.StartAt != startAt ||
+                    existing.DurationMinutes != row.DurationMinutes ||
+                    !string.Equals(existing.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
+                    existing.IsRecurring != row.IsRecurring ||
+                    !EventRecurrenceDays.SameDays(existingDays, rowDays) ||
+                    existing.PriorityRank != row.PriorityRank;
+
+                if (!changed) continue;
+
+                existing.Title = row.Title;
+                existing.Description = row.Description;
+                existing.CategoryId = category.Id;
+                existing.StartAt = startAt;
+                existing.DurationMinutes = row.DurationMinutes;
+                existing.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
+                existing.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
+                existing.IsRecurring = row.IsRecurring;
+                existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
+                existing.PriorityRank = row.PriorityRank;
+
+                // One path for every existing status: UpdateAndResubmitAsync keeps a
+                // Pending event Pending, re-queues an Approved one, and submits a
+                // Draft/Rejected/ResubmitRequested one. (Withdrawn is rejected in
+                // validation, so it never reaches here.)
+                await UpdateAndResubmitAsync(existing, ct);
+                updated++;
+            }
+            else
+            {
+                var newEvent = new Event
+                {
+                    Id = Guid.NewGuid(),
+                    CampId = campId,
+                    SubmitterUserId = submitterUserId,
+                    CategoryId = category.Id,
+                    Title = row.Title,
+                    Description = row.Description,
+                    LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
+                    Host = string.IsNullOrEmpty(row.Host) ? null : row.Host,
+                    StartAt = startAt,
+                    DurationMinutes = row.DurationMinutes,
+                    IsRecurring = row.IsRecurring,
+                    RecurrenceDays = recurrenceOffsets,
+                    PriorityRank = row.PriorityRank
+                };
+                newEvent.Submit(clock);
+                await SubmitEventAsync(newEvent, ct);
+                created++;
+            }
+        }
+
+        return new BulkImportResult([], created, updated);
+    }
+
+    private static List<BulkImportRowError> ValidateBulkRows(
+        IReadOnlyList<BulkCsvRow> rows,
+        IReadOnlyList<EventCategory> categories,
+        IReadOnlyList<Event> existingEvents)
+    {
+        var errors = new List<BulkImportRowError>();
+        foreach (var row in rows)
+        {
+            var rowErrors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(row.Title)) rowErrors.Add("Title is required.");
+            else if (row.Title.Length > 80) rowErrors.Add("Title must be 80 characters or fewer.");
+
+            if (string.IsNullOrWhiteSpace(row.Description)) rowErrors.Add("Description is required.");
+            else if (row.Description.Length > 450) rowErrors.Add("Description must be 450 characters or fewer.");
+
+            if (row.LocationNote?.Length > 120) rowErrors.Add("LocationNote must be 120 characters or fewer.");
+            if (row.Host?.Length > 40) rowErrors.Add("Host must be 40 characters or fewer.");
+
+            if (string.IsNullOrWhiteSpace(row.Category)) rowErrors.Add("Category is required.");
+            else if (!categories.Any(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase)))
+                rowErrors.Add($"Category '{row.Category}' is not a valid active category.");
+
+            if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add("Date is required.");
+            else if (!NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Success)
+                rowErrors.Add("Date must be in yyyy-MM-dd format.");
+
+            if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
+            else if (!NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Success)
+                rowErrors.Add("StartTime must be in HH:mm format.");
+
+            if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
+                rowErrors.Add("DurationMinutes must be between 15 and 480.");
+            else if (row.DurationMinutes % 15 != 0)
+                rowErrors.Add("DurationMinutes must be a multiple of 15.");
+
+            if (row.PriorityRank < 1 || row.PriorityRank > 100)
+                rowErrors.Add("PriorityRank must be between 1 and 100.");
+
+            if (row.Id.HasValue)
+            {
+                var existing = existingEvents.FirstOrDefault(e => e.Id == row.Id.Value);
+                if (existing == null)
+                    rowErrors.Add($"Event {row.Id.Value} not found for this barrio.");
+                else if (existing.Status == EventStatus.Withdrawn)
+                    rowErrors.Add("Withdrawn events cannot be updated via bulk upload.");
+            }
+
+            if (rowErrors.Count > 0)
+                errors.Add(new BulkImportRowError(row.RowNumber, row.Title, rowErrors));
+        }
+        return errors;
     }
 
     public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(

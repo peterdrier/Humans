@@ -291,6 +291,21 @@ public sealed class CachingEventService(
         _eventCache.Invalidate(guideEvent.Id);
     }
 
+    public async Task<BulkImportResult> BulkImportAsync(
+        Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
+        LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
+        CancellationToken ct = default)
+    {
+        var result = await WithInner(inner => inner.BulkImportAsync(
+            campId, submitterUserId, rows, gateOpeningDate, eventEndOffset, timeZone, ct));
+        // Updates can transition Approved events away from Approved; rebuild the
+        // approved-event projection wholesale. New events are Pending and never
+        // enter the approved cache, so a create-only import needs no refresh.
+        if (result.UpdatedCount > 0)
+            await RefreshAllEventsAsync(ct);
+        return result;
+    }
+
     // ==========================================================================
     // Browse / API — cached snapshot with in-memory filter
     // ==========================================================================

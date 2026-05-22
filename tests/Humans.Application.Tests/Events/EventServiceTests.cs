@@ -297,6 +297,155 @@ public sealed class EventServiceTests
         slices[0].Data.Should().NotBeNull();
     }
 
+    [HumansFact]
+    public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing()
+    {
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(title: "")],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().ContainSingle(e => e.Errors.Contains("Title is required."));
+        _repo.Events.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_NewRow_CreatesPendingEvent()
+    {
+        var campId = Guid.NewGuid();
+        var submitter = Guid.NewGuid();
+        var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(cat);
+
+        var result = await _service.BulkImportAsync(
+            campId, submitter, [Row()],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+
+        result.HasErrors.Should().BeFalse();
+        result.CreatedCount.Should().Be(1);
+        result.UpdatedCount.Should().Be(0);
+        var created = _repo.Events.Should().ContainSingle().Subject;
+        created.Status.Should().Be(EventStatus.Pending);
+        created.CampId.Should().Be(campId);
+        created.SubmitterUserId.Should().Be(submitter);
+        created.CategoryId.Should().Be(cat.Id);
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_UnchangedExistingRow_IsNoOp()
+    {
+        var campId = Guid.NewGuid();
+        var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(cat);
+        var existing = ExistingEvent(campId, cat.Id, EventStatus.Approved);
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(id: existing.Id)],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+
+        result.HasErrors.Should().BeFalse();
+        result.CreatedCount.Should().Be(0);
+        result.UpdatedCount.Should().Be(0);
+        existing.Status.Should().Be(EventStatus.Approved);
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_EditedApprovedRow_RequeuesToPending()
+    {
+        var campId = Guid.NewGuid();
+        var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(cat);
+        var existing = ExistingEvent(campId, cat.Id, EventStatus.Approved);
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(id: existing.Id, title: "New Title")],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+
+        result.UpdatedCount.Should().Be(1);
+        existing.Title.Should().Be("New Title");
+        existing.Status.Should().Be(EventStatus.Pending);
+        existing.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_EditedDraftRow_SubmitsViaUpdatePath_NoDuplicateInsert()
+    {
+        // Regression: the Draft branch previously called SubmitEventAsync (INSERT)
+        // on an already-persisted entity, which throws a duplicate-key error.
+        var campId = Guid.NewGuid();
+        var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(cat);
+        var existing = ExistingEvent(campId, cat.Id, EventStatus.Draft);
+        _repo.Events.Add(existing);
+        var countBefore = _repo.Events.Count;
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(id: existing.Id, title: "Renamed")],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+
+        result.UpdatedCount.Should().Be(1);
+        existing.Status.Should().Be(EventStatus.Pending);
+        _repo.Events.Count.Should().Be(countBefore); // no INSERT of the existing event
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_RecurrenceDayNameRoundTrip_IsNoOp()
+    {
+        // Existing recurrence is stored as offsets ("0"); the CSV carries the
+        // equivalent day name. The round-trip must not be seen as an edit.
+        var gate = new LocalDate(2026, 7, 8);
+        var dayName = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }[((int)gate.DayOfWeek - 1 + 7) % 7];
+        var campId = Guid.NewGuid();
+        var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(cat);
+        var existing = ExistingEvent(campId, cat.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0";
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(id: existing.Id, isRecurring: true, recurrenceDays: dayName)],
+            gate, 6, DateTimeZone.Utc);
+
+        result.UpdatedCount.Should().Be(0);
+        existing.Status.Should().Be(EventStatus.Approved);
+    }
+
+    private static BulkCsvRow Row(
+        Guid? id = null, string title = "My Event", string description = "Desc",
+        string category = "Workshop", string date = "2026-07-08", string startTime = "09:30",
+        int duration = 60, string? location = null, string? host = null,
+        bool isRecurring = false, string? recurrenceDays = null, int priority = 1, int rowNumber = 2)
+        => new(rowNumber, id, title, description, category, date, startTime, duration, location, host, isRecurring, recurrenceDays, priority);
+
+    private Event ExistingEvent(Guid campId, Guid categoryId, EventStatus status)
+    {
+        var startAt = (new LocalDate(2026, 7, 8) + new LocalTime(9, 30)).InZoneLeniently(DateTimeZone.Utc).ToInstant();
+        return new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            SubmitterUserId = Guid.NewGuid(),
+            CategoryId = categoryId,
+            Title = "My Event",
+            Description = "Desc",
+            StartAt = startAt,
+            DurationMinutes = 60,
+            IsRecurring = false,
+            PriorityRank = 1,
+            Status = status,
+            SubmittedAt = _clock.GetCurrentInstant(),
+            LastUpdatedAt = _clock.GetCurrentInstant()
+        };
+    }
+
     private sealed class FakeEventRepository : IEventRepository
     {
         public EventGuideSettings? Settings { get; set; }
