@@ -14,8 +14,14 @@ public sealed class ClientStatsMiddleware(RequestDelegate next, IClientStatsTrac
     {
         await next(context);
 
-        var contentType = context.Response.ContentType;
-        if (contentType is not null
+        // Count only successful GET navigations that render HTML. This excludes
+        // non-GET requests (e.g. a failed POST re-rendering a form) and re-executed
+        // error pages — UseStatusCodePagesWithReExecute keeps the 4xx/5xx status on
+        // the HTML error response — so the tally reflects real page views rather
+        // than every HTML response.
+        if (HttpMethods.IsGet(context.Request.Method)
+            && context.Response.StatusCode is >= 200 and < 400
+            && context.Response.ContentType is { } contentType
             && contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
         {
             tracker.RecordPageView(context.Request.Headers.UserAgent.ToString());

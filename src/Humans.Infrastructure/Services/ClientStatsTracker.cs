@@ -12,8 +12,8 @@ public sealed class ClientStatsTracker : IClientStatsTracker
     private readonly ConcurrentDictionary<string, long> _browsers = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, long> _deviceTypes = new(StringComparer.Ordinal);
 
-    // Resolution is fed by an anonymous beacon, so distinct buckets are capped to
-    // bound memory; overflow folds into an "Other" bucket.
+    // Resolution is fed by an anonymous beacon, so distinct buckets are soft-capped
+    // to bound memory; once the cap is reached new keys fold into an "Other" bucket.
     private const int MaxResolutionBuckets = 200;
     private readonly ConcurrentDictionary<string, long> _resolutions = new(StringComparer.Ordinal);
 
@@ -38,7 +38,12 @@ public sealed class ClientStatsTracker : IClientStatsTracker
         Interlocked.Increment(ref _totalResolutionSamples);
 
         var key = $"{screenWidth}x{screenHeight}";
-        if (_resolutions.ContainsKey(key) || _resolutions.Count < MaxResolutionBuckets)
+        if (_resolutions.ContainsKey(key))
+            Bump(_resolutions, key);
+        else if (_resolutions.Count < MaxResolutionBuckets)
+            // Soft cap: a check-then-add race can add a handful of buckets past the
+            // cap under concurrent first-sightings, after which the gate stays closed
+            // (keys are never removed). Bounded by concurrency, not unbounded.
             Bump(_resolutions, key);
         else
             Bump(_resolutions, "Other");
