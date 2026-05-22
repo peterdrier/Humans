@@ -19,7 +19,7 @@ public class OnboardingWidgetStateTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IConsentServiceRead _consents = Substitute.For<IConsentServiceRead>();
     private readonly IOnboardingWidgetSessionState _session = Substitute.For<IOnboardingWidgetSessionState>();
 
     public OnboardingWidgetStateTests()

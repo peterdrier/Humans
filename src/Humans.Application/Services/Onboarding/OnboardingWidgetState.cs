@@ -12,7 +12,7 @@ public class OnboardingWidgetState(
     IShiftSignupService signups,
     IMembershipCalculator membership,
     IShiftManagementService shiftMgmt,
-    IConsentService consents,
+    IConsentServiceRead consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState
 {
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)

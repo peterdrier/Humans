@@ -162,7 +162,7 @@ public class AgentUserSnapshotProviderTests
         teams.GetActiveTeamMembershipsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(teamMemberships ?? []);
 
-        var consents = Substitute.For<IConsentService>();
+        var consents = Substitute.For<IConsentServiceRead>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

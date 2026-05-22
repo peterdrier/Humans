@@ -17,7 +17,7 @@ public sealed class AgentUserSnapshotProvider(
     IUserService users,
     IRoleAssignmentService roles,
     ITeamService teams,
-    IConsentService consents,
+    IConsentServiceRead consents,
     IFeedbackService feedback,
     ITicketQueryService tickets,
     IShiftView shiftView,

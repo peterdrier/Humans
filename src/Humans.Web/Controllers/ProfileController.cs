@@ -69,7 +69,7 @@ public class ProfileController(
     IEmailOutboxService emailOutboxService,
     IClock clock,
     IAuthorizationService authorizationService,
-    IConsentService consentService,
+    IConsentServiceRead consentService,
     IApplicationDecisionService applicationDecisionService,
     IAccountDeletionService accountDeletionService,
     IMembershipCalculator membershipCalculator,
