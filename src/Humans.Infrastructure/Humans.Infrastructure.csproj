@@ -25,6 +25,7 @@
     <PackageReference Include="Ical.Net" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Markdig" />
+    <PackageReference Include="MyCSharp.HttpUserAgentParser" />
     <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" />

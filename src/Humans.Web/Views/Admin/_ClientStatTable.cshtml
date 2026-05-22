@@ -1,0 +1,28 @@
+@model Humans.Web.Models.ClientStatTableModel
+<div class="card h-100">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span><i class="@Model.Icon me-1"></i>@Model.Title</span>
+        <span class="text-muted small font-monospace">@Model.Total.ToString("N0")</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Rows.Count == 0)
+        {
+            <p class="text-muted small p-3 mb-0">No data yet.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-hover mb-0">
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td>@row.Label</td>
+                            <td class="text-end font-monospace">@row.Count.ToString("N0")</td>
+                            <td class="text-end text-muted small" style="width:4.5rem;">@row.Percent.ToString("F1")%</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

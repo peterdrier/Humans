@@ -587,6 +587,10 @@ app.UseAuthentication();
 // Between Authentication and Authorization so the principal is populated AND denied-but-authenticated requests (403s short-circuited by UseAuthorization) still count toward humans.active_users.
 app.UseMiddleware<UserActivityTrackingMiddleware>();
 
+// Tally page views by client (OS/browser/device) for /Admin/ClientStats. Runs
+// after the response is produced; only text/html responses are counted.
+app.UseMiddleware<ClientStatsMiddleware>();
+
 app.UseAuthorization();
 
 app.UseSession();
@@ -609,6 +613,17 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 
 app.MapPrometheusScrapingEndpoint("/metrics");
+
+// Anonymous beacon: browsers report their screen resolution (the one client stat
+// not available from request headers) for /Admin/ClientStats. Fire-and-forget.
+app.MapPost("/api/client-metrics", (
+        Humans.Web.Models.ClientMetricsBeacon beacon,
+        Humans.Application.Interfaces.IClientStatsTracker clientStats) =>
+    {
+        clientStats.RecordResolution(beacon.ScreenWidth, beacon.ScreenHeight);
+        return Results.NoContent();
+    })
+    .AllowAnonymous();
 
 app.MapGet("/api/version", () =>
 {

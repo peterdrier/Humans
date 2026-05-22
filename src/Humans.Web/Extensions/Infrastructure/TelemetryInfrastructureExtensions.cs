@@ -25,6 +25,15 @@ internal static class TelemetryInfrastructureExtensions
         // AddMeter("Humans.Metrics") subscription.
         services.AddSingleton<IMeters, MetersService>();
 
+        // Coarse client demographics (OS/browser/device + screen resolution) for /Admin/ClientStats.
+        services.AddSingleton<IClientStatsTracker, ClientStatsTracker>();
+
+        // HTTP status-code tally via a MeterListener over the ASP.NET Core hosting meter.
+        // Hosted so the listener attaches at startup and counts from the first request.
+        services.AddSingleton<HttpStatusTracker>();
+        services.AddSingleton<IHttpStatusTracker>(sp => sp.GetRequiredService<HttpStatusTracker>());
+        services.AddHostedService(sp => sp.GetRequiredService<HttpStatusTracker>());
+
         return services;
     }
 }

@@ -10,6 +10,8 @@
     <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
     <PackageVersion Include="Ical.Net" Version="5.2.2" />
     <PackageVersion Include="Markdig" Version="1.2.0" />
+    <!-- User-Agent parsing for /Admin/ClientStats (code-based, no regex DB; library telemetry left off) -->
+    <PackageVersion Include="MyCSharp.HttpUserAgentParser" Version="3.1.6" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.8" />
