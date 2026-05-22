@@ -44,23 +44,21 @@
         </div>
     </div>
 
-    <div class="d-flex gap-3 mb-3 flex-wrap">
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
         @{
             var levels = new[]
             {
-                (Serilog.Events.LogEventLevel.Debug, "bg-secondary"),
-                (Serilog.Events.LogEventLevel.Information, "bg-info text-dark"),
-                (Serilog.Events.LogEventLevel.Warning, "bg-warning text-dark"),
-                (Serilog.Events.LogEventLevel.Error, "bg-danger"),
-                (Serilog.Events.LogEventLevel.Fatal, "bg-danger fw-bold"),
+                (Serilog.Events.LogEventLevel.Warning, "btn-warning"),
+                (Serilog.Events.LogEventLevel.Error, "btn-danger"),
+                (Serilog.Events.LogEventLevel.Fatal, "btn-danger fw-bold"),
             };
         }
-        @foreach (var (level, badgeClass) in levels)
+        @foreach (var (level, btnClass) in levels)
         {
             var count = lifetimeCounts.TryGetValue(level, out var c) ? c : 0;
-            <span class="badge @badgeClass">@level: @count</span>
+            <button type="button" class="btn btn-sm log-level-toggle @btnClass" data-level="@level" aria-pressed="true">@level: @count</button>
         }
-        <small class="text-muted align-self-center">(lifetime counts since app start)</small>
+        <small class="text-muted align-self-center">(lifetime counts since app start — click to hide/show rows)</small>
     </div>
 
     @if (Model.Count == 0)
@@ -92,7 +90,7 @@
                             _ => ""
                         };
                         var evtUserId = CurrentUserEnricher.ExtractFromEvent(evt);
-                        <tr class="@levelClass">
+                        <tr class="@levelClass" data-level="@evt.Level">
                             <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToAuditTimestamp()</td>
                             <td>@evt.Level</td>
                             <td>
@@ -122,3 +120,28 @@
         </div>
     }
 </div>
+
+@section Styles {
+    <style>
+        .log-level-toggle.log-level-off {
+            opacity: 0.45;
+            text-decoration: line-through;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.log-level-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var level = btn.getAttribute('data-level');
+                var hide = !btn.classList.contains('log-level-off');
+                btn.classList.toggle('log-level-off', hide);
+                btn.setAttribute('aria-pressed', (!hide).toString());
+                document.querySelectorAll('tbody tr[data-level="' + level + '"]').forEach(function (row) {
+                    row.classList.toggle('d-none', hide);
+                });
+            });
+        });
+    </script>
+}
