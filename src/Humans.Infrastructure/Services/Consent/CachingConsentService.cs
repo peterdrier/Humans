@@ -186,9 +186,11 @@ public sealed class CachingConsentService(
         Guid documentVersionId, Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetConsentReviewDetailAsync(documentVersionId, userId, ct));
 
+#pragma warning disable CS0618 // GetUserConsentRecordsAsync is obsolete; passthrough retained until delete sweep
     public Task<IReadOnlyList<ConsentRecordSnapshot>> GetUserConsentRecordsAsync(
         Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserConsentRecordsAsync(userId, ct));
+#pragma warning restore CS0618
 
     public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetConsentRecordCountAsync(userId, ct));

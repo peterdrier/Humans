@@ -60,6 +60,8 @@ internal static class LegalAndConsentSectionExtensions
         services.AddSingleton<CachingConsentService>();
         services.AddSingleton<IConsentService>(sp =>
             sp.GetRequiredService<CachingConsentService>());
+        services.AddSingleton<IConsentServiceRead>(sp =>
+            sp.GetRequiredService<CachingConsentService>());
         services.AddSingleton<IConsentCacheInvalidator>(sp =>
             sp.GetRequiredService<CachingConsentService>());
         services.AddSingleton<ICacheStats>(sp =>
