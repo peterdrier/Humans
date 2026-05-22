@@ -29,6 +29,7 @@ internal static class UsersSectionExtensions
         // Singleton so _byUserId dict survives across requests.
         services.AddSingleton<CachingUserService>();
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
+        services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
 
         // Same Singleton instance must back invalidator + merge so external "user changed" signals hit the cache owner.
         services.AddSingleton<IUserInfoInvalidator>(sp =>
