@@ -14,7 +14,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Background job that syncs legal documents from the GitHub repository.
 /// </summary>
 /// <remarks>
-/// Reads active team member user ids via <see cref="ITeamService"/> and user
+/// Reads active team member user ids via <see cref="ITeamServiceRead"/> and user
 /// display data via <see cref="IUserService"/> so the job never touches
 /// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
 /// (design-rules §2c). Consent lookups remain on <see cref="IConsentRepository"/>
@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 public class SyncLegalDocumentsJob(
     ILegalDocumentSyncService syncService,
     IEmailService emailService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserService userService,
     IConsentRepository consentRepository,
     IHumansMetrics metrics,

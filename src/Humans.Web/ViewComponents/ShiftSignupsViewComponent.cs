@@ -10,7 +10,7 @@ namespace Humans.Web.ViewComponents;
 public class ShiftSignupsViewComponent(
     IShiftView shiftView,
     IShiftManagementService shiftMgmt,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IClock clock,
     ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
 {

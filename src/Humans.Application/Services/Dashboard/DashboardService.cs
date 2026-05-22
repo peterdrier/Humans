@@ -22,7 +22,7 @@ public class DashboardService(
     IShiftView shiftView,
     ITicketQueryService ticketQueryService,
     IUserService userService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IOptions<TicketVendorSettings> ticketSettings,
     IClock clock,
     ILogger<DashboardService> logger) : IDashboardService

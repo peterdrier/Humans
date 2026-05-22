@@ -5,13 +5,13 @@ using Humans.Application.Interfaces.Teams;
 namespace Humans.Application.Services.Notifications;
 
 /// <summary>
-/// Pass-through adapter delegating to <see cref="ITeamService"/> and
+/// Pass-through adapter delegating to <see cref="ITeamServiceRead"/> and
 /// <see cref="IRoleAssignmentService"/>. Exists so <see cref="INotificationService"/>
 /// doesn't depend on those services directly (they inject INotificationService,
 /// which would close a DI cycle).
 /// </summary>
 public sealed class NotificationRecipientResolver(
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IRoleAssignmentService roleAssignmentService) : INotificationRecipientResolver
 {
     public async Task<TeamNotificationInfo?> GetTeamNotificationInfoAsync(

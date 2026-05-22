@@ -351,7 +351,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -409,7 +409,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -442,7 +442,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -475,7 +475,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -508,7 +508,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -546,7 +546,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -576,7 +576,7 @@ public class TeamAdminController(
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();

@@ -18,7 +18,7 @@ public sealed class EmailProvisioningService(
     IUserService userService,
     IGoogleWorkspaceUserService workspaceUserService,
     IUserEmailService userEmailService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IEmailService emailService,
     INotificationService notificationService,
     IAuditLogService auditLogService,

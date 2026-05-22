@@ -32,7 +32,7 @@ public class CampaignsArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(ICampaignRepository));
-        paramTypes.Should().Contain(typeof(ITeamService));
+        paramTypes.Should().Contain(typeof(ITeamServiceRead));
         paramTypes.Should().Contain(typeof(IUserEmailService));
         paramTypes.Should().Contain(typeof(IUserService));
         paramTypes.Should().Contain(typeof(INotificationService));

@@ -278,7 +278,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(placementOpen: true);
 
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
@@ -298,7 +298,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(placementOpen: false);
 
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
@@ -318,7 +318,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(placementOpen: true);
 
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
@@ -338,7 +338,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(year: 2026, placementOpen: true);
 
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
         // Camp season is for 2027, but settings year is 2026

@@ -72,7 +72,7 @@ public class TicketQueryArchitectureTests
         paramTypes.Should().Contain(typeof(ICampaignService));
         paramTypes.Should().Contain(typeof(IUserService));
         paramTypes.Should().Contain(typeof(IUserEmailService));
-        paramTypes.Should().Contain(typeof(ITeamService));
+        paramTypes.Should().Contain(typeof(ITeamServiceRead));
         paramTypes.Should().Contain(typeof(IShiftManagementService));
     }
 

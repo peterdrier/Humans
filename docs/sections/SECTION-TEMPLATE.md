@@ -161,6 +161,14 @@ whether the dependency is strong (shared writes) or weak (display labels only).
 **Owned tables:** `<table_a>`, `<table_b>`
 **Status:** <(A) Migrated | (B) Partially migrated | (C) Pre-migration>  —  <one-line summary with issue/PR + date>
 
+### Cross-section read interface
+
+If this section's service is consumed by code in other sections, define `I<Section>ServiceRead` containing only the methods external sections call, returning section-owned projections (DTOs / `*Info` types), never EF entities. The full `I<Section>Service` inherits from `I<Section>ServiceRead` and adds writes, cache-invalidation hooks, and section-internal reads. Same impl class; DI registers both. See [`memory/architecture/section-read-write-split.md`](../../memory/architecture/section-read-write-split.md).
+
+| Read interface | Methods | Notes |
+|---|---:|---|
+| `I<Section>ServiceRead` | N | List or "—" if section is not cross-section-consumed |
+
 <!--
 Required. The three-line footer. Owning services and owned tables must stay in
 sync with `docs/architecture/design-rules.md §8`. If the section owns no

@@ -243,91 +243,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
         result.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // CanUserApproveRequestsForTeamAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_Admin_ReturnsTrue()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedRoleAssignment(user.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(10));
-        await Db.SaveChangesAsync();
-
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_BoardMember_ReturnsTrue()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedRoleAssignment(user.Id, RoleNames.Board,
-            Clock.GetCurrentInstant() - Duration.FromDays(10));
-        await Db.SaveChangesAsync();
-
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfTeam_ReturnsTrue()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
-    {
-        var user = SeedUser();
-        var parent = SeedTeam("Department");
-        var child = SeedTeam("SubTeam");
-        child.ParentTeamId = parent.Id;
-        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.CanUserApproveRequestsForTeamAsync(child.Id, user.Id);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_RegularMember_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_NoRelation_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        await Db.SaveChangesAsync();
-
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
-    }
-
     [HumansFact]
     public async Task UpdateTeamPageContentWithResultAsync_NormalizesCallsToActionAndUpdatesPage()
     {
@@ -1351,11 +1266,11 @@ public sealed class TeamServiceTests : ServiceTestHarness
     // EF provider used in this harness does not support transactions. Cover it in Integration tests.
 
     // ==========================================================================
-    // GetTeamBySlugAsync
+    // GetTeamEntityBySlugAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
+    public async Task GetTeamEntityBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
@@ -1364,11 +1279,57 @@ public sealed class TeamServiceTests : ServiceTestHarness
             leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
         await Db.SaveChangesAsync();
 
-        var result = await _service.GetTeamBySlugAsync("alpha");
+        var result = await _service.GetTeamEntityBySlugAsync("alpha");
 
         result.Should().NotBeNull();
         result.Name.Should().Be("Alpha");
         result.Members.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task GetTeamEntityBySlugAsync_NonExistentSlug_ReturnsNull()
+    {
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetTeamEntityBySlugAsync("non-existent");
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetTeamEntityBySlugAsync_IncludesUserNavigation()
+    {
+        var user = SeedUser(displayName: "Alice");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetTeamEntityBySlugAsync("alpha");
+
+        result!.Members.Single().User.Should().NotBeNull();
+        result.Members.Single().User.DisplayName.Should().Be("Alice");
+    }
+
+    // ==========================================================================
+    // GetTeamBySlugAsync (TeamInfo? — ITeamServiceRead surface)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsSameTeamAsEntityVersion()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var info = await _service.GetTeamBySlugAsync("alpha");
+        var entity = await _service.GetTeamEntityBySlugAsync("alpha");
+
+        info.Should().NotBeNull();
+        entity.Should().NotBeNull();
+        info!.Id.Should().Be(entity!.Id);
+        info.Slug.Should().Be(entity.Slug);
+        info.Name.Should().Be(entity.Name);
     }
 
     [HumansFact]
@@ -1379,20 +1340,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var result = await _service.GetTeamBySlugAsync("non-existent");
 
         result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetTeamBySlugAsync_IncludesUserNavigation()
-    {
-        var user = SeedUser(displayName: "Alice");
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.GetTeamBySlugAsync("alpha");
-
-        result!.Members.Single().User.Should().NotBeNull();
-        result.Members.Single().User.DisplayName.Should().Be("Alice");
     }
 
     // ==========================================================================
@@ -1836,63 +1783,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
 
         result.Should().NotBeNull();
         result.Members.Should().BeEmpty();
-    }
-
-    // ==========================================================================
-    // GetPendingRequestCountsByTeamIdsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_ReturnsCounts()
-    {
-        var teamA = SeedTeam("Alpha");
-        var teamB = SeedTeam("Beta");
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        var u3 = SeedUser(displayName: "U3");
-        SeedJoinRequest(teamA.Id, u1.Id);
-        SeedJoinRequest(teamA.Id, u2.Id);
-        SeedJoinRequest(teamB.Id, u3.Id);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([teamA.Id, teamB.Id]);
-
-        result[teamA.Id].Should().Be(2);
-        result[teamB.Id].Should().Be(1);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_ExcludesNonPending()
-    {
-        var team = SeedTeam("Alpha");
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        SeedJoinRequest(team.Id, u1.Id);
-        SeedJoinRequest(team.Id, u2.Id, TeamJoinRequestStatus.Approved);
-        await Db.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
-
-        result[team.Id].Should().Be(1);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_EmptyInput_ReturnsEmptyDict()
-    {
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([]);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_TeamWithNoPending_ReturnsZero()
-    {
-        var team = SeedTeam("Alpha");
-        await Db.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
-
-        result[team.Id].Should().Be(0);
     }
 
     // ==========================================================================

@@ -38,6 +38,7 @@ public sealed class ShiftSignupServiceFilterIncompleteOnboardingTests : ServiceT
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
+            .With<ITeamServiceRead>(teamService)
             .With(roleAssignmentService)
             .Build();
 

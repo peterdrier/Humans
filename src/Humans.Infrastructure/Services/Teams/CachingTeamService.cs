@@ -71,8 +71,8 @@ public sealed class CachingTeamService(
         return result;
     }
 
-    public Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamBySlugAsync(slug, cancellationToken));
+    public Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetTeamEntityBySlugAsync(slug, cancellationToken));
 
     public Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetTeamByIdAsync(teamId, cancellationToken));
@@ -83,6 +83,17 @@ public sealed class CachingTeamService(
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         return teamsById.GetValueOrDefault(teamId);
+    }
+
+    public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        // Cache walk — no repo hit on cache hit. Matches the slug-resolution
+        // semantics inner.GetTeamDetailAsync uses (canonical Slug OR CustomSlug).
+        var normalizedSlug = slug.ToLowerInvariant();
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        return teamsById.Values.FirstOrDefault(t =>
+            string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
+            || (t.CustomSlug is not null && string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal)));
     }
 
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(
@@ -531,12 +542,6 @@ public sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetUserPendingRequestAsync(teamId, userId, cancellationToken));
 
-    public Task<bool> CanUserApproveRequestsForTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.CanUserApproveRequestsForTeamAsync(teamId, userId, cancellationToken));
-
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
         Guid userId,
@@ -557,11 +562,6 @@ public sealed class CachingTeamService(
         InvalidateTeamsCache();
         return result;
     }
-
-    public Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingRequestCountsByTeamIdsAsync(teamIds, cancellationToken));
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
@@ -722,21 +722,6 @@ public sealed class CachingTeamService(
         if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
             return [];
         return team.RoleDefinitions;
-    }
-
-    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        // Mirrors TeamRepository.GetAllRoleDefinitionsAsync: active non-system
-        // teams' role definitions, ordered by Team.Name → SortOrder → Name.
-        // Cache projection pre-sorts each team's definitions; we add the
-        // outer Team.Name sort here.
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        return teamsById.Values
-            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None)
-            .OrderBy(t => t.Name, StringComparer.Ordinal) // arch:db-sort-ok — preserves repo ordering
-            .SelectMany(t => t.RoleDefinitions ?? Array.Empty<TeamRoleDefinitionSnapshot>())
-            .ToList();
     }
 
     public async Task<TeamRoleAssignment> AssignToRoleAsync(

@@ -10,7 +10,7 @@ namespace Humans.Web.Controllers;
 
 public abstract class HumansTeamControllerBase(
     IUserService userService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)

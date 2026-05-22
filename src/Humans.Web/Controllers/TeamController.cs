@@ -432,7 +432,7 @@ public class TeamController(
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -485,7 +485,7 @@ public class TeamController(
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -534,7 +534,7 @@ public class TeamController(
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamEntityBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();

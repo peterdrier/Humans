@@ -411,7 +411,7 @@ public sealed class DevelopmentDashboardSeeder(
         var teamsDeleted = 0;
         foreach (var slug in SeededTeamSlugsForDelete())
         {
-            var team = await teamService.GetTeamBySlugAsync(slug, cancellationToken);
+            var team = await teamService.GetTeamEntityBySlugAsync(slug, cancellationToken);
             if (team is null)
                 continue;
 

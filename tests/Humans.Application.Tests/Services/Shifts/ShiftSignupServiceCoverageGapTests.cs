@@ -45,6 +45,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
+            .With<ITeamServiceRead>(_teamService)
             .With(roleAssignmentService)
             .Build();
 

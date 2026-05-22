@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 [Route("Feedback")]
 public class FeedbackController(
     IFeedbackService feedbackService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserService userService,
     IStringLocalizer<SharedResource> localizer,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)

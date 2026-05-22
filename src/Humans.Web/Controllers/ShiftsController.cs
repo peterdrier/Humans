@@ -26,7 +26,7 @@ public class ShiftsController(
     IShiftSignupService signupService,
     IGeneralAvailabilityService availabilityService,
     IShiftView shiftView,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IAuditLogService auditLogService,
     IUserService userService,
     IStringLocalizer<SharedResource> localizer,

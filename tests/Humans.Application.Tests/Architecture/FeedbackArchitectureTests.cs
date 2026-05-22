@@ -62,8 +62,8 @@ public class FeedbackArchitectureTests
             because: "Feedback resolves reporter / assignee / resolver display names via IUserService.GetUserInfosAsync — UserInfo.BurnerName implements the BurnerName-first fallback per memory/architecture/burnername-is-the-display-name.md");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
-        paramTypes.Should().Contain(typeof(ITeamService),
-            because: "Feedback resolves assigned-team names via ITeamService.GetTeamNamesByIdsAsync — no FeedbackReport.AssignedToTeam navigation at query time");
+        paramTypes.Should().Contain(typeof(ITeamServiceRead),
+            because: "Feedback resolves assigned-team names via the cross-section ITeamServiceRead surface — no FeedbackReport.AssignedToTeam navigation at query time");
     }
 
     [HumansFact]

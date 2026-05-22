@@ -219,22 +219,13 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
-///   <item>54→54 — added <c>TeamInfo.ManagementRoleHolderUserIds</c> + <c>TeamInfo.RoleDefinitions</c> projections; drained 6 readers off DB onto the team cache (<c>IsUserCoordinatorOfTeamAsync</c>, <c>GetUserCoordinatedTeamIdsAsync</c>, <c>GetEffectiveBudgetCoordinatorTeamIdsAsync</c>, <c>GetRoleDefinitionsAsync</c>, <c>GetAllRoleDefinitionsAsync</c>, <c>GetManagementRoleNamesByTeamIdsAsync</c>). Surface unchanged (external boundaries kept).</item>
-///   <item>56→54 — drained GetSystemTeamWithActiveMembersAsync + GetActiveMembersForTeamsAsync onto TeamInfo cache.</item>
-///   <item>61→56 — drained 5 name-lookup readers (GetTeamNameByGoogleGroupPrefixAsync, GetTeamNamesByIdsAsync, GetNonSystemTeamNamesByUserIdsAsync, GetActiveNonSystemTeamNamesByUserIdsAsync, IsUserMemberOfTeamAsync) onto TeamInfo cache.</item>
-///   <item>66→61 — drained 5 coordinator readers (GetCoordinatorUserIdsAsync, GetActiveCoordinatorsForTeamsAsync, GetActiveNonSystemTeamCoordinatorUserIdsAsync, GetActiveDepartmentCoordinatorUserIdsAsync, IsActiveDepartmentCoordinatorAsync) onto TeamInfo cache.</item>
-///   <item>68→66 — drained GetActiveTeamOptionsAsync + GetBudgetableTeamsAsync onto TeamInfo cache; killed TeamOptionDto record (parent: peterdrier/Humans#555 UserInfo migration).</item>
-///   <item>71→70 — PR #478 (issue #615): removed GetActiveChildMembersByParentIdsAsync; the child-team rollup is now inside GetExpectedAsync via GetActiveMembersForTeamsAsync.</item>
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
-///   <item>73→71 — tech-debt query consolidation: removed GetTeamMembersAsync and GetActiveMemberUserIdsAsync; callers project members/user IDs from GetTeamAsync/GetTeamsAsync read models.</item>
-///   <item>71→73 — team-cache decorator groundwork: added canonical GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should consolidate member/name/option getters down onto those methods.</item>
-///   <item>70→71 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against teams must live in the owning section per design-rules §6; the ratchet's "remove one to add one" rule doesn't apply when the addition is a moved-in query rather than a new feature surface.</item>
-///   <item>70→70 — issue-634: added GetActiveTeamMembershipsForUserAsync (name + role-in-team for the agent snapshot) and removed GetActiveTeamNamesForUserAsync, since the new method is strictly more capable; the one production caller (ProfileController popover) projects to names via .Select(m =&gt; m.TeamName).</item>
-///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
+///   <item>51→48 — ITeamServiceRead split: GetTeamsAsync/GetTeamAsync/SearchAsync/GetTeamBySlugAsync(TeamInfo) onto ITeamServiceRead; entity slug method renamed GetTeamEntityBySlugAsync.</item>
+///   <item>54→51 — ITeamServiceRead split prep: removed GetPendingRequestCountsByTeamIdsAsync; made CanUserApproveRequestsForTeamAsync and GetAllRoleDefinitionsAsync private.</item>
+///   <item>54→54 — added TeamInfo.ManagementRoleHolderUserIds + RoleDefinitions; drained 6 readers off DB onto team cache.</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(54)]
-public interface ITeamService : IApplicationService
+[SurfaceBudget(48)]
+public interface ITeamService : ITeamServiceRead, IApplicationService
 {
     /// <summary>
     /// Creates a new team.
@@ -249,9 +240,11 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets a team by its slug.
+    /// Gets a team entity by its slug (Teams-internal use; external sections
+    /// should use <see cref="ITeamServiceRead.GetTeamBySlugAsync"/> for the
+    /// <see cref="TeamInfo"/> projection).
     /// </summary>
-    Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default);
+    Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a team by its ID.
@@ -259,31 +252,9 @@ public interface ITeamService : IApplicationService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the team read model by ID, including active members.
-    /// </summary>
-    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets team read models keyed by ID, including active members.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Active, non-hidden teams whose <c>Name</c> contains
-    /// <paramref name="query"/> (case-insensitive). Capped at
-    /// <paramref name="max"/>; returned in unspecified order — the global
-    /// search orchestrator scores and ranks. Used by the global /Search
-    /// page (<c>SearchService</c>); every caller sees the public surface
-    /// regardless of role.
-    /// </summary>
-    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
-        string query, int max,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.
@@ -398,14 +369,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user can approve requests for a team.
-    /// </summary>
-    Task<bool> CanUserApproveRequestsForTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Checks if a user is a coordinator of a team.
     /// </summary>
     Task<bool> IsUserCoordinatorOfTeamAsync(
@@ -420,16 +383,6 @@ public interface ITeamService : IApplicationService
         Guid teamId,
         Guid userId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets pending request counts for multiple teams in a single query.
-    /// </summary>
-    /// <param name="teamIds">The team IDs to check.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Dictionary mapping team ID to pending request count.</returns>
-    Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -551,12 +504,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all role definitions across active non-system teams.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Team Role Assignments

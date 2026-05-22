@@ -43,6 +43,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
+            .With<ITeamServiceRead>(teamService)
             .With(roleAssignmentService)
             .Build();
 

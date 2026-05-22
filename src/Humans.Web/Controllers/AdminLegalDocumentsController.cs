@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 public class AdminLegalDocumentsController(
     IUserService userService,
     IAdminLegalDocumentService adminLegalDocumentService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IClock clock,
     ILogger<AdminLegalDocumentsController> logger) : HumansControllerBase(userService)
 {

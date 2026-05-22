@@ -23,14 +23,14 @@ namespace Humans.Infrastructure.Jobs;
 /// user-GoogleEmailStatus mutation goes through <see cref="IUserService"/>.
 /// User/team display-name lookups for the error log go through
 /// <see cref="IUserService.GetByIdsAsync"/> and
-/// <see cref="ITeamService.GetTeamsAsync"/>.
+/// <see cref="ITeamServiceRead.GetTeamsAsync"/>.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessGoogleSyncOutboxJob(
     IGoogleSyncOutboxRepository outboxRepository,
     IGoogleResourceRepository resourceRepository,
     IUserService userService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IGoogleSyncService googleSyncService,
     IHumansMetrics metrics,
     IClock clock,
