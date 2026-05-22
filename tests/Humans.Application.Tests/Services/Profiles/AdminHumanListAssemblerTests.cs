@@ -107,17 +107,17 @@ public class AdminHumanListAssemblerTests
     }
 
     [HumansFact]
-    public void MissingName_filter_is_cross_cutting()
+    public void HasName_filter_is_cross_cutting()
     {
-        var activeNamed = Build();                       // has name → excluded
-        var activeBlankName = Build(blankNames: true);   // Active but no name → included
-        var noProfile = Build(hasProfile: false, displayName: "Stub"); // no profile → included
+        var activeNamed = Build();                       // has name → included
+        var activeBlankName = Build(blankNames: true);   // no name → excluded
+        var noProfile = Build(hasProfile: false, displayName: "Stub"); // no profile → excluded
 
         var rows = AdminHumanListAssembler.Assemble(
-            [activeNamed, activeBlankName, noProfile], NoEmails, searchUserIds: null, statusFilter: "missingname");
+            [activeNamed, activeBlankName, noProfile], NoEmails, searchUserIds: null, statusFilter: "hasname");
 
         rows.Select(r => r.UserId)
-            .Should().BeEquivalentTo([activeBlankName.Id, noProfile.Id]);
+            .Should().BeEquivalentTo([activeNamed.Id]);
     }
 
     [HumansFact]

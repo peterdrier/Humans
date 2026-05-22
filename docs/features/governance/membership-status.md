@@ -53,7 +53,7 @@ Pending Deletion → (30 days) → Deleted
 - **Board dashboard** — shows count per category
 - **SystemTeamSyncJob** — Volunteers team eligibility = `partition.Active`
 
-The **Admin /Humans list** does **not** use this partition. It derives its own status buckets directly from `UserInfo` flat predicates (`AdminHumanListAssembler`) — no consent lookup, so there is no Active/Missing-Consents split. It adds the tombstone buckets **Merged** (`MergedAt`) and **Deleted** (`IsTombstone`) plus a cross-cutting **Missing Name** filter (`!HasRequiredNameFields`).
+The **Admin /Humans list** does **not** use this partition. It derives its own status buckets directly from `UserInfo` flat predicates (`AdminHumanListAssembler`) — no consent lookup, so there is no Active/Missing-Consents split. It adds the tombstone buckets **Merged** (`MergedAt`) and **Deleted** (`IsTombstone`) plus a cross-cutting **Has Name** filter (`HasRequiredNameFields`) — the meaningful "active" signal now that every account carries a profile.
 
 ## Consent Check
 

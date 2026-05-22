@@ -42,6 +42,11 @@
                class="btn @(Model.StatusFilter == "active" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Active"]
             </a>
+            @* Has Name = HasRequiredNameFields; the meaningful "active" signal now that every account has a profile. *@
+            <a asp-action="AdminList" asp-route-filter="hasname" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "hasname" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_HasName"]
+            </a>
             <a asp-action="AdminList" asp-route-filter="pending" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "pending" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_PendingApproval"]
@@ -51,23 +56,18 @@
                 @Localizer["AdminHumans_Suspended"]
             </a>
             <a asp-action="AdminList" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "deleting" ? "btn-danger" : "btn-outline-danger")">
+               class="btn @(Model.StatusFilter == "deleting" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Deleting"]
             </a>
             <a asp-action="AdminList" asp-route-filter="merged" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "merged" ? "btn-secondary" : "btn-outline-secondary")">
+               class="btn @(Model.StatusFilter == "merged" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Merged"]
             </a>
             <a asp-action="AdminList" asp-route-filter="deleted" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "deleted" ? "btn-secondary" : "btn-outline-secondary")">
+               class="btn @(Model.StatusFilter == "deleted" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Deleted"]
             </a>
         </div>
-        @* Cross-cutting data-quality filter — orthogonal to status (an Active user can still be missing name fields). *@
-        <a asp-action="AdminList" asp-route-filter="missingname" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-           class="btn @(Model.StatusFilter == "missingname" ? "btn-warning" : "btn-outline-warning")">
-            @Localizer["AdminHumans_MissingName"]
-        </a>
     </div>
 </div>
 

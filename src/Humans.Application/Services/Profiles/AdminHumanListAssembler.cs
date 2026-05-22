@@ -58,8 +58,9 @@ public static class AdminHumanListAssembler
         !u.IsApproved ? MembershipStatusLabels.PendingApproval :
         MembershipStatusLabels.Active;
 
-    // Status filters reuse StatusLabel so the filter and the badge can never drift. "missingname" is the one
-    // cross-cutting filter — orthogonal to status (an Active user can still be missing required name fields).
+    // Status filters reuse StatusLabel so the filter and the badge can never drift. "hasname" is the one
+    // cross-cutting filter — orthogonal to status; with every account now carrying a profile it is the
+    // meaningful "active" signal (a named, usable account), which is why the UI sits it next to Active.
     private static Func<UserInfo, bool>? FilterPredicate(string? statusFilter) =>
         statusFilter?.ToLowerInvariant() switch
         {
@@ -69,7 +70,7 @@ public static class AdminHumanListAssembler
             "deleting" => u => HasStatus(u, MembershipStatusLabels.PendingDeletion),
             "merged" => u => HasStatus(u, MembershipStatusLabels.Merged),
             "deleted" => u => HasStatus(u, MembershipStatusLabels.Deleted),
-            "missingname" => u => !u.HasRequiredNameFields,
+            "hasname" => u => u.HasRequiredNameFields,
             _ => null,
         };
 

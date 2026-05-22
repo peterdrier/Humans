@@ -1617,8 +1617,8 @@
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Eliminato</value>
   </data>
-  <data name="AdminHumans_MissingName" xml:space="preserve">
-    <value>Nome mancante</value>
+  <data name="AdminHumans_HasName" xml:space="preserve">
+    <value>Nome presente</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Membro: {0}</value>
