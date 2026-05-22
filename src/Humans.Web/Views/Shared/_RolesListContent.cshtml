@@ -1,3 +1,4 @@
+@using Humans.Domain.Constants
 @model Humans.Web.Models.AdminRoleAssignmentListViewModel
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -12,11 +13,14 @@
                class="btn @(string.IsNullOrEmpty(Model.RoleFilter) ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminRoles_All"]
             </a>
-            @foreach (var role in Humans.Domain.Constants.RoleNames.All)
+            @foreach (var role in RoleNames.All)
             {
+                var label = role != RoleNames.Admin && role.EndsWith(RoleNames.Admin, StringComparison.Ordinal)
+                    ? role[..^RoleNames.Admin.Length]
+                    : role;
                 <a asp-action="Roles" asp-route-role="@role" asp-route-showInactive="@Model.ShowInactive"
                    class="btn @(Model.RoleFilter == role ? "btn-primary" : "btn-outline-primary")">
-                    @(role != Humans.Domain.Constants.RoleNames.Admin && role.EndsWith("Admin", StringComparison.Ordinal) ? role[..^5] : role)
+                    @label
                 </a>
             }
         </div>
