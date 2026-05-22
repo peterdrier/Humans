@@ -63,7 +63,7 @@ public sealed class GoogleGroupMembershipClient(
                     {
                         memberships.Add(new GroupMembership(
                             MemberEmail: m.Email,
-                            ResourceName: $"groups/{groupGoogleId}/memberships/{m.Id}"));
+                            ResourceName: $"groups/{groupGoogleId}/memberships/{m.Email}"));
                     }
                 }
 
