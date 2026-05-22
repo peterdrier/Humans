@@ -34,7 +34,7 @@ public class CampaignsArchitectureTests
         paramTypes.Should().Contain(typeof(ICampaignRepository));
         paramTypes.Should().Contain(typeof(ITeamServiceRead));
         paramTypes.Should().Contain(typeof(IUserEmailService));
-        paramTypes.Should().Contain(typeof(IUserService));
+        paramTypes.Should().Contain(typeof(IUserServiceRead));
         paramTypes.Should().Contain(typeof(INotificationService));
         paramTypes.Should().Contain(typeof(ICommunicationPreferenceService));
         paramTypes.Should().Contain(typeof(IEmailService));

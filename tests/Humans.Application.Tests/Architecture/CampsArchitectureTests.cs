@@ -46,8 +46,8 @@ public class CampsArchitectureTests
         var ctor = typeof(CampService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "lead display names are resolved via IUserService cross-section (design-rules §6, §9); CampLead.User nav is stripped");
+        paramTypes.Should().Contain(typeof(IUserServiceRead),
+            because: "lead display names are resolved via IUserServiceRead cross-section (design-rules §6, §9); CampLead.User nav is stripped");
     }
 
     [HumansFact]

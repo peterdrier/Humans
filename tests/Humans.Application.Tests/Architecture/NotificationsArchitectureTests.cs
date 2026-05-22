@@ -59,13 +59,13 @@ public class NotificationsArchitectureTests
     [HumansFact]
     public void NotificationInboxService_TakesRepositoryAndUserService()
     {
-        // Display-name stitching runs through IUserService.GetByIdsAsync rather
+        // Display-name stitching runs through IUserServiceRead.GetUserInfosAsync rather
         // than a cross-domain .Include(nr => nr.User) chain (design-rules §6).
         var ctor = typeof(NotificationInboxService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(INotificationRepository));
-        paramTypes.Should().Contain(p => p.Name == "IUserService");
+        paramTypes.Should().Contain(p => p.Name == "IUserServiceRead");
     }
 
     // ── NotificationMeterProvider ────────────────────────────────────────────
@@ -88,7 +88,7 @@ public class NotificationsArchitectureTests
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
         paramTypeNames.Should().Contain("IProfileService");
-        paramTypeNames.Should().Contain("IUserService");
+        paramTypeNames.Should().Contain("IUserServiceRead");
         paramTypeNames.Should().Contain("IGoogleSyncService");
         paramTypeNames.Should().Contain("ITeamService");
         paramTypeNames.Should().Contain("ITicketSyncService");

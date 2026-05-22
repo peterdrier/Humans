@@ -37,8 +37,8 @@ public class TeamPageArchitectureTests
         paramTypes.Should().Contain(typeof(ITeamService));
         paramTypes.Should().Contain(typeof(ITeamResourceService));
         paramTypes.Should().Contain(typeof(IShiftManagementService));
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "user display-name lookups route through IUserService instead of a direct AspNetUsers query (design-rules §2c)");
+        paramTypes.Should().Contain(typeof(IUserServiceRead),
+            because: "user display-name lookups route through IUserServiceRead instead of a direct AspNetUsers query (design-rules §2c)");
     }
 
     [HumansFact]

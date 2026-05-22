@@ -69,8 +69,8 @@ public class MembershipCalculatorArchitectureTests
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
         ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IUserService),
-                because: "user reads (for DeletionRequestedAt in PartitionUsersAsync) go through IUserService per design-rules §9");
+            .Should().Contain(typeof(IUserServiceRead),
+                because: "user reads (for DeletionRequestedAt in PartitionUsersAsync) go through IUserServiceRead per design-rules §9");
     }
 
     [HumansFact]
