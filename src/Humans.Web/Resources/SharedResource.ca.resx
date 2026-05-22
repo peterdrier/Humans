@@ -1605,17 +1605,20 @@
   <data name="AdminHumans_PendingApproval" xml:space="preserve">
     <value>Pendent d'aprovació</value>
   </data>
-  <data name="AdminHumans_MissingConsents" xml:space="preserve">
-    <value>Consentiments pendents</value>
-  </data>
-  <data name="AdminHumans_IncompleteSignup" xml:space="preserve">
-    <value>Registre incomplet</value>
-  </data>
   <data name="AdminHumans_Suspended" xml:space="preserve">
     <value>Suspesos</value>
   </data>
   <data name="AdminHumans_Deleting" xml:space="preserve">
     <value>Pendent d'eliminació</value>
+  </data>
+  <data name="AdminHumans_Merged" xml:space="preserve">
+    <value>Fusionat</value>
+  </data>
+  <data name="AdminHumans_Deleted" xml:space="preserve">
+    <value>Eliminat</value>
+  </data>
+  <data name="AdminHumans_HasName" xml:space="preserve">
+    <value>Amb nom</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Membre: {0}</value>

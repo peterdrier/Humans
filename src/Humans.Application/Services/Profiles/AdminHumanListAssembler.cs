@@ -1,51 +1,33 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
 
 namespace Humans.Application.Services.Profiles;
 
 // Stateless helper for the admin humans-list endpoint. Caller pre-filters via searchUserIds (null when no search).
+// Every status bucket and the cross-cutting "missing name" filter are derived purely from UserInfo flat predicates.
+// The page intentionally has no Active/Missing-Consents split (consents were dropped from this view), so it no
+// longer depends on IMembershipCalculator/PartitionUsersAsync — the Board dashboard still owns the consent-aware
+// partition.
 public static class AdminHumanListAssembler
 {
-    public static async Task<IReadOnlyList<AdminHumanRow>> AssembleAsync(
+    public static IReadOnlyList<AdminHumanRow> Assemble(
         IReadOnlyCollection<UserInfo> allUsers,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,
         IReadOnlySet<Guid>? searchUserIds,
-        string? statusFilter,
-        IMembershipCalculator membershipCalculator,
-        CancellationToken ct = default)
+        string? statusFilter)
     {
         ArgumentNullException.ThrowIfNull(allUsers);
         ArgumentNullException.ThrowIfNull(notificationEmailsByUserId);
-        ArgumentNullException.ThrowIfNull(membershipCalculator);
 
-        var candidates = (searchUserIds is null
+        IEnumerable<UserInfo> candidates = searchUserIds is null
             ? allUsers
-            : allUsers.Where(u => searchUserIds.Contains(u.Id))).ToList();
+            : allUsers.Where(u => searchUserIds.Contains(u.Id));
 
-        var ids = candidates.Select(u => u.Id).ToList();
-        var partition = await membershipCalculator.PartitionUsersAsync(ids, ct);
-
-        IReadOnlySet<Guid>? statusIds = statusFilter switch
-        {
-            _ when string.Equals(statusFilter, "active", StringComparison.OrdinalIgnoreCase) => partition.Active,
-            _ when string.Equals(statusFilter, "missingconsents", StringComparison.OrdinalIgnoreCase) => partition.MissingConsents,
-            _ when string.Equals(statusFilter, "pending", StringComparison.OrdinalIgnoreCase) => partition.PendingApproval,
-            _ when string.Equals(statusFilter, "suspended", StringComparison.OrdinalIgnoreCase) => partition.Suspended,
-            _ when string.Equals(statusFilter, "incomplete", StringComparison.OrdinalIgnoreCase) => partition.IncompleteSignup,
-            _ when string.Equals(statusFilter, "deleting", StringComparison.OrdinalIgnoreCase) => partition.PendingDeletion,
-            _ => null,
-        };
-
-        IEnumerable<UserInfo> rows = statusIds is null
-            ? candidates
-            : candidates.Where(u => statusIds.Contains(u.Id));
+        var predicate = FilterPredicate(statusFilter);
+        var rows = predicate is null ? candidates : candidates.Where(predicate);
 
         return rows.Select(u =>
         {
-            var hasProfile = u.Profile is not null;
-            var isApproved = u.Profile?.IsApproved ?? false;
-
             var email = notificationEmailsByUserId.TryGetValue(u.Id, out var primary)
                 ? primary
                 : u.Email ?? string.Empty;
@@ -57,15 +39,41 @@ public static class AdminHumanListAssembler
                 u.ProfilePictureUrl,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),
-                hasProfile,
-                isApproved,
-                partition.PendingDeletion.Contains(u.Id) ? MembershipStatusLabels.PendingDeletion :
-                partition.Suspended.Contains(u.Id) ? MembershipStatusLabels.Suspended :
-                partition.PendingApproval.Contains(u.Id) ? MembershipStatusLabels.PendingApproval :
-                partition.MissingConsents.Contains(u.Id) ? MembershipStatusLabels.MissingConsents :
-                partition.Active.Contains(u.Id) ? MembershipStatusLabels.Active :
-                partition.IncompleteSignup.Contains(u.Id) ? MembershipStatusLabels.IncompleteSignup :
-                "Unknown");
+                u.HasProfile,
+                u.IsApproved,
+                StatusLabel(u));
         }).ToList();
     }
+
+    // Mutually-exclusive status label, in precedence order. Tombstones first (terminal: a merged/deleted row
+    // must not also read as Suspended/Pending), then the lifecycle states. Genuine no-profile or rejected rows
+    // get an empty label (no badge) — they surface via the "missing name" filter, not a status bucket.
+    internal static string StatusLabel(UserInfo u) =>
+        u.IsMerged ? MembershipStatusLabels.Merged :
+        u.IsTombstone ? MembershipStatusLabels.Deleted :
+        u.IsDeletionPending ? MembershipStatusLabels.PendingDeletion :
+        u.IsSuspended ? MembershipStatusLabels.Suspended :
+        !u.HasProfile ? string.Empty :
+        !u.IsActive ? string.Empty :
+        !u.IsApproved ? MembershipStatusLabels.PendingApproval :
+        MembershipStatusLabels.Active;
+
+    // Status filters reuse StatusLabel so the filter and the badge can never drift. "hasname" is the one
+    // cross-cutting filter — orthogonal to status; with every account now carrying a profile it is the
+    // meaningful "active" signal (a named, usable account), which is why the UI sits it next to Active.
+    private static Func<UserInfo, bool>? FilterPredicate(string? statusFilter) =>
+        statusFilter?.ToLowerInvariant() switch
+        {
+            "active" => u => HasStatus(u, MembershipStatusLabels.Active),
+            "pending" => u => HasStatus(u, MembershipStatusLabels.PendingApproval),
+            "suspended" => u => HasStatus(u, MembershipStatusLabels.Suspended),
+            "deleting" => u => HasStatus(u, MembershipStatusLabels.PendingDeletion),
+            "merged" => u => HasStatus(u, MembershipStatusLabels.Merged),
+            "deleted" => u => HasStatus(u, MembershipStatusLabels.Deleted),
+            "hasname" => u => u.HasRequiredNameFields,
+            _ => null,
+        };
+
+    private static bool HasStatus(UserInfo u, string label) =>
+        string.Equals(StatusLabel(u), label, StringComparison.Ordinal);
 }

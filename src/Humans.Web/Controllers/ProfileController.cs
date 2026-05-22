@@ -106,7 +106,7 @@ public class ProfileController(
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
 
-    // Admin humans list: bit-flag PersonSearchFields filter + status partition + projection.
+    // Admin humans list: bit-flag PersonSearchFields filter + UserInfo-derived status/filter + projection.
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
         string? search, string? statusFilter, CancellationToken ct)
     {
@@ -135,13 +135,11 @@ public class ProfileController(
                 .ToHashSet();
         }
 
-        return await AdminHumanListAssembler.AssembleAsync(
+        return AdminHumanListAssembler.Assemble(
             allUsers,
             notificationEmails,
             searchUserIds,
-            statusFilter,
-            membershipCalculator,
-            ct);
+            statusFilter);
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────

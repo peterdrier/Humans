@@ -15,7 +15,7 @@
 
 ## Overview
 
-Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()` and used by the Board dashboard, Admin /Humans filters, and Volunteers team sync.
+Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()` and used by the Board dashboard and Volunteers team sync. (The Admin /Humans list no longer uses this partition — it derives its own status buckets directly from `UserInfo`; see [Shared Logic](#shared-logic).)
 
 ## The 6 Buckets
 
@@ -48,11 +48,12 @@ Pending Deletion → (30 days) → Deleted
 
 ## Shared Logic
 
-`IMembershipCalculator.PartitionUsersAsync(userIds)` is the single source of truth. Consumers:
+`IMembershipCalculator.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
 
 - **Board dashboard** — shows count per category
-- **Admin /Humans page** — filters by category, shows status badge per human
 - **SystemTeamSyncJob** — Volunteers team eligibility = `partition.Active`
+
+The **Admin /Humans list** does **not** use this partition. It derives its own status buckets directly from `UserInfo` flat predicates (`AdminHumanListAssembler`) — no consent lookup, so there is no Active/Missing-Consents split. It adds the tombstone buckets **Merged** (`MergedAt`) and **Deleted** (`IsTombstone`) plus a cross-cutting **Has Name** filter (`HasRequiredNameFields`) — the meaningful "active" signal now that every account carries a profile.
 
 ## Consent Check
 

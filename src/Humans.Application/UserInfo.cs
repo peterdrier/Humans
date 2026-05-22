@@ -192,6 +192,9 @@ public sealed record UserInfo(
     /// <summary>Deletion request pending — mirrors <see cref="User.IsDeletionPending"/>.</summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
+    /// <summary>Account was merged into another account — the row is a merge-source tombstone.</summary>
+    public bool IsMerged => MergedAt is not null;
+
     /// <summary>
     /// Sentinel <see cref="DisplayName"/> value written by
     /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
