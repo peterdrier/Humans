@@ -42,7 +42,7 @@ public sealed class DevPersonaSeeder(
     IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
     ISystemTeamSync systemTeamSync,
-    IUserService userService,
+    IUserServiceRead userService,
     ICampService campService,
     ICampRoleService campRoleService,
     IClock clock,

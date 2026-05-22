@@ -19,7 +19,7 @@ namespace Humans.Application.Services.Budget;
 public sealed class BudgetService(
     IBudgetRepository repository,
     ITeamService teamService,
-    IUserService userService,
+    IUserServiceRead userService,
     IClock clock,
     ILogger<BudgetService> logger) : IBudgetService, IUserDataContributor
 {

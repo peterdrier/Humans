@@ -10,10 +10,10 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// MailerLite rejects opted-out addresses, so they never belong in any group. Humans
 /// with no Marketing preference (null) or who opted in (false) are kept.
 /// </summary>
-public abstract class MailerAudienceBase(IUserService users) : IMailerAudience
+public abstract class MailerAudienceBase(IUserServiceRead users) : IMailerAudience
 {
     /// <summary>User reader, shared with subclasses that also enumerate users.</summary>
-    protected IUserService Users { get; } = users;
+    protected IUserServiceRead Users { get; } = users;
 
     public abstract string Key { get; }
     public abstract string DisplayName { get; }

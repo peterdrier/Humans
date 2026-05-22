@@ -10,7 +10,7 @@ public sealed class TeamPageService(
     ITeamService teamService,
     ITeamResourceService teamResourceService,
     IShiftManagementService shiftManagementService,
-    IUserService userService) : ITeamPageService
+    IUserServiceRead userService) : ITeamPageService
 {
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,

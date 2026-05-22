@@ -8,7 +8,7 @@ namespace Humans.Web.Models.CampAdmin;
 public sealed record CampCsvExport(byte[] Content, string ContentType, string FileName);
 
 public sealed class CampCsvExportBuilder(
-    ICampService campService, ICampRoleService campRoleService, IUserService userService)
+    ICampService campService, ICampRoleService campRoleService, IUserServiceRead userService)
 {
     public async Task<CampCsvExport> BuildAsync()
     {

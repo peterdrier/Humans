@@ -20,7 +20,7 @@ public sealed record ShiftAdminPageRequest(
 public sealed class ShiftAdminPageBuilder(
     IShiftManagementService shiftManagement,
     IShiftSignupService signupService,
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamService teamService)
 {
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request)

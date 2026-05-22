@@ -16,7 +16,7 @@ namespace Humans.Application.Services.AuditLog;
 /// </summary>
 public sealed class AuditLogService(
     IAuditLogRepository repo,
-    IUserService userService,
+    IUserServiceRead userService,
     IClock clock,
     ILogger<AuditLogService> logger) : IAuditLogService, IUserDataContributor
 {

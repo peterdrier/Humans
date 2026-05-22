@@ -34,7 +34,7 @@ namespace Humans.Infrastructure.Jobs;
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SuspendNonCompliantMembersJob(
-    IUserService userService,
+    IUserServiceRead userService,
     IProfileService profileService,
     ITeamService teamService,
     IMembershipCalculator membershipCalculator,

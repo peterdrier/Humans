@@ -14,14 +14,14 @@ using System.Text.Json;
 
 namespace Humans.Application.Services.CityPlanning;
 
-/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampService/ITeamServiceRead/IUserService.</summary>
+/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampService/ITeamServiceRead/IUserServiceRead.</summary>
 public sealed class CityPlanningService(
     ICityPlanningRepository repo,
     IClock clock,
     IOptions<CityPlanningOptions> options,
     ICampService campService,
     ITeamServiceRead teamService,
-    IUserService userService) : ICityPlanningService
+    IUserServiceRead userService) : ICityPlanningService
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 

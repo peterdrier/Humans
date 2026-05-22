@@ -24,7 +24,7 @@ public sealed class TicketTransferService(
     ITicketRepository ticketRepo,
     ITicketVendorService vendor,
     ITicketQueryService ticketQueryService,
-    IUserService userService,
+    IUserServiceRead userService,
     IUserEmailService userEmailService,
     IProfileService profileService,
     IAuditLogService auditLog,

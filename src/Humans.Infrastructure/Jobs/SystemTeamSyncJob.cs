@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SystemTeamSyncJob(
     ITeamService teamService,
-    IUserService userService,
+    IUserServiceRead userService,
     IUserEmailService userEmailService,
     ICampRepository campRepository,
     IServiceProvider serviceProvider,

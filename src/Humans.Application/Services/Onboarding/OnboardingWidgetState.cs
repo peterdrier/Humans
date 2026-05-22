@@ -8,7 +8,7 @@ using Humans.Domain.Constants;
 namespace Humans.Application.Services.Onboarding;
 
 public class OnboardingWidgetState(
-    IUserService users,
+    IUserServiceRead users,
     IShiftSignupService signups,
     IMembershipCalculator membership,
     IShiftManagementService shiftMgmt,

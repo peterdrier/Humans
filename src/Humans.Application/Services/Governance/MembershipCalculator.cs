@@ -12,7 +12,7 @@ namespace Humans.Application.Services.Governance;
 
 public sealed class MembershipCalculator(
     IMembershipQuery membershipQuery,
-    IUserService userService,
+    IUserServiceRead userService,
     ILegalDocumentSyncService legalDocumentSyncService,
     IServiceProvider serviceProvider,
     IClock clock) : IMembershipCalculator

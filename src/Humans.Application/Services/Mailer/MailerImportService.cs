@@ -12,7 +12,7 @@ namespace Humans.Application.Services.Mailer;
 public sealed class MailerImportService(
     IMailerLiteService ml,
     IUserEmailService userEmails,
-    IUserService users,
+    IUserServiceRead users,
     IAccountProvisioningService provisioning,
     ICommunicationPreferenceService prefs,
     IAuditLogService audit,

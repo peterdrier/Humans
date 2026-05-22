@@ -23,7 +23,7 @@ namespace Humans.Web.Authorization;
 public class RoleAssignmentClaimsTransformation(
     IRoleAssignmentRepository roleAssignments,
     ITeamService teams,
-    IUserService userService,
+    IUserServiceRead userService,
     IClock clock,
     IMemoryCache cache) : IClaimsTransformation
 {

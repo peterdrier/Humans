@@ -34,7 +34,7 @@ namespace Humans.Application.Services.Notifications;
 /// </remarks>
 public sealed class NotificationMeterProvider(
     IProfileService profileService,
-    IUserService userService,
+    IUserServiceRead userService,
     IGoogleSyncService googleSyncService,
     ITeamService teamService,
     ITicketSyncService ticketSyncService,

@@ -43,7 +43,7 @@ public static class ShiftVolunteerSearchBuilder
         string? query,
         Func<Task<EventSettings?>> getActiveEventSettings,
         bool canViewMedical,
-        IUserService userService,
+        IUserServiceRead userService,
         IShiftView shiftView,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
@@ -77,7 +77,7 @@ public static class ShiftVolunteerSearchBuilder
         EventSettings eventSettings,
         EventSettings? activeEvent,
         bool canViewMedical,
-        IUserService userService,
+        IUserServiceRead userService,
         IShiftView shiftView,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
