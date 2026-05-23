@@ -6,6 +6,7 @@ using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupS
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 using CantinaRosterServiceImpl = Humans.Application.Services.Cantina.CantinaRosterService;
+using CantinaAccessServiceImpl = Humans.Application.Services.Cantina.CantinaAccessService;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -61,6 +62,11 @@ internal static class ShiftsSectionExtensions
         // /Cantina/Roster page (feature #36 — docs/features/cantina/daily-roster.md).
         // No repository of its own; supporting query lives on IShiftManagementRepository.
         services.AddScoped<ICantinaRosterService, CantinaRosterServiceImpl>();
+
+        // Cantina access gate — OR-chain of (Admin | NoInfoAdmin | VolunteerCoordinator)
+        // OR active membership on any team whose Name contains "Cantina". Reused by the
+        // CantinaController HTTP 403 gate and by the nav-link visibility check (Task 7).
+        services.AddScoped<ICantinaAccessService, CantinaAccessServiceImpl>();
 
         return services;
     }
