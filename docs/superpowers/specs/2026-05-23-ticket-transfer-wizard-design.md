@@ -35,6 +35,8 @@ search code is forked.
 - One-page Sender wizard: pick ticket → search recipient → confirm.
 - Email the Sender + the ticket team on request; email the Sender + Receiver on the team's decision.
 - Keep the admin queue + detail page, retooled for the manual workflow.
+- Make the admission-stub a reusable `<vc:ticket-stub>` shown in the wizard, on `/Profile/Me`, and on the
+  homepage, with pending-transfer state visible on the ticket itself.
 
 ## Non-Goals
 
@@ -123,6 +125,39 @@ the `Admin` bit (fuzzy email search) remains admin-only and untouched.
 `memory/architecture/person-search.md` is updated in the same commit: document the `allow-email`
 param in the inline-picker row and add the exact-match-only invariant.
 
+## Reusable ticket stub + pending visibility
+
+The admission-stub graphic from step A becomes a shared ViewComponent so it renders identically
+everywhere and pending-transfer state lives on the ticket itself.
+
+`<vc:ticket-stub>` — renders one held ticket as an admission stub: event label, attendee name,
+attendee email, serial (`VendorTicketId`). States:
+
+- **Pending transfer** — a diagonal "Transfer pending" stamp + muted body. Driven by the same
+  pending-outgoing-transfer data the dashboard already computes.
+- **Void** — muted / struck styling (matches today's holdings card).
+- **Selectable** — an optional mode (radio) used by wizard step A.
+
+Backing data: a `TicketStubInfo` projection (attendee name, email, `VendorTicketId`, status,
+`HasPendingTransfer`, `PendingTransferRequestId`) produced by `ITicketQueryService` — this is the
+union of what `GetUserTicketHoldingsAsync` and `GetMyAttendeesAsync` already return, extended with
+email + serial + the pending flag. The event label is sourced from the active event
+(`IShiftManagementService.GetActiveAsync`); see Open items.
+
+**Placements (all in this PR):**
+
+1. **Wizard step A** — selectable stubs.
+2. **`/Profile/Me`** — replace the plain text list inside the existing `<vc:ticket-holdings>` "Tickets"
+   card with stubs (card chrome unchanged; multiples stack).
+3. **Homepage** (`Home/Dashboard.cshtml`):
+   - **Header** — a compact stub beside the "Welcome, {name} 👋" greeting **when the user holds a
+     ticket** (falls back to the plain header otherwise). Sits beside the header, does not replace it.
+   - **Tickets section** (lower) — the existing held-ticket rows render as stubs (with pending stamp +
+     Sender Cancel) above the single "Transfer a ticket?" link.
+
+Pending-transfer visibility (requirement #1) is satisfied by the stamp wherever the stub renders, plus
+the existing dashboard badge + Cancel control.
+
 ## Data model & migration
 
 `TicketTransferRequest` entity — **remove**: `VendorResult`, `VendorMessage`, `NewVendorTicketId`,
@@ -136,7 +171,9 @@ everything else.
 (`vendor_result`, `vendor_message`, `new_vendor_ticket_id`, `vendor_steps_json`). Generated via
 `dotnet ef`, never hand-edited.
 
-`MyAttendeeRowDto` — add `AttendeeEmail` and `VendorTicketId` (for the stub cards + confirm reference).
+`MyAttendeeRowDto` and `UserTicketHoldingRow` — add `AttendeeEmail` and `VendorTicketId` (for the stub
+cards + confirm reference); holdings rows also surface `HasPendingTransfer` / `PendingTransferRequestId`
+(or a shared `TicketStubInfo` projection covers both).
 
 ## Service changes — `TicketTransferService`
 
@@ -194,10 +231,11 @@ request that may be cancelled.
 
 ## Dashboard — `Home/Dashboard.cshtml`
 
-Replace the per-attendee "Send" / "Ticket Transfers coming soon…" controls with a single
-**"Transfer a ticket?"** link at the bottom of the held-tickets list → `/Tickets/Transfers`. Keep the
-held-ticket rows, the pending-transfer badge, and the Sender Cancel button. Drop the
-`canSendTicketTransfer` per-row gating.
+- **Header**: when the user holds a ticket, render a compact `<vc:ticket-stub>` beside the
+  "Welcome, {name} 👋" greeting (plain header otherwise).
+- **Tickets section**: held tickets render as `<vc:ticket-stub>` (pending stamp + Sender Cancel), with a
+  single **"Transfer a ticket?"** link → `/Tickets/Transfers` replacing the per-attendee "Send" /
+  "Ticket Transfers coming soon…" controls. Drop the `canSendTicketTransfer` per-row gating.
 
 ## Docs
 
@@ -218,6 +256,8 @@ held-ticket rows, the pending-transfer badge, and the Sender Cancel button. Drop
   flag off).
 - Update any architecture/interface tests that referenced the removed members or the
   `ITicketVendorService` dependency on `TicketTransferService`.
+- `<vc:ticket-stub>` rendering: pending stamp shown when a ticket has a pending outgoing transfer; void
+  styling; empty/no-ticket case on the homepage header.
 
 ## File change map (indicative)
 
@@ -238,16 +278,26 @@ held-ticket rows, the pending-transfer badge, and the Sender Cancel button. Drop
 - `src/Humans.Web/Controllers/ProfileApiController.cs`
 - `src/Humans.Web/ViewComponents/HumanSearchViewComponent.cs` + `Models/HumanSearchPickerViewModel.cs` + `Views/Shared/Components/HumanSearch/Default.cshtml`
 - `src/Humans.Web/Views/TicketTransferAdmin/Detail.cshtml` + `Index.cshtml`
-- `src/Humans.Web/Views/Home/Dashboard.cshtml`
+- `src/Humans.Web/Views/Home/Dashboard.cshtml` (header stub + tickets section)
+- `src/Humans.Web/ViewComponents/TicketHoldingsViewComponent.cs` + its view (render stubs)
+- `src/Humans.Web/Views/Profile/Index.cshtml` (ticket card → stubs)
+- `src/Humans.Application/Services/Tickets/TicketQueryService.cs` (+ caching wrapper) — `TicketStubInfo` projection
+- `src/Humans.Web/Views/Shared/Components/Human/*` is untouched; `<vc:human-search>` files as above
 - `src/Humans.Domain/Constants/TicketConstants.cs` (tickets@ constant)
 - migration under `src/Humans.Infrastructure/Migrations`
 - docs as listed above
 
 **Add**
 - `src/Humans.Web/Views/TicketTransfer/Index.cshtml` (the wizard)
+- `src/Humans.Web/ViewComponents/TicketStubViewComponent.cs` + `Views/Shared/Components/TicketStub/Default.cshtml`
 
 ## Open items for the implementation plan
 
 - Exact wording + structure of the four email templates (subject + body, es/en).
 - Whether the confirmation DTO/method lives on `ITicketTransferService` or a thinner read path.
 - Localization keys for the new wizard + dashboard link.
+- Source of the event label on the stub ("Elsewhere 2026") — active event name/year from
+  `IShiftManagementService.GetActiveAsync`, or a constant.
+- Homepage: confirm the header stub and the lower tickets-section stubs don't feel duplicative on the
+  same page (e.g. header stub only when exactly one ticket, or it's purely a flourish) — settle against
+  the rendered page.
