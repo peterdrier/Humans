@@ -1499,6 +1499,7 @@
   <data name="Cantina_Roster_Next" xml:space="preserve"><value>Next day</value></data>
   <data name="Cantina_Roster_DayPickerLabel" xml:space="preserve"><value>Day</value></data>
   <data name="Cantina_Roster_Go" xml:space="preserve"><value>Go</value></data>
+  <data name="Nav_Cantina" xml:space="preserve"><value>Cantina</value></data>
 
   <!-- Notification Inbox -->
   <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>

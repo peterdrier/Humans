@@ -1,3 +1,4 @@
+@inject Humans.Application.Interfaces.Cantina.ICantinaAccessService CantinaAccess
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -119,6 +120,12 @@
                         <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="Expenses" asp-action="Coordinator">Coordinator Queue</a>
                         </li>
+                        @if (await CantinaAccess.CanViewRosterAsync(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Cantina" asp-action="Roster">@Localizer["Nav_Cantina"]</a>
+                            </li>
+                        }
                         <li class="nav-item" authorize-policy="FinanceAdminOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Expenses" asp-action="Review">Expense Review</a>
                         </li>
