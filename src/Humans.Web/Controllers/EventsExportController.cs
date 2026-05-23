@@ -20,8 +20,8 @@ namespace Humans.Web.Controllers;
 public class EventsExportController(
     IEventService guide,
     ICampService camps,
-    IUserService users,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserServiceRead users,
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public IActionResult Index() => View();

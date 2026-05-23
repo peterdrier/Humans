@@ -21,9 +21,9 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsModerationController(
     IEventService guide,
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailService emailService,
-    IUserService users,
+    IUserServiceRead users,
     ICampService camps,
     ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
 {
