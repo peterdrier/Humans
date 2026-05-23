@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -18,7 +17,6 @@ namespace Humans.Application.Interfaces.Repositories;
 /// but never cross-domain navs — those are FK-only after the migration.
 /// See <c>docs/architecture/design-rules.md</c> §3 for the canonical shape.
 /// </remarks>
-[SurfaceBudget(28)]
 [Section("Governance")]
 public interface IApplicationRepository : IRepository
 {

@@ -10,7 +10,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;

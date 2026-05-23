@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
@@ -19,7 +17,7 @@ namespace Humans.Web.Controllers;
 
 [Route("Google")]
 public class GoogleController(
-    IUserService userService,
+    IUserServiceRead userService,
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
     IAuditViewerService auditViewer,
@@ -36,11 +34,11 @@ public class GoogleController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings(
         [FromServices] ISyncSettingsService syncSettingsService,
-        [FromServices] IUserService userService)
+        [FromServices] IUserServiceRead userService)
     {
         var settings = await syncSettingsService.GetAllAsync();
 
-        // In-memory join: resolve UpdatedByUser display names via IUserService
+        // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
         // rather than an EF .Include across the section boundary (design-rules §6).
         var updatedByUserIds = settings
             .Select(s => s.UpdatedByUserId)
@@ -623,7 +621,7 @@ public class GoogleController(
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] IUserService userService,
+        [FromServices] IUserServiceRead userService,
         [FromServices] ITeamServiceRead teamService)
     {
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
@@ -705,10 +703,7 @@ public class GoogleController(
         CancellationToken ct)
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
-        var sorted = violations
-            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        return View(sorted);
+        return View(violations);
     }
 
     // --- Index ---

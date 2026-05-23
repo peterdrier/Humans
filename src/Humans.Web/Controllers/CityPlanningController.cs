@@ -19,7 +19,7 @@ public class CityPlanningController(
     ICityPlanningService cityPlanningService,
     ICampService campService,
     IContainerService containerService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)
 {
     private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)

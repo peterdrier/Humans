@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("Teams/{slug}/Shifts")]
 public class ShiftAdminController(
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
     IShiftView shiftView,
@@ -31,7 +31,7 @@ public class ShiftAdminController(
     IRotaCoordinatorMessageService rotaMessenger,
     ILogger<ShiftAdminController> logger) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly ITeamService _teamService = teamService;
+    private readonly ITeamServiceRead _teamService = teamService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false)
@@ -52,7 +52,7 @@ public class ShiftAdminController(
             return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
         }
 
-        var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
+        var teamEntity = await _teamService.GetTeamAsync(team.Id);
         if (teamEntity is null) return NotFound();
 
         var model = await pageBuilder.BuildAsync(new ShiftAdminPageRequest(

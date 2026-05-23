@@ -68,6 +68,10 @@
                             <input type="number" class="form-control slot-count-input" name="SlotCount" value="@role.SlotCount" min="1" required
                                    data-role-id="@role.Id" />
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Est. hours/yr</label>
+                            <input type="number" class="form-control" name="EstimatedHours" value="@role.EstimatedHours" min="0" />
+                        </div>
                         <div class="col-md-1">
                             <label class="form-label">Sort</label>
                             <input type="number" class="form-control" name="SortOrder" value="@role.SortOrder" />
@@ -243,6 +247,10 @@ else
                     <label class="form-label">Slot Count</label>
                     <input type="number" class="form-control slot-count-input" name="SlotCount" value="1" min="1" required
                            data-role-id="new" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Est. hours/yr</label>
+                    <input type="number" class="form-control" name="EstimatedHours" min="0" />
                 </div>
                 <div class="col-md-1">
                     <label class="form-label">Sort</label>

@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.Teams;
@@ -8,6 +9,7 @@ namespace Humans.Application.Interfaces.Teams;
 /// projections, no EF entities. See
 /// <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
+[SurfaceBudget(4)]
 public interface ITeamServiceRead
 {
     /// <summary>

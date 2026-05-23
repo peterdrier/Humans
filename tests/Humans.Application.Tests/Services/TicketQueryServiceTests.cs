@@ -11,7 +11,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Tickets;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 

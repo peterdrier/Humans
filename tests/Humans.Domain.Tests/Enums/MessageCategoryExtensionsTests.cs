@@ -1,4 +1,3 @@
-using System.Linq;
 using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Xunit;

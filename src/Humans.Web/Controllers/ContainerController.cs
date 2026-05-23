@@ -13,11 +13,11 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("Camp/{slug}/Containers")]
 public class ContainerController(
-    ICampService campService,
+    ICampServiceRead campService,
     IContainerService containerService,
     ICityPlanningService cityPlanningService,
     IAuthorizationService authorizationService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<ContainerController> logger) : HumansControllerBase(userService)
 {
     private async Task<bool> AuthorizeAsync(ContainerAuthorizationTarget target, ContainerOperationRequirement requirement) =>
@@ -47,17 +47,14 @@ public class ContainerController(
     }
 
     private static ContainerIndexViewModel BuildIndexViewModel(
-        CampLookup camp,
+        CampInfo camp,
         int currentYear,
         bool isPlacementOpen,
         bool canPlace,
         IReadOnlyList<ContainerDto> containers,
         IReadOnlyList<ContainerPlacementDto> placements)
     {
-        var displayName = camp.Seasons
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault()?.Name
-            ?? camp.Slug;
+        var displayName = camp.Active?.Name ?? camp.Slug;
         var containerIds = containers.Select(c => c.Id).ToHashSet();
         var placementsByContainerId = placements
             .Where(p => containerIds.Contains(p.ContainerId))

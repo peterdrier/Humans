@@ -234,7 +234,7 @@ public sealed class NotificationInboxService(
             return new Dictionary<Guid, string>();
 
         var users = await userService.GetUserInfosAsync(userIds, ct);
-        return users.ToDictionary(kv => kv.Key, kv => kv.Value.DisplayName);
+        return users.ToDictionary(kv => kv.Key, kv => kv.Value.BurnerName);
     }
 
     private static NotificationRowDto MapToRow(

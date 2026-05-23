@@ -41,11 +41,7 @@
                     @foreach (var v in Model)
                     {
                         <tr>
-                            <td>
-                                <a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@v.UserId">
-                                    @(string.IsNullOrWhiteSpace(v.DisplayName) ? v.UserId.ToString() : v.DisplayName)
-                                </a>
-                            </td>
+                            <td><vc:human user-id="@v.UserId" link="Admin" /></td>
                             <td>
                                 @if (v.HasMultipleGoogle)
                                 {

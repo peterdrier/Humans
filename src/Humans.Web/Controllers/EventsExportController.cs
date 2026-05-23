@@ -19,9 +19,9 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsExportController(
     IEventService guide,
-    ICampService camps,
-    IUserService users,
-    IUserService userService) : HumansControllerBase(userService)
+    ICampServiceRead camps,
+    IUserServiceRead users,
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public IActionResult Index() => View();
@@ -43,7 +43,7 @@ public class EventsExportController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var seasonName = camp?.Active?.Name;
             var campName = seasonName ?? camp?.Slug ?? "";
             var venueName = e.EventVenue?.Name ?? "";
             var submitterName = "";
@@ -94,7 +94,7 @@ public class EventsExportController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var seasonName = camp?.Active?.Name;
             var campName = seasonName ?? camp?.Slug;
             var venueName = e.EventVenue?.Name;
 

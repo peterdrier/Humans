@@ -46,6 +46,17 @@ body:
       description: The shape of the change. Leave open ends for the implementer to decide where genuine.
 
   - type: textarea
+    id: existing-surface
+    attributes:
+      label: Existing surface to reuse
+      description: Existing services, views/components, DTOs/view models, helpers, routes, or tests the implementer should check before adding new surface.
+      placeholder: |
+        - Services:
+        - Views/components:
+        - DTOs/view models:
+        - Tests/helpers:
+
+  - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
@@ -61,3 +72,7 @@ body:
     attributes:
       label: Out of scope / non-goals
       description: Anything intentionally NOT being done here. Helps prevent scope creep.
+      placeholder: |
+        - No new interface methods unless explicitly approved.
+        - No new service/repository unless listed above.
+        - No new route/page unless listed in acceptance criteria.

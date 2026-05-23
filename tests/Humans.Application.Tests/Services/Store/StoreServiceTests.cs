@@ -84,7 +84,9 @@ public class StoreServiceTests
                 MakeProduct(name: "Blanket")
             ]);
         _campService.GetCampSeasonByIdAsync(order.CampSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(order.CampSeasonId, Guid.NewGuid(), 2026, "Camp Test", null));
+            .Returns(new CampSeasonInfo(order.CampSeasonId, Guid.NewGuid(), string.Empty, 2026, null,
+                "Camp Test", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true);

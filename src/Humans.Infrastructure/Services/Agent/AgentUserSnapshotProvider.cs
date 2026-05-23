@@ -16,7 +16,7 @@ namespace Humans.Infrastructure.Services.Agent;
 public sealed class AgentUserSnapshotProvider(
     IUserServiceRead users,
     IRoleAssignmentService roles,
-    ITeamService teams,
+    ITeamServiceRead teams,
     IConsentServiceRead consents,
     IFeedbackService feedback,
     ITicketQueryService tickets,
@@ -29,7 +29,12 @@ public sealed class AgentUserSnapshotProvider(
         var user = await users.GetUserInfoAsync(userId, cancellationToken);
         var profile = user?.Profile;
         var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
-        var teamMemberships = await teams.GetActiveTeamMembershipsForUserAsync(userId, cancellationToken);
+        var teamMemberships = (await teams.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
+            .Where(x => x.Membership is not null)
+            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+            .ToList();
         var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
         var openFeedback = await feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
         var openTickets = await tickets.GetOpenTicketIdsForUserAsync(userId, cancellationToken);

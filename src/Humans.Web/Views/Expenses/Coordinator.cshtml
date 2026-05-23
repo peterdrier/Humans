@@ -18,21 +18,7 @@
     <h1>Coordinator Queue</h1>
 </div>
 
-@if (TempData["Success"] is string success)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @success
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @error
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
+<vc:temp-data-alerts />
 
 @if (!Model.Reports.Any())
 {

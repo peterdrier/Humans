@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 public class AdminMergeController(
     IUserService userService,
     IAccountMergeService mergeService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ILogger<AdminMergeController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
@@ -70,10 +70,9 @@ public class AdminMergeController(
     private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(AccountMergeUserSnapshot user)
     {
         var profile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
-        var teams = await teamService.GetUserTeamsAsync(user.Id);
-        var activeTeamNames = teams
-            .Where(m => m.LeftAt is null)
-            .Select(m => m.Team?.Name ?? "Unknown")
+        var activeTeamNames = (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.Members.Any(m => m.UserId == user.Id))
+            .Select(t => t.Name)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

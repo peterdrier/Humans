@@ -871,7 +871,7 @@ public sealed class UserEmailService(
         var infos = await userService.GetAllUserInfosAsync(cancellationToken);
 
         var violations = new List<UserEmailFlagViolation>();
-        foreach (var info in infos)
+        foreach (var info in infos.OrderBy(i => i.BurnerName, StringComparer.OrdinalIgnoreCase))
         {
             if (info.UserEmails.Count == 0) continue;
 
@@ -888,7 +888,6 @@ public sealed class UserEmailService(
 
             violations.Add(new UserEmailFlagViolation(
                 info.Id,
-                info.BurnerName,
                 isGoogleCount,
                 verified.Count,
                 verifiedPrimaryCount,

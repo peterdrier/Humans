@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;

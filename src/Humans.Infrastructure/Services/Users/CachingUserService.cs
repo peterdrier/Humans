@@ -563,10 +563,12 @@ public sealed class CachingUserService(
 
     private static UserInfo WithUserFields(UserInfo current, User user)
     {
-#pragma warning disable CS0618 // DisplayName / ProfilePictureUrl are part of the cached legacy user-column mirror.
+#pragma warning disable CS0618 // User.DisplayName / ProfilePictureUrl are legacy user-column mirrors.
         return current with
         {
-            DisplayName = user.DisplayName,
+            BurnerName = ResolveBurnerName(user.DisplayName, current.Profile),
+            IsGdprAnonymized = string.Equals(
+                user.DisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
             PreferredLanguage = user.PreferredLanguage,
             FallbackPictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
@@ -588,6 +590,11 @@ public sealed class CachingUserService(
         };
 #pragma warning restore CS0618
     }
+
+    private static string ResolveBurnerName(string legacyDisplayName, ProfileInfo? profile) =>
+        profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
+            ? profile.BurnerName
+            : legacyDisplayName;
 
     // ==========================================================================
     // Inner delegation — every other IUserService method passes through and
@@ -654,7 +661,7 @@ public sealed class CachingUserService(
     /// <summary>
     /// Inverse of <see cref="UserInfo.Create"/> for the User-side columns —
     /// rebuilds the read-only fields the section consumers actually touch
-    /// (DisplayName, Email/UserEmails, ProfilePictureUrl, GoogleEmailStatus,
+    /// (BurnerName fallback, Email/UserEmails, ProfilePictureUrl, GoogleEmailStatus,
     /// and the rest of the User columns UserInfo carries) plus the full
     /// <see cref="User.UserEmails"/> collection. Identity-machinery fields
     /// (PasswordHash, SecurityStamp, lockout, phone) are not carried in
@@ -663,11 +670,13 @@ public sealed class CachingUserService(
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618 // DisplayName is the legacy column this rehydration mirrors.
+#pragma warning disable CS0618 // Rehydrated legacy User.DisplayName now carries the resolved BurnerName fallback.
         var user = new User
         {
             Id = info.Id,
-            DisplayName = info.DisplayName,
+            DisplayName = info.IsGdprAnonymized
+                ? UserInfo.GdprAnonymizedBurnerName
+                : info.BurnerName,
             PreferredLanguage = info.PreferredLanguage,
             ProfilePictureUrl = info.ProfilePictureUrl,
             CreatedAt = info.CreatedAt,

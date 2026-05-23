@@ -539,7 +539,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
-        user.DisplayName = UserInfo.GdprAnonymizedDisplayName;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;

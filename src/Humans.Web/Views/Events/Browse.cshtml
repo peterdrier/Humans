@@ -5,6 +5,16 @@
                      || !string.IsNullOrEmpty(Model.SearchQuery) || Model.FavouritesOnly;
 }
 
+@functions {
+    static string FormatDuration(int minutes)
+    {
+        var hours = minutes / 60;
+        var mins = minutes % 60;
+        if (hours == 0) return $"{mins}m";
+        return mins == 0 ? $"{hours}h" : $"{hours}h {mins}m";
+    }
+}
+
 <h2 class="mb-3">Browse Events</h2>
 
 @if (Model.TimeZoneId != null)
@@ -120,7 +130,7 @@ else
                     </div>
                     <div class="mt-1 small text-muted">
                         <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToString("HH:mm") — @item.StartAt.AddMinutes(item.DurationMinutes).ToString("HH:mm")
-                        (@item.DurationMinutes min)
+                        (@FormatDuration(item.DurationMinutes))
                         @if (item.CampName != null)
                         {
                             <text> &middot; <i class="fa-solid fa-campground me-1"></i>@item.CampName</text>

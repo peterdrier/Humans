@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;

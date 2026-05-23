@@ -55,10 +55,26 @@
     {
         var es = Model.EventSettings;
 
+        @* Prominent availability prompt — jumps to the calendar grid lower on the page so members find it before manually browsing shifts. *@
+        <div class="card border-primary mb-4">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-calendar-check fs-4 text-primary"></i>
+                    <span>@Localizer["Shifts_AvailabilityPromptText"]</span>
+                </div>
+                <a href="#availability-calendar" class="btn btn-primary">@Localizer["Shifts_SetAvailabilityCta"]</a>
+            </div>
+        </div>
+
         @if (Model.Upcoming.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_UpcomingShifts"]</h5></div>
+                <button class="card-header shifts-collapse-toggle d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-upcoming" aria-expanded="true" aria-controls="mine-upcoming">
+                    <span class="h5 mb-0">@Localizer["Shifts_UpcomingShifts"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-upcoming" class="collapse show">
                 <div class="card-body">
                     @{
                         // Group build/strike range signups by SignupBlockId, show individual signups separately
@@ -129,13 +145,19 @@
                         </div>
                     }
                 </div>
+                </div>
             </div>
         }
 
         @if (Model.Pending.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_PendingApproval"]</h5></div>
+                <button class="card-header shifts-collapse-toggle d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-pending" aria-expanded="true" aria-controls="mine-pending">
+                    <span class="h5 mb-0">@Localizer["Shifts_PendingApproval"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-pending" class="collapse show">
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -166,13 +188,19 @@
                         </table>
                     </div>
                 </div>
+                </div>
             </div>
         }
 
         @if (Model.Past.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_Past"]</h5></div>
+                <button class="card-header shifts-collapse-toggle collapsed d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-past" aria-expanded="false" aria-controls="mine-past">
+                    <span class="h5 mb-0">@Localizer["Shifts_Past"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-past" class="collapse">
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -197,6 +225,7 @@
                         </table>
                     </div>
                 </div>
+                </div>
             </div>
         }
 
@@ -217,7 +246,7 @@
             (Localizer["Shifts_Event"].Value, "bg-success", 0, es.EventEndOffset),
             (Localizer["Shifts_Strike"].Value, "bg-secondary", es.EventEndOffset + 1, es.StrikeEndOffset)
         };
-        <div class="card mb-4">
+        <div class="card mb-4" id="availability-calendar">
             <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_GeneralAvailability"]</h5></div>
             <div class="card-body">
                 <p class="text-muted small">@Localizer["Shifts_AvailabilityHelp"]</p>
@@ -292,6 +321,23 @@
         *@
     }
 </div>
+
+<style>
+    .shifts-collapse-toggle {
+        background: var(--bs-card-cap-bg);
+        border: 0;
+        cursor: pointer;
+    }
+
+    .shifts-collapse-toggle .collapse-icon {
+        transition: transform 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .shifts-collapse-toggle[aria-expanded="false"] .collapse-icon {
+        transform: rotate(-90deg);
+    }
+</style>
 
 <script>
 (function() {

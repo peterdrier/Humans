@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public abstract class HumansControllerBase(IUserService userService) : Controller
+public abstract class HumansControllerBase(IUserServiceRead userService) : Controller
 {
-    protected IUserService UserService => userService;
+    protected IUserServiceRead UserService => userService;
 
     protected Guid? GetCurrentUserId()
     {

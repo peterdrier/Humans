@@ -5,9 +5,9 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
@@ -46,6 +46,7 @@ public abstract class ServiceTestHarness : IDisposable
     {
         DbOptions = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         Db = new HumansDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);

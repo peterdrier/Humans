@@ -9,7 +9,6 @@ using Humans.Domain.Enums;
 using CampaignServiceImpl = Humans.Application.Services.Campaigns.CampaignService;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Tickets;

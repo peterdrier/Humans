@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Notifications;

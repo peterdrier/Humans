@@ -4424,6 +4424,12 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve">
     <value>Guardar disponibilidad</value>
   </data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve">
+    <value>Antes de buscar turnos, marca los días que estás disponible: los coordinadores lo usan para asignarte turnos.</value>
+  </data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve">
+    <value>Indica tu disponibilidad</value>
+  </data>
   <data name="Shifts_DaysSelected" xml:space="preserve">
     <value>días seleccionados</value>
   </data>

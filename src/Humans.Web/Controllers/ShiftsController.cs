@@ -497,9 +497,7 @@ public class ShiftsController(
     {
         // §2c: names via IUserService (this isn't a render-the-audit-log view).
         var userIds = orphans
-            .SelectMany(s => new[] { s.UserId, s.ReviewedByUserId, s.EnrolledByUserId })
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
+            .Select(s => s.UserId)
             .Distinct()
             .ToList();
         return userIds.Count == 0
@@ -523,9 +521,7 @@ public class ShiftsController(
                 Status: s.Status,
                 CreatedAt: s.CreatedAt,
                 ReviewedByUserId: s.ReviewedByUserId,
-                ReviewedByDisplayName: GetName(s.ReviewedByUserId),
                 EnrolledByUserId: s.EnrolledByUserId,
-                EnrolledByDisplayName: GetName(s.EnrolledByUserId),
                 SignupBlockId: s.SignupBlockId))
             .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.CreatedAt)
@@ -542,9 +538,7 @@ public record OrphanSignupRow(
     SignupStatus Status,
     Instant CreatedAt,
     Guid? ReviewedByUserId,
-    string? ReviewedByDisplayName,
     Guid? EnrolledByUserId,
-    string? EnrolledByDisplayName,
     Guid? SignupBlockId);
 
 public record OrphanSignupsViewModel(

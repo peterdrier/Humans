@@ -11,7 +11,7 @@ namespace Humans.Web.Controllers;
 [Route("Tickets/Transfers")]
 public sealed class TicketTransferController(
     ITicketTransferService service,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
 {
     // Step A + B of the wizard: pick a ticket, pick a recipient.

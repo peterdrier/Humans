@@ -1,7 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Domain.Constants;
-using Xunit;
 
 namespace Humans.Domain.Tests.Constants;
 

@@ -367,7 +367,7 @@
                     </div>
                     @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
                     {
-                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                        <div class="shift-description mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
                     }
                 </div>
                 <div class="collapse" id="@urgRotaId">
@@ -523,7 +523,7 @@
                                         </div>
                                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
                                         {
-                                            <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                                            <div class="shift-description mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
                                         }
                                     </div>
                                     <div class="collapse" id="@rotaId">

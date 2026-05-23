@@ -1,4 +1,3 @@
-@using Humans.Web.Extensions
 @model Humans.Web.Models.Tickets.OnsiteRosterViewModel
 @{
     ViewData["Title"] = "Who's Onsite";
@@ -74,9 +73,7 @@ else
                 @foreach (var row in Model.Rows)
                 {
                     <tr>
-                        <td>
-                            <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.UserId">@row.DisplayName</a>
-                        </td>
+                        <td><vc:human user-id="@row.UserId" /></td>
                         <td>@row.CheckedInAt.ToDisplayDateTime()</td>
                         <td>@(row.CampNames.Count == 0 ? "—" : string.Join(", ", row.CampNames))</td>
                         <td>@(row.TeamNames.Count == 0 ? "—" : string.Join(", ", row.TeamNames))</td>

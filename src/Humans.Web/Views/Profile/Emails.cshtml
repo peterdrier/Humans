@@ -23,7 +23,7 @@
             <ol class="breadcrumb">
                 @if (Model.IsAdminContext)
                 {
-                    <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId">@(Model.TargetDisplayName ?? Localizer["Emails_AdminUnknownTarget"].Value)</a></li>
+                    <li class="breadcrumb-item"><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></li>
                 }
                 else
                 {

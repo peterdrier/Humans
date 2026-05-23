@@ -8,13 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Controllers;
 
 public abstract class HumansCampControllerBase(
-    IUserService userService,
+    IUserServiceRead userService,
     ICampService campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     protected ICampService CampService => campService;
 
-    protected Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    protected Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         return campService.GetCampBySlugAsync(slug, cancellationToken);
     }
@@ -38,7 +38,7 @@ public abstract class HumansCampControllerBase(
         return (isLead, isCampAdmin);
     }
 
-    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampLookup Camp)> ResolveCampManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampManagementAsync(string slug)
     {
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)
@@ -68,7 +68,7 @@ public abstract class HumansCampControllerBase(
     /// Leads can submit camp events on behalf of their camp without inheriting
     /// the broader Camp Lead authority surface.
     /// </summary>
-    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampLookup Camp)> ResolveCampEventManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampEventManagementAsync(string slug)
     {
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)

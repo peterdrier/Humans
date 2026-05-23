@@ -25,9 +25,9 @@ namespace Humans.Web.Controllers;
 /// the derived controller.
 /// </para>
 /// </summary>
-public abstract class ApiControllerBase(IUserService userService) : ControllerBase
+public abstract class ApiControllerBase(IUserServiceRead userService) : ControllerBase
 {
-    protected IUserService UserService => userService;
+    protected IUserServiceRead UserService => userService;
 
     protected Guid? GetCurrentUserId()
     {

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -11,7 +10,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
-using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -134,7 +132,7 @@ public class AccountDeletionServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
         await _emailService.Received(1).SendAccountDeletionRequestedAsync(
-            user.Email!, user.DisplayName,
+            user.Email!, user.BurnerName,
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
 
         // Shift-authorization cache must drop in-orchestrator (parity with
@@ -157,7 +155,7 @@ public class AccountDeletionServiceTests
         await _service.RequestDeletionAsync(userId);
 
         await _emailService.Received(1).SendAccountDeletionRequestedAsync(
-            "notif@example.com", user.DisplayName,
+            "notif@example.com", user.BurnerName,
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
     }
 

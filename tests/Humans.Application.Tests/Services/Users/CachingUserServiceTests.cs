@@ -126,7 +126,7 @@ public class CachingUserServiceTests
 
         var fresh = await sut.GetUserInfoAsync(userId);
         fresh.Should().NotBeNull();
-        fresh.DisplayName.Should().Be("After");
+        fresh.BurnerName.Should().Be("After");
 
         // Inner GetUserInfoAsync called only on the initial prime.
         await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
@@ -174,7 +174,7 @@ public class CachingUserServiceTests
         await sut.InvalidateAsync(userId);
 
         var hit = await sut.GetUserInfoAsync(userId);
-        hit!.DisplayName.Should().Be("After");
+        hit!.BurnerName.Should().Be("After");
     }
 
     [HumansFact]
@@ -425,7 +425,7 @@ public class CachingUserServiceTests
 
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
-        result.DisplayName.Should().Be("Eight");
+        result.BurnerName.Should().Be("Octa");
         result.PreferredLanguage.Should().Be("es");
         result.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         result.UserEmails.Should().ContainSingle(e =>

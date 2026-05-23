@@ -15,11 +15,11 @@ namespace Humans.Web.Controllers;
 public class FeedbackController(
     IFeedbackService feedbackService,
     ITeamServiceRead teamService,
-    IUserService userService,
+    IUserServiceRead userService,
     IStringLocalizer<SharedResource> localizer,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     /// <summary>
     /// Resolves active-approved humans into <see cref="AssigneeOption"/>
@@ -28,7 +28,7 @@ public class FeedbackController(
     /// person-search consolidation moved that surface to
     /// <c>IUserService.SearchUsersAsync</c>, which is for text search, not
     /// population queries. Population goes through the UserInfo snapshot +
-    /// <c>IUserService.GetByIdsAsync</c> primitives.
+    /// <c>IUserServiceRead.GetAllUserInfosAsync</c> primitive.
     /// </summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
