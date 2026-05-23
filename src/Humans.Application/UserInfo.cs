@@ -395,11 +395,12 @@ public sealed record UserInfo(
             .ToList();
 
 #pragma warning disable HUM_USER_DISPLAYNAME // User.DisplayName is only the creation-time fallback for profileless UserInfo.BurnerName.
+        var legacyDisplayName = user.DisplayName;
         var burnerName = profileInfo is not null && !string.IsNullOrWhiteSpace(profileInfo.BurnerName)
             ? profileInfo.BurnerName
-            : user.DisplayName;
+            : legacyDisplayName;
         var isGdprAnonymized = string.Equals(
-            user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
+            legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
 #pragma warning restore HUM_USER_DISPLAYNAME
 
         return new UserInfo(

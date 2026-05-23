@@ -564,11 +564,12 @@ public sealed class CachingUserService(
     private static UserInfo WithUserFields(UserInfo current, User user)
     {
 #pragma warning disable HUM_USER_DISPLAYNAME // User.DisplayName is a legacy user-column mirror.
+        var legacyDisplayName = user.DisplayName;
         return current with
         {
-            BurnerName = ResolveBurnerName(user.DisplayName, current.Profile),
+            BurnerName = ResolveBurnerName(legacyDisplayName, current.Profile),
             IsGdprAnonymized = string.Equals(
-                user.DisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
+                legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
             PreferredLanguage = user.PreferredLanguage,
             FallbackPictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,

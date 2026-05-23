@@ -32,11 +32,20 @@ internal static class UserInfoStubHelpers
 
     public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
         => UserInfo.Create(
-            new User { Id = userId, DisplayName = displayName, PreferredLanguage = "en" },
+            new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],
             [],
-            profile: profile,
+            profile: profile ?? new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = displayName,
+                CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
+                UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
+                State = Humans.Domain.Enums.ProfileState.Active,
+                IsApproved = true
+            },
             [],
             [],
             [],
