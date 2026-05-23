@@ -472,6 +472,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -482,6 +483,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
         bool canToggleManagement = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -694,6 +696,7 @@ public sealed record TeamRoleDefinitionSnapshot(
     string Name,
     string? Description,
     int SlotCount,
+    int? EstimatedHours,
     IReadOnlyList<SlotPriority> Priorities,
     int SortOrder,
     bool IsManagement,
