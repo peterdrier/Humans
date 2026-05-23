@@ -307,7 +307,8 @@ public interface IShiftManagementRepository : IRepository
     /// signup's <see cref="ShiftSignup.Shift"/> navigation eagerly loaded
     /// so callers can inspect <see cref="Shift.Duration"/>, <see cref="Shift.IsAllDay"/>,
     /// and call <see cref="Shift.GetAbsoluteEnd"/> without further DB hits.
-    /// Cross-section rule: does NOT include <see cref="ShiftSignup.User"/>.
+    /// Cross-section rule: signup-owner navigation is intentionally NOT eager-loaded
+    /// (volunteer identity is the consumer's concern, not this query's).
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
         Guid userId,
