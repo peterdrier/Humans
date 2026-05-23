@@ -2446,6 +2446,18 @@ public class ProfileController(
             }
         }
 
+        // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
+        // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
+        var ticketExport = await _ticketQueryService.GetUserTicketExportDataAsync(user.Id, ct);
+        var ticketEmails = ticketExport.Orders.Select(o => o.BuyerEmail)
+            .Concat(ticketExport.Attendees.Select(a => a.AttendeeEmail))
+            .Where(addr => !string.IsNullOrWhiteSpace(addr))
+            .Select(addr => Humans.Domain.Helpers.EmailNormalization.NormalizeForComparison(addr!))
+            .ToHashSet(StringComparer.Ordinal);
+
+        bool RowIsTicketLinked(string address) =>
+            ticketEmails.Contains(Humans.Domain.Helpers.EmailNormalization.NormalizeForComparison(address));
+
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
             && !string.IsNullOrEmpty(provider)
@@ -2481,6 +2493,7 @@ public class ProfileController(
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
+                IsTicketLinked = RowIsTicketLinked(e.Email),
             }).ToList(),
             ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
             {

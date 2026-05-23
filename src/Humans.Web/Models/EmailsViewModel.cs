@@ -211,6 +211,14 @@ public class EmailRowViewModel
     public bool IsNobodiesTeamDomain { get; set; }
 
     /// <summary>
+    /// Issue nobodies-collective/Humans#758: true when this address is linked to
+    /// the user's event ticket (order buyer or matched attendee). The grid hides
+    /// the Delete action for such rows and shows a note; the service re-validates
+    /// the guard server-side.
+    /// </summary>
+    public bool IsTicketLinked { get; set; }
+
+    /// <summary>
     /// Sign-in provider attached to this email row, e.g. "Google". Null when
     /// the row is a plain (provider-free) email. Drives the contextual action
     /// button: provider-attached rows show Unlink; plain rows show Delete.

@@ -2054,6 +2054,8 @@
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve"><value>Primary email — set another as primary first to remove this.</value></data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve"><value>Linked to your event ticket — cannot be removed.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Verification email sent to the user.</value></data>
   <data name="EmailGrid_AdminVerify" xml:space="preserve"><value>Verify</value></data>
   <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve"><value>Manually mark this email verified without the user clicking the link?</value></data>
