@@ -152,6 +152,24 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
+    public async Task CreateRequest_StillNotifiesTeam_WhenSenderEmailFails()
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        _emailService.SendTicketTransferRequestedAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("smtp down")));
+
+        // Must not throw (request is already persisted) and the team must still be alerted.
+        await _service.CreateRequestAsync(
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId);
+
+        await _emailService.Received(1).SendTicketTransferTeamNotificationAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateRequest_Throws_WhenReceiverIsSender()
     {
         var act = () => _service.CreateRequestAsync(

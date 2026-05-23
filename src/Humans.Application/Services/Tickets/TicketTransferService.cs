@@ -276,59 +276,94 @@ public sealed class TicketTransferService(
     public Task<int> CountPendingAsync(CancellationToken ct = default) =>
         transferRepo.CountPendingAsync(ct);
 
+    // Notifications are best-effort: the request/decision is already persisted, so neither a failed
+    // lookup nor a failed send may bubble up (P1 — would tell the user it failed and prompt a retry),
+    // and each recipient is dispatched independently so one failure can't suppress the others
+    // (P1 — e.g. a bad sender address must not stop the ticket-team alert).
     private async Task NotifyRequestedAsync(
         TicketTransferRequest request, TicketAttendee attendee, Guid senderUserId, CancellationToken ct)
     {
-        var (senderEmail, senderName) = await ResolveSenderAsync(senderUserId, ct);
         var ticketLabel = TicketLabel(attendee.AttendeeName, attendee.VendorTicketId);
         var reviewUrl = $"/Tickets/Admin/Transfers/Detail/{request.Id}";
+        var (senderEmail, senderName) = await SafeResolveSenderAsync(senderUserId, request.Id, ct);
 
-        try
+        if (!string.IsNullOrWhiteSpace(senderEmail))
         {
-            if (!string.IsNullOrWhiteSpace(senderEmail))
-            {
-                await emailService.SendTicketTransferRequestedAsync(
-                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null, ct);
-            }
-            await emailService.SendTicketTransferTeamNotificationAsync(
+            await SafeSendAsync(request.Id, "transfer-requested (sender)", () =>
+                emailService.SendTicketTransferRequestedAsync(
+                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null, ct));
+        }
+
+        await SafeSendAsync(request.Id, "transfer-requested (team)", () =>
+            emailService.SendTicketTransferTeamNotificationAsync(
                 senderName, request.ReceiverLegalName, request.ReceiverEmail,
-                ticketLabel, request.SenderReason, reviewUrl, ct);
-        }
-        catch (Exception ex)
-        {
-            // The request is already persisted; a notification failure must not fail the request.
-            logger.LogError(ex, "Failed to send transfer-requested emails for transfer {TransferId}", request.Id);
-        }
+                ticketLabel, request.SenderReason, reviewUrl, ct));
     }
 
     private async Task NotifyDecisionAsync(
         TicketTransferRequest request, bool successful, string? reason, CancellationToken ct)
     {
-        var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
+        var attendee = await SafeGetAttendeeAsync(request.OriginalTicketAttendeeId, request.Id, ct);
         var ticketLabel = TicketLabel(
             attendee?.AttendeeName ?? request.ReceiverLegalName,
             attendee?.VendorTicketId ?? string.Empty);
-        var (senderEmail, senderName) = await ResolveSenderAsync(request.SenderUserId, ct);
+        var (senderEmail, senderName) = await SafeResolveSenderAsync(request.SenderUserId, request.Id, ct);
 
+        if (!string.IsNullOrWhiteSpace(senderEmail))
+        {
+            await SafeSendAsync(request.Id, "transfer-decision (sender)", () =>
+                emailService.SendTicketTransferDecisionAsync(
+                    senderEmail, senderName, successful, ticketLabel,
+                    request.ReceiverLegalName, reason, culture: null, ct));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ReceiverEmail))
+        {
+            await SafeSendAsync(request.Id, "transfer-decision (receiver)", () =>
+                emailService.SendTicketTransferDecisionAsync(
+                    request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
+                    request.ReceiverLegalName, reason, culture: null, ct));
+        }
+    }
+
+    private async Task SafeSendAsync(Guid transferId, string what, Func<Task> send)
+    {
         try
         {
-            if (!string.IsNullOrWhiteSpace(senderEmail))
-            {
-                await emailService.SendTicketTransferDecisionAsync(
-                    senderEmail, senderName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null, ct);
-            }
-            if (!string.IsNullOrWhiteSpace(request.ReceiverEmail))
-            {
-                await emailService.SendTicketTransferDecisionAsync(
-                    request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null, ct);
-            }
+            await send();
         }
         catch (Exception ex)
         {
-            // The decision is already persisted; a notification failure must not fail the decision.
-            logger.LogError(ex, "Failed to send transfer-decision emails for transfer {TransferId}", request.Id);
+            logger.LogError(ex, "Failed to send {What} email for transfer {TransferId}", what, transferId);
+        }
+    }
+
+    private async Task<(string? Email, string Name)> SafeResolveSenderAsync(
+        Guid senderUserId, Guid transferId, CancellationToken ct)
+    {
+        try
+        {
+            return await ResolveSenderAsync(senderUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve sender {SenderUserId} for transfer {TransferId} notifications",
+                senderUserId, transferId);
+            return (null, "there");
+        }
+    }
+
+    private async Task<TicketAttendee?> SafeGetAttendeeAsync(Guid attendeeId, Guid transferId, CancellationToken ct)
+    {
+        try
+        {
+            return await ticketRepo.GetAttendeeByIdAsync(attendeeId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load attendee {AttendeeId} for transfer {TransferId} notifications",
+                attendeeId, transferId);
+            return null;
         }
     }
 
