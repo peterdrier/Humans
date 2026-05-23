@@ -106,10 +106,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
     // CreateTeamAsync
     // ==========================================================================
 
-    // Validation branches only. CreateTeamAsync's persist path opens a DB
-    // transaction (repo.AddTeamWithRequiresApprovalOverrideAsync) the InMemory
-    // harness can't run — covered by integration tests.
-
     [HumansFact]
     public async Task CreateTeamAsync_ReservedSlug_Throws()
     {
@@ -155,6 +151,57 @@ public sealed class TeamServiceTests : ServiceTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*already has a parent*");
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_PersistsAllFields()
+    {
+        var result = await _service.CreateTeamAsync(
+            name: "Engineering",
+            description: "Builds things",
+            requiresApproval: true,
+            parentTeamId: null,
+            googleGroupPrefix: "eng",
+            isHidden: true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == result.Id);
+        stored.Name.Should().Be("Engineering");
+        stored.Description.Should().Be("Builds things");
+        stored.Slug.Should().Be("engineering");
+        stored.IsActive.Should().BeTrue();
+        stored.RequiresApproval.Should().BeTrue();
+        stored.IsHidden.Should().BeTrue();
+        stored.GoogleGroupPrefix.Should().Be("eng");
+        stored.ParentTeamId.Should().BeNull();
+        stored.SystemTeamType.Should().Be(SystemTeamType.None);
+        stored.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_ValidParent_PersistsParentId()
+    {
+        var parent = SeedTeam("Department");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.CreateTeamAsync(
+            "SubTeam", null, requiresApproval: false, parentTeamId: parent.Id);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == result.Id);
+        stored.ParentTeamId.Should().Be(parent.Id);
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_SlugCollision_AppendsSuffix()
+    {
+        var first = await _service.CreateTeamAsync("Alpha", null, requiresApproval: false);
+        first.Slug.Should().Be("alpha");
+
+        var second = await _service.CreateTeamAsync("Alpha", null, requiresApproval: false);
+
+        second.Slug.Should().Be("alpha-2");
     }
 
     // ==========================================================================
