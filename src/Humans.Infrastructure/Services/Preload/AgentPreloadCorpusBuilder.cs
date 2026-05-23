@@ -47,6 +47,8 @@ public sealed class AgentPreloadCorpusBuilder(
             sb.AppendLine(augmentor.BuildGlossariesMarkdown());
             sb.AppendLine();
             sb.AppendLine(augmentor.BuildRouteMapMarkdown());
+            sb.AppendLine();
+            sb.AppendLine(augmentor.BuildFaqMarkdown());
         }
 
         var result = sb.ToString();
