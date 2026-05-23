@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Services;
-using Humans.Testing;
 using Humans.Web.Middleware;
 using Microsoft.AspNetCore.Http;
 

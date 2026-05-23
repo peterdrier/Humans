@@ -537,6 +537,92 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             (Instant?)null, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task SyncEventParticipations_SkipsWrite_WhenCacheAlreadyMatches()
+    {
+        // User already recorded as Ticketed-from-sync for the active year, and the
+        // vendor still shows a valid ticket. Nothing changed, so the per-user upsert
+        // (and the cache-slice refresh it triggers) must be skipped entirely.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipation>
+            {
+                new()
+                {
+                    UserId = userId,
+                    Year = 2026,
+                    Status = ParticipationStatus.Ticketed,
+                    Source = ParticipationSource.TicketSync
+                }
+            });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_same", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_same", "ord_same", "Alice", "alice@example.com", status: "valid")
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.DidNotReceive().SetParticipationFromTicketSyncAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(),
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().RemoveTicketSyncParticipationAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_StillWrites_WhenTicketedHolderChecksIn()
+    {
+        // Cache shows Ticketed; vendor now reports checked-in. The status genuinely
+        // changes (Ticketed → Attended), so the upsert must still fire.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipation>
+            {
+                new()
+                {
+                    UserId = userId,
+                    Year = 2026,
+                    Status = ParticipationStatus.Ticketed,
+                    Source = ParticipationSource.TicketSync
+                }
+            });
+
+        var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_chk", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: checkInInstant)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            checkInInstant, Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

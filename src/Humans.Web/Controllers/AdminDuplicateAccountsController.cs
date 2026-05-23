@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 public class AdminDuplicateAccountsController(
     IUserService userService,
     IDuplicateAccountService duplicateService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ILogger<AdminDuplicateAccountsController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
@@ -109,10 +109,9 @@ public class AdminDuplicateAccountsController(
         Guid userId, DuplicateAccountInfo accountInfo, UserInfo? info)
     {
         var profile = info?.Profile;
-        var teams = await teamService.GetUserTeamsAsync(userId);
-        var activeTeamNames = teams
-            .Where(m => m.LeftAt is null)
-            .Select(m => m.Team?.Name ?? "Unknown")
+        var activeTeamNames = (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.Members.Any(m => m.UserId == userId))
+            .Select(t => t.Name)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

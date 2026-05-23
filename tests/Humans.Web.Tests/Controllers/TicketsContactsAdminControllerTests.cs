@@ -8,7 +8,6 @@ using Humans.Web.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;

@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
@@ -11,15 +10,6 @@ namespace Humans.Application.Interfaces.Camps;
 /// <summary>
 /// Service for managing camps and camp-season state.
 /// </summary>
-/// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>58→56 — detail/roster decouple (#753 follow-up): removed AddLeadAsync/RemoveLeadAsync. Camp Lead → CampRoleAssignment; EnsureActiveMemberForMigrationAsync stays until #774 drops table.</item>
-///   <item>57→58 — US-26 unified MySubmissions: added GetEventManagedCampsAsync — returns the list of camps a user may manage events for (unions CampRoleAssignment Lead/Workshop rows + legacy CampLead table). Authorized by consolidating BarrioEventsController into EventsController.</item>
-///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes barrio event actions.</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(56)]
 public interface ICampService : IApplicationService
 {
     // Registration

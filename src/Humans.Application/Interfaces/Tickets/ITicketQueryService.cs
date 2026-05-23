@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using NodaTime;
@@ -10,7 +9,6 @@ namespace Humans.Application.Interfaces.Tickets;
 /// counts matched tickets, and computes aggregate dashboard statistics.
 /// All matching logic (MatchedUserId, email fallback, case-insensitive) lives here.
 /// </summary>
-[SurfaceBudget(28)]
 public interface ITicketQueryService : IApplicationService
 {
     /// <summary>

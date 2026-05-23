@@ -121,7 +121,17 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(usersForDeletion);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(5);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(7);
+        var pendingTeamId = Guid.NewGuid();
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>
+            {
+                [pendingTeamId] = new TeamInfo(
+                    Id: pendingTeamId, Name: "T", Description: null, Slug: "t",
+                    IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                    RequiresApproval: true, IsPublicPage: false, IsHidden: false,
+                    IsPromotedToDirectory: false, CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+                    Members: [], PendingRequestCount: 7),
+            }));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin));

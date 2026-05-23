@@ -460,30 +460,52 @@ public sealed class TicketSyncService(
             .GroupBy(x => x.UserId!.Value)
             .ToDictionary(g => g.Key, g => g.Min(x => x.CheckedInAt));
 
+        // Current participation state from the in-memory UserInfo cache (zero DB).
+        // Diffing against it lets us skip the per-user upsert — and the cache-slice
+        // refresh it triggers — for the vast majority of ticket-holders whose status
+        // hasn't changed since the last 15-minute sync.
+        var current = (await userService.GetAllParticipationsForYearAsync(year, ct))
+            .ToDictionary(ep => ep.UserId);
+
         foreach (var (userId, statuses) in userTicketStatuses)
         {
             var hasCheckedIn = statuses.Any(s => s == TicketAttendeeStatus.CheckedIn);
             var hasValidTicket = statuses.Any(s =>
                 s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn);
 
+            current.TryGetValue(userId, out var existing);
+
             if (hasCheckedIn)
             {
                 Instant? checkedInAt = checkedInAtByUserId.TryGetValue(userId, out var ts)
                     ? ts
                     : null;
+
+                // Already Attended with the timestamp settled (or nothing new to
+                // record): the upsert would no-op. Attended is permanent and
+                // CheckedInAt is write-once.
+                if (existing is { Status: ParticipationStatus.Attended }
+                    && (checkedInAt is null || existing.CheckedInAt is not null))
+                    continue;
+
                 await userService.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Attended, checkedInAt, ct);
             }
             else if (hasValidTicket)
             {
+                // Already Attended (Ticketed can't downgrade it) or already the
+                // same Ticketed-from-sync state: the upsert would no-op.
+                if (existing is { Status: ParticipationStatus.Attended }
+                    or { Status: ParticipationStatus.Ticketed, Source: ParticipationSource.TicketSync })
+                    continue;
+
                 await userService.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
 
         // Clear stale Ticketed for users who no longer hold a valid ticket.
-        var allParticipations = await userService.GetAllParticipationsForYearAsync(year, ct);
-        var stalePreviousTicketed = allParticipations
+        var stalePreviousTicketed = current.Values
             .Where(ep => ep.Source == ParticipationSource.TicketSync
                 && ep.Status == ParticipationStatus.Ticketed);
 

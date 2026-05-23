@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -18,14 +17,6 @@ namespace Humans.Application.Interfaces.Repositories;
 /// (memory/architecture/no-cross-section-ef-joins.md).
 /// </para>
 /// </summary>
-/// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>2026-05-16 — 44→42 after peterdrier#719: dropped GetActiveEventSettingsAsync and GetEventSettingsByIdAsync; EventService now routes EventSettings reads through IShiftManagementService.</item>
-///   <item>2026-05-14 — initial budget pinned at 44 after Stage 3 atomic-method rewrite (replaced SaveChangesAsync/Add/Remove passthroughs with Add/Save/Delete/Upsert methods) and Stage 5 GDPR contributor add-on (section-align Events, issue #539).</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(42)]
 [Section("Events")]
 public interface IEventRepository : IRepository
 {

@@ -2,7 +2,6 @@ using Humans.Application;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Users;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Web.Models.Mailer;

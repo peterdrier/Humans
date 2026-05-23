@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -12,7 +11,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Store;
 

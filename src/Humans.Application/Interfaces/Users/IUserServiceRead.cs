@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Services.Profiles;
 
@@ -9,6 +10,7 @@ namespace Humans.Application.Interfaces.Users;
 /// projections and the merge-chain-follow primitive — no EF entities, no writes,
 /// no cache hooks. See memory/architecture/section-read-write-split.md.
 /// </summary>
+[SurfaceBudget(6)]
 public interface IUserServiceRead
 {
     /// <summary>

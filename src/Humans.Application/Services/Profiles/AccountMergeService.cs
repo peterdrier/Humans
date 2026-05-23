@@ -11,7 +11,6 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profiles;
@@ -26,7 +25,7 @@ public sealed class AccountMergeService(
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
     IUserService userService,
-    ITeamService teamService,
+    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IRoleAssignmentService roleAssignmentService,
     INotificationService notificationService,
     IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
@@ -189,7 +188,7 @@ public sealed class AccountMergeService(
             }
 
             // Cache invalidation AFTER commit so cache-aside readers don't repopulate from rolled-back rows.
-            teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
+            // The ActiveTeams cache is cleared in the finally below (Invalidate); no separate per-user call.
             roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
             roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             roleAssignmentService.InvalidateNavBadgeCache();
@@ -203,7 +202,7 @@ public sealed class AccountMergeService(
         finally
         {
             // Evict ActiveTeams cache: TeamService mutates it during scope; rolled-back state would otherwise leak.
-            teamService.InvalidateActiveTeamsCache();
+            activeTeamsCacheInvalidator.Invalidate();
         }
     }
 

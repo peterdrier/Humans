@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
@@ -7,7 +6,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
@@ -35,6 +33,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
+    private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
     private readonly SuspendNonCompliantMembersJob _job;
@@ -54,17 +53,18 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
+        _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
-        // Default: ITeamService.GetUserTeamsAsync returns empty list so tests
-        // that don't care about team fan-out don't need to stub it.
-        _teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
+        // Default: GetTeamsAsync returns an empty directory so tests that don't
+        // care about team fan-out don't need to stub it.
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
 
         _job = new SuspendNonCompliantMembersJob(
-            _userService, _profileService, _teamService, _membershipCalculator,
+            _userService, _profileService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
             _emailService, _notificationService, _googleSyncService, _auditLogService,
             _userInfoInvalidator, _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator, _metrics, logger, _clock);
@@ -75,6 +75,19 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
+
+    private static IReadOnlyDictionary<Guid, TeamInfo> TeamDirectoryWith(Guid teamId, Guid userId) =>
+        new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = new TeamInfo(
+                Id: teamId, Name: "Team", Description: null, Slug: "team",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Now,
+                Members: [new TeamMemberInfo(
+                    Guid.NewGuid(), userId, "Member", null, null,
+                    TeamMemberRole.Member, Now - Duration.FromDays(50))]),
+        };
 
     [HumansFact]
     public async Task ExecuteAsync_SuspendsNonCompliantUser()
@@ -207,18 +220,8 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     {
         var user = SetupUser();
         var teamId = Guid.NewGuid();
-        _teamService.GetUserTeamsAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    TeamId = teamId,
-                    UserId = user.Id,
-                    JoinedAt = Now - Duration.FromDays(50),
-                    LeftAt = null,
-                },
-            });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(TeamDirectoryWith(teamId, user.Id)));
 
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
@@ -263,7 +266,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         await _userInfoInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
-        _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
+        _activeTeamsCacheInvalidator.Received(1).Invalidate();
     }
 
     [HumansFact]
@@ -271,18 +274,8 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     {
         var user = SetupUser();
         var teamId = Guid.NewGuid();
-        _teamService.GetUserTeamsAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    TeamId = teamId,
-                    UserId = user.Id,
-                    JoinedAt = Now - Duration.FromDays(50),
-                    LeftAt = null,
-                },
-            });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(TeamDirectoryWith(teamId, user.Id)));
 
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
