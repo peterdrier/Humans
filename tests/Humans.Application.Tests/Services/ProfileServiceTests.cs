@@ -54,7 +54,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _contactFieldRepository, _communicationPreferenceRepository,
             AuditLog,
             _fileStorage,
-            Substitute.For<IUserInfoInvalidator>(),
             Clock,
             NullLogger<ProfileService>.Instance);
 
@@ -102,6 +101,16 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .Returns(call => storageUserService.AnonymizeProfileForDeletionAsync(
                 call.ArgAt<Guid>(0),
                 call.ArgAt<CancellationToken>(1)));
+        _userService.ReassignProfileSubAggregatesAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Instant>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => storageUserService.ReassignProfileSubAggregatesAsync(
+                call.ArgAt<Guid>(0),
+                call.ArgAt<Guid>(1),
+                call.ArgAt<Instant>(2),
+                call.ArgAt<CancellationToken>(3)));
         _userService.SaveProfileVolunteerHistoryAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<IReadOnlyList<CVEntry>>(),

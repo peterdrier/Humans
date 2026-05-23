@@ -413,6 +413,55 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task ReassignProfileSubAggregatesAsync_RefreshesBothAffectedUsers()
+    {
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, SampleUserInfo(sourceUserId, "Source"));
+        await PrimeAsync(sut, SampleUserInfo(targetUserId, "Target"));
+
+        var updatedAt = Instant.FromUtc(2026, 1, 2, 0, 0);
+        _inner.ReassignProfileSubAggregatesAsync(
+                sourceUserId,
+                targetUserId,
+                updatedAt,
+                Arg.Any<CancellationToken>())
+            .Returns(2);
+
+        StubRefreshEntry(sourceUserId, new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = sourceUserId,
+            BurnerName = "",
+            FirstName = "Merged",
+            LastName = "User",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = updatedAt,
+        });
+        StubRefreshEntry(targetUserId, new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = targetUserId,
+            BurnerName = "Target Burner",
+            FirstName = "Target",
+            LastName = "Human",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = updatedAt,
+        });
+
+        var count = await sut.ReassignProfileSubAggregatesAsync(sourceUserId, targetUserId, updatedAt);
+
+        count.Should().Be(2);
+        var source = await sut.GetUserInfoAsync(sourceUserId);
+        var target = await sut.GetUserInfoAsync(targetUserId);
+        source!.Profile.Should().NotBeNull();
+        source.Profile!.FirstName.Should().Be("Merged");
+        target!.Profile.Should().NotBeNull();
+        target.Profile!.BurnerName.Should().Be("Target Burner");
+    }
+
+    [HumansFact]
     public async Task SaveProfileVolunteerHistoryAsync_RefreshesVolunteerHistorySlice()
     {
         var userId = Guid.NewGuid();

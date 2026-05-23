@@ -890,6 +890,19 @@ public sealed class CachingUserService(
         return result;
     }
 
+    public async Task<int> ReassignProfileSubAggregatesAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        var count = await WithInnerAsync(inner =>
+            inner.ReassignProfileSubAggregatesAsync(sourceUserId, targetUserId, updatedAt, ct));
+        await RefreshEntryAsync(sourceUserId, ct);
+        await RefreshEntryAsync(targetUserId, ct);
+        return count;
+    }
+
     public async Task<bool> SaveProfileVolunteerHistoryAsync(
         Guid userId,
         IReadOnlyList<CVEntry> entries,

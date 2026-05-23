@@ -1071,6 +1071,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<UserProfileSaveResult> SaveProfileAsync(Guid userId, UserProfileSaveCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(Guid userId, string contentType, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> ReassignProfileSubAggregatesAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SaveProfileVolunteerHistoryAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default) => throw new NotSupportedException();

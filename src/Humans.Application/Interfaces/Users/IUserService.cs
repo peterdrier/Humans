@@ -228,6 +228,16 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
         CancellationToken ct = default);
 
     /// <summary>
+    /// Moves profile-owned merge sub-aggregates from source to target and
+    /// anonymizes the source profile according to merge rules.
+    /// </summary>
+    Task<int> ReassignProfileSubAggregatesAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Reconciles the profile's volunteer-history rows. Returns false when no
     /// profile exists for the user.
     /// </summary>

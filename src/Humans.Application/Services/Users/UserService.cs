@@ -420,6 +420,13 @@ public sealed class UserService(
             profile?.ProfilePictureContentType);
     }
 
+    public Task<int> ReassignProfileSubAggregatesAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default) =>
+        profileRepo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
     public async Task<bool> SaveProfileVolunteerHistoryAsync(
         Guid userId,
         IReadOnlyList<CVEntry> entries,

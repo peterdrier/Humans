@@ -22,7 +22,6 @@ public sealed class ProfileService(IProfileRepository profileRepository,
     ICommunicationPreferenceRepository communicationPreferenceRepository,
     IAuditLogService auditLogService,
     IFileStorage fileStorage,
-    IUserInfoInvalidator userInfoInvalidator,
     IClock clock,
     ILogger<ProfileService> logger) : IProfileService, IUserDataContributor, IUserMerge
 {
@@ -591,9 +590,7 @@ public sealed class ProfileService(IProfileRepository profileRepository,
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        await userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
-        await userInfoInvalidator.InvalidateAsync(targetUserId, ct);
+        await userService.ReassignProfileSubAggregatesAsync(sourceUserId, targetUserId, updatedAt, ct);
     }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
