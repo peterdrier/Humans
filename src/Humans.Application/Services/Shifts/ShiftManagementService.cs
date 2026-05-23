@@ -53,7 +53,7 @@ public sealed class ShiftManagementService(
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private ITicketQueryService TicketQueryService => serviceProvider.GetRequiredService<ITicketQueryService>();
-    private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
+    private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
     {

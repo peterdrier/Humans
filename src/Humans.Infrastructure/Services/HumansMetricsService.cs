@@ -244,7 +244,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
             var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
             var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
-            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
             var now = clock.GetCurrentInstant();
 

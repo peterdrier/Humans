@@ -32,6 +32,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
+        services.AddSingleton<IUserServiceRead>(userService);
         services.AddSingleton(_roleAssignmentService);
         services.AddKeyedScoped<ITeamService>(
             CachingTeamService.InnerServiceKey,
