@@ -27,7 +27,7 @@ namespace Humans.Web.Tests.Authorization;
 public class RoleAssignmentClaimsTransformationTests : IDisposable
 {
     private readonly IRoleAssignmentRepository _roleAssignments;
-    private readonly ITeamService _teams;
+    private readonly ITeamServiceRead _teams;
     private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
@@ -39,7 +39,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             .GetActiveRoleNamesAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _teams = Substitute.For<ITeamService>();
+        _teams = Substitute.For<ITeamServiceRead>();
         _teams
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));

@@ -16,11 +16,4 @@ public interface IActiveTeamsCacheInvalidator
     /// from the database via <c>ITeamService</c>.
     /// </summary>
     void Invalidate();
-
-    /// <summary>
-    /// Removes a user from every team in the cached team directory (e.g. on
-    /// account merge/suspension), so cached <c>TeamInfo.Members</c> lists no
-    /// longer reference the user without a full reload.
-    /// </summary>
-    void RemoveMember(Guid userId);
 }

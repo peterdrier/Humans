@@ -188,7 +188,7 @@ public sealed class AccountMergeService(
             }
 
             // Cache invalidation AFTER commit so cache-aside readers don't repopulate from rolled-back rows.
-            activeTeamsCacheInvalidator.RemoveMember(sourceUserId);
+            // The ActiveTeams cache is cleared in the finally below (Invalidate); no separate per-user call.
             roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
             roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             roleAssignmentService.InvalidateNavBadgeCache();

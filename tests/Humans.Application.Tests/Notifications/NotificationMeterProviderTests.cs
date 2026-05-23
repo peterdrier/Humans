@@ -121,11 +121,12 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(usersForDeletion);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(5);
+        var pendingTeamId = Guid.NewGuid();
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>
             {
-                [Guid.NewGuid()] = new TeamInfo(
-                    Id: Guid.NewGuid(), Name: "T", Description: null, Slug: "t",
+                [pendingTeamId] = new TeamInfo(
+                    Id: pendingTeamId, Name: "T", Description: null, Slug: "t",
                     IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
                     RequiresApproval: true, IsPublicPage: false, IsHidden: false,
                     IsPromotedToDirectory: false, CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),

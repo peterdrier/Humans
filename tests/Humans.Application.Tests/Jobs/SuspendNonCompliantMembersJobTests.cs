@@ -268,7 +268,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         await _userInfoInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
-        _activeTeamsCacheInvalidator.Received(1).RemoveMember(user.Id);
+        _activeTeamsCacheInvalidator.Received(1).Invalidate();
     }
 
     [HumansFact]

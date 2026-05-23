@@ -176,7 +176,7 @@ public class SuspendNonCompliantMembersJob(
                 await userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);
                 roleAssignmentClaimsInvalidator.Invalidate(user.Id);
                 shiftAuthorizationInvalidator.Invalidate(user.Id);
-                activeTeamsCacheInvalidator.RemoveMember(user.Id);
+                activeTeamsCacheInvalidator.Invalidate();
             }
 
             metrics.RecordJobRun("suspend_noncompliant_members", "success");
