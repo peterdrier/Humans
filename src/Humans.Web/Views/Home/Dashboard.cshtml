@@ -9,7 +9,13 @@
     TicketStubInfo TicketStub(MyAttendeeRowVm a) =>
         new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
             a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
-    var headerTicket = Model.MyAttendees.FirstOrDefault(a => a.Status == TicketAttendeeStatus.Valid);
+    // Only show the header stub when the user actually holds a ticket (same signal as the
+    // ticket card below, so we never show a stub next to a "no ticket yet" card), and prefer
+    // one they currently own.
+    var headerTicket = Model.HasTicket
+        ? (Model.MyAttendees.FirstOrDefault(a => a.CanSendTransfer || a.HasPendingOutgoingTransfer)
+            ?? Model.MyAttendees.FirstOrDefault(a => a.Status == TicketAttendeeStatus.Valid))
+        : null;
 }
 
 <vc:temp-data-alerts />
