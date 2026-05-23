@@ -1,0 +1,249 @@
+@using Humans.Application.Services.Cantina.Dtos
+@using Humans.Web.Extensions
+@model DailyRosterDto
+
+@{
+    ViewData["Title"] = Localizer["Cantina_Roster_PageTitle"].Value;
+
+    // Fixed iteration order for the dietary breakdown card.
+    // Mirrors DietaryOptions.DietaryPreferences + the "Unanswered" pseudo-bucket
+    // that CantinaRosterService always populates on DailyRosterDto.DietaryBreakdown.
+    var dietaryOrder = new[] { "Omnivore", "Vegetarian", "Vegan", "Pescatarian", "Unanswered" };
+
+    // Subtitle: "<EventName> — Day <N> (<Day, Mon D>)" — degrades gracefully when
+    // there's no active event or no calendar date.
+    string subtitle;
+    if (Model.EventName is null)
+    {
+        subtitle = Localizer["Cantina_Roster_NoActiveEvent"].Value;
+    }
+    else if (Model.CalendarDate is null)
+    {
+        subtitle = $"{Model.EventName} — {Localizer["Cantina_Roster_DayPickerLabel"].Value} {Model.DayOffset}";
+    }
+    else
+    {
+        subtitle = $"{Model.EventName} — {Localizer["Cantina_Roster_DayPickerLabel"].Value} {Model.DayOffset} ({Model.CalendarDate.Value.ToDisplayShiftDate()})";
+    }
+
+    // Rollup chips: only show entries with non-zero counts; "—" when all zero.
+    string FormatRollup(IEnumerable<RollupItemDto> items)
+    {
+        var nonZero = items.Where(i => i.Count > 0).ToList();
+        return nonZero.Count == 0
+            ? "—"
+            : string.Join(", ", nonZero.Select(i => $"{i.Label} ({i.Count})"));
+    }
+}
+
+@section Styles {
+    <style>
+        @@media print {
+            .day-picker, .btn-download-csv, nav, footer, .alert { display: none !important; }
+            .card { border: 1px solid #ddd; page-break-inside: avoid; }
+            .table { font-size: 0.9rem; }
+            body { background: white; }
+        }
+    </style>
+}
+
+<div class="container py-4">
+    @* === Page header + day picker / CSV download ============================= *@
+    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+        <div>
+            <h1 class="mb-1">@Localizer["Cantina_Roster_PageTitle"]</h1>
+            <div class="text-muted">@subtitle</div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 day-picker">
+            <a asp-action="Roster" asp-route-dayOffset="@(Model.DayOffset - 1)"
+               class="btn btn-sm btn-outline-secondary" title="@Localizer["Cantina_Roster_Prev"].Value">
+                <i class="fa-solid fa-chevron-left"></i>
+                <span class="visually-hidden">@Localizer["Cantina_Roster_Prev"]</span>
+            </a>
+            <form id="day-picker-form" method="get" asp-action="Roster" class="d-flex align-items-center gap-1 mb-0">
+                <label for="dayOffset" class="form-label mb-0 small text-muted">@Localizer["Cantina_Roster_DayPickerLabel"]</label>
+                <input type="number" id="dayOffset" name="dayOffset" value="@Model.DayOffset"
+                       class="form-control form-control-sm" style="width: 6rem;" />
+                <button type="submit" class="btn btn-sm btn-outline-primary">@Localizer["Cantina_Roster_Go"]</button>
+            </form>
+            <a asp-action="Roster" asp-route-dayOffset="@(Model.DayOffset + 1)"
+               class="btn btn-sm btn-outline-secondary" title="@Localizer["Cantina_Roster_Next"].Value">
+                <span class="visually-hidden">@Localizer["Cantina_Roster_Next"]</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+            <a asp-action="Roster" class="btn btn-sm btn-link">@Localizer["Cantina_Roster_Today"]</a>
+            <a asp-action="Csv" asp-route-dayOffset="@Model.DayOffset"
+               class="btn btn-sm btn-primary btn-download-csv">
+                <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Roster_DownloadCsv"]
+            </a>
+        </div>
+    </div>
+
+    @* === Aggregates: 3-card row ============================================== *@
+    <div class="row g-3 mb-4">
+        @* Card 1 — Total on site + Unanswered *@
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="display-5 fw-bold">@Model.TotalOnSite</div>
+                    <div class="text-muted small">@Localizer["Cantina_Roster_TotalOnSite"]</div>
+                    <hr class="my-2" />
+                    <div class="@(Model.UnansweredCount > 0 ? "text-warning fw-semibold" : "text-muted")">
+                        <i class="fa-solid @(Model.UnansweredCount > 0 ? "fa-triangle-exclamation" : "fa-check") me-1"></i>
+                        @Model.UnansweredCount @Localizer["Cantina_Roster_Unanswered"]
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Card 2 — Dietary breakdown *@
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted text-uppercase small">@Localizer["Cantina_Roster_DietaryBreakdown"]</h6>
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var key in dietaryOrder)
+                        {
+                            var count = Model.DietaryBreakdown.TryGetValue(key, out var c) ? c : 0;
+                            <li class="d-flex justify-content-between align-items-center py-1">
+                                <span>@key</span>
+                                <span class="badge bg-secondary rounded-pill">@count</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        @* Card 3 — Allergy + intolerance roll-up *@
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted text-uppercase small">@Localizer["Cantina_Roster_AllergyRollup"]</h6>
+                    <div class="mb-3">@FormatRollup(Model.AllergyRollup)</div>
+                    <h6 class="card-title text-muted text-uppercase small">@Localizer["Cantina_Roster_IntoleranceRollup"]</h6>
+                    <div>@FormatRollup(Model.IntoleranceRollup)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* === "Other" free-text entries ========================================== *@
+    @if (Model.AllergyOtherEntries.Count > 0 || Model.IntoleranceOtherEntries.Count > 0)
+    {
+        <div class="row g-3 mb-4">
+            @if (Model.AllergyOtherEntries.Count > 0)
+            {
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">@Localizer["Cantina_Roster_OtherAllergies"]</h6>
+                            <ol class="mb-0 small">
+                                @foreach (var entry in Model.AllergyOtherEntries)
+                                {
+                                    <li>@entry</li>
+                                }
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (Model.IntoleranceOtherEntries.Count > 0)
+            {
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">@Localizer["Cantina_Roster_OtherIntolerances"]</h6>
+                            <ol class="mb-0 small">
+                                @foreach (var entry in Model.IntoleranceOtherEntries)
+                                {
+                                    <li>@entry</li>
+                                }
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @* === Per-person table or empty state ==================================== *@
+    @if (Model.People.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body text-center text-muted py-5">
+                <i class="fa-solid fa-users-slash fa-2x mb-2"></i>
+                <div>@Localizer["Cantina_Roster_EmptyState"]</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">@Localizer["Cantina_Roster_TablePerson"]</th>
+                        <th scope="col">@Localizer["Cantina_Roster_TableDietary"]</th>
+                        <th scope="col">@Localizer["Cantina_Roster_TableAllergies"]</th>
+                        <th scope="col">@Localizer["Cantina_Roster_TableAllergyOther"]</th>
+                        <th scope="col">@Localizer["Cantina_Roster_TableIntolerances"]</th>
+                        <th scope="col">@Localizer["Cantina_Roster_TableIntoleranceOther"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var person in Model.People)
+                    {
+                        var isUnanswered = string.IsNullOrEmpty(person.DietaryPreference)
+                            && person.Allergies.Count == 0
+                            && person.Intolerances.Count == 0
+                            && string.IsNullOrWhiteSpace(person.AllergyOtherText)
+                            && string.IsNullOrWhiteSpace(person.IntoleranceOtherText);
+                        <tr class="@(isUnanswered ? "table-warning" : "")">
+                            <td class="fw-semibold">@person.BurnerName</td>
+                            @if (isUnanswered)
+                            {
+                                <td colspan="5" class="text-muted fst-italic">@Localizer["Cantina_Roster_Unanswered_RowLabel"]</td>
+                            }
+                            else
+                            {
+                                <td>
+                                    @if (!string.IsNullOrEmpty(person.DietaryPreference))
+                                    {
+                                        <span class="badge bg-success">@person.DietaryPreference</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">(unanswered)</span>
+                                    }
+                                </td>
+                                <td>
+                                    @foreach (var chip in person.Allergies)
+                                    {
+                                        <span class="badge bg-warning text-dark me-1">@chip</span>
+                                    }
+                                </td>
+                                <td class="small">@person.AllergyOtherText</td>
+                                <td>
+                                    @foreach (var chip in person.Intolerances)
+                                    {
+                                        <span class="badge bg-info text-dark me-1">@chip</span>
+                                    }
+                                </td>
+                                <td class="small">@person.IntoleranceOtherText</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Secondary CSV download at the bottom for convenience *@
+        <div class="d-flex justify-content-end mt-3">
+            <a asp-action="Csv" asp-route-dayOffset="@Model.DayOffset"
+               class="btn btn-sm btn-outline-primary btn-download-csv">
+                <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Roster_DownloadCsv"]
+            </a>
+        </div>
+    }
+</div>
