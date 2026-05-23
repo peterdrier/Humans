@@ -29,7 +29,7 @@ public sealed class TicketTransferService_OnwardTransferTests
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketVendorService _vendor = Substitute.For<ITicketVendorService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly ITicketCacheInvalidator _ticketCacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
@@ -40,7 +40,7 @@ public sealed class TicketTransferService_OnwardTransferTests
     public TicketTransferService_OnwardTransferTests()
     {
         _service = new TicketTransferService(_transferRepo, _ticketRepo, _vendor,
-            _ticketQueryService, _userService, _userEmailService, _profileService,
+            _ticketCacheInvalidator, _userService, _userEmailService, _profileService,
             _auditLog, _clock, NullLogger<TicketTransferService>.Instance);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

@@ -18,7 +18,7 @@ namespace Humans.Web.ViewComponents;
 /// </summary>
 public sealed class CommunicationPreferencesPanelViewComponent(
     ICommunicationPreferenceService commPrefService,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool readOnly = false)

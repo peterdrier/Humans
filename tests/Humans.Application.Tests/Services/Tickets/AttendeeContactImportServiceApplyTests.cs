@@ -63,7 +63,7 @@ public class AttendeeContactImportServiceApplyTests
             targetUserId, 2026, ParticipationStatus.Ticketed,
             (Instant?)null, Arg.Any<CancellationToken>());
 
-        harness.TicketQuery.Received(1).InvalidateAfterContactImport();
+        harness.TicketCacheInvalidator.Received(1).InvalidateAfterContactImport();
 
         await harness.Audit.Received(1).LogAsync(
             AuditAction.TicketContactsImported,
@@ -440,7 +440,7 @@ internal sealed class ApplyHarness
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     public IUserService Users { get; } = Substitute.For<IUserService>();
     public IShiftManagementService Shifts { get; } = Substitute.For<IShiftManagementService>();
-    public ITicketQueryService TicketQuery { get; } = Substitute.For<ITicketQueryService>();
+    public ITicketCacheInvalidator TicketCacheInvalidator { get; } = Substitute.For<ITicketCacheInvalidator>();
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
     public FakeClock Clock { get; } = new(Instant.FromUtc(2026, 5, 13, 12, 0));
 
@@ -463,6 +463,6 @@ internal sealed class ApplyHarness
     }
 
     public AttendeeContactImportService Service => new(
-        TicketRepo, UserEmails, Provisioning, Users, Shifts, TicketQuery, Audit, Clock,
+        TicketRepo, UserEmails, Provisioning, Users, Shifts, TicketCacheInvalidator, Audit, Clock,
         NullLogger<AttendeeContactImportService>.Instance);
 }

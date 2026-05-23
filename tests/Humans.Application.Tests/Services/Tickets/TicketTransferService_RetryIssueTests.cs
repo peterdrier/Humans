@@ -30,7 +30,7 @@ public sealed class TicketTransferService_RetryIssueTests
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketVendorService _vendor = Substitute.For<ITicketVendorService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly ITicketCacheInvalidator _ticketCacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
@@ -40,7 +40,7 @@ public sealed class TicketTransferService_RetryIssueTests
     public TicketTransferService_RetryIssueTests()
     {
         _service = new TicketTransferService(_transferRepo, _ticketRepo, _vendor,
-            _ticketQueryService, _userService, _userEmailService, _profileService,
+            _ticketCacheInvalidator, _userService, _userEmailService, _profileService,
             _auditLog, _clock, NullLogger<TicketTransferService>.Instance);
         var sender = new User { Id = SenderId, DisplayName = "Sender" };
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

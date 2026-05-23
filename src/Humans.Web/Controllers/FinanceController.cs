@@ -19,7 +19,7 @@ public class FinanceController(
     IBudgetService budgetService,
     ITeamServiceRead teamService,
     ITicketingBudgetService ticketingBudgetService,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IClock clock,
     IUserServiceRead userService,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)

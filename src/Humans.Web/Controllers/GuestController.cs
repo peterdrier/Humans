@@ -22,7 +22,7 @@ public class GuestController(
     IUserServiceRead userService,
     ICommunicationPreferenceService commPrefService,
     IProfileService profileService,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IGdprExportService gdprExportService,
     IOnboardingWidgetState widgetState,
     IAccountDeletionService accountDeletionService,

@@ -190,7 +190,7 @@ public class AgentUserSnapshotProviderTests
         feedback.GetOpenFeedbackIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var tickets = Substitute.For<ITicketQueryService>();
+        var tickets = Substitute.For<ITicketService>();
         tickets.GetOpenTicketIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(openTicketIds ?? []);
 

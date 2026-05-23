@@ -50,12 +50,12 @@ public class TrackingMemoryCacheTests : IDisposable
     [HumansFact]
     public void DeriveKeyType_ExtractsPrefixBeforeColon()
     {
-        _tracker.TryGetValue("UserTicketCount:12345", out _);
+        _tracker.TryGetValue("UserTicketHoldings:12345", out _);
         _tracker.TryGetValue("UserProfile:67890", out _);
 
         var stats = _tracker.GetSnapshot();
         stats.Should().HaveCount(2);
-        stats.Should().Contain(e => e.KeyType == "UserTicketCount");
+        stats.Should().Contain(e => e.KeyType == "UserTicketHoldings");
         stats.Should().Contain(e => e.KeyType == "UserProfile");
     }
 

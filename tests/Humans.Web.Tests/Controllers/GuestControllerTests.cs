@@ -31,7 +31,7 @@ public class GuestControllerTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IGdprExportService _gdprExportService = Substitute.For<IGdprExportService>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();

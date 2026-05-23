@@ -64,7 +64,7 @@ public class ProfileController(
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
     IStringLocalizer<SharedResource> localizer,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     ITeamServiceRead teamService,
     ICampaignService campaignService,
     IEmailOutboxService emailOutboxService,
@@ -78,7 +78,7 @@ public class ProfileController(
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly ITicketQueryService _ticketQueryService = ticketQueryService;
+    private readonly ITicketServiceRead _ticketQueryService = ticketQueryService;
     private readonly IUserService _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
@@ -2518,7 +2518,6 @@ public class ProfileController(
     }
 
 }
-
 
 
 

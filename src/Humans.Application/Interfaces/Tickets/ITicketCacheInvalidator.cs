@@ -3,7 +3,7 @@ namespace Humans.Application.Interfaces.Tickets;
 /// <summary>
 /// One-way cache-staleness signal for the Tickets section's read model.
 /// Implemented by the Singleton caching decorator that wraps
-/// <see cref="ITicketQueryService"/>. Every Tickets-section internal call
+/// <see cref="ITicketService"/>. Every Tickets-section internal call
 /// site whose write surface is too narrow to flow through the decorator
 /// (the sync job, the account-merge fold, the attendee contact import)
 /// pokes the cache through this seam after committing its own writes.
@@ -18,7 +18,7 @@ namespace Humans.Application.Interfaces.Tickets;
 /// </para>
 ///
 /// <para>
-/// Kept separate from <see cref="ITicketQueryService"/> so the budgeted
+/// Kept separate from <see cref="ITicketServiceRead"/> so the budgeted
 /// query surface doesn't grow each time a new invalidation seam is needed,
 /// and so callers that only invalidate (and don't read) don't depend on
 /// the full query surface. Mirrors how the Shifts section keeps reads
@@ -28,6 +28,20 @@ namespace Humans.Application.Interfaces.Tickets;
 /// </remarks>
 public interface ITicketCacheInvalidator
 {
+    /// <summary>
+    /// Cache eviction seam invoked after an approved transfer has mutated local
+    /// ticket rows. Drops the projection and per-user entries for both affected
+    /// users. Pass null for <paramref name="receiverUserId"/> when the receiver
+    /// did not gain a local row.
+    /// </summary>
+    void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId);
+
+    /// <summary>
+    /// Invalidates ticket-related caches after the attendee contact import has
+    /// applied new matches.
+    /// </summary>
+    void InvalidateAfterContactImport();
+
     /// <summary>
     /// Drops the entire ticket projection (orders + attendees + derived
     /// aggregate views). Per-user short-TTL entries expire naturally via

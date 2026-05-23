@@ -30,14 +30,14 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         : base(TestNow)
     {
         // The dashboard compute methods now reach cross-domain data through
-        // ITicketQueryService / ITeamService / IUserService. Wire thin fakes that
+        // ITicketService / ITeamService / IUserService. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
         var fakeUserService = new FakeUserService(Db);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(new FakeTeamService(Db))
-            .With<ITicketQueryService>(new FakeTicketQueryService(Db))
+            .With<ITicketService>(new FakeTicketQueryService(Db))
             .With<IUserService>(fakeUserService)
             .With<IUserServiceRead>(fakeUserService)
             .With<IRoleAssignmentService>()
@@ -939,7 +939,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
     // so the test seed helpers (Db.*.Add) drive results end-to-end.
     // ================================================================
 
-    private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketQueryService
+    private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketService
     {
         public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
         {
@@ -961,7 +961,6 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         }
 
         // Members below are unused by the dashboard compute paths under test.
-        public Task<int> GetUserTicketCountAsync(Guid userId) => throw new NotSupportedException();
         public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() => throw new NotSupportedException();
         public Task<HashSet<Guid>> GetAllMatchedUserIdsAsync() => throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
@@ -980,9 +979,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) => throw new NotSupportedException();
         public Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) => throw new NotSupportedException();
         public void InvalidateAfterContactImport() => throw new NotSupportedException();
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();

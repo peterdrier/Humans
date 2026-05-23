@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
 
-public sealed class TicketHoldingsViewComponent(ITicketQueryService queryService) : ViewComponent
+public sealed class TicketHoldingsViewComponent(ITicketServiceRead queryService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool showEmpty = false)
     {

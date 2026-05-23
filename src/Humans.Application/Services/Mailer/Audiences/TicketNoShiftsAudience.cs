@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// already encodes the Pending/Confirmed-on-active-event rule.
 /// </remarks>
 public sealed class TicketNoShiftsAudience(
-    ITicketQueryService tickets,
+    ITicketServiceRead tickets,
     IShiftView shiftView,
     IUserServiceRead users) : MailerAudienceBase(users)
 {
@@ -27,7 +27,7 @@ public sealed class TicketNoShiftsAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketQueryService.
+        // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketServiceRead.
         var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
         if (ticketHolders.Count == 0) return new HashSet<Guid>();
 

@@ -15,13 +15,13 @@ using NodaTime;
 namespace Humans.Infrastructure.Services.Tickets;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ITicketQueryService"/>. Composes
+/// Singleton caching decorator for <see cref="ITicketService"/>. Composes
 /// a <see cref="TrackedCache{TKey,TValue}"/> for the per-order
 /// <see cref="TicketOrderInfo"/> projection (warmed at startup, refreshed
 /// wholesale on every section-level invalidation event — vendor sync, transfer
 /// approve, contact import apply, account-merge fold) plus an
 /// <see cref="IMemoryCache"/>-backed short-TTL per-user concern
-/// (<c>UserTicketCount</c> / <c>UserTicketHoldings</c>) evicted on
+/// (<c>UserTicketHoldings</c>) evicted on
 /// transfer/merge but deliberately left to TTL on bulk sync.
 /// </summary>
 /// <remarks>
@@ -35,7 +35,7 @@ namespace Humans.Infrastructure.Services.Tickets;
 /// </para>
 /// <para>
 /// Implements <see cref="ITicketCacheInvalidator"/> alongside
-/// <see cref="ITicketQueryService"/> so the sync job and the account-merge
+/// <see cref="ITicketService"/> so the sync job and the account-merge
 /// fold can poke cache eviction through a narrow seam without taking a
 /// dependency on the full 28-method query surface.
 /// </para>
@@ -53,7 +53,7 @@ public sealed class CachingTicketQueryService(
     ITicketRepository ticketRepository,
     IMemoryCache perUserCache,
     IServiceScopeFactory scopeFactory,
-    ILogger<CachingTicketQueryService> logger) : ITicketQueryService, ITicketCacheInvalidator, IHostedService
+    ILogger<CachingTicketQueryService> logger) : ITicketService, ITicketCacheInvalidator, IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
@@ -76,24 +76,14 @@ public sealed class CachingTicketQueryService(
     // Projection-served reads (answer from the in-memory TicketOrderInfo dict)
     // ==========================================================================
 
-    public async Task<int> GetUserTicketCountAsync(Guid userId)
-    {
-        var cacheKey = CacheKeys.UserTicketCount(userId);
-        if (perUserCache.TryGetExistingValue(cacheKey, out int cached))
-            return cached;
-
-        var count = await ComputeUserTicketCountAsync(userId);
-        perUserCache.Set(cacheKey, count, UserPerUserCacheTtl);
-        return count;
-    }
-
-    private async Task<int> ComputeUserTicketCountAsync(Guid userId)
+    private async Task<int> ComputeUserTicketCountAsync(
+        Guid userId,
+        IReadOnlyDictionary<Guid, TicketOrderInfo> orders,
+        CancellationToken ct)
     {
         // Hot path: count valid/checked-in attendees matched to the user from
         // the projection. A buyer who purchased tickets for others should NOT
         // count as having a ticket themselves — match on attendees only.
-        var orders = await GetOrdersAsync();
-
         var matchedCount = orders.Values
             .SelectMany(o => o.Attendees)
             .Count(a => a.MatchedUserId == userId && IsValidOrCheckedIn(a.Status));
@@ -101,10 +91,10 @@ public sealed class CachingTicketQueryService(
             return matchedCount;
 
         // Fallback (email-matching) is business logic (§5a rule 4) — delegate
-        // to the inner. The _perUserCache wrapping in GetUserTicketCountAsync
-        // still caches the result for subsequent calls regardless of which
-        // path produced it.
-        return await WithInner(inner => inner.GetUserTicketCountAsync(userId));
+        // to the inner. GetUserTicketHoldingsAsync caches the resulting
+        // per-user summary regardless of which path produced the count.
+        var innerHoldings = await WithInner(inner => inner.GetUserTicketHoldingsAsync(userId, ct));
+        return innerHoldings.TicketCount;
     }
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
@@ -193,14 +183,6 @@ public sealed class CachingTicketQueryService(
         return false;
     }
 
-    public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) =>
-        // Pass-through (§5a rule 4): the decision of "which event is current"
-        // and the payment/attendee-status filtering are business logic owned
-        // by the inner service. Caching the answer in the projection would
-        // require the decorator to track the active vendor-event id and
-        // reproduce the inner's filtering — both belong on the inner.
-        WithInner(inner => inner.HasCurrentEventTicketAsync(userId, ct));
-
     public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
     {
         var orders = await GetOrdersAsync();
@@ -244,7 +226,25 @@ public sealed class CachingTicketQueryService(
                 a.Status))
             .ToList();
 
-        var holdings = new UserTicketHoldings(orderCount, visibleAttendees);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var currentEventId = syncState?.VendorEventId;
+        var hasCurrentEventTicket = !string.IsNullOrEmpty(currentEventId)
+            && orders.Values.Any(o =>
+                string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal)
+                && ((o.MatchedUserId == userId && o.PaymentStatus == TicketPaymentStatus.Paid)
+                    || o.Attendees.Any(a =>
+                        a.MatchedUserId == userId && IsValidOrCheckedIn(a.Status))));
+        var ticketCount = await ComputeUserTicketCountAsync(userId, orders, ct);
+        var innerHoldings = hasCurrentEventTicket
+            ? await WithInner(inner => inner.GetUserTicketHoldingsAsync(userId, ct))
+            : null;
+
+        var holdings = new UserTicketHoldings(
+            orderCount,
+            visibleAttendees,
+            hasCurrentEventTicket,
+            ticketCount,
+            innerHoldings?.PostEventHoldDate);
         perUserCache.Set(cacheKey, holdings, UserPerUserCacheTtl);
         return holdings;
     }
@@ -339,9 +339,6 @@ public sealed class CachingTicketQueryService(
     public Task<List<OrderExportRow>> GetOrderExportDataAsync() =>
         WithInner(inner => inner.GetOrderExportDataAsync());
 
-    public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetPostEventHoldDateAsync(ct));
-
     public Task<UserTicketExportData> GetUserTicketExportDataAsync(
         Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserTicketExportDataAsync(userId, ct));
@@ -350,7 +347,7 @@ public sealed class CachingTicketQueryService(
         WithInner(inner => inner.GetOrderDriftAsync(ct));
 
     // ==========================================================================
-    // Invalidation seams (ITicketQueryService + ITicketCacheInvalidator)
+    // Invalidation seams (ITicketService + ITicketCacheInvalidator)
     //
     // Bulk drops use TrackedCache.Clear(), which flips the warmed flag to
     // false; the next read calls EnsureWarmedAsync via GetOrdersAsync and the
@@ -361,11 +358,9 @@ public sealed class CachingTicketQueryService(
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
         _orders.Clear();
-        perUserCache.Remove(CacheKeys.UserTicketCount(senderUserId));
         perUserCache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
         if (receiverUserId is { } receiver)
         {
-            perUserCache.Remove(CacheKeys.UserTicketCount(receiver));
             perUserCache.Remove(CacheKeys.UserTicketHoldings(receiver));
         }
     }
@@ -377,9 +372,7 @@ public sealed class CachingTicketQueryService(
     public void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId)
     {
         _orders.Clear();
-        perUserCache.Remove(CacheKeys.UserTicketCount(sourceUserId));
         perUserCache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
-        perUserCache.Remove(CacheKeys.UserTicketCount(targetUserId));
         perUserCache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
     }
 
@@ -457,10 +450,10 @@ public sealed class CachingTicketQueryService(
     // Inner-scope resolver
     // ==========================================================================
 
-    private async Task<TResult> WithInner<TResult>(Func<ITicketQueryService, Task<TResult>> action)
+    private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketService>(InnerServiceKey);
         return await action(inner);
     }
 

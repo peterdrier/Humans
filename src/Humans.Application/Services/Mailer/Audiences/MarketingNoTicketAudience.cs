@@ -11,7 +11,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </summary>
 public sealed class MarketingNoTicketAudience(
     IUserServiceRead users,
-    ITicketQueryService tickets) : MailerAudienceBase(users)
+    ITicketServiceRead tickets) : MailerAudienceBase(users)
 {
     public override string Key => "marketing-no-ticket";
     public override string DisplayName => "Marketing opt-ins without a ticket";

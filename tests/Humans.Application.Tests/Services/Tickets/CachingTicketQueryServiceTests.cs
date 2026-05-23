@@ -18,9 +18,9 @@ namespace Humans.Application.Tests.Services.Tickets;
 ///
 /// <para>
 /// The decorator owns the per-order <c>TicketOrderInfo</c> projection;
-/// previously-cached <see cref="ITicketQueryService"/> reads now answer
-/// from that in-memory shape. Per-user <c>UserTicketCount</c> and
-/// <c>UserTicketHoldings</c> entries stay as separate short-TTL
+/// previously-cached <see cref="ITicketService"/> reads now answer
+/// from that in-memory shape. Per-user <c>UserTicketHoldings</c> entries
+/// stay as separate short-TTL
 /// <see cref="IMemoryCache"/>-backed concerns and are evicted by the
 /// transfer / merge invalidation seams.
 /// </para>
@@ -48,9 +48,8 @@ public sealed class CachingTicketQueryServiceTests
         _repo = Substitute.For<ITicketRepository>();
         _perUserCache = new MemoryCache(new MemoryCacheOptions());
 
-        // The decorator delegates the GetUserTicketCount email-fallback path
-        // to the keyed inner via WithInner. Tests that don't drive that path
-        // (matchedCount > 0 from the projection) can leave the inner unregistered.
+        // These tests do not drive the email-fallback holdings path, so the
+        // keyed inner can stay unregistered.
         var services = new ServiceCollection();
         services.AddSingleton(_perUserCache);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
@@ -116,28 +115,9 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserTicketCountAsync_CachesResult_AcrossCalls()
-    {
-        SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: null, attendees: [
-            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
-            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.CheckedIn),
-        ]));
-
-        var first = await _decorator.GetUserTicketCountAsync(UserA);
-        var second = await _decorator.GetUserTicketCountAsync(UserA);
-
-        first.Should().Be(2);
-        second.Should().Be(2);
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeTrue(
-            because: "the per-user TTL entry is preserved as a separate concern from the main projection");
-    }
-
-    [HumansFact]
     public async Task InvalidateAfterTransfer_DropsProjectionAndBothUsersPerUserEntries()
     {
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []));
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 5);
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserB), 0);
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserA),
             new UserTicketHoldings(1, []));
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB),
@@ -150,8 +130,6 @@ public sealed class CachingTicketQueryServiceTests
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
 
         _decorator.Entries.Should().Be(0, because: "projection should be dropped");
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeFalse();
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserB), out _).Should().BeFalse();
         _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserA), out _).Should().BeFalse();
         _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserB), out _).Should().BeFalse();
     }
@@ -160,15 +138,17 @@ public sealed class CachingTicketQueryServiceTests
     public async Task InvalidateAfterTransfer_NullReceiver_LeavesOtherUsersAlone()
     {
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []));
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 5);
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserB), 7);
+        _perUserCache.Set(CacheKeys.UserTicketHoldings(UserA),
+            new UserTicketHoldings(1, [], TicketCount: 5));
+        _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB),
+            new UserTicketHoldings(0, [], TicketCount: 7));
 
         _ = await _decorator.GetUserIdsWithTicketsAsync();
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
 
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeFalse();
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserB), out _).Should().BeTrue(
+        _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserA), out _).Should().BeFalse();
+        _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserB), out _).Should().BeTrue(
             because: "only the sender side of a half-failed transfer changes; unrelated users keep their entries");
     }
 
@@ -176,12 +156,10 @@ public sealed class CachingTicketQueryServiceTests
     public async Task InvalidateAfterUserMerge_DropsProjectionAndBothUsersPerUserEntries()
     {
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []));
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 3);
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserB), 1);
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserA),
-            new UserTicketHoldings(3, []));
+            new UserTicketHoldings(3, [], TicketCount: 3));
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB),
-            new UserTicketHoldings(1, []));
+            new UserTicketHoldings(1, [], TicketCount: 1));
 
         _ = await _decorator.GetUserIdsWithTicketsAsync();
         _decorator.Entries.Should().BeGreaterThan(0);
@@ -189,10 +167,6 @@ public sealed class CachingTicketQueryServiceTests
         _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
 
         _decorator.Entries.Should().Be(0);
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeFalse(
-            because: "source user's count is meaningless after their tickets re-FK'd onto target");
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserB), out _).Should().BeFalse(
-            because: "target user's count is stale — source's tickets just landed on it");
         _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserA), out _).Should().BeFalse();
         _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserB), out _).Should().BeFalse();
     }
@@ -201,14 +175,15 @@ public sealed class CachingTicketQueryServiceTests
     public async Task InvalidateAll_DropsProjection_LeavesPerUserEntriesAlone()
     {
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []));
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 3);
+        _perUserCache.Set(CacheKeys.UserTicketHoldings(UserA),
+            new UserTicketHoldings(1, [], TicketCount: 3));
 
         _ = await _decorator.GetUserIdsWithTicketsAsync();
 
         _decorator.InvalidateAll();
 
         _decorator.Entries.Should().Be(0);
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeTrue(
+        _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserA), out _).Should().BeTrue(
             because: "InvalidateAll (used by the sync job) lets per-user entries expire via TTL — same policy as the contact-import path");
     }
 

@@ -85,7 +85,7 @@ public class ProfileControllerPopoverTests
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
-            Substitute.For<ITicketQueryService>(),
+            Substitute.For<ITicketService>(),
             _teamService,
             Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),

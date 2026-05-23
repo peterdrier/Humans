@@ -71,7 +71,7 @@ public static class MemoryCacheExtensions
     // Ticket-cache invalidation extensions were retired in T-07 — eviction
     // is now owned by CachingTicketQueryService (Infrastructure decorator)
     // and reached through ITicketCacheInvalidator. The cache keys themselves
-    // (UserTicketCount, UserTicketHoldings, UserIdsWithTickets,
+    // (UserTicketHoldings, UserIdsWithTickets,
     // ValidAttendeeEmails, TicketDashboardStats) remain on CacheKeys; the
     // decorator pokes them directly via cache.Remove.
 

@@ -86,7 +86,7 @@ public class TicketNoShiftsAudienceTests
         HashSet<Guid> ticketHolders,
         HashSet<Guid> shiftCommitted)
     {
-        var tickets = Substitute.For<ITicketQueryService>();
+        var tickets = Substitute.For<ITicketService>();
         tickets.GetUserIdsWithTicketsAsync().Returns(ticketHolders);
 
         var shiftView = Substitute.For<IShiftView>();

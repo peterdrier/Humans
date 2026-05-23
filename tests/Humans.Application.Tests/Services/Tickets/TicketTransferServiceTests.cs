@@ -39,7 +39,7 @@ public sealed class TicketTransferServiceTests
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketVendorService _vendor = Substitute.For<ITicketVendorService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly ITicketCacheInvalidator _ticketCacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
@@ -53,7 +53,7 @@ public sealed class TicketTransferServiceTests
             _transferRepo,
             _ticketRepo,
             _vendor,
-            _ticketQueryService,
+            _ticketCacheInvalidator,
             _userService,
             _userEmailService,
             _profileService,
@@ -570,7 +570,7 @@ public sealed class TicketTransferServiceTests
                     && a.Status == TicketAttendeeStatus.Void)),
             Arg.Any<CancellationToken>());
         await _ticketRepo.DidNotReceive().UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>());
-        _ticketQueryService.Received(1).InvalidateAfterTransfer(_senderId, _receiverId);
+        _ticketCacheInvalidator.Received(1).InvalidateAfterTransfer(_senderId, _receiverId);
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),
@@ -610,7 +610,7 @@ public sealed class TicketTransferServiceTests
         request.VendorMessage.Should().StartWith("Issue failed");
         attendee.Status.Should().Be(TicketAttendeeStatus.Void);
         await _ticketRepo.Received(1).UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>());
-        _ticketQueryService.Received(1).InvalidateAfterTransfer(_senderId, null);
+        _ticketCacheInvalidator.Received(1).InvalidateAfterTransfer(_senderId, null);
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),
@@ -647,7 +647,7 @@ public sealed class TicketTransferServiceTests
         request.VendorResult.Should().Be(TicketTransferVendorResult.Failed);
         request.VendorMessage.Should().StartWith("Void failed");
         await _ticketRepo.DidNotReceive().UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>());
-        _ticketQueryService.DidNotReceive().InvalidateAfterTransfer(Arg.Any<Guid>(), Arg.Any<Guid?>());
+        _ticketCacheInvalidator.DidNotReceive().InvalidateAfterTransfer(Arg.Any<Guid>(), Arg.Any<Guid?>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),

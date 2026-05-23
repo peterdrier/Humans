@@ -52,7 +52,7 @@ public sealed class ShiftManagementService(
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
-    private ITicketQueryService TicketQueryService => serviceProvider.GetRequiredService<ITicketQueryService>();
+    private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)

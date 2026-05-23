@@ -23,7 +23,7 @@ public sealed class TicketTransferService(
     ITicketTransferRepository transferRepo,
     ITicketRepository ticketRepo,
     ITicketVendorService vendor,
-    ITicketQueryService ticketQueryService,
+    ITicketCacheInvalidator ticketCacheInvalidator,
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     IProfileService profileService,
@@ -449,7 +449,7 @@ public sealed class TicketTransferService(
             throw;
         }
 
-        ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
+        ticketCacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferApproved,
@@ -542,7 +542,7 @@ public sealed class TicketTransferService(
             // Void succeeded at vendor; mirror locally so Sender's card flips. Reissue failed.
             attendee.Status = TicketAttendeeStatus.Void;
             await ticketRepo.UpsertAttendeeAsync(attendee, ct);
-            ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
+            ticketCacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
             return;
         }
 
@@ -579,7 +579,7 @@ public sealed class TicketTransferService(
         request.NewVendorTicketId = issued.VendorTicketId;
         request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
 
-        ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
+        ticketCacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
     }
 
     private async Task<ReceiverLookupResultDto?> BuildReceiverCardAsync(Guid userId, CancellationToken ct)

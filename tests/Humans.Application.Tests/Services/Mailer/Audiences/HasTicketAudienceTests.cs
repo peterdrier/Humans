@@ -42,7 +42,7 @@ public class HasTicketAudienceTests
 
     private static HasTicketAudience NewAudience(HashSet<Guid> ticketHolders)
     {
-        var tickets = Substitute.For<ITicketQueryService>();
+        var tickets = Substitute.For<ITicketService>();
         tickets.GetUserIdsWithTicketsAsync().Returns(ticketHolders);
 
         var users = Substitute.For<IUserService>();

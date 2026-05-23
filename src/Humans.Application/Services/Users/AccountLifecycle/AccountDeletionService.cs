@@ -24,7 +24,7 @@ public sealed class AccountDeletionService(
     IShiftSignupService shiftSignupService,
     IShiftManagementService shiftManagementService,
     IProfileService profileService,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IShiftViewInvalidator shiftViewInvalidator,
@@ -49,9 +49,10 @@ public sealed class AccountDeletionService(
 
         // Ticket hold: held until after the event so the ticket remains usable.
         Instant? eligibleAfter = null;
-        if (await ticketQueryService.HasCurrentEventTicketAsync(userId, ct))
+        var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct);
+        if (ticketHoldings.HasCurrentEventTicket)
         {
-            eligibleAfter = await ticketQueryService.GetPostEventHoldDateAsync(ct);
+            eligibleAfter = ticketHoldings.PostEventHoldDate;
         }
 
         // 1. Persist deletion-pending fields on User.

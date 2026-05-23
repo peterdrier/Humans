@@ -27,9 +27,9 @@ public sealed class TicketQueryService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IShiftManagementService shiftManagementService,
-    IClock clock) : ITicketQueryService, IUserDataContributor
+    IClock clock) : ITicketService, IUserDataContributor
 {
-    public async Task<int> GetUserTicketCountAsync(Guid userId)
+    private async Task<int> ComputeUserTicketCountAsync(Guid userId)
     {
         // Attendees only — buyers don't count for themselves.
         var matchedCount = await ticketRepository
@@ -684,13 +684,27 @@ public sealed class TicketQueryService(
                 a.Status))
             .ToList();
 
-        return new UserTicketHoldings(orderCount, tickets);
+        var ticketCount = await ComputeUserTicketCountAsync(userId);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var hasCurrentEventTicket = syncState is not null
+            && !string.IsNullOrEmpty(syncState.VendorEventId)
+            && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
+        var postEventHoldDate = hasCurrentEventTicket
+            ? await GetPostEventHoldDateAsync(ct)
+            : null;
+
+        return new UserTicketHoldings(
+            orderCount,
+            tickets,
+            hasCurrentEventTicket,
+            ticketCount,
+            postEventHoldDate);
     }
 
     public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
         ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
 
-    public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
+    private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
         var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null)
@@ -706,15 +720,6 @@ public sealed class TicketQueryService(
 
         var now = clock.GetCurrentInstant();
         return postEventInstant > now ? postEventInstant : null;
-    }
-
-    public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
-    {
-        var syncState = await ticketRepository.GetSyncStateAsync(ct);
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return false;
-
-        return await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
     }
 
     public async Task<UserTicketExportData> GetUserTicketExportDataAsync(
@@ -794,10 +799,6 @@ public sealed class TicketQueryService(
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
     // Invalidation no-ops on the inner; CachingTicketQueryService intercepts.
-    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) { }
-
-    public void InvalidateAfterContactImport() { }
-
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         ticketRepository.GetOrderDriftAsync(ct);
 }

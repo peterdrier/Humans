@@ -6,10 +6,10 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// <summary>
 /// "Humans - Has Ticket" — humans with a Valid/CheckedIn matched ticket
 /// attendee in the active vendor event (buyer-only excluded — see
-/// <see cref="ITicketQueryService.GetUserIdsWithTicketsAsync"/>).
+/// <see cref="ITicketServiceRead.GetUserIdsWithTicketsAsync"/>).
 /// </summary>
 public sealed class HasTicketAudience(
-    ITicketQueryService tickets,
+    ITicketServiceRead tickets,
     IUserServiceRead users) : MailerAudienceBase(users)
 {
     public override string Key => "has-ticket";
