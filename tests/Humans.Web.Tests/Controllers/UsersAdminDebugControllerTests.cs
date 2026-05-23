@@ -35,7 +35,7 @@ public class UsersAdminDebugControllerTests
             {
                 Id = Guid.NewGuid(),
                 UserId = id,
-                BurnerName = "Burner",
+                BurnerName = displayName,
                 FirstName = "First",
                 LastName = "Last",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),

@@ -649,7 +649,7 @@ public sealed class TicketTransferService(
             TicketTypeName: attendee.TicketTypeName,
             OriginalAttendeeStatus: attendee.Status,
             SenderUserId: r.SenderUserId,
-            SenderDisplayName: sender?.DisplayName ?? "(unknown)",
+            SenderDisplayName: sender?.BurnerName ?? "(unknown)",
             ReceiverUserId: r.ReceiverUserId,
             ReceiverLegalName: r.ReceiverLegalName,
             ReceiverEmail: r.ReceiverEmail,
@@ -658,7 +658,7 @@ public sealed class TicketTransferService(
             VendorResult: r.VendorResult,
             VendorMessage: r.VendorMessage,
             DecidedByUserId: r.DecidedByUserId,
-            DecidedByDisplayName: decider?.DisplayName,
+            DecidedByDisplayName: decider?.BurnerName,
             AdminNotes: r.AdminNotes,
             RequestedAt: r.RequestedAt,
             DecidedAt: r.DecidedAt);

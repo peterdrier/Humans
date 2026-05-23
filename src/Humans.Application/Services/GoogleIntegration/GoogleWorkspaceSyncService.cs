@@ -1689,7 +1689,7 @@ public sealed class GoogleWorkspaceSyncService(
         {
             if (usersById.TryGetValue(match.UserId, out var user))
             {
-                result.TryAdd(match.Email, (user.DisplayName, match.UserId, user.ProfilePictureUrl));
+                result.TryAdd(match.Email, (user.BurnerName, match.UserId, user.ProfilePictureUrl));
             }
         }
 
