@@ -7,6 +7,7 @@
     <!-- AI/LLM -->
     <PackageVersion Include="Anthropic" Version="12.22.0" />
     <!-- Core Framework -->
+    <PackageVersion Include="ClosedXML" Version="0.105.0" />
     <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
     <PackageVersion Include="Ical.Net" Version="5.2.2" />
     <PackageVersion Include="Markdig" Version="1.2.0" />
