@@ -316,6 +316,71 @@ public class ProfileApiControllerTests
     }
 
     // ==========================================================================
+    // AllowEmail — exact (case-insensitive) verified-email resolution.
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task Search_allowEmail_resolves_exact_email_to_single_row()
+    {
+        var viewer = MakeUser(Guid.NewGuid());
+        var targetUserId = Guid.NewGuid();
+        var targetProfileId = Guid.NewGuid();
+
+        _userEmailService.GetUserIdByExactEmailAsync("Friend@Example.com", Arg.Any<CancellationToken>())
+            .Returns(targetUserId);
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, burnerName: "Friend")));
+        _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
+        _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        _contactFieldService.GetVisibleContactFieldsAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var sut = BuildSut(viewer);
+
+        var result = await sut.Search(q: "Friend@Example.com", scope: null, allowEmail: true);
+
+        var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
+        row.UserId.Should().Be(targetUserId);
+        // Exact-email path must NOT fan out to the name search.
+        await _userService.DidNotReceive().SearchUsersAsync(
+            Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Search_allowEmail_returns_empty_when_email_unknown()
+    {
+        var viewer = MakeUser(Guid.NewGuid());
+        _userEmailService.GetUserIdByExactEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((Guid?)null);
+
+        var sut = BuildSut(viewer);
+
+        var result = await sut.Search(q: "nobody@example.com", scope: null, allowEmail: true);
+
+        result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Search_allowEmail_off_does_not_exact_match_email()
+    {
+        var viewer = MakeUser(Guid.NewGuid());
+        _userService.SearchUsersAsync(Arg.Any<string>(),
+                Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var sut = BuildSut(viewer);
+
+        await sut.Search(q: "friend@example.com", scope: null, allowEmail: false);
+
+        await _userEmailService.DidNotReceive().GetUserIdByExactEmailAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
     // GetByUserId — single-person lookup. Same privacy gate, plus 404 paths.
     // ==========================================================================
 

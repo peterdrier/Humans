@@ -35,10 +35,12 @@ Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
 
 | Pattern | Component | When |
 |---|---|---|
-| Inline picker / autocomplete | `<vc:human-search>` (`HumanSearchViewComponent`) | Pick a single person inside a form. Sets a hidden `userId` field on selection. Backed by `/api/profiles/search`. Typed params: `field-name`, `instance-key`, `placeholder`, `scope`, `exclude-user-ids`, `selected-user-id` (optional prefill). |
+| Inline picker / autocomplete | `<vc:human-search>` (`HumanSearchViewComponent`) | Pick a single person inside a form. Sets a hidden `userId` field on selection. Backed by `/api/profiles/search`. Typed params: `field-name`, `instance-key`, `placeholder`, `scope`, `exclude-user-ids`, `selected-user-id` (optional prefill), `allow-email`. |
 | Page-style search results | `_HumanSearchResults` | Browse / find-then-act. Renders a list of cards. Used by `/Profile/Search` (public, `PublicAll`) and `/Profile/Admin` (`AdminAll`). |
 
 Don't roll a third. If you need a new search surface, route it through one of these.
+
+**`allow-email` (exact-email opt-in on the inline picker):** when set, a query containing `@` resolves as an **exact, case-insensitive** verified-email match returning at most one person (`IUserEmailService.GetUserIdByExactEmailAsync`) instead of a name search — `peter@x` matches `PETER@x`, not `peter73@x`. Exact-match-only means no substring/enumeration leak (a caller can only confirm membership for an address they already know in full), so it is **safe on non-admin surfaces** — the ticket-transfer recipient lookup uses it. This is distinct from the `Admin` bit's fuzzy email search, which stays admin-gated. The branch lives in `ProfileApiController.Search` (the controller is the auth boundary); `SearchProfilesAsync` is unchanged.
 
 **Out-of-scope carve-outs:**
 
