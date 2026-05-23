@@ -11,7 +11,7 @@
   Qualifying-shift threshold, dietary/medical field shape, NoInfoAdmin visibility rule, or Things-to-do card composition.
 -->
 
-# 35 — Dietary & Medical Nudge Modal
+# 35 — Dietary & Medical Nudge
 
 ## Business Context
 
@@ -26,6 +26,15 @@ This feature replaces that loss by surfacing the questions exactly when the data
 - **Reading dietary preference, allergies, intolerances:** any user who can already see the volunteer's `VolunteerEventProfile` (coordinators, shift admins, the badges partial in non-medical mode).
 
 No new role; no new policy. Reuse existing `ShowMedical` plumbing and the existing shift-profile read paths.
+
+## GDPR (special-category data)
+
+`MedicalConditions` is health data under GDPR Art. 9. No new handling is required — `VolunteerEventProfile` is already covered by the existing right-to-erasure and data-export flows:
+
+- **Erasure:** `AccountDeletionService` step 5 deletes the user's `VolunteerEventProfile` rows.
+- **Export:** the user's `VolunteerEventProfile` rows are emitted via `GdprExportSections.VolunteerEventProfiles` (contributed by `ShiftSignupService`).
+
+No retention policy changes; the data lives only as long as the user account does.
 
 ## User Stories
 
@@ -47,14 +56,14 @@ No new role; no new policy. Reuse existing `ShowMedical` plumbing and the existi
 - Item is marked done (and disappears with the rest of the card when no other items remain) once `DietaryPreference` is set, regardless of whether the user also filled out allergies/intolerances/medical.
 - Item is **never shown** to users without a qualifying signup, even if their dietary fields are empty.
 
-### US-35.2: Modal collects dietary, allergy, intolerance, medical info
+### US-35.2: Form collects dietary, allergy, intolerance, medical info
 **As a** human filling out the nudge
 **I want to** record my food preferences, allergies, intolerances, and any medical conditions
 **So that** the cantina and coordinators have what they need
 
 **Acceptance Criteria:**
 - Route: `GET /Profile/DietaryMedical` (form view), `POST /Profile/DietaryMedical` (save).
-- Renders as a Bootstrap modal when arrived at from the dashboard card; renders as a standalone page when arrived at directly (so the URL is shareable / bookmarkable / accessible without JS). Achieved via the existing modal-or-page pattern used by other onboarding nudges — falls back to a full page when `Request.Headers["HX-Request"]` is absent.
+- Renders as a standalone full page. URL is shareable / bookmarkable / works without JS. The Things-to-do card item navigates to this page; there is no modal overlay. (Modal-from-dashboard was considered but dropped — no HTMX or modal-coordination infrastructure exists yet in the app, and introducing it for a single nudge is not warranted.)
 - Fields, in order:
   - **Dietary preference** — required radio group: `Omnivore`, `Vegetarian`, `Vegan`, `Pescatarian`.
   - **Allergies** — optional multi-select chips: `Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`, `Other`. Choosing `Other` reveals a single-line text input (`AllergyOtherText`, max 500 chars — matches existing DB length).
@@ -62,7 +71,7 @@ No new role; no new policy. Reuse existing `ShowMedical` plumbing and the existi
   - **Medical conditions** — optional free-text textarea (max 4000 chars, the existing DB length). Hint copy: "Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc."
 - All values persist to `VolunteerEventProfile` columns of the same name. No new columns, no migration.
 - POST validates: dietary preference must be one of the four enum values; "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergy/intolerance items must be from the allowed set or `Other`.
-- On success: redirect back to `/` (dashboard) for full-page submits; close modal and refresh the Things-to-do card for HTMX submits.
+- On success: redirect back to `/` (dashboard). The Things-to-do card re-renders on the dashboard with the dietary/medical item gone (per US-35.1).
 - On validation failure: re-render with errors, preserve all entered values.
 
 ### US-35.3: Edit later from profile
@@ -82,7 +91,7 @@ No new role; no new policy. Reuse existing `ShowMedical` plumbing and the existi
 **So that** the cantina doesn't get blindsided by unknown dietary needs
 
 **Acceptance Criteria:**
-- The nudge fires for `ShiftSignup` rows with `Enrolled = true` exactly as it does for self-signup. The Things-to-do gate checks `Pending`/`Confirmed` status, not the `Enrolled` flag.
+- The nudge fires regardless of how the signup was created — self-signup (`Enrolled = false`) and coordinator-voluntolded (`Enrolled = true`) both qualify. The gate cares only about status (`Pending`/`Confirmed`) and shift duration; `Enrolled` is informational, not part of the gate.
 - No email or push notification is sent — surfacing on next dashboard visit is sufficient.
 
 ## Qualifying Shift
@@ -106,7 +115,7 @@ No schema changes. All fields already exist on `VolunteerEventProfile`:
 
 | Column | Type | Already exists | Notes |
 |---|---|---|---|
-| `DietaryPreference` | `varchar(200)?` | yes | Sentinel for "answered" (set ⇒ nudge done) |
+| `DietaryPreference` | `varchar(200)?` | yes | Sentinel for "answered": `!string.IsNullOrEmpty(...)` ⇒ nudge done |
 | `Allergies` | `jsonb` (List&lt;string&gt;) | yes | Stored as Postgres `jsonb` via `ConfigureJsonbList`, surfaced as `List<string>` |
 | `Intolerances` | `jsonb` (List&lt;string&gt;) | yes | Stored as Postgres `jsonb` via `ConfigureJsonbList`, surfaced as `List<string>` |
 | `AllergyOtherText` | `varchar(500)?` | yes | Required iff `Other` ∈ Allergies |
@@ -128,13 +137,17 @@ No schema changes. All fields already exist on `VolunteerEventProfile`:
 
 ## Cross-section dependencies
 
-- **Shifts** (reads): `ShiftSignup` status + `Shift.Duration`/`IsAllDay` to compute qualifying-shift gate. Goes through the existing `IShiftManagementService` — new method `HasQualifyingCantinaSignupAsync(Guid userId)` or extension of an existing query. No `Include` of `User` from this section.
-- **Profile** (writes): `IProfileService` adds `GetDietaryMedicalAsync(Guid userId)` / `SaveDietaryMedicalAsync(Guid userId, DietaryMedicalDto dto)`. Both go through `IVolunteerEventProfileRepository` — no direct EF in the service.
-- **Dashboard / ThingsToDo**: the existing `ThingsToDoViewComponent` gets a new branch that calls into the Shifts service for the gate and the Profile service for the empty-check. The current `IsShiftProfileEmpty(...)` helper is **narrowed** to skills/quirks/languages only — dietary/medical move into the new branch.
+`VolunteerEventProfile` lives behind `IShiftManagementService` today (`GetShiftProfileAsync(userId, includeMedical)`, `UpdateShiftProfileAsync(profile)`, backed by `IShiftManagementRepository`). This feature **reuses that surface** — no new repository, no new service, no Profile→Shifts coupling.
+
+- **Shifts** (reads, gate): `ShiftSignup` status + `Shift.Duration`/`IsAllDay` to compute qualifying-shift gate. New method `IShiftManagementService.HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct)` on the existing service. Pure-query, no `Include` of `User`. Internally calls `Shift.QualifiesForCantinaMeal()` (new pure helper on the entity).
+- **Shifts** (reads, profile): `IShiftManagementService.GetShiftProfileAsync(userId, includeMedical: true)` — already exists. The new dietary/medical form view uses this to pre-populate.
+- **Shifts** (writes, profile): `IShiftManagementService.UpdateShiftProfileAsync(profile)` — already exists. The form POST in `ProfileController` mutates `DietaryPreference` / `Allergies` / `Intolerances` / `AllergyOtherText` / `IntoleranceOtherText` / `MedicalConditions` on the loaded entity and calls update. No new persistence method needed.
+- **Profile** (controller only): `ProfileController` gets a new action pair `DietaryMedical` (GET form / POST save). The controller depends on `IShiftManagementService` directly — `IProfileService` is **not** involved (VEP is not Profile-service territory).
+- **Dashboard / ThingsToDo**: `ThingsToDoViewComponent` gets a new branch that calls `IShiftManagementService.HasQualifyingCantinaSignupAsync` for the gate and reuses the already-loaded `GetShiftProfileAsync(includeMedical: false)` result for the dietary-empty check. The current `IsShiftProfileEmpty(...)` helper is **narrowed** to skills/quirks/languages only — dietary/medical move into the new branch and are not part of the generic shift-info-empty check anymore.
 
 ## Negative access rules
 
-- A user **cannot** see another user's `MedicalConditions` via the modal, the badges partial, or any read API unless they are `NoInfoAdmin` or `Admin`. The dietary/medical save endpoint is owner-scoped (action filter on `ProfileController` already enforces this on edit routes).
+- A user **cannot** see another user's `MedicalConditions` via the form page, the badges partial, or any read API unless they are `NoInfoAdmin` or `Admin`. The dietary/medical save endpoint is owner-scoped (action filter on `ProfileController` already enforces this on edit routes).
 - A coordinator viewing volunteer search results sees the dietary preference badge but never the medical conditions string unless `ShowMedical` is true (already wired).
 
 ## Out of scope
