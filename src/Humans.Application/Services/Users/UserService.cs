@@ -306,6 +306,7 @@ public sealed class UserService(
             .Select(e => e.Email)
             .FirstOrDefault();
 
+#pragma warning disable HUM_USER_DISPLAYNAME // GDPR export must include the legacy Identity column value.
         var shaped = new
         {
             user.Id,
@@ -321,6 +322,7 @@ public sealed class UserService(
             CreatedAt = user.CreatedAt.ToInvariantInstantString(),
             LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var participationsShaped = participations

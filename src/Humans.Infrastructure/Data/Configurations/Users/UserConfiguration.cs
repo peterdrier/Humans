@@ -9,7 +9,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.Property(u => u.DisplayName)
+        builder.Property<string>("DisplayName")
             .HasMaxLength(256)
             .IsRequired();
 

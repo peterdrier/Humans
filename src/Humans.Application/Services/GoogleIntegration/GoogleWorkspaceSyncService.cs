@@ -1761,9 +1761,9 @@ public sealed class GoogleWorkspaceSyncService(
 
     private static string GetDisplayName(TeamMember tm)
     {
-#pragma warning disable CS0618 // Legacy TeamMember path; snapshot paths use UserInfo.BurnerName.
+#pragma warning disable CS0618, HUM_USER_DISPLAYNAME // Legacy TeamMember path; snapshot paths use UserInfo.BurnerName.
         return tm.User?.DisplayName ?? string.Empty;
-#pragma warning restore CS0618
+#pragma warning restore CS0618, HUM_USER_DISPLAYNAME
     }
 
     private static Guid GetUserId(TeamMember tm) => tm.UserId;

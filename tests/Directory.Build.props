@@ -17,7 +17,13 @@
       clean-up; suppress here so TreatWarningsAsErrors doesn't block the v3
       upgrade. File a follow-up if/when we want to enable it.
     -->
-    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+    <!--
+      HUM_USER_DISPLAYNAME intentionally stays visible in production projects.
+      Tests still seed legacy User.DisplayName in entity fixtures to exercise
+      account creation, merge, deletion, and cached UserInfo fallback behavior;
+      those fixture writes are not render-path violations.
+    -->
+    <NoWarn>$(NoWarn);xUnit1051;HUM_USER_DISPLAYNAME</NoWarn>
   </PropertyGroup>
 
   <!-- Ship the shared xunit.runner.json next to each test project's output.

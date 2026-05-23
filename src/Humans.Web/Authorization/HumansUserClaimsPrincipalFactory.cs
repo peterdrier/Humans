@@ -24,7 +24,11 @@ public sealed class HumansUserClaimsPrincipalFactory(
     {
         var identity = await base.GenerateClaimsAsync(user);
 
-        if (!string.IsNullOrWhiteSpace(user.DisplayName))
+#pragma warning disable HUM_USER_DISPLAYNAME // Identity claim generation is an allowed legacy column consumer.
+        var displayName = user.DisplayName;
+#pragma warning restore HUM_USER_DISPLAYNAME
+
+        if (!string.IsNullOrWhiteSpace(displayName))
         {
             var nameClaimType = Options.ClaimsIdentity.UserNameClaimType;
             var existing = identity.FindFirst(nameClaimType);
@@ -32,7 +36,7 @@ public sealed class HumansUserClaimsPrincipalFactory(
             {
                 identity.RemoveClaim(existing);
             }
-            identity.AddClaim(new Claim(nameClaimType, user.DisplayName));
+            identity.AddClaim(new Claim(nameClaimType, displayName));
         }
 
         return identity;
