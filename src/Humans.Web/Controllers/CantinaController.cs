@@ -9,7 +9,7 @@ using NodaTime;
 namespace Humans.Web.Controllers;
 
 /// <summary>
-/// Cantina coordinator surface — daily roster page and CSV export
+/// Cantina coordinator surface — weekly roster page and CSV export
 /// (feature #36 — docs/features/cantina/daily-roster.md). View-only.
 /// Authorization gate: <see cref="ICantinaAccessService.CanViewRosterAsync"/>
 /// returns true for Admin / NoInfoAdmin / VolunteerCoordinator, or for any
@@ -42,46 +42,45 @@ public sealed class CantinaController : Controller
     }
 
     [HttpGet("Roster")]
-    public async Task<IActionResult> Roster(int? dayOffset = null, CancellationToken ct = default)
+    public async Task<IActionResult> Roster(int? weekStartOffset = null, CancellationToken ct = default)
     {
         if (!await _access.CanViewRosterAsync(User, ct).ConfigureAwait(false))
             return Forbid();
 
-        var offset = dayOffset ?? await ComputeDefaultDayOffsetAsync(ct).ConfigureAwait(false);
-        var roster = await _roster.GetDailyRosterAsync(offset, ct).ConfigureAwait(false);
+        var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
+        var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
         return View(roster);
     }
 
     [HttpGet("Roster/Csv")]
-    public async Task<IActionResult> Csv(int? dayOffset = null, CancellationToken ct = default)
+    public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
         if (!await _access.CanViewRosterAsync(User, ct).ConfigureAwait(false))
             return Forbid();
 
-        var offset = dayOffset ?? await ComputeDefaultDayOffsetAsync(ct).ConfigureAwait(false);
-        var roster = await _roster.GetDailyRosterAsync(offset, ct).ConfigureAwait(false);
+        var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
+        var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);
-        var datePart = roster.CalendarDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
-        var filename = $"cantina-roster-day-{offset.ToString(CultureInfo.InvariantCulture)}-{datePart}.csv";
-        _logger.LogDebug("Cantina roster CSV exported for dayOffset={DayOffset}, people={PeopleCount}", offset, roster.People.Count);
+        var datePart = roster.WeekStartDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
+        var filename = $"cantina-roster-week-of-{datePart}.csv";
+        _logger.LogDebug(
+            "Cantina roster CSV exported for weekStartOffset={WeekStartOffset}, people={PeopleCount}",
+            offset, roster.People.Count);
         return File(bytes, "text/csv; charset=utf-8", filename);
     }
 
     /// <summary>
-    /// Computes "today's event day" relative to <c>GateOpeningDate</c> in the
-    /// event's timezone. Returns 0 when no active event exists (and lets the
-    /// view render the "no data" branch).
+    /// Computes the <c>weekStartOffset</c> of the week containing "today"
+    /// in the active event's timezone — the Monday-of-this-week relative
+    /// to <c>GateOpeningDate</c>. Returns 0 when no active event exists
+    /// (and lets the view render the empty branch).
     /// </summary>
-    private async Task<int> ComputeDefaultDayOffsetAsync(CancellationToken ct)
+    private async Task<int> ComputeDefaultWeekStartOffsetAsync()
     {
         var es = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
         if (es is null)
             return 0;
-
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId)
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var todayLocal = _clock.GetCurrentInstant().InZone(zone).Date;
-        return Period.Between(es.GateOpeningDate, todayLocal, PeriodUnits.Days).Days;
+        return _roster.GetCurrentWeekStartOffsetForActiveEvent(es, _clock.GetCurrentInstant());
     }
 }

@@ -5,20 +5,24 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using NodaTime;
 using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Application.Services.Cantina;
 
 /// <summary>
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
-/// Pulls the on-site cohort and their <c>VolunteerEventProfile</c> rows
-/// from <c>IShiftManagementRepository</c>, stitches burner-name labels
+/// Pulls the on-site cohort and their <c>VolunteerEventProfile</c> rows for
+/// each of the 7 days Mon–Sun from <c>IShiftManagementRepository</c>,
+/// unions them into a unique-humans cohort, stitches burner-name labels
 /// from <c>IProfileService</c> / <c>IUserService</c>, and computes the
-/// aggregates the Cantina coordinator UI needs. Medical fields never
+/// weekly aggregates the Cantina coordinator UI needs. Medical fields never
 /// leave the service — they are not present on any DTO.
 /// </summary>
 public sealed class CantinaRosterService : ICantinaRosterService
 {
+    private const int DaysPerWeek = 7;
+
     private readonly IShiftManagementRepository _shiftRepo;
     private readonly IProfileService _profileService;
     private readonly IUserService _userService;
@@ -36,46 +40,121 @@ public sealed class CantinaRosterService : ICantinaRosterService
         _userService = userService;
     }
 
-    public async Task<DailyRosterDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
+    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
     {
         var eventSettings = await _shiftRepo.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
-        var calendarDate = eventSettings is null
-            ? (NodaTime.LocalDate?)null
-            : eventSettings.GateOpeningDate.PlusDays(dayOffset);
+        var weekStartDate = eventSettings is null
+            ? (LocalDate?)null
+            : eventSettings.GateOpeningDate.PlusDays(weekStartOffset);
+        var weekEndDate = weekStartDate?.PlusDays(DaysPerWeek - 1);
         var eventName = eventSettings?.EventName;
 
-        var onSiteUserIds = await _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
-        if (onSiteUserIds.Count == 0)
+        // Per-day fetch: 7 sequential queries. At ~500 users this is fine
+        // (see CLAUDE.md scale notes). Each tuple holds (dayOffset, userIds, veps).
+        var perDay = new List<(int DayOffset, IReadOnlyList<Guid> UserIds, IReadOnlyList<VolunteerEventProfile> Veps)>(DaysPerWeek);
+        for (var i = 0; i < DaysPerWeek; i++)
         {
-            return new DailyRosterDto(
-                dayOffset,
-                calendarDate,
-                eventName,
-                TotalOnSite: 0,
+            var dayOffset = weekStartOffset + i;
+            var userIds = await _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
+            var veps = userIds.Count == 0
+                ? Array.Empty<VolunteerEventProfile>()
+                : await _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
+            perDay.Add((dayOffset, userIds, veps));
+        }
+
+        // Build the union of unique on-site user IDs across the week, and
+        // map each user id to the set of calendar dates they were on-site.
+        var daysOnSiteByUserId = new Dictionary<Guid, List<LocalDate>>();
+        foreach (var (dayOffset, userIds, _) in perDay)
+        {
+            var calendarDate = weekStartDate?.PlusDays(dayOffset - weekStartOffset);
+            foreach (var id in userIds)
+            {
+                if (!daysOnSiteByUserId.TryGetValue(id, out var list))
+                {
+                    list = new List<LocalDate>(capacity: DaysPerWeek);
+                    daysOnSiteByUserId[id] = list;
+                }
+                if (calendarDate is not null)
+                    list.Add(calendarDate.Value);
+            }
+        }
+
+        // Unique-humans cohort: keyed by user id, with the latest VEP we saw
+        // for them across the week (VEPs are per-user not per-shift; for any
+        // given user they're identical across days the user appeared).
+        var uniqueUserIds = daysOnSiteByUserId.Keys.ToList();
+        var vepByUserId = new Dictionary<Guid, VolunteerEventProfile>();
+        foreach (var (_, _, veps) in perDay)
+        {
+            foreach (var vep in veps)
+                vepByUserId[vep.UserId] = vep;
+        }
+
+        // Build per-day summaries from the per-day data (counts only).
+        var days = new List<DayRosterSummaryDto>(DaysPerWeek);
+        for (var i = 0; i < DaysPerWeek; i++)
+        {
+            var (dayOffset, userIds, veps) = perDay[i];
+            var vepsById = new Dictionary<Guid, VolunteerEventProfile>(veps.Count);
+            foreach (var v in veps)
+                vepsById[v.UserId] = v;
+            var unanswered = 0;
+            foreach (var id in userIds)
+            {
+                if (!vepsById.TryGetValue(id, out var v) || string.IsNullOrEmpty(v.DietaryPreference))
+                    unanswered++;
+            }
+            days.Add(new DayRosterSummaryDto(
+                DayOffset: dayOffset,
+                CalendarDate: weekStartDate?.PlusDays(i),
+                TotalOnSite: userIds.Count,
+                UnansweredOnDay: unanswered));
+        }
+
+        if (uniqueUserIds.Count == 0)
+        {
+            return new WeeklyRosterDto(
+                WeekStartOffset: weekStartOffset,
+                WeekStartDate: weekStartDate,
+                WeekEndDate: weekEndDate,
+                EventName: eventName,
+                TotalUniqueOnSite: 0,
                 UnansweredCount: 0,
                 DietaryBreakdown: EmptyDietaryBreakdown(),
                 AllergyRollup: EmptyRollup(DietaryOptions.AllergyOptions),
                 AllergyOtherEntries: Array.Empty<string>(),
                 IntoleranceRollup: EmptyRollup(DietaryOptions.IntoleranceOptions),
                 IntoleranceOtherEntries: Array.Empty<string>(),
+                Days: days,
                 People: Array.Empty<RosterPersonDto>());
         }
 
-        var veps = await _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
-        var profiles = await _profileService.GetByUserIdsAsync(onSiteUserIds, ct).ConfigureAwait(false);
-        var users = await _userService.GetByIdsAsync(onSiteUserIds, ct).ConfigureAwait(false);
+        var profiles = await _profileService.GetByUserIdsAsync(uniqueUserIds, ct).ConfigureAwait(false);
+        var users = await _userService.GetByIdsAsync(uniqueUserIds, ct).ConfigureAwait(false);
 
-        var vepByUserId = veps.ToDictionary(v => v.UserId);
+        // Build the unique-humans VEP cohort once — every aggregate below
+        // is computed over this list so a person on-site multiple days
+        // contributes exactly once.
+        var uniqueVeps = new List<VolunteerEventProfile>(uniqueUserIds.Count);
+        foreach (var id in uniqueUserIds)
+        {
+            if (vepByUserId.TryGetValue(id, out var v))
+                uniqueVeps.Add(v);
+        }
 
-        var people = onSiteUserIds
+        var people = uniqueUserIds
             .Select(id =>
             {
                 profiles.TryGetValue(id, out var profile);
                 users.TryGetValue(id, out var user);
                 vepByUserId.TryGetValue(id, out var vep);
+                var daysList = daysOnSiteByUserId[id];
+                daysList.Sort();
                 return new RosterPersonDto(
                     UserId: id,
                     BurnerName: ResolveBurnerName(profile, user),
+                    DaysOnSite: daysList,
                     DietaryPreference: vep?.DietaryPreference,
                     Allergies: vep?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
                     AllergyOtherText: vep?.AllergyOtherText,
@@ -85,36 +164,50 @@ public sealed class CantinaRosterService : ICantinaRosterService
             .OrderBy(p => p.BurnerName, StringComparer.Ordinal)
             .ToList();
 
-        var dietaryBreakdown = BuildDietaryBreakdown(veps, onSiteUserIds.Count);
+        var dietaryBreakdown = BuildDietaryBreakdown(uniqueVeps, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
-            veps,
+            uniqueVeps,
             vep => vep.Allergies,
             vep => vep.AllergyOtherText,
             DietaryOptions.AllergyOptions);
         var (intoleranceRollup, intoleranceOther) = BuildRollup(
-            veps,
+            uniqueVeps,
             vep => vep.Intolerances,
             vep => vep.IntoleranceOtherText,
             DietaryOptions.IntoleranceOptions);
 
-        // "Unanswered" = on-site humans whose DietaryPreference is null/empty,
-        // which includes both "no VEP at all" and "VEP exists but DietaryPreference
-        // is blank". See daily-roster.md.
-        var answeredCount = veps.Count(v => !string.IsNullOrEmpty(v.DietaryPreference));
-        var unanswered = onSiteUserIds.Count - answeredCount;
+        // "Unanswered" = unique on-site humans whose DietaryPreference is
+        // null/empty, which includes both "no VEP at all" and "VEP exists
+        // but DietaryPreference is blank".
+        var answeredCount = uniqueVeps.Count(v => !string.IsNullOrEmpty(v.DietaryPreference));
+        var unansweredTotal = uniqueUserIds.Count - answeredCount;
 
-        return new DailyRosterDto(
-            dayOffset,
-            calendarDate,
-            eventName,
-            TotalOnSite: onSiteUserIds.Count,
-            UnansweredCount: unanswered,
+        return new WeeklyRosterDto(
+            WeekStartOffset: weekStartOffset,
+            WeekStartDate: weekStartDate,
+            WeekEndDate: weekEndDate,
+            EventName: eventName,
+            TotalUniqueOnSite: uniqueUserIds.Count,
+            UnansweredCount: unansweredTotal,
             DietaryBreakdown: dietaryBreakdown,
             AllergyRollup: allergyRollup,
             AllergyOtherEntries: allergyOther,
             IntoleranceRollup: intoleranceRollup,
             IntoleranceOtherEntries: intoleranceOther,
+            Days: days,
             People: people);
+    }
+
+    public int GetCurrentWeekStartOffsetForActiveEvent(EventSettings eventSettings, Instant now)
+    {
+        ArgumentNullException.ThrowIfNull(eventSettings);
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var todayLocal = now.InZone(zone).Date;
+        // NodaTime: IsoDayOfWeek.Monday = 1; LocalDate.DayOfWeek is an IsoDayOfWeek.
+        var daysSinceMonday = ((int)todayLocal.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
+        var monday = todayLocal.PlusDays(-daysSinceMonday);
+        return Period.Between(eventSettings.GateOpeningDate, monday, PeriodUnits.Days).Days;
     }
 
     private static string ResolveBurnerName(ProfileEntity? profile, User? user)
@@ -144,14 +237,14 @@ public sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private static IReadOnlyDictionary<string, int> BuildDietaryBreakdown(
-        IReadOnlyList<VolunteerEventProfile> veps, int totalOnSite)
+        IReadOnlyList<VolunteerEventProfile> uniqueVeps, int totalUniqueOnSite)
     {
         var dict = new Dictionary<string, int>(DietaryOptions.DietaryPreferences.Count + 1, StringComparer.Ordinal);
         foreach (var pref in DietaryOptions.DietaryPreferences)
             dict[pref] = 0;
 
         var answered = 0;
-        foreach (var vep in veps)
+        foreach (var vep in uniqueVeps)
         {
             if (string.IsNullOrEmpty(vep.DietaryPreference))
                 continue;
@@ -163,12 +256,12 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 dict[vep.DietaryPreference]++;
         }
 
-        dict[UnansweredKey] = totalOnSite - answered;
+        dict[UnansweredKey] = totalUniqueOnSite - answered;
         return dict;
     }
 
     private static (IReadOnlyList<RollupItemDto> Rollup, IReadOnlyList<string> OtherEntries) BuildRollup(
-        IReadOnlyList<VolunteerEventProfile> veps,
+        IReadOnlyList<VolunteerEventProfile> uniqueVeps,
         Func<VolunteerEventProfile, List<string>> pickChips,
         Func<VolunteerEventProfile, string?> pickOtherText,
         IReadOnlyList<string> canonicalLabels)
@@ -177,9 +270,11 @@ public sealed class CantinaRosterService : ICantinaRosterService
         foreach (var label in canonicalLabels)
             counts[label] = 0;
 
+        // Dedup other-text entries by trimmed value across the week.
+        var otherSet = new HashSet<string>(StringComparer.Ordinal);
         var otherEntries = new List<string>();
 
-        foreach (var vep in veps)
+        foreach (var vep in uniqueVeps)
         {
             var chips = pickChips(vep);
             if (chips is null) continue;
@@ -194,7 +289,11 @@ public sealed class CantinaRosterService : ICantinaRosterService
             {
                 var text = pickOtherText(vep);
                 if (!string.IsNullOrWhiteSpace(text))
-                    otherEntries.Add(text.Trim());
+                {
+                    var trimmed = text.Trim();
+                    if (otherSet.Add(trimmed))
+                        otherEntries.Add(trimmed);
+                }
             }
         }
 
