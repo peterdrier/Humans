@@ -1410,6 +1410,25 @@
   <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Tus preferencias de turno est&#xE1;n configuradas.</value></data>
   <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Completa tu informaci&#xF3;n de turno para que los coordinadores conozcan tus habilidades y preferencias.</value></data>
   <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Completar info de turno</value></data>
+  <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Cuéntanos sobre tu alimentación</value></data>
+  <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>Lo necesitamos para planificar las comidas de la cantina</value></data>
+  <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Gracias — ya tenemos lo necesario</value></data>
+  <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Rellenar</value></data>
+  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Información alimentaria y médica</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Preferencia alimentaria</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnívoro/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetariano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescetariano/a</value></data>
+  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Alergias</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Otra alergia — describe cuál</value></data>
+  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerancias</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Otra intolerancia — describe cuál</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Label" xml:space="preserve"><value>Condiciones médicas</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Solo visible para ti y los No-Info Admins. Cualquier cosa que el equipo deba saber — diabetes, epilepsia, lesiones graves, etc.</value></data>
+  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Tu información alimentaria y médica se ha guardado.</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Describe la otra alergia.</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Describe la otra intolerancia.</value></data>
 
   <!-- Notification Inbox -->
   <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notificaciones</value></data>
