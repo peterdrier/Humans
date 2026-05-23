@@ -13,7 +13,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
@@ -23,14 +22,12 @@ namespace Humans.Application.Tests.Jobs;
 public class SuspendNonCompliantMembersJobTests : IDisposable
 {
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator;
@@ -43,14 +40,12 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     public SuspendNonCompliantMembersJobTests()
     {
         _userService = Substitute.For<IUserService>();
-        _profileService = Substitute.For<IProfileService>();
         _teamService = Substitute.For<ITeamService>();
         _membershipCalculator = Substitute.For<IMembershipCalculator>();
         _emailService = Substitute.For<IEmailService>();
         _notificationService = Substitute.For<INotificationService>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
-        _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
@@ -64,9 +59,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
 
         _job = new SuspendNonCompliantMembersJob(
-            _userService, _profileService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
+            _userService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
             _emailService, _notificationService, _googleSyncService, _auditLogService,
-            _userInfoInvalidator, _roleAssignmentClaimsInvalidator,
+            _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator, _metrics, logger, _clock);
     }
 
@@ -99,7 +94,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _profileService.Received(1).SuspendForMissingConsentAsync(
+        await _userService.Received(1).SuspendProfilesForMissingConsentAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)),
             Now,
             Arg.Any<CancellationToken>());
@@ -113,7 +108,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _profileService.DidNotReceive().SuspendForMissingConsentAsync(
+        await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
         await _emailService.DidNotReceive().SendAccessSuspendedAsync(
@@ -129,7 +124,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
 
-        _profileService.SuspendForMissingConsentAsync(
+        _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
@@ -149,9 +144,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { userId });
 
-        // Profile service says it suspended the user, but user service returns
+        // User service says it suspended the user, but the follow-up lookup returns
         // an empty lookup — job should not emit email/notification/audit.
-        _profileService.SuspendForMissingConsentAsync(
+        _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
@@ -263,7 +258,6 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _userInfoInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
         _activeTeamsCacheInvalidator.Received(1).Invalidate();
@@ -324,7 +318,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
     private void StubSuspendSucceeds(IReadOnlyCollection<Guid> suspendedIds)
     {
-        _profileService.SuspendForMissingConsentAsync(
+        _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())

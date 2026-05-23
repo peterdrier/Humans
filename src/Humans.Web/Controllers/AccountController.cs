@@ -19,7 +19,6 @@ public class AccountController(
     IUserEmailService userEmailService,
     IMagicLinkService magicLinkService,
     IAccountProvisioningService accountProvisioningService,
-    IProfileService profileService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet]
@@ -316,7 +315,7 @@ public class AccountController(
         }
 
         // see #635 (§15i) — Stub Profile invariant.
-        await profileService.EnsureStubProfileAsync(user.Id);
+        await UserService.EnsureStubProfileAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: false);
         logger.LogInformation("User created an account using {Provider}", info.LoginProvider);

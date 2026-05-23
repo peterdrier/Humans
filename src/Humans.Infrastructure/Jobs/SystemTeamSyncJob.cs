@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SystemTeamSyncJob(
     ITeamService teamService,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
     ICampRepository campRepository,
     IServiceProvider serviceProvider,
@@ -46,9 +46,6 @@ public class SystemTeamSyncJob(
 
     private IRoleAssignmentService RoleAssignmentService =>
         serviceProvider.GetRequiredService<IRoleAssignmentService>();
-
-    private IProfileService ProfileService =>
-        serviceProvider.GetRequiredService<IProfileService>();
 
     private ITeamResourceService TeamResourceService =>
         serviceProvider.GetRequiredService<ITeamResourceService>();
@@ -320,7 +317,7 @@ public class SystemTeamSyncJob(
         var otherTierByUser = await ApplicationDecisionService
             .GetOtherActiveTierAssignmentsAsync(tier, today, cancellationToken);
 
-        var downgrades = await ProfileService.DowngradeTierForExpiredAsync(
+        var downgrades = await userService.DowngradeMembershipTierForExpiredAsync(
             tier, applicationUserIds, otherTierByUser, todayInstant, cancellationToken);
 
         if (downgrades.Count > 0)

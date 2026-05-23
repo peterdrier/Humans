@@ -25,7 +25,6 @@ namespace Humans.Application.Services.Governance;
 public sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IProfileService profileService,
     IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
@@ -83,7 +82,7 @@ public sealed class ApplicationDecisionService(
             "Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
 
-        await profileService.SetMembershipTierAsync(
+        await userService.SetMembershipTierAsync(
             application.UserId, application.MembershipTier, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)

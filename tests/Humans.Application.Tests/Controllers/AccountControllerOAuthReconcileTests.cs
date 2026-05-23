@@ -71,7 +71,6 @@ public class AccountControllerOAuthReconcileTests
             _userEmailService,
             _magicLinkService,
             Substitute.For<IAccountProvisioningService>(),
-            Substitute.For<IProfileService>(),
             _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);

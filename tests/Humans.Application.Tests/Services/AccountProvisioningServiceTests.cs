@@ -355,7 +355,7 @@ public class AccountProvisioningServiceTests
     private readonly FakeUserRepository _userRepo;
     private readonly FakeUserEmailService _userEmailFake;
     private readonly IUserEmailService _userEmailService;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly AccountProvisioningService _service;
 
     public AccountProvisioningServiceTests()
@@ -408,12 +408,12 @@ public class AccountProvisioningServiceTests
                 return Task.FromResult(IdentityResult.Success);
             });
 
-        _profileService = Substitute.For<IProfileService>();
+        _userService = Substitute.For<IUserService>();
 
         _service = new AccountProvisioningService(
             _userRepo,
             _userEmailService,
-            _profileService,
+            _userService,
             _userManager,
             new StubAuditLog(),
             _clock,
@@ -684,7 +684,7 @@ public class AccountProvisioningServiceTests
             && ue.Email == "magic@example.com"
             && ue.IsVerified
             && ue.IsPrimary);
-        await _profileService.Received(1)
+        await _userService.Received(1)
             .EnsureStubProfileAsync(result.User.Id, Arg.Any<CancellationToken>());
     }
 

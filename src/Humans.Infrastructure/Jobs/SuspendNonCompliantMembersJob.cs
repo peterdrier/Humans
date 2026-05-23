@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -23,19 +22,17 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 /// <remarks>
 /// All reads/writes fan out through section services
-/// (<see cref="IUserService"/>, <see cref="IProfileService"/>,
+/// (<see cref="IUserService"/>,
 /// <see cref="ITeamService"/>, <see cref="IGoogleSyncService"/>) so the job
 /// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
 /// directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
-/// (<see cref="IUserInfoInvalidator"/>,
-/// <see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
+/// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
 /// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SuspendNonCompliantMembersJob(
-    IUserServiceRead userService,
-    IProfileService profileService,
+    IUserService userService,
     ITeamServiceRead teamService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
@@ -43,7 +40,6 @@ public class SuspendNonCompliantMembersJob(
     INotificationService notificationService,
     IGoogleSyncService googleSyncService,
     IAuditLogService auditLogService,
-    IUserInfoInvalidator userInfoInvalidator,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IHumansMetrics metrics,
@@ -73,11 +69,11 @@ public class SuspendNonCompliantMembersJob(
 
             var now = clock.GetCurrentInstant();
 
-            // Apply the suspension write through IProfileService — returns the
+            // Apply the suspension write through IUserService — returns the
             // subset of user ids whose profile was actually mutated (skips
             // already-suspended / profileless users).
-            var suspendedIds = await profileService
-                .SuspendForMissingConsentAsync(usersToSuspend, now, cancellationToken);
+            var suspendedIds = await userService
+                .SuspendProfilesForMissingConsentAsync(usersToSuspend, now, cancellationToken);
 
             if (suspendedIds.Count == 0)
             {
@@ -173,7 +169,6 @@ public class SuspendNonCompliantMembersJob(
                     $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
-                await userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);
                 roleAssignmentClaimsInvalidator.Invalidate(user.Id);
                 shiftAuthorizationInvalidator.Invalidate(user.Id);
                 activeTeamsCacheInvalidator.Invalidate();

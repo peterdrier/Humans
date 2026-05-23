@@ -14,7 +14,7 @@ namespace Humans.Application.Services.Users;
 public sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,
-    IProfileService profileService,
+    IUserService userService,
     UserManager<User> userManager,
     IAuditLogService auditLogService,
     IClock clock,
@@ -81,8 +81,8 @@ public sealed class AccountProvisioningService(
         // see nobodies-collective/Humans#687
         await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
-        // see #635 (§15i) — Stub Profile invariant; cross-section write via §2c.
-        await profileService.EnsureStubProfileAsync(newUser.Id, ct);
+        // see #635 (§15i) — Stub Profile invariant; UserService owns UserInfo storage/cache.
+        await userService.EnsureStubProfileAsync(newUser.Id, ct);
 
         await auditLogService.LogAsync(
             AuditAction.ContactCreated,
@@ -161,7 +161,7 @@ public sealed class AccountProvisioningService(
                 User: null);
         }
 
-        await profileService.EnsureStubProfileAsync(user.Id, ct);
+        await userService.EnsureStubProfileAsync(user.Id, ct);
 
         logger.LogInformation(
             "Magic link signup: user {UserId} created account for {Email}",
