@@ -76,7 +76,6 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
         var rows = joined
             .Select(x => new OnsiteRosterRow(
                 x.Row.UserId,
-                x.Row.DisplayName,
                 x.Row.CheckedInAt!.Value,
                 x.Camps,
                 x.Teams,

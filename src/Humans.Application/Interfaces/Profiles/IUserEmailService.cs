@@ -606,7 +606,6 @@ public record UserEmailMatch(
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
     Guid UserId,
-    string? DisplayName,
     int IsGoogleCount,
     int VerifiedCount,
     int VerifiedPrimaryCount,

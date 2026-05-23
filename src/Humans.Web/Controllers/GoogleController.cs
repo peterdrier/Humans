@@ -703,10 +703,7 @@ public class GoogleController(
         CancellationToken ct)
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
-        var sorted = violations
-            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        return View(sorted);
+        return View(violations);
     }
 
     // --- Index ---
