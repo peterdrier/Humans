@@ -97,11 +97,20 @@ public interface IUserEmailService : IApplicationService
     /// <see cref="UnlinkAsync"/>, which removes the AspNetUserLogins row and
     /// the UserEmail row in one step). Blocks the delete (throws
     /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>)
-    /// when removing a verified row would leave the user with zero verified
-    /// UserEmail rows. Unverified rows are always deletable since they can't
-    /// be used for sign-in. See
+    /// when:
+    /// <list type="bullet">
+    /// <item>the row is the primary email (issue nobodies-collective/Humans#758)
+    /// — the user must promote another verified email to primary first; or</item>
+    /// <item>removing a verified row would leave the user with zero verified
+    /// UserEmail rows; or</item>
+    /// <item>the row's address is linked to the user's event ticket
+    /// (issue nobodies-collective/Humans#758) — removing it could disconnect
+    /// the ticket on the next vendor re-sync.</item>
+    /// </list>
+    /// Unverified rows are always deletable since they can't be used for
+    /// sign-in (subject to the primary / ticket-linked guards above). See
     /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>
-    /// PRs 1 and 4 for the design rationale.
+    /// PRs 1 and 4 for the original design rationale.
     /// </summary>
     Task<bool> DeleteEmailAsync(
         Guid userId,
