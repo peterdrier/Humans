@@ -14,6 +14,13 @@ namespace Humans.Application.Architecture;
 /// <para>Agent rules (strict):</para>
 /// <list type="bullet">
 ///   <item>
+///     <b>Owner-applied only.</b> The repo owner places this attribute by hand
+///     on the specific surfaces they choose. Agents NEVER add
+///     <c>[SurfaceBudget]</c> to a type and NEVER suggest adding it — not in a
+///     PR, not in a review, not in passing. An agent's only job is to keep an
+///     already-present budget number accurate when it edits that type.
+///   </item>
+///   <item>
 ///     <b>No raises.</b> Adding a method requires removing one from the SAME
 ///     type in the SAME PR. Net delta is &lt;= 0.
 ///   </item>
@@ -47,10 +54,12 @@ namespace Humans.Application.Architecture;
 ///
 /// <para>
 /// In scope: types with a meaningful surface (~10+ methods) where growth would
-/// matter. Currently applied to service interfaces only, but the attribute is
-/// valid on classes and structs too — pick whatever symbol most accurately
-/// represents the surface you want budgeted. Smaller types aren't budgeted —
-/// adding the 3rd method to a 2-method type isn't a smell.
+/// matter. Currently applied to a small set of read-side service interfaces
+/// (the <c>I…ServiceRead</c> boundary types) — the attribute predominantly
+/// lives on read interfaces. It is valid on classes and structs too, but the
+/// owner has deliberately kept adoption narrow; see the "Owner-applied only"
+/// rule above. Smaller types aren't budgeted — adding the 3rd method to a
+/// 2-method type isn't a smell.
 /// </para>
 ///
 /// <para>

@@ -23,7 +23,8 @@ The XML-doc recent-history bullets above any `[SurfaceBudget(N)]` interface are 
 /// </list>
 ```
 
-**Scope:** Every interface with `[SurfaceBudget(N)]`. Currently 18 interfaces; trim on touch, not in a sweep.
+**Scope:** Every interface with `[SurfaceBudget(N)]`. Currently 3 interfaces — the read-side `ITeamServiceRead`, `IUserServiceRead`, `IConsentServiceRead`. Trim on touch, not in a sweep. (The attribute is owner-applied only and lives predominantly on read interfaces — see [`surface-budget-owner-applied`](surface-budget-owner-applied.md).)
 
 **Related:**
 - [`interface-method-additions-are-debt`](../architecture/interface-method-additions-are-debt.md) — the principle behind SurfaceBudget itself.
+- [`surface-budget-owner-applied`](surface-budget-owner-applied.md) — never add or suggest the attribute; only the owner places it.
