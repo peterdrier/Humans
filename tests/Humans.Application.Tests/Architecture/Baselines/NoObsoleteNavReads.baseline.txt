@@ -170,9 +170,3 @@ src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs:User#1
 src/Humans.Web/ViewComponents/AdminNavTree.cs:User#1
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:User#1
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:User#2
-src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:Team#1
-src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:Team#2
-src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:Team#3
-src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:Team#4
-src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:Team#5
-src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:Team#6

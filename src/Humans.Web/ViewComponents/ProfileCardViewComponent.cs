@@ -23,7 +23,7 @@ public class ProfileCardViewComponent(
     IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IRoleAssignmentService roleAssignmentService,
     IMembershipCalculator membershipCalculator,
     ICommunicationPreferenceService commPrefService) : ViewComponent
@@ -65,18 +65,26 @@ public class ProfileCardViewComponent(
         }
         var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
 
-        var userTeams = await teamService.GetUserTeamsAsync(userId);
-        var displayableTeams = userTeams
-            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers
-                && (viewMode != ProfileCardViewMode.Public || !tm.Team.IsHidden))
-            .OrderBy(tm => tm.Team.Name, StringComparer.Ordinal)
+        var teamsById = await teamService.GetTeamsAsync();
+        var displayableTeams = teamsById
+            .Values
+            .Where(t => t.IsActive
+                && t.SystemTeamType != SystemTeamType.Volunteers
+                && (viewMode != ProfileCardViewMode.Public || !t.IsHidden))
+            .Select(t => new
+            {
+                TeamInfo = t,
+                Membership = t.Members.FirstOrDefault(m => m.UserId == userId)
+            })
+            .Where(tm => tm.Membership is not null)
+            .OrderBy(tm => tm.TeamInfo.Name, StringComparer.Ordinal)
             .Select(tm => new TeamMembershipViewModel
             {
-                TeamId = tm.TeamId,
-                TeamName = tm.Team.DisplayName,
-                TeamSlug = tm.Team.Slug,
-                IsCoordinator = tm.Role == TeamMemberRole.Coordinator,
-                IsSystemTeam = tm.Team.IsSystemTeam
+                TeamId = tm.TeamInfo.Id,
+                TeamName = GetDisplayName(tm.TeamInfo, teamsById),
+                TeamSlug = tm.TeamInfo.Slug,
+                IsCoordinator = tm.Membership!.Role == TeamMemberRole.Coordinator,
+                IsSystemTeam = tm.TeamInfo.IsSystemTeam
             })
             .ToList();
 
@@ -149,4 +157,11 @@ public class ProfileCardViewComponent(
 
         return View(model);
     }
+
+    private static string GetDisplayName(
+        TeamInfo team,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById) =>
+        team.ParentTeamId is { } parentTeamId && teamsById.TryGetValue(parentTeamId, out var parent)
+            ? $"{parent.Name} - {team.Name}"
+            : team.Name;
 }
