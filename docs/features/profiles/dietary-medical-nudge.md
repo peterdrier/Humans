@@ -62,7 +62,7 @@ No retention policy changes; the data lives only as long as the user account doe
 **So that** the cantina and coordinators have what they need
 
 **Acceptance Criteria:**
-- Route: `GET /Profile/DietaryMedical` (form view), `POST /Profile/DietaryMedical` (save).
+- Route: `GET /Profile/Me/DietaryMedical` (form view), `POST /Profile/Me/DietaryMedical` (save).
 - Renders as a standalone full page. URL is shareable / bookmarkable / works without JS. The Things-to-do card item navigates to this page; there is no modal overlay. (Modal-from-dashboard was considered but dropped — no HTMX or modal-coordination infrastructure exists yet in the app, and introducing it for a single nudge is not warranted.)
 - Fields, in order:
   - **Dietary preference** — required radio group: `Omnivore`, `Vegetarian`, `Vegan`, `Pescatarian`.
@@ -80,9 +80,9 @@ No retention policy changes; the data lives only as long as the user account doe
 **So that** updates reach the cantina before the next event
 
 **Acceptance Criteria:**
-- A "Dietary & medical info" link appears on `/Profile/Edit` (in the same vertical section list as the existing Shift preferences / Communication preferences links).
+- A "Dietary & medical info" link appears on `/Profile/Me` (in the same vertical nav-link list as the existing Shift Info / Communication Preferences links).
 - Link is visible to any authenticated user — not gated by qualifying-shift status (a user can fill this out proactively).
-- Clicking it navigates to `GET /Profile/DietaryMedical` as the full-page view, pre-populated with the current values.
+- Clicking it navigates to `GET /Profile/Me/DietaryMedical` as the full-page view, pre-populated with the current values.
 - The "Dietary & medical info" Things-to-do item still only appears under the qualifying-shift gate; the profile edit link is the unconditional path.
 
 ### US-35.4: Voluntold humans get the same nudge
