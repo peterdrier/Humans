@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -808,5 +809,13 @@ public class VolunteerTrackingServiceTests
         public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
             Guid eventSettingsId, CancellationToken ct = default)
             => Task.FromResult(signups);
+
+        public Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
+            Guid eventSettingsId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Guid? departmentId,
+            CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<ConfirmedShiftRow>>([]);
     }
 }
