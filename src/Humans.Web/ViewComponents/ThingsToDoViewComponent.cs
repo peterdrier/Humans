@@ -136,7 +136,9 @@ public class ThingsToDoViewComponent : ViewComponent
             }
 
             // 5. Dietary & medical nudge — fires when the user has an active qualifying
-            // signup (6h+ or all-day) AND DietaryPreference is not yet set.
+            // signup (6h+ or all-day). Shows Pending when DietaryPreference is empty,
+            // Done when set. Matches the shift-info branch's Pending/Done pattern so the
+            // item disappears with the rest of the card only when everything is done.
             // See feature #279 / 35 — docs/features/profiles/dietary-medical-nudge.md
             try
             {
@@ -145,19 +147,18 @@ public class ThingsToDoViewComponent : ViewComponent
                 {
                     var dietaryProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
                     var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
-                    if (dietaryEmpty)
+                    model.Items.Add(new TodoItem
                     {
-                        model.Items.Add(new TodoItem
-                        {
-                            Key = "dietary-medical",
-                            Title = _localizer["Todo_DietaryMedical_Title"].Value,
-                            Description = _localizer["Todo_DietaryMedical_Pending"].Value,
-                            IsDone = false,
-                            ActionUrl = Url.Action("DietaryMedical", "Profile"),
-                            ActionText = _localizer["Todo_DietaryMedical_Action"].Value,
-                            IconClass = "fa-solid fa-utensils",
-                        });
-                    }
+                        Key = "dietary-medical",
+                        Title = _localizer["Todo_DietaryMedical_Title"].Value,
+                        Description = dietaryEmpty
+                            ? _localizer["Todo_DietaryMedical_Pending"].Value
+                            : _localizer["Todo_DietaryMedical_Done"].Value,
+                        IsDone = !dietaryEmpty,
+                        ActionUrl = dietaryEmpty ? Url.Action("DietaryMedical", "Profile") : null,
+                        ActionText = dietaryEmpty ? _localizer["Todo_DietaryMedical_Action"].Value : null,
+                        IconClass = "fa-solid fa-utensils",
+                    });
                 }
             }
             catch (Exception ex)
