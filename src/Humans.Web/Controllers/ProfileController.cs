@@ -1720,12 +1720,12 @@ public class ProfileController : HumansControllerBase
 
         // Server-side validation for the "Other text required iff Other selected" rule
         // (DataAnnotations can't express the conditional requirement cleanly).
-        if (model.Allergies.Contains("Other") && string.IsNullOrWhiteSpace(model.AllergyOtherText))
+        if (model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
         {
             ModelState.AddModelError(nameof(model.AllergyOtherText), _localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
             return View(model);
         }
-        if (model.Intolerances.Contains("Other") && string.IsNullOrWhiteSpace(model.IntoleranceOtherText))
+        if (model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.IntoleranceOtherText))
         {
             ModelState.AddModelError(nameof(model.IntoleranceOtherText), _localizer["Profile_DietaryMedical_IntoleranceOther_Required"].Value);
             return View(model);

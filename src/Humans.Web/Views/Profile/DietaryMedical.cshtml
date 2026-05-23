@@ -65,7 +65,7 @@
                         </div>
                     }
                 </div>
-                <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains("Other") ? "block" : "none");">
+                <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
                     <label asp-for="AllergyOtherText" class="form-label">@Localizer["Profile_DietaryMedical_AllergyOther_Label"]</label>
                     <input asp-for="AllergyOtherText" class="form-control" maxlength="500" />
                     <span asp-validation-for="AllergyOtherText" class="text-danger"></span>
@@ -90,7 +90,7 @@
                         </div>
                     }
                 </div>
-                <div class="mt-3" id="intolerance-other-wrapper" style="display: @(Model.Intolerances.Contains("Other") ? "block" : "none");">
+                <div class="mt-3" id="intolerance-other-wrapper" style="display: @(Model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
                     <label asp-for="IntoleranceOtherText" class="form-label">@Localizer["Profile_DietaryMedical_IntoleranceOther_Label"]</label>
                     <input asp-for="IntoleranceOtherText" class="form-control" maxlength="500" />
                     <span asp-validation-for="IntoleranceOtherText" class="text-danger"></span>
@@ -120,16 +120,17 @@
         // Server-side validation (ProfileController) still enforces the conditional-required
         // rule, so users with JS disabled get a normal validation error and resubmit.
         (function () {
-            function wireOther(checkboxId, wrapperId) {
-                var checkbox = document.getElementById(checkboxId);
-                var wrapper = document.getElementById(wrapperId);
+            function wireOther(prefix, otherValue) {
+                var checkbox = document.getElementById(prefix + '-' + otherValue);
+                var wrapper = document.getElementById(prefix === 'al' ? 'allergy-other-wrapper' : 'intolerance-other-wrapper');
                 if (!checkbox || !wrapper) return;
                 checkbox.addEventListener('change', function () {
                     wrapper.style.display = checkbox.checked ? 'block' : 'none';
                 });
             }
-            wireOther('al-Other', 'allergy-other-wrapper');
-            wireOther('in-Other', 'intolerance-other-wrapper');
+            var otherValue = '@DietaryMedicalViewModel.OtherOption';
+            wireOther('al', otherValue);
+            wireOther('in', otherValue);
         })();
     </script>
 }
