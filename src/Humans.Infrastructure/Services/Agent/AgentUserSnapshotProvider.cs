@@ -14,7 +14,7 @@ using NodaTime;
 namespace Humans.Infrastructure.Services.Agent;
 
 public sealed class AgentUserSnapshotProvider(
-    IUserService users,
+    IUserServiceRead users,
     IRoleAssignmentService roles,
     ITeamService teams,
     IConsentServiceRead consents,

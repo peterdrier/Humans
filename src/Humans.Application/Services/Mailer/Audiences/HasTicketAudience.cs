@@ -10,7 +10,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </summary>
 public sealed class HasTicketAudience(
     ITicketQueryService tickets,
-    IUserService users) : MailerAudienceBase(users)
+    IUserServiceRead users) : MailerAudienceBase(users)
 {
     public override string Key => "has-ticket";
     public override string DisplayName => "Ticket holders";

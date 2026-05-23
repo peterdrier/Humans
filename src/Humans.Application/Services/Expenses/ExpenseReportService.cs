@@ -29,7 +29,7 @@ public sealed class ExpenseReportService(
     IFileStorage fileStorage,
     IBudgetService budgetService,
     ITeamService teamService,
-    IUserService userService,
+    IUserServiceRead userService,
     IProfileService profileService,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,

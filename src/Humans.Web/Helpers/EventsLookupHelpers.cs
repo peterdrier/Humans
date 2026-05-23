@@ -12,7 +12,7 @@ namespace Humans.Web.Helpers;
 public static class EventsLookupHelpers
 {
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
-        IUserService users, IEnumerable<Guid> userIds)
+        IUserServiceRead users, IEnumerable<Guid> userIds)
     {
         var result = new Dictionary<Guid, UserInfo>();
         foreach (var id in userIds)

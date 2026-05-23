@@ -7,7 +7,7 @@ namespace Humans.Infrastructure.Services;
 
 public sealed class AdminDatabaseDiagnosticsService(
     IAdminDatabaseDiagnosticsRepository repository,
-    IUserService userService,
+    IUserServiceRead userService,
     ITicketQueryService ticketQueryService) : IAdminDatabaseDiagnosticsService
 {
     public Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default) =>

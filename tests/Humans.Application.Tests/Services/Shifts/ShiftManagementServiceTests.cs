@@ -80,6 +80,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_userService)
+            .With<IUserServiceRead>(_userService)
             .With(_roleAssignmentService)
             .Build();
 

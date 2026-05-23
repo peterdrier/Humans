@@ -11,7 +11,7 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.ViewComponents;
 
 public class ThingsToDoViewComponent(
-    IUserService userService,
+    IUserServiceRead userService,
     IShiftManagementService shiftMgmt,
     IMembershipCalculator membershipCalculator,
     IStringLocalizer<SharedResource> localizer,

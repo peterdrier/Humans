@@ -25,7 +25,7 @@ namespace Humans.Infrastructure.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class TermRenewalReminderJob(
     IApplicationDecisionService applicationDecisionService,
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailService emailService,
     INotificationService notificationService,
     IHumansMetrics metrics,

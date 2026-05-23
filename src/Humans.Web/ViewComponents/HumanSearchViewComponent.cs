@@ -10,7 +10,7 @@ namespace Humans.Web.ViewComponents;
 /// pattern (see <c>memory/architecture/person-search.md</c>); the typed
 /// replacement for the old human-search partial.
 /// </summary>
-public sealed class HumanSearchViewComponent(IUserService userService) : ViewComponent
+public sealed class HumanSearchViewComponent(IUserServiceRead userService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         string fieldName = "userId",

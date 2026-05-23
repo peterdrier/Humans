@@ -35,10 +35,12 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
+        var fakeUserService = new FakeUserService(Db);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(new FakeTeamService(Db))
             .With<ITicketQueryService>(new FakeTicketQueryService(Db))
-            .With<IUserService>(new FakeUserService(Db))
+            .With<IUserService>(fakeUserService)
+            .With<IUserServiceRead>(fakeUserService)
             .With<IRoleAssignmentService>()
             .Build();
 

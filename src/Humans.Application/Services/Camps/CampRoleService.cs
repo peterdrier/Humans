@@ -18,7 +18,7 @@ public sealed class CampRoleService(
     ICampRoleRepository repo,
     ICampRepository campRepo,
     ICampService campService,
-    IUserService userService,
+    IUserServiceRead userService,
     IUserEmailService userEmailService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,

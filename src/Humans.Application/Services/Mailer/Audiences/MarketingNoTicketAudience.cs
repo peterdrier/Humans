@@ -10,7 +10,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// Users with no Marketing preference row (default-off) or who hold a ticket are excluded.
 /// </summary>
 public sealed class MarketingNoTicketAudience(
-    IUserService users,
+    IUserServiceRead users,
     ITicketQueryService tickets) : MailerAudienceBase(users)
 {
     public override string Key => "marketing-no-ticket";

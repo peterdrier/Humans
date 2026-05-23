@@ -25,7 +25,7 @@ public class SyncLegalDocumentsJob(
     ILegalDocumentSyncService syncService,
     IEmailService emailService,
     ITeamServiceRead teamService,
-    IUserService userService,
+    IUserServiceRead userService,
     IConsentRepository consentRepository,
     IHumansMetrics metrics,
     ILogger<SyncLegalDocumentsJob> logger,

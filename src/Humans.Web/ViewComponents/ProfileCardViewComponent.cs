@@ -20,7 +20,7 @@ public enum ProfileCardViewMode
 }
 
 public class ProfileCardViewComponent(
-    IUserService userService,
+    IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
     ITeamService teamService,

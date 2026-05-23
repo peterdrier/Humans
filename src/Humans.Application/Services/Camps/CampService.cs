@@ -23,7 +23,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 {
     private readonly ICampRepository _repo;
     private readonly ICampRoleRepository _roleRepo;
-    private readonly IUserService _userService;
+    private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
@@ -41,7 +41,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public CampService(
         ICampRepository repo,
         ICampRoleRepository roleRepo,
-        IUserService userService,
+        IUserServiceRead userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
         IFileStorage fileStorage,

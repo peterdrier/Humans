@@ -29,7 +29,7 @@ internal static class MailerAudienceDebugSnapshotBuilder
     public static async Task<DebugSnapshot> BuildAsync(
         IMailerAudience audience,
         IMailerLiteService ml,
-        IUserService users,
+        IUserServiceRead users,
         ILogger logger,
         CancellationToken ct)
     {

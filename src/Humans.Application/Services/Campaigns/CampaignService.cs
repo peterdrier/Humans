@@ -23,7 +23,7 @@ public sealed class CampaignService(
     ICampaignRepository repository,
     ITeamServiceRead teamService,
     IUserEmailService userEmailService,
-    IUserService userService,
+    IUserServiceRead userService,
     INotificationService notificationService,
     ICommunicationPreferenceService commPrefService,
     IEmailService emailService,

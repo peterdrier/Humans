@@ -15,7 +15,7 @@ namespace Humans.Application.Services.Search;
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
 public sealed class SearchService(
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamServiceRead teamService,
     ICampService campService,
     IShiftManagementService shiftService,

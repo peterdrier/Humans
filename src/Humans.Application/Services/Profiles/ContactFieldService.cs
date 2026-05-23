@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Profiles;
 public sealed class ContactFieldService(
     IContactFieldRepository repository,
     IProfileRepository profileRepository,
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,

@@ -12,7 +12,7 @@ namespace Humans.Application.Services.Auth;
 public sealed class MagicLinkService(
     UserManager<User> userManager,
     IUserEmailService userEmailService,
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailService emailService,
     IMagicLinkUrlBuilder urlBuilder,
     IMagicLinkRateLimiter rateLimiter,

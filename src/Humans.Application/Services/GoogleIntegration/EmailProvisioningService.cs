@@ -15,7 +15,7 @@ namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>4-step @nobodies.team email provisioning flow. Used by HumanController (Admin) and TeamAdminController (Coordinators).</summary>
 public sealed class EmailProvisioningService(
-    IUserService userService,
+    IUserServiceRead userService,
     IGoogleWorkspaceUserService workspaceUserService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,

@@ -8,7 +8,7 @@ public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
 public enum HumanLink { None, Public, Admin }
 
-public class HumanViewComponent(IUserService userService, IUrlHelperFactory urlHelperFactory) : ViewComponent
+public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory urlHelperFactory) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,

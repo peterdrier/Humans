@@ -231,7 +231,7 @@ public sealed class CachingConsentService(
         // the inner is consistent (both go through IUserService).
         await using (var scope = scopeFactory.CreateAsyncScope())
         {
-            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
             sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
 
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
@@ -290,7 +290,7 @@ public sealed class CachingConsentService(
         // inner ConsentService's GetChainFollowIdsAsync, lifted to warm time
         // so it does not run on every read.
         await using var scope = scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
         var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
 
         IReadOnlySet<Guid> versions;

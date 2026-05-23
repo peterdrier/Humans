@@ -18,7 +18,7 @@ public sealed class WorkloadService(
     IShiftManagementRepository repo,
     IShiftView view,
     ITeamService teamService,
-    IUserService userService) : IWorkloadService
+    IUserServiceRead userService) : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;

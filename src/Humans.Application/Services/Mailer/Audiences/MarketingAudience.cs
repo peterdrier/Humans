@@ -7,7 +7,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// communication category (<see cref="UserInfo.MarketingOptedOut"/> == false).
 /// Users with no Marketing preference row (default-off) are excluded.
 /// </summary>
-public sealed class MarketingAudience(IUserService users) : MailerAudienceBase(users)
+public sealed class MarketingAudience(IUserServiceRead users) : MailerAudienceBase(users)
 {
     public override string Key => "marketing";
     public override string DisplayName => "Marketing opt-ins";

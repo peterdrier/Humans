@@ -19,7 +19,7 @@ namespace Humans.Application.Services.Notifications;
 /// </summary>
 public sealed class NotificationInboxService(
     INotificationRepository repo,
-    IUserService userService,
+    IUserServiceRead userService,
     IClock clock,
     IMemoryCache cache) : INotificationInboxService, IUserDataContributor
 {

@@ -960,7 +960,7 @@ public sealed class CachingTeamService(
             .ToList();
 
         await using var scope = scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
         var users = allUserIds.Count == 0
             ? new Dictionary<Guid, Application.UserInfo>()
             : await userService.GetUserInfosAsync(allUserIds, ct);

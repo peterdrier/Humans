@@ -16,7 +16,7 @@ namespace Humans.Application.Services.Profiles;
 /// </summary>
 public sealed class CommunicationPreferenceService(
     ICommunicationPreferenceRepository repository,
-    IUserService userService,
+    IUserServiceRead userService,
     IUnsubscribeTokenProvider tokenProvider,
     IClock clock,
     IAuditLogService auditLog,
