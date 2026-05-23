@@ -10,7 +10,7 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("[controller]")]
 public class GovernanceController(
-    IUserService userService,
+    IUserServiceRead userService,
     IGovernanceIndexService governanceIndexService) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index()

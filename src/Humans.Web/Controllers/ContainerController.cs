@@ -17,7 +17,7 @@ public class ContainerController(
     IContainerService containerService,
     ICityPlanningService cityPlanningService,
     IAuthorizationService authorizationService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<ContainerController> logger) : HumansControllerBase(userService)
 {
     private async Task<bool> AuthorizeAsync(ContainerAuthorizationTarget target, ContainerOperationRequirement requirement) =>

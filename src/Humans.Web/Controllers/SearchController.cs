@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 [Route("Search")]
 public sealed class SearchController(
     ISearchService searchService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<SearchController> logger) : HumansControllerBase(userService)
 {
     /// <summary>Global search page. Short query → placeholder; otherwise fans out and renders type-grouped results.</summary>

@@ -12,11 +12,11 @@ namespace Humans.Web.Controllers;
 
 [Route("AuditLog")]
 public class AuditLogController(
-    IUserService userService,
+    IUserServiceRead userService,
     IAuditViewerService auditViewer,
     ILogger<AuditLogController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
