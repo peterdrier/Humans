@@ -3,6 +3,7 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -309,7 +310,7 @@ public class MySignupItem
 
 public class ShiftAdminViewModel
 {
-    public Team Department { get; set; } = null!;
+    public TeamInfo Department { get; set; } = null!;
     public EventSettings EventSettings { get; set; } = null!;
     public List<Rota> Rotas { get; set; } = [];
     public List<ShiftSignup> PendingSignups { get; set; } = [];
