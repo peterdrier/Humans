@@ -18,7 +18,7 @@ namespace Humans.Web.Controllers;
 [ApiController]
 [Route("api/issues")]
 [ServiceFilter(typeof(IssuesApiKeyAuthFilter))]
-public class IssuesApiController(IIssuesService issues, IUserService users, ILogger<IssuesApiController> logger)
+public class IssuesApiController(IIssuesService issues, IUserServiceRead users, ILogger<IssuesApiController> logger)
     : ControllerBase
 {
     [HttpGet]
