@@ -341,6 +341,21 @@ public interface IShiftManagementRepository : IRepository
         int dayOffset,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the distinct <see cref="ShiftSignup.UserId"/>s of volunteers
+    /// on-site for the given event day (same on-site rule as
+    /// <see cref="GetOnSiteVolunteerProfilesForDayAsync"/> — Pending/Confirmed
+    /// signup on a <see cref="Shift"/> with the matching <see cref="Shift.DayOffset"/>).
+    /// Used together with that method by the Cantina daily roster service:
+    /// the VEP query only returns rows for users who already have a profile,
+    /// so the service uses this list to compute the "unanswered" cohort
+    /// (on-site but no <see cref="VolunteerEventProfile"/> yet, or with empty
+    /// <see cref="VolunteerEventProfile.DietaryPreference"/>).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================

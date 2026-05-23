@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 
 namespace Humans.Web.Models;
@@ -23,20 +24,19 @@ public class DietaryMedicalViewModel
 
     /// <summary>
     /// Sentinel value used in <see cref="AllergyOptions"/> and <see cref="IntoleranceOptions"/>
-    /// to indicate a free-text follow-up. When this option is selected, the corresponding
-    /// "*OtherText" property carries the user-supplied detail. Centralised here so the
-    /// VM, controller validation, and view stay in sync.
+    /// to indicate a free-text follow-up. Forwards to the canonical Domain constant so the
+    /// VM, controller validation, view, and the Cantina roster service stay in sync.
     /// </summary>
-    public const string OtherOption = "Other";
+    public const string OtherOption = DietaryOptions.OtherOption;
 
-    public static readonly string[] DietaryPreferences =
-        ["Omnivore", "Vegetarian", "Vegan", "Pescatarian"];
+    /// <summary>Forwarder to <see cref="DietaryOptions.DietaryPreferences"/>.</summary>
+    public static readonly IReadOnlyList<string> DietaryPreferences = DietaryOptions.DietaryPreferences;
 
-    public static readonly string[] AllergyOptions =
-        ["Peanut", "Tree nut", "Dairy", "Egg", "Shellfish", "Wheat/Gluten", "Soy", "Sesame", OtherOption];
+    /// <summary>Forwarder to <see cref="DietaryOptions.AllergyOptions"/>.</summary>
+    public static readonly IReadOnlyList<string> AllergyOptions = DietaryOptions.AllergyOptions;
 
-    public static readonly string[] IntoleranceOptions =
-        ["Lactose", "Gluten", "Histamine", "FODMAP", OtherOption];
+    /// <summary>Forwarder to <see cref="DietaryOptions.IntoleranceOptions"/>.</summary>
+    public static readonly IReadOnlyList<string> IntoleranceOptions = DietaryOptions.IntoleranceOptions;
 
     public static DietaryMedicalViewModel FromProfile(VolunteerEventProfile profile) => new()
     {
@@ -58,6 +58,6 @@ public class DietaryMedicalViewModel
         profile.MedicalConditions = string.IsNullOrWhiteSpace(MedicalConditions) ? null : MedicalConditions.Trim();
     }
 
-    private static bool IsKnownAllergy(string v) => AllergyOptions.Contains(v);
-    private static bool IsKnownIntolerance(string v) => IntoleranceOptions.Contains(v);
+    private static bool IsKnownAllergy(string v) => AllergyOptions.Contains(v, StringComparer.Ordinal);
+    private static bool IsKnownIntolerance(string v) => IntoleranceOptions.Contains(v, StringComparer.Ordinal);
 }

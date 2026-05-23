@@ -1,9 +1,11 @@
+using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
+using CantinaRosterServiceImpl = Humans.Application.Services.Cantina.CantinaRosterService;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -51,6 +53,14 @@ internal static class ShiftsSectionExtensions
         // share one EF change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
+
+        // Cantina Daily Roster — read-only cross-section service that stitches
+        // the on-site cohort (from IShiftManagementRepository), their
+        // VolunteerEventProfile rows, burner-name labels (IProfileService),
+        // and User.DisplayName fallback (IUserService) into one DTO for the
+        // /Cantina/Roster page (feature #36 — docs/features/cantina/daily-roster.md).
+        // No repository of its own; supporting query lives on IShiftManagementRepository.
+        services.AddScoped<ICantinaRosterService, CantinaRosterServiceImpl>();
 
         return services;
     }
