@@ -1430,6 +1430,31 @@
   <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
   <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
 
+  <!-- Cantina Daily Roster -->
+  <data name="Cantina_Roster_PageTitle" xml:space="preserve"><value>Cantina daily roster</value></data>
+  <data name="Cantina_Roster_NoActiveEvent" xml:space="preserve"><value>No active event</value></data>
+  <data name="Cantina_Roster_TotalOnSite" xml:space="preserve"><value>people on site</value></data>
+  <data name="Cantina_Roster_Unanswered" xml:space="preserve"><value>haven't answered yet</value></data>
+  <data name="Cantina_Roster_DietaryBreakdown" xml:space="preserve"><value>Dietary breakdown</value></data>
+  <data name="Cantina_Roster_AllergyRollup" xml:space="preserve"><value>Allergies</value></data>
+  <data name="Cantina_Roster_IntoleranceRollup" xml:space="preserve"><value>Intolerances</value></data>
+  <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Other allergies (free-text)</value></data>
+  <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Other intolerances (free-text)</value></data>
+  <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Burner name</value></data>
+  <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Dietary</value></data>
+  <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Allergies</value></data>
+  <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Other allergy</value></data>
+  <data name="Cantina_Roster_TableIntolerances" xml:space="preserve"><value>Intolerances</value></data>
+  <data name="Cantina_Roster_TableIntoleranceOther" xml:space="preserve"><value>Other intolerance</value></data>
+  <data name="Cantina_Roster_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
+  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>No volunteers signed up for this day yet.</value></data>
+  <data name="Cantina_Roster_Unanswered_RowLabel" xml:space="preserve"><value>(no info provided)</value></data>
+  <data name="Cantina_Roster_Today" xml:space="preserve"><value>Today</value></data>
+  <data name="Cantina_Roster_Prev" xml:space="preserve"><value>Previous day</value></data>
+  <data name="Cantina_Roster_Next" xml:space="preserve"><value>Next day</value></data>
+  <data name="Cantina_Roster_DayPickerLabel" xml:space="preserve"><value>Day</value></data>
+  <data name="Cantina_Roster_Go" xml:space="preserve"><value>Go</value></data>
+
   <!-- Notification Inbox -->
   <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifiche</value></data>
   <data name="Notification_Popup_AriaLabel" xml:space="preserve"><value>Popup notifiche</value></data>
