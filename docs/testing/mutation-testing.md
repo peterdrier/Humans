@@ -5,41 +5,51 @@ This repository uses Stryker.NET for mutation-test probes.
 The test projects use xUnit v3, so Stryker should run through the Microsoft
 Testing Platform runner rather than the default VSTest runner.
 
-## Required settings — `concurrency: 16`, `coverage-analysis: perTest`
+## Required settings — `concurrency: 16`, `coverage-analysis: off`
 
 Every Stryker config in this repo must set `concurrency: 16` and
-`coverage-analysis: perTest`. Both were established empirically on 2026-05-23
-against a `TeamService` probe (700 testable mutants), and both correct a
-previously-recorded but unverified recommendation to keep `coverage-analysis`
-`off`.
+`coverage-analysis: off`. There are **two independent failure modes**, both
+demonstrated empirically on 2026-05-23 against a `TeamService` probe (700
+testable mutants). Do not conflate them.
 
-**Concurrency 16, never higher.** This machine has ~16 effective cores. At
+**1. Concurrency 16, never higher.** This machine has ~16 effective cores. At
 `concurrency: 24` the test host is starved and trips Stryker's timeout watchdog
 on mutants that cannot possibly hang — e.g. *string-literal* mutations, which
 never alter control flow. Stryker counts a Timeout as a kill, so these false
 timeouts silently inflate the score:
 
-| threads | coverage | Killed | Survived | NoCoverage | Timeout | Score |
-| ------: | -------- | -----: | -------: | ---------: | ------: | ----: |
-| **24**  | off      | 391    | 88       | —          | **221** | **87.43%** |
-| 16      | off      | 327    | 369      | —          | 4       | 47.29% |
-| 16      | perTest  | 325    | 187      | 186        | 2       | 46.71% |
+| threads | coverage | Killed | Survived | Timeout | Score |
+| ------: | -------- | -----: | -------: | ------: | ----: |
+| **24**  | off      | 391    | 88       | **221** | **87.43%** |
+| 16      | off      | 327    | 369      | 4       | 47.29% |
 
 At 24 threads, ~40% of the "kills" (281 of 700) were false. The honest score is
 ~47%. **Any mutation score in this repo recorded at concurrency 24 — including
 older entries in `docs/architecture/maintenance-log.md` — is inflated and should
 be distrusted.**
 
-**`coverage-analysis: perTest`, not `off`.** At 16 threads `perTest` matches
-`off`'s score within noise (46.71% vs 47.29%) *and* matches its kill count
-(325 vs 327) — i.e. coverage capture is reliable here and does **not**
-misclassify covered mutants as `NoCoverage`. It also runs ~22% faster and splits
-undetected mutants into `Survived` (a test runs but doesn't assert hard enough)
-vs `NoCoverage` (no test touches the code at all) — the exact signal the
-`/trim-tests` gap-fill phase needs. The earlier "keep it off, capture is
-unreliable" note was written while runs were at concurrency 24, where
-host-starvation timeouts made everything look misclassified; the cause was the
-thread count, not the coverage mode.
+**2. `coverage-analysis: off`, never `perTest`/`all`.** `perTest` coverage
+capture is **nondeterministic** in this xUnit-v3/MTP environment. Two `perTest`
+runs over *identical* code (same tests, `concurrency: 16`) produced wildly
+different results, while `off` over the same input was stable:
+
+| coverage | run | Killed | Score |
+| -------- | --- | -----: | ----: |
+| perTest  | A   | 356    | 51.00% |
+| perTest  | B   | **105**| **15.14%** |
+| off      | A   | 358    | 51.14% |
+| off      | B   | 358    | 51.29% |
+
+`perTest` swung **250 mutants between identical runs**; `off` was deterministic
+to ±1 (a timeout flip). A before/after gate cannot tolerate that — a bad
+`perTest` run fakes a massive `Killed→Survived` regression. `off` runs every
+test against every mutant (no coverage map to corrupt), so it is slower but
+reliable; that is the correct trade for a gate. The cost: no per-test
+attribution and no `NoCoverage` bucket (untested mutants report as `Survived`).
+
+(A small number of `perTest` runs happen to agree with `off` — which is exactly
+how this setting slipped in briefly. Don't trust a lucky pair of runs; sample it
+and it breaks.)
 
 ## Setup
 
