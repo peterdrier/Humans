@@ -128,15 +128,10 @@ project at least one fix commit.
   Over-budget fires HUM0015; under-budget (slack) fires HUM0016.
 - Source: replaces the retired `InterfaceMethodBudgetTests`
   (issue [nobodies-collective/Humans#700](https://github.com/nobodies-collective/Humans/issues/700)).
-  Budgets now live as a per-type attribute with the rationale captured in
-  XML `<remarks>` on the type itself — visible in tooltips, diffed alongside
-  the surface change, scoped to a single symbol. Applied by the repo owner by
-  hand to a deliberately narrow set of surfaces (currently the read-side
-  `I…ServiceRead` interfaces); the attribute predominantly lives on read
-  interfaces. Agents never add the attribute or suggest adding it — see the
-  "Owner-applied only" rule in `SurfaceBudgetAttribute`'s `<remarks>`. It is
-  valid on classes/structs too if the owner wants to budget an
-  implementation's public surface directly.
+  Budgets live as a per-type attribute with the rationale in XML `<remarks>`
+  on the type. Owner-applied only (currently the read-side `I…ServiceRead`
+  interfaces); agents never add it or suggest adding it — see
+  `memory/code/surface-budget-owner-applied.md`.
 - Call-site shape: `SymbolKind.NamedType`, filter to interface/class/struct
   carrying the attribute, count public-instance `MethodKind == Ordinary`
   members directly on the symbol. Accessibility filter is a no-op on
