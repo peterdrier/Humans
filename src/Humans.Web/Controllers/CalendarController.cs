@@ -17,13 +17,13 @@ namespace Humans.Web.Controllers;
 public class CalendarController : HumansControllerBase
 {
     private readonly ICalendarService _calendar;
-    private readonly ITeamService _teams;
+    private readonly ITeamServiceRead _teams;
     private readonly IClock _clock;
 
     public CalendarController(
         IUserService userService,
         ICalendarService calendar,
-        ITeamService teams,
+        ITeamServiceRead teams,
         IClock clock)
         : base(userService)
     {
@@ -50,7 +50,9 @@ public class CalendarController : HumansControllerBase
                      .Plus(Duration.FromDays(1));
 
         var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetAllTeamsAsync(ct))
+        var teams = (await _teams.GetTeamsAsync(ct))
+            .Values
+            .Where(t => t.IsActive)
             .Select(t => new TeamOption(t.Id, t.Name))
             .ToList();
 
@@ -80,7 +82,9 @@ public class CalendarController : HumansControllerBase
                      .Plus(Duration.FromDays(1));
 
         var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetAllTeamsAsync(ct))
+        var teams = (await _teams.GetTeamsAsync(ct))
+            .Values
+            .Where(t => t.IsActive)
             .Select(t => new TeamOption(t.Id, t.Name))
             .ToList();
 
@@ -118,7 +122,7 @@ public class CalendarController : HumansControllerBase
         [FromQuery] int? month,
         CancellationToken ct)
     {
-        var team = await _teams.GetTeamByIdAsync(teamId, ct);
+        var team = await _teams.GetTeamAsync(teamId, ct);
         if (team is null) return NotFound();
 
         var zone = GetViewerZone();
@@ -183,7 +187,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CalendarEventFormViewModel form, CancellationToken ct)
     {
-        var team = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
+        var team = await _teams.GetTeamAsync(form.OwningTeamId, ct);
         if (team is null) return NotFound();
 
         TryResolveStartEnd(form, out var start, out var end);
@@ -391,7 +395,8 @@ public class CalendarController : HumansControllerBase
 
     private async Task<IReadOnlyList<TeamOption>> GetSelectableTeamsAsync(CancellationToken ct)
     {
-        return (await _teams.GetAllTeamsAsync(ct))
+        return (await _teams.GetTeamsAsync(ct))
+            .Values
             .Where(t => t.IsActive && !t.IsHidden)
             .Select(t => new TeamOption(t.Id, t.Name))
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
