@@ -51,4 +51,5 @@ public sealed class RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) : I
 public sealed class ActiveTeamsCacheInvalidator(ITeamService teamService) : IActiveTeamsCacheInvalidator
 {
     public void Invalidate() => teamService.InvalidateActiveTeamsCache();
+    public void RemoveMember(Guid userId) => teamService.RemoveMemberFromAllTeamsCache(userId);
 }
