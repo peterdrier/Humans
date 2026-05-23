@@ -59,7 +59,10 @@ public class DashboardViewModel
 public sealed record MyAttendeeRowVm(
     Guid AttendeeId,
     string AttendeeName,
+    string? AttendeeEmail,
+    string VendorTicketId,
     string TicketTypeName,
+    Humans.Domain.Enums.TicketAttendeeStatus Status,
     bool CanSendTransfer,
     bool HasPendingOutgoingTransfer,
     Guid? PendingTransferRequestId);

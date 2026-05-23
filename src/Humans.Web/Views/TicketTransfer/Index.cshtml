@@ -1,0 +1,90 @@
+@model Humans.Web.Models.TicketTransferWizardViewModel
+@using Humans.Application.DTOs
+@{
+    ViewData["Title"] = "Transfer a ticket";
+    var sendable = Model.MyTickets.Where(t => t.CanSendTransfer).ToList();
+    var pending = Model.MyTickets.Where(t => t.HasPendingOutgoingTransfer).ToList();
+    TicketStubInfo Stub(MyAttendeeRowDto a) =>
+        new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
+            a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
+}
+
+<h1>Transfer a ticket</h1>
+
+<vc:temp-data-alerts />
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-warning">@Model.Error</div>
+}
+
+@if (Model.Confirm is null)
+{
+    @if (sendable.Count == 0 && pending.Count == 0)
+    {
+        <div class="alert alert-info">You don't have any tickets available to transfer.</div>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back</a>
+    }
+    else
+    {
+        @if (sendable.Count > 0)
+        {
+            <form asp-action="Confirm" method="post">
+                @Html.AntiForgeryToken()
+
+                <h2 class="h5 mb-3">1. Choose the ticket to transfer</h2>
+                <div class="mb-4 d-flex flex-column gap-2">
+                    @foreach (var t in sendable)
+                    {
+                        <label class="d-flex align-items-center gap-3 m-0" style="cursor:pointer">
+                            <input type="radio" name="attendeeId" value="@t.AttendeeId" required />
+                            <vc:ticket-stub stub="@Stub(t)" />
+                        </label>
+                    }
+                </div>
+
+                <h2 class="h5 mb-3">2. Who are you sending it to?</h2>
+                <div class="mb-4" style="max-width:480px">
+                    <vc:human-search field-name="receiverUserId" scope="Name" allow-email="true"
+                                     placeholder="Search by name, or paste their exact email…" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Continue</button>
+                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Cancel</a>
+            </form>
+        }
+
+        @if (pending.Count > 0)
+        {
+            <hr class="my-4" />
+            <h2 class="h6 text-muted">Already pending</h2>
+            <div class="d-flex flex-column gap-2">
+                @foreach (var t in pending)
+                {
+                    <vc:ticket-stub stub="@Stub(t)" />
+                }
+            </div>
+        }
+    }
+}
+else
+{
+    var c = Model.Confirm;
+    <h2 class="h5 mb-3">3. Confirm</h2>
+    <div class="alert alert-success" style="max-width:560px">
+        This will request transferring ticket <strong>@c.VendorTicketId</strong> (@c.AttendeeName)
+        to <strong>@c.ReceiverLegalName — @c.ReceiverEmail</strong>.<br />
+        Our ticketing team will process this and let you know shortly.
+    </div>
+    <form asp-action="Submit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="attendeeId" value="@c.AttendeeId" />
+        <input type="hidden" name="receiverUserId" value="@c.ReceiverUserId" />
+        <div class="mb-3" style="max-width:560px">
+            <label for="reason" class="form-label">Reason for the transfer (optional, visible to the ticket team)</label>
+            <textarea id="reason" name="reason" rows="2" class="form-control" maxlength="1000">@Model.Reason</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Request transfer</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </form>
+}

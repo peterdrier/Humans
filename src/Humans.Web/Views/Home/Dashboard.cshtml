@@ -1,10 +1,15 @@
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
+@using Humans.Application.DTOs
+@using Humans.Domain.Enums
 @inject IAuthorizationService AuthService
 @model Humans.Web.Models.DashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
-    var canSendTicketTransfer = (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
+    TicketStubInfo TicketStub(MyAttendeeRowVm a) =>
+        new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
+            a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
+    var headerTicket = Model.MyAttendees.FirstOrDefault(a => a.Status == TicketAttendeeStatus.Valid);
 }
 
 <vc:temp-data-alerts />
@@ -12,21 +17,29 @@
 @* ─── Header ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
-        <div class="d-flex align-items-center">
-            <vc:human user-id="@Model.UserId"
-                      layout="Avatar"
-                      size="64"
-                      css-class="me-3" />
-            <div>
-                <h1 class="mb-1">
-                    @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
-                    @if (Model.MembershipTier != MembershipTier.Volunteer)
-                    {
-                        <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>
-                    }
-                </h1>
-                <p class="text-muted mb-0">@Localizer["Dashboard_Subtitle"]</p>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center">
+                <vc:human user-id="@Model.UserId"
+                          layout="Avatar"
+                          size="64"
+                          css-class="me-3" />
+                <div>
+                    <h1 class="mb-1">
+                        @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
+                        @if (Model.MembershipTier != MembershipTier.Volunteer)
+                        {
+                            <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>
+                        }
+                    </h1>
+                    <p class="text-muted mb-0">@Localizer["Dashboard_Subtitle"]</p>
+                </div>
             </div>
+            @if (headerTicket is not null)
+            {
+                <div style="transform:scale(.85); transform-origin:right center">
+                    <vc:ticket-stub stub="@TicketStub(headerTicket)" />
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -185,43 +198,26 @@
                     </div>
                     @if (Model.MyAttendees.Count > 0)
                     {
-                        <ul class="list-group list-group-flush mt-2">
+                        <div class="d-flex flex-column gap-2 mt-3">
                             @foreach (var att in Model.MyAttendees)
                             {
-                                <li class="list-group-item d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div>@att.AttendeeName</div>
-                                        <small class="text-muted">@att.TicketTypeName</small>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        @if (att.HasPendingOutgoingTransfer)
-                                        {
-                                            <span class="badge bg-warning">@Localizer["TicketTransfer_Pending"]</span>
-                                            @if (att.PendingTransferRequestId is Guid pendingId)
-                                            {
-                                                <form asp-controller="TicketTransfer" asp-action="Cancel" method="post" class="m-0">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="id" value="@pendingId" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["TicketTransfer_CancelButton"]</button>
-                                                </form>
-                                            }
-                                        }
-                                        else if (att.CanSendTransfer && canSendTicketTransfer)
-                                        {
-                                            <a class="btn btn-sm btn-outline-secondary"
-                                               asp-controller="TicketTransfer" asp-action="Send"
-                                               asp-route-attendeeId="@att.AttendeeId">
-                                                @Localizer["TicketTransfer_SendButton"]
-                                            </a>
-                                        }
-                                        else if (att.CanSendTransfer)
-                                        {
-                                            <small class="text-muted fst-italic">Ticket Transfers coming soon…</small>
-                                        }
-                                    </div>
-                                </li>
+                                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                    <vc:ticket-stub stub="@TicketStub(att)" />
+                                    @if (att.HasPendingOutgoingTransfer && att.PendingTransferRequestId is Guid pendingId)
+                                    {
+                                        <form asp-controller="TicketTransfer" asp-action="Cancel" method="post" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@pendingId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["TicketTransfer_CancelButton"]</button>
+                                        </form>
+                                    }
+                                </div>
                             }
-                        </ul>
+                        </div>
+                        <div class="mt-3">
+                            <a class="btn btn-sm btn-outline-secondary"
+                               asp-controller="TicketTransfer" asp-action="Index">Transfer a ticket?</a>
+                        </div>
                     }
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)

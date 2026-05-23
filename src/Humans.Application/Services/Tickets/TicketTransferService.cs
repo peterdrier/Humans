@@ -51,6 +51,7 @@ public sealed class TicketTransferService(
                     AttendeeEmail: a.AttendeeEmail,
                     VendorTicketId: a.VendorTicketId,
                     TicketTypeName: a.TicketTypeName,
+                    Status: a.Status,
                     CanSendTransfer: a.Status == TicketAttendeeStatus.Valid
                         && TicketAttendeeOwnership.IsCurrentOwner(a, userId)
                         && !pending,
