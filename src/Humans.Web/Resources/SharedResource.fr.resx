@@ -4424,6 +4424,12 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve">
     <value>Enregistrer la disponibilité</value>
   </data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve">
+    <value>Avant de parcourir les créneaux, indiquez les jours où vous êtes disponible : les coordinateurs s'en servent pour vous attribuer des créneaux.</value>
+  </data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve">
+    <value>Indiquez vos disponibilités</value>
+  </data>
   <data name="Shifts_DaysSelected" xml:space="preserve">
     <value>jours sélectionnés</value>
   </data>
