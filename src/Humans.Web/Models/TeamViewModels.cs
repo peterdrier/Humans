@@ -495,8 +495,6 @@ public class CreateRoleDefinitionModel
     [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; } = 1;
-
-    [Range(0, int.MaxValue, ErrorMessage = "Estimated hours must be 0 or greater.")]
     public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
@@ -511,8 +509,6 @@ public class EditRoleDefinitionModel
     [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; }
-
-    [Range(0, int.MaxValue, ErrorMessage = "Estimated hours must be 0 or greater.")]
     public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = [];
     public int SortOrder { get; set; }
