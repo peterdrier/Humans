@@ -173,4 +173,18 @@ public interface IEmailRenderer
         string removedEmail,
         string currentGoogleEmail,
         string? culture = null);
+
+    /// <summary>Ticket-transfer request confirmation to the Sender.</summary>
+    EmailContent RenderTicketTransferRequested(
+        string senderName, string receiverName, string ticketLabel, string? culture = null);
+
+    /// <summary>Ticket-transfer action-needed notice to the ticket team (English).</summary>
+    EmailContent RenderTicketTransferTeamNotification(
+        string senderName, string receiverName, string receiverEmail,
+        string ticketLabel, string? reason, string reviewUrl);
+
+    /// <summary>Ticket-transfer decision (completed / cancelled-with-reason) to Sender + Receiver.</summary>
+    EmailContent RenderTicketTransferDecision(
+        string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null);
 }

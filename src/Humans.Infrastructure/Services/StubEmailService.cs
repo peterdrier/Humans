@@ -319,4 +319,34 @@ public class StubEmailService(ILogger<StubEmailService> logger) : IEmailService
             to, displayName, preferredLanguage, issueTitle, issueLink);
         return Task.CompletedTask;
     }
+
+    public Task SendTicketTransferRequestedAsync(
+        string senderEmail, string senderName, string receiverName, string ticketLabel,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation(
+            "[STUB] Would send ticket-transfer requested email to {Email} ({Name}) for ticket {Ticket} → {Receiver}",
+            senderEmail, senderName, ticketLabel, receiverName);
+        return Task.CompletedTask;
+    }
+
+    public Task SendTicketTransferTeamNotificationAsync(
+        string senderName, string receiverName, string receiverEmail, string ticketLabel,
+        string? reason, string reviewUrl, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation(
+            "[STUB] Would notify ticket team: {Sender} → {Receiver} ({ReceiverEmail}) ticket {Ticket}, review {Url}",
+            senderName, receiverName, receiverEmail, ticketLabel, reviewUrl);
+        return Task.CompletedTask;
+    }
+
+    public Task SendTicketTransferDecisionAsync(
+        string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation(
+            "[STUB] Would send ticket-transfer {Outcome} email to {Email} ({Name}) for ticket {Ticket} → {Receiver}",
+            successful ? "completed" : "cancelled", toEmail, toName, ticketLabel, receiverName);
+        return Task.CompletedTask;
+    }
 }

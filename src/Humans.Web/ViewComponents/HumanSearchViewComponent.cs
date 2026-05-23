@@ -18,7 +18,8 @@ public sealed class HumanSearchViewComponent(IUserServiceRead userService) : Vie
         string? placeholder = null,
         HumanSearchScope scope = HumanSearchScope.All,
         IEnumerable<Guid>? excludeUserIds = null,
-        Guid? selectedUserId = null)
+        Guid? selectedUserId = null,
+        bool allowEmail = false)
     {
         // Resolve the optional prefill to the user's BurnerName (the same value the
         // dropdown shows). Render empty if the user doesn't resolve (deleted/rejected)
@@ -47,6 +48,7 @@ public sealed class HumanSearchViewComponent(IUserServiceRead userService) : Vie
             ExcludeUserIds = excludeUserIds,
             SelectedUserId = selectedUserId,
             SelectedBurnerName = selectedBurnerName,
+            AllowEmail = allowEmail,
         };
 
         return View("Default", model);

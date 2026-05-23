@@ -25,6 +25,8 @@
     // interests / CV) so existing callers don't change behavior.
     var scopeArg = Model.Scope == HumanSearchScope.Name ? "name" : "";
     var scopeJson = System.Text.Json.JsonSerializer.Serialize(scopeArg);
+    // Optional: allow an exact-email query to resolve a single person (no enumeration leak).
+    var allowEmailJson = System.Text.Json.JsonSerializer.Serialize(Model.AllowEmail);
     // Optional prefill — visible BurnerName + hidden id (e.g. edit forms).
     var selectedValue = Model.SelectedUserId?.ToString() ?? "";
     var selectedBurnerName = Model.SelectedBurnerName ?? "";
@@ -57,6 +59,7 @@
     var isOpen = false;
     var excludeIds = @Html.Raw(excludeIdsJson);
     var scopeArg = @Html.Raw(scopeJson);
+    var allowEmail = @Html.Raw(allowEmailJson);
 
     // Move dropdown to body once at init so no parent stacking/clip ever applies.
     if (dropdown.parentNode !== document.body) {
@@ -112,6 +115,7 @@
     function fetchResults(q) {
         var url = '/api/profiles/search?q=' + encodeURIComponent(q);
         if (scopeArg) url += '&scope=' + encodeURIComponent(scopeArg);
+        if (allowEmail) url += '&allowEmail=true';
         fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (results) { renderDropdown(results); })

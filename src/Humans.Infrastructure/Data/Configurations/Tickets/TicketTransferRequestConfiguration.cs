@@ -40,19 +40,7 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
             .HasConversion<string>()
             .HasMaxLength(32);
 
-        builder.Property(x => x.VendorResult)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(32);
-
-        builder.Property(x => x.VendorMessage).HasMaxLength(2000);
-        builder.Property(x => x.NewVendorTicketId).HasMaxLength(64);
         builder.Property(x => x.AdminNotes).HasMaxLength(1000);
-
-        builder.Property(x => x.VendorStepsJson)
-            .IsRequired()
-            .HasDefaultValue("[]")
-            .HasColumnType("text");
 
         builder.Property(x => x.RequestedAt).IsRequired();
 
