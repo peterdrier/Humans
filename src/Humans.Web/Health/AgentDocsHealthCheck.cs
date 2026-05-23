@@ -12,11 +12,20 @@ namespace Humans.Web.Health;
 /// the preload index ships empty. This check turns that into a visible Degraded
 /// status instead. Skipped (Healthy) when the agent feature is disabled.
 /// </summary>
-public sealed class AgentDocsHealthCheck(IAgentSettingsStore store, AgentSectionDocReader sections) : IHealthCheck
+public sealed class AgentDocsHealthCheck(
+    IAgentSettingsStore store,
+    AgentSectionDocReader sections,
+    AgentFeatureSpecReader features) : IHealthCheck
 {
     // A section that is always whitelisted and always preloaded (Tier1) — if its
-    // doc cannot be read, the docs folder is missing or unreadable.
+    // doc cannot be read, docs/sections is missing or unreadable.
     private const string ProbeSection = "Shifts";
+
+    // A stable feature-spec canary — docs/sections and docs/features are copied as
+    // separate Dockerfile layers, so a partial packaging regression can drop one
+    // without the other. Probe both so the health signal covers both runtime
+    // dependencies (fetch_section_guide and fetch_feature_spec).
+    private const string ProbeFeature = "26-events";
 
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -25,11 +34,18 @@ public sealed class AgentDocsHealthCheck(IAgentSettingsStore store, AgentSection
         if (!store.Current.Enabled)
             return HealthCheckResult.Healthy("agent disabled");
 
-        var body = await sections.ReadAsync(ProbeSection, cancellationToken);
-        return string.IsNullOrEmpty(body)
-            ? HealthCheckResult.Degraded(
+        var sectionBody = await sections.ReadAsync(ProbeSection, cancellationToken);
+        if (string.IsNullOrEmpty(sectionBody))
+            return HealthCheckResult.Degraded(
                 $"agent grounding docs missing — docs/sections/{ProbeSection}.md unreadable at ContentRootPath; " +
-                "fetch_section_guide/fetch_feature_spec will fail and the preload index will be empty")
-            : HealthCheckResult.Healthy();
+                "fetch_section_guide will fail and the preload index will be empty");
+
+        var featureBody = await features.ReadAsync(ProbeFeature, cancellationToken);
+        if (string.IsNullOrEmpty(featureBody))
+            return HealthCheckResult.Degraded(
+                $"agent grounding docs missing — docs/features/{ProbeFeature}.md unreadable at ContentRootPath; " +
+                "fetch_feature_spec will fail");
+
+        return HealthCheckResult.Healthy();
     }
 }
