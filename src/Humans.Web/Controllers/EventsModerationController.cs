@@ -236,7 +236,7 @@ public class EventsModerationController(
         var submitterName = submitter?.BurnerName ?? submitter?.Email ?? "Unknown";
 
         var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-        var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+        var seasonName = camp?.Active?.Name;
         var campName = seasonName ?? camp?.Slug;
 
         return new ModerationEventRowViewModel

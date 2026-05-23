@@ -43,7 +43,7 @@ public class EventsExportController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var seasonName = camp?.Active?.Name;
             var campName = seasonName ?? camp?.Slug ?? "";
             var venueName = e.EventVenue?.Name ?? "";
             var submitterName = "";
@@ -94,7 +94,7 @@ public class EventsExportController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var seasonName = camp?.Active?.Name;
             var campName = seasonName ?? camp?.Slug;
             var venueName = e.EventVenue?.Name;
 

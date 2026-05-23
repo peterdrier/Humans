@@ -47,17 +47,14 @@ public class ContainerController(
     }
 
     private static ContainerIndexViewModel BuildIndexViewModel(
-        CampLookup camp,
+        CampInfo camp,
         int currentYear,
         bool isPlacementOpen,
         bool canPlace,
         IReadOnlyList<ContainerDto> containers,
         IReadOnlyList<ContainerPlacementDto> placements)
     {
-        var displayName = camp.Seasons
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault()?.Name
-            ?? camp.Slug;
+        var displayName = camp.Active?.Name ?? camp.Slug;
         var containerIds = containers.Select(c => c.Id).ToHashSet();
         var placementsByContainerId = placements
             .Where(p => containerIds.Contains(p.ContainerId))

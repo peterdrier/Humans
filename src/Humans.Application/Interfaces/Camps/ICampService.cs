@@ -38,7 +38,7 @@ public interface ICampService : IApplicationService
         CancellationToken cancellationToken = default);
 
     // Queries
-    Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
+    Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
         string slug,
         int? preferredYear = null,
@@ -95,7 +95,7 @@ public interface ICampService : IApplicationService
     Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
 
     // Cross-service queries (used by CityPlanningService)
-    Task<CampSeasonLookup?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<CampSeasonInfo?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
 
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
@@ -121,7 +121,7 @@ public interface ICampService : IApplicationService
     /// <see cref="IsUserCampEventManagerAsync"/>). Used by
     /// <c>EventsController.MySubmissions</c> to build the barrio blocks.
     /// </summary>
-    Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
@@ -270,23 +270,10 @@ public interface ICampService : IApplicationService
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
 
-public sealed record CampLookup(
-    Guid Id,
-    string Slug,
-    string ContactEmail,
-    IReadOnlyList<CampSeasonInfo> Seasons);
-
 public sealed record CampSettingsInfo(
     int PublicYear,
     IReadOnlyList<int> OpenSeasons,
     LocalDate? EeStartDate);
-
-public sealed record CampSeasonLookup(
-    Guid Id,
-    Guid CampId,
-    int Year,
-    string Name,
-    SoundZone? SoundZone);
 
 /// <summary>
 /// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per
@@ -327,7 +314,13 @@ public sealed record CampInfo(
     string ContactPhone,
     bool IsSwissCamp,
     int TimesAtNowhere,
-    IReadOnlyList<CampSeasonInfo> Seasons);
+    IReadOnlyList<CampSeasonInfo> Seasons)
+{
+    /// <summary>
+    /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
+    /// </summary>
+    public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+}
 
 public sealed record CampSeasonInfo(
     Guid Id,

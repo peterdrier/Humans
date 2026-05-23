@@ -92,7 +92,7 @@ public class EventsDashboardController(IEventService guide, ICampService camps, 
             .Select(g =>
             {
                 var camp = campsById.GetValueOrDefault(g.Key);
-                var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+                var seasonName = camp?.Active?.Name;
                 return new CampSubmissionRow
                 {
                     CampName = seasonName ?? camp?.Slug ?? "Unknown",

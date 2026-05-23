@@ -6,7 +6,7 @@ namespace Humans.Web.Helpers;
 
 /// <summary>
 /// Cross-controller lookup helpers for the Events section. Both methods are
-/// thin loops over already-cached read-models (UserInfo + CampLookup), so
+/// thin loops over already-cached read-models (UserInfo + CampInfo), so
 /// the per-id awaits are dictionary hits in the steady state.
 /// </summary>
 public static class EventsLookupHelpers

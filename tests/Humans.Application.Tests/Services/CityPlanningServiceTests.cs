@@ -282,7 +282,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2026, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -302,7 +302,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2026, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -322,7 +322,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2026, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(false);
 
@@ -343,7 +343,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         // Camp season is for 2027, but settings year is 2026
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2027, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2027, "Camp"));
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeFalse();
@@ -651,5 +651,10 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         result.Should().BeNull();
     }
+
+    private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>
+        new(id, campId, string.Empty, year, null, name, string.Empty, string.Empty,
+            [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, soundZone, null, null, 0, null, null);
 
 }
