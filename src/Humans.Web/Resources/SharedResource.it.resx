@@ -5121,6 +5121,12 @@
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
     <value>Questa email è collegata a un provider di accesso. Usa Scollega invece.</value>
   </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>Email principale: imposta prima un'altra come principale per rimuovere questa.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Collegata al tuo biglietto dell'evento: non può essere rimossa.</value>
+  </data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
     <value>Email di verifica inviata all'utente.</value>
   </data>

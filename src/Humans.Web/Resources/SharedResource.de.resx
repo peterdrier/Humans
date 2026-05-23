@@ -5121,6 +5121,12 @@
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
     <value>Diese E-Mail ist mit einem Anmeldeanbieter verknüpft. Verwende stattdessen Trennen.</value>
   </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>Primäre E-Mail – lege zuerst eine andere als primär fest, um diese zu entfernen.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Mit deinem Veranstaltungsticket verknüpft – kann nicht entfernt werden.</value>
+  </data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
     <value>Bestätigungs-E-Mail an den Benutzer gesendet.</value>
   </data>

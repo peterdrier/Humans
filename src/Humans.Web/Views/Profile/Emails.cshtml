@@ -333,6 +333,22 @@
                                                 </form>
                                             }
                                         }
+                                        @* see nobodies-collective/Humans#758 — never offer delete for the
+                                           primary email (promote another first) or a ticket-linked email
+                                           (removing it could disconnect the user's event ticket). Admins
+                                           use the AdminDelete path which re-validates server-side. *@
+                                        else if (row.IsPrimary)
+                                        {
+                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeletePrimaryBlocked"].Value">
+                                                <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_DeletePrimaryBlocked"]
+                                            </span>
+                                        }
+                                        else if (row.IsTicketLinked)
+                                        {
+                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeleteTicketLinkedBlocked"].Value">
+                                                <i class="fa-solid fa-ticket me-1"></i>@Localizer["EmailGrid_DeleteTicketLinkedBlocked"]
+                                            </span>
+                                        }
                                         else
                                         {
                                             <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"

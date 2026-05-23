@@ -5121,6 +5121,12 @@
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
     <value>Aquest correu està vinculat a un proveïdor d'inici de sessió. Fes servir Desvincula en lloc seu.</value>
   </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>Correu principal: estableix-ne un altre com a principal abans d'eliminar aquest.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Vinculat a la teva entrada de l'esdeveniment: no es pot eliminar.</value>
+  </data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
     <value>Correu de verificació enviat a l'usuari.</value>
   </data>
