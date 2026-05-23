@@ -2,7 +2,7 @@ name: PR Surface Report
 
 on:
   pull_request_target:
-    types: [ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: read
@@ -73,6 +73,7 @@ jobs:
             }
 
       - name: Enforce migration count
+        if: always()
         run: |
           count="$(jq -r '.migration_count' pr-surface-report.json)"
           if [ "$count" -gt 1 ]; then
