@@ -1432,10 +1432,10 @@
   <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>No se pudo cargar la información alimentaria y médica.</value></data>
   <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información alimentaria y médica.</value></data>
 
-  <!-- Cantina Daily Roster -->
-  <data name="Cantina_Roster_PageTitle" xml:space="preserve"><value>Roster diario de cantina</value></data>
+  <!-- Cantina Weekly Roster -->
+  <data name="Cantina_Roster_PageTitle" xml:space="preserve"><value>Roster semanal de cantina</value></data>
   <data name="Cantina_Roster_NoActiveEvent" xml:space="preserve"><value>No hay evento activo</value></data>
-  <data name="Cantina_Roster_TotalOnSite" xml:space="preserve"><value>personas en el sitio</value></data>
+  <data name="Cantina_Roster_TotalOnSite" xml:space="preserve"><value>personas únicas en el sitio esta semana</value></data>
   <data name="Cantina_Roster_Unanswered" xml:space="preserve"><value>aún no han respondido</value></data>
   <data name="Cantina_Roster_DietaryBreakdown" xml:space="preserve"><value>Desglose alimentario</value></data>
   <data name="Cantina_Roster_AllergyRollup" xml:space="preserve"><value>Alergias</value></data>
@@ -1443,19 +1443,25 @@
   <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Otras alergias (texto libre)</value></data>
   <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Otras intolerancias (texto libre)</value></data>
   <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Nombre playero</value></data>
+  <data name="Cantina_Roster_TableDaysOnSite" xml:space="preserve"><value>Días en el sitio</value></data>
   <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Alimentación</value></data>
   <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Alergias</value></data>
   <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Otra alergia</value></data>
   <data name="Cantina_Roster_TableIntolerances" xml:space="preserve"><value>Intolerancias</value></data>
   <data name="Cantina_Roster_TableIntoleranceOther" xml:space="preserve"><value>Otra intolerancia</value></data>
   <data name="Cantina_Roster_DownloadCsv" xml:space="preserve"><value>Descargar CSV</value></data>
-  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>Nadie se ha apuntado a turnos este día todavía.</value></data>
-  <data name="Cantina_Roster_Unanswered_RowLabel" xml:space="preserve"><value>(sin información)</value></data>
-  <data name="Cantina_Roster_Today" xml:space="preserve"><value>Hoy</value></data>
-  <data name="Cantina_Roster_Prev" xml:space="preserve"><value>Día anterior</value></data>
-  <data name="Cantina_Roster_Next" xml:space="preserve"><value>Día siguiente</value></data>
-  <data name="Cantina_Roster_DayPickerLabel" xml:space="preserve"><value>Día</value></data>
-  <data name="Cantina_Roster_Go" xml:space="preserve"><value>Ir</value></data>
+  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>Nadie se ha apuntado a turnos esta semana todavía.</value></data>
+  <data name="Cantina_Roster_WeekPickerLabel" xml:space="preserve"><value>Semana</value></data>
+  <data name="Cantina_Roster_ThisWeek" xml:space="preserve"><value>Esta semana</value></data>
+  <data name="Cantina_Roster_PrevWeek" xml:space="preserve"><value>Semana anterior</value></data>
+  <data name="Cantina_Roster_NextWeek" xml:space="preserve"><value>Semana siguiente</value></data>
+  <data name="Cantina_Roster_WeekOf" xml:space="preserve"><value>Semana del</value></data>
+  <data name="Cantina_Roster_PerDayTable_Heading" xml:space="preserve"><value>Por día</value></data>
+  <data name="Cantina_Roster_PerDayTable_Date" xml:space="preserve"><value>Día</value></data>
+  <data name="Cantina_Roster_PerDayTable_Total" xml:space="preserve"><value>En el sitio</value></data>
+  <data name="Cantina_Roster_PerDayTable_Unanswered" xml:space="preserve"><value>Sin responder</value></data>
+  <data name="Cantina_Roster_RosterHeading" xml:space="preserve"><value>Listado</value></data>
+  <data name="Cantina_Roster_ShowRoster" xml:space="preserve"><value>Ver listado ({0} personas)</value></data>
   <data name="Nav_Cantina" xml:space="preserve"><value>Cantina</value></data>
 
   <!-- Notification Inbox -->
