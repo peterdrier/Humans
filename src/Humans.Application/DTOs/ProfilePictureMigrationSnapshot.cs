@@ -14,12 +14,10 @@ namespace Humans.Application.DTOs;
 /// </param>
 /// <param name="OnFilesystemCount">
 /// Of those, how many have the expected file on disk under the
-/// <c>ProfilePictureService.ProfilePictureKey</c> path.
+/// profile-picture storage key path.
 /// </param>
 /// <param name="DbOnlyRows">
 /// Rows present in the DB but missing on the filesystem. Empty list when
-/// every DB row has been migrated.
-/// </param>
 /// every DB row has been migrated.
 /// </param>
 public sealed record ProfilePictureMigrationSnapshot(

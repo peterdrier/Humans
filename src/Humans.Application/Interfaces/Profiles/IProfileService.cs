@@ -1,6 +1,5 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Profiles;
 
@@ -46,7 +45,6 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// resizing the image before calling.
     /// </summary>
     Task SetProfilePictureAsync(Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default);
-    Task<Guid> SaveProfileAsync(Guid userId, string displayName, ProfileSaveRequest request, string language, CancellationToken ct = default);
     Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);
 

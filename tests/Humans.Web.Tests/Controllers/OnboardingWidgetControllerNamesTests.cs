@@ -21,7 +21,7 @@ public class OnboardingWidgetControllerNamesTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
-    private readonly IProfileService _profile = Substitute.For<IProfileService>();
+    private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
@@ -44,7 +44,7 @@ public class OnboardingWidgetControllerNamesTests
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(currentStep);
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profile, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
@@ -64,7 +64,7 @@ public class OnboardingWidgetControllerNamesTests
         // this guards.
         var userId = Guid.NewGuid();
         var ctrl = new OnboardingWidgetController(
-            _userService, _state, _profile, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
+            _userService, _state, _profileEditor, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -89,11 +89,10 @@ public class OnboardingWidgetControllerNamesTests
     public async Task Names_Post_SavesProfile_AndRedirectsToShifts()
     {
         var userId = Guid.NewGuid();
-        _profile.SaveProfileAsync(
+        _profileEditor.SaveProfileAsync(
                 userId,
                 "Burner1",
                 Arg.Any<ProfileSaveRequest>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Guid.NewGuid());
 
@@ -105,14 +104,13 @@ public class OnboardingWidgetControllerNamesTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
 
-        await _profile.Received(1).SaveProfileAsync(
+        await _profileEditor.Received(1).SaveProfileAsync(
             userId,
             "Burner1",
             Arg.Is<ProfileSaveRequest>(r =>
                 r.FirstName == "First" &&
                 r.LastName == "Last" &&
                 r.BurnerName == "Burner1"),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -132,8 +130,8 @@ public class OnboardingWidgetControllerNamesTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
 
-        await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            Guid.Empty, null!, null!, null!, CancellationToken.None);
+        await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(
+            Guid.Empty, null!, null!, CancellationToken.None);
     }
 
     [HumansFact]
@@ -147,7 +145,7 @@ public class OnboardingWidgetControllerNamesTests
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), view.ViewName ?? nameof(OnboardingWidgetController.Names));
 
-        await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            Guid.Empty, null!, null!, null!, CancellationToken.None);
+        await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(
+            Guid.Empty, null!, null!, CancellationToken.None);
     }
 }

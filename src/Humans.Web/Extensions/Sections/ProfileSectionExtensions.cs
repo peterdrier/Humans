@@ -9,6 +9,7 @@ using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profi
 using ProfilesAccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
 using ProfilesDuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
 using ProfilesEmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
+using ProfilesProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUserEmailProviderBackfillService = Humans.Application.Services.Users.UserEmailProviderBackfillService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
@@ -52,6 +53,7 @@ internal static class ProfileSectionExtensions
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IEmailProblemsService, ProfilesEmailProblemsService>();
+        services.AddScoped<IProfileEditorService, ProfilesProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailProviderBackfillService, UsersUserEmailProviderBackfillService>();
 

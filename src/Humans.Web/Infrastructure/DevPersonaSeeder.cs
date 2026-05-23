@@ -29,14 +29,14 @@ namespace Humans.Web.Infrastructure;
 /// Cross-section writes (User, Profile, UserEmail) flow through the owning
 /// section's services per design-rules §2c
 /// (<see cref="UserManager{TUser}"/> / <see cref="IUserService"/> /
-/// <see cref="IProfileService"/> / <see cref="IUserEmailService"/>). All dev fixtures (system-team
+/// <see cref="IProfileEditorService"/> / <see cref="IUserEmailService"/>). All dev fixtures (system-team
 /// memberships, dev test department, dev barrio camp/season/lead, city-planning
 /// team, role assignments, sample contact fields) also go through section
 /// ownership services, so this seeder no longer depends on DbContext writes.
 /// </summary>
 public sealed class DevPersonaSeeder(
     UserManager<User> userManager,
-    IProfileService profileService,
+    IProfileEditorService profileEditorService,
     IUserEmailService userEmailService,
     IContactFieldService contactFieldService,
     IRoleAssignmentService roleAssignmentService,
@@ -137,7 +137,7 @@ public sealed class DevPersonaSeeder(
             ProfilePictureContentType: null,
             RemoveProfilePicture: false);
 
-        var profileId = await profileService.SaveProfileAsync(id, displayName, saveRequest, "en");
+        var profileId = await profileEditorService.SaveProfileAsync(id, displayName, saveRequest);
 
         // Mark approved + cleared so the dev persona skips the consent gate
         // and lands on the dashboard. The CachingUserService decorator handles

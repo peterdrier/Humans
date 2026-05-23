@@ -22,18 +22,6 @@ public sealed class ProfileService(IProfileRepository profileRepository,
     IClock clock,
     ILogger<ProfileService> logger) : IProfileService, IUserDataContributor, IUserMerge
 {
-    // Striped process-local semaphore serializes create-or-update per userId (single-server; avoids profiles.UserId 23505 race).
-    private static readonly SemaphoreSlim[] _userLocks = CreateUserLocks(32);
-    private static SemaphoreSlim[] CreateUserLocks(int count)
-    {
-        var locks = new SemaphoreSlim[count];
-        for (var i = 0; i < count; i++) locks[i] = new SemaphoreSlim(1, 1);
-        return locks;
-    }
-    private static SemaphoreSlim LockFor(Guid userId)
-        => _userLocks[(uint)userId.GetHashCode() % (uint)_userLocks.Length];
-
-
     public async Task SetProfilePictureAsync(
         Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default)
     {
@@ -61,9 +49,15 @@ public sealed class ProfileService(IProfileRepository profileRepository,
                 !string.Equals(storageResult.PreviousProfilePictureContentType, contentType, StringComparison.Ordinal))
             {
                 await fileStorage.DeleteAsync(
-                    ProfilePictureKey(storageResult.ProfileId.Value, storageResult.PreviousProfilePictureContentType), ct);
+                    ProfilePictureStorageKeys.ProfilePictureKey(
+                        storageResult.ProfileId.Value,
+                        storageResult.PreviousProfilePictureContentType),
+                    ct);
             }
-            await fileStorage.SaveAsync(ProfilePictureKey(storageResult.ProfileId.Value, contentType), pictureData, ct);
+            await fileStorage.SaveAsync(
+                ProfilePictureStorageKeys.ProfilePictureKey(storageResult.ProfileId.Value, contentType),
+                pictureData,
+                ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -84,7 +78,7 @@ public sealed class ProfileService(IProfileRepository profileRepository,
             return null;
         }
 
-        var key = ProfilePictureKey(profileId, dbContentType);
+        var key = ProfilePictureStorageKeys.ProfilePictureKey(profileId, dbContentType);
         var fsBytes = await fileStorage.TryReadAsync(key, ct);
         return fsBytes is not null ? (fsBytes, dbContentType) : null;
     }
@@ -104,7 +98,7 @@ public sealed class ProfileService(IProfileRepository profileRepository,
         var dbOnly = new List<ProfilePictureMigrationRow>();
         foreach (var (profileId, userId, burnerName, contentType, updatedAt) in rows)
         {
-            var key = ProfilePictureKey(profileId, contentType);
+            var key = ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType);
             var bytes = await fileStorage.TryReadAsync(key, ct);
             if (bytes is not null)
             {
@@ -120,125 +114,6 @@ public sealed class ProfileService(IProfileRepository profileRepository,
         }
 
         return new ProfilePictureMigrationSnapshot(rows.Count, onFs, dbOnly);
-    }
-
-    public async Task<Guid> SaveProfileAsync(
-        Guid userId, string displayName, ProfileSaveRequest request, string language,
-        CancellationToken ct = default)
-    {
-        // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.
-        var gate = LockFor(userId);
-        await gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            return await SaveProfileCoreAsync(userId, displayName, request, language, ct);
-        }
-        finally
-        {
-            gate.Release();
-        }
-    }
-
-    private async Task<Guid> SaveProfileCoreAsync(
-        Guid userId, string displayName, ProfileSaveRequest request, string language,
-        CancellationToken ct)
-    {
-        var storageResult = await userService.SaveProfileAsync(
-            userId,
-            ToUserProfileSaveCommand(displayName, request),
-            ct);
-
-        await ApplyProfilePictureFileMutationAsync(storageResult, request, ct);
-
-        logger.LogInformation("User {UserId} updated their profile", userId);
-
-        return storageResult.ProfileId;
-    }
-
-    private static UserProfileSaveCommand ToUserProfileSaveCommand(
-        string displayName,
-        ProfileSaveRequest request)
-    {
-        var pictureMutation = request.RemoveProfilePicture
-            ? UserProfilePictureMutation.Remove
-            : request.ProfilePictureData is not null && request.ProfilePictureContentType is not null
-                ? UserProfilePictureMutation.Set
-                : UserProfilePictureMutation.None;
-
-        return new UserProfileSaveCommand(
-            DisplayName: displayName,
-            BurnerName: request.BurnerName,
-            FirstName: request.FirstName,
-            LastName: request.LastName,
-            City: request.City,
-            CountryCode: request.CountryCode,
-            Latitude: request.Latitude,
-            Longitude: request.Longitude,
-            PlaceId: request.PlaceId,
-            Bio: request.Bio,
-            Pronouns: request.Pronouns,
-            ContributionInterests: request.ContributionInterests,
-            BoardNotes: request.BoardNotes,
-            BirthdayMonth: request.BirthdayMonth,
-            BirthdayDay: request.BirthdayDay,
-            EmergencyContactName: request.EmergencyContactName,
-            EmergencyContactPhone: request.EmergencyContactPhone,
-            EmergencyContactRelationship: request.EmergencyContactRelationship,
-            NoPriorBurnExperience: request.NoPriorBurnExperience,
-            PictureMutation: pictureMutation,
-            ProfilePictureContentType: request.ProfilePictureContentType);
-    }
-
-    private async Task ApplyProfilePictureFileMutationAsync(
-        UserProfileSaveResult storageResult,
-        ProfileSaveRequest request,
-        CancellationToken ct)
-    {
-        if (request.RemoveProfilePicture)
-        {
-            if (storageResult.PreviousProfilePictureContentType is not null)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        ProfilePictureKey(storageResult.ProfileId, storageResult.PreviousProfilePictureContentType),
-                        ct);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogWarning(ex,
-                        "Failed to delete profile picture from filesystem for {ProfileId}; content-type column has been cleared so the file will not be served",
-                        storageResult.ProfileId);
-                }
-            }
-
-            return;
-        }
-
-        if (request.ProfilePictureData is null || request.ProfilePictureContentType is null)
-            return;
-
-        try
-        {
-            if (storageResult.PreviousProfilePictureContentType is not null &&
-                !string.Equals(storageResult.PreviousProfilePictureContentType, request.ProfilePictureContentType, StringComparison.Ordinal))
-            {
-                await fileStorage.DeleteAsync(
-                    ProfilePictureKey(storageResult.ProfileId, storageResult.PreviousProfilePictureContentType),
-                    ct);
-            }
-
-            await fileStorage.SaveAsync(
-                ProfilePictureKey(storageResult.ProfileId, request.ProfilePictureContentType),
-                request.ProfilePictureData,
-                ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogWarning(ex,
-                "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing - picture will not render",
-                storageResult.ProfileId);
-        }
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
@@ -370,19 +245,6 @@ public sealed class ProfileService(IProfileRepository profileRepository,
             commPrefsSlice
         ];
     }
-
-    // Pictures live at uploads/profile-pictures/{id}{ext}; Program.cs 404s the subpath so reads go through GetProfilePictureAsync (GDPR gate).
-    internal static string ProfilePictureKey(Guid profileId, string contentType) =>
-        $"uploads/profile-pictures/{profileId}{ExtensionFromContentType(contentType)}";
-
-    internal static string ExtensionFromContentType(string contentType) => contentType switch
-    {
-        "image/jpeg" => ".jpg",
-        "image/png" => ".png",
-        "image/webp" => ".webp",
-        _ => string.Empty
-    };
-
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)

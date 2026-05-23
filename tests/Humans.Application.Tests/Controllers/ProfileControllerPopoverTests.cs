@@ -69,6 +69,7 @@ public class ProfileControllerPopoverTests
             _userService,
             userManager,
             _profileService,
+            Substitute.For<IProfileEditorService>(),
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
             _userEmailService,

@@ -11,6 +11,7 @@ using CommunicationPreferenceService = Humans.Application.Services.Profiles.Comm
 using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using DuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
 using EmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
+using ProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using UserEmailService = Humans.Application.Services.Profiles.UserEmailService;
 
@@ -29,7 +30,8 @@ public class ProfileArchitectureTests
         typeof(UserEmailService),
         typeof(CommunicationPreferenceService),
         typeof(AccountMergeService),
-        typeof(DuplicateAccountService)
+        typeof(DuplicateAccountService),
+        typeof(ProfileEditorService)
     ];
 
     public static TheoryData<Type> ServicesWithoutMemoryCache =>
@@ -37,7 +39,8 @@ public class ProfileArchitectureTests
         typeof(ProfileService),
         typeof(ContactFieldService),
         typeof(UserEmailService),
-        typeof(CommunicationPreferenceService)
+        typeof(CommunicationPreferenceService),
+        typeof(ProfileEditorService)
     ];
 
     public static TheoryData<Type, Type> RequiredRepositoryEdges => new()

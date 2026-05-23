@@ -14,12 +14,15 @@ using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
+using ProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
+using ProfilePictureStorageKeys = Humans.Application.Services.Profiles.ProfilePictureStorageKeys;
 
 namespace Humans.Application.Tests.Services;
 
 public sealed class ProfileServiceTests : ServiceTestHarness
 {
     private readonly ProfileService _service;
+    private readonly ProfileEditorService _editor;
     private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailRepository _userEmailRepository;
@@ -30,7 +33,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     // Delegate to the production helper (made internal for test access)
     // so the test can't drift from the real key construction.
     private static string PicKey(Guid profileId, string contentType) =>
-        ProfileService.ProfilePictureKey(profileId, contentType);
+        ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType);
 
     public ProfileServiceTests()
     {
@@ -55,6 +58,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _fileStorage,
             Clock,
             NullLogger<ProfileService>.Instance);
+        _editor = new ProfileEditorService(
+            _userService,
+            _fileStorage,
+            NullLogger<ProfileEditorService>.Instance);
 
         _userService.StubGetUserInfosFromContext(Db);
         _userService.StubGetUserInfoFromContext(Db);
@@ -86,7 +93,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 call.ArgAt<CancellationToken>(3)));
     }
 
-    // --- Profile save flow ---
+    // --- Profile editor save flow ---
 
     [HumansFact(Timeout = 10000)]
     public async Task SaveProfileAsync_NewProfile_CreatesProfile()
@@ -95,7 +102,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        var profileId = await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+        var profileId = await _editor.SaveProfileAsync(userId, "Jane Doe", request);
 
         profileId.Should().NotBe(Guid.Empty);
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
@@ -111,13 +118,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     /// <see cref="ProfileState.Active"/>.
     /// </summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileService_UpdateProfileAsync_TransitionsStubToActive_WhenAllRequiredFieldsPopulated()
+    public async Task ProfileEditorService_SaveProfileAsync_TransitionsStubToActive_WhenAllRequiredFieldsPopulated()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+        await _editor.SaveProfileAsync(userId, "Jane Doe", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Active);
@@ -127,14 +134,14 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     /// Issue #635 (§15i): missing required fields keeps the Profile in Stub.
     /// </summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileService_UpdateProfileAsync_StaysStub_WhenRequiredFieldsBlank()
+    public async Task ProfileEditorService_SaveProfileAsync_StaysStub_WhenRequiredFieldsBlank()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         // BurnerName/FirstName/LastName all empty — Stub state.
         var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
 
-        await _service.SaveProfileAsync(userId, "Stub", request, "en");
+        await _editor.SaveProfileAsync(userId, "Stub", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Stub);
@@ -147,7 +154,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(burnerName: "NewName", firstName: "Updated", lastName: "Person");
 
-        await _service.SaveProfileAsync(userId, "Updated Person", request, "en");
+        await _editor.SaveProfileAsync(userId, "Updated Person", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("NewName");
@@ -162,7 +169,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest();
 
-        await _service.SaveProfileAsync(userId, "New Display Name", request, "en");
+        await _editor.SaveProfileAsync(userId, "New Display Name", request);
 
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
         user.DisplayName.Should().Be("New Display Name");
@@ -175,7 +182,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 14);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
@@ -188,7 +195,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 30);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().BeNull();
@@ -205,7 +212,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var payload = new byte[] { 0x10, 0x20, 0x30 };
         var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         // Content-type column is the "has picture" marker + extension source.
@@ -223,7 +230,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
 
         var request = MakeRequest(removeProfilePicture: true);
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureContentType.Should().BeNull();

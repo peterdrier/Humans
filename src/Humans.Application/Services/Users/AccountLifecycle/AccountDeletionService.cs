@@ -182,7 +182,9 @@ public sealed class AccountDeletionService(
         {
             try
             {
-                await fileStorage.DeleteAsync(ProfileService.ProfilePictureKey(profileId, contentType), ct);
+                await fileStorage.DeleteAsync(
+                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType),
+                    ct);
             }
             catch (Exception ex)
             {

@@ -48,6 +48,7 @@ public class ProfileController(
     IUserService userService,
     UserManager<User> userManager,
     IProfileService profileService,
+    IProfileEditorService profileEditorService,
     IContactFieldService contactFieldService,
     IEmailService emailService,
     IUserEmailService userEmailService,
@@ -365,9 +366,8 @@ public class ProfileController(
             ProfilePictureContentType: pictureUpload.ContentType,
             RemoveProfilePicture: model.RemoveProfilePicture);
 
-        var profileId = await profileService.SaveProfileAsync(
-            user.Id, model.BurnerName, saveRequest,
-            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+        var profileId = await profileEditorService.SaveProfileAsync(
+            user.Id, model.BurnerName, saveRequest);
 
         // Peer-call into Onboarding; ProfileService doesn't.
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
@@ -2518,7 +2518,6 @@ public class ProfileController(
     }
 
 }
-
 
 
 

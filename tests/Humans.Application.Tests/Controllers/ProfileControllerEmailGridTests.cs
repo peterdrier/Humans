@@ -78,6 +78,7 @@ public class ProfileControllerEmailGridTests
             _userService,
             _userManager,
             Substitute.For<IProfileService>(),
+            Substitute.For<IProfileEditorService>(),
             Substitute.For<IContactFieldService>(),
             _emailService,
             _userEmailService,

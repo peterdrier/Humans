@@ -23,7 +23,7 @@ namespace Humans.Web.Controllers;
 public class OnboardingWidgetController(
     IUserService userService,
     IOnboardingWidgetState state,
-    IProfileService profileService,
+    IProfileEditorService profileEditorService,
     IShiftSignupService signupService,
     IShiftManagementService shiftMgmt,
     IConsentService consents,
@@ -70,10 +70,6 @@ public class OnboardingWidgetController(
         if (currentStep != OnboardingWidgetStep.Names)
             return RedirectToAction(nameof(Index));
 
-        var acceptLang = HttpContext.Request.Headers["Accept-Language"].ToString()
-            .Split(',', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        var language = string.IsNullOrEmpty(acceptLang) ? "en" : acceptLang;
-
         var request = new ProfileSaveRequest(
             BurnerName: vm.BurnerName,
             FirstName: vm.FirstName,
@@ -85,7 +81,7 @@ public class OnboardingWidgetController(
             NoPriorBurnExperience: false,
             ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
-        await profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
+        await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));

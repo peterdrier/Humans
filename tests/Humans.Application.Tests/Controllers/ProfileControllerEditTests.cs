@@ -39,7 +39,7 @@ namespace Humans.Application.Tests.Controllers;
 
 /// <summary>
 /// Coverage for the initial-setup tier-application orchestration that moved
-/// from <c>ProfileService.SaveProfileAsync</c> into <c>ProfileController.Edit</c>
+/// from the profile save coordinator into <c>ProfileController.Edit</c>
 /// POST under issue nobodies-collective/Humans#685. The four removed
 /// <c>ProfileServiceTests</c> tests that exercised the old service-layer
 /// dispatch are replaced here at the controller layer:
@@ -53,6 +53,7 @@ namespace Humans.Application.Tests.Controllers;
 public class ProfileControllerEditTests
 {
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
@@ -88,6 +89,7 @@ public class ProfileControllerEditTests
             _userService,
             userManager,
             _profileService,
+            _profileEditorService,
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
             Substitute.For<IUserEmailService>(),
@@ -147,9 +149,9 @@ public class ProfileControllerEditTests
                     .ToUserInfo()));
 
         // SaveProfileAsync is invoked unconditionally by the happy path.
-        _profileService.SaveProfileAsync(
+        _profileEditorService.SaveProfileAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>())
             .Returns(_profileId);
         _userService.SaveProfileVolunteerHistoryAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>())
