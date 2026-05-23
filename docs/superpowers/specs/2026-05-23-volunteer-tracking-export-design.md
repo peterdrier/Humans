@@ -1,7 +1,7 @@
 # Volunteer Tracking Export
 
 **Date:** 2026-05-23
-**Branch:** TBD
+**Branch:** `vol-tracking-export`
 **Section:** Shifts → Volunteer Tracking
 
 ## Overview
@@ -25,7 +25,7 @@ Identical to `ShiftDashboardController`:
 
 ## Roster Selection
 
-A human appears in the export iff they have **≥1 confirmed shift signup** with a start date intersecting the active range. No minimum shift duration applies — any confirmed signup counts.
+A human appears in the export iff they have **≥1 confirmed shift signup** whose `[StartsAtUtc, EndsAtUtc)` interval overlaps the active date range (event-local). A shift that starts before `startDate` but extends into the range counts; a shift fully outside the range does not. No minimum shift duration applies — any confirmed signup counts.
 
 Pending, cancelled, declined signups are ignored. The dashboard's "Unbooked cohort" section is not exported.
 
@@ -47,12 +47,12 @@ Build map `(userId, date) → List<(teamId, hoursThatDay)>` from confirmed shift
 
 For each `(human row, date column)`:
 
-1. If `date < humanArrivalDay` → empty (no fill, no text).
+1. If `date < humanArrivalDay` → empty (no fill, no text). (Moot when arrival day is the first in-range date — there is no earlier cell to render.)
 2. If `date == humanArrivalDay` → white fill, text = playa name.
 3. Otherwise, if the map has an entry → fill = palette color of the team with the most hours that day (max-hours wins; tie-break: team name asc). Text = playa name.
 4. Otherwise → empty.
 
-**Arrival day** = day before the human's first confirmed shift in scope (the filtered department's shifts, when filtered; otherwise all departments). If arrival day falls outside `[start, end]`, no white cell is shown for that human; their first in-range cell colors normally.
+**Arrival day** = day before the human's first confirmed shift in scope (the filtered department's shifts, when filtered; otherwise all departments). If arrival day falls outside `[start, end]`, no white cell is shown for that human; their first in-range cell colors normally per rule 3. Example: if a human's first confirmed shift starts on `start`, arrival day = `start - 1` (outside range, no white cell); if it starts on `start + 1`, arrival day = `start` (inside range, white cell shown).
 
 **Multi-team day:** single color per cell (max-hours team). No stripes, no compounds.
 
@@ -87,17 +87,26 @@ Always `UserInfo.BurnerName` (which falls back to `User.DisplayName` when `Profi
 Deterministic, in-exporter only. No `Team.HexColor` field, no migration.
 
 ```
-paletteIndex = stableHash(team.Id.ToString()) % palette.Length
+paletteIndex = stableHash(team.Id.ToString("D")) % palette.Length
 ```
 
-`palette` is a fixed list of ~20 distinct fills with sufficient contrast for white bold text. Hash is stable across runs (`SHA256` of the Id string, take first 4 bytes). Same team → same color across exports.
+`Guid.ToString("D")` — the 36-char lowercase hyphenated form (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`). Locked here so future Id-formatting refactors don't shift the palette.
+
+`palette` is a fixed list of ~20 distinct fills with sufficient contrast for white bold text. Hash is stable across runs (`SHA256` of the Id string, take first 4 bytes interpreted as `uint`). Same team → same color across exports.
 
 If two teams collide on the same color in a given export, it's accepted — the row grouping by team name keeps them visually distinct.
 
 ## File Output
 
 - Library: `ClosedXML` (BSD-3-Clause, MIT-compatible, no Excel install required).
-- Filename: `volunteer-tracking-{startISO}-to-{endISO}.xlsx` (e.g. `volunteer-tracking-2026-06-12-to-2026-06-20.xlsx`). If filtered to one department, prefix the team slug: `volunteer-tracking-cantina-2026-06-12-to-2026-06-20.xlsx`.
+- Filename: `volunteer-tracking-{startISO}-to-{endISO}.xlsx` (e.g. `volunteer-tracking-2026-06-12-to-2026-06-20.xlsx`). If filtered to one department, prefix the team slug: `volunteer-tracking-{slug}-2026-06-12-to-2026-06-20.xlsx`.
+- **Slugification rule** for the team name (used in the filename only):
+  1. Lowercase.
+  2. Strip diacritics (Spanish accents): NFD normalize, drop combining marks (Spanish team names common).
+  3. Replace any non-`[a-z0-9]` character with `-`.
+  4. Collapse consecutive `-` to a single `-`.
+  5. Trim leading/trailing `-`.
+  6. If the result is empty, fall back to `team`.
 - Content type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - Single sheet named `Volunteers`.
 
@@ -105,7 +114,7 @@ If two teams collide on the same color in a given export, it's accepted — the 
 
 | Row | Content |
 |---|---|
-| 1 | `"Volunteer tracking export — generated {YYYY-MM-DD HH:mm UTC} by {actor playa name}"` |
+| 1 | `"Volunteer tracking export — generated {YYYY-MM-DD HH:mm UTC} by {actor playa name}"`. Actor name = `UserInfo.BurnerName` of the current request user (same resolution rule as the grid cells). |
 | 2 | Filter summary: `"Department: {name or 'All'} · Range: {start} → {end} ({period or 'custom'})"` |
 | 3 | Methodology paragraph (see §Methodology blurb), wrapped across merged cells, light italic. |
 | 4 | (blank spacer) |
@@ -175,7 +184,7 @@ Clean Architecture layers touched:
 
 **Infrastructure:**
 
-- New repository method on `IVolunteerTrackingRepository` (or a sibling read-only repo):
+- New repository method on the existing `IVolunteerTrackingRepository` (single home for volunteer-tracking-related reads):
   ```csharp
   Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
       Guid eventSettingsId,
@@ -227,8 +236,9 @@ TDD where it pays off (the service has multiple regression-prone rules).
 
 ### Controller test (`tests/Humans.Web.UnitTests/Controllers/VolunteerTrackingControllerTests.cs`)
 
-- `ExportXlsx` unauthenticated → 403.
-- Authenticated with `period=Event`, no department → `FileContentResult`, content type matches, filename pattern matches.
+- `ExportXlsx` anonymous → `ChallengeResult` / login redirect (standard `[Authorize]` behavior).
+- `ExportXlsx` authenticated user lacking `ShiftDashboardAccess` → 403.
+- Authenticated user with policy, `period=Event`, no department → `FileContentResult`, content type matches, filename pattern matches.
 - Both `period` and `startDate` set → mutex applies (resolver picks period).
 
 No infrastructure-layer unit tests; the repository method is a thin EF query exercised end-to-end by the service tests via the existing in-memory shifts test fixture.
@@ -241,6 +251,7 @@ No infrastructure-layer unit tests; the repository method is a thin EF query exe
 - Including coordinator / role metadata beyond the playa name.
 - Localization of the methodology blurb. English only for v1 (the dashboard itself is English).
 - Background generation / email delivery. Synchronous response is fine at this dataset size (~500 humans × ~30 days = trivial).
+- Audit log entry for the export action. The grid contains playa names only (no email, no legal name, no PII), so v1 skips an audit row. If the export is later widened to include PII fields, an audit entry should land in the same change.
 
 ## Open Questions
 
@@ -249,5 +260,5 @@ None blocking.
 ## Change Enforcement
 
 - **If you add a new ShiftPeriod preset value** → make sure it's accepted by `ExportXlsx`'s `period` param (no new switch — relies on `ResolveActiveDateRange`).
-- **If the Team palette is changed** → bump nothing; deterministic hash means the same team still maps to the same palette index unless the palette length changes. Document the chosen palette in the exporter source comments.
+- **If you change the Team palette length** → every team's color shifts (the deterministic hash modulo a new length re-maps everything). Stakeholders comparing two exports across the change boundary will see different colors. Acceptable but worth noting in the PR. Adding/reordering palette entries without changing length leaves mappings stable.
 - **If `BurnerName` resolution changes** → exporter inherits it via `UserInfo.BurnerName`; no further action.
