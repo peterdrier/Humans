@@ -103,6 +103,61 @@ public sealed class TeamServiceTests : ServiceTestHarness
     // IsUserAdminAsync / IsUserBoardMemberAsync coverage lives in RoleAssignmentServiceTests.
 
     // ==========================================================================
+    // CreateTeamAsync
+    // ==========================================================================
+
+    // Validation branches only. CreateTeamAsync's persist path opens a DB
+    // transaction (repo.AddTeamWithRequiresApprovalOverrideAsync) the InMemory
+    // harness can't run — covered by integration tests.
+
+    [HumansFact]
+    public async Task CreateTeamAsync_ReservedSlug_Throws()
+    {
+        var act = () => _service.CreateTeamAsync("Roster", null, requiresApproval: false);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*reserved route*");
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_ParentNotFound_Throws()
+    {
+        var act = () => _service.CreateTeamAsync(
+            "Child", null, requiresApproval: false, parentTeamId: Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_ParentIsSystemTeam_Throws()
+    {
+        var parent = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateTeamAsync(
+            "Child", null, requiresApproval: false, parentTeamId: parent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*System teams cannot be parents*");
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_ParentAlreadyHasParent_Throws()
+    {
+        var grandparent = SeedTeam("Department");
+        var parent = SeedTeam("SubTeam");
+        parent.ParentTeamId = grandparent.Id;
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateTeamAsync(
+            "GrandChild", null, requiresApproval: false, parentTeamId: parent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already has a parent*");
+    }
+
+    // ==========================================================================
     // IsUserCoordinatorOfTeamAsync
     // ==========================================================================
 
