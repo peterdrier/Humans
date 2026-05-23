@@ -1,7 +1,8 @@
+using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Domain.Attributes;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -82,6 +83,18 @@ public interface IVolunteerTrackingRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns confirmed shift signups whose [StartsAtUtc, EndsAtUtc) overlaps the date range
+    /// (in event-local time). When <paramref name="departmentId"/> is non-null, restricts to
+    /// shifts whose rota belongs to that team.
+    /// </summary>
+    Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
+        Guid eventSettingsId,
+        LocalDate startDate,
+        LocalDate endDate,
+        Guid? departmentId,
+        CancellationToken ct);
 }
 
 /// <summary>
