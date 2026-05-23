@@ -336,7 +336,8 @@ public sealed class TicketTransferService(
     {
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
         var email = await userEmailService.GetPrimaryEmailAsync(senderUserId, ct);
-        return (email, info?.DisplayName ?? "there");
+        var name = info?.BurnerName;
+        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name);
     }
 
     private static string TicketLabel(string attendeeName, string vendorTicketId) =>
