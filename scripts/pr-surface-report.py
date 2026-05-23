@@ -160,9 +160,11 @@ def limited(items: list[str], limit: int = 25) -> list[str]:
 
 
 def bullet_list(items: list[str]) -> str:
-    if not items:
-        return "- none"
     return "\n".join(f"- `{item}`" for item in limited(items))
+
+
+def short_ref(ref: str) -> str:
+    return ref[:8] if re.fullmatch(r"[0-9a-fA-F]{40}", ref) else ref
 
 
 def build_markdown(
@@ -173,85 +175,89 @@ def build_markdown(
     changed_files: list[str],
     migration_files: list[str],
     inventory: dict[str, list[str]],
+    base_label: str,
+    head_label: str,
 ) -> str:
     categories = ["code", "comments", "tests", "migrations", "docs", "blank"]
-    rows = "\n".join(
+    rows = [
         f"| {category} | {counts.get(category, {}).get('added', 0)} | {counts.get(category, {}).get('deleted', 0)} |"
         for category in categories
+        if counts.get(category, {}).get("added", 0) or counts.get(category, {}).get("deleted", 0)
+    ]
+    loc_section = (
+        "### LOC\n\n| bucket | added | deleted |\n|---|---:|---:|\n" + "\n".join(rows)
+        if rows
+        else "### LOC\n\nNo line changes detected."
     )
     migration_status = "OK" if len(migration_files) <= 1 else "BLOCK"
-    migration_note = (
-        "No EF migration files changed."
-        if not migration_files
-        else "\n".join(f"- `{path}`" for path in migration_files)
-    )
+    summary = f"{len(changed_files)} changed file(s) | EF migrations: {len(migration_files)}/1"
 
-    return f"""<!-- pr-surface-report -->
-## PR Surface Report
+    sections = [
+        "<!-- pr-surface-report -->",
+        "## PR Surface Report",
+        "",
+        f"Compared `{short_ref(base_label)}`...`{short_ref(head_label)}`.",
+        "",
+        f"**Summary:** {summary}",
+        "",
+        loc_section,
+    ]
 
-Compared `{base}`...`{head}`.
+    if added_files:
+        sections.extend(["", "### New Files", "", bullet_list(added_files)])
 
-### LOC
+    if migration_files or migration_status == "BLOCK":
+        sections.extend(
+            [
+                "",
+                f"### EF Migrations ({migration_status})",
+                "",
+                bullet_list(migration_files),
+            ]
+        )
 
-| bucket | added | deleted |
-|---|---:|---:|
-{rows}
+    inventory_sections = [
+        ("Public types", inventory.get("public_types", [])),
+        ("Interface methods", inventory.get("interface_methods", [])),
+        ("Service/repository methods", inventory.get("service_repository_methods", [])),
+        ("Routes/actions", inventory.get("routes_actions", [])),
+        ("DI registrations", inventory.get("di_registrations", [])),
+        ("Package references", inventory.get("package_references", [])),
+    ]
+    non_empty_inventory = [(title, items) for title, items in inventory_sections if items]
+    if non_empty_inventory:
+        sections.extend(["", "### Surface Inventory"])
+        for title, items in non_empty_inventory:
+            sections.extend(["", f"**{title}**", "", bullet_list(items)])
 
-Classification notes: `tests` and `migrations` are path-based and separated before code/comment classification. Markdown under `docs/` and `memory/` is counted as `docs`. Comment lines are non-test, non-migration code-adjacent lines that start with a common comment marker.
-
-### EF Migrations
-
-Status: **{migration_status}** ({len(migration_files)} real migration file(s); max 1 per PR)
-
-{migration_note}
-
-### New Files
-
-{bullet_list(added_files)}
-
-### Surface Inventory
-
-**Public types**
-
-{bullet_list(inventory.get("public_types", []))}
-
-**Interface methods**
-
-{bullet_list(inventory.get("interface_methods", []))}
-
-**Service/repository methods**
-
-{bullet_list(inventory.get("service_repository_methods", []))}
-
-**Routes/actions**
-
-{bullet_list(inventory.get("routes_actions", []))}
-
-**DI registrations**
-
-{bullet_list(inventory.get("di_registrations", []))}
-
-**Package references**
-
-{bullet_list(inventory.get("package_references", []))}
-
-### Changed Files
-
-{len(changed_files)} file(s) changed.
-"""
+    return "\n".join(sections) + "\n"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", required=True)
+    parser.add_argument("--base-label")
+    parser.add_argument("--head-label")
     parser.add_argument("--output", default="pr-surface-report.md")
     parser.add_argument("--json-output", default="pr-surface-report.json")
     args = parser.parse_args()
 
     added_files, changed_files, migration_files = parse_name_status(args.base, args.head)
     counts, inventory = parse_diff(args.base, args.head)
-    markdown = build_markdown(args.base, args.head, counts, added_files, changed_files, migration_files, inventory)
+    base_label = args.base_label or args.base
+    head_label = args.head_label or args.head
+    markdown = build_markdown(
+        args.base,
+        args.head,
+        counts,
+        added_files,
+        changed_files,
+        migration_files,
+        inventory,
+        base_label,
+        head_label,
+    )
 
     Path(args.output).write_text(markdown, encoding="utf-8")
     Path(args.json_output).write_text(
@@ -259,6 +265,8 @@ def main() -> int:
             {
                 "base": args.base,
                 "head": args.head,
+                "base_label": base_label,
+                "head_label": head_label,
                 "counts": counts,
                 "added_files": added_files,
                 "changed_files": changed_files,
