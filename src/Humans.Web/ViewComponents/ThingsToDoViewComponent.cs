@@ -134,6 +134,36 @@ public class ThingsToDoViewComponent : ViewComponent
                     IconClass = "fa-solid fa-calendar-check"
                 });
             }
+
+            // 5. Dietary & medical nudge — fires when the user has an active qualifying
+            // signup (6h+ or all-day) AND DietaryPreference is not yet set.
+            // See feature #279 / 35 — docs/features/profiles/dietary-medical-nudge.md
+            try
+            {
+                var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
+                if (hasQualifyingSignup)
+                {
+                    var dietaryProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+                    var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
+                    if (dietaryEmpty)
+                    {
+                        model.Items.Add(new TodoItem
+                        {
+                            Key = "dietary-medical",
+                            Title = _localizer["Todo_DietaryMedical_Title"].Value,
+                            Description = _localizer["Todo_DietaryMedical_Pending"].Value,
+                            IsDone = false,
+                            ActionUrl = Url.Action("DietaryMedical", "Profile"),
+                            ActionText = _localizer["Todo_DietaryMedical_Action"].Value,
+                            IconClass = "fa-solid fa-utensils",
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to check dietary/medical nudge for user {UserId}", userId);
+            }
         }
         catch (Exception ex)
         {
@@ -154,10 +184,6 @@ public class ThingsToDoViewComponent : ViewComponent
     {
         return profile.Skills.Count == 0
             && profile.Quirks.Count == 0
-            && profile.Languages.Count == 0
-            && profile.Allergies.Count == 0
-            && profile.Intolerances.Count == 0
-            && string.IsNullOrEmpty(profile.DietaryPreference)
-            && string.IsNullOrEmpty(profile.MedicalConditions);
+            && profile.Languages.Count == 0;
     }
 }
