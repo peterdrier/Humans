@@ -57,6 +57,25 @@ body:
     validations:
       required: true
 
+  - type: textarea
+    id: existing-surface
+    attributes:
+      label: Existing surface to check
+      description: Existing services, views/components, DTOs/view models, helpers, routes, or tests that likely own the fix. Optional, but useful when known.
+      placeholder: |
+        - Services:
+        - Views/components:
+        - Tests/helpers:
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope / non-goals
+      description: Anything intentionally NOT being changed by this bug fix.
+      placeholder: |
+        - No new interface methods unless explicitly approved.
+        - No new service/repository unless the existing owner cannot carry the fix.
+
   - type: input
     id: environment
     attributes:

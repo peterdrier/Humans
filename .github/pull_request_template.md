@@ -11,6 +11,10 @@ Tick items as you go, or strike through (`~~item~~`) with a reason if a row genu
 
 <!-- The motivation. Skip if obvious from the linked issue. -->
 
+## Existing surface checked
+
+<!-- List existing services/components/helpers/routes/DTOs considered before adding new surface. Use "No new durable surface" when true. -->
+
 ## UI changes / screenshots
 
 <!-- Drop screenshots or short clips for any user-visible change. Delete this section if there are none. -->
@@ -24,6 +28,7 @@ Tick items as you go, or strike through (`~~item~~`) with a reason if a row genu
 - [ ] **EF migrations** (if any) auto-generated, not hand-edited — `memory/architecture/no-hand-edited-migrations.md` and `memory/architecture/migration-regen-after-rebase.md`.
 - [ ] **NuGet packages updated?** If yes, `Views/About/Index.cshtml` updated with new versions + licenses — `memory/process/about-page-license-attribution.md`.
 - [ ] **New project rule?** Captured as a `memory/<bucket>/<name>.md` atom **in this PR**, with a one-line entry added to `memory/INDEX.md`. See `memory/META.md`.
+- [ ] **Reuse-first checked** — no unnecessary new files, public types, interface methods, service/repository methods, DTOs/view models, helpers, endpoints, dependencies, or DI registrations. See `memory/process/reuse-first-change-discipline.md`.
 - [ ] **Build + test pass locally**: `dotnet build Humans.slnx -v quiet` and `dotnet test Humans.slnx -v quiet`.
 - [ ] **Nav coverage** — any new page is reachable from navigation (no orphan pages).
 - [ ] **No magic strings** — `nameof()` / constants used where applicable.
