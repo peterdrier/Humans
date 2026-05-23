@@ -205,6 +205,130 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // AddSeededMemberAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task AddSeededMemberAsync_TeamNotFound_Throws()
+    {
+        var act = () => _service.AddSeededMemberAsync(
+            Guid.NewGuid(), Guid.NewGuid(), TeamMemberRole.Member, Clock.GetCurrentInstant());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task AddSeededMemberAsync_SystemTeam_Throws()
+    {
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        var user = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.AddSeededMemberAsync(
+            team.Id, user.Id, TeamMemberRole.Member, Clock.GetCurrentInstant());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot target system teams*");
+    }
+
+    [HumansFact]
+    public async Task AddSeededMemberAsync_AlreadyMember_Throws()
+    {
+        var team = SeedTeam("Alpha");
+        var user = SeedUser();
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.AddSeededMemberAsync(
+            team.Id, user.Id, TeamMemberRole.Member, Clock.GetCurrentInstant());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already a member*");
+    }
+
+    [HumansFact]
+    public async Task AddSeededMemberAsync_PersistsMemberWithRoleAndJoinedAt()
+    {
+        var team = SeedTeam("Alpha");
+        var user = SeedUser();
+        await Db.SaveChangesAsync();
+        var joinedAt = Instant.FromUtc(2025, 1, 1, 0, 0);
+
+        var result = await _service.AddSeededMemberAsync(
+            team.Id, user.Id, TeamMemberRole.Coordinator, joinedAt);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamMembers.AsNoTracking()
+            .SingleAsync(m => m.TeamId == team.Id && m.UserId == user.Id);
+        stored.Role.Should().Be(TeamMemberRole.Coordinator);
+        stored.JoinedAt.Should().Be(joinedAt);
+        stored.LeftAt.Should().BeNull();
+        result.Id.Should().Be(stored.Id);
+    }
+
+    // ==========================================================================
+    // GetActiveTeamMembershipsForUserAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_ReturnsActiveNonSystemMembershipWithHiddenFlag()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Build");
+        team.IsHidden = true;
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().ContainSingle();
+        result[0].TeamName.Should().Be("Build");
+        result[0].Role.Should().Be(TeamMemberRole.Coordinator);
+        result[0].IsHidden.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_SkipsVolunteersSystemTeam()
+    {
+        var user = SeedUser();
+        var vols = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        SeedTeamMember(vols.Id, user.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_SkipsInactiveTeams()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Old", isActive: false);
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_SkipsTeamsWhereUserIsNotMember()
+    {
+        var user = SeedUser();
+        var other = SeedUser();
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, other.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().BeEmpty();
+    }
+
+    // ==========================================================================
     // IsUserCoordinatorOfTeamAsync
     // ==========================================================================
 
