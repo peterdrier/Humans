@@ -79,7 +79,6 @@ public sealed class EditLineInputModel
 public sealed class ExpenseCoordinatorViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
-    public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
 }
 
 public sealed class CoordinatorRejectInputModel
@@ -91,7 +90,6 @@ public sealed class CoordinatorRejectInputModel
 public sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
-    public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
 }
 
 public sealed class ApproveInputModel

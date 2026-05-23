@@ -478,8 +478,7 @@ public sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var reports = await service.GetCoordinatorQueueAsync(user.Id);
-            var submitterNames = await ResolveSubmitterNamesAsync(reports);
-            return View(new ExpenseCoordinatorViewModel { Reports = reports, SubmitterNames = submitterNames });
+            return View(new ExpenseCoordinatorViewModel { Reports = reports });
         }
         catch (Exception ex)
         {
@@ -548,8 +547,7 @@ public sealed class ExpensesController(
         try
         {
             var reports = await service.GetReviewQueueAsync();
-            var submitterNames = await ResolveSubmitterNamesAsync(reports);
-            return View(new ExpenseReviewViewModel { Reports = reports, SubmitterNames = submitterNames });
+            return View(new ExpenseReviewViewModel { Reports = reports });
         }
         catch (Exception ex)
         {
@@ -686,21 +684,6 @@ public sealed class ExpensesController(
             if (authResult.Succeeded) result.Add(report);
         }
         return result;
-    }
-
-    /// <summary>Submitter id → display name (BurnerName → DisplayName → sentinel).</summary>
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
-        IReadOnlyCollection<ExpenseReportDto> reports)
-    {
-        var ids = reports.Select(r => r.SubmitterUserId).Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<Guid, string>();
-
-        var users = await _userService.GetUserInfosAsync(ids);
-        return ids.ToDictionary(
-            id => id,
-            id => users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.BurnerName)
-                ? u.BurnerName
-                : "(unknown)");
     }
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
