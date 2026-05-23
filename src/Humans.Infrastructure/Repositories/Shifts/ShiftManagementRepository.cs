@@ -634,6 +634,25 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<VolunteerEventProfile>> GetOnSiteVolunteerProfilesForDayAsync(
+        int dayOffset,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // Subquery: distinct UserIds with an active signup on this day's shifts.
+        var onSiteUserIds = ctx.ShiftSignups
+            .Where(ss => (ss.Status == SignupStatus.Pending || ss.Status == SignupStatus.Confirmed)
+                      && ss.Shift!.DayOffset == dayOffset)
+            .Select(ss => ss.UserId)
+            .Distinct();
+
+        return await ctx.VolunteerEventProfiles
+            .AsNoTracking()
+            .Where(vep => onSiteUserIds.Contains(vep.UserId))
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================
