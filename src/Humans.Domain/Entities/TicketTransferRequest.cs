@@ -49,6 +49,17 @@ public class TicketTransferRequest
     /// <summary>Lifecycle state. See <see cref="TicketTransferStatus"/>.</summary>
     public TicketTransferStatus Status { get; set; } = TicketTransferStatus.Pending;
 
+    // ── Dormant vendor-writeback columns ────────────────────────────────────────
+    // The automated TicketTailor void+reissue engine was removed when transfers
+    // moved to manual processing. These columns are no longer read or written by
+    // any code; they linger until a follow-up PR drops them after prod soak
+    // (memory/architecture/no-drops-until-prod-verified.md). Do not add new readers.
+
+    public TicketTransferVendorResult VendorResult { get; set; } = TicketTransferVendorResult.NotAttempted;
+    public string? VendorMessage { get; set; }
+    public string? NewVendorTicketId { get; set; }
+    public string VendorStepsJson { get; set; } = "[]";
+
     /// <summary>TicketAdmin who decided (null while Pending or if Cancelled by the Sender).</summary>
     public Guid? DecidedByUserId { get; set; }
 
