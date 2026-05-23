@@ -12,9 +12,12 @@ LLM-generated test corpora accumulate slop — tests that touch lines without co
 
 The skill is iterative. Each phase has a verify-and-gate step; if the gate fails, the skill bisects, restores, or skips rather than committing a regression. The outer loop retries the whole flow up to 3 times with adjusted parameters before giving up on a file.
 
-## Hard constraint — coverage-analysis must be `off`
+## Hard constraint — concurrency `16`, coverage-analysis `perTest`
 
-The repo's `docs/testing/mutation-testing.md` mandates `coverage-analysis: off` for xUnit v3 + MTP. Per-test coverage capture misclassifies mutants in this environment. Never set it to `perTest` or `all`. This means we don't get per-test attribution — the safety net is "re-run Stryker after a deletion batch and gate on score delta," not "consult a per-test kill table."
+Run every Stryker config at `concurrency: 16` and `coverage-analysis: perTest`. Both were validated empirically on 2026-05-23 (see `docs/testing/mutation-testing.md`):
+
+- **Concurrency 16, not 24.** At 24 the machine is saturated; the test host gets starved and trips Stryker's timeout watchdog on innocent mutants (e.g. *string-literal* mutations "timing out", which is impossible — a string can't hang). On a TeamService probe, 24 threads produced 221 timeouts and an **inflated 87.43%**; 16 threads produced 4 timeouts and the honest **47.29%**. ~40% of the "kills" at 24 were false. Never raise above 16 to go faster.
+- **coverage-analysis `perTest`, not `off`.** Same probe at 16 threads: `perTest` matched `off`'s score within noise (46.71% vs 47.29%) and matched its kill count (325 vs 327 — so coverage capture is reliable here, no misclassification), ran ~22% faster, and additionally split undetected mutants into **Survived** (a test runs but doesn't assert hard enough → strengthen assertions) vs **NoCoverage** (no test touches the code → write a new test). That split is exactly what Phase 4 needs. The old "keep it off" guidance was written under the 24-thread regime where starvation timeouts made everything look misclassified.
 
 ## Argument routing
 
@@ -43,17 +46,17 @@ Output lands in `local/test-utility/test-utility-<timestamp>.{json,csv,md}`. Rea
 
 ### Phase 1 — Baseline
 
-Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Application.Tests/stryker-*-config.json`). If you must generate one, put it under `local/stryker-trim/` (gitignored). **Use `coverage-analysis: off`** — the doc-mandated value. Example:
+Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Application.Tests/stryker-*-config.json`). If you must generate one, put it under `local/stryker-trim/` (gitignored). **Use `coverage-analysis: perTest` and `concurrency: 16`** (see the Hard constraint above). Example:
 
 ```json
 {
   "stryker-config": {
     "project": "Humans.Application.csproj",
     "test-runner": "mtp",
-    "coverage-analysis": "off",
+    "coverage-analysis": "perTest",
     "mutation-level": "Standard",
     "mutate": ["**/Services/<Area>/<File>.cs"],
-    "concurrency": 24,
+    "concurrency": 16,
     "reporters": ["Json"],
     "thresholds": {"high": 80, "low": 60, "break": 0}
   }
@@ -71,10 +74,10 @@ Pop-Location
 Parse `StrykerOutput/<latest>/reports/mutation-report.json`. Record:
 
 - `mutationScore` (percentage)
-- Total mutants, killed count, surviving count
-- For each surviving mutant: id, file, line, mutator, original source snippet, replacement
+- Total mutants, killed count, **Survived** count, **NoCoverage** count (perTest separates these — both count against the score)
+- For each Survived/NoCoverage mutant: id, file, line, mutator, status, original source snippet, replacement
 
-The surviving-mutants list drives Phase 4. The score is the gate everywhere else.
+The Survived/NoCoverage list drives Phase 4 — `NoCoverage` means write a new test (no test touches that code), `Survived` means strengthen an existing test's assertions. The score is the gate everywhere else.
 
 ### Phase 2 — Delete slop (with bisection)
 
@@ -133,7 +136,7 @@ test(<section>): consolidate N tests into theories in <ServiceName>Tests
 
 ### Phase 4 — Gap fill (with verification)
 
-From the Phase 1 surviving-mutants list, group by source location. For each cluster:
+From the Phase 1 Survived/NoCoverage list, group by source location (tackle `NoCoverage` clusters first — they're pure gaps with no test at all). For each cluster:
 
 1. Read the mutated code.
 2. Identify what behavior is missing a constraint (the mutation tells you exactly what change in behavior should have failed a test).
@@ -217,7 +220,7 @@ After a successful run, append the trimmed file's path + date + score delta to `
 
 - `dotnet stryker --version` must work. If missing: `dotnet tool restore` (the repo has `.config/dotnet-tools.json` pinning Stryker 4.14.1).
 - `pwsh` or PowerShell available for the utility script.
-- `coverage-analysis: off` in every Stryker config used. Verify before running.
+- `coverage-analysis: perTest` and `concurrency: 16` in every Stryker config used. Verify before running.
 - Working tree clean (skill manages its own commits).
 
 ## Out of scope
@@ -227,4 +230,4 @@ After a successful run, append the trimmed file's path + date + score delta to `
 - Don't commit ephemeral configs from `local/stryker-trim/`
 - Don't touch `Humans.Integration.Tests` or `Humans.Web.Tests` — different shape, different skill if needed
 - Don't change harness, builders, or other test infrastructure as part of this skill — separate concern
-- Don't enable `coverage-analysis: perTest` or `all` to get richer data, even if it would be faster. The doc says no.
+- Don't raise `concurrency` above 16 to go faster — it starves the test host and manufactures false timeout-kills (see the Hard constraint).

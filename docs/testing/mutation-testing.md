@@ -3,9 +3,43 @@
 This repository uses Stryker.NET for mutation-test probes.
 
 The test projects use xUnit v3, so Stryker should run through the Microsoft
-Testing Platform runner rather than the default VSTest runner. Keep
-`coverage-analysis` set to `off` until Stryker's xUnit v3 coverage capture is
-reliable here; with coverage capture enabled, mutants can be misclassified.
+Testing Platform runner rather than the default VSTest runner.
+
+## Required settings — `concurrency: 16`, `coverage-analysis: perTest`
+
+Every Stryker config in this repo must set `concurrency: 16` and
+`coverage-analysis: perTest`. Both were established empirically on 2026-05-23
+against a `TeamService` probe (700 testable mutants), and both correct a
+previously-recorded but unverified recommendation to keep `coverage-analysis`
+`off`.
+
+**Concurrency 16, never higher.** This machine has ~16 effective cores. At
+`concurrency: 24` the test host is starved and trips Stryker's timeout watchdog
+on mutants that cannot possibly hang — e.g. *string-literal* mutations, which
+never alter control flow. Stryker counts a Timeout as a kill, so these false
+timeouts silently inflate the score:
+
+| threads | coverage | Killed | Survived | NoCoverage | Timeout | Score |
+| ------: | -------- | -----: | -------: | ---------: | ------: | ----: |
+| **24**  | off      | 391    | 88       | —          | **221** | **87.43%** |
+| 16      | off      | 327    | 369      | —          | 4       | 47.29% |
+| 16      | perTest  | 325    | 187      | 186        | 2       | 46.71% |
+
+At 24 threads, ~40% of the "kills" (281 of 700) were false. The honest score is
+~47%. **Any mutation score in this repo recorded at concurrency 24 — including
+older entries in `docs/architecture/maintenance-log.md` — is inflated and should
+be distrusted.**
+
+**`coverage-analysis: perTest`, not `off`.** At 16 threads `perTest` matches
+`off`'s score within noise (46.71% vs 47.29%) *and* matches its kill count
+(325 vs 327) — i.e. coverage capture is reliable here and does **not**
+misclassify covered mutants as `NoCoverage`. It also runs ~22% faster and splits
+undetected mutants into `Survived` (a test runs but doesn't assert hard enough)
+vs `NoCoverage` (no test touches the code at all) — the exact signal the
+`/trim-tests` gap-fill phase needs. The earlier "keep it off, capture is
+unreliable" note was written while runs were at concurrency 24, where
+host-starvation timeouts made everything look misclassified; the cause was the
+thread count, not the coverage mode.
 
 ## Setup
 

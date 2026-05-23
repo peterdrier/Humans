@@ -2,7 +2,7 @@
   "stryker-config": {
     "project": "Humans.Domain.csproj",
     "test-runner": "mtp",
-    "coverage-analysis": "off",
+    "coverage-analysis": "perTest",
     "mutation-level": "Standard",
     "concurrency": 16,
     "reporters": [

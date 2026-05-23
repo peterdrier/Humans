@@ -2,7 +2,7 @@
   "stryker-config": {
     "project": "Humans.Application.csproj",
     "test-runner": "mtp",
-    "coverage-analysis": "off",
+    "coverage-analysis": "perTest",
     "mutation-level": "Standard",
     "mutate": [
       "**/Authorization/UserEmail/*.cs",
@@ -11,7 +11,7 @@
       "**/Services/Profile/*.cs",
       "**/Services/Profiles/*.cs"
     ],
-    "concurrency": 24,
+    "concurrency": 16,
     "reporters": [
       "ClearText",
       "Json",

@@ -2,7 +2,7 @@
   "stryker-config": {
     "project": "Humans.Application.csproj",
     "test-runner": "mtp",
-    "coverage-analysis": "off",
+    "coverage-analysis": "perTest",
     "mutation-level": "Standard",
     "mutate": [
       "**/SlugHelper.cs"
