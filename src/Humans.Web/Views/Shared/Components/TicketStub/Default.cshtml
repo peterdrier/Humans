@@ -2,6 +2,7 @@
 @using Humans.Domain.Enums
 @{
     var isVoid = Model.Status == TicketAttendeeStatus.Void;
+    var isCheckedIn = Model.Status == TicketAttendeeStatus.CheckedIn;
     var pending = Model.HasPendingTransfer;
     // Emit the shared stub CSS once per request (the component renders many times).
     var emitCss = !Context.Items.ContainsKey("ticket-stub-css");
@@ -23,12 +24,16 @@
         .ticket-stub-serial { writing-mode:vertical-rl; font-family:ui-monospace,monospace; font-size:10px; color:#8a7f68; letter-spacing:.1em; }
         .ticket-stub-ico { font-size:18px; }
         .ticket-stub.pending .ticket-stub-main { filter:saturate(.6); }
-        .ticket-stub.voided { opacity:.55; }
+        .ticket-stub.voided { opacity:.6; }
         .ticket-stub.voided .ticket-stub-name { text-decoration:line-through; }
         .ticket-stub-stamp { position:absolute; top:50%; left:38%; transform:translate(-50%,-50%) rotate(-14deg);
             border:3px solid #b5532e; color:#b5532e; font-weight:900; font-size:14px; letter-spacing:.08em;
             padding:3px 10px; border-radius:6px; text-transform:uppercase; opacity:.82; background:rgba(255,255,255,.35);
             pointer-events:none; white-space:nowrap; }
+        .ticket-stub-badge { position:absolute; top:8px; right:84px; font-size:9.5px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; padding:2px 8px; border-radius:20px; z-index:1; white-space:nowrap; }
+        .ticket-stub-badge.checkedin { background:#2f6b3d; color:#fff; }
+        .ticket-stub-badge.void { background:#8a7f68; color:#fff; }
     </style>
 }
 <div class="ticket-stub@(pending ? " pending" : "")@(isVoid ? " voided" : "")">
@@ -47,6 +52,14 @@
             <span class="ticket-stub-serial">@Model.VendorTicketId</span>
         }
     </div>
+    @if (isCheckedIn)
+    {
+        <div class="ticket-stub-badge checkedin"><i class="fa-solid fa-check me-1"></i>Checked in</div>
+    }
+    else if (isVoid)
+    {
+        <div class="ticket-stub-badge void">Void</div>
+    }
     @if (pending)
     {
         <div class="ticket-stub-stamp">Transfer pending</div>
