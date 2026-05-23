@@ -71,6 +71,7 @@ public sealed class CampRoleService(
             SlotCount = input.SlotCount,
             MinimumRequired = input.MinimumRequired,
             SortOrder = input.SortOrder,
+            EstimatedHours = input.EstimatedHours,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -121,7 +122,8 @@ public sealed class CampRoleService(
             definition.CreatedAt,
             definition.UpdatedAt,
             definition.DeactivatedAt,
-            definition.SpecialRole);
+            definition.SpecialRole,
+            definition.EstimatedHours);
 
     private static CampRoleAssignmentInfo CreateCampRoleAssignmentInfo(CampRoleAssignment assignment) =>
         new(
@@ -167,6 +169,7 @@ public sealed class CampRoleService(
             def.SlotCount = input.SlotCount;
             def.MinimumRequired = input.MinimumRequired;
             def.SortOrder = input.SortOrder;
+            def.EstimatedHours = input.EstimatedHours;
             def.UpdatedAt = now;
         }, ct);
 

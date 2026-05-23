@@ -24,6 +24,10 @@ public sealed class CampRoleDefinitionFormViewModel : IValidatableObject
     [Range(0, 100)]
     public int MinimumRequired { get; set; } = 1;
 
+    [Range(0, 9999.99)]
+    [Display(Name = "Estimated hours")]
+    public decimal? EstimatedHours { get; set; }
+
     public int SortOrder { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext _)

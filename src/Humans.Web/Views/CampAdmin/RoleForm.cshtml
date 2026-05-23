@@ -72,6 +72,12 @@
                             <input asp-for="SortOrder" class="form-control" type="number" required />
                             <span asp-validation-for="SortOrder" class="text-danger"></span>
                         </div>
+                        <div class="col-md-4">
+                            <label asp-for="EstimatedHours" class="form-label">Estimated hours</label>
+                            <input asp-for="EstimatedHours" class="form-control" type="number" min="0" max="9999.99" step="0.25" />
+                            <div class="form-text">Optional workload estimate. Leave blank if unknown.</div>
+                            <span asp-validation-for="EstimatedHours" class="text-danger"></span>
+                        </div>
                     </div>
                 </div>
             </div>

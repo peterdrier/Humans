@@ -395,7 +395,7 @@ public class CampAdminController(
         try
         {
             var input = new CreateCampRoleDefinitionInput(
-                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
+                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.EstimatedHours);
             await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
             SetSuccess($"Created camp role '{form.Name}'.");
             return RedirectToAction(nameof(Roles));
@@ -427,6 +427,7 @@ public class CampAdminController(
             SlotCount = def.SlotCount,
             MinimumRequired = def.MinimumRequired,
             SortOrder = def.SortOrder,
+            EstimatedHours = def.EstimatedHours,
         });
     }
 
@@ -444,7 +445,7 @@ public class CampAdminController(
         try
         {
             var input = new UpdateCampRoleDefinitionInput(
-                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
+                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.EstimatedHours);
             var result = await campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
             return result.Status switch
             {

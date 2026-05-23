@@ -115,6 +115,50 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task CreateDefinition_persists_estimated_hours()
+    {
+        var input = new CreateCampRoleDefinitionInput(
+            Name: "Build Lead", Slug: "build-lead", Description: null,
+            SlotCount: 1, MinimumRequired: 0, SortOrder: 70, EstimatedHours: 12.5m);
+
+        var result = await _service.CreateDefinitionAsync(input, _actorUserId);
+
+        var stored = await _service.GetDefinitionByIdAsync(result.Id);
+        stored!.EstimatedHours.Should().Be(12.5m);
+    }
+
+    [HumansFact]
+    public async Task CreateDefinition_allows_null_estimated_hours()
+    {
+        var input = new CreateCampRoleDefinitionInput(
+            Name: "Greeter", Slug: "greeter", Description: null,
+            SlotCount: 1, MinimumRequired: 0, SortOrder: 80);
+
+        var result = await _service.CreateDefinitionAsync(input, _actorUserId);
+
+        var stored = await _service.GetDefinitionByIdAsync(result.Id);
+        stored!.EstimatedHours.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateDefinition_sets_and_clears_estimated_hours()
+    {
+        var def = await SeedDefinitionAsync("Kitchen Lead", slotCount: 2);
+
+        var setInput = new UpdateCampRoleDefinitionInput(
+            Name: "Kitchen Lead", Slug: "kitchen-lead", Description: null,
+            SlotCount: 2, MinimumRequired: 1, SortOrder: 10, EstimatedHours: 8m);
+        await _service.UpdateDefinitionAsync(def.Id, setInput, _actorUserId);
+        (await _service.GetDefinitionByIdAsync(def.Id))!.EstimatedHours.Should().Be(8m);
+
+        var clearInput = new UpdateCampRoleDefinitionInput(
+            Name: "Kitchen Lead", Slug: "kitchen-lead", Description: null,
+            SlotCount: 2, MinimumRequired: 1, SortOrder: 10, EstimatedHours: null);
+        await _service.UpdateDefinitionAsync(def.Id, clearInput, _actorUserId);
+        (await _service.GetDefinitionByIdAsync(def.Id))!.EstimatedHours.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task CreateDefinition_rejects_duplicate_name()
     {
         await SeedDefinitionAsync("Consent Lead");

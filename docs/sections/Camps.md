@@ -113,6 +113,7 @@ CampAdmin-managed catalogue of per-camp roles. Soft-deleted via `DeactivatedAt`;
 | Description | string? | Markdown |
 | SlotCount | int | Default 1; soft cap enforced in service, not in DB |
 | MinimumRequired | int | Default 1; cross-field validation enforces `0 ≤ MinimumRequired ≤ SlotCount` |
+| EstimatedHours | decimal? | Optional workload estimate in hours (`numeric(6,2)`). Informational only — gates nothing; exists for downstream workload aggregations (issue nobodies-collective/Humans#733). Admin-mutable even for special roles. Existing rows are NULL (no backfill). |
 | SortOrder | int | Display order on Camp Edit roles panel |
 | DeactivatedAt | Instant? | Null = active; non-null hides from new-assignment UI |
 | SpecialRole | CampSpecialRole | Default `None`. Marker for special, system-managed role definitions (`Lead`, `Workshop`) seeded by the CampAdmin "Seed system roles" action (issue nobodies-collective/Humans#753). `CampRoleService` rejects rename / slug change / sort-order change / min-required change / deactivation when `SpecialRole != None`; only `SlotCount` and `Description` are admin-mutable. Stored as string via `HasConversion<string>()`; column default `'None'` backfills existing rows on the AddColumn migration. |

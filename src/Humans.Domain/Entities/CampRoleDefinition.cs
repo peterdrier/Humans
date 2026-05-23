@@ -30,6 +30,13 @@ public class CampRoleDefinition
     /// <summary>How many slots must be filled for the camp to be compliant. 0 ≤ MinimumRequired ≤ SlotCount. 0 = role not tracked in the compliance report.</summary>
     public int MinimumRequired { get; set; } = 1;
 
+    /// <summary>
+    /// Optional estimate of the workload, in hours, that holding this role represents.
+    /// Informational only — it gates nothing. Exists so downstream aggregations can
+    /// quantify workload across roles. Null means "not estimated".
+    /// </summary>
+    public decimal? EstimatedHours { get; set; }
+
     public int SortOrder { get; set; }
 
     public Instant CreatedAt { get; init; }

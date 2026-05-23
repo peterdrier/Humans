@@ -127,7 +127,8 @@ public sealed record CreateCampRoleDefinitionInput(
     string? Description,
     int SlotCount,
     int MinimumRequired,
-    int SortOrder);
+    int SortOrder,
+    decimal? EstimatedHours = null);
 
 public sealed record UpdateCampRoleDefinitionInput(
     string Name,
@@ -135,7 +136,8 @@ public sealed record UpdateCampRoleDefinitionInput(
     string? Description,
     int SlotCount,
     int MinimumRequired,
-    int SortOrder);
+    int SortOrder,
+    decimal? EstimatedHours = null);
 
 public enum UpdateCampRoleDefinitionStatus
 {
@@ -163,7 +165,8 @@ public sealed record CampRoleDefinitionInfo(
     Instant CreatedAt,
     Instant UpdatedAt,
     Instant? DeactivatedAt,
-    CampSpecialRole SpecialRole)
+    CampSpecialRole SpecialRole,
+    decimal? EstimatedHours)
 {
     public bool IsActive => DeactivatedAt is null;
     public bool IsSpecial => SpecialRole != CampSpecialRole.None;

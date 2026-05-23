@@ -15,6 +15,9 @@ public class CampRoleDefinitionConfiguration : IEntityTypeConfiguration<CampRole
         builder.Property(d => d.Description).HasMaxLength(2000);
         builder.Property(d => d.Slug).HasMaxLength(60).IsRequired();
 
+        // Optional workload estimate in hours. Nullable — existing rows stay NULL.
+        builder.Property(d => d.EstimatedHours).HasPrecision(6, 2);
+
         builder.HasIndex(d => d.Name)
             .IsUnique()
             .HasDatabaseName("IX_camp_role_definitions_name_unique");
