@@ -43,7 +43,7 @@ public class NoBusinessLogicInControllersRule
     private const int LineThreshold = 50;
     private const int ComplexityThreshold = 6;
 
-    [HumansFact(Skip = "Disabled by request — heuristic is noisy and gets in the way of unrelated controller edits. Source rule still lives in memory/architecture/no-business-logic-in-controllers.md.")]
+    [HumansFact(Skip = "Disabled by request — heuristic is noisy and gets in the way of unrelated controller edits. Source rule still lives in memory/architecture/no-business-logic-in-controllers.md. tracked-by: nobodies-collective/Humans#793")]
     public void No_new_business_logic_in_controllers()
     {
         var repoRoot = RatchetTestRunner.LocateRepoRoot();

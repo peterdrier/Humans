@@ -211,3 +211,21 @@ jobs:
           echo "::error::RS0030 suppressions in test code are forbidden. Use [HumansFact] / [HumansTheory] (or set Timeout = N) instead of suppressing the analyzer."
           exit 1
         fi
+
+    - name: Skipped tests must reference a tracking issue
+      # Quarantine discipline (nobodies-collective/Humans#767,
+      # memory/process/no-pre-existing-failures.md): a test may only be
+      # [HumansFact(Skip = "...")] / [HumansTheory(Skip = "...")] if its skip
+      # string names a tracking issue (nobodies-collective/Humans#NNN). A red
+      # test on main blocks the merge — the only escape is repair or skip-with-
+      # an-issue. The grep targets `Skip = "..."` attribute strings (followed by
+      # a quote), which excludes the `set => base.Skip = value;` property shadows
+      # in tests/Humans.Testing/.
+      run: |
+        offenders="$(grep -rnE --include='*.cs' --exclude-dir=Humans.Testing 'Skip[[:space:]]*=[[:space:]]*"' tests/ \
+          | grep -vE 'nobodies-collective/Humans#[0-9]+' || true)"
+        if [ -n "$offenders" ]; then
+          echo "::error::Skipped tests must reference a tracking issue (nobodies-collective/Humans#NNN) in their Skip string. See memory/process/no-pre-existing-failures.md."
+          echo "$offenders"
+          exit 1
+        fi
