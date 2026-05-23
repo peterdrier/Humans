@@ -41,8 +41,7 @@ public sealed class StubTicketVendorService : ITicketVendorService
     // Pre-built sample data, generated once and cached for the process lifetime.
     private static readonly Lazy<SampleData> Sample = new(BuildSampleData);
 
-    // Instance-level mutable ticket list so VoidIssuedTicketAsync / IssueTicketAsync
-    // mutations persist across calls on the same (singleton) service instance.
+    // Instance-level ticket list for the deterministic dev/preview fixture.
     private readonly List<VendorTicketDto> _tickets = [.. Sample.Value.Tickets];
 
     public Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
@@ -297,38 +296,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
         foreach (var c in value)
             hash = (hash * 31) + c;
         return hash;
-    }
-
-    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
-        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
-    {
-        var index = _tickets.FindIndex(t =>
-            string.Equals(t.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
-
-        if (index < 0)
-            throw new TicketVendorWriteException(
-                $"Stub: ticket '{vendorTicketId}' not found.", TicketVendorFailureKind.NotFound);
-
-        _tickets[index] = _tickets[index] with { Status = "voided" };
-
-        var holdId = voidToHold ? $"hold_stub_{Guid.NewGuid().ToString("N")[..8]}" : null;
-        return Task.FromResult(new VoidIssuedTicketResult(vendorTicketId, holdId));
-    }
-
-    public Task<VendorTicketDto> IssueTicketAsync(
-        IssueTicketRequest request, CancellationToken ct = default)
-    {
-        var issued = new VendorTicketDto(
-            VendorTicketId: $"tt_stub_{Guid.NewGuid().ToString("N")[..8]}",
-            VendorOrderId: null,
-            AttendeeName: request.FullName,
-            AttendeeEmail: request.Email,
-            TicketTypeName: "Stub Reissued Ticket",
-            Price: 0m,
-            Status: "valid");
-
-        _tickets.Add(issued);
-        return Task.FromResult(issued);
     }
 
     private sealed record SampleData(
