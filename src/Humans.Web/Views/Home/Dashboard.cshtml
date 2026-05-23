@@ -1,21 +1,11 @@
-@using Microsoft.AspNetCore.Authorization
-@using Humans.Web.Authorization
 @using Humans.Application.DTOs
 @using Humans.Domain.Enums
-@inject IAuthorizationService AuthService
 @model Humans.Web.Models.DashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
     TicketStubInfo TicketStub(MyAttendeeRowVm a) =>
         new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
             a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
-    // Only show the header stub when the user actually holds a ticket (same signal as the
-    // ticket card below, so we never show a stub next to a "no ticket yet" card), and prefer
-    // one they currently own.
-    var headerTicket = Model.HasTicket
-        ? (Model.MyAttendees.FirstOrDefault(a => a.CanSendTransfer || a.HasPendingOutgoingTransfer)
-            ?? Model.MyAttendees.FirstOrDefault(a => a.Status == TicketAttendeeStatus.Valid))
-        : null;
 }
 
 <vc:temp-data-alerts />
@@ -23,29 +13,21 @@
 @* ─── Header ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center">
-                <vc:human user-id="@Model.UserId"
-                          layout="Avatar"
-                          size="64"
-                          css-class="me-3" />
-                <div>
-                    <h1 class="mb-1">
-                        @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
-                        @if (Model.MembershipTier != MembershipTier.Volunteer)
-                        {
-                            <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>
-                        }
-                    </h1>
-                    <p class="text-muted mb-0">@Localizer["Dashboard_Subtitle"]</p>
-                </div>
+        <div class="d-flex align-items-center">
+            <vc:human user-id="@Model.UserId"
+                      layout="Avatar"
+                      size="64"
+                      css-class="me-3" />
+            <div>
+                <h1 class="mb-1">
+                    @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
+                    @if (Model.MembershipTier != MembershipTier.Volunteer)
+                    {
+                        <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>
+                    }
+                </h1>
+                <p class="text-muted mb-0">@Localizer["Dashboard_Subtitle"]</p>
             </div>
-            @if (headerTicket is not null)
-            {
-                <div style="transform:scale(.85); transform-origin:right center">
-                    <vc:ticket-stub stub="@TicketStub(headerTicket)" />
-                </div>
-            }
         </div>
     </div>
 </div>

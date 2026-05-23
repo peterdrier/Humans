@@ -115,7 +115,7 @@ case-insensitive verified-email match returning at most one person (no enumerati
 `<vc:ticket-stub>` renders one held ticket as a physical admission stub (event label, attendee name +
 email, serial). A pending outgoing transfer shows a "transfer pending" stamp; voided tickets render
 muted. Used by the wizard (step A), the `/Profile/Me` ticket card (`<vc:ticket-holdings>`), and the
-homepage (header + tickets section).
+homepage "You're in" ticket card.
 
 ## Dormant Storage
 
