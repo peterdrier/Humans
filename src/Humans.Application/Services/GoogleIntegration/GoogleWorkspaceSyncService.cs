@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
@@ -630,6 +631,7 @@ public sealed class GoogleWorkspaceSyncService(
                 .Distinct()
                 .ToList();
             var emailsByUserId = await LoadEmailsForUserIdsAsync(allMemberUserIds, cancellationToken);
+            var usersById = await userService.GetUserInfosAsync(allMemberUserIds, cancellationToken);
 
             foreach (var resource in resources)
             {
@@ -651,7 +653,7 @@ public sealed class GoogleWorkspaceSyncService(
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (GetDisplayName(tm), GetUserId(tm), GetProfilePictureUrl(tm), [teamLink]);
+                        membersByEmail[memberEmail] = (tm.DisplayName, tm.UserId, tm.ProfilePictureUrl, [teamLink]);
                     }
                 }
 
@@ -672,7 +674,12 @@ public sealed class GoogleWorkspaceSyncService(
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (GetDisplayName(cm), GetUserId(cm), GetProfilePictureUrl(cm), [childTeamLink]);
+                        usersById.TryGetValue(cm.UserId, out var userInfo);
+                        membersByEmail[memberEmail] = (
+                            userInfo?.BurnerName ?? string.Empty,
+                            cm.UserId,
+                            userInfo?.ProfilePictureUrl,
+                            [childTeamLink]);
                     }
                 }
             }
@@ -1758,28 +1765,6 @@ public sealed class GoogleWorkspaceSyncService(
             .Select(e => e.Email)
             .FirstOrDefault();
     }
-
-    private static string GetDisplayName(TeamMember tm)
-    {
-#pragma warning disable CS0618 // Legacy TeamMember path; snapshot paths use UserInfo.BurnerName.
-        return tm.User?.DisplayName ?? string.Empty;
-#pragma warning restore CS0618
-    }
-
-    private static Guid GetUserId(TeamMember tm) => tm.UserId;
-
-    private static Guid GetUserId(TeamActiveMemberSnapshot tm) => tm.UserId;
-
-    private static string? GetProfilePictureUrl(TeamMember tm)
-    {
-#pragma warning disable CS0618
-        return tm.User?.ProfilePictureUrl;
-#pragma warning restore CS0618
-    }
-
-    private static string GetDisplayName(TeamActiveMemberSnapshot tm) => tm.DisplayName;
-
-    private static string? GetProfilePictureUrl(TeamActiveMemberSnapshot tm) => tm.ProfilePictureUrl;
 
     // ─── Group permission classifiers over DrivePermission DTO ───
 
