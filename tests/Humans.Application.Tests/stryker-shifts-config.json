@@ -7,7 +7,7 @@
     "mutate": [
       "**/Services/Shifts/*.cs"
     ],
-    "concurrency": 24,
+    "concurrency": 16,
     "reporters": [
       "ClearText",
       "Json",

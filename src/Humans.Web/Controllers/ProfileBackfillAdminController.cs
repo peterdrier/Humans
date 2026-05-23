@@ -12,11 +12,11 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/Backfill")]
 public sealed class ProfileBackfillAdminController(
-    IUserService userService,
+    IUserServiceRead userService,
     IProfileService profileService,
     ILogger<ProfileBackfillAdminController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct = default)

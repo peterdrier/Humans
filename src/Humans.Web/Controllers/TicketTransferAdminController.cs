@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 public sealed class TicketTransferAdminController(
     ITicketTransferService service,
     ITicketQueryService ticketQueryService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<TicketTransferAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

@@ -22,7 +22,7 @@ public class ShiftDashboardController(
     IShiftSignupService signupService,
     IShiftView shiftView,
     IGeneralAvailabilityService availabilityService,
-    IUserService userService,
+    IUserServiceRead userService,
     ShiftDashboardPageBuilder pageBuilder,
     ILogger<ShiftDashboardController> logger) : HumansControllerBase(userService)
 {

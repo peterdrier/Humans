@@ -58,7 +58,12 @@
         @if (Model.Upcoming.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_UpcomingShifts"]</h5></div>
+                <button class="card-header shifts-collapse-toggle d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-upcoming" aria-expanded="true" aria-controls="mine-upcoming">
+                    <span class="h5 mb-0">@Localizer["Shifts_UpcomingShifts"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-upcoming" class="collapse show">
                 <div class="card-body">
                     @{
                         // Group build/strike range signups by SignupBlockId, show individual signups separately
@@ -129,13 +134,19 @@
                         </div>
                     }
                 </div>
+                </div>
             </div>
         }
 
         @if (Model.Pending.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_PendingApproval"]</h5></div>
+                <button class="card-header shifts-collapse-toggle d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-pending" aria-expanded="true" aria-controls="mine-pending">
+                    <span class="h5 mb-0">@Localizer["Shifts_PendingApproval"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-pending" class="collapse show">
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -166,13 +177,19 @@
                         </table>
                     </div>
                 </div>
+                </div>
             </div>
         }
 
         @if (Model.Past.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_Past"]</h5></div>
+                <button class="card-header shifts-collapse-toggle collapsed d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-past" aria-expanded="false" aria-controls="mine-past">
+                    <span class="h5 mb-0">@Localizer["Shifts_Past"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-past" class="collapse">
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -196,6 +213,7 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
                 </div>
             </div>
         }
@@ -292,6 +310,23 @@
         *@
     }
 </div>
+
+<style>
+    .shifts-collapse-toggle {
+        background: var(--bs-card-cap-bg);
+        border: 0;
+        cursor: pointer;
+    }
+
+    .shifts-collapse-toggle .collapse-icon {
+        transition: transform 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .shifts-collapse-toggle[aria-expanded="false"] .collapse-icon {
+        transform: rotate(-90deg);
+    }
+</style>
 
 <script>
 (function() {

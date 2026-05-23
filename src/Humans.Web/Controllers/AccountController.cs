@@ -12,7 +12,7 @@ namespace Humans.Web.Controllers;
 
 public class AccountController(
     SignInManager<User> signInManager,
-    IUserService userService,
+    IUserServiceRead userService,
     UserManager<User> userManager,
     IClock clock,
     ILogger<AccountController> logger,

@@ -11,7 +11,7 @@
       "**/Services/Profile/*.cs",
       "**/Services/Profiles/*.cs"
     ],
-    "concurrency": 24,
+    "concurrency": 16,
     "reporters": [
       "ClearText",
       "Json",

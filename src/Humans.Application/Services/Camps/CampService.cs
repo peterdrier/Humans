@@ -1698,7 +1698,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var users = userIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await _userService.GetUserInfosAsync(userIds, cancellationToken);
-        var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+        var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
 
         static string DisplayName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
             names.GetValueOrDefault(userId) ?? "Unknown";

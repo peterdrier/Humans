@@ -19,7 +19,7 @@ public class TicketController(
     ITicketSyncService ticketSyncService,
     IUserParticipationBackfillService participationBackfillService,
     TicketDashboardPageBuilder dashboardPageBuilder,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<TicketController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

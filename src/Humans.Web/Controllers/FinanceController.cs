@@ -21,7 +21,7 @@ public class FinanceController(
     ITicketingBudgetService ticketingBudgetService,
     ITicketQueryService ticketQueryService,
     IClock clock,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -731,4 +731,3 @@ public class FinanceController(
         LocalDate PeriodEnd,
         List<CashFlowEntry> Items);
 }
-

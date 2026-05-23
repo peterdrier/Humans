@@ -20,7 +20,7 @@ namespace Humans.Web.Controllers.Api;
 [Route("api/events")]
 [EnableCors("EventsApi")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsApiController(IEventService guide, ICampService camps, IUserService users, UserManager<User> userManager)
+public class EventsApiController(IEventService guide, ICampService camps, IUserServiceRead users, UserManager<User> userManager)
     : ControllerBase
 {
     [HttpGet("events")]

@@ -710,7 +710,7 @@ public sealed class ShiftManagementService(
                             userLookup?.TryGetValue(ss.UserId, out user);
                             return (
                                 ss.UserId,
-                                DisplayName: user?.DisplayName ?? string.Empty,
+                                DisplayName: user?.BurnerName ?? string.Empty,
                                 ss.Status);
                         })
                         .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)

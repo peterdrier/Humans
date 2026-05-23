@@ -12,7 +12,7 @@ namespace Humans.Application.Interfaces.Users;
 /// SurfaceBudget intentionally removed for the duration of the Users+Profile
 /// section merge — the interface is absorbing IProfileService methods over the
 /// next several PRs and per-PR budget churn is not useful while that is in
-/// flight. Re-add [SurfaceBudget(N)] once the merged surface stabilizes.
+/// flight. Owner re-adds [SurfaceBudget(N)] once the merged surface stabilizes.
 /// </remarks>
 public interface IUserService : IUserServiceRead, IApplicationService, IUserMerge
 {

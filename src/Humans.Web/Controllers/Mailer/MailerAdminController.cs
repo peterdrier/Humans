@@ -20,13 +20,13 @@ public sealed class MailerAdminController(
     IMailerImportService import,
     IMailerAudienceSyncService audienceSync,
     IEnumerable<IMailerAudience> audiences,
-    IUserService users,
+    IUserServiceRead users,
     ICommunicationPreferenceService prefs,
     IAuditLogService audit,
     ILogger<MailerAdminController> logger) : HumansControllerBase(users)
 {
     private readonly IReadOnlyList<IMailerAudience> _audiences = audiences.ToList();
-    private readonly IUserService _users = users;
+    private readonly IUserServiceRead _users = users;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

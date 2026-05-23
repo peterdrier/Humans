@@ -16,7 +16,7 @@ public class DevSeedController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     IServiceProvider serviceProvider,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<DevSeedController> logger) : HumansControllerBase(userService)
 {
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]

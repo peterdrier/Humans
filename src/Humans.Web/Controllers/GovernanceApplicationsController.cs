@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 [Route("Governance/Applications")]
 public class GovernanceApplicationsController(
     IApplicationDecisionService applicationDecisionService,
-    IUserService userService,
+    IUserServiceRead userService,
     IStringLocalizer<SharedResource> localizer,
     ILogger<GovernanceApplicationsController> logger) : HumansControllerBase(userService)
 {

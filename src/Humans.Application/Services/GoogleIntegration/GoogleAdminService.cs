@@ -102,7 +102,7 @@ public sealed class GoogleAdminService(
                     CreationTime: account.CreationTime,
                     LastLoginTime: account.LastLoginTime,
                     MatchedUserId: matched?.UserId,
-                    MatchedDisplayName: matchedUser?.DisplayName,
+                    MatchedDisplayName: matchedUser?.BurnerName,
                     IsUsedAsPrimary: isUsedAsPrimary,
                     IsEnrolledIn2Sv: account.IsEnrolledIn2Sv,
                     RecoveryEmail: account.RecoveryEmail));

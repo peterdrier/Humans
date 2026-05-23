@@ -10,7 +10,7 @@ namespace Humans.Application.Services.Users;
 
 public sealed class UnsubscribeService(
     IUserRepository userRepository,
-    IUserService userService,
+    IUserServiceRead userService,
     ICommunicationPreferenceService preferenceService,
     IDataProtectionProvider dataProtection,
     ILogger<UnsubscribeService> logger) : IUnsubscribeService

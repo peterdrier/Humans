@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
 [Route("Tickets/Admin/Onsite")]
 public sealed class TicketsOnsiteAdminController(
-    IUserService userService,
+    IUserServiceRead userService,
     IShiftManagementService shifts,
     IOnsiteRosterService roster) : HumansControllerBase(userService)
 {
