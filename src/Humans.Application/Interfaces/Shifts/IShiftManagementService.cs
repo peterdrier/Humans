@@ -15,6 +15,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>48→49 — added HasQualifyingCantinaSignupAsync for the dietary/medical nudge gate (issue nobodies-collective/Humans#279).</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(48)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>49→48 — collapsed GetAllTagsAsync and SearchTagsAsync into one GetTagsAsync(query) method.</item>
 ///   <item>50→49 — tech-debt interface consolidation: collapsed GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync into one GetShiftsSummaryAsync(eventId, teamIds) method.</item>
@@ -24,7 +25,7 @@ namespace Humans.Application.Interfaces.Shifts;
 ///   <item>+1 GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(48)]
+[SurfaceBudget(49)]
 public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
@@ -350,6 +351,16 @@ public interface IShiftManagementService : IApplicationService
     /// Gets a user's shift profile. Medical data included only when includeMedical=true.
     /// </summary>
     Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
+
+    /// <summary>
+    /// True when the user has at least one Pending or Confirmed signup on a
+    /// future-or-current qualifying shift (see <see cref="Shift.QualifiesForCantinaMeal"/>).
+    /// Used by the dashboard Things-to-do nudge for dietary/medical info.
+    /// Returns false when no active event settings exist (fail closed).
+    /// </summary>
+    Task<bool> HasQualifyingCantinaSignupAsync(
+        Guid userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Deletes every <c>VolunteerEventProfile</c> row owned by

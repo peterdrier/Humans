@@ -634,4 +634,172 @@ public class ShiftManagementServiceTests : IDisposable
         total.Should().Be(0);
         ratio.Should().Be(0d);
     }
+
+    // ============================================================
+    // HasQualifyingCantinaSignupAsync (#279 — dietary/medical nudge gate)
+    // ============================================================
+
+    /// <summary>
+    /// Seeds a shift placed at <paramref name="startOffsetFromNow"/> relative to
+    /// <see cref="TestNow"/>. Converts the resulting absolute instant into the
+    /// event-timezone local date/time, then derives <c>DayOffset</c> /
+    /// <c>StartTime</c> the same way <see cref="Shift.GetAbsoluteStart"/> does.
+    /// Each call creates its own Rota so tests don't share shift state.
+    /// </summary>
+    private Shift SeedCantinaShift(
+        EventSettings es,
+        Rota rota,
+        Duration startOffsetFromNow,
+        Duration duration,
+        bool isAllDay)
+    {
+        var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+        var startInstant = TestNow.Plus(startOffsetFromNow);
+        var startLocal = startInstant.InZone(tz).LocalDateTime;
+        var dayOffset = Period.Between(es.GateOpeningDate, startLocal.Date, PeriodUnits.Days).Days;
+
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = dayOffset,
+            StartTime = startLocal.TimeOfDay,
+            Duration = duration,
+            IsAllDay = isAllDay,
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.Shifts.Add(shift);
+        return shift;
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_NoSignups_ReturnsFalse()
+    {
+        SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_SixHourFutureConfirmed_ReturnsTrue()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        var shift = SeedCantinaShift(es, rota,
+            startOffsetFromNow: Duration.FromHours(24),
+            duration: Duration.FromHours(6),
+            isAllDay: false);
+        SeedSignup(shift, user, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_FourHourFutureConfirmed_ReturnsFalse()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        var shift = SeedCantinaShift(es, rota,
+            startOffsetFromNow: Duration.FromHours(24),
+            duration: Duration.FromHours(4),
+            isAllDay: false);
+        SeedSignup(shift, user, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_AllDayShiftEvenIfShortDuration_ReturnsTrue()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        // IsAllDay short-circuits the duration check (08:00–18:00 wall-clock window).
+        var shift = SeedCantinaShift(es, rota,
+            startOffsetFromNow: Duration.FromHours(24),
+            duration: Duration.FromHours(2),
+            isAllDay: true);
+        SeedSignup(shift, user, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_PendingSignup_QualifiesSameAsConfirmed()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        var shift = SeedCantinaShift(es, rota,
+            startOffsetFromNow: Duration.FromHours(24),
+            duration: Duration.FromHours(8),
+            isAllDay: false);
+        SeedSignup(shift, user, SignupStatus.Pending);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_BailedSignup_DoesNotQualify()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        var shift = SeedCantinaShift(es, rota,
+            startOffsetFromNow: Duration.FromHours(24),
+            duration: Duration.FromHours(8),
+            isAllDay: false);
+        SeedSignup(shift, user, SignupStatus.Bailed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_PastShift_DoesNotQualify()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var user = SeedUser("Alice");
+        // Started 8h before TestNow, lasted 7h → ended 1h before TestNow.
+        var shift = SeedCantinaShift(es, rota,
+            startOffsetFromNow: Duration.FromHours(-8),
+            duration: Duration.FromHours(7),
+            isAllDay: false);
+        SeedSignup(shift, user, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task HasQualifyingCantinaSignup_NoActiveEventSettings_ReturnsFalse()
+    {
+        // Deliberately do NOT seed EventSettings — gate fails closed.
+        var user = SeedUser("Alice");
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.HasQualifyingCantinaSignupAsync(user.Id);
+
+        result.Should().BeFalse();
+    }
 }
