@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Domain/Entities/VolunteerEventProfile.cs
+  src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerEventProfileConfiguration.cs
   src/Humans.Application/Services/Shifts/ShiftSignupService.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs
@@ -56,8 +57,8 @@ No new role; no new policy. Reuse existing `ShowMedical` plumbing and the existi
 - Renders as a Bootstrap modal when arrived at from the dashboard card; renders as a standalone page when arrived at directly (so the URL is shareable / bookmarkable / accessible without JS). Achieved via the existing modal-or-page pattern used by other onboarding nudges — falls back to a full page when `Request.Headers["HX-Request"]` is absent.
 - Fields, in order:
   - **Dietary preference** — required radio group: `Omnivore`, `Vegetarian`, `Vegan`, `Pescatarian`.
-  - **Allergies** — optional multi-select chips: `Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`, `Other`. Choosing `Other` reveals a single-line text input (`AllergyOtherText`, max 200 chars).
-  - **Intolerances** — optional multi-select chips: `Lactose`, `Gluten`, `Histamine`, `FODMAP`, `Other`. Choosing `Other` reveals a single-line text input (`IntoleranceOtherText`, max 200 chars).
+  - **Allergies** — optional multi-select chips: `Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`, `Other`. Choosing `Other` reveals a single-line text input (`AllergyOtherText`, max 500 chars — matches existing DB length).
+  - **Intolerances** — optional multi-select chips: `Lactose`, `Gluten`, `Histamine`, `FODMAP`, `Other`. Choosing `Other` reveals a single-line text input (`IntoleranceOtherText`, max 500 chars — matches existing DB length).
   - **Medical conditions** — optional free-text textarea (max 4000 chars, the existing DB length). Hint copy: "Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc."
 - All values persist to `VolunteerEventProfile` columns of the same name. No new columns, no migration.
 - POST validates: dietary preference must be one of the four enum values; "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergy/intolerance items must be from the allowed set or `Other`.
@@ -106,10 +107,10 @@ No schema changes. All fields already exist on `VolunteerEventProfile`:
 | Column | Type | Already exists | Notes |
 |---|---|---|---|
 | `DietaryPreference` | `varchar(200)?` | yes | Sentinel for "answered" (set ⇒ nudge done) |
-| `Allergies` | `text[]` | yes | List<string> |
-| `Intolerances` | `text[]` | yes | List<string> |
-| `AllergyOtherText` | `varchar(200)?` | yes | Required iff `Other` ∈ Allergies |
-| `IntoleranceOtherText` | `varchar(200)?` | yes | Required iff `Other` ∈ Intolerances |
+| `Allergies` | `jsonb` (List&lt;string&gt;) | yes | Stored as Postgres `jsonb` via `ConfigureJsonbList`, surfaced as `List<string>` |
+| `Intolerances` | `jsonb` (List&lt;string&gt;) | yes | Stored as Postgres `jsonb` via `ConfigureJsonbList`, surfaced as `List<string>` |
+| `AllergyOtherText` | `varchar(500)?` | yes | Required iff `Other` ∈ Allergies |
+| `IntoleranceOtherText` | `varchar(500)?` | yes | Required iff `Other` ∈ Intolerances |
 | `MedicalConditions` | `varchar(4000)?` | yes | Restricted visibility |
 
 `UpdatedAt` is bumped on save (existing pattern).
