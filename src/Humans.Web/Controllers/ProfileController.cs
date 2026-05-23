@@ -1706,7 +1706,7 @@ public class ProfileController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load dietary/medical info for user");
-            SetError("Failed to load dietary and medical info.");
+            SetError(_localizer["Profile_DietaryMedical_LoadFailed"].Value);
             return RedirectToAction(nameof(Me));
         }
     }
@@ -1742,12 +1742,12 @@ public class ProfileController : HumansControllerBase
             await _shiftMgmt.UpdateShiftProfileAsync(profile);
 
             SetSuccess(_localizer["Profile_DietaryMedical_Saved"].Value);
-            return Redirect("/");
+            return RedirectToAction("Index", "Home");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save dietary/medical info");
-            SetError("Failed to save dietary and medical info.");
+            SetError(_localizer["Profile_DietaryMedical_SaveFailed"].Value);
             return View(model);
         }
     }

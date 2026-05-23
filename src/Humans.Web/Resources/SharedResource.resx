@@ -1472,6 +1472,8 @@
   <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Your dietary and medical info has been saved.</value></data>
   <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
   <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
+  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
+  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
 
   <!-- Notification Inbox -->
   <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>
