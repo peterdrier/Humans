@@ -822,11 +822,9 @@ public sealed class ExpenseReportService(
                 var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
                 var tag = BuildHoldedTag(category?.BudgetGroup?.Name, category?.Name);
 
-                var users = await userService.GetUserInfosAsync(
-                    [report.SubmitterUserId], ct);
-                var submitterName = users.TryGetValue(report.SubmitterUserId, out var user)
-                    ? user.DisplayName
-                    : "Unknown";
+                var submitterName = string.IsNullOrWhiteSpace(report.PayeeName)
+                    ? "Unknown"
+                    : report.PayeeName;
 
                 var now = clock.GetCurrentInstant();
 

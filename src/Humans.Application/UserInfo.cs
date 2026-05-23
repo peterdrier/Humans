@@ -125,7 +125,8 @@ public sealed record ProfileInfo(
 /// </summary>
 public sealed record UserInfo(
     Guid Id,
-    [property: Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> — DisplayName is the raw legacy column mirror. See memory/architecture/burnername-is-the-display-name.md.", DiagnosticId = "HUM_USERINFO_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")] string DisplayName,
+    string BurnerName,
+    bool IsGdprAnonymized,
     string PreferredLanguage,
     string? FallbackPictureUrl,
     Instant CreatedAt,
@@ -150,15 +151,6 @@ public sealed record UserInfo(
     ProfileInfo? Profile,
     IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
-    /// <summary>
-    /// Canonical public-facing name: <see cref="ProfileInfo.BurnerName"/> when set, else <see cref="DisplayName"/>.
-    /// External render callers MUST use this — reading <see cref="DisplayName"/> directly leaks the legacy column.
-    /// </summary>
-    public string BurnerName =>
-        Profile is not null && !string.IsNullOrWhiteSpace(Profile.BurnerName)
-            ? Profile.BurnerName
-            : DisplayName;
-
     /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
     /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
@@ -196,31 +188,30 @@ public sealed record UserInfo(
     public bool IsMerged => MergedAt is not null;
 
     /// <summary>
-    /// Sentinel <see cref="DisplayName"/> value written by
+    /// Sentinel value written to the legacy User.DisplayName column by
     /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
-    /// to mark GDPR-deleted users. Read by <see cref="IsTombstone"/>; the
-    /// shared constant ties write-path and read-path together so a rename
-    /// can't silently break tombstone detection.
+    /// to mark GDPR-deleted users. Read into <see cref="IsGdprAnonymized"/>
+    /// at creation time so the legacy name never becomes a public UserInfo field.
     /// </summary>
-    public const string GdprAnonymizedDisplayName = "Deleted User";
+    public const string GdprAnonymizedBurnerName = "Deleted User";
 
     /// <summary>
     /// True when the user row is a tombstone — a merge-source
-    /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (DisplayName
-    /// rewritten to <see cref="GdprAnonymizedDisplayName"/> by
+    /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (legacy User.DisplayName
+    /// resolved into <see cref="BurnerName"/> as <see cref="GdprAnonymizedBurnerName"/> by
     /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>),
     /// or a legacy tombstone whose <see cref="Email"/> still ends in the
     /// sentinel <c>.local</c> suffix (pre-<c>MergedAt</c>-column merges and
     /// historic purges wrote <c>@merged.local</c> / <c>@deleted.local</c>
     /// addresses — those rows survive in production with neither
-    /// <see cref="MergedAt"/> nor the <see cref="GdprAnonymizedDisplayName"/>
+    /// <see cref="MergedAt"/> nor the <see cref="GdprAnonymizedBurnerName"/>
     /// marker set).
     /// Callers that materialize new per-user rows (Stub Profile, etc.) MUST
     /// short-circuit on this so they don't resurrect the tombstone.
     /// </summary>
     public bool IsTombstone =>
         MergedAt is not null
-        || string.Equals(DisplayName, GdprAnonymizedDisplayName, StringComparison.Ordinal)
+        || IsGdprAnonymized
         || (Email is { } email && email.EndsWith(".local", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>First verified primary email; null when none loaded.</summary>
@@ -403,9 +394,18 @@ public sealed record UserInfo(
                 c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
             .ToList();
 
+#pragma warning disable CS0618 // User.DisplayName is only the creation-time fallback for profileless UserInfo.BurnerName.
+        var burnerName = profileInfo is not null && !string.IsNullOrWhiteSpace(profileInfo.BurnerName)
+            ? profileInfo.BurnerName
+            : user.DisplayName;
+        var isGdprAnonymized = string.Equals(
+            user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
+#pragma warning restore CS0618
+
         return new UserInfo(
             Id: user.Id,
-            DisplayName: user.DisplayName,
+            BurnerName: burnerName,
+            IsGdprAnonymized: isGdprAnonymized,
             PreferredLanguage: user.PreferredLanguage,
             FallbackPictureUrl: user.ProfilePictureUrl,
             CreatedAt: user.CreatedAt,

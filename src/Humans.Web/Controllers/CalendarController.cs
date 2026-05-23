@@ -21,7 +21,7 @@ public class CalendarController : HumansControllerBase
     private readonly IClock _clock;
 
     public CalendarController(
-        IUserService userService,
+        IUserServiceRead userService,
         ICalendarService calendar,
         ITeamServiceRead teams,
         IClock clock)

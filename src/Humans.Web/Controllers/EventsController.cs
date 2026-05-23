@@ -23,7 +23,7 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsController(
     IEventService guide,
-    IUserService users,
+    IUserServiceRead users,
     ICampService camps,
     IAuthorizationService authorizationService,
     IClock clock,

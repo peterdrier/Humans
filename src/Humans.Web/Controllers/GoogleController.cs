@@ -17,7 +17,7 @@ namespace Humans.Web.Controllers;
 
 [Route("Google")]
 public class GoogleController(
-    IUserService userService,
+    IUserServiceRead userService,
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
     IAuditViewerService auditViewer,
@@ -34,11 +34,11 @@ public class GoogleController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings(
         [FromServices] ISyncSettingsService syncSettingsService,
-        [FromServices] IUserService userService)
+        [FromServices] IUserServiceRead userService)
     {
         var settings = await syncSettingsService.GetAllAsync();
 
-        // In-memory join: resolve UpdatedByUser display names via IUserService
+        // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
         // rather than an EF .Include across the section boundary (design-rules §6).
         var updatedByUserIds = settings
             .Select(s => s.UpdatedByUserId)
@@ -621,7 +621,7 @@ public class GoogleController(
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] IUserService userService,
+        [FromServices] IUserServiceRead userService,
         [FromServices] ITeamServiceRead teamService)
     {
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();

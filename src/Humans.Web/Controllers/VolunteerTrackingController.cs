@@ -20,11 +20,11 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 public sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
-    IUserService userService,
+    IUserServiceRead userService,
     IAuditLogService auditLogService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(

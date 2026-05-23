@@ -15,9 +15,9 @@ namespace Humans.Web.Controllers;
 public class AgentApiController : ControllerBase
 {
     private readonly IAgentService _agent;
-    private readonly IUserService _users;
+    private readonly IUserServiceRead _users;
 
-    public AgentApiController(IAgentService agent, IUserService users)
+    public AgentApiController(IAgentService agent, IUserServiceRead users)
     {
         _agent = agent;
         _users = users;

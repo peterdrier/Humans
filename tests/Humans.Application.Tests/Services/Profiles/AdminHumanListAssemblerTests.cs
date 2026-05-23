@@ -79,7 +79,7 @@ public class AdminHumanListAssemblerTests
 
     [HumansFact]
     public void Deleted_when_gdpr_anonymized_tombstone()
-        => StatusOf(Build(hasProfile: false, displayName: UserInfo.GdprAnonymizedDisplayName))
+        => StatusOf(Build(hasProfile: false, displayName: UserInfo.GdprAnonymizedBurnerName))
             .Should().Be(MembershipStatusLabels.Deleted);
 
     [HumansFact]
@@ -95,7 +95,7 @@ public class AdminHumanListAssemblerTests
     {
         // A merge-source row clears its deletion fields, but assert the order is robust regardless: a row that
         // is both a tombstone and suspended must read as the terminal tombstone, never Suspended.
-        var deletedButSuspended = Build(suspended: true, displayName: UserInfo.GdprAnonymizedDisplayName);
+        var deletedButSuspended = Build(suspended: true, displayName: UserInfo.GdprAnonymizedBurnerName);
         StatusOf(deletedButSuspended).Should().Be(MembershipStatusLabels.Deleted);
 
         var mergedTrumpsDeletion = Build(

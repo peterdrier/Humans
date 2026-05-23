@@ -37,8 +37,8 @@ public sealed record UserDebugRow(
         HasProfile: info.Profile is not null,
         HasTicket: info.HasTicket,
         MarketingOptedOut: info.MarketingOptedOut,
-        DisplayName: info.DisplayName,
-        BurnerName: info.Profile?.BurnerName ?? string.Empty,
+        DisplayName: info.BurnerName,
+        BurnerName: info.BurnerName,
         LegalName: info.Profile?.FullName ?? string.Empty,
         HasName: info.Profile is null ? null : info.HasRequiredNameFields,
         HasConsent: info.Profile is null

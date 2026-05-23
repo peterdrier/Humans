@@ -18,7 +18,7 @@ public class StoreAdminController(
     IStoreService storeService,
     IShiftManagementService shifts,
     IClock clock,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<StoreAdminController> logger) : HumansControllerBase(userService)
 {
     private const decimal SpanishStandardVatRatePercent = 21m;

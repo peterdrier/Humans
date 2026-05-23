@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Controllers;
 
 public abstract class HumansCampControllerBase(
-    IUserService userService,
+    IUserServiceRead userService,
     ICampService campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {

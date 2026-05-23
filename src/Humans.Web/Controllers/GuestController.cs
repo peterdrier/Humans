@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize]
 public class GuestController(
-    IUserService userService,
+    IUserServiceRead userService,
     ICommunicationPreferenceService commPrefService,
     IProfileService profileService,
     ITicketQueryService ticketQueryService,

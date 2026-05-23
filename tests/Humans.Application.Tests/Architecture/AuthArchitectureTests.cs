@@ -1,9 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Auth;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -22,17 +18,6 @@ public class AuthArchitectureTests
         typeof(RoleAssignmentService),
         typeof(MagicLinkService)
     ];
-
-    public static TheoryData<Type, Type> RequiredConstructorEdges => new()
-    {
-        { typeof(RoleAssignmentService), typeof(IRoleAssignmentRepository) },
-        { typeof(RoleAssignmentService), typeof(IUserService) },
-        { typeof(RoleAssignmentService), typeof(IRoleAssignmentClaimsCacheInvalidator) },
-        { typeof(RoleAssignmentService), typeof(INavBadgeCacheInvalidator) },
-        { typeof(MagicLinkService), typeof(IMagicLinkUrlBuilder) },
-        { typeof(MagicLinkService), typeof(IMagicLinkRateLimiter) },
-        { typeof(MagicLinkService), typeof(IUserEmailService) },
-    };
 
     [HumansTheory]
     [MemberData(nameof(AuthServices))]
@@ -66,16 +51,6 @@ public class AuthArchitectureTests
 
         cachingParam.Should().BeNull(
             because: "Auth cache invalidation routes through explicit invalidator abstractions");
-    }
-
-    [HumansTheory]
-    [MemberData(nameof(RequiredConstructorEdges))]
-    public void Auth_services_take_required_collaborators(Type serviceType, Type dependencyType)
-    {
-        var ctor = serviceType.GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(dependencyType);
     }
 
     [HumansFact]

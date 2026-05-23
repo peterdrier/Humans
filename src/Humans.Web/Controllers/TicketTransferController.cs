@@ -12,7 +12,7 @@ namespace Humans.Web.Controllers;
 [Route("Tickets/Transfers")]
 public sealed class TicketTransferController(
     ITicketTransferService service,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Send")]
