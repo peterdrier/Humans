@@ -82,7 +82,7 @@ public class NotificationsArchitectureTests
     {
         // The meter provider computes badge counts by calling into each owning
         // section service (IProfileService, IUserService, IGoogleSyncService,
-        // ITeamService, ITicketSyncService, IApplicationDecisionService,
+        // ITeamServiceRead, ITicketSyncService, IApplicationDecisionService,
         // ICampService) — never reading the underlying tables directly.
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
@@ -90,7 +90,7 @@ public class NotificationsArchitectureTests
         paramTypeNames.Should().Contain("IProfileService");
         paramTypeNames.Should().Contain("IUserServiceRead");
         paramTypeNames.Should().Contain("IGoogleSyncService");
-        paramTypeNames.Should().Contain("ITeamService");
+        paramTypeNames.Should().Contain("ITeamServiceRead");
         paramTypeNames.Should().Contain("ITicketSyncService");
         paramTypeNames.Should().Contain("IApplicationDecisionService");
         paramTypeNames.Should().Contain("ICampService");

@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
@@ -14,15 +13,6 @@ public record ShiftTagPreferenceSummary(Guid Id, string Name);
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
 /// </summary>
-/// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>48→49 — feat(shifts): department coverage pies on /Shifts (peterdrier#602). Added GetDepartmentCoveragePiesAsync. Authorized by Peter, 2026-05-16.</item>
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(48)] (issue nobodies-collective/Humans#700).</item>
-///   <item>49→48 — collapsed GetAllTagsAsync and SearchTagsAsync into one GetTagsAsync(query) method.</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(49)]
 public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===

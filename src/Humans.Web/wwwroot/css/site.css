@@ -1978,3 +1978,20 @@ a.notification-row-line:hover .notification-title {
     color: var(--h-text-secondary);
     font-size: .75rem;
 }
+
+/* ── Shift card readability (issue #755) ───────────────────────────────
+   Larger sans-serif text and higher-contrast ink so shift descriptions and
+   fill counts on /Shifts and team rota views scan easily and pass WCAG AA
+   against the parchment card background. */
+.shift-description {
+    font-family: var(--h-font-body);
+    font-size: .95rem;        /* up from .small (~0.875em), restores full body scale */
+    line-height: 1.5;
+    color: var(--h-aged-ink-light);  /* #5a4535 — ~6.5:1 on parchment card (AA) */
+}
+.shift-fill-count {
+    font-family: var(--h-font-body);
+    font-size: .95rem;        /* up from <small> (~0.875em) */
+    font-weight: 600;
+    color: var(--h-aged-ink); /* #3d2b1f — high contrast on parchment card */
+}

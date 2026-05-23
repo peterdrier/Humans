@@ -11,7 +11,7 @@ Clean Architecture with 4 layers (strict dependency direction inward):
 - **Infrastructure** — repository implementations, `HumansDbContext`, migrations, external API clients, jobs.
 - **Web** — controllers, views, view models, API endpoints, DI wiring.
 
-See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for the full architecture story (the constitution): layer responsibilities, table ownership map, caching pattern (§15), authorization pattern, cross-domain rules. Read it once cover-to-cover.
+See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for the full architecture story (the constitution): layer responsibilities, table ownership map, caching pattern (§15), authorization pattern, cross-domain rules. Read the relevant sections before architecture-sensitive work; read it cover-to-cover only when onboarding or doing broad architecture work.
 
 ## Project Rules — `memory/INDEX.md`
 
@@ -30,6 +30,10 @@ Pattern + format spec: [`memory/META.md`](memory/META.md). Maintenance loop: [`m
 ## Design Dialogue — 95% Confidence Loop
 
 When drafting an issue/spec/API/refactor proposal: audit from code (not memory), draft, self-assess. If <95% confident, ask focused clarifying questions on the load-bearing guesses (`AskUserQuestion`, multi-question batches, include a "let the implementer decide" option where genuine), update, repeat. *Then* ask to submit. Catches cow-path-as-design and hallucinated requirements. Cap at ~2 rounds; punt minor stuff to the implementer.
+
+## Reuse-First Change Discipline
+
+Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner/surface first. Prefer reuse, caller-side composition, and small local LINQ/mapping over new durable surface. If new surface is still necessary, state which existing options were rejected and why; public/interface surface requires Peter approval.
 
 ## Concepts — Volunteer vs Tier Applications
 

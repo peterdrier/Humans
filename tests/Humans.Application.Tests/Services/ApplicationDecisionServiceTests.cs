@@ -10,7 +10,6 @@ using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Notifications;

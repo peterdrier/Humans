@@ -10,7 +10,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;

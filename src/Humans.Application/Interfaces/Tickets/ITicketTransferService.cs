@@ -1,10 +1,8 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
-using Humans.Application.Architecture;
 
 namespace Humans.Application.Interfaces.Tickets;
 
-[SurfaceBudget(12)]
 public interface ITicketTransferService : IApplicationService
 {
     /// <summary>

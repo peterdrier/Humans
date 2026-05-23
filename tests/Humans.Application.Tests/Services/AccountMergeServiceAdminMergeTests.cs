@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
@@ -22,7 +21,7 @@ public class AccountMergeServiceAdminMergeTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ITeamService _team = Substitute.For<ITeamService>();
+    private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
     private readonly IConsentCacheInvalidator _consentCache = Substitute.For<IConsentCacheInvalidator>();
@@ -33,7 +32,7 @@ public class AccountMergeServiceAdminMergeTests
         new(
             _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _team, _roles, _notify, _consentCache);
+            _userMerges, _userService, _activeTeamsCacheInvalidator, _roles, _notify, _consentCache);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {

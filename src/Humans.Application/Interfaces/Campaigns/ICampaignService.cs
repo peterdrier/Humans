@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -31,7 +30,6 @@ public sealed record CampaignGrantSummary(
     Instant? LatestEmailAt,
     Instant? RedeemedAt);
 
-[SurfaceBudget(20)]
 public interface ICampaignService : IApplicationService
 {
     Task<CampaignCreateResult> CreateAsync(string title, string? description,

@@ -9,7 +9,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Xunit;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Profiles;

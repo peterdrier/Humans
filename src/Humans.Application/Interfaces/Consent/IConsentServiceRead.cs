@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Consent;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Humans.Application.Interfaces.Consent;
 /// and value-type reads, no EF entities and no writes/cache hooks.
 /// See memory/architecture/section-read-write-split.md.
 /// </summary>
+[SurfaceBudget(6)]
 public interface IConsentServiceRead
 {
     /// <summary>
