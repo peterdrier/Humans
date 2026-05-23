@@ -302,6 +302,17 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<Guid> GetActiveEventIdAsync(Guid eventSettingsId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a user's active signups (Pending or Confirmed) with each
+    /// signup's <see cref="ShiftSignup.Shift"/> navigation eagerly loaded
+    /// so callers can inspect <see cref="Shift.Duration"/>, <see cref="Shift.IsAllDay"/>,
+    /// and call <see cref="Shift.GetAbsoluteEnd"/> without further DB hits.
+    /// Cross-section rule: does NOT include <see cref="ShiftSignup.User"/>.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
+        Guid userId,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================
