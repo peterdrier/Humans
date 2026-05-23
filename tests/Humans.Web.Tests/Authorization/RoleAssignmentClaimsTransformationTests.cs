@@ -41,8 +41,8 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
 
         _teams = Substitute.For<ITeamService>();
         _teams
-            .GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
 
         _userService = Substitute.For<IUserService>();
         _clock = Substitute.For<IClock>();
@@ -65,13 +65,26 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         return new ClaimsPrincipal(identity);
     }
 
-    private static TeamMember VolunteersMembership(Guid userId) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        TeamId = SystemTeamIds.Volunteers,
-        JoinedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-    };
+    private static IReadOnlyDictionary<Guid, TeamInfo> VolunteersTeams(Guid userId) =>
+        new Dictionary<Guid, TeamInfo>
+        {
+            [SystemTeamIds.Volunteers] = new TeamInfo(
+                Id: SystemTeamIds.Volunteers,
+                Name: "Volunteers",
+                Description: null,
+                Slug: "volunteers",
+                IsActive: true,
+                IsSystemTeam: true,
+                SystemTeamType: SystemTeamType.Volunteers,
+                RequiresApproval: false,
+                IsPublicPage: false,
+                IsHidden: false,
+                IsPromotedToDirectory: false,
+                CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+                Members: [new TeamMemberInfo(
+                    Guid.NewGuid(), userId, "Test User", null, null,
+                    TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0))]),
+        };
 
     private static UserInfo MakeUserInfo(Guid id, bool hasProfile, bool isSuspended)
     {
@@ -134,8 +147,8 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         // The team service would say the user IS on the Volunteers team —
         // but suspension wins and the claim must be omitted.
         _teams
-            .GetUserTeamsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([VolunteersMembership(userId)]);
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(VolunteersTeams(userId)));
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: true, isSuspended: true)));
@@ -170,8 +183,8 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         var userId = Guid.NewGuid();
 
         _teams
-            .GetUserTeamsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([VolunteersMembership(userId)]);
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(VolunteersTeams(userId)));
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));

@@ -9,7 +9,7 @@ using NodaTime;
 namespace Humans.Web.Models.Shifts;
 
 public sealed record ShiftAdminPageRequest(
-    Team Department,
+    TeamInfo Department,
     EventSettings EventSettings,
     bool CanManage,
     bool CanApprove,
@@ -21,7 +21,7 @@ public sealed class ShiftAdminPageBuilder(
     IShiftManagementService shiftManagement,
     IShiftSignupService signupService,
     IUserServiceRead userService,
-    ITeamService teamService)
+    ITeamServiceRead teamService)
 {
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request)
     {
@@ -99,10 +99,9 @@ public sealed class ShiftAdminPageBuilder(
         return profileDict;
     }
 
-    private async Task<List<DepartmentOption>> LoadTransferDepartmentsAsync(Team currentDepartment)
+    private async Task<List<DepartmentOption>> LoadTransferDepartmentsAsync(TeamInfo currentDepartment)
     {
-        var allTeams = await teamService.GetAllTeamsAsync();
-        return allTeams
+        return (await teamService.GetTeamsAsync()).Values
             .Where(t => t.ParentTeamId is null
                         && t.SystemTeamType == SystemTeamType.None
                         && t.Id != currentDepartment.Id)
