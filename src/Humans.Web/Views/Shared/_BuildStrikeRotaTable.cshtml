@@ -382,7 +382,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                 <div class="progress flex-grow-1" style="height: 6px;">
                                     <div class="progress-bar @singleFillColor" role="progressbar" style="width: @singleFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
                                 </div>
-                                <small class="text-nowrap @(understaffed ? "text-danger fw-bold" : "text-muted")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</small>
+                                <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</span>
                             </div>
                         </td>
                         <td>
