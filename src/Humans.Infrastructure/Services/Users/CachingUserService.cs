@@ -563,7 +563,7 @@ public sealed class CachingUserService(
 
     private static UserInfo WithUserFields(UserInfo current, User user)
     {
-#pragma warning disable CS0618, HUM_USER_DISPLAYNAME // User.DisplayName / ProfilePictureUrl are legacy user-column mirrors.
+#pragma warning disable CS0618 // User.DisplayName / ProfilePictureUrl are legacy user-column mirrors.
         return current with
         {
             BurnerName = ResolveBurnerName(user.DisplayName, current.Profile),
@@ -588,7 +588,7 @@ public sealed class CachingUserService(
             MergedAt = user.MergedAt,
             IdentityEmailColumn = user.IdentityEmailColumn,
         };
-#pragma warning restore CS0618, HUM_USER_DISPLAYNAME
+#pragma warning restore CS0618
     }
 
     private static string ResolveBurnerName(string legacyDisplayName, ProfileInfo? profile) =>
@@ -670,7 +670,7 @@ public sealed class CachingUserService(
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618, HUM_USER_DISPLAYNAME // Rehydrated legacy User.DisplayName now carries the resolved BurnerName fallback.
+#pragma warning disable CS0618 // Rehydrated legacy User.DisplayName now carries the resolved BurnerName fallback.
         var user = new User
         {
             Id = info.Id,
@@ -696,7 +696,7 @@ public sealed class CachingUserService(
             MergedAt = info.MergedAt,
             Email = info.IdentityEmailColumn,
         };
-#pragma warning restore CS0618, HUM_USER_DISPLAYNAME
+#pragma warning restore CS0618
 
         foreach (var e in info.UserEmails)
         {
