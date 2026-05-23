@@ -1686,6 +1686,72 @@ public class ProfileController : HumansControllerBase
         }
     }
 
+    [HttpGet("Me/DietaryMedical")]
+    public async Task<IActionResult> DietaryMedical()
+    {
+        try
+        {
+            var user = await GetCurrentUserAsync();
+            if (user is null)
+                return NotFound();
+
+            // includeMedical: true — the form must pre-populate the user's own medical info.
+            var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: true);
+            var vm = profile is null
+                ? new DietaryMedicalViewModel()
+                : DietaryMedicalViewModel.FromProfile(profile);
+
+            return View(vm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load dietary/medical info for user");
+            SetError("Failed to load dietary and medical info.");
+            return RedirectToAction(nameof(Me));
+        }
+    }
+
+    [HttpPost("Me/DietaryMedical")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DietaryMedical(DietaryMedicalViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        // Server-side validation for the "Other text required iff Other selected" rule
+        // (DataAnnotations can't express the conditional requirement cleanly).
+        if (model.Allergies.Contains("Other") && string.IsNullOrWhiteSpace(model.AllergyOtherText))
+        {
+            ModelState.AddModelError(nameof(model.AllergyOtherText), _localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
+            return View(model);
+        }
+        if (model.Intolerances.Contains("Other") && string.IsNullOrWhiteSpace(model.IntoleranceOtherText))
+        {
+            ModelState.AddModelError(nameof(model.IntoleranceOtherText), _localizer["Profile_DietaryMedical_IntoleranceOther_Required"].Value);
+            return View(model);
+        }
+
+        try
+        {
+            var user = await GetCurrentUserAsync();
+            if (user is null)
+                return NotFound();
+
+            var profile = await _shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+            model.ApplyTo(profile);
+            await _shiftMgmt.UpdateShiftProfileAsync(profile);
+
+            SetSuccess(_localizer["Profile_DietaryMedical_Saved"].Value);
+            return Redirect("/");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save dietary/medical info");
+            SetError("Failed to save dietary and medical info.");
+            return View(model);
+        }
+    }
+
     [HttpGet("Me/CommunicationPreferences")]
     public async Task<IActionResult> CommunicationPreferences()
     {
