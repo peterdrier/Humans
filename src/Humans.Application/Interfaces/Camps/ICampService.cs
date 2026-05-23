@@ -14,9 +14,9 @@ namespace Humans.Application.Interfaces.Camps;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>56→51 — 5 read methods moved to ICampServiceRead: GetCampsForYearAsync, GetCampBySlugAsync, GetCampSeasonByIdAsync, GetSettingsAsync, SearchAsync. CampLookup/CampSeasonLookup folded into CampInfo/CampSeasonInfo (CampInfo gained computed Active).</item>
 ///   <item>58→56 — detail/roster decouple (#753 follow-up): removed AddLeadAsync/RemoveLeadAsync. Camp Lead → CampRoleAssignment; EnsureActiveMemberForMigrationAsync stays until #774 drops table.</item>
 ///   <item>57→58 — US-26 unified MySubmissions: added GetEventManagedCampsAsync — returns the list of camps a user may manage events for (unions CampRoleAssignment Lead/Workshop rows + legacy CampLead table). Authorized by consolidating BarrioEventsController into EventsController.</item>
-///   <item>56→57 — Camp Lead retirement event-management split (issue nobodies-collective/Humans#753): added IsUserCampEventManagerAsync — Lead OR Workshop OR-check that authorizes barrio event actions.</item>
 /// </list>
 /// </remarks>
 [SurfaceBudget(51)]
@@ -51,7 +51,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
         Guid? userId,
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
-    /// <summary>
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
