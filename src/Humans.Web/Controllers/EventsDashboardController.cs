@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsDashboardController(IEventService guide, ICampService camps, IUserService userService)
+public class EventsDashboardController(IEventService guide, ICampServiceRead camps, IUserService userService)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]

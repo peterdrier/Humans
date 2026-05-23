@@ -26,7 +26,7 @@ public sealed record DevelopmentBudgetSeedResult(
 public sealed class DevelopmentBudgetSeeder(
     IBudgetService budgetService,
     ITeamService teamService,
-    ICampService campService,
+    ICampServiceRead campService,
     IClock clock,
     ILogger<DevelopmentBudgetSeeder> logger)
 {

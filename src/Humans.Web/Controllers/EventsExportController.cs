@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsExportController(
     IEventService guide,
-    ICampService camps,
+    ICampServiceRead camps,
     IUserService users,
     IUserService userService) : HumansControllerBase(userService)
 {

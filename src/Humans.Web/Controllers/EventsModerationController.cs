@@ -24,7 +24,7 @@ public class EventsModerationController(
     IUserService userService,
     IEmailService emailService,
     IUserService users,
-    ICampService camps,
+    ICampServiceRead camps,
     ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

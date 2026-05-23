@@ -24,7 +24,7 @@ public static class EventsLookupHelpers
     }
 
     public static async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(
-        ICampService camps, int? year)
+        ICampServiceRead camps, int? year)
     {
         if (year is null) return [];
         var list = await camps.GetCampsForYearAsync(year.Value);
