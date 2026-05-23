@@ -41,6 +41,13 @@ public class TeamRoleDefinition
     public int SlotCount { get; set; } = 1;
 
     /// <summary>
+    /// Estimated workload, in whole hours per year, that holding this role
+    /// represents. Null when unset. Informational only — gates nothing; exists
+    /// so workload aggregations can quantify role hours alongside shift hours.
+    /// </summary>
+    public int? EstimatedHours { get; set; }
+
+    /// <summary>
     /// Priority levels for each slot, ordered by slot index.
     /// </summary>
     public List<SlotPriority> Priorities { get; set; } = [];

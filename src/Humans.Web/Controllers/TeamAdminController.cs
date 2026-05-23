@@ -719,7 +719,8 @@ public class TeamAdminController(
 
             await _teamService.CreateRoleDefinitionAsync(
                 team.Id, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.Period, user.Id, model.IsPublic);
+                priorities, model.SortOrder, model.Period, user.Id, model.IsPublic,
+                model.EstimatedHours);
 
             SetSuccess($"Role '{model.Name}' created.");
         }
@@ -754,7 +755,7 @@ public class TeamAdminController(
             await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
-                model.IsPublic, canToggleManagement);
+                model.IsPublic, canToggleManagement, model.EstimatedHours);
 
             return RoleEditSuccess(isAjax, slug, $"Role '{model.Name}' updated.");
         }
