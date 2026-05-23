@@ -15,14 +15,14 @@ namespace Humans.Web.Controllers;
 [Route("api/profiles")]
 public class ProfileApiController(
     IProfileService profileService,
-    IUserService userService,
+    IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
     private const int MaxResults = 10;
 
     private readonly IProfileService _profileService = profileService;
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("search")]
     public async Task<IActionResult> Search(

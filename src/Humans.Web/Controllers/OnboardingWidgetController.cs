@@ -21,7 +21,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize]
 public class OnboardingWidgetController(
-    IUserService userService,
+    IUserServiceRead userService,
     IOnboardingWidgetState state,
     IProfileService profileService,
     IShiftSignupService signupService,
@@ -30,7 +30,7 @@ public class OnboardingWidgetController(
     IOnboardingService onboardingService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     // [Authorize] guarantees NameIdentifier is present.
     private Guid CurrentUserId() =>
