@@ -74,6 +74,7 @@ public sealed record MyAttendeeRowDto(
     string VendorTicketId,
     string TicketTypeName,
     TicketAttendeeStatus Status,
+    bool IsCurrentOwner,
     bool CanSendTransfer,
     bool HasPendingOutgoingTransfer,
     Guid? PendingTransferRequestId);

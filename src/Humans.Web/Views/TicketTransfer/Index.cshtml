@@ -1,12 +1,21 @@
 @model Humans.Web.Models.TicketTransferWizardViewModel
 @using Humans.Application.DTOs
+@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "Transfer a ticket";
-    var sendable = Model.MyTickets.Where(t => t.CanSendTransfer).ToList();
-    var pending = Model.MyTickets.Where(t => t.HasPendingOutgoingTransfer).ToList();
+    // Show every ticket the user currently holds (not the ones they merely bought for others,
+    // and not voided ones); only Valid + no-pending ones are selectable.
+    var held = Model.MyTickets
+        .Where(t => t.IsCurrentOwner && t.Status != TicketAttendeeStatus.Void)
+        .ToList();
+    var sendable = held.Where(t => t.CanSendTransfer).ToList();
     TicketStubInfo Stub(MyAttendeeRowDto a) =>
         new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
             a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
+    string NotSendableReason(MyAttendeeRowDto t) =>
+        t.HasPendingOutgoingTransfer ? "Transfer already pending"
+        : t.Status == TicketAttendeeStatus.CheckedIn ? "Already checked in — can't be transferred"
+        : "Not transferable";
 }
 
 <h1>Transfer a ticket</h1>
@@ -20,29 +29,42 @@
 
 @if (Model.Confirm is null)
 {
-    @if (sendable.Count == 0 && pending.Count == 0)
+    @if (held.Count == 0)
     {
-        <div class="alert alert-info">You don't have any tickets available to transfer.</div>
+        <div class="alert alert-info">You don't have any tickets to transfer.</div>
         <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back</a>
     }
     else
     {
-        @if (sendable.Count > 0)
-        {
-            <form asp-action="Confirm" method="post">
-                @Html.AntiForgeryToken()
+        <form asp-action="Confirm" method="post">
+            @Html.AntiForgeryToken()
 
-                <h2 class="h5 mb-3">1. Choose the ticket to transfer</h2>
-                <div class="mb-4 d-flex flex-column gap-2">
-                    @foreach (var t in sendable)
+            <h2 class="h5 mb-3">1. Choose the ticket to transfer</h2>
+            <div class="mb-4 d-flex flex-column gap-2">
+                @foreach (var t in held)
+                {
+                    if (t.CanSendTransfer)
                     {
                         <label class="d-flex align-items-center gap-3 m-0" style="cursor:pointer">
                             <input type="radio" name="attendeeId" value="@t.AttendeeId" required />
                             <vc:ticket-stub stub="@Stub(t)" />
                         </label>
                     }
-                </div>
+                    else
+                    {
+                        <div class="d-flex align-items-center gap-3" style="opacity:.6">
+                            <input type="radio" disabled />
+                            <div>
+                                <vc:ticket-stub stub="@Stub(t)" />
+                                <small class="text-muted d-block mt-1">@NotSendableReason(t)</small>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
 
+            @if (sendable.Count > 0)
+            {
                 <h2 class="h5 mb-3">2. Who are you sending it to?</h2>
                 <div class="mb-4" style="max-width:480px">
                     <vc:human-search field-name="receiverUserId" scope="Name" allow-email="true"
@@ -51,20 +73,13 @@
 
                 <button type="submit" class="btn btn-primary">Continue</button>
                 <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Cancel</a>
-            </form>
-        }
-
-        @if (pending.Count > 0)
-        {
-            <hr class="my-4" />
-            <h2 class="h6 text-muted">Already pending</h2>
-            <div class="d-flex flex-column gap-2">
-                @foreach (var t in pending)
-                {
-                    <vc:ticket-stub stub="@Stub(t)" />
-                }
-            </div>
-        }
+            }
+            else
+            {
+                <p class="text-muted">None of your tickets can be transferred right now.</p>
+                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back</a>
+            }
+        </form>
     }
 }
 else

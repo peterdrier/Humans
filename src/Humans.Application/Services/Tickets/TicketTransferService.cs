@@ -45,6 +45,7 @@ public sealed class TicketTransferService(
             .Select(a =>
             {
                 var pending = pendingByAttendee.TryGetValue(a.Id, out var transferId);
+                var owner = TicketAttendeeOwnership.IsCurrentOwner(a, userId);
                 return new MyAttendeeRowDto(
                     AttendeeId: a.Id,
                     AttendeeName: a.AttendeeName,
@@ -52,9 +53,8 @@ public sealed class TicketTransferService(
                     VendorTicketId: a.VendorTicketId,
                     TicketTypeName: a.TicketTypeName,
                     Status: a.Status,
-                    CanSendTransfer: a.Status == TicketAttendeeStatus.Valid
-                        && TicketAttendeeOwnership.IsCurrentOwner(a, userId)
-                        && !pending,
+                    IsCurrentOwner: owner,
+                    CanSendTransfer: a.Status == TicketAttendeeStatus.Valid && owner && !pending,
                     HasPendingOutgoingTransfer: pending,
                     PendingTransferRequestId: pending ? transferId : null);
             })
