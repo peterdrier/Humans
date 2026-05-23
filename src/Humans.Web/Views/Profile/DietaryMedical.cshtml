@@ -28,7 +28,11 @@
 
             @* ===== Dietary Preference (required radio group) ===== *@
             <fieldset class="mb-4">
-                <legend class="h6">@Localizer["Profile_DietaryMedical_DietaryPreference_Label"]</legend>
+                <legend class="h6">
+                    @Localizer["Profile_DietaryMedical_DietaryPreference_Label"]
+                    <span class="text-danger" aria-hidden="true">*</span>
+                    <span class="visually-hidden">(required)</span>
+                </legend>
                 @foreach (var pref in DietaryMedicalViewModel.DietaryPreferences)
                 {
                     var isSelected = string.Equals(Model.DietaryPreference, pref, StringComparison.Ordinal);
@@ -51,7 +55,7 @@
             <fieldset class="mb-4">
                 <legend class="h6">@Localizer["Profile_DietaryMedical_Allergies_Label"]</legend>
                 <div class="d-flex flex-wrap gap-3">
-                    @foreach (var opt in DietaryMedicalViewModel.AllergyOptions)
+                    @foreach (var opt in DietaryMedicalViewModel.AllergyOptions.Where(o => o != DietaryMedicalViewModel.OtherOption))
                     {
                         var isChecked = Model.Allergies.Contains(opt);
                         <div class="form-check">
@@ -65,6 +69,16 @@
                         </div>
                     }
                 </div>
+                @* Other on its own line — visual hint that it opens a free-text field *@
+                <div class="form-check mt-2 pt-2 border-top">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="Allergies"
+                           value="@DietaryMedicalViewModel.OtherOption"
+                           id="al-@DietaryMedicalViewModel.OtherOption"
+                           checked="@(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "checked" : null)" />
+                    <label class="form-check-label" for="al-@DietaryMedicalViewModel.OtherOption">@DietaryMedicalViewModel.OtherOption</label>
+                </div>
                 <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
                     <label asp-for="AllergyOtherText" class="form-label">@Localizer["Profile_DietaryMedical_AllergyOther_Label"]</label>
                     <input asp-for="AllergyOtherText" class="form-control" maxlength="500" />
@@ -76,7 +90,7 @@
             <fieldset class="mb-4">
                 <legend class="h6">@Localizer["Profile_DietaryMedical_Intolerances_Label"]</legend>
                 <div class="d-flex flex-wrap gap-3">
-                    @foreach (var opt in DietaryMedicalViewModel.IntoleranceOptions)
+                    @foreach (var opt in DietaryMedicalViewModel.IntoleranceOptions.Where(o => o != DietaryMedicalViewModel.OtherOption))
                     {
                         var isChecked = Model.Intolerances.Contains(opt);
                         <div class="form-check">
@@ -89,6 +103,16 @@
                             <label class="form-check-label" for="in-@opt">@opt</label>
                         </div>
                     }
+                </div>
+                @* Other on its own line — visual hint that it opens a free-text field *@
+                <div class="form-check mt-2 pt-2 border-top">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="Intolerances"
+                           value="@DietaryMedicalViewModel.OtherOption"
+                           id="in-@DietaryMedicalViewModel.OtherOption"
+                           checked="@(Model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) ? "checked" : null)" />
+                    <label class="form-check-label" for="in-@DietaryMedicalViewModel.OtherOption">@DietaryMedicalViewModel.OtherOption</label>
                 </div>
                 <div class="mt-3" id="intolerance-other-wrapper" style="display: @(Model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
                     <label asp-for="IntoleranceOtherText" class="form-label">@Localizer["Profile_DietaryMedical_IntoleranceOther_Label"]</label>
