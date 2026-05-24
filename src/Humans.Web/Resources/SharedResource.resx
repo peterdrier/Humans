@@ -1467,7 +1467,6 @@
   <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Other allergy — please describe</value></data>
   <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerances</value></data>
   <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Other intolerance — please describe</value></data>
-  <data name="Profile_DietaryMedical_MedicalConditions_Label" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
   <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Your dietary and medical info has been saved.</value></data>
   <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
@@ -2282,5 +2281,8 @@
 
   <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value></data>
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value></data>
+  <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
 
 </root>

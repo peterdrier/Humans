@@ -121,13 +121,22 @@
                 </div>
             </fieldset>
 
-            @* ===== Medical Conditions (private textarea) ===== *@
-            <fieldset class="mb-4">
-                <legend class="h6">@Localizer["Profile_DietaryMedical_MedicalConditions_Label"]</legend>
-                <p class="text-muted small">@Localizer["Profile_DietaryMedical_MedicalConditions_Hint"]</p>
-                <textarea asp-for="MedicalConditions" class="form-control" rows="4" maxlength="4000"></textarea>
-                <span asp-validation-for="MedicalConditions" class="text-danger"></span>
-            </fieldset>
+            @* ===== Medical Conditions (private textarea, collapsed by default) =====
+               Wrapped in <details> so it's clearly optional and visually de-emphasized;
+               a volunteer hesitant to disclose (e.g., epilepsy) won't be blocked from
+               submitting the cantina-critical dietary radios above. *@
+            <details class="mt-4 mb-4">
+                <summary class="text-muted">
+                    <strong>@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</strong>
+                    <span class="badge bg-secondary ms-2">@Localizer["Common_Optional"]</span>
+                </summary>
+                <div class="mt-3 ps-3 border-start border-secondary border-2">
+                    <p class="text-muted small">@Localizer["Profile_DietaryMedical_MedicalConditions_Hint"]</p>
+                    <textarea asp-for="MedicalConditions" class="form-control" rows="4" maxlength="4000"></textarea>
+                    <span asp-validation-for="MedicalConditions" class="text-danger"></span>
+                    <div class="form-text">@Localizer["Profile_DietaryMedical_MedicalConditions_VisibilityNote"]</div>
+                </div>
+            </details>
 
             <div class="d-flex justify-content-between">
                 <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>

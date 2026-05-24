@@ -1424,7 +1424,6 @@
   <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Otra alergia — describe cuál</value></data>
   <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerancias</value></data>
   <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Otra intolerancia — describe cuál</value></data>
-  <data name="Profile_DietaryMedical_MedicalConditions_Label" xml:space="preserve"><value>Condiciones médicas</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Solo visible para ti y los No-Info Admins. Cualquier cosa que el equipo deba saber — diabetes, epilepsia, lesiones graves, etc.</value></data>
   <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Tu información alimentaria y médica se ha guardado.</value></data>
   <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Describe la otra alergia.</value></data>
@@ -2249,5 +2248,8 @@
 
   <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value><comment>TODO: translate</comment></data>
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value><comment>TODO: translate</comment></data>
+  <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Solo visible para ti y los No-Info Admins.</value></data>
 
 </root>
