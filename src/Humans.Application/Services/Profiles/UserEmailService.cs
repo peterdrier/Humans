@@ -29,6 +29,11 @@ public sealed class UserEmailService(
     // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
+    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketServiceRead.
+    // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
+    private Interfaces.Tickets.ITicketServiceRead TicketServiceRead =>
+        serviceProvider.GetRequiredService<Interfaces.Tickets.ITicketServiceRead>();
+
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -308,6 +313,16 @@ public sealed class UserEmailService(
             return false;
         }
 
+        // see nobodies-collective/Humans#758 - block removal of the primary email.
+        // The user must promote another verified email to primary first, otherwise they
+        // can accidentally delete their sign-in/notification target (the original incident).
+        if (email.IsPrimary)
+        {
+            throw new ValidationException(
+                "Cannot remove your primary email. Set another verified email as primary first, " +
+                "then remove this one.");
+        }
+
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
         if (email.IsVerified)
         {
@@ -322,6 +337,16 @@ public sealed class UserEmailService(
             }
         }
 
+        // see nobodies-collective/Humans#758 - block removal of a ticket-linked email.
+        // Tickets are matched to users by email address; removing the linked address risks
+        // un-matching the user's event ticket on the next vendor re-sync.
+        if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
+        {
+            throw new ValidationException(
+                "Cannot remove this email - it is linked to your event ticket. " +
+                "Removing it could disconnect your ticket. Contact an admin if you need to change it.");
+        }
+
         await repository.RemoveAsync(email, cancellationToken);
 
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
@@ -329,6 +354,24 @@ public sealed class UserEmailService(
         await userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return true;
+    }
+
+    private async Task<bool> IsAddressTicketLinkedAsync(
+        Guid userId, string address, CancellationToken cancellationToken)
+    {
+        var orders = await TicketServiceRead.GetTicketOrdersAsync(cancellationToken);
+        foreach (var order in orders)
+        {
+            if (order.MatchedUserId == userId
+                && EmailNormalization.EmailsMatch(address, order.BuyerEmail))
+                return true;
+
+            if (order.Attendees.Any(a => a.MatchedUserId == userId
+                    && EmailNormalization.EmailsMatch(address, a.AttendeeEmail)))
+                return true;
+        }
+
+        return false;
     }
 
     public Task RemoveAllEmailsAsync(

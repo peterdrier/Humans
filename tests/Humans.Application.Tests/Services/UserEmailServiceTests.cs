@@ -1,6 +1,8 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -19,6 +21,7 @@ public class UserEmailServiceTests
 {
     private readonly IUserEmailRepository _repository = Substitute.For<IUserEmailRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
+    private readonly ITicketServiceRead _ticketServiceRead = Substitute.For<ITicketServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
@@ -32,7 +35,12 @@ public class UserEmailServiceTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).Build();
+        _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([]));
+        _serviceProvider = new ServiceLocatorBuilder()
+            .With(_mergeService)
+            .With(_ticketServiceRead)
+            .Build();
 
         _service = new UserEmailService(
             _repository,
@@ -73,6 +81,24 @@ public class UserEmailServiceTests
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyCollection<UserInfo>)infos);
     }
+
+    private TicketOrderInfo BuildTicketOrder(
+        Guid? matchedUserId = null,
+        string? buyerEmail = null,
+        IReadOnlyList<TicketAttendeeInfo>? attendees = null) => new(
+            Guid.NewGuid(),
+            "vendor-order",
+            "Buyer",
+            buyerEmail,
+            100m,
+            "USD",
+            null,
+            TicketPaymentStatus.Paid,
+            "event",
+            _clock.GetCurrentInstant(),
+            matchedUserId,
+            true,
+            attendees ?? []);
 
     [HumansFact]
     public async Task SetPrimaryAsync_VerifiedTarget_InvalidatesFullProfile()
@@ -198,6 +224,65 @@ public class UserEmailServiceTests
         result.Should().BeFalse();
         await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_PrimaryEmail_ThrowsValidationException()
+    {
+        var userId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        var primary = new UserEmail
+        {
+            Id = emailId,
+            UserId = userId,
+            Email = "primary@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
+            .Returns(primary);
+
+        var act = async () => await _service.DeleteEmailAsync(userId, emailId);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _ticketServiceRead.DidNotReceive().GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_TicketLinkedBuyerEmail_ThrowsValidationException()
+    {
+        var userId = Guid.NewGuid();
+        var deletingId = Guid.NewGuid();
+        var deleting = new UserEmail
+        {
+            Id = deletingId,
+            UserId = userId,
+            Email = "secondary@example.com",
+            IsVerified = true,
+            IsPrimary = false,
+        };
+        var keeping = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "primary@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
+            .Returns(deleting);
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { deleting, keeping });
+        _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([
+                BuildTicketOrder(matchedUserId: userId, buyerEmail: "secondary@example.com")
+            ]));
+
+        var act = async () => await _service.DeleteEmailAsync(userId, deletingId);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
