@@ -1,7 +1,9 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.TeamIndexViewModel
 @{
     ViewData["Title"] = Localizer["Teams_Title"].Value;
-    var canViewSync = (bool?)ViewBag.CanViewSync ?? false;
 }
 
 @if (Model.IsAuthenticated)
@@ -15,7 +17,7 @@
             <a asp-action="Roster" class="btn btn-outline-secondary">@Localizer["Nav_Roster"]</a>
             <a asp-action="Birthdays" class="btn btn-outline-secondary">@Localizer["Birthdays_Title"]</a>
             <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
-            @if (canViewSync)
+            @if ((await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded)
             {
                 <a asp-action="Summary" class="btn btn-outline-secondary">Summary <i class="fa-solid fa-lock auth-lock-icon"></i></a>
                 <a asp-controller="Google" asp-action="Sync" class="btn btn-outline-info">Sync Status <i class="fa-solid fa-lock auth-lock-icon"></i></a>

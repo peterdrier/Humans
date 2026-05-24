@@ -49,8 +49,6 @@ public class TeamController(
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
         var directory = await teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null, ct);
 
-        ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-
         var viewModel = new TeamIndexViewModel
         {
             MyTeams = directory.MyTeams
