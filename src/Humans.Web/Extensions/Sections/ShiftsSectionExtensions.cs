@@ -47,6 +47,7 @@ internal static class ShiftsSectionExtensions
         // VolunteerTracking — Scoped repository so multi-step camp-setup + blocked-day mutations share one change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
+        services.AddScoped<IVolunteerTrackingExportService, Humans.Application.Services.Shifts.VolunteerTrackingExportService>();
 
         // ShiftView — see #720. Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
         services.AddKeyedScoped<IShiftView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
