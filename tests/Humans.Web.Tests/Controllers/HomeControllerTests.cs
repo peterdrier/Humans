@@ -111,7 +111,7 @@ public class HomeControllerTests
         _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(OnboardingWidgetStep.Complete);
         _dashboardService
-            .GetMemberDashboardAsync(user.Id, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .GetMemberDashboardAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(BuildEmptyDashboard());
         var ctrl = BuildSut(user);
 

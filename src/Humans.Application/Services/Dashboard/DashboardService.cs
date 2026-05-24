@@ -31,11 +31,8 @@ public class DashboardService(
 
     public async Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,
-        bool isPrivileged,
         CancellationToken cancellationToken = default)
     {
-        _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
-
         var userInfo = await userService.GetUserInfoAsync(userId, cancellationToken);
         var profile = userInfo?.Profile;
         var userView = await shiftView.GetUserAsync(userId, cancellationToken);
