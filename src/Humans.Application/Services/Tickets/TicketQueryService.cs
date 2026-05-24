@@ -63,7 +63,7 @@ public sealed class TicketQueryService(
             .ToList();
     }
 
-    public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
+    private async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
         var syncState = await ticketRepository.GetSyncStateAsync();
         if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
@@ -79,25 +79,12 @@ public sealed class TicketQueryService(
         return types.ToList();
     }
 
-    public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
+    private async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
     {
         var fromAttendees = await ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
         var fromOrders = await ticketRepository.GetAllMatchedOrderUserIdsAsync();
         return fromAttendees.Concat(fromOrders).ToHashSet();
     }
-
-    public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default)
-    {
-        var start = Instant.FromUtc(year, 1, 1, 0, 0);
-        var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
-
-        var fromOrders = await ticketRepository.GetMatchedOrderUserIdsInWindowAsync(start, end, ct);
-        var fromAttendees = await ticketRepository.GetMatchedAttendeeUserIdsInWindowAsync(start, end, ct);
-        return fromOrders.Concat(fromAttendees).ToHashSet();
-    }
-
-    public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) =>
-        ticketRepository.GetMatchedOrderYearsAsync(ct);
 
     public async Task<TicketDashboardStats> GetDashboardStatsAsync()
     {
@@ -209,9 +196,6 @@ public sealed class TicketQueryService(
             VolunteerCoveragePercent = volunteerCoveragePct,
         };
     }
-
-    public Task<decimal> GetGrossTicketRevenueAsync() =>
-        ticketRepository.GetGrossPaidRevenueAsync();
 
     public async Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold,
@@ -666,20 +650,6 @@ public sealed class TicketQueryService(
         return rows.ToList();
     }
 
-    public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) =>
-        ticketRepository.HasAnyTicketMatchAsync(userId);
-
-    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
-    {
-        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId);
-        return orders.Select(o => new UserTicketOrderSummary(
-            o.BuyerName,
-            o.PurchasedAt,
-            o.Attendees.Count,
-            o.TotalAmount,
-            o.Currency)).ToList();
-    }
-
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -730,9 +700,6 @@ public sealed class TicketQueryService(
             OpenTicketOrderIds = openTicketOrderIds,
         };
     }
-
-    public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
 
     private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
@@ -803,19 +770,6 @@ public sealed class TicketQueryService(
             Price: a.Price,
             Status: a.Status,
             MatchedUserId: a.MatchedUserId)).ToList());
-
-    public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
-        CancellationToken ct = default)
-    {
-        var ids = await ticketRepository.GetMatchedUserIdsForPaidOrdersAsync(ct);
-        return ids;
-    }
-
-    public Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default) =>
-        ticketRepository.GetPaidOrderDatesInWindowAsync(fromInclusive, toExclusive, ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)

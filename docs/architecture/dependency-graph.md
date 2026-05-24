@@ -457,13 +457,13 @@ The `IServiceProvider` + property-getter lazy-resolution pattern is used to brea
 
 1. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService` for team-deletion resource cleanup; TeamResourceService eagerly injects `ITeamService` for ownership checks.
 2. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftManagementService`. (ShiftSignupService also lazy-resolves `ITeamService`, but the reverse edge runs through ShiftManagementService, not ShiftSignupService directly.)
-3. **ShiftManagement ↔ TicketQuery** — ShiftManagementService lazy-resolves `ITicketQueryService` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
+3. **ShiftManagement ↔ TicketQuery** — ShiftManagementService lazy-resolves `ITicketServiceRead` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
 4. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentService` for required-docs-given checks. Both sides are lazy because this cycle is two-way hot.
 5. **GoogleWorkspaceSync ↔ TeamResource** — GoogleWorkspaceSyncService lazy-resolves `ITeamResourceService` for resource reconciliation during workspace sync; TeamResourceService eagerly injects `IGoogleWorkspaceSyncService` to push resource changes into Google.
 
 Other notable one-way lazy edges (not cycles):
 - **Team → User** — TeamService lazy-resolves `IUserService` for user-slice stitching. Used to be a cycle (User↔Team), but PR #314 dropped UserService's eager `ITeamService` injection — User is now outbound-edge-free.
-- **AccountDeletion → User / Profile / Role / ShiftManagement / ShiftSignup / UserEmail / TicketQuery** — AccountDeletionService eagerly injects all of these for the cascade. None of them inject AccountDeletionService, so no reverse edge. (Issue #685 promoted the AccountDeletion→Profile edge from lazy to eager once ProfileService stopped delegating its `RequestDeletionAsync` back into the orchestrator.)
+- **AccountDeletion → User / Profile / Role / ShiftManagement / ShiftSignup / UserEmail / TicketsRead** — AccountDeletionService eagerly injects all of these for the cascade. None of them inject AccountDeletionService, so no reverse edge. (Issue #685 promoted the AccountDeletion→Profile edge from lazy to eager once ProfileService stopped delegating its `RequestDeletionAsync` back into the orchestrator.)
 - **UserEmail → AccountMerge** — UserEmailService lazy-resolves `IAccountMergeService` for merge-driven email reparenting; AccountMergeService injects `IUserEmailRepository` (not the service) to avoid creating a reverse edge.
 - **ShiftManagement → Role / User**, **Team → Role / Email**, **GoogleWorkspaceSync → TeamResource** are one-way lazy edges where the target service does not call back. Lazy is used because eager injection would still create a cycle through other paths in the graph.
 
@@ -478,7 +478,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined).
 | `TeamService` | 21 | 2 | Largest fan-in. Expose efficient batch methods (`GetByIdsAsync`) to avoid N+1 at call sites. |
 | `UserService` | 20 | 2 | Second-largest fan-in. Same batch-method guidance. **No outbound edges** as of peterdrier/Humans PR #314 — User is purely foundational; the four pre-existing User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`. |
 | `AuditLogService` | 20 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer). |
-| `ProfileService` | 13 | 0 | Biggest Profile consumer is ProfileService itself (full-profile stitching). Outbound-edge count dropped from 9 to 5 in nobodies-collective/Humans#685 — `ITicketQueryService`, `IApplicationDecisionService`, `ICampaignService`, and `IAccountDeletionService` were removed from the ctor; remaining outbound edges are foundational (`User`, `MembershipCalc`, `Consent`, `Role`, `Audit`). |
+| `ProfileService` | 13 | 0 | Biggest Profile consumer is ProfileService itself (full-profile stitching). Outbound-edge count dropped from 9 to 5 in nobodies-collective/Humans#685 — the old ticket query dependency, `IApplicationDecisionService`, `ICampaignService`, and `IAccountDeletionService` were removed from the ctor; remaining outbound edges are foundational (`User`, `MembershipCalc`, `Consent`, `Role`, `Audit`). |
 | `RoleAssignmentService` | 8 | 3 | Auth hub. |
 | `UserEmailService` | 9 | 1 | Email-identity lookups across the system. |
 | `IEmailService` | 8 | 1 | Abstract over SmtpEmailService + OutboxEmailService. |
@@ -494,7 +494,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined).
 | `LegalDocumentSyncService` | 3 | 0 | Required-docs-given snapshot for Membership + Consent + AdminLegal. |
 | `GoogleWorkspaceSyncService` | 3 | 0 | Workspace sync engine called by TRes, GAdmin, NotifMeter. |
 | `CampaignService` | 2 | 0 | Email-campaign reads/sends from TicketQ, TicketSync. (Profile dropped its dependency in nobodies-collective/Humans#685.) Below the >=3 threshold — kept here for the cross-section narrative. |
-| `TicketQueryService` | 2 | 1 | Read by Dash + AcctDel, lazy by ShiftMgmt for ticket-holder → shift-eligibility checks. (Profile dropped its dependency in nobodies-collective/Humans#685; AccountDeletion picked one up for the deletion-hold check.) |
+| `TicketQueryService` | 2 | 1 | Exposed through `ITicketServiceRead` for Dash + AcctDel, lazy by ShiftMgmt for ticket-holder → shift-eligibility checks. (Profile dropped its dependency in nobodies-collective/Humans#685; AccountDeletion picked one up for the deletion-hold check.) |
 
 ## Notes on architectural follow-ups
 

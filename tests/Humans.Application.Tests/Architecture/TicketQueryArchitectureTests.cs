@@ -23,9 +23,9 @@ namespace Humans.Application.Tests.Architecture;
 /// The inner <see cref="TicketQueryService"/> lives in Application, goes
 /// through <see cref="ITicketRepository"/>, and never imports EF types or
 /// <c>IMemoryCache</c>. The Singleton <see cref="CachingTicketQueryService"/>
-/// decorator (Infrastructure) owns only the per-user short-TTL entries and
-/// invalidation seam; it is the only impl that touches <c>IMemoryCache</c> in
-/// this section.
+/// decorator (Infrastructure) owns the tracked ticket slices and invalidation
+/// seam; it is the only impl that touches <c>IMemoryCache</c> in this section
+/// for the per-event vendor summary.
 /// </para>
 /// </summary>
 public class TicketQueryArchitectureTests

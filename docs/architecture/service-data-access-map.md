@@ -269,7 +269,7 @@ Cross-section calls via `IUserEmailService`, `IProfileService`,
 No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IUserService`, `IUserEmailService`, `ITeamService`,
 `IRoleAssignmentService`, `IShiftSignupService`,
-`IShiftManagementService`, `IProfileService`, `ITicketQueryService`,
+`IShiftManagementService`, `IProfileService`, `ITicketServiceRead`,
 `IAuditLogService`, `IEmailService`. Invalidates
 `IRoleAssignmentClaimsCacheInvalidator`,
 `IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
@@ -1030,11 +1030,10 @@ Repository: `ITicketRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `UserTicketCount:{userId}` | 5 min | yes | yes | (TTL-only) |
-| `UserTicketHoldings:{userId}` | 5 min | yes | yes | (TTL-only) |
-| `UserIdsWithTickets` | 5 min | yes | yes | (TicketSyncService bulk invalidate) |
-| `ValidAttendeeEmails` | 5 min | yes | yes | (TicketSyncService bulk invalidate) |
-| `TicketDashboardStats` | 5 min | (compute-only — no read-through wrapper) | | (TicketSyncService bulk invalidate) |
+| `TrackedCache<Guid, TicketOrderInfo>` (`Tickets.Orders`) | warm + per-process | yes | yes | `ITicketCacheInvalidator` |
+| `TrackedCache<Guid, UserTicketHoldings>` (`Tickets.UserHoldings`) | per-process, 5 min freshness inside value | yes | yes | `ITicketCacheInvalidator` |
+| `TicketEventSummary:{eventId}` | 15 min | yes | yes | `ITicketCacheInvalidator.InvalidateVendorEventSummary` |
+| `TicketDashboardStats` | 5 min | (compute-only — no read-through wrapper) | | (reserved cache-stats key) |
 
 Cross-section calls via `IBudgetService`, `ICampaignService`,
 `IUserService`, `IUserEmailService`, `IProfileService`, `ITeamService`,
@@ -1059,7 +1058,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
 | `TicketEventSummary:{eventId}` | 15 min | yes | yes | yes (per event) |
-| All `TicketDashboardStats` / `UserIdsWithTickets` / `ValidAttendeeEmails` (via `InvalidateTicketCaches`) | various | | | yes |
+| `TicketEventSummary:{eventId}` plus tracked ticket slices (via `ITicketCacheInvalidator`) | various | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
 `IUserService`, `ICampaignService`, `IShiftManagementService`. Implements
@@ -1075,7 +1074,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketAttendees | R/W |
 | TicketTransferRequests | R/W |
 
-Cross-section calls via `ITicketVendorService`, `ITicketQueryService`,
+Cross-section calls via `ITicketVendorService`, `ITicketCacheInvalidator`,
 `IUserService`, `IUserEmailService`, `IProfileService`,
 `IAuditLogService`. No `IMemoryCache`.
 
@@ -1099,7 +1098,7 @@ Repository: `ITicketRepository`.
 | TicketAttendees | R |
 
 Cross-section calls via `IUserEmailService`, `IAccountProvisioningService`,
-`IUserService`, `IShiftManagementService`, `ITicketQueryService`,
+`IUserService`, `IShiftManagementService`, `ITicketCacheInvalidator`,
 `IAuditLogService`. Imports attendee contact data into the system. No
 cache.
 
@@ -1213,7 +1212,7 @@ cache.
 ### TicketNoShiftsAudience (Scoped, IMailerAudience)
 
 No repository. Audience-membership computation via
-`ITicketQueryService`, `IShiftSignupService`, `IShiftManagementService`.
+`ITicketServiceRead`, `IShiftSignupService`, `IShiftManagementService`.
 No direct DB access, no cache.
 
 ---
@@ -1418,7 +1417,7 @@ Folder: `src/Humans.Application/Services/Dashboard/`. No owned DB tables.
 
 No repository. Read-only fan-out over `IProfileService`,
 `IMembershipCalculator`, `IApplicationDecisionService`,
-`IShiftManagementService`, `IShiftView`, `ITicketQueryService`,
+`IShiftManagementService`, `IShiftView`, `ITicketServiceRead`,
 `IUserService`, `ITeamService`. Uses `TicketVendorSettings`. No DB
 access, no cache.
 
@@ -1595,12 +1594,10 @@ classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
 | `camps_year_{year}` | 5 min | Per-Entity | CampService | CampService |
 | `CampSettings` | 5 min | Static | CampService | CampService |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService | LegalDocumentService |
-| `UserTicketCount:{userId}` | 5 min | Per-User | TicketQueryService | (TTL-based only) |
-| `UserTicketHoldings:{userId}` | 5 min | Per-User | TicketQueryService | (TTL-based only) |
-| `UserIdsWithTickets` | 5 min | Static | TicketQueryService | TicketSyncService (`InvalidateTicketCaches`) |
-| `ValidAttendeeEmails` | 5 min | Static | TicketQueryService | TicketSyncService (`InvalidateTicketCaches`) |
+| `TrackedCache<Guid, TicketOrderInfo>` (`Tickets.Orders`) | per-process | Per-Entity | CachingTicketQueryService warmup + lazy load | `ITicketCacheInvalidator` |
+| `TrackedCache<Guid, UserTicketHoldings>` (`Tickets.UserHoldings`) | per-process, 5 min freshness inside value | Per-User | CachingTicketQueryService lazy load | `ITicketCacheInvalidator` |
 | `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (Infrastructure) / TicketSyncService | TicketSyncService |
-| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | TicketSyncService (`InvalidateTicketCaches`) |
+| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | (reserved cache-stats key) |
 | `NobodiesTeamEmails_All` | 2 min | Static | **NobodiesEmailBadgeViewComponent** | TeamAdminController, GoogleController, ProfileController |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
@@ -1619,20 +1616,19 @@ classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
    components. This is the same backwards pattern called out in prior
    sweeps — services know how to invalidate but not to recompute.
 
-2. **`UserTicketCount:{userId}` / `UserTicketHoldings:{userId}` have no
-   explicit invalidation.** Per-user ticket data caches for 5 min and
-   relies on TTL only; `InvalidateTicketCaches` deliberately skips
-   per-user keys at ~500-user scale per the comment in
-   `MemoryCacheExtensions`.
+2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
+   `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,
+   a `TrackedCache` keyed by user id. Transfer, contact import, account merge,
+   and full ticket sync paths clear the affected tracked entries through
+   `ITicketCacheInvalidator`; stale entries also reload after the 5-minute
+   freshness deadline stored in the tracked value.
 
 3. **`TicketDashboardStats` is invalidation-only, not read-through.**
    `TicketQueryService.GetDashboardStatsAsync()` is the canonical
    producer of the `TicketDashboardStats` DTO — invoked directly by
    `TicketController.Index` per request, with no read-through caching.
-   The cache key (`CacheKeys.TicketDashboardStats`) and
-   `TicketSyncService`'s `InvalidateTicketCaches` invalidation are kept
-   so a future caching wrapper can be added without changing the
-   invalidation contract.
+   The cache key (`CacheKeys.TicketDashboardStats`) is kept so a future caching
+   wrapper can be added without changing the cache-stats classification.
 
 4. **`NobodiesTeamEmails_All`** is populated by
    `NobodiesEmailBadgeViewComponent` and invalidated by three

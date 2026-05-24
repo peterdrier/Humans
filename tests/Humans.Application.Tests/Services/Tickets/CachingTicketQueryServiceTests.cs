@@ -19,6 +19,7 @@ public sealed class CachingTicketQueryServiceTests
     private static readonly Guid UserC = Guid.NewGuid();
 
     private readonly ITicketService _inner;
+    private readonly MemoryCache _memoryCache;
     private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
 
@@ -32,9 +33,10 @@ public sealed class CachingTicketQueryServiceTests
             (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         _clock = new FakeClock(Instant.FromUtc(2026, 5, 1, 0, 0));
+        _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
         _decorator = new CachingTicketQueryService(
-            new MemoryCache(new MemoryCacheOptions()),
+            _memoryCache,
             scopeFactory,
             _clock,
             NullLogger<CachingTicketQueryService>.Instance);
@@ -77,7 +79,6 @@ public sealed class CachingTicketQueryServiceTests
         var second = await _decorator.GetTicketOrdersAsync();
 
         first.Should().BeEquivalentTo(second);
-        _decorator.Entries.Should().Be(2);
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
     }
 
@@ -91,9 +92,6 @@ public sealed class CachingTicketQueryServiceTests
 
         first.TicketCount.Should().Be(1);
         second.TicketCount.Should().Be(1);
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(1);
-        _decorator.UserHoldingsCacheStats.Hits.Should().Be(1);
-        _decorator.UserHoldingsCacheStats.Misses.Should().Be(1);
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
     }
 
@@ -121,8 +119,13 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
 
-        _decorator.Entries.Should().Be(0);
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(0);
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -132,7 +135,11 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
 
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(1);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -142,8 +149,13 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
 
-        _decorator.Entries.Should().Be(0);
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(0);
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -153,8 +165,39 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAll();
 
-        _decorator.Entries.Should().Be(0);
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(0);
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task InvalidateAfterContactImport_DropsProjectionAndAllUserHoldings()
+    {
+        await SeedTwoUserHoldings();
+
+        _decorator.InvalidateAfterContactImport();
+
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public void InvalidateVendorEventSummary_RemovesMemoryCacheEntry()
+    {
+        const string eventId = "ev_test";
+        var key = CacheKeys.TicketEventSummary(eventId);
+        _memoryCache.Set(key, "cached-summary");
+
+        _decorator.InvalidateVendorEventSummary(eventId);
+
+        _memoryCache.TryGetValue(key, out _).Should().BeFalse();
     }
 
     private async Task SeedTwoUserHoldings()
@@ -172,8 +215,7 @@ public sealed class CachingTicketQueryServiceTests
         _ = await _decorator.GetTicketOrdersAsync();
         _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
         _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
-        _decorator.Entries.Should().BeGreaterThan(0);
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(2);
+        _inner.ClearReceivedCalls();
     }
 
     private async Task SeedOneUserHolding()
@@ -185,8 +227,7 @@ public sealed class CachingTicketQueryServiceTests
 
         _ = await _decorator.GetTicketOrdersAsync();
         _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
-        _decorator.Entries.Should().BeGreaterThan(0);
-        _decorator.UserHoldingsCacheStats.Entries.Should().Be(1);
+        _inner.ClearReceivedCalls();
     }
 
     private void SeedOrders(params TicketOrderInfo[] orders)

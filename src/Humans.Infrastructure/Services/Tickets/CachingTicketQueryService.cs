@@ -42,9 +42,6 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
     public ICacheStats OrdersCacheStats => _orders;
     public ICacheStats UserHoldingsCacheStats => _userHoldings;
 
-    /// <summary>Pass-through for tests that assert on the order projection entry count.</summary>
-    public int Entries => _orders.Entries;
-
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
         var orders = await GetOrdersAsync(ct);
@@ -155,7 +152,7 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
     private async Task<IReadOnlyDictionary<Guid, TicketOrderInfo>> GetOrdersAsync(
         CancellationToken ct = default)
     {
-        await _orders.EnsureWarmedPublicAsync(ct);
+        await _orders.EnsureWarmedForReadAsync(ct);
         return _orders.AsReadOnlyDictionary;
     }
 
@@ -178,7 +175,7 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
                 Set(order.Id, order);
         }
 
-        public Task EnsureWarmedPublicAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
+        internal Task EnsureWarmedForReadAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
     }
 
     private sealed class UserHoldingsCache(
@@ -188,7 +185,7 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
         ILogger logger)
         : TrackedCache<Guid, CachedUserTicketHoldings>("Tickets.UserHoldings", warmOnStartup: false, logger)
     {
-        public async ValueTask<UserTicketHoldings?> GetHoldingsAsync(Guid userId, CancellationToken ct)
+        internal async ValueTask<UserTicketHoldings?> GetHoldingsAsync(Guid userId, CancellationToken ct)
         {
             if (TryGet(userId, out var cached))
             {

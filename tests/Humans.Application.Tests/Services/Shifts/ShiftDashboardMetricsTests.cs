@@ -963,32 +963,8 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
                 Attendees: [])).ToList();
         }
 
-        public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
-        {
-            return await db.TicketOrders
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
-                .Select(o => o.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync(ct);
-        }
-
-        public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-        {
-            return await db.TicketOrders
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                            && o.PurchasedAt >= fromInclusive
-                            && o.PurchasedAt < toExclusive)
-                .Select(o => o.PurchasedAt)
-                .ToListAsync(ct);
-        }
-
         // Members below are unused by the dashboard compute paths under test.
-        public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() => throw new NotSupportedException();
-        public Task<HashSet<Guid>> GetAllMatchedUserIdsAsync() => throw new NotSupportedException();
-        public Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<TicketDashboardStats> GetDashboardStatsAsync() => throw new NotSupportedException();
-        public Task<decimal> GetGrossTicketRevenueAsync() => throw new NotSupportedException();
         public Task<BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) => throw new NotSupportedException();
         public Task<TicketSalesAggregates> GetSalesAggregatesAsync() => throw new NotSupportedException();
         public Task<List<string>> GetAvailableTicketTypesAsync() => throw new NotSupportedException();
@@ -998,12 +974,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(string? search, string? filterTeam, string? filterTier, string? filterTicketStatus, int page, int pageSize) => throw new NotSupportedException();
         public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync() => throw new NotSupportedException();
         public Task<List<OrderExportRow>> GetOrderExportDataAsync() => throw new NotSupportedException();
-        public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) => throw new NotSupportedException();
-        public Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId) => throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
-        public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) => throw new NotSupportedException();
-        public void InvalidateAfterContactImport() => throw new NotSupportedException();
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
