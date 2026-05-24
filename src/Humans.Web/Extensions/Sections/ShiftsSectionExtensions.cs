@@ -14,6 +14,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Infrastructure.Services.Shifts;
 using Humans.Web.Models.Shifts;
+using Humans.Web.Models.VolunteerTracking;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -48,6 +49,7 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
         services.AddScoped<IVolunteerTrackingExportService, Humans.Application.Services.Shifts.VolunteerTrackingExportService>();
+        services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
         // ShiftView — see #720. Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
         services.AddKeyedScoped<IShiftView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
