@@ -1546,6 +1546,10 @@ public sealed class TeamService(
         GoogleSyncOutboxEvent? outboxEvent = null;
         if (existingMember is null)
         {
+            if (definition.Team.IsSystemTeam)
+                throw new InvalidOperationException(
+                    "Cannot add members to system teams via role assignment; only existing members can be assigned to roles on system teams.");
+
             autoAddMember = new TeamMember
             {
                 Id = Guid.NewGuid(),
