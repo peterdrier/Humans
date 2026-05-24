@@ -124,6 +124,7 @@ public interface IRoleAssignmentService : IApplicationService
     /// not need to read <c>role_assignments</c> directly.
     /// </summary>
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default);
+
 }
 
 public sealed record RoleAssignmentSnapshot(

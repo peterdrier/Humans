@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +36,6 @@ namespace Humans.Infrastructure.Services.Legal;
 /// </para>
 /// </remarks>
 public sealed class CachingLegalDocumentSyncService(
-    ILegalDocumentRepository repository,
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingLegalDocumentSyncService> logger)
@@ -214,37 +212,40 @@ public sealed class CachingLegalDocumentSyncService(
         // stitched here via ITeamService so the cache warm path stays
         // free of the cross-domain nav (docs/sections/LegalAndConsent.md
         // "Touch-and-clean guidance").
-        var docs = await repository.GetActiveRequiredDocumentsAsync(ct);
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
+        var allDocs = await inner.GetActiveDocumentsAsync(ct);
+        var docs = allDocs
+            .Where(d => d.IsActive && d.IsRequired)
+            .ToList();
+
+        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
+        var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
+        var teams = teamIds.Count == 0
+            ? new Dictionary<Guid, Team>()
+            : await teamService.GetByIdsWithParentsAsync(teamIds, ct);
 
         // Resolve team display names via ITeamService — scoped, so
         // pulled through a fresh DI scope per-warm.
-        IReadOnlyDictionary<Guid, string> teamNames = await ResolveTeamNamesAsync(docs, ct);
-
         var versionIndex = new Dictionary<Guid, Guid>();
 
-        foreach (var doc in docs)
+        foreach (var info in docs)
         {
-            teamNames.TryGetValue(doc.TeamId, out var teamName);
-            var info = BuildLegalDocumentInfo(doc, teamName ?? string.Empty);
-            Set(doc.Id, info);
-            foreach (var v in info.Versions)
-                versionIndex[v.Id] = doc.Id;
+            var teamName = teams.TryGetValue(info.TeamId, out var team) ? team.Name : string.Empty;
+            var cacheInfo = new LegalDocumentInfo(
+                info.Id,
+                info.Name,
+                info.TeamId,
+                teamName,
+                info.LastSyncedAt,
+                info.Versions.OrderBy(v => v.EffectiveFrom).ToList());
+
+            Set(cacheInfo.Id, cacheInfo);
+            foreach (var v in cacheInfo.Versions)
+                versionIndex[v.Id] = cacheInfo.Id;
         }
 
         _versionToDocument = versionIndex;
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
-        IReadOnlyList<LegalDocument> docs, CancellationToken ct)
-    {
-        if (docs.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
-        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
-        return teams.ToDictionary(kv => kv.Key, kv => kv.Value.Name);
     }
 
     private static LegalDocumentInfo BuildLegalDocumentInfo(LegalDocument document, string teamName) =>

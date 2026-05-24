@@ -33,8 +33,6 @@ internal static class TicketsSectionExtensions
         services.AddSingleton<CachingTicketQueryService>();
         services.AddSingleton<ITicketQueryService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-
-        // Decorator owns IHostedService and warms the inner orders cache — see #587. Inner TrackedCache NOT hosted (would double-warm).
         services.AddHostedService(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
 

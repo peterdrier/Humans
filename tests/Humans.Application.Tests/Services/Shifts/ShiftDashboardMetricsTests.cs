@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Auth;
@@ -987,6 +988,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public void InvalidateAfterContactImport() => throw new NotSupportedException();
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrderInfosAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUserService(HumansDbContext db) : IUserService

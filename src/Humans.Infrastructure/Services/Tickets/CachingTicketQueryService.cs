@@ -2,9 +2,7 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,42 +13,10 @@ using NodaTime;
 namespace Humans.Infrastructure.Services.Tickets;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ITicketQueryService"/>. Composes
-/// a <see cref="TrackedCache{TKey,TValue}"/> for the per-order
-/// <see cref="TicketOrderInfo"/> projection (warmed at startup, refreshed
-/// wholesale on every section-level invalidation event — vendor sync, transfer
-/// approve, contact import apply, account-merge fold) plus an
-/// <see cref="IMemoryCache"/>-backed short-TTL per-user concern
-/// (<c>UserTicketCount</c> / <c>UserTicketHoldings</c>) evicted on
-/// transfer/merge but deliberately left to TTL on bulk sync.
+/// Singleton caching decorator for <see cref="ITicketQueryService"/>. It owns a
+/// per-order projection cache plus short-lived per-user entries.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Methods that previously read from short-TTL <see cref="IMemoryCache"/>
-/// entries in <see cref="Humans.Application.Services.Tickets.TicketQueryService"/>
-/// now answer from the in-memory projection. Methods whose results don't
-/// benefit from caching (paged admin lists, exports, dashboard stats, sales
-/// aggregates, sync-state probes) delegate to the inner via a keyed scope —
-/// matches <c>CachingTeamService</c>'s <c>WithInner</c> pattern.
-/// </para>
-/// <para>
-/// Implements <see cref="ITicketCacheInvalidator"/> alongside
-/// <see cref="ITicketQueryService"/> so the sync job and the account-merge
-/// fold can poke cache eviction through a narrow seam without taking a
-/// dependency on the full 28-method query surface.
-/// </para>
-/// <para>
-/// Composition (multiple inner caches with different shapes) forces the
-/// decorator to own <see cref="IHostedService"/> directly — can't multi-inherit
-/// <see cref="TrackedCache{TKey,TValue}"/>. <see cref="IHostedService.StartAsync"/>
-/// drives the orders cache's startup warmup; the inner
-/// <see cref="OrdersCache"/> is not registered as a hosted service itself
-/// (avoiding double-warmup). Mirrors <c>CachingShiftViewService</c> post-PR
-/// nobodies-collective/Humans#587.
-/// </para>
-/// </remarks>
 public sealed class CachingTicketQueryService(
-    ITicketRepository ticketRepository,
     IMemoryCache perUserCache,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTicketQueryService> logger) : ITicketQueryService, ITicketCacheInvalidator, IHostedService
@@ -59,22 +25,18 @@ public sealed class CachingTicketQueryService(
 
     private static readonly TimeSpan UserPerUserCacheTtl = TimeSpan.FromMinutes(5);
 
-    private readonly OrdersCache _orders = new(ticketRepository, logger);
+    private readonly OrdersCache _orders = new(
+        async ct =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
+            return await inner.GetTicketOrderInfosAsync(ct);
+        },
+        logger);
 
-    /// <summary>
-    /// Stats for the projection cache, surfaced on <c>/Admin/CacheStats</c>.
-    /// Composition pattern: the outer decorator is not itself a
-    /// <see cref="TrackedCache{TKey,TValue}"/>, so it explicitly exposes each
-    /// composed cache's stats.
-    /// </summary>
     public ICacheStats OrdersCacheStats => _orders;
 
-    /// <summary>Pass-through for tests that assert on the projection's entry count.</summary>
     public int Entries => _orders.Entries;
-
-    // ==========================================================================
-    // Projection-served reads (answer from the in-memory TicketOrderInfo dict)
-    // ==========================================================================
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
     {
@@ -89,9 +51,6 @@ public sealed class CachingTicketQueryService(
 
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
     {
-        // Hot path: count valid/checked-in attendees matched to the user from
-        // the projection. A buyer who purchased tickets for others should NOT
-        // count as having a ticket themselves — match on attendees only.
         var orders = await GetOrdersAsync();
 
         var matchedCount = orders.Values
@@ -100,38 +59,11 @@ public sealed class CachingTicketQueryService(
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback (email-matching) is business logic (§5a rule 4) — delegate
-        // to the inner. The _perUserCache wrapping in GetUserTicketCountAsync
-        // still caches the result for subsequent calls regardless of which
-        // path produced it.
         return await WithInner(inner => inner.GetUserTicketCountAsync(userId));
     }
 
-    public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
-    {
-        // Scope to the active vendor event: the orders projection holds every
-        // order ever pulled from TicketTailor, so an unfiltered walk would
-        // include historical ticket holders in current-event audiences /
-        // dashboard stats.
-        var syncState = await ticketRepository.GetSyncStateAsync();
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return [];
-        var currentEventId = syncState.VendorEventId;
-
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (!string.Equals(order.VendorEventId, currentEventId, StringComparison.Ordinal))
-                continue;
-            foreach (var a in order.Attendees)
-            {
-                if (a.MatchedUserId is { } uid && IsValidOrCheckedIn(a.Status))
-                    ids.Add(uid);
-            }
-        }
-        return ids;
-    }
+    public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() =>
+        WithInner(inner => inner.GetUserIdsWithTicketsAsync());
 
     public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
     {
@@ -168,10 +100,6 @@ public sealed class CachingTicketQueryService(
 
     public async Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default)
     {
-        // Mirror inner contract: years in which a matched ticket *order* was
-        // purchased (buyer-matched). Attendee-only matches are intentionally
-        // excluded so the admin audience-segmentation year picker stays
-        // consistent with TicketRepository.GetMatchedOrderYearsAsync.
         var orders = await GetOrdersAsync();
         return orders.Values
             .Where(o => o.MatchedUserId.HasValue)
@@ -194,11 +122,6 @@ public sealed class CachingTicketQueryService(
     }
 
     public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) =>
-        // Pass-through (§5a rule 4): the decision of "which event is current"
-        // and the payment/attendee-status filtering are business logic owned
-        // by the inner service. Caching the answer in the projection would
-        // require the decorator to track the active vendor-event id and
-        // reproduce the inner's filtering — both belong on the inner.
         WithInner(inner => inner.HasCurrentEventTicketAsync(userId, ct));
 
     public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
@@ -226,10 +149,6 @@ public sealed class CachingTicketQueryService(
         var orders = await GetOrdersAsync();
         var orderCount = orders.Values.Count(o => o.MatchedUserId == userId);
 
-        // Attendee visibility cascade: an order's attendees are visible to its
-        // buyer; an attendee's matched user always sees their own. The two
-        // sets can overlap. Mirror TicketAttendeeOwnership.IsCurrentOwner:
-        // matched attendee wins, falls back to the buyer for unmatched.
         var visibleAttendees = orders.Values
             .Where(o => o.MatchedUserId == userId
                 || o.Attendees.Any(a => a.MatchedUserId == userId))
@@ -286,11 +205,6 @@ public sealed class CachingTicketQueryService(
             .Select(o => o.PurchasedAt)
             .ToList();
     }
-
-    // ==========================================================================
-    // Pass-through (no caching — paged admin lists, exports, aggregates, sync
-    // state probes; all delegate to the inner scoped service).
-    // ==========================================================================
 
     public Task<List<string>> GetAvailableTicketTypesAsync() =>
         WithInner(inner => inner.GetAvailableTicketTypesAsync());
@@ -352,14 +266,11 @@ public sealed class CachingTicketQueryService(
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrderDriftAsync(ct));
 
-    // ==========================================================================
-    // Invalidation seams (ITicketQueryService + ITicketCacheInvalidator)
-    //
-    // Bulk drops use TrackedCache.Clear(), which flips the warmed flag to
-    // false; the next read calls EnsureWarmedAsync via GetOrdersAsync and the
-    // base coalesces concurrent warmers. No bespoke lock needed — the base
-    // owns the warmup semaphore.
-    // ==========================================================================
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrderInfosAsync(CancellationToken ct = default)
+    {
+        await _orders.EnsureWarmedPublicAsync(ct);
+        return _orders.AsReadOnlyDictionary.Values.ToList();
+    }
 
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
@@ -389,26 +300,6 @@ public sealed class CachingTicketQueryService(
     public void InvalidateVendorEventSummary(string vendorEventId) =>
         perUserCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
 
-    // ==========================================================================
-    // GDPR contributor — the export shape mirrors the inner exactly. Routes
-    // through the inner because Application registers the inner as the
-    // IUserDataContributor (the contributor surface is one entry per section,
-    // and the inner owns the export shape).
-    // ==========================================================================
-
-    // (Not implemented here — the inner TicketQueryService still implements
-    // IUserDataContributor and is registered separately at DI time. See
-    // TicketsSectionExtensions.)
-
-    // ==========================================================================
-    // Warmup + projection loading
-    // ==========================================================================
-
-    /// <summary>
-    /// Composition forces the decorator to own <see cref="IHostedService"/>
-    /// directly. Drives the inner orders cache's startup warmup; the inner
-    /// is not registered as a hosted service (would double-warm).
-    /// </summary>
     Task IHostedService.StartAsync(CancellationToken ct) =>
         ((IHostedService)_orders).StartAsync(ct);
 
@@ -424,41 +315,12 @@ public sealed class CachingTicketQueryService(
     private static bool IsValidOrCheckedIn(TicketAttendeeStatus status) =>
         status == TicketAttendeeStatus.Valid || status == TicketAttendeeStatus.CheckedIn;
 
-    // Mirror TicketAttendeeOwnership.IsCurrentOwner against the projection
-    // shape (TicketOrderInfo / TicketAttendeeInfo instead of entities).
-    // Matched attendee wins; unmatched attendees fall back to the order buyer.
     private static bool IsCurrentOwner(TicketOrderInfo order, TicketAttendeeInfo attendee, Guid userId)
     {
         if (attendee.MatchedUserId is { } matchedUid)
             return matchedUid == userId;
         return order.MatchedUserId == userId;
     }
-
-    private static TicketOrderInfo Project(TicketOrder o) => new(
-        Id: o.Id,
-        VendorOrderId: o.VendorOrderId,
-        BuyerName: o.BuyerName,
-        BuyerEmail: o.BuyerEmail,
-        TotalAmount: o.TotalAmount,
-        Currency: o.Currency,
-        DiscountCode: o.DiscountCode,
-        PaymentStatus: o.PaymentStatus,
-        VendorEventId: o.VendorEventId,
-        PurchasedAt: o.PurchasedAt,
-        MatchedUserId: o.MatchedUserId,
-        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
-            Id: a.Id,
-            VendorTicketId: a.VendorTicketId,
-            AttendeeName: a.AttendeeName,
-            AttendeeEmail: a.AttendeeEmail,
-            TicketTypeName: a.TicketTypeName,
-            Price: a.Price,
-            Status: a.Status,
-            MatchedUserId: a.MatchedUserId)).ToList());
-
-    // ==========================================================================
-    // Inner-scope resolver
-    // ==========================================================================
 
     private async Task<TResult> WithInner<TResult>(Func<ITicketQueryService, Task<TResult>> action)
     {
@@ -467,34 +329,18 @@ public sealed class CachingTicketQueryService(
         return await action(inner);
     }
 
-    // ==========================================================================
-    // Inner projection cache (composition).
-    //
-    // Private nested class because the warmup loader needs to override
-    // TrackedCache.WarmAllAsync (protected virtual), and exposing the
-    // protected EnsureWarmedAsync entry-point requires a subclass anyway.
-    // Keeping it nested keeps the projection shape + load query co-located
-    // with the decorator that owns the projection's invalidation seam.
-    // ==========================================================================
-    private sealed class OrdersCache(ITicketRepository repository, ILogger logger)
+    private sealed class OrdersCache(
+        Func<CancellationToken, Task<IReadOnlyList<TicketOrderInfo>>> loadOrders,
+        ILogger logger)
         : TrackedCache<Guid, TicketOrderInfo>("Tickets.Orders", warmOnStartup: true, logger)
     {
-        /// <summary>
-        /// Bulk-loads every order with attendees, projected into
-        /// <see cref="TicketOrderInfo"/>. Driven by
-        /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup
-        /// and again on demand after any <c>Clear()</c> (post-write re-warm
-        /// pattern). The base owns concurrency coalescing via the warm
-        /// semaphore.
-        /// </summary>
         protected override async Task WarmAllAsync(CancellationToken ct)
         {
-            var orders = await repository.GetAllOrdersWithAttendeesAsync(ct);
+            var orders = await loadOrders(ct);
             foreach (var order in orders)
-                Set(order.Id, Project(order));
+                Set(order.Id, order);
         }
 
-        /// <summary>Public seam for the outer decorator's load-all read path.</summary>
         public Task EnsureWarmedPublicAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
     }
 }

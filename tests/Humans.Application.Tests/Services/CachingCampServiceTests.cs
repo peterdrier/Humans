@@ -32,18 +32,37 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
     public CachingCampServiceTests()
     {
         _innerSubstitute = Substitute.For<ICampService>();
+        var repo = new CampRepository(DbFactory);
+        _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
+        _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ci => LoadCampsForYearAsync(ci.Arg<int>(), ci.Arg<CancellationToken>()));
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
             (_, _) => _innerSubstitute);
         _serviceProvider = services.BuildServiceProvider();
 
-        var repo = new CampRepository(DbFactory);
         _service = new CachingCampService(
-            repo,
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             Clock,
             NullLogger<CachingCampService>.Instance);
+
+        async Task<CampSettingsInfo> LoadSettingsAsync(CancellationToken ct)
+        {
+            var settings = await repo.GetSettingsReadOnlyAsync(ct);
+            return new CampSettingsInfo(
+                settings?.PublicYear ?? Clock.GetCurrentInstant().InUtc().Year,
+                settings?.OpenSeasons ?? [],
+                settings?.EeStartDate);
+        }
+
+        async Task<IReadOnlyList<CampInfo>> LoadCampsForYearAsync(int year, CancellationToken ct)
+        {
+            var camps = await repo.GetCampsWithLeadsForYearAsync(year, statusFilter: null, ct);
+            return camps.Select(ProjectCampInfo).ToList();
+        }
+
     }
 
     public override void Dispose()
@@ -139,6 +158,7 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         await SeedCampWithSeasonAsync(year: 2026);
 
         _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
         _ = await _service.GetCampsForYearAsync(2026);
 
         await _innerSubstitute
@@ -217,4 +237,35 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         });
         await Db.SaveChangesAsync();
     }
+
+    private static CampInfo ProjectCampInfo(Camp camp) => new(
+        camp.Id,
+        camp.Slug,
+        camp.ContactEmail,
+        camp.ContactPhone,
+        camp.IsSwissCamp,
+        camp.TimesAtNowhere,
+        camp.Seasons.Select(ProjectSeasonInfo).ToList());
+
+    private static CampSeasonInfo ProjectSeasonInfo(CampSeason season) => new(
+        season.Id,
+        season.CampId,
+        season.Camp?.Slug ?? string.Empty,
+        season.Year,
+        season.NameLockDate,
+        season.Name,
+        season.BlurbShort,
+        season.Languages,
+        season.Vibes.ToList(),
+        season.Status,
+        season.AcceptingMembers,
+        season.KidsWelcome,
+        season.AdultPlayspace,
+        season.MemberCount,
+        season.SoundZone,
+        season.SpaceRequirement,
+        season.ElectricalGrid,
+        season.EeSlotCount,
+        season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry),
+        season.Members.Count(m => m.Status == CampMemberStatus.Active));
 }

@@ -15,8 +15,8 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Application.Services.Calendar;
 
 /// <summary>
-/// Inner service behind <c>CachingCalendarService</c> (§15). Mutations call the repo and return;
-/// the decorator handles invalidation. Owning-team names resolved via <see cref="ITeamServiceRead"/> (§6b).
+/// Calendar application service. Owns repository-backed calendar reads and
+/// mutations. Owning-team names resolve via <see cref="ITeamServiceRead"/> (§6b).
 /// </summary>
 public sealed class CalendarService(
     ICalendarRepository repo,
@@ -51,6 +51,18 @@ public sealed class CalendarService(
     {
         var ev = await repo.GetEventByIdAsync(id, ct);
         return ev is null ? null : ToDetail(ev);
+    }
+
+    public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
+    {
+        var events = await repo.GetAllAsync(ct);
+        return events.Select(CalendarOccurrenceExpander.ToInfo).ToList();
+    }
+
+    public async Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default)
+    {
+        var ev = await repo.GetEventByIdAsync(id, ct);
+        return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
     }
 
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)

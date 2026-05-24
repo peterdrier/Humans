@@ -23,8 +23,7 @@ namespace Humans.Application.Interfaces.Calendar;
 /// is keyed by the <em>parent</em> event id — these writes evict the parent
 /// <see cref="CalendarEventInfo"/> entry, NOT a separate exception row. The
 /// next read repopulates the parent (with its refreshed <see cref="Exceptions"/>
-/// list) from the repository. Documented at the decorator call site
-/// (<c>CachingCalendarService.InvalidateEvent</c>).
+/// list) through <see cref="ICalendarServiceRead.GetEventInfoAsync"/>.
 /// </para>
 /// <para>
 /// Future load: an iCal feed endpoint (planned — <c>User.ICalToken</c> already
