@@ -11,7 +11,7 @@ public class User : IdentityUser<Guid>
 {
     /// <summary>Legacy Identity column — fallback only. Render via UserInfo.BurnerName / &lt;vc:human&gt;.</summary>
     [PersonalData]
-    [Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> per memory/architecture/burnername-is-the-display-name.md. Legitimate consumers: Identity claims, repository merge/purge/delete labels, GDPR export, debug screens.", DiagnosticId = "HUM_USER_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")]
+    [Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> per memory/architecture/burnername-is-the-display-name.md. Legitimate consumers: creation-time BurnerName fallback, repository merge/purge/delete labels, GDPR export, debug screens.", DiagnosticId = "HUM_USER_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")]
     public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>Preferred language code (e.g., "en", "es"). Defaults to English.</summary>

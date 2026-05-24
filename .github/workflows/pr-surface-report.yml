@@ -34,6 +34,8 @@ jobs:
           python3 scripts/pr-surface-report.py \
             --base "${{ github.event.pull_request.base.sha }}" \
             --head "pr-surface-head" \
+            --base-label "${{ github.event.pull_request.base.sha }}" \
+            --head-label "${{ github.event.pull_request.head.sha }}" \
             --output pr-surface-report.md \
             --json-output pr-surface-report.json
 

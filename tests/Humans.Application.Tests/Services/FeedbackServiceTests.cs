@@ -114,7 +114,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task SubmitFeedbackAsync_CreatesReport()
     {
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, DisplayName = "Test", Email = "t@t.com" });
+        SeedUser(userId, "Test").Email = "t@t.com";
         await Db.SaveChangesAsync();
 
         var report = await _service.SubmitFeedbackAsync(
@@ -134,7 +134,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task SubmitFeedbackAsync_SetsAdditionalContext()
     {
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
+        SeedUser(userId, "U").Email = "u@test.com";
         await Db.SaveChangesAsync();
 
         var report = await _service.SubmitFeedbackAsync(
@@ -148,7 +148,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task SubmitUserFeedbackAsync_BuildsSortedRoleContext()
     {
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
+        SeedUser(userId, "U").Email = "u@test.com";
         await Db.SaveChangesAsync();
 
         var report = await _service.SubmitUserFeedbackAsync(
@@ -203,7 +203,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task GetFeedbackListAsync_ReturnsReporterInfo()
     {
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, DisplayName = "Alice", Email = "a@a.com" });
+        SeedUser(userId, "Alice").Email = "a@a.com";
         await Db.SaveChangesAsync();
 
         await _service.SubmitFeedbackAsync(
@@ -219,11 +219,9 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetFeedbackListAsync_ReporterName_PrefersBurnerName()
     {
-        // BurnerName-is-the-display-name rule: when a Profile exists,
-        // ReporterName must render the BurnerName, not the legacy User.DisplayName.
+        // BurnerName-is-the-display-name rule: ReporterName must render Profile.BurnerName.
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, DisplayName = "Legal Name", Email = "a@a.com" });
-        Db.Profiles.Add(new Profile { Id = Guid.NewGuid(), UserId = userId, BurnerName = "Sparkle" });
+        SeedUser(userId, "Sparkle").Email = "a@a.com";
         await Db.SaveChangesAsync();
 
         await _service.SubmitFeedbackAsync(
@@ -239,14 +237,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task PostMessageAsync_AdminMessage_SetsLastAdminMessageAt_And_SendsEmail()
     {
         var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            Email = "reporter@test.com",
-            DisplayName = "Reporter",
-            PreferredLanguage = "en"
-        };
-        Db.Users.Add(user);
+        SeedUser(userId, "Reporter").Email = "reporter@test.com";
 
         var report = new FeedbackReport
         {
@@ -282,12 +273,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task GetFeedbackByIdForViewerAsync_NonReporter_ReturnsNull()
     {
         var reporterId = Guid.NewGuid();
-        Db.Users.Add(new User
-        {
-            Id = reporterId,
-            Email = "reporter@test.com",
-            DisplayName = "Reporter"
-        });
+        SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
         Db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
@@ -313,8 +299,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task PostMessageAsync_ReporterMessage_SetsLastReporterMessageAt_NoEmail()
     {
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, Email = "reporter@test.com", DisplayName = "Reporter" };
-        Db.Users.Add(user);
+        SeedUser(userId, "Reporter").Email = "reporter@test.com";
 
         var report = new FeedbackReport
         {
@@ -347,8 +332,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     public async Task GetActionableCountAsync_CountsOpenWithNoReply_And_AwaitingAdmin()
     {
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, Email = "u@test.com", DisplayName = "U" };
-        Db.Users.Add(user);
+        SeedUser(userId, "U").Email = "u@test.com";
 
         var now = Clock.GetCurrentInstant();
 
@@ -405,8 +389,8 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var bobId = Guid.NewGuid();
         var aliceId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = bobId, DisplayName = "Bob", Email = "b@b.com" });
-        Db.Users.Add(new User { Id = aliceId, DisplayName = "Alice", Email = "a@a.com" });
+        SeedUser(bobId, "Bob").Email = "b@b.com";
+        SeedUser(aliceId, "Alice").Email = "a@a.com";
         var now = Clock.GetCurrentInstant();
         Db.FeedbackReports.Add(new FeedbackReport
         {
@@ -455,7 +439,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)
     {
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, DisplayName = "Test", Email = $"{userId}@test.com" });
+        SeedUser(userId, "Test").Email = $"{userId}@test.com";
         await Db.SaveChangesAsync();
 
         var report = await _service.SubmitFeedbackAsync(

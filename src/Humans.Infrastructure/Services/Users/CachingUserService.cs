@@ -563,12 +563,13 @@ public sealed class CachingUserService(
 
     private static UserInfo WithUserFields(UserInfo current, User user)
     {
-#pragma warning disable CS0618 // User.DisplayName / ProfilePictureUrl are legacy user-column mirrors.
+#pragma warning disable HUM_USER_DISPLAYNAME // User.DisplayName is a legacy user-column mirror.
+        var legacyDisplayName = user.DisplayName;
         return current with
         {
-            BurnerName = ResolveBurnerName(user.DisplayName, current.Profile),
+            BurnerName = ResolveBurnerName(legacyDisplayName, current.Profile),
             IsGdprAnonymized = string.Equals(
-                user.DisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
+                legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
             PreferredLanguage = user.PreferredLanguage,
             FallbackPictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
@@ -588,7 +589,7 @@ public sealed class CachingUserService(
             MergedAt = user.MergedAt,
             IdentityEmailColumn = user.IdentityEmailColumn,
         };
-#pragma warning restore CS0618
+#pragma warning restore HUM_USER_DISPLAYNAME
     }
 
     private static string ResolveBurnerName(string legacyDisplayName, ProfileInfo? profile) =>
@@ -670,7 +671,7 @@ public sealed class CachingUserService(
     /// </summary>
     private static User RehydrateUser(UserInfo info)
     {
-#pragma warning disable CS0618 // Rehydrated legacy User.DisplayName now carries the resolved BurnerName fallback.
+#pragma warning disable HUM_USER_DISPLAYNAME // Rehydrated legacy User.DisplayName now carries the resolved BurnerName fallback.
         var user = new User
         {
             Id = info.Id,
@@ -696,7 +697,7 @@ public sealed class CachingUserService(
             MergedAt = info.MergedAt,
             Email = info.IdentityEmailColumn,
         };
-#pragma warning restore CS0618
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         foreach (var e in info.UserEmails)
         {

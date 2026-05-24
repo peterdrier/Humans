@@ -48,6 +48,14 @@ RUN groupadd -r appuser && useradd -r -g appuser -s /sbin/nologin appuser
 # Copy published files
 COPY --from=build /app/publish .
 
+# Ship the agent's grounding docs. These are read at runtime from
+# ContentRootPath/docs/{sections,features} by AgentSectionDocReader and
+# AgentFeatureSpecReader; they are NOT part of `dotnet publish` output, so copy
+# them explicitly or the agent's fetch_section_guide / fetch_feature_spec tools
+# fail silently in the container (the index also ships empty).
+COPY docs/sections/ ./docs/sections/
+COPY docs/features/ ./docs/features/
+
 # Set ownership
 RUN chown -R appuser:appuser /app
 

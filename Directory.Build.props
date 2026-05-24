@@ -41,7 +41,8 @@
           GDPR export, dev seeders, email greetings, admin merge UI) remain
           until UserInfo handles are threaded through every Application-layer
           service entry point per issue #691. Kept visible as warnings (not
-          hidden via NoWarn) so new render-path violations stay surfaced.
+          hidden via NoWarn in production projects) so new render-path
+          violations stay surfaced.
         - HUM_USER_GetById: [Obsolete] marker on IUserService.GetByIdAsync.
           Callers are being migrated to GetUserInfoAsync; remaining sites
           (e.g. CampaignService.cs:550 private-helper overload) ride the

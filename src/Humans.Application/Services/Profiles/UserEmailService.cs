@@ -105,8 +105,16 @@ public sealed class UserEmailService(
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        var primaryEmail = await GetPrimaryEmailAsync(userId, cancellationToken);
-        if (EmailNormalization.EmailsMatch(email, primaryEmail))
+        // see nobodies-collective/Humans#758 — reject only when the address is held as a
+        // VERIFIED UserEmail row (the real sign-in target). The prior check used
+        // GetPrimaryEmailAsync, which falls back to the legacy User.Email column when no
+        // verified row exists — so a user who removed their primary row by mistake could not
+        // re-add the same address ("This is already your sign-in email"). Existing rows
+        // (verified or not) are already rejected above by ExistsForUserAsync.
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        var hasVerifiedRowAtAddress = info?.UserEmails
+            .Any(e => e.IsVerified && EmailNormalization.EmailsMatch(email, e.Email)) ?? false;
+        if (hasVerifiedRowAtAddress)
             throw new ValidationException("This is already your sign-in email.");
 
         var now = clock.GetCurrentInstant();
@@ -313,7 +321,7 @@ public sealed class UserEmailService(
             return false;
         }
 
-        // see nobodies-collective/Humans#758 - block removal of the primary email.
+        // see nobodies-collective/Humans#758 — block removal of the primary email.
         // The user must promote another verified email to primary first, otherwise they
         // can accidentally delete their sign-in/notification target (the original incident).
         if (email.IsPrimary)
@@ -337,13 +345,13 @@ public sealed class UserEmailService(
             }
         }
 
-        // see nobodies-collective/Humans#758 - block removal of a ticket-linked email.
+        // see nobodies-collective/Humans#758 — block removal of a ticket-linked email.
         // Tickets are matched to users by email address; removing the linked address risks
         // un-matching the user's event ticket on the next vendor re-sync.
         if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
         {
             throw new ValidationException(
-                "Cannot remove this email - it is linked to your event ticket. " +
+                "Cannot remove this email — it is linked to your event ticket. " +
                 "Removing it could disconnect your ticket. Contact an admin if you need to change it.");
         }
 
@@ -354,24 +362,6 @@ public sealed class UserEmailService(
         await userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return true;
-    }
-
-    private async Task<bool> IsAddressTicketLinkedAsync(
-        Guid userId, string address, CancellationToken cancellationToken)
-    {
-        var orders = await TicketServiceRead.GetTicketOrdersAsync(cancellationToken);
-        foreach (var order in orders)
-        {
-            if (order.MatchedUserId == userId
-                && EmailNormalization.EmailsMatch(address, order.BuyerEmail))
-                return true;
-
-            if (order.Attendees.Any(a => a.MatchedUserId == userId
-                    && EmailNormalization.EmailsMatch(address, a.AttendeeEmail)))
-                return true;
-        }
-
-        return false;
     }
 
     public Task RemoveAllEmailsAsync(
@@ -682,6 +672,28 @@ public sealed class UserEmailService(
             return $"{normalizedEmail[..^"@googlemail.com".Length]}@gmail.com";
 
         return null;
+    }
+
+    // see nobodies-collective/Humans#758 — true when the address matches one of the user's
+    // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
+    // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
+    private async Task<bool> IsAddressTicketLinkedAsync(
+        Guid userId, string address, CancellationToken cancellationToken)
+    {
+        var orders = await TicketServiceRead.GetTicketOrdersAsync(cancellationToken);
+
+        foreach (var order in orders)
+        {
+            if (order.MatchedUserId == userId
+                && EmailNormalization.EmailsMatch(address, order.BuyerEmail))
+                return true;
+
+            if (order.Attendees.Any(a => a.MatchedUserId == userId
+                    && EmailNormalization.EmailsMatch(address, a.AttendeeEmail)))
+                return true;
+        }
+
+        return false;
     }
 
     // Invariant: exactly one IsPrimary=true verified row per user. Winner: @nobodies.team > existing primary > most-recent.
