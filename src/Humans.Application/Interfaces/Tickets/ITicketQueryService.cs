@@ -223,6 +223,12 @@ public interface ITicketQueryService : IApplicationService
     /// edits without resync, refunds, etc.).
     /// </summary>
     Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the compact all-orders projection used by section-level ticket
+    /// read paths.
+    /// </summary>
+    Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrderInfosAsync(CancellationToken ct = default);
 }
 
 /// <summary>
