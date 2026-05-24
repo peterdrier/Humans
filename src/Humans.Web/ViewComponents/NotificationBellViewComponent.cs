@@ -1,39 +1,28 @@
-using Humans.Application;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 
 namespace Humans.Web.ViewComponents;
 
-public class NotificationBellViewComponent(INotificationInboxService notificationInboxService, IMemoryCache cache)
+public class NotificationBellViewComponent(INotificationInboxService notificationInboxService)
     : ViewComponent
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
-
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var userId = GetUserId();
         if (userId is null)
             return View(new NotificationBadgeViewModel());
 
-        var cacheKey = CacheKeys.NotificationBadgeCounts(userId.Value);
+        var (actionableCount, informationalCount) = await notificationInboxService.GetUnreadBadgeCountsAsync(userId.Value);
 
-        var model = await cache.GetOrCreateAsync(cacheKey, async entry =>
+        var model = new NotificationBadgeViewModel
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            ActionableUnreadCount = actionableCount,
+            InformationalUnreadCount = informationalCount,
+        };
 
-            var (actionableCount, informationalCount) = await notificationInboxService.GetUnreadBadgeCountsAsync(userId.Value);
-
-            return new NotificationBadgeViewModel
-            {
-                ActionableUnreadCount = actionableCount,
-                InformationalUnreadCount = informationalCount,
-            };
-        });
-
-        return View(model!);
+        return View(model);
     }
 
     private Guid? GetUserId()

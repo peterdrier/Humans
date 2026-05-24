@@ -170,9 +170,17 @@ public sealed class NotificationInboxService(
             InvalidateBadgeCaches([userId]);
     }
 
+    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
+
     public Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default) =>
-        repo.GetUnreadBadgeCountsAsync(userId, ct);
+        cache.GetOrCreateAsync(
+            CacheKeys.NotificationBadgeCounts(userId),
+            entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
+                return repo.GetUnreadBadgeCountsAsync(userId, ct);
+            })!;
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

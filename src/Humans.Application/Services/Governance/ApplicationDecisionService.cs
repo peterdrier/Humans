@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
@@ -36,6 +37,7 @@ public sealed class ApplicationDecisionService(
     INavBadgeCacheInvalidator navBadge,
     INotificationMeterCacheInvalidator notificationMeter,
     IVotingBadgeCacheInvalidator votingBadge,
+    IMemoryCache cache,
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IApplicationDecisionService, IUserDataContributor, IUserMerge
 {
@@ -585,9 +587,17 @@ public sealed class ApplicationDecisionService(
         return new ApplicationDecisionResult(true);
     }
 
+    private static readonly TimeSpan VotingBadgeCacheDuration = TimeSpan.FromMinutes(2);
+
     public Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default) =>
-        repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
+        cache.GetOrCreateAsync(
+            CacheKeys.VotingBadge(boardMemberUserId),
+            entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = VotingBadgeCacheDuration;
+                return repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
+            })!;
 
     public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
         repository.GetAdminStatsAsync(ct);

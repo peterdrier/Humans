@@ -58,13 +58,7 @@ public class NavBadgesViewComponent(
         if (!Guid.TryParse(claim, out var currentUserId))
             return 0;
 
-        var cacheKey = CacheKeys.VotingBadge(currentUserId);
-        return await cache.GetOrCreateAsync(cacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-
-            return await applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
-        });
+        return await applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
     }
 
     /// <summary>
