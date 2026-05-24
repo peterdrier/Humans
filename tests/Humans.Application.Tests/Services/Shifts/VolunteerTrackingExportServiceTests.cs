@@ -312,6 +312,33 @@ public sealed class VolunteerTrackingExportServiceTests
         model.Groups[1].Humans.Select(h => h.PlayaName).Should().Equal("Carol");
     }
 
+    private static readonly Guid Zara = Guid.Parse("d0000000-0000-0000-0000-000000000004");
+
+    [HumansFact]
+    public async Task WithinGroup_OrderedByArrivalDayAscending_TieBreakByName()
+    {
+        // Same team. Zara's first shift is Day2 → arrives Day1. Alice's first shift is Day4 → arrives Day3.
+        // Even though "Alice" sorts before "Zara" alphabetically, Zara arrives earlier so appears first.
+        var shifts = new[]
+        {
+            ShiftRow(Zara,  TeamA, "TeamA", Day1.PlusDays(1), 9, 17),
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(3), 9, 17),
+        };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA")],
+            playaNames: new Dictionary<Guid, string>
+            {
+                [Alice] = "Alice", [Zara] = "Zara",
+            });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        model.Groups.Should().HaveCount(1);
+        model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Zara", "Alice");
+    }
+
     /// <summary>Helper: build a ConfirmedShiftRow with start/end specified as event-local hours on a given local date.</summary>
     private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, string teamName, LocalDate localDate, int startHourLocal, int endHourLocal)
     {

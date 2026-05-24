@@ -98,7 +98,8 @@ public sealed class VolunteerTrackingExportService(
             {
                 var (teamId, teamName) = g.Key;
                 var humans = g.Select(r => r.Value)
-                    .OrderBy(h => h.PlayaName, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(h => firstShiftDay[h.UserId])
+                    .ThenBy(h => h.PlayaName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 return new DepartmentGroup(teamId, teamName, TeamPalette.ColorFor(teamId), humans);
             })
