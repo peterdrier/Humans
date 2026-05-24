@@ -21,8 +21,18 @@ public sealed class VolunteerTrackingXlsxBuilder
         sheet.SheetView.FreezeRows(6);
         sheet.SheetView.FreezeColumns(1);
 
-        var nextRow = WriteGroupsAndHumans(sheet, model, startRow: 7);
-        WriteTotalsRow(sheet, model, totalsRow: nextRow);
+        if (model.Groups.Count == 0)
+        {
+            sheet.Cell(7, 1).Value = "No confirmed humans in this range.";
+            sheet.Cell(7, 1).Style.Font.Italic = true;
+        }
+        else
+        {
+            var nextRow = WriteGroupsAndHumans(sheet, model, startRow: 7);
+            WriteTotalsRow(sheet, model, totalsRow: nextRow);
+        }
+
+        sheet.Columns().AdjustToContents();
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);

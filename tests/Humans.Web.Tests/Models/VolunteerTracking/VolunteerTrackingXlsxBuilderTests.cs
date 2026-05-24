@@ -157,6 +157,21 @@ public sealed class VolunteerTrackingXlsxBuilderTests
         sheet.Cell("B10").Style.Font.Bold.Should().BeTrue();
     }
 
+    [HumansFact]
+    public void EmptyRoster_RendersHelpfulHintRow_AndColumnsAutoFit()
+    {
+        var days = new[] { new LocalDate(2026, 7, 7) };
+        var model = NewEmptyModel(days);
+        var sut = new VolunteerTrackingXlsxBuilder();
+        using var workbook = new XLWorkbook(new MemoryStream(sut.Build(model).Content));
+        var sheet = workbook.Worksheets.First();
+
+        sheet.Cell("A7").GetString().Should().Be("No confirmed humans in this range.");
+        sheet.Cell("B7").GetString().Should().BeEmpty();      // no stray totals row
+        sheet.Cell("A8").GetString().Should().BeEmpty();      // no totals row at all when empty
+        sheet.Column(1).Width.Should().BeGreaterThan(0);
+    }
+
     private static VolunteerExportModel NewEmptyModel(IReadOnlyList<LocalDate> days) => new(
         MethodologyBlurb: "M.",
         FilterSummary: "F.",
