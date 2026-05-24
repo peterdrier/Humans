@@ -1794,10 +1794,18 @@ public sealed class TeamService(
     {
         var memberships = await repo.GetAllMembershipsForUserAsync(userId, ct);
         var joinRequests = await repo.GetAllJoinRequestsForUserAsync(userId, ct);
+        var teamIds = memberships.Select(tm => tm.TeamId)
+            .Concat(joinRequests.Select(tjr => tjr.TeamId))
+            .Distinct()
+            .ToList();
+        var teamsById = await repo.GetByIdsWithParentsAsync(teamIds, ct);
+
+        string GetTeamName(Guid teamId) =>
+            teamsById.TryGetValue(teamId, out var team) ? team.Name : string.Empty;
 
         var membershipSlice = new UserDataSlice(GdprExportSections.TeamMemberships, memberships.Select(tm => new
         {
-            TeamName = tm.Team.Name,
+            TeamName = GetTeamName(tm.TeamId),
             tm.Role,
             JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
             LeftAt = tm.LeftAt.ToInvariantInstantString(),
@@ -1808,16 +1816,14 @@ public sealed class TeamService(
             })
         }).ToList());
 
-#pragma warning disable CS0618 // TeamJoinRequest.Team — in-section nav read for GDPR export.
         var joinRequestSlice = new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
         {
-            TeamName = tjr.Team.Name,
+            TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
             tjr.Message,
             RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
             ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
         }).ToList());
-#pragma warning restore CS0618
 
         return [membershipSlice, joinRequestSlice];
     }

@@ -15,7 +15,7 @@ namespace Humans.Application.Tests.Architecture;
 /// cache-migration plan task T-08. Pins the invariants: <c>CalendarService</c>
 /// lives in Application, goes through <see cref="ICalendarRepository"/>,
 /// never injects <c>DbContext</c>, and resolves owning-team display names via
-/// <see cref="ITeamService"/> rather than the <c>CalendarEvent.OwningTeam</c>
+/// <see cref="ITeamServiceRead"/> rather than the <c>CalendarEvent.OwningTeam</c>
 /// cross-domain nav. The read surface is DTO-only and cache-backed.
 /// </summary>
 public class CalendarArchitectureTests

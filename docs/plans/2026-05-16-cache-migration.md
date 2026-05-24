@@ -170,6 +170,12 @@ Known sites (from User+Profile retrospective):
 
 **Coordination**: None.
 
+**2026-05-24 PR #757 note**: the ticket-order projection cache remains live under
+the §15 keyed-inner pattern. `CachingTicketQueryService` warms
+`TicketOrderInfo` through the normal `ITicketQueryService.GetTicketOrderInfosAsync`
+read method; it does not inject `ITicketRepository` and does not expose a
+cache-named `ForCache` method.
+
 ---
 
 ### T-08 · Build cache for Calendar section
@@ -185,6 +191,13 @@ Known sites (from User+Profile retrospective):
 **Files**: `src/Humans.Application/Services/Calendar/CalendarService.cs`, new decorator, `src/Humans.Web/Extensions/Sections/CalendarSectionExtensions.cs`.
 
 **Coordination**: When the iCal feed endpoint lands (no current code path; `User.ICalToken` exists on UserInfo but is unused), this cache will absorb its read load — design with that in mind.
+
+**2026-05-24 PR #757 note**: the Calendar cache remains live under the §15
+keyed-inner pattern. `CachingCalendarService` exposes the DTO-only
+`ICalendarServiceRead` surface for reads and warms `CalendarEventInfo` through
+normal inner service methods (`GetAllEventInfosAsync` / `GetEventInfoAsync`);
+it does not inject `ICalendarRepository` and does not expose cache-named
+`ForCache` methods.
 
 ---
 
