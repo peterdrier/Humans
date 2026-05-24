@@ -16,17 +16,20 @@ namespace Humans.Web.Controllers;
 [Route("Calendar")]
 public class CalendarController : HumansControllerBase
 {
+    private readonly ICalendarServiceRead _calendarRead;
     private readonly ICalendarService _calendar;
     private readonly ITeamServiceRead _teams;
     private readonly IClock _clock;
 
     public CalendarController(
         IUserServiceRead userService,
+        ICalendarServiceRead calendarRead,
         ICalendarService calendar,
         ITeamServiceRead teams,
         IClock clock)
         : base(userService)
     {
+        _calendarRead = calendarRead;
         _calendar = calendar;
         _teams = teams;
         _clock = clock;
@@ -49,7 +52,7 @@ public class CalendarController : HumansControllerBase
         var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
                      .Plus(Duration.FromDays(1));
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
         var teams = (await _teams.GetTeamsAsync(ct))
             .Values
             .Where(t => t.IsActive)
@@ -81,7 +84,7 @@ public class CalendarController : HumansControllerBase
         var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
                      .Plus(Duration.FromDays(1));
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
         var teams = (await _teams.GetTeamsAsync(ct))
             .Values
             .Where(t => t.IsActive)
@@ -111,7 +114,7 @@ public class CalendarController : HumansControllerBase
         var fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
         var toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
     }
 
@@ -134,7 +137,7 @@ public class CalendarController : HumansControllerBase
         var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
 
         ViewData["TeamName"] = team.Name;
         return View(new CalendarMonthViewModel(
@@ -148,13 +151,13 @@ public class CalendarController : HumansControllerBase
     [HttpGet("Event/{id:guid}")]
     public async Task<IActionResult> Event(Guid id, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         var zone = GetViewerZone();
         var now = _clock.GetCurrentInstant();
         var horizon = now.Plus(Duration.FromDays(180));
-        var upcoming = (await _calendar.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
+        var upcoming = (await _calendarRead.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
             .Where(o => o.EventId == id)
             .Take(5)
             .ToList();
@@ -217,7 +220,7 @@ public class CalendarController : HumansControllerBase
     [HttpGet("Event/{id:guid}/Edit")]
     public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         // Fall back to Europe/Madrid for unknown tz so the form renders (admin can correct).
@@ -253,7 +256,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, CalendarEventFormViewModel form, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         TryResolveStartEnd(form, out var start, out var end);
@@ -329,7 +332,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         await _calendar.DeleteEventAsync(id, deletedByUserId: RequireCurrentUserId(), ct);
@@ -340,7 +343,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
@@ -351,7 +354,7 @@ public class CalendarController : HumansControllerBase
     [HttpGet("Event/{id:guid}/Occurrence/{originalStartUtc}/Edit")]
     public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         return View("OccurrenceEdit", new OccurrenceOverrideFormViewModel
@@ -366,7 +369,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, OccurrenceOverrideFormViewModel form, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
