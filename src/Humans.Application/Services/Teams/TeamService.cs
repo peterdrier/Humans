@@ -1271,6 +1271,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1302,7 +1303,7 @@ public sealed class TeamService(
         definition.SortOrder = sortOrder;
 
         var usersNeedingShiftAuthorizationInvalidation =
-            definition.Team.SystemTeamType == SystemTeamType.None &&
+            team.SystemTeamType == SystemTeamType.None &&
             definition.IsManagement != isManagement &&
             definition.Assignments.Count > 0
                 ? definition.Assignments
@@ -1333,7 +1334,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{name}' updated for team {definition.Team.Name}",
+            $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
@@ -1348,6 +1349,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         if (definition.IsManagement && definition.Assignments.Count > 0)
             throw new InvalidOperationException("Cannot delete the management role while members are assigned to it. Unassign all members first.");
@@ -1360,7 +1362,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{definition.Name}' deleted from team {definition.Team.Name}",
+            $"Role definition '{definition.Name}' deleted from team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
     }
@@ -1371,6 +1373,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1410,7 +1413,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
-            $"IsManagement set to {isManagement} on role '{definition.Name}' in {definition.Team.Name}",
+            $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
@@ -1537,6 +1540,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1576,14 +1580,14 @@ public sealed class TeamService(
         {
             await auditLogService.LogAsync(
                 AuditAction.TeamMemberAdded, nameof(Team), definition.TeamId,
-                $"Auto-added to {definition.Team.Name} via role assignment",
+                $"Auto-added to {team.Name} via role assignment",
                 actorUserId,
                 relatedEntityId: targetUserId, relatedEntityType: nameof(User));
         }
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
-            $"Assigned to role '{definition.Name}' in {definition.Team.Name}",
+            $"Assigned to role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
@@ -1598,6 +1602,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1608,7 +1613,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
-            $"Unassigned from role '{definition.Name}' in {definition.Team.Name}",
+            $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
@@ -1945,6 +1950,14 @@ public sealed class TeamService(
     {
         foreach (var userId in userIds.Distinct())
             shiftAuthInvalidator.Invalidate(userId);
+    }
+
+    private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
+    {
+        var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
+        return teamsById.TryGetValue(definition.TeamId, out var team)
+            ? team
+            : throw new InvalidOperationException($"Team {definition.TeamId} not found");
     }
 
     private static bool IsShiftAuthorizationAssignment(TeamRoleAssignment assignment) =>

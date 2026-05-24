@@ -64,13 +64,6 @@ src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs:Team#1
 src/Humans.Application/Services/Teams/TeamService.cs:Team#1
 src/Humans.Application/Services/Teams/TeamService.cs:Team#10
 src/Humans.Application/Services/Teams/TeamService.cs:Team#11
-src/Humans.Application/Services/Teams/TeamService.cs:Team#12
-src/Humans.Application/Services/Teams/TeamService.cs:Team#13
-src/Humans.Application/Services/Teams/TeamService.cs:Team#14
-src/Humans.Application/Services/Teams/TeamService.cs:Team#15
-src/Humans.Application/Services/Teams/TeamService.cs:Team#16
-src/Humans.Application/Services/Teams/TeamService.cs:Team#17
-src/Humans.Application/Services/Teams/TeamService.cs:Team#18
 src/Humans.Application/Services/Teams/TeamService.cs:Team#2
 src/Humans.Application/Services/Teams/TeamService.cs:Team#3
 src/Humans.Application/Services/Teams/TeamService.cs:Team#4
