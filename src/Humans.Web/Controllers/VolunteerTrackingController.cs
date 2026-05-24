@@ -5,6 +5,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.Models.VolunteerTracking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
@@ -20,6 +21,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 public sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
+    IShiftManagementService shiftManagementService,
     IUserService userService,
     IAuditLogService auditLogService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -67,6 +69,16 @@ public sealed class VolunteerTrackingController(
                 .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+        // Export card form state — driven by the active event's departments.
+        // GetActiveAsync is the same lookup the Index page is gated on (we
+        // already know HasActiveEvent is true here), so the result is non-null
+        // in practice; defensive fall-back keeps the page renderable if a race
+        // empties EventSettings between the two calls.
+        var activeEvent = await shiftManagementService.GetActiveAsync();
+        var departments = activeEvent is null
+            ? []
+            : await shiftManagementService.GetDepartmentsWithRotasAsync(activeEvent.Id);
+
         var model = new VolunteerTrackingPageViewModel(
             data.BuildStartOffset,
             data.GateOpeningDate,
@@ -76,7 +88,17 @@ public sealed class VolunteerTrackingController(
             nameByUserId,
             hideNoGaps,
             hideCampSetup,
-            hideUnbookedSection);
+            hideUnbookedSection)
+        {
+            ExportForm = new VolunteerTrackingExportFormViewModel
+            {
+                Departments = departments,
+                SelectedDepartmentId = null,
+                SelectedPeriod = ShiftPeriod.Event,
+                StartDate = null,
+                EndDate = null,
+            },
+        };
 
         return View(model);
     }
