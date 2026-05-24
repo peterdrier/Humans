@@ -86,7 +86,12 @@ public sealed class VolunteerTrackingExportService(
             rows[userId] = new HumanRow(userId, playaNames[userId], cells);
         }
 
-        // (4) Group by primary team. Ordering by total team hours desc is added in Task 3.9.
+        // (4) Group by primary team. Order by total team hours desc, tie-break alphabetical.
+        var totalTeamHours = perUserPerDay
+            .SelectMany(kvp => kvp.Value)
+            .GroupBy(v => v.teamId)
+            .ToDictionary(g => g.Key, g => g.Sum(v => v.hours));
+
         var groups = rows
             .GroupBy(r => primaryTeam[r.Key])
             .Select(g =>
@@ -97,6 +102,8 @@ public sealed class VolunteerTrackingExportService(
                     .ToList();
                 return new DepartmentGroup(teamId, teamName, TeamPalette.ColorFor(teamId), humans);
             })
+            .OrderByDescending(dg => totalTeamHours[dg.TeamId])
+            .ThenBy(dg => dg.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var totals = ComputeTotals(days, rows, firstShiftDay);

@@ -256,6 +256,42 @@ public sealed class VolunteerTrackingExportServiceTests
         cellsDay3.TeamId.Should().Be(TeamB);
     }
 
+    private static readonly Guid Carol = Guid.Parse("c0000000-0000-0000-0000-000000000003");
+
+    [HumansFact]
+    public async Task GroupOrdering_ByTotalTeamHoursDescending_TieBreakOnName()
+    {
+        // Alice: TeamA 8h Day3.
+        // Bob: TeamA 8h Day3, TeamA 8h Day4 (TeamA total = 24h).
+        // Carol: TeamB 8h Day3, TeamB 8h Day4, TeamB 8h Day5 (TeamB total = 24h, ties with TeamA).
+        // Tie → alphabetical → TeamA first.
+        var shifts = new[]
+        {
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 17),
+            ShiftRow(Bob,   TeamA, "TeamA", Day1.PlusDays(2), 9, 17),
+            ShiftRow(Bob,   TeamA, "TeamA", Day1.PlusDays(3), 9, 17),
+            ShiftRow(Carol, TeamB, "TeamB", Day1.PlusDays(2), 9, 17),
+            ShiftRow(Carol, TeamB, "TeamB", Day1.PlusDays(3), 9, 17),
+            ShiftRow(Carol, TeamB, "TeamB", Day1.PlusDays(4), 9, 17),
+        };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA"), (TeamB, "TeamB")],
+            playaNames: new Dictionary<Guid, string>
+            {
+                [Alice] = "Alice", [Bob] = "Bob", [Carol] = "Carol",
+            });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        model.Groups.Should().HaveCount(2);
+        model.Groups[0].TeamName.Should().Be("TeamA");  // tie → alpha
+        model.Groups[1].TeamName.Should().Be("TeamB");
+        model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Alice", "Bob");
+        model.Groups[1].Humans.Select(h => h.PlayaName).Should().Equal("Carol");
+    }
+
     /// <summary>Helper: build a ConfirmedShiftRow with start/end specified as event-local hours on a given local date.</summary>
     private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, string teamName, LocalDate localDate, int startHourLocal, int endHourLocal)
     {
