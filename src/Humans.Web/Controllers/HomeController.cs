@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
+using Humans.Domain.Constants;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Onboarding;
@@ -50,7 +51,7 @@ public class HomeController(
             return RedirectToAction(nameof(Index), "Guest");
         }
 
-        var isPrivileged = User.IsInRole("Admin");
+        var isPrivileged = User.IsInRole(RoleNames.Admin);
         var data = await dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
 
         var viewModel = new DashboardViewModel
