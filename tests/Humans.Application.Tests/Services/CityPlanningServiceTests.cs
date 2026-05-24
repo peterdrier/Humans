@@ -282,7 +282,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2026, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -302,7 +302,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2026, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -322,7 +322,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             .Returns((Team?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2026, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(false);
 
@@ -343,7 +343,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         // Camp season is for 2027, but settings year is 2026
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonLookup(campSeasonId, campId, 2027, "Camp", null));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2027, "Camp"));
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeFalse();
@@ -410,10 +410,10 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature"}""", 100, userId);
         await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature"}""", 200, userId);
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
             {
-                [season2026Id] = new("Test Camp 2026", "test-camp", null, null, camp2026Id)
+                MakeCampInfo(camp2026Id, "test-camp", [MakeCampSeasonInfo(season2026Id, camp2026Id, 2026, "Test Camp 2026")])
             });
 
         var result = await _sut.GetCampPolygonsAsync(2026);
@@ -426,17 +426,19 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetCampSeasonsWithoutCampPolygonAsync_ExcludesSeasonsWithPolygon()
     {
+        var campWithId = Guid.NewGuid();
+        var campWithoutId = Guid.NewGuid();
         var seasonWithId = Guid.NewGuid();
         var seasonWithoutId = Guid.NewGuid();
         var userId = NewUserId();
 
         await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature"}""", 100, userId);
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
             {
-                [seasonWithId] = new("Camp With", "camp-with", null, null, Guid.NewGuid()),
-                [seasonWithoutId] = new("Camp Without", "camp-without", null, null, Guid.NewGuid())
+                MakeCampInfo(campWithId, "camp-with", [MakeCampSeasonInfo(seasonWithId, campWithId, 2026, "Camp With")]),
+                MakeCampInfo(campWithoutId, "camp-without", [MakeCampSeasonInfo(seasonWithoutId, campWithoutId, 2026, "Camp Without")])
             });
 
         var result = await _sut.GetCampSeasonsWithoutCampPolygonAsync(2026);
@@ -448,16 +450,17 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task ExportAsGeoJsonAsync_ReturnsFeatureCollection()
     {
+        var campId = Guid.NewGuid();
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]},"properties":{}}""";
 
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", null, null, Guid.NewGuid())
+                MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp")])
             });
 
         var result = await _sut.ExportAsGeoJsonAsync(2026);
@@ -533,10 +536,10 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue, null, campId)
+                MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp", SoundZone.Blue)])
             });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
@@ -553,10 +556,10 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", null, null, campId)
+                MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp")])
             });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
@@ -651,5 +654,13 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         result.Should().BeNull();
     }
+
+    private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>
+        new(id, campId, string.Empty, year, null, name, string.Empty, string.Empty,
+            [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, soundZone, null, null, 0, null, null);
+
+    private static CampInfo MakeCampInfo(Guid id, string slug, IReadOnlyList<CampSeasonInfo> seasons) =>
+        new(id, slug, string.Empty, string.Empty, false, 0, seasons);
 
 }

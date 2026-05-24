@@ -7,6 +7,10 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Consent;
 using Humans.Infrastructure.Services.Consent;
 using Humans.Infrastructure.Services.Legal;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NodaTime;
+using NSubstitute;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using LegalDocumentSyncService = Humans.Application.Services.Legal.LegalDocumentSyncService;
 
@@ -203,5 +207,51 @@ public class ConsentArchitectureTests
         method.DeclaringType.Should().Be(
             typeof(CachingConsentService),
             because: "synchronous invalidation belongs on the decorator, not inherited or delegated");
+    }
+
+    // ── IConsentServiceRead split (memory/architecture/section-read-write-split.md) ──
+
+    /// <summary>
+    /// Asserts that <see cref="IConsentService"/> inherits from
+    /// <see cref="IConsentServiceRead"/> so external sections can inject the
+    /// narrow read surface while the full service still satisfies the full interface.
+    /// </summary>
+    [HumansFact]
+    public void IConsentService_InheritsIConsentServiceRead()
+    {
+        typeof(IConsentServiceRead).IsAssignableFrom(typeof(IConsentService))
+            .Should().BeTrue(
+                because: "IConsentService is the full Consent surface; external sections inject the narrow IConsentServiceRead. " +
+                         "See memory/architecture/section-read-write-split.md.");
+    }
+
+    /// <summary>
+    /// Asserts that <see cref="IConsentService"/> and <see cref="IConsentServiceRead"/>
+    /// resolve to the same singleton instance from the production DI registration.
+    /// </summary>
+    [HumansFact]
+    public void IConsentService_And_IConsentServiceRead_ResolveToSameSingleton()
+    {
+        // Mirrors the Teams-section DI shape: the same CachingConsentService
+        // singleton is exposed under both interface keys.
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IConsentRepository>());
+        services.AddSingleton(Substitute.For<ILegalDocumentSyncService>());
+        services.AddSingleton(Substitute.For<IClock>());
+        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
+        services.AddSingleton(Substitute.For<ILogger<CachingConsentService>>());
+
+        services.AddSingleton<CachingConsentService>();
+        services.AddSingleton<IConsentService>(sp => sp.GetRequiredService<CachingConsentService>());
+        services.AddSingleton<IConsentServiceRead>(sp => sp.GetRequiredService<CachingConsentService>());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromFull = provider.GetRequiredService<IConsentService>();
+        var fromRead = provider.GetRequiredService<IConsentServiceRead>();
+        var concrete = provider.GetRequiredService<CachingConsentService>();
+
+        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromRead, concrete).Should().BeTrue();
     }
 }

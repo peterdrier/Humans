@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Infrastructure;
@@ -19,7 +18,7 @@ namespace Humans.Application.Tests.Services;
 
 public sealed class ContactFieldServiceTests : ServiceTestHarness
 {
-    private readonly ITeamService _teamService;
+    private readonly ITeamServiceRead _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService;
@@ -28,7 +27,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public ContactFieldServiceTests()
         : base(Instant.FromUtc(2024, 1, 15, 12, 0, 0))
     {
-        _teamService = Substitute.For<ITeamService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _userService = Substitute.For<IUserService>();
 
@@ -39,6 +38,37 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             repository, _profileRepository, _userService, _teamService, _roleAssignmentService,
             Substitute.For<IUserInfoInvalidator>(),
             Clock, NullLogger<ContactFieldService>.Instance);
+    }
+
+    // Sets up GetTeamsAsync to return a dict containing one TeamInfo per member spec.
+    // Each spec is (userId, role, teamId, systemTeamType). Users on the same teamId share that team entry.
+    private void SetupTeams(params (Guid UserId, TeamMemberRole Role, Guid TeamId, SystemTeamType SystemTeamType)[] memberSpecs)
+    {
+        var grouped = memberSpecs.GroupBy(s => s.TeamId);
+        var dict = new Dictionary<Guid, TeamInfo>();
+        foreach (var group in grouped)
+        {
+            var members = group
+                .Select(s => new TeamMemberInfo(Guid.NewGuid(), s.UserId, "T", null, null, s.Role, Clock.GetCurrentInstant()))
+                .ToList();
+            var teamId = group.Key;
+            var systemTeamType = group.First().SystemTeamType;
+            dict[teamId] = new TeamInfo(
+                Id: teamId, Name: "Test Team", Description: null, Slug: $"team-{teamId:N}",
+                IsActive: true, IsSystemTeam: systemTeamType != SystemTeamType.None,
+                SystemTeamType: systemTeamType, RequiresApproval: false,
+                IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: Clock.GetCurrentInstant(), Members: members);
+        }
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(dict));
+    }
+
+    private void SetupEmptyTeams()
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                new Dictionary<Guid, TeamInfo>()));
     }
 
     #region GetViewerAccessLevelAsync Tests
@@ -73,13 +103,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var viewerId = Guid.NewGuid();
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Coordinator)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>());
+        SetupTeams((viewerId, TeamMemberRole.Coordinator, Guid.NewGuid(), SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -95,16 +119,9 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, sharedTeamId)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, sharedTeamId)
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None),
+            (ownerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -119,16 +136,9 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, Guid.NewGuid())
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, Guid.NewGuid())
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None),
+            (ownerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -145,16 +155,9 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers)
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+            (ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -173,18 +176,11 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
-                CreateTeamMember(viewerId, TeamMemberRole.Member, sharedTeamId)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
-                CreateTeamMember(ownerId, TeamMemberRole.Member, sharedTeamId)
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+            (viewerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None),
+            (ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+            (ownerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -215,10 +211,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         // Viewer is just a regular member (no shared teams)
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>());
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>());
+        SetupEmptyTeams();
 
         // Act
         var result = await _service.GetVisibleContactFieldsAsync(ownerId, viewerId);
@@ -378,28 +371,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             volunteerHistory: [],
             communicationPreferences: []);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
-    }
-
-    private TeamMember CreateTeamMember(Guid userId, TeamMemberRole role, Guid? teamId = null, SystemTeamType systemTeamType = SystemTeamType.None)
-    {
-        var actualTeamId = teamId ?? Guid.NewGuid();
-        return new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = actualTeamId,
-            UserId = userId,
-            Role = role,
-            JoinedAt = Clock.GetCurrentInstant(),
-            Team = new Team
-            {
-                Id = actualTeamId,
-                Name = "Test Team",
-                Slug = "test-team",
-                SystemTeamType = systemTeamType,
-                CreatedAt = Clock.GetCurrentInstant(),
-                UpdatedAt = Clock.GetCurrentInstant()
-            }
-        };
     }
 
     private async Task<Profile> CreateProfile(Guid userId)

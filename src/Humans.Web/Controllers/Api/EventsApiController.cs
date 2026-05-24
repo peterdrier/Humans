@@ -20,7 +20,7 @@ namespace Humans.Web.Controllers.Api;
 [Route("api/events")]
 [EnableCors("EventsApi")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsApiController(IEventService guide, ICampService camps, IUserService users, UserManager<User> userManager)
+public class EventsApiController(IEventService guide, ICampServiceRead camps, IUserServiceRead users, UserManager<User> userManager)
     : ControllerBase
 {
     [HttpGet("events")]
@@ -99,7 +99,7 @@ public class EventsApiController(IEventService guide, ICampService camps, IUserS
             .Select(g =>
             {
                 var camp = campsById.GetValueOrDefault(g.Key);
-                var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+                var seasonName = camp?.Active?.Name;
                 return new GuideCampApiDto(
                     g.Key,
                     seasonName ?? camp?.Slug,
@@ -125,8 +125,7 @@ public class EventsApiController(IEventService guide, ICampService camps, IUserS
 
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var camp = campsById.GetValueOrDefault(id);
-        var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
-        var campName = seasonName ?? camp?.Slug;
+        var campName = camp?.Active?.Name ?? camp?.Slug;
 
         return Ok(new GuideCampDetailApiDto(
             id,
@@ -277,8 +276,7 @@ public class EventsApiController(IEventService guide, ICampService camps, IUserS
     {
         if (campId is null) return null;
         var camp = campsById.GetValueOrDefault(campId.Value);
-        var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
-        return seasonName ?? camp?.Slug;
+        return camp?.Active?.Name ?? camp?.Slug;
     }
 
     // Individual events only — the published-guide host falls back to the submitter's burner name.

@@ -8,11 +8,11 @@ using Humans.Domain.Constants;
 namespace Humans.Application.Services.Onboarding;
 
 public class OnboardingWidgetState(
-    IUserService users,
+    IUserServiceRead users,
     IShiftSignupService signups,
     IMembershipCalculator membership,
     IShiftManagementService shiftMgmt,
-    IConsentService consents,
+    IConsentServiceRead consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState
 {
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)

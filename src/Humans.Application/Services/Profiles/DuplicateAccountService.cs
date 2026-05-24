@@ -276,7 +276,7 @@ public sealed class DuplicateAccountService(
         return new DuplicateAccountInfo
         {
             UserId = userId,
-            DisplayName = info?.DisplayName ?? "Unknown",
+            DisplayName = info?.BurnerName ?? "Unknown",
             Email = info?.Email,
             ProfilePictureUrl = info?.ProfilePictureUrl,
             MembershipTier = membershipTier,

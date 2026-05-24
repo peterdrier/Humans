@@ -25,7 +25,7 @@ public class CampController(
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService,
     INotificationService notificationService,
-    IUserService userService,
+    IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ILogger<CampController> logger,
@@ -34,7 +34,7 @@ public class CampController(
 {
     private readonly ICampService _campService = campService;
     private readonly INotificationService _notificationService = notificationService;
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
     private readonly IClock _clock = clock;
 
     // --- Public routes ---
@@ -1267,5 +1267,4 @@ public class CampController(
                 || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal));
     }
 }
-
 

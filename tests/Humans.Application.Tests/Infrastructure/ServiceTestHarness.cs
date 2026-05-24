@@ -5,9 +5,9 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
@@ -24,6 +24,10 @@ namespace Humans.Application.Tests.Infrastructure;
 /// </summary>
 public abstract class ServiceTestHarness : IDisposable
 {
+    private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
+        typeof(User).GetProperty("DisplayName")
+        ?? throw new InvalidOperationException("User.DisplayName property missing.");
+
     private protected DbContextOptions<HumansDbContext> DbOptions { get; }
     private protected HumansDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
@@ -46,6 +50,7 @@ public abstract class ServiceTestHarness : IDisposable
     {
         DbOptions = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         Db = new HumansDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
@@ -111,11 +116,11 @@ public abstract class ServiceTestHarness : IDisposable
         var user = new User
         {
             Id = userId,
-            DisplayName = displayName,
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             PreferredLanguage = "en"
         };
+        LegacyDisplayNameProperty.SetValue(user, displayName);
         Db.Users.Add(user);
         return user;
     }

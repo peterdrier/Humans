@@ -243,8 +243,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             using var scope = _scopeFactory.CreateScope();
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
             var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
-            var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
-            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            var teamService = scope.ServiceProvider.GetRequiredService<ITeamServiceRead>();
+            var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
             var now = clock.GetCurrentInstant();
 
@@ -292,7 +292,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var teamsActive = teams.Values.Count(t => t.IsActive);
             var teamsInactive = teams.Count - teamsActive;
 
-            var teamJoinRequestsPending = await teamService.GetTotalPendingJoinRequestCountAsync();
+            var teamJoinRequestsPending = teams.Values.Sum(t => t.PendingRequestCount);
 
             var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceService>();
             var googleResources = await teamResourceService.GetResourceCountAsync();

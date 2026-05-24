@@ -12,9 +12,12 @@ LLM-generated test corpora accumulate slop — tests that touch lines without co
 
 The skill is iterative. Each phase has a verify-and-gate step; if the gate fails, the skill bisects, restores, or skips rather than committing a regression. The outer loop retries the whole flow up to 3 times with adjusted parameters before giving up on a file.
 
-## Hard constraint — coverage-analysis must be `off`
+## Hard constraint — concurrency `16`, coverage-analysis `off`
 
-The repo's `docs/testing/mutation-testing.md` mandates `coverage-analysis: off` for xUnit v3 + MTP. Per-test coverage capture misclassifies mutants in this environment. Never set it to `perTest` or `all`. This means we don't get per-test attribution — the safety net is "re-run Stryker after a deletion batch and gate on score delta," not "consult a per-test kill table."
+Run every Stryker config at `concurrency: 16` and `coverage-analysis: off`. There are TWO independent failure modes here; both were demonstrated empirically on 2026-05-23 (see `docs/testing/mutation-testing.md`):
+
+- **Concurrency 16, not 24.** At 24 the machine is saturated; the test host gets starved and trips Stryker's timeout watchdog on innocent mutants (e.g. *string-literal* mutations "timing out", which is impossible — a string can't hang). On a TeamService probe, 24 threads produced 221 timeouts and an **inflated 87.43%**; 16 threads produced 4 timeouts and the honest **~47%**. ~40% of the "kills" at 24 were false. Never raise above 16 to go faster.
+- **coverage-analysis `off`, never `perTest`/`all`.** `perTest` is NONDETERMINISTIC in this xUnit-v3/MTP environment: two runs over *identical* code gave **105 vs 356 killed** (a 250-mutant swing). `off` over the same input gave **358 vs 358** (deterministic to ±1 timeout). A before/after gate can't use a tool that swings 250 mutants between identical runs — a bad run fakes a massive regression. `off` runs every test against every mutant (no coverage map to corrupt), so it's slower but reliable. We therefore have NO per-test attribution — the gate is "re-run and compare score + per-mutant kill diff," not a per-test kill table. (Two perTest runs once happened to agree with `off`, which briefly looked fine — it isn't; sample it enough and it breaks.)
 
 ## Argument routing
 
@@ -43,7 +46,7 @@ Output lands in `local/test-utility/test-utility-<timestamp>.{json,csv,md}`. Rea
 
 ### Phase 1 — Baseline
 
-Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Application.Tests/stryker-*-config.json`). If you must generate one, put it under `local/stryker-trim/` (gitignored). **Use `coverage-analysis: off`** — the doc-mandated value. Example:
+Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Application.Tests/stryker-*-config.json`). If you must generate one, put it under `local/stryker-trim/` (gitignored). **Use `coverage-analysis: off` and `concurrency: 16`** (see the Hard constraint above). Example:
 
 ```json
 {
@@ -53,7 +56,7 @@ Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Ap
     "coverage-analysis": "off",
     "mutation-level": "Standard",
     "mutate": ["**/Services/<Area>/<File>.cs"],
-    "concurrency": 24,
+    "concurrency": 16,
     "reporters": ["Json"],
     "thresholds": {"high": 80, "low": 60, "break": 0}
   }
@@ -74,7 +77,7 @@ Parse `StrykerOutput/<latest>/reports/mutation-report.json`. Record:
 - Total mutants, killed count, surviving count
 - For each surviving mutant: id, file, line, mutator, original source snippet, replacement
 
-The surviving-mutants list drives Phase 4. The score is the gate everywhere else.
+The surviving-mutants list drives Phase 4. The score is the gate everywhere else. (With `coverage-analysis: off` there is no `NoCoverage` bucket — untested mutants are reported as `Survived`.)
 
 ### Phase 2 — Delete slop (with bisection)
 
@@ -217,7 +220,7 @@ After a successful run, append the trimmed file's path + date + score delta to `
 
 - `dotnet stryker --version` must work. If missing: `dotnet tool restore` (the repo has `.config/dotnet-tools.json` pinning Stryker 4.14.1).
 - `pwsh` or PowerShell available for the utility script.
-- `coverage-analysis: off` in every Stryker config used. Verify before running.
+- `coverage-analysis: off` and `concurrency: 16` in every Stryker config used. Verify before running.
 - Working tree clean (skill manages its own commits).
 
 ## Out of scope
@@ -227,4 +230,5 @@ After a successful run, append the trimmed file's path + date + score delta to `
 - Don't commit ephemeral configs from `local/stryker-trim/`
 - Don't touch `Humans.Integration.Tests` or `Humans.Web.Tests` — different shape, different skill if needed
 - Don't change harness, builders, or other test infrastructure as part of this skill — separate concern
-- Don't enable `coverage-analysis: perTest` or `all` to get richer data, even if it would be faster. The doc says no.
+- Don't raise `concurrency` above 16 to go faster — it starves the test host and manufactures false timeout-kills (see the Hard constraint).
+- Don't enable `coverage-analysis: perTest`/`all` to get richer data or faster runs — it's nondeterministic here and corrupts the gate (see the Hard constraint).

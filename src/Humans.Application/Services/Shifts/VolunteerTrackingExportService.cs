@@ -16,12 +16,12 @@ namespace Humans.Application.Services.Shifts;
 public sealed class VolunteerTrackingExportService(
     IVolunteerTrackingRepository repository,
     IShiftManagementService shiftManagementService,
-    IUserService userService)
+    IUserServiceRead userService)
     : IVolunteerTrackingExportService
 {
     private readonly IVolunteerTrackingRepository _repository = repository;
     private readonly IShiftManagementService _shiftManagementService = shiftManagementService;
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
     {

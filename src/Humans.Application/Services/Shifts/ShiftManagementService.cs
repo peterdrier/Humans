@@ -53,7 +53,7 @@ public sealed class ShiftManagementService(
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private ITicketQueryService TicketQueryService => serviceProvider.GetRequiredService<ITicketQueryService>();
-    private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
+    private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
     {
@@ -710,7 +710,7 @@ public sealed class ShiftManagementService(
                             userLookup?.TryGetValue(ss.UserId, out user);
                             return (
                                 ss.UserId,
-                                DisplayName: user?.DisplayName ?? string.Empty,
+                                DisplayName: user?.BurnerName ?? string.Empty,
                                 ss.Status);
                         })
                         .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)

@@ -23,7 +23,7 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsController(
     IEventService guide,
-    IUserService users,
+    IUserServiceRead users,
     ICampService camps,
     IAuthorizationService authorizationService,
     IClock clock,
@@ -55,7 +55,7 @@ public class EventsController(
         foreach (var camp in managedCamps)
         {
             var campEvents = await guide.GetCampSubmissionsAsync(camp.Id);
-            var campName = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name ?? camp.Slug;
+            var campName = camp.Active?.Name ?? camp.Slug;
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
                 CampId = camp.Id,
@@ -355,8 +355,7 @@ public class EventsController(
         {
             var e = f.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
-            var campName = seasonName ?? camp?.Slug;
+            var campName = camp?.Active?.Name ?? camp?.Slug;
             var localStart = ToLocalDateTime(e.StartAt, tz);
 
             var dayOffset = 0;
@@ -448,8 +447,7 @@ public class EventsController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
-            var campName = seasonName ?? camp?.Slug;
+            var campName = camp?.Active?.Name ?? camp?.Slug;
             var submitterName = e.CampId == null
                 ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
                 : null;
@@ -988,10 +986,10 @@ public class EventsController(
         return RedirectToAction(nameof(MySubmissions));
     }
 
-    private static string ResolveCampDisplayName(CampLookup camp) =>
-        camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name ?? camp.Slug;
+    private static string ResolveCampDisplayName(CampInfo camp) =>
+        camp.Active?.Name ?? camp.Slug;
 
-    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampLookup camp, BurnSettingsInfo burn)
+    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, BurnSettingsInfo burn)
     {
         var model = new CampEventFormViewModel
         {

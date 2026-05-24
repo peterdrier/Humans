@@ -19,8 +19,8 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
 public sealed class WidgetGalleryController(
-    IUserService userService,
-    ITeamService teamService,
+    IUserServiceRead userService,
+    ITeamServiceRead teamService,
     IShiftManagementService shiftMgmt,
     ILogger<WidgetGalleryController> logger) : HumansControllerBase(userService)
 {
@@ -109,9 +109,9 @@ public sealed class WidgetGalleryController(
         return View(model);
     }
 
-    private async Task<Team?> ResolveSampleTeamAsync()
+    private async Task<TeamInfo?> ResolveSampleTeamAsync()
     {
-        var allTeams = await teamService.GetAllTeamsAsync();
+        var allTeams = (await teamService.GetTeamsAsync()).Values;
         return allTeams
             .Where(t => !t.IsSystemTeam && !t.IsHidden)
             .OrderBy(t => t.Name, StringComparer.Ordinal)

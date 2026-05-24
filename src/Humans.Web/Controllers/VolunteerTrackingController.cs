@@ -28,11 +28,11 @@ public sealed class VolunteerTrackingController(
     IShiftManagementService shiftManagementService,
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,
-    IUserService userService,
+    IUserServiceRead userService,
     IAuditLogService auditLogService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(

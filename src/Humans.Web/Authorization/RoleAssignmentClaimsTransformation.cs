@@ -22,8 +22,8 @@ namespace Humans.Web.Authorization;
     "nobodies-collective/Humans#750")]
 public class RoleAssignmentClaimsTransformation(
     IRoleAssignmentRepository roleAssignments,
-    ITeamService teams,
-    IUserService userService,
+    ITeamServiceRead teams,
+    IUserServiceRead userService,
     IClock clock,
     IMemoryCache cache) : IClaimsTransformation
 {
@@ -95,8 +95,9 @@ public class RoleAssignmentClaimsTransformation(
         if (!isSuspended)
         {
             // Warm CachingTeamService index — no DB round-trip; returns active memberships only.
-            var memberships = await teams.GetUserTeamsAsync(userId);
-            var isVolunteerMember = memberships.Any(m => m.TeamId == SystemTeamIds.Volunteers);
+            var allTeams = await teams.GetTeamsAsync();
+            var volunteersTeam = allTeams.GetValueOrDefault(SystemTeamIds.Volunteers);
+            var isVolunteerMember = volunteersTeam?.Members.Any(m => m.UserId == userId) == true;
             if (isVolunteerMember)
             {
                 claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));

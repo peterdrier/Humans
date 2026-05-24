@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Profiles;

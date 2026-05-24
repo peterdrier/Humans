@@ -21,7 +21,7 @@ public class CampAuthorizationHandler(ICampService campService) : AuthorizationH
     {
         var campId = context.Resource switch
         {
-            CampLookup camp => camp.Id,
+            CampInfo camp => camp.Id,
             Camp camp => camp.Id,
             Guid id => id,
             _ => (Guid?)null

@@ -21,7 +21,7 @@ public class DashboardService(
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,
     ITicketQueryService ticketQueryService,
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamServiceRead teamService,
     IOptions<TicketVendorSettings> ticketSettings,
     IClock clock,

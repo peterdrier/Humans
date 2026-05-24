@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -21,13 +20,6 @@ namespace Humans.Application.Interfaces.Repositories;
 /// the service layer via <see cref="Teams.ITeamService"/>
 /// per design-rules §2c/§6.
 /// </remarks>
-/// <remarks>
-/// Budget history:
-/// <list type="bullet">
-///   <item>2026-05-12 — section-align GoogleIntegration baseline at 22 methods (includes new GetNamesByIdsAsync for AuditLog cross-section migration).</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(22)]
 [Section("GoogleIntegration")]
 public interface IGoogleResourceRepository : IRepository
 {

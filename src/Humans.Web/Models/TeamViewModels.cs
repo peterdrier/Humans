@@ -344,6 +344,7 @@ public class TeamRoleDefinitionViewModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int SlotCount { get; set; }
+    public int? EstimatedHours { get; set; }
     public List<TeamRoleSlotViewModel> Slots { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
@@ -390,6 +391,7 @@ public class TeamRoleDefinitionViewModel
             Name = d.Name,
             Description = d.Description,
             SlotCount = d.SlotCount,
+            EstimatedHours = d.EstimatedHours,
             Slots = slots,
             SortOrder = d.SortOrder,
             IsPublic = d.IsPublic,
@@ -438,6 +440,7 @@ public class TeamRoleDefinitionViewModel
             Name = d.Name,
             Description = d.Description,
             SlotCount = d.SlotCount,
+            EstimatedHours = d.EstimatedHours,
             Slots = slots,
             SortOrder = d.SortOrder,
             IsPublic = d.IsPublic,
@@ -492,6 +495,7 @@ public class CreateRoleDefinitionModel
     [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; } = 1;
+    public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
@@ -505,6 +509,7 @@ public class EditRoleDefinitionModel
     [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; }
+    public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;

@@ -15,19 +15,20 @@ namespace Humans.Web.Controllers;
 [Route("api/profiles")]
 public class ProfileApiController(
     IProfileService profileService,
-    IUserService userService,
+    IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
     private const int MaxResults = 10;
 
     private readonly IProfileService _profileService = profileService;
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("search")]
     public async Task<IActionResult> Search(
         [FromQuery] string? q,
         [FromQuery] string? scope = null,
+        [FromQuery] bool allowEmail = false,
         CancellationToken ct = default)
     {
         if (!q.HasSearchTerm())
@@ -43,6 +44,27 @@ public class ProfileApiController(
         if (authError is not null)
             return authError;
         var viewerUserId = viewer.Id;
+
+        // AllowEmail: an exact (case-insensitive) verified-email match resolves at most
+        // one person — no enumeration/substring leak, so it is safe on this non-admin
+        // endpoint. Only triggers when the query looks like an email.
+        if (allowEmail && q!.Contains('@', StringComparison.Ordinal))
+        {
+            var matchedUserId = await userEmailService.GetUserIdByExactEmailAsync(q!, ct);
+            if (matchedUserId is null)
+                return Ok(Array.Empty<HumanLookupSearchResult>());
+
+            var matchedInfo = await _userService.GetUserInfoAsync(matchedUserId.Value, ct);
+            if (matchedInfo?.Profile is null || matchedInfo.Profile.RejectedAt is not null)
+                return Ok(Array.Empty<HumanLookupSearchResult>());
+
+            var emailDetail = await GetSharedDetailAsync(matchedUserId.Value, viewerUserId, ct);
+            return Ok(new[]
+            {
+                new HumanLookupSearchResult(
+                    matchedUserId.Value, matchedInfo.BurnerName, emailDetail, matchedInfo.ProfilePictureUrl)
+            });
+        }
 
         var results = await _userService.SearchUsersAsync(q, fields, MaxResults, ct);
 

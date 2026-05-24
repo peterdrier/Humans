@@ -29,6 +29,11 @@ public sealed class UserEmailService(
     // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
+    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketQueryService.
+    // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
+    private Interfaces.Tickets.ITicketQueryService TicketQueryService =>
+        serviceProvider.GetRequiredService<Interfaces.Tickets.ITicketQueryService>();
+
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -100,8 +105,16 @@ public sealed class UserEmailService(
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        var primaryEmail = await GetPrimaryEmailAsync(userId, cancellationToken);
-        if (EmailNormalization.EmailsMatch(email, primaryEmail))
+        // see nobodies-collective/Humans#758 — reject only when the address is held as a
+        // VERIFIED UserEmail row (the real sign-in target). The prior check used
+        // GetPrimaryEmailAsync, which falls back to the legacy User.Email column when no
+        // verified row exists — so a user who removed their primary row by mistake could not
+        // re-add the same address ("This is already your sign-in email"). Existing rows
+        // (verified or not) are already rejected above by ExistsForUserAsync.
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        var hasVerifiedRowAtAddress = info?.UserEmails
+            .Any(e => e.IsVerified && EmailNormalization.EmailsMatch(email, e.Email)) ?? false;
+        if (hasVerifiedRowAtAddress)
             throw new ValidationException("This is already your sign-in email.");
 
         var now = clock.GetCurrentInstant();
@@ -308,6 +321,16 @@ public sealed class UserEmailService(
             return false;
         }
 
+        // see nobodies-collective/Humans#758 — block removal of the primary email.
+        // The user must promote another verified email to primary first, otherwise they
+        // can accidentally delete their sign-in/notification target (the original incident).
+        if (email.IsPrimary)
+        {
+            throw new ValidationException(
+                "Cannot remove your primary email. Set another verified email as primary first, " +
+                "then remove this one.");
+        }
+
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
         if (email.IsVerified)
         {
@@ -320,6 +343,16 @@ public sealed class UserEmailService(
                     "Cannot remove your last verified email. Add another verified email first " +
                     "so you can still receive system notifications.");
             }
+        }
+
+        // see nobodies-collective/Humans#758 — block removal of a ticket-linked email.
+        // Tickets are matched to users by email address; removing the linked address risks
+        // un-matching the user's event ticket on the next vendor re-sync.
+        if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
+        {
+            throw new ValidationException(
+                "Cannot remove this email — it is linked to your event ticket. " +
+                "Removing it could disconnect your ticket. Contact an admin if you need to change it.");
         }
 
         await repository.RemoveAsync(email, cancellationToken);
@@ -641,6 +674,29 @@ public sealed class UserEmailService(
         return null;
     }
 
+    // see nobodies-collective/Humans#758 — true when the address matches one of the user's
+    // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
+    // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
+    private async Task<bool> IsAddressTicketLinkedAsync(
+        Guid userId, string address, CancellationToken cancellationToken)
+    {
+        var export = await TicketQueryService.GetUserTicketExportDataAsync(userId, cancellationToken);
+
+        foreach (var order in export.Orders)
+        {
+            if (EmailNormalization.EmailsMatch(address, order.BuyerEmail))
+                return true;
+        }
+
+        foreach (var attendee in export.Attendees)
+        {
+            if (EmailNormalization.EmailsMatch(address, attendee.AttendeeEmail))
+                return true;
+        }
+
+        return false;
+    }
+
     // Invariant: exactly one IsPrimary=true verified row per user. Winner: @nobodies.team > existing primary > most-recent.
     private async Task EnsurePrimaryInvariantAsync(
         Guid userId, CancellationToken cancellationToken)
@@ -871,7 +927,7 @@ public sealed class UserEmailService(
         var infos = await userService.GetAllUserInfosAsync(cancellationToken);
 
         var violations = new List<UserEmailFlagViolation>();
-        foreach (var info in infos)
+        foreach (var info in infos.OrderBy(i => i.BurnerName, StringComparer.OrdinalIgnoreCase))
         {
             if (info.UserEmails.Count == 0) continue;
 
@@ -888,7 +944,6 @@ public sealed class UserEmailService(
 
             violations.Add(new UserEmailFlagViolation(
                 info.Id,
-                info.BurnerName,
                 isGoogleCount,
                 verified.Count,
                 verifiedPrimaryCount,

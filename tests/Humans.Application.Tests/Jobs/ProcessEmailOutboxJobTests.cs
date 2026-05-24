@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -14,7 +13,6 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
 using Humans.Infrastructure.Repositories.Email;

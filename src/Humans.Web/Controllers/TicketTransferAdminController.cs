@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 public sealed class TicketTransferAdminController(
     ITicketTransferService service,
     ITicketQueryService ticketQueryService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<TicketTransferAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -23,22 +23,13 @@ public sealed class TicketTransferAdminController(
     {
         tab ??= "pending";
 
-        var pendingAll = await service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
-        var pending = pendingAll.OrderBy(r => r.RequestedAt).ToList();
-
-        var approvedAll = await service.GetByStatusAsync(TicketTransferStatus.Approved, ct);
-        var needsAttention = approvedAll
-            .Where(r => r.VendorResult == TicketTransferVendorResult.Failed
-                     || r.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
-            .OrderByDescending(r => r.DecidedAt)
+        var pending = (await service.GetByStatusAsync(TicketTransferStatus.Pending, ct))
+            .OrderBy(r => r.RequestedAt)
             .ToList();
 
-        IReadOnlyList<TicketTransferRowDto> rows = tab switch
-        {
-            "needs-attention" => needsAttention,
-            "all" => await BuildAllAsync(ct),
-            _ => pending,
-        };
+        IReadOnlyList<TicketTransferRowDto> rows = string.Equals(tab, "all", StringComparison.Ordinal)
+            ? await BuildAllAsync(ct)
+            : pending;
 
         var drift = (await ticketQueryService.GetOrderDriftAsync(ct))
             .OrderByDescending(r => r.IssuedCount - r.ValidCount)
@@ -47,7 +38,6 @@ public sealed class TicketTransferAdminController(
         return View(new TicketTransferIndexViewModel(
             ActiveTab: tab,
             PendingCount: pending.Count,
-            NeedsAttentionCount: needsAttention.Count,
             Rows: rows,
             Drift: drift));
     }
@@ -82,66 +72,23 @@ public sealed class TicketTransferAdminController(
 
         try
         {
-            var result = await DispatchDecisionAsync(id, approve, user.Id, adminNotes, ct);
-            ApplyDecisionFeedback(approve, result);
+            if (approve)
+            {
+                await service.ApproveAsync(id, user.Id, adminNotes, ct);
+                SetSuccess("Transfer marked successful.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            await service.RejectAsync(id, user.Id, adminNotes ?? string.Empty, ct);
+            SetSuccess("Transfer cancelled.");
+            return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Ticket transfer Decide rejected for transfer {TransferId} (approve={Approve}): {Message}",
                 id, approve, ex.Message);
             SetError(ex.Message);
+            return RedirectToAction(nameof(Detail), new { id });
         }
-        return RedirectToAction(nameof(Index));
     }
-
-    [HttpPost("{id:guid}/RetryIssue")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RetryIssue(
-        Guid id, string? adminNotes, CancellationToken ct)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        try
-        {
-            var result = await service.RetryIssueAsync(id, user.Id, adminNotes, ct);
-            if (result.VendorResult == TicketTransferVendorResult.Succeeded)
-            {
-                SetSuccess($"Retry succeeded — new ticket {result.VendorMessage ?? result.Id.ToString()}.");
-            }
-            else
-            {
-                SetError($"Retry failed: {result.VendorMessage}.");
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Retry-issue rejected for transfer {TransferId}: {Message}",
-                id, ex.Message);
-            SetError(ex.Message);
-        }
-        return RedirectToAction(nameof(Detail), new { id });
-    }
-
-    private void ApplyDecisionFeedback(bool approve, TicketTransferRowDto result)
-    {
-        if (!approve)
-        {
-            SetSuccess("Transfer rejected.");
-            return;
-        }
-        if (result.VendorResult == TicketTransferVendorResult.Succeeded)
-        {
-            SetSuccess("Transfer approved.");
-            return;
-        }
-        // Vendor partial failure — manual finish required.
-        SetError($"Transfer approved, but vendor writeback {result.VendorResult}. " +
-            "Complete the transfer in the TicketTailor dashboard.");
-    }
-
-    private Task<TicketTransferRowDto> DispatchDecisionAsync(Guid id, bool approve, Guid userId, string? notes, CancellationToken ct) =>
-        approve
-            ? service.ApproveAsync(id, userId, notes, ct)
-            : service.RejectAsync(id, userId, notes, ct);
 }

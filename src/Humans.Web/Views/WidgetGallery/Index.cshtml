@@ -466,6 +466,25 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:ticket-stub&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/TicketStubViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Renders one held ticket as a physical admission stub. Shared by the transfer wizard, the <code>/Profile/Me</code> ticket card, and the homepage. A pending outgoing transfer shows a diagonal "Transfer pending" stamp; voided tickets render muted with a struck name. The event label is currently a constant (open item to source from the active event).</div>
+                    @ParamsBlock(
+                        ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, <code>VendorTicketId</code> serial, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>) from <code>ITicketQueryService</code>")
+                    )
+                    <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-001", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-002", Humans.Domain.Enums.TicketAttendeeStatus.Valid, true, Guid.NewGuid()))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-003", Humans.Domain.Enums.TicketAttendeeStatus.Void, false, null))" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:my-camps&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -863,7 +882,8 @@
                         ("placeholder", "<code>string?</code> — input placeholder (default \"Search by name…\")"),
                         ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
                         ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
-                        ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)")
+                        ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)"),
+                        ("allow-email", "<code>bool</code> — when true (default false), an <code>@@</code>-containing query resolves by exact, case-insensitive verified email (0-or-1 result, no enumeration leak); safe on non-admin surfaces")
                     )
                     <div class="wg-card-example" style="max-width: 400px;">
                         <vc:human-search field-name="exampleUserId"

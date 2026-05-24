@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -9,16 +8,6 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <summary>
 /// Service for provisioning and syncing Google resources.
 /// </summary>
-/// <remarks>
-/// Budget history:
-/// <list type="bullet">
-///   <item>16→14 — PR #478 (issue #615): retired per-user AddUserToGroupAsync / RemoveUserFromGroupAsync gateways; all Google Group membership writes now flow through <see cref="IGoogleGroupSync"/> as full-group reconciliation.</item>
-///   <item>17→16 — section-align GoogleIntegration Phase 3 Tier 1B: made ProvisionTeamGroupAsync private (single in-class caller).</item>
-///   <item>20→17 — section-align GoogleIntegration Phase 3 Tier 1A: deleted 3 fully-dead methods (GetResourceStatusAsync, SyncTeamGroupMembersAsync, RestoreUserToAllTeamsAsync).</item>
-///   <item>2026-05-12 — section-align GoogleIntegration baseline at 20 methods.</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(14)]
 public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>

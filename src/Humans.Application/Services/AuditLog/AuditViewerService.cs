@@ -9,7 +9,7 @@ namespace Humans.Application.Services.AuditLog;
 /// <summary>Read-side wrapper over <see cref="IAuditLogService"/> that resolves actor/subject/team names. No DB or caching.</summary>
 public sealed class AuditViewerService(
     IAuditLogService auditLog,
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamService teamService,
     ITeamResourceService teamResourceService) : IAuditViewerService
 {

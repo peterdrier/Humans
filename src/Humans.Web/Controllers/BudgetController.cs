@@ -17,7 +17,7 @@ public class BudgetController(
     IBudgetService budgetService,
     ITeamServiceRead teamService,
     IAuthorizationService authService,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<BudgetController> logger) : HumansControllerBase(userService)
 {
     private readonly ITeamServiceRead _teamService = teamService;

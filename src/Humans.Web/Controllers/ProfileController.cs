@@ -34,6 +34,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Models;
 using Humans.Application.Services.Profiles;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
@@ -64,12 +65,12 @@ public class ProfileController(
     ILogger<ProfileController> logger,
     IStringLocalizer<SharedResource> localizer,
     ITicketQueryService ticketQueryService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ICampaignService campaignService,
     IEmailOutboxService emailOutboxService,
     IClock clock,
     IAuthorizationService authorizationService,
-    IConsentService consentService,
+    IConsentServiceRead consentService,
     IApplicationDecisionService applicationDecisionService,
     IAccountDeletionService accountDeletionService,
     IMembershipCalculator membershipCalculator,
@@ -1894,7 +1895,12 @@ public class ProfileController(
                 ProfileSummaryViewModelBuilder.BuildWithoutProfile(info));
         }
 
-        var memberships = await teamService.GetActiveTeamMembershipsForUserAsync(id, ct);
+        var memberships = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == id) })
+            .Where(x => x.Membership is not null)
+            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+            .ToList();
         var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships);
 
         return PartialView("_HumanPopover", vm);
@@ -2446,6 +2452,18 @@ public class ProfileController(
             }
         }
 
+        // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
+        // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
+        var ticketExport = await _ticketQueryService.GetUserTicketExportDataAsync(user.Id, ct);
+        var ticketEmails = ticketExport.Orders.Select(o => o.BuyerEmail)
+            .Concat(ticketExport.Attendees.Select(a => a.AttendeeEmail))
+            .Where(addr => !string.IsNullOrWhiteSpace(addr))
+            .Select(addr => Humans.Domain.Helpers.EmailNormalization.NormalizeForComparison(addr!))
+            .ToHashSet(StringComparer.Ordinal);
+
+        bool RowIsTicketLinked(string address) =>
+            ticketEmails.Contains(Humans.Domain.Helpers.EmailNormalization.NormalizeForComparison(address));
+
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
             && !string.IsNullOrEmpty(provider)
@@ -2481,6 +2499,7 @@ public class ProfileController(
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
+                IsTicketLinked = RowIsTicketLinked(e.Email),
             }).ToList(),
             ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
             {

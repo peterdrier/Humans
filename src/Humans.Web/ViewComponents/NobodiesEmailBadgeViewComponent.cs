@@ -16,7 +16,7 @@ namespace Humans.Web.ViewComponents;
 ///   "provision" — show email or provisioning form (TeamAdmin/Members)
 ///   "detail"    — show email + linked badge, or provisioning form (AdminDetail)
 /// </summary>
-public class NobodiesEmailBadgeViewComponent(IUserService userService) : ViewComponent
+public class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : ViewComponent
 {
     /// <summary>
     /// Renders a nobodies.team email badge for the given user.

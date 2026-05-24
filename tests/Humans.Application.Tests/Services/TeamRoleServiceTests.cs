@@ -13,11 +13,9 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Teams;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Infrastructure.Repositories.Auth;
@@ -120,6 +118,84 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var inDb = await Db.Set<TeamRoleDefinition>()
             .FirstOrDefaultAsync(d => d.Id == result.Id);
         inDb.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_WithEstimatedHours_PersistsValue()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.CreateRoleDefinitionAsync(
+            team.Id, "Coordinator", null, 1,
+            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
+            estimatedHours: 120);
+
+        result.EstimatedHours.Should().Be(120);
+
+        var inDb = await Db.Set<TeamRoleDefinition>().FirstAsync(d => d.Id == result.Id);
+        inDb.EstimatedHours.Should().Be(120);
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_WithoutEstimatedHours_DefaultsToNull()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.CreateRoleDefinitionAsync(
+            team.Id, "Coordinator", null, 1,
+            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id);
+
+        result.EstimatedHours.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_SetThenClearEstimatedHours_RoundTrips()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await Db.SaveChangesAsync();
+
+        var created = await _service.CreateRoleDefinitionAsync(
+            team.Id, "Coordinator", null, 1,
+            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id);
+
+        var set = await _service.UpdateRoleDefinitionAsync(
+            created.Id, "Coordinator", null, 1,
+            [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
+            estimatedHours: 80);
+        set.EstimatedHours.Should().Be(80);
+
+        var cleared = await _service.UpdateRoleDefinitionAsync(
+            created.Id, "Coordinator", null, 1,
+            [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
+            estimatedHours: null);
+        cleared.EstimatedHours.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetRoleDefinitionsAsync_SurfacesEstimatedHoursInSnapshot()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await Db.SaveChangesAsync();
+
+        await _service.CreateRoleDefinitionAsync(
+            team.Id, "Coordinator", null, 1,
+            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
+            estimatedHours: 200);
+
+        var snapshots = await _service.GetRoleDefinitionsAsync(team.Id);
+
+        snapshots.Should().ContainSingle(s => s.Name == "Coordinator")
+            .Which.EstimatedHours.Should().Be(200);
     }
 
     // ==========================================================================

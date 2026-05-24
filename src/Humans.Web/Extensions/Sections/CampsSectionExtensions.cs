@@ -32,6 +32,7 @@ internal static class CampsSectionExtensions
         // Owns CampInfo + CampSettingsInfo projection; invalidates after every write through this surface.
         services.AddSingleton<CachingCampService>();
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
 
         // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampService — one cache, one signaller.
         services.AddSingleton<ICampInfoInvalidator>(sp => sp.GetRequiredService<CachingCampService>());

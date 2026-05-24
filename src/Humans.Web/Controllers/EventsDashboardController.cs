@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsDashboardController(IEventService guide, ICampService camps, IUserService userService)
+public class EventsDashboardController(IEventService guide, ICampServiceRead camps, IUserServiceRead userService)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -92,7 +92,7 @@ public class EventsDashboardController(IEventService guide, ICampService camps, 
             .Select(g =>
             {
                 var camp = campsById.GetValueOrDefault(g.Key);
-                var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+                var seasonName = camp?.Active?.Name;
                 return new CampSubmissionRow
                 {
                     CampName = seasonName ?? camp?.Slug ?? "Unknown",

@@ -90,8 +90,10 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // Act: per-user consent read for the TARGET should surface source's
         // append-only consent record via the chain-follow union.
         await using var assertScope = factory.Services.CreateAsyncScope();
+#pragma warning disable CS0618 // exercising obsolete method on purpose: chain-follow invariant coverage
         var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentService>();
         var records = await consentService.GetUserConsentRecordsAsync(targetId);
+#pragma warning restore CS0618
 
         records.Should().Contain(
             r => r.UserId == sourceId && r.DocumentVersionId == versionId,

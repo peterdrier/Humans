@@ -10,7 +10,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
@@ -49,8 +48,6 @@ public class TeamController(
             RoleAssignmentClaimsTransformation.HasProfileClaimType,
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
         var directory = await teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null, ct);
-
-        ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
 
         var viewModel = new TeamIndexViewModel
         {

@@ -661,11 +661,12 @@ public sealed class CachingTeamService(
         RolePeriod period,
         Guid actorUserId,
         bool isPublic = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
         var result = await WithInner(inner => inner.CreateRoleDefinitionAsync(
             teamId, name, description, slotCount, priorities, sortOrder,
-            period, actorUserId, isPublic, cancellationToken));
+            period, actorUserId, isPublic, estimatedHours, cancellationToken));
         InvalidateTeamsCache();
         return result;
     }
@@ -682,11 +683,12 @@ public sealed class CachingTeamService(
         Guid actorUserId,
         bool isPublic = true,
         bool canToggleManagement = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
         var result = await WithInner(inner => inner.UpdateRoleDefinitionAsync(
             roleDefinitionId, name, description, slotCount, priorities, sortOrder,
-            isManagement, period, actorUserId, isPublic, canToggleManagement, cancellationToken));
+            isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken));
         InvalidateTeamsCache();
         return result;
     }
@@ -960,7 +962,7 @@ public sealed class CachingTeamService(
             .ToList();
 
         await using var scope = scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
         var users = allUserIds.Count == 0
             ? new Dictionary<Guid, Application.UserInfo>()
             : await userService.GetUserInfosAsync(allUserIds, ct);
@@ -1088,6 +1090,7 @@ public sealed class CachingTeamService(
             d.Name,
             d.Description,
             d.SlotCount,
+            d.EstimatedHours,
             d.Priorities,
             d.SortOrder,
             d.IsManagement,

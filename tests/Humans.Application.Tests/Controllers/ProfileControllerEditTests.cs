@@ -109,7 +109,7 @@ public class ProfileControllerEditTests
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             authorizationService,
-            Substitute.For<IConsentService>(),
+            Substitute.For<IConsentServiceRead>(),
             _applicationDecisionService,
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculator>(),

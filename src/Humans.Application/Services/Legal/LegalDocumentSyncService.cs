@@ -15,7 +15,7 @@ public sealed class LegalDocumentSyncService(
     IGitHubLegalDocumentConnector gitHub,
     INotificationService notificationService,
     ITeamService teamService,
-    IUserService userService,
+    IUserServiceRead userService,
     IClock clock,
     ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncService
 {

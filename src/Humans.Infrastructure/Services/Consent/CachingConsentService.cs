@@ -186,9 +186,11 @@ public sealed class CachingConsentService(
         Guid documentVersionId, Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetConsentReviewDetailAsync(documentVersionId, userId, ct));
 
+#pragma warning disable CS0618 // GetUserConsentRecordsAsync is obsolete; passthrough retained until delete sweep
     public Task<IReadOnlyList<ConsentRecordSnapshot>> GetUserConsentRecordsAsync(
         Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserConsentRecordsAsync(userId, ct));
+#pragma warning restore CS0618
 
     public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetConsentRecordCountAsync(userId, ct));
@@ -229,7 +231,7 @@ public sealed class CachingConsentService(
         // the inner is consistent (both go through IUserService).
         await using (var scope = scopeFactory.CreateAsyncScope())
         {
-            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
             sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
 
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
@@ -288,7 +290,7 @@ public sealed class CachingConsentService(
         // inner ConsentService's GetChainFollowIdsAsync, lifted to warm time
         // so it does not run on every read.
         await using var scope = scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
         var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
 
         IReadOnlySet<Guid> versions;

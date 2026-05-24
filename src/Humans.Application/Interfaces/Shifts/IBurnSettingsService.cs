@@ -1,5 +1,3 @@
-using Humans.Application.Architecture;
-
 namespace Humans.Application.Interfaces.Shifts;
 
 /// <summary>
@@ -16,7 +14,6 @@ namespace Humans.Application.Interfaces.Shifts;
 /// writer of <c>event_settings</c>.
 /// </para>
 /// </summary>
-[SurfaceBudget(2)]
 public interface IBurnSettingsService : IApplicationService
 {
     /// <summary>

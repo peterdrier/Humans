@@ -23,7 +23,7 @@
             <ol class="breadcrumb">
                 @if (Model.IsAdminContext)
                 {
-                    <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId">@(Model.TargetDisplayName ?? Localizer["Emails_AdminUnknownTarget"].Value)</a></li>
+                    <li class="breadcrumb-item"><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></li>
                 }
                 else
                 {
@@ -332,6 +332,22 @@
                                                     </button>
                                                 </form>
                                             }
+                                        }
+                                        @* see nobodies-collective/Humans#758 — never offer delete for the
+                                           primary email (promote another first) or a ticket-linked email
+                                           (removing it could disconnect the user's event ticket). Admins
+                                           use the AdminDelete path which re-validates server-side. *@
+                                        else if (row.IsPrimary)
+                                        {
+                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeletePrimaryBlocked"].Value">
+                                                <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_DeletePrimaryBlocked"]
+                                            </span>
+                                        }
+                                        else if (row.IsTicketLinked)
+                                        {
+                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeleteTicketLinkedBlocked"].Value">
+                                                <i class="fa-solid fa-ticket me-1"></i>@Localizer["EmailGrid_DeleteTicketLinkedBlocked"]
+                                            </span>
                                         }
                                         else
                                         {

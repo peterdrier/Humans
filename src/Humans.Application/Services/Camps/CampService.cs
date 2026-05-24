@@ -23,7 +23,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 {
     private readonly ICampRepository _repo;
     private readonly ICampRoleRepository _roleRepo;
-    private readonly IUserService _userService;
+    private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
@@ -41,7 +41,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public CampService(
         ICampRepository repo,
         ICampRoleRepository roleRepo,
-        IUserService userService,
+        IUserServiceRead userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
         IFileStorage fileStorage,
@@ -164,10 +164,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     // --- Queries ---
 
-    public async Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
-        return camp is null ? null : CreateCampLookup(camp);
+        // GetBySlugAsync does not load Seasons.Members, so EE/member counts are
+        // unknown here — emit null rather than a misleading 0.
+        return camp is null ? null : CreateCampInfo(camp, includeEarlyEntryGrantCount: false);
     }
 
     public async Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
@@ -313,7 +315,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter: null, cancellationToken);
-        return camps.Select(CreateCampInfo).ToList();
+        return camps.Select(c => CreateCampInfo(c)).ToList();
     }
 
     private async Task<List<Camp>> GetCampEntitiesForYearAsync(
@@ -457,7 +459,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.TimesAtNowhere);
     }
 
-    private static CampInfo CreateCampInfo(Camp camp)
+    private static CampInfo CreateCampInfo(Camp camp, bool includeEarlyEntryGrantCount = true)
     {
         return new CampInfo(
             camp.Id,
@@ -466,15 +468,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.ContactPhone,
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
-            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: true)).ToList());
+            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount)).ToList());
     }
-
-    private static CampLookup CreateCampLookup(Camp camp) =>
-        new(
-            camp.Id,
-            camp.Slug,
-            camp.ContactEmail,
-            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: false)).ToList());
 
     private static CampSeasonInfo CreateCampSeasonInfo(
         CampSeason season,
@@ -513,14 +508,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             settings.PublicYear,
             settings.OpenSeasons.ToList(),
             settings.EeStartDate);
-
-    private static CampSeasonLookup CreateCampSeasonLookup(CampSeason season) =>
-        new(
-            season.Id,
-            season.CampId,
-            season.Year,
-            season.Name,
-            season.SoundZone);
 
     private static CampSeasonMemberInfo CreateCampSeasonMemberInfo(CampMember member) =>
         new(
@@ -1067,11 +1054,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     // --- Cross-service queries (used by CityPlanningService) ---
 
-    public async Task<CampSeasonLookup?> GetCampSeasonByIdAsync(
+    public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {
         var season = await _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
-        return season is null ? null : CreateCampSeasonLookup(season);
+        if (season is null) return null;
+        return CreateCampSeasonInfo(season, season.Camp?.Slug ?? string.Empty);
     }
 
     public async Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
@@ -1105,7 +1093,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         // Source of truth: CampRoleAssignment against the Camp Lead special role.
         _roleRepo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOnly, cancellationToken);
 
-    public async Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(
+    public async Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {
         // Role-based: camps where the user holds Lead or Workshop for any season.
@@ -1120,7 +1108,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         return campsForYear
             .Where(c => allCampIds.Contains(c.Id))
-            .Select(CreateCampLookup)
+            .Select(c => CreateCampInfo(c))
             .ToList();
     }
 
@@ -1698,7 +1686,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var users = userIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await _userService.GetUserInfosAsync(userIds, cancellationToken);
-        var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+        var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
 
         static string DisplayName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
             names.GetValueOrDefault(userId) ?? "Unknown";

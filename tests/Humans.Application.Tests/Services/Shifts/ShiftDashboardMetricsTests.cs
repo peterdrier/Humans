@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -35,10 +34,12 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
+        var fakeUserService = new FakeUserService(Db);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(new FakeTeamService(Db))
             .With<ITicketQueryService>(new FakeTicketQueryService(Db))
-            .With<IUserService>(new FakeUserService(Db))
+            .With<IUserService>(fakeUserService)
+            .With<IUserServiceRead>(fakeUserService)
             .With<IRoleAssignmentService>()
             .Build();
 
@@ -1155,8 +1156,8 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<TeamMember> AddMemberToTeamAsync(Guid teamId, Guid targetUserId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task SetMemberRoleAsync(Guid teamId, Guid userId, TeamMemberRole role, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(Guid teamId, string? pageContent, IReadOnlyList<TeamPageCallToActionInput> callsToAction, bool isPublicPage, bool showCoordinatorsOnPublicPage, Guid updatedByUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(Guid teamId, string name, string? description, int slotCount, List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId, bool isPublic = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(Guid roleDefinitionId, string name, string? description, int slotCount, List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId, bool isPublic = true, bool canToggleManagement = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(Guid teamId, string name, string? description, int slotCount, List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId, bool isPublic = true, int? estimatedHours = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(Guid roleDefinitionId, string name, string? description, int slotCount, List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId, bool isPublic = true, bool canToggleManagement = true, int? estimatedHours = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();

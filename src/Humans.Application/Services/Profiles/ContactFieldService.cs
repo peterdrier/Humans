@@ -17,8 +17,8 @@ namespace Humans.Application.Services.Profiles;
 public sealed class ContactFieldService(
     IContactFieldRepository repository,
     IProfileRepository profileRepository,
-    IUserService userService,
-    ITeamService teamService,
+    IUserServiceRead userService,
+    ITeamServiceRead teamService,
     IRoleAssignmentService roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     IClock clock,
@@ -149,11 +149,14 @@ public sealed class ContactFieldService(
 
         if (_cachedViewerTeamIds is null)
         {
-            var viewerTeams = await teamService.GetUserTeamsAsync(viewerUserId, cancellationToken);
-            _cachedIsAnyCoordinator = viewerTeams.Any(tm => tm.Role == TeamMemberRole.Coordinator);
-            _cachedViewerTeamIds = viewerTeams
-                .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
-                .Select(tm => tm.TeamId)
+            var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values;
+            var viewerMemberships = allTeams
+                .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == viewerUserId) })
+                .Where(x => x.Membership is not null);
+            _cachedIsAnyCoordinator = viewerMemberships.Any(x => x.Membership!.Role == TeamMemberRole.Coordinator);
+            _cachedViewerTeamIds = viewerMemberships
+                .Where(x => x.TeamInfo.SystemTeamType != SystemTeamType.Volunteers)
+                .Select(x => x.TeamInfo.Id)
                 .ToHashSet();
         }
 
@@ -161,10 +164,10 @@ public sealed class ContactFieldService(
             return ContactFieldVisibility.CoordinatorsAndBoard;
 
         // Shared team excluding Volunteers.
-        var ownerTeams = await teamService.GetUserTeamsAsync(ownerUserId, cancellationToken);
-        var ownerTeamIds = ownerTeams
-            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(tm => tm.TeamId)
+        var ownerTeamIds = (await teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
+                     && t.Members.Any(m => m.UserId == ownerUserId))
+            .Select(t => t.Id)
             .ToHashSet();
 
         if (_cachedViewerTeamIds.Intersect(ownerTeamIds).Any())

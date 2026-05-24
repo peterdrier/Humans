@@ -91,7 +91,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _authorizationService,
-            Substitute.For<IConsentService>(),
+            Substitute.For<IConsentServiceRead>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculator>(),

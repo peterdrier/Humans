@@ -1,0 +1,67 @@
+@model Humans.Application.DTOs.TicketStubInfo
+@using Humans.Domain.Enums
+@{
+    var isVoid = Model.Status == TicketAttendeeStatus.Void;
+    var isCheckedIn = Model.Status == TicketAttendeeStatus.CheckedIn;
+    var pending = Model.HasPendingTransfer;
+    // Emit the shared stub CSS once per request (the component renders many times).
+    var emitCss = !Context.Items.ContainsKey("ticket-stub-css");
+    if (emitCss) { Context.Items["ticket-stub-css"] = true; }
+    // TODO(open item): source the event label from the active event instead of a constant.
+    const string eventLabel = "Elsewhere 2026 · Admit One";
+}
+@if (emitCss)
+{
+    <style>
+        .ticket-stub { display:flex; width:330px; max-width:100%; border-radius:12px; overflow:hidden;
+            background:#fff; border:1px solid #e3ddd0; box-shadow:0 3px 10px rgba(0,0,0,.12); position:relative; }
+        .ticket-stub-main { flex:1; padding:13px 16px; background:linear-gradient(135deg,#faf7f0,#f3ecdd); min-width:0; }
+        .ticket-stub-event { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#9a8f78; font-weight:700; }
+        .ticket-stub-name { font-size:19px; font-weight:800; color:#2e2a22; margin:2px 0; overflow-wrap:anywhere; }
+        .ticket-stub-email { font-size:12.5px; color:#6b6453; overflow-wrap:anywhere; }
+        .ticket-stub-side { width:74px; background:#efe7d6; display:flex; flex-direction:column; align-items:center;
+            justify-content:center; gap:5px; border-left:2px dashed #c9bfa7; position:relative; flex-shrink:0; }
+        .ticket-stub-serial { writing-mode:vertical-rl; font-family:ui-monospace,monospace; font-size:10px; color:#8a7f68; letter-spacing:.1em; }
+        .ticket-stub-ico { font-size:18px; }
+        .ticket-stub.pending .ticket-stub-main { filter:saturate(.6); }
+        .ticket-stub.voided { opacity:.6; }
+        .ticket-stub.voided .ticket-stub-name { text-decoration:line-through; }
+        .ticket-stub-stamp { position:absolute; top:50%; left:38%; transform:translate(-50%,-50%) rotate(-14deg);
+            border:3px solid #b5532e; color:#b5532e; font-weight:900; font-size:14px; letter-spacing:.08em;
+            padding:3px 10px; border-radius:6px; text-transform:uppercase; opacity:.82; background:rgba(255,255,255,.35);
+            pointer-events:none; white-space:nowrap; }
+        .ticket-stub-badge { display:inline-block; margin-top:8px; font-size:9.5px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+        .ticket-stub-badge.checkedin { background:#2f6b3d; color:#fff; }
+        .ticket-stub-badge.void { background:#8a7f68; color:#fff; }
+    </style>
+}
+<div class="ticket-stub@(pending ? " pending" : "")@(isVoid ? " voided" : "")">
+    <div class="ticket-stub-main">
+        <div class="ticket-stub-event">@eventLabel</div>
+        <div class="ticket-stub-name">@Model.AttendeeName</div>
+        @if (!string.IsNullOrEmpty(Model.AttendeeEmail))
+        {
+            <div class="ticket-stub-email">@Model.AttendeeEmail</div>
+        }
+        @if (isCheckedIn)
+        {
+            <div class="ticket-stub-badge checkedin"><i class="fa-solid fa-check me-1"></i>Checked in</div>
+        }
+        else if (isVoid)
+        {
+            <div class="ticket-stub-badge void">Void</div>
+        }
+    </div>
+    <div class="ticket-stub-side">
+        <span class="ticket-stub-ico">🎟️</span>
+        @if (!string.IsNullOrEmpty(Model.VendorTicketId))
+        {
+            <span class="ticket-stub-serial">@Model.VendorTicketId</span>
+        }
+    </div>
+    @if (pending)
+    {
+        <div class="ticket-stub-stamp">Transfer pending</div>
+    }
+</div>

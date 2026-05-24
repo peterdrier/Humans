@@ -679,7 +679,10 @@ public sealed class TicketQueryService(
             .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
             .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
             .Select(a => new UserTicketHoldingRow(
+                a.Id,
                 a.AttendeeName,
+                a.AttendeeEmail,
+                a.VendorTicketId,
                 a.TicketTypeName,
                 a.Status))
             .ToList();

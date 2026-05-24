@@ -2,9 +2,9 @@
 
 ## Mission
 
-You are executing specific, pre-identified tech debt tasks from the backlog below. Work through them in order of priority. After completing each task, mark it done in this section of your handoff notes.
+You are executing specific, pre-identified tech debt tasks from the backlog below. Work through them in order of priority. After completing each task, mark it done in this section of your handoff notes. Prefer changes that delete, consolidate, or reuse existing surface; do not create a new abstraction unless it clearly reduces net complexity.
 
-**Work autonomously.** Pick the next uncompleted task, implement it, verify the build passes, commit, push, move on.
+**Work autonomously.** Pick the next uncompleted task, implement it, verify the build passes, commit, push, move on. If a task would add new durable surface instead of consolidating existing surface, document why in the commit/PR before proceeding.
 
 ---
 
@@ -48,6 +48,7 @@ Also do not modify:
 7. **No concurrency tokens.**
 8. **Every new page needs a nav link.**
 9. **Admin pages don't need localization.**
+10. **Reuse-first discipline.** Before adding new files, public types, interface methods, service/repository methods, DTOs/view models, helpers, endpoints, dependencies, or DI registrations, audit the existing owner/surface first. See `memory/process/reuse-first-change-discipline.md`.
 
 ## Build Command
 
@@ -137,6 +138,7 @@ Before every change, verify:
 2. **Am I renaming a serialized property?** → STOP.
 3. **Am I removing something that looks unused?** → STOP, likely used via reflection.
 4. **Am I changing an interface in `Application/`?** → Check all implementations AND callers.
-5. **Am I changing authorization?** → Verify exact match.
-6. **Does build pass?** → Must pass after every change.
-7. **Do tests pass?** → Must pass after every change.
+5. **Am I adding durable surface?** → Audit existing owners first; public/interface surface requires Peter approval.
+6. **Am I changing authorization?** → Verify exact match.
+7. **Does build pass?** → Must pass after every change.
+8. **Do tests pass?** → Must pass after every change.

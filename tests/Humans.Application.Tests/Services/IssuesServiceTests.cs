@@ -89,7 +89,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     public async Task SubmitIssueAsync_lands_in_Triage_and_invalidates_nav_badge()
     {
         var userId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = userId, Email = "u@u.com", DisplayName = "U" });
+        SeedUser(userId, "U").Email = "u@u.com";
         await Db.SaveChangesAsync();
 
         var issue = await _service.SubmitIssueAsync(
@@ -113,7 +113,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         var reporterId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = reporterId, Email = "r@x", DisplayName = "R" });
+        SeedUser(reporterId, "R").Email = "r@x";
         await Db.SaveChangesAsync();
 
         _roleService
@@ -239,16 +239,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     public async Task PostCommentAsync_handler_sends_email_and_notification_to_reporter()
     {
         var reporterId = Guid.NewGuid();
-        var reporter = new User
-        {
-            Id = reporterId,
-            Email = "reporter@test.com",
-            DisplayName = "Reporter",
-            PreferredLanguage = "en"
-        };
-        Db.Users.Add(reporter);
-        _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
-            .Returns(reporter.ToUserInfo());
+        SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
         await Db.SaveChangesAsync();
 
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Report Title");
@@ -364,7 +355,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         // Stamp an assignee on the issue so the dispatch helper has somebody
         // to notify alongside the reporter.
         var assigneeId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = assigneeId, Email = "ass@x.com", DisplayName = "Assignee" });
+        SeedUser(assigneeId, "Assignee").Email = "ass@x.com";
         await Db.SaveChangesAsync();
         await _service.UpdateAssigneeAsync(issueId, assigneeId, Guid.NewGuid());
         _notificationService.ClearReceivedCalls();
@@ -443,10 +434,10 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     public async Task UpdateAssigneeAsync_audit_includes_old_and_new_names()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
-        var oldAssignee = new User { Id = Guid.NewGuid(), DisplayName = "Old Person", Email = "old@x.com" };
-        var newAssignee = new User { Id = Guid.NewGuid(), DisplayName = "New Person", Email = "new@x.com" };
-        Db.Users.Add(oldAssignee);
-        Db.Users.Add(newAssignee);
+        var oldAssignee = SeedUser(Guid.NewGuid(), "Old Person");
+        oldAssignee.Email = "old@x.com";
+        var newAssignee = SeedUser(Guid.NewGuid(), "New Person");
+        newAssignee.Email = "new@x.com";
         await Db.SaveChangesAsync();
 
         var actorId = Guid.NewGuid();
@@ -469,7 +460,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var newAssigneeId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = newAssigneeId, Email = "a@a.com", DisplayName = "Assignee" });
+        SeedUser(newAssigneeId, "Assignee").Email = "a@a.com";
         await Db.SaveChangesAsync();
 
         await _service.UpdateAssigneeAsync(issueId, newAssigneeId, Guid.NewGuid());
@@ -492,7 +483,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = actorId, Email = "self@x.com", DisplayName = "Self" });
+        SeedUser(actorId, "Self").Email = "self@x.com";
         await Db.SaveChangesAsync();
 
         await _service.UpdateAssigneeAsync(issueId, actorId, actorId);
@@ -515,7 +506,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var assigneeId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = assigneeId, Email = "assignee@x.com", DisplayName = "Assignee" });
+        SeedUser(assigneeId, "Assignee").Email = "assignee@x.com";
         await Db.SaveChangesAsync();
 
         var result = await _service.UpdateAssigneeWithResultAsync(issueId, assigneeId, Guid.NewGuid());
@@ -716,12 +707,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     public async Task GetIssueListAsync_applies_updated_descending_limit()
     {
         var reporterId = Guid.NewGuid();
-        Db.Users.Add(new User
-        {
-            Id = reporterId,
-            Email = "reporter@example.org",
-            DisplayName = "Reporter"
-        });
+        SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
 
         var older = new Issue
         {
@@ -833,8 +819,8 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
-        Db.Users.Add(new User { Id = aliceId, Email = "a@a.com", DisplayName = "Alice" });
-        Db.Users.Add(new User { Id = bobId, Email = "b@b.com", DisplayName = "Bob" });
+        SeedUser(aliceId, "Alice").Email = "a@a.com";
+        SeedUser(bobId, "Bob").Email = "b@b.com";
         await Db.SaveChangesAsync();
 
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
@@ -861,13 +847,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         var reporterId = Guid.NewGuid();
         if (!Db.Users.Any(u => u.Id == reporterId))
         {
-            Db.Users.Add(new User
-            {
-                Id = reporterId,
-                Email = $"{reporterId}@test.com",
-                DisplayName = "Reporter",
-                PreferredLanguage = "en"
-            });
+            SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
             await Db.SaveChangesAsync();
         }
 
@@ -906,13 +886,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         IssueStatus status, Instant resolvedAt, string? screenshotPath = null)
     {
         var reporterId = Guid.NewGuid();
-        Db.Users.Add(new User
-        {
-            Id = reporterId,
-            Email = $"{reporterId}@test.com",
-            DisplayName = "Reporter",
-            PreferredLanguage = "en"
-        });
+        SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
         var issue = new Issue
         {
             Id = Guid.NewGuid(),
@@ -999,13 +973,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         try
         {
             var reporterId = Guid.NewGuid();
-            Db.Users.Add(new User
-            {
-                Id = reporterId,
-                Email = $"{reporterId}@test.com",
-                DisplayName = "Reporter",
-                PreferredLanguage = "en"
-            });
+            SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
             Db.Issues.Add(new Issue
             {
                 Id = issueId,
@@ -1042,13 +1010,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
 
         var reporterId = Guid.NewGuid();
-        Db.Users.Add(new User
-        {
-            Id = reporterId,
-            Email = $"{reporterId}@test.com",
-            DisplayName = "Reporter",
-            PreferredLanguage = "en"
-        });
+        SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
         var issueId = Guid.NewGuid();
         Db.Issues.Add(new Issue
         {

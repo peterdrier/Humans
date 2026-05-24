@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
@@ -8,7 +7,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -32,6 +30,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
+        services.AddSingleton<IUserServiceRead>(userService);
         services.AddSingleton(_roleAssignmentService);
         services.AddKeyedScoped<ITeamService>(
             CachingTeamService.InnerServiceKey,

@@ -158,11 +158,31 @@ public class AgentUserSnapshotProviderTests
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var teams = Substitute.For<ITeamService>();
-        teams.GetActiveTeamMembershipsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(teamMemberships ?? []);
+        var teams = Substitute.For<ITeamServiceRead>();
+        // Build a TeamInfo dict that mirrors the desired memberships so the
+        // reshape idiom (GetTeamsAsync → filter by member) returns the same data.
+        var membershipsToReturn = teamMemberships ?? [];
+        var teamInfos = membershipsToReturn
+            .Select((m, i) => new TeamInfo(
+                Id: Guid.NewGuid(),
+                Name: m.TeamName,
+                Description: null,
+                Slug: $"team-{i}",
+                IsActive: true,
+                IsSystemTeam: false,
+                SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false,
+                IsPublicPage: false,
+                IsHidden: m.IsHidden,
+                IsPromotedToDirectory: false,
+                CreatedAt: NodaTime.Instant.MinValue,
+                Members: [new TeamMemberInfo(Guid.NewGuid(), userId, "T", null, null, m.Role, NodaTime.Instant.MinValue)]))
+            .ToList();
+        var teamDict = teamInfos.ToDictionary(t => t.Id);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teamDict));
 
-        var consents = Substitute.For<IConsentService>();
+        var consents = Substitute.For<IConsentServiceRead>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

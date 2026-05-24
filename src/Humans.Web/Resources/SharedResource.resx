@@ -1817,6 +1817,8 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>General Availability</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Mark which days you're available to help. Coordinators can see who's in the pool when assigning shifts.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Save Availability</value></data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve"><value>Before browsing shifts, mark the days you're available — coordinators use it to match you with shifts.</value></data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve"><value>Set your availability</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>days selected</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Some days still need help but all available slots are currently full. Check back later in case spots open up.</value></data>
   <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirm your {0} sign-up</value></data>
@@ -2054,6 +2056,8 @@
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve"><value>Primary email — set another as primary first to remove this.</value></data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve"><value>Linked to your event ticket — cannot be removed.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Verification email sent to the user.</value></data>
   <data name="EmailGrid_AdminVerify" xml:space="preserve"><value>Verify</value></data>
   <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve"><value>Manually mark this email verified without the user clicking the link?</value></data>

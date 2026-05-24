@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
@@ -41,10 +42,6 @@ public sealed class GoogleWorkspaceSyncService(
     ILogger<GoogleWorkspaceSyncService> logger) : IGoogleSyncService
 {
     private readonly GoogleWorkspaceOptions _options = options.Value;
-
-    // ==========================================================================
-    // Provisioning — Drive folders and Google Groups
-    // ==========================================================================
 
     /// <inheritdoc />
     public async Task<GoogleResource> ProvisionTeamFolderAsync(
@@ -95,8 +92,6 @@ public sealed class GoogleWorkspaceSyncService(
 
         return resource;
     }
-
-    // ─── Gateway — add/remove per user per resource ───
 
     /// <summary>GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None. <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.</summary>
     private async Task AddUserToDriveAsync(
@@ -419,10 +414,6 @@ public sealed class GoogleWorkspaceSyncService(
         return Task.CompletedTask;
     }
 
-    // ==========================================================================
-    // Reconciliation — preview / execute across a resource type or single resource
-    // ==========================================================================
-
     /// <inheritdoc />
     public async Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
@@ -629,7 +620,8 @@ public sealed class GoogleWorkspaceSyncService(
                 .Concat(childMembersByTeam.Values.SelectMany(v => v.Select(m => m.UserId)))
                 .Distinct()
                 .ToList();
-            var emailsByUserId = await LoadEmailsForUserIdsAsync(allMemberUserIds, cancellationToken);
+            var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(allMemberUserIds, cancellationToken);
+            var usersById = await userService.GetUserInfosAsync(allMemberUserIds, cancellationToken);
 
             foreach (var resource in resources)
             {
@@ -651,7 +643,7 @@ public sealed class GoogleWorkspaceSyncService(
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (GetDisplayName(tm), GetUserId(tm), GetProfilePictureUrl(tm), [teamLink]);
+                        membersByEmail[memberEmail] = (tm.DisplayName, tm.UserId, tm.ProfilePictureUrl, [teamLink]);
                     }
                 }
 
@@ -672,7 +664,12 @@ public sealed class GoogleWorkspaceSyncService(
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (GetDisplayName(cm), GetUserId(cm), GetProfilePictureUrl(cm), [childTeamLink]);
+                        usersById.TryGetValue(cm.UserId, out var userInfo);
+                        membersByEmail[memberEmail] = (
+                            userInfo?.BurnerName ?? string.Empty,
+                            cm.UserId,
+                            userInfo?.ProfilePictureUrl,
+                            [childTeamLink]);
                     }
                 }
             }
@@ -874,10 +871,6 @@ public sealed class GoogleWorkspaceSyncService(
         }
     }
 
-    // ==========================================================================
-    // Group linking / reactivation
-    // ==========================================================================
-
     /// <inheritdoc />
     public async Task<GroupLinkResult> EnsureTeamGroupAsync(
         Guid teamId,
@@ -1019,10 +1012,6 @@ public sealed class GoogleWorkspaceSyncService(
 
         return GroupLinkResult.Ok();
     }
-
-    // ==========================================================================
-    // Group settings drift
-    // ==========================================================================
 
     /// <inheritdoc />
     public async Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
@@ -1173,10 +1162,6 @@ public sealed class GoogleWorkspaceSyncService(
         }
     }
 
-    // ==========================================================================
-    // Email mismatches / domain groups
-    // ==========================================================================
-
     /// <inheritdoc />
     public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
     {
@@ -1277,10 +1262,6 @@ public sealed class GoogleWorkspaceSyncService(
             ExpectedSettings = expectedSettings
         };
     }
-
-    // ==========================================================================
-    // Drive folder paths / inherited-access enforcement
-    // ==========================================================================
 
     /// <inheritdoc />
     public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
@@ -1464,10 +1445,6 @@ public sealed class GoogleWorkspaceSyncService(
         return correctedCount;
     }
 
-    // ==========================================================================
-    // Outbox failure count — routed through the dedicated repository.
-    // ==========================================================================
-
     /// <inheritdoc />
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
         => googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
@@ -1489,10 +1466,6 @@ public sealed class GoogleWorkspaceSyncService(
                 e.FailedPermanently))
             .ToList();
     }
-
-    // ==========================================================================
-    // Private helpers — data loading / identity / permission helpers
-    // ==========================================================================
 
     /// <summary>
     /// Batch-loads active members for every team id, stitches user slices,
@@ -1689,7 +1662,7 @@ public sealed class GoogleWorkspaceSyncService(
         {
             if (usersById.TryGetValue(match.UserId, out var user))
             {
-                result.TryAdd(match.Email, (user.DisplayName, match.UserId, user.ProfilePictureUrl));
+                result.TryAdd(match.Email, (user.BurnerName, match.UserId, user.ProfilePictureUrl));
             }
         }
 
@@ -1733,15 +1706,6 @@ public sealed class GoogleWorkspaceSyncService(
                 .FirstOrDefault();
     }
 
-    /// <summary>Bulk-fetch UserEmails by userId for sync hot-path (#635, §15i).</summary>
-    private Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>>
-        LoadEmailsForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds,
-            CancellationToken ct)
-    {
-        return userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-    }
-
     private static string? TryGetGoogleEmail(
         TeamActiveMemberSnapshot tm,
         IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
@@ -1758,30 +1722,6 @@ public sealed class GoogleWorkspaceSyncService(
             .Select(e => e.Email)
             .FirstOrDefault();
     }
-
-    private static string GetDisplayName(TeamMember tm)
-    {
-#pragma warning disable CS0618 // Legacy TeamMember path; snapshot paths use UserInfo.BurnerName.
-        return tm.User?.DisplayName ?? string.Empty;
-#pragma warning restore CS0618
-    }
-
-    private static Guid GetUserId(TeamMember tm) => tm.UserId;
-
-    private static Guid GetUserId(TeamActiveMemberSnapshot tm) => tm.UserId;
-
-    private static string? GetProfilePictureUrl(TeamMember tm)
-    {
-#pragma warning disable CS0618
-        return tm.User?.ProfilePictureUrl;
-#pragma warning restore CS0618
-    }
-
-    private static string GetDisplayName(TeamActiveMemberSnapshot tm) => tm.DisplayName;
-
-    private static string? GetProfilePictureUrl(TeamActiveMemberSnapshot tm) => tm.ProfilePictureUrl;
-
-    // ─── Group permission classifiers over DrivePermission DTO ───
 
     private static bool IsAnyUserPermission(DrivePermission perm)
     {
@@ -1816,10 +1756,6 @@ public sealed class GoogleWorkspaceSyncService(
         "organizer" => DrivePermissionLevel.Manager,
         _ => null
     };
-
-    // ==========================================================================
-    // Group settings helpers
-    // ==========================================================================
 
     private GroupSettingsExpected BuildExpectedGroupSettings() =>
         GroupSettingsPolicy.BuildExpected(_options.Groups);

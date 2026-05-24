@@ -8,7 +8,7 @@ namespace Humans.Application.Services.Governance;
 public sealed class GovernanceIndexService(
     IApplicationDecisionService applicationDecisionService,
     ILegalDocumentService legalDocService,
-    IUserService userService) : IGovernanceIndexService
+    IUserServiceRead userService) : IGovernanceIndexService
 {
     public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
     {

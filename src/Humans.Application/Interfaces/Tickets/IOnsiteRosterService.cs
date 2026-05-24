@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Tickets;
@@ -38,7 +37,6 @@ public sealed record OnsiteRosterResult(
 
 public sealed record OnsiteRosterRow(
     Guid UserId,
-    string DisplayName,
     Instant CheckedInAt,
     IReadOnlyList<string> CampNames,
     IReadOnlyList<string> TeamNames,

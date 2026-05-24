@@ -4,24 +4,23 @@ using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.Governance;
 
-// Pass-through to ITeamService + IRoleAssignmentService. Exists to break the DI cycle
+// Pass-through to ITeamServiceRead + IRoleAssignmentService. Exists to break the DI cycle
 // MembershipCalculator → ITeamService → ISystemTeamSync → IMembershipCalculator.
-public sealed class MembershipQuery(ITeamService teamService, IRoleAssignmentService roleAssignmentService)
+public sealed class MembershipQuery(ITeamServiceRead teamService, IRoleAssignmentService roleAssignmentService)
     : IMembershipQuery
 {
     public async Task<IReadOnlyList<MembershipTeamSnapshot>> GetUserTeamsAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var memberships = await teamService.GetUserTeamsAsync(userId, cancellationToken);
-#pragma warning disable CS0618 // TeamMember.Team nav read is included on this path; stitching off UserInfo would be a layer-skip.
-        return memberships
-            .Select(m => new MembershipTeamSnapshot(
-                m.TeamId,
-                m.Role,
-                m.Team.SystemTeamType))
+        return (await teamService.GetTeamsAsync(cancellationToken)).Values
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
+            .Where(x => x.Membership is not null)
+            .Select(x => new MembershipTeamSnapshot(
+                x.TeamInfo.Id,
+                x.Membership!.Role,
+                x.TeamInfo.SystemTeamType))
             .ToList();
-#pragma warning restore CS0618
     }
 
     public async Task<bool> IsUserMemberOfTeamAsync(

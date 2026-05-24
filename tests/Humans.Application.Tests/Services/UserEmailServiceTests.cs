@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profiles;
@@ -21,6 +20,8 @@ public class UserEmailServiceTests
     private readonly IUserEmailRepository _repository = Substitute.For<IUserEmailRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly Humans.Application.Interfaces.Tickets.ITicketQueryService _ticketQueryService =
+        Substitute.For<Humans.Application.Interfaces.Tickets.ITicketQueryService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
@@ -33,7 +34,14 @@ public class UserEmailServiceTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).Build();
+        // Default: user holds no ticket-linked emails, so the #758 delete-guard is a no-op
+        // unless a test overrides GetUserTicketExportDataAsync.
+        _ticketQueryService.GetUserTicketExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new Humans.Application.Interfaces.Tickets.UserTicketExportData([], []));
+        _serviceProvider = new ServiceLocatorBuilder()
+            .With(_mergeService)
+            .With(_ticketQueryService)
+            .Build();
 
         _service = new UserEmailService(
             _repository,
@@ -287,6 +295,87 @@ public class UserEmailServiceTests
         await _repository.Received(1).RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         // GetLoginsAsync should not even be called since the verified branch is skipped.
         await _userManager.DidNotReceive().GetLoginsAsync(Arg.Any<User>());
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_PrimaryEmail_ThrowsValidationException()
+    {
+        // see nobodies-collective/Humans#758 — the primary email can't be deleted even
+        // when other verified emails remain; the user must promote another to primary first.
+        var userId = Guid.NewGuid();
+        var primaryId = Guid.NewGuid();
+        var primary = new UserEmail
+        {
+            Id = primaryId,
+            UserId = userId,
+            Email = "primary@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        var secondary = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "secondary@example.com",
+            IsVerified = true,
+            IsPrimary = false,
+        };
+        _repository.GetByIdAndUserIdAsync(primaryId, userId, Arg.Any<CancellationToken>())
+            .Returns(primary);
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { primary, secondary });
+
+        var act = async () => await _service.DeleteEmailAsync(userId, primaryId);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_TicketLinkedEmail_ThrowsValidationException()
+    {
+        // see nobodies-collective/Humans#758 — a non-primary verified email that matches the
+        // user's ticket (attendee email here) is blocked: removing it could disconnect the ticket.
+        var userId = Guid.NewGuid();
+        var ticketEmailId = Guid.NewGuid();
+        var ticketEmail = new UserEmail
+        {
+            Id = ticketEmailId,
+            UserId = userId,
+            Email = "katja@gmail.com",
+            IsVerified = true,
+            IsPrimary = false,
+        };
+        var primary = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "primary@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(ticketEmailId, userId, Arg.Any<CancellationToken>())
+            .Returns(ticketEmail);
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { ticketEmail, primary });
+        _ticketQueryService.GetUserTicketExportDataAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new Humans.Application.Interfaces.Tickets.UserTicketExportData(
+                Orders: [],
+                Attendees:
+                [
+                    new Humans.Application.Interfaces.Tickets.UserTicketAttendeeExportRow(
+                        AttendeeName: "Katja",
+                        // googlemail alternate must still match the gmail row.
+                        AttendeeEmail: "katja@googlemail.com",
+                        TicketTypeName: "Full Week",
+                        Price: 100m,
+                        Status: "Valid")
+                ]));
+
+        var act = async () => await _service.DeleteEmailAsync(userId, ticketEmailId);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -897,6 +986,64 @@ public class UserEmailServiceTests
         added.Should().NotBeNull();
         added!.IsPrimary.Should().BeTrue();
         existingPrimary.IsPrimary.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AddEmailAsync_ReAddPreviouslyRemovedAddress_LingeringInLegacyColumn_Succeeds()
+    {
+        // see nobodies-collective/Humans#758 — the original incident. The user removed their
+        // primary UserEmail row, but the legacy AspNetUsers.Email column still holds the
+        // address. The old guard called GetPrimaryEmailAsync (which falls back to that column)
+        // and threw "This is already your sign-in email", so the user could never re-add it.
+        // No live UserEmail row exists for the address, so the re-add must now succeed.
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.GenerateUserTokenAsync(
+                Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns("tok-123");
+        _repository.ExistsForUserAsync(
+                userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        // UserInfo has NO UserEmail rows (the primary was deleted) but the legacy column lingers.
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(BuildStubUserInfo(userId, []));
+
+        var result = await _service.AddEmailAsync(userId, "katja@gmail.com");
+
+        result.EmailId.Should().NotBe(Guid.Empty);
+        await _repository.Received(1).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AddEmailAsync_AddressAlreadyHeldAsVerifiedRow_ThrowsValidationException()
+    {
+        // The "already your sign-in email" guard still fires when a VERIFIED UserEmail row at
+        // the address exists. (ExistsForUserAsync is stubbed false here to isolate the
+        // verified-row branch from the duplicate-row branch.)
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _repository.ExistsForUserAsync(
+                userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(BuildStubUserInfo(userId, new List<UserEmail>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Email = "katja@gmail.com",
+                    IsVerified = true,
+                    IsPrimary = true,
+                }
+            }));
+
+        var act = async () => await _service.AddEmailAsync(userId, "katja@gmail.com");
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _repository.DidNotReceive().AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

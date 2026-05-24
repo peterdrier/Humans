@@ -5,8 +5,13 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NodaTime;
+using NSubstitute;
 using CampRoleService = Humans.Application.Services.Camps.CampRoleService;
 using CampService = Humans.Application.Services.Camps.CampService;
 
@@ -46,8 +51,8 @@ public class CampsArchitectureTests
         var ctor = typeof(CampService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "lead display names are resolved via IUserService cross-section (design-rules §6, §9); CampLead.User nav is stripped");
+        paramTypes.Should().Contain(typeof(IUserServiceRead),
+            because: "lead display names are resolved via IUserServiceRead cross-section (design-rules §6, §9); CampLead.User nav is stripped");
     }
 
     [HumansFact]
@@ -283,6 +288,70 @@ public class CampsArchitectureTests
             because: "sections must not call IGoogleGroupSync.RequestSyncAsync; the orchestrator pulls from IGoogleGroupMembershipSource (issue nobodies-collective/Humans#740)");
         paramTypes.Should().NotContain(typeof(IGoogleGroupProvisioningClient),
             because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
+    }
+
+    // ── ICampServiceRead split (memory/architecture/section-read-write-split.md) ──
+
+    [HumansFact]
+    public void ICampService_InheritsICampServiceRead()
+    {
+        typeof(ICampServiceRead).IsAssignableFrom(typeof(ICampService))
+            .Should().BeTrue(
+                because: "ICampService is the full Camps surface; external sections inject the narrow ICampServiceRead. " +
+                         "See memory/architecture/section-read-write-split.md.");
+    }
+
+    [HumansFact]
+    public void CachingCampService_ImplementsICampServiceRead()
+    {
+        typeof(ICampServiceRead).IsAssignableFrom(typeof(CachingCampService))
+            .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void ICampService_And_ICampServiceRead_ResolveToSameSingleton()
+    {
+        // Mirrors the Camps-section DI shape: the same CachingCampService
+        // singleton is exposed under both interface keys.
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<ICampRepository>());
+        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
+        services.AddSingleton(Substitute.For<IClock>());
+        services.AddSingleton(Substitute.For<ILogger<CachingCampService>>());
+
+        services.AddSingleton<CachingCampService>();
+        services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromFull = provider.GetRequiredService<ICampService>();
+        var fromRead = provider.GetRequiredService<ICampServiceRead>();
+        var concrete = provider.GetRequiredService<CachingCampService>();
+
+        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromRead, concrete).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void CampInfo_Active_ReturnsLatestSeasonByYear()
+    {
+        // Smoke test: CampInfo.Active picks the highest-year season.
+        var season2024 = new CampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), "slug", 2024, null,
+            "Camp 2024", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+            YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, null, null, null, 0, null, null);
+        var season2026 = new CampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), "slug", 2026, null,
+            "Camp 2026", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+            YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, null, null, null, 0, null, null);
+
+        var camp = new CampInfo(Guid.NewGuid(), "slug", "email@example.com", "+34 600 000 000",
+            false, 0, [season2024, season2026]);
+
+        camp.Active.Should().Be(season2026,
+            because: "Active returns the season with the highest Year");
+        camp.Active!.Name.Should().Be("Camp 2026");
     }
 
     // ── Public detail page — EE non-exposure invariant ───────────────────────

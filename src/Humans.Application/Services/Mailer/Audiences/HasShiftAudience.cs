@@ -10,7 +10,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </summary>
 public sealed class HasShiftAudience(
     IShiftView shiftView,
-    IUserService users) : MailerAudienceBase(users)
+    IUserServiceRead users) : MailerAudienceBase(users)
 {
     public override string Key => "has-shift";
     public override string DisplayName => "Volunteers with a shift signup";

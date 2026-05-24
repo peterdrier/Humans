@@ -24,7 +24,7 @@ public class ProfileAdminController(
     IAuditLogService audit,
     ILogger<ProfileAdminController> logger,
     IProfileService profileService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IRoleAssignmentService roleAssignmentService) : HumansControllerBase(userService)
 {
     private readonly IProfileService _profileService = profileService;
@@ -79,8 +79,9 @@ public class ProfileAdminController(
                 user.LastLoginAt,
                 !string.IsNullOrEmpty(info?.Profile?.BurnerName));
 
-        var memberships1 = await teamService.GetUserTeamsAsync(userId1, ct);
-        var memberships2 = await teamService.GetUserTeamsAsync(userId2, ct);
+        var allTeams = (await teamService.GetTeamsAsync(ct)).Values;
+        var teamCount1 = allTeams.Count(t => t.Members.Any(m => m.UserId == userId1));
+        var teamCount2 = allTeams.Count(t => t.Members.Any(m => m.UserId == userId2));
         var roles1 = await roleAssignmentService.GetByUserIdAsync(userId1, ct);
         var roles2 = await roleAssignmentService.GetByUserIdAsync(userId2, ct);
 
@@ -88,10 +89,10 @@ public class ProfileAdminController(
         {
             SharedEmail = sharedEmail,
             Account1 = BuildSide(u1, info1,
-                memberships1.Count(m => m.LeftAt is null),
+                teamCount1,
                 roles1.Count(r => r.ValidTo is null)),
             Account2 = BuildSide(u2, info2,
-                memberships2.Count(m => m.LeftAt is null),
+                teamCount2,
                 roles2.Count(r => r.ValidTo is null))
         };
 

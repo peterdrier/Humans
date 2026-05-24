@@ -1,5 +1,3 @@
-using Humans.Application.Architecture;
-
 namespace Humans.Application.Interfaces.Shifts;
 
 public record GeneralAvailabilitySnapshot(
@@ -7,7 +5,6 @@ public record GeneralAvailabilitySnapshot(
     Guid EventSettingsId,
     IReadOnlyList<int> AvailableDayOffsets);
 
-[SurfaceBudget(4)]
 public interface IGeneralAvailabilityService : IApplicationService
 {
     Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, List<int> dayOffsets);

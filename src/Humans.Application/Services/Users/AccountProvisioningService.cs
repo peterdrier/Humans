@@ -63,6 +63,7 @@ public sealed class AccountProvisioningService(
         var now = clock.GetCurrentInstant();
 
         var newUserId = Guid.NewGuid();
+#pragma warning disable HUM_USER_DISPLAYNAME // Account provisioning seeds the legacy Identity fallback column.
         var newUser = new User
         {
             Id = newUserId,
@@ -70,6 +71,7 @@ public sealed class AccountProvisioningService(
             ContactSource = source,
             CreatedAt = now,
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var result = await userManager.CreateAsync(newUser);
         if (!result.Succeeded)
@@ -126,6 +128,7 @@ public sealed class AccountProvisioningService(
         }
 
         var now = clock.GetCurrentInstant();
+#pragma warning disable HUM_USER_DISPLAYNAME // Magic-link signup seeds the legacy Identity fallback column.
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -133,6 +136,7 @@ public sealed class AccountProvisioningService(
             CreatedAt = now,
             LastLoginAt = now
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var createResult = await userManager.CreateAsync(user);
         if (!createResult.Succeeded)

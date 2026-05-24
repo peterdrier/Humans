@@ -36,11 +36,8 @@ public sealed class CachingCampService(
 
     // Cached reads
 
-    public async Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
-    {
-        // CampLookup has different fields than CampInfo — pass through.
-        return await WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
-    }
+    public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
@@ -89,7 +86,7 @@ public sealed class CachingCampService(
         // Delegate so the Lead OR Workshop check sees the role-assignment table directly.
         WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
 
-    public Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(
+    public Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(
         Guid userId, int year, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetEventManagedCampsAsync(userId, year, cancellationToken));
 
@@ -128,7 +125,7 @@ public sealed class CachingCampService(
         string query, int max, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
 
-    public Task<CampSeasonLookup?> GetCampSeasonByIdAsync(
+    public Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampSeasonByIdAsync(campSeasonId, cancellationToken));
 

@@ -10,7 +10,7 @@ namespace Humans.Web.ViewComponents;
 /// pattern (see <c>memory/architecture/person-search.md</c>); the typed
 /// replacement for the old human-search partial.
 /// </summary>
-public sealed class HumanSearchViewComponent(IUserService userService) : ViewComponent
+public sealed class HumanSearchViewComponent(IUserServiceRead userService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         string fieldName = "userId",
@@ -18,7 +18,8 @@ public sealed class HumanSearchViewComponent(IUserService userService) : ViewCom
         string? placeholder = null,
         HumanSearchScope scope = HumanSearchScope.All,
         IEnumerable<Guid>? excludeUserIds = null,
-        Guid? selectedUserId = null)
+        Guid? selectedUserId = null,
+        bool allowEmail = false)
     {
         // Resolve the optional prefill to the user's BurnerName (the same value the
         // dropdown shows). Render empty if the user doesn't resolve (deleted/rejected)
@@ -47,6 +48,7 @@ public sealed class HumanSearchViewComponent(IUserService userService) : ViewCom
             ExcludeUserIds = excludeUserIds,
             SelectedUserId = selectedUserId,
             SelectedBurnerName = selectedBurnerName,
+            AllowEmail = allowEmail,
         };
 
         return View("Default", model);

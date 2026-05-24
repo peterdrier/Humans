@@ -1,5 +1,3 @@
-using Humans.Application.Architecture;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -216,15 +214,6 @@ public record TeamActiveMemberSnapshot(
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
-/// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>51→48 — ITeamServiceRead split: GetTeamsAsync/GetTeamAsync/SearchAsync/GetTeamBySlugAsync(TeamInfo) onto ITeamServiceRead; entity slug method renamed GetTeamEntityBySlugAsync.</item>
-///   <item>54→51 — ITeamServiceRead split prep: removed GetPendingRequestCountsByTeamIdsAsync; made CanUserApproveRequestsForTeamAsync and GetAllRoleDefinitionsAsync private.</item>
-///   <item>54→54 — added TeamInfo.ManagementRoleHolderUserIds + RoleDefinitions; drained 6 readers off DB onto team cache.</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(48)]
 public interface ITeamService : ITeamServiceRead, IApplicationService
 {
     /// <summary>
@@ -472,6 +461,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -482,6 +472,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
         bool canToggleManagement = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -694,6 +685,7 @@ public sealed record TeamRoleDefinitionSnapshot(
     string Name,
     string? Description,
     int SlotCount,
+    int? EstimatedHours,
     IReadOnlyList<SlotPriority> Priorities,
     int SortOrder,
     bool IsManagement,

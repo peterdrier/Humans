@@ -4424,6 +4424,12 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve">
     <value>Enregistrer la disponibilité</value>
   </data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve">
+    <value>Avant de parcourir les créneaux, indiquez les jours où vous êtes disponible : les coordinateurs s'en servent pour vous attribuer des créneaux.</value>
+  </data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve">
+    <value>Indiquez vos disponibilités</value>
+  </data>
   <data name="Shifts_DaysSelected" xml:space="preserve">
     <value>jours sélectionnés</value>
   </data>
@@ -5114,6 +5120,12 @@
   </data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
     <value>Cet e-mail est lié à un fournisseur de connexion. Utilisez Dissocier à la place.</value>
+  </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>E-mail principal — définissez-en un autre comme principal avant de supprimer celui-ci.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Lié à votre billet d'événement — ne peut pas être supprimé.</value>
   </data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
     <value>E-mail de vérification envoyé à l'utilisateur.</value>

@@ -147,7 +147,9 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (user is null)
             return false;
 
+#pragma warning disable HUM_USER_DISPLAYNAME // Repository mutates the legacy Identity fallback column.
         user.DisplayName = displayName;
+#pragma warning restore HUM_USER_DISPLAYNAME
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -267,7 +269,9 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         user.MergedToUserId = targetUserId;
         user.MergedAt = now;
 
+#pragma warning disable HUM_USER_DISPLAYNAME // Merge tombstone label is an allowed legacy column write.
         user.DisplayName = "Merged User";
+#pragma warning restore HUM_USER_DISPLAYNAME
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
@@ -477,6 +481,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (user is null)
             return null;
 
+#pragma warning disable HUM_USER_DISPLAYNAME // Purge returns and rewrites the legacy label for audit/debug flows.
         var displayName = user.DisplayName;
 
         // Free the unique index and null out User.Email.
@@ -491,6 +496,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
 
         user.DisplayName = $"Purged ({displayName})";
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
@@ -536,10 +542,12 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
             return null;
 
         var originalEmail = user.Email;
+#pragma warning disable HUM_USER_DISPLAYNAME // Deletion export records the original legacy label before anonymization.
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
-        user.DisplayName = UserInfo.GdprAnonymizedDisplayName;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+#pragma warning restore HUM_USER_DISPLAYNAME
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;

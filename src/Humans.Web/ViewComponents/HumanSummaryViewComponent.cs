@@ -15,7 +15,7 @@ namespace Humans.Web.ViewComponents;
 /// (e.g. ticket-transfer detail) where the reviewer needs identity context
 /// without having to hover.
 /// </summary>
-public sealed class HumanSummaryViewComponent(IUserService userService, ITeamService teamService) : ViewComponent
+public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITeamServiceRead teamService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
@@ -45,11 +45,19 @@ public sealed class HumanSummaryViewComponent(IUserService userService, ITeamSer
         }
 
         var profile = info.Profile;
-        var memberships = (await teamService.GetActiveTeamMembershipsForUserAsync(userId))
-            .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
+        var memberships = (await teamService.GetTeamsAsync())
+            .Values
+            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(t => new
+            {
+                TeamInfo = t,
+                Membership = t.Members.FirstOrDefault(m => m.UserId == userId)
+            })
+            .Where(m => m.Membership is not null)
+            .OrderBy(m => m.TeamInfo.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
-        var hiddenTeams = memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList();
+        var publicTeams = memberships.Where(m => !m.TeamInfo.IsHidden).Select(m => m.TeamInfo.Name).ToList();
+        var hiddenTeams = memberships.Where(m => m.TeamInfo.IsHidden).Select(m => m.TeamInfo.Name).ToList();
 
         var effectivePictureUrl = profile.HasCustomPicture
             ? Url.Action(nameof(ProfileController.Picture), "Profile",

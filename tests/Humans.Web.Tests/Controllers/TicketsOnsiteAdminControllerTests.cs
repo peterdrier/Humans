@@ -77,8 +77,8 @@ public class TicketsOnsiteAdminControllerTests
             .Returns(new OnsiteRosterResult(
                 Rows: new List<OnsiteRosterRow>
                 {
-                    new(aliceId, "Alice", earlier, [], [], []),
-                    new(bobId, "Bob", later, [], [], []),
+                    new(aliceId, earlier, [], [], []),
+                    new(bobId, later, [], [], []),
                 },
                 AvailableCamps: [],
                 AvailableTeams: [],

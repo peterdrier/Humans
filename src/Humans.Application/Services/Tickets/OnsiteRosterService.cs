@@ -17,14 +17,14 @@ namespace Humans.Application.Services.Tickets;
 /// </summary>
 public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationService
 {
-    private readonly IUserService _users;
+    private readonly IUserServiceRead _users;
     private readonly IShiftManagementService _shifts;
     private readonly ICampService _camps;
     private readonly ITeamServiceRead _teams;
     private readonly IRoleAssignmentService _roles;
 
     public OnsiteRosterService(
-        IUserService users,
+        IUserServiceRead users,
         IShiftManagementService shifts,
         ICampService camps,
         ITeamServiceRead teams,
@@ -76,7 +76,6 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
         var rows = joined
             .Select(x => new OnsiteRosterRow(
                 x.Row.UserId,
-                x.Row.DisplayName,
                 x.Row.CheckedInAt!.Value,
                 x.Camps,
                 x.Teams,

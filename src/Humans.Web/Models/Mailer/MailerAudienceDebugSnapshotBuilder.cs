@@ -2,7 +2,6 @@ using Humans.Application;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Users;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Web.Models.Mailer;
@@ -16,7 +15,7 @@ namespace Humans.Web.Models.Mailer;
 /// All Humans-side reads route through cached interfaces — the audience compute
 /// uses <c>IShiftView</c> + <c>ITicketQueryService</c> (decorated by their
 /// caching layers), and name/email rendering reads <see cref="UserInfo"/>
-/// from <c>IUserService.GetUserInfosAsync</c>. The MailerLite read is
+/// from <c>IUserServiceRead.GetUserInfosAsync</c>. The MailerLite read is
 /// intentional (we're diffing against the remote we don't own).
 /// </remarks>
 internal static class MailerAudienceDebugSnapshotBuilder
@@ -29,7 +28,7 @@ internal static class MailerAudienceDebugSnapshotBuilder
     public static async Task<DebugSnapshot> BuildAsync(
         IMailerAudience audience,
         IMailerLiteService ml,
-        IUserService users,
+        IUserServiceRead users,
         ILogger logger,
         CancellationToken ct)
     {

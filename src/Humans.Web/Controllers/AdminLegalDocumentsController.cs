@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Legal/Admin")]
 public class AdminLegalDocumentsController(
-    IUserService userService,
+    IUserServiceRead userService,
     IAdminLegalDocumentService adminLegalDocumentService,
     ITeamServiceRead teamService,
     IClock clock,

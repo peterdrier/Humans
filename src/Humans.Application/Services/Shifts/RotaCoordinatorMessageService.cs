@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Shifts;
 /// </summary>
 public sealed class RotaCoordinatorMessageService(
     IShiftSignupRepository signupRepo,
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailService emailService,
     IAuditLogService auditLogService,
     ILogger<RotaCoordinatorMessageService> logger) : IRotaCoordinatorMessageService

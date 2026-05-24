@@ -34,9 +34,9 @@ namespace Humans.Application.Services.Notifications;
 /// </remarks>
 public sealed class NotificationMeterProvider(
     IProfileService profileService,
-    IUserService userService,
+    IUserServiceRead userService,
     IGoogleSyncService googleSyncService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ITicketSyncService ticketSyncService,
     IApplicationDecisionService applicationDecisionService,
     ICampService campService,
@@ -237,8 +237,8 @@ public sealed class NotificationMeterProvider(
         // different label — same predicate as consentReviewsPending.
         var onboardingPending = consentReviewsPending;
 
-        var teamJoinRequestsPending = await teamService
-            .GetTotalPendingJoinRequestCountAsync(cancellationToken);
+        var teamJoinRequestsPending = (await teamService.GetTeamsAsync(cancellationToken)).Values
+            .Sum(t => t.PendingRequestCount);
 
         var ticketSyncError = await ticketSyncService.IsInErrorStateAsync(cancellationToken);
 

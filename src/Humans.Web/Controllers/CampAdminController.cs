@@ -20,7 +20,7 @@ public class CampAdminController(
     ICityPlanningService cityPlanningService,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<CampAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

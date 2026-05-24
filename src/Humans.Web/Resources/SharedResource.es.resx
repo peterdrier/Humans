@@ -4424,6 +4424,12 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve">
     <value>Guardar disponibilidad</value>
   </data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve">
+    <value>Antes de buscar turnos, marca los días que estás disponible: los coordinadores lo usan para asignarte turnos.</value>
+  </data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve">
+    <value>Indica tu disponibilidad</value>
+  </data>
   <data name="Shifts_DaysSelected" xml:space="preserve">
     <value>días seleccionados</value>
   </data>
@@ -5112,6 +5118,12 @@
   </data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
     <value>Este correo está vinculado a un proveedor de inicio de sesión. Usa Desvincular en su lugar.</value>
+  </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>Correo principal: establece otro como principal antes de eliminar este.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Vinculado a tu entrada del evento: no se puede eliminar.</value>
   </data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
     <value>Correo de verificación enviado al usuario.</value>

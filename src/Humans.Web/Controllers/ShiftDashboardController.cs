@@ -1,6 +1,5 @@
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Helpers;
@@ -23,7 +22,7 @@ public class ShiftDashboardController(
     IShiftSignupService signupService,
     IShiftView shiftView,
     IGeneralAvailabilityService availabilityService,
-    IUserService userService,
+    IUserServiceRead userService,
     ShiftDashboardPageBuilder pageBuilder,
     ILogger<ShiftDashboardController> logger) : HumansControllerBase(userService)
 {

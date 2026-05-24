@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Enums;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -80,6 +79,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_userService)
+            .With<IUserServiceRead>(_userService)
             .With(_roleAssignmentService)
             .Build();
 

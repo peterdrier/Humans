@@ -64,7 +64,7 @@
                             <div class="progress flex-grow-1" style="height: 6px;">
                                 <div class="progress-bar @fillColor" role="progressbar" style="width: @fillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@shift.MaxVolunteers"></div>
                             </div>
-                            <small class="text-nowrap @(understaffed ? "text-danger fw-bold" : "text-muted")">@item.ConfirmedCount/@shift.MaxVolunteers</small>
+                            <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@shift.MaxVolunteers</span>
                         </div>
                     </td>
                     @if (item.Signups.Count > 0)
@@ -113,7 +113,7 @@
                 @if (!string.IsNullOrEmpty(shift.Description))
                 {
                     <tr class="@(isFull ? "table-secondary" : "")">
-                        <td colspan="8" class="text-muted small pt-0 pb-1 border-0">
+                        <td colspan="8" class="shift-description pt-0 pb-1 border-0">
                             @Html.SanitizedMarkdown(shift.Description)
                         </td>
                     </tr>

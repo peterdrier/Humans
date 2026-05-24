@@ -24,7 +24,7 @@ public sealed class ConsentService(
     ILegalDocumentSyncService legalDocumentSyncService,
     INotificationInboxService notificationInboxService,
     ISystemTeamSync syncJob,
-    IUserService userService,
+    IUserServiceRead userService,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,

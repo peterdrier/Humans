@@ -34,9 +34,10 @@ namespace Humans.Infrastructure.Jobs;
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SuspendNonCompliantMembersJob(
-    IUserService userService,
+    IUserServiceRead userService,
     IProfileService profileService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
+    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
     INotificationService notificationService,
@@ -139,27 +140,30 @@ public class SuspendNonCompliantMembersJob(
                     logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
                 }
 
-                // 3. Remove from all team resources (Google Drive/Groups) via ITeamService lookup.
-                var memberships = await teamService.GetUserTeamsAsync(user.Id, cancellationToken);
-                foreach (var membership in memberships)
+                // 3. Remove from all team resources (Google Drive/Groups) for the user's active teams.
+                var memberTeamIds = (await teamService.GetTeamsAsync(cancellationToken)).Values
+                    .Where(t => t.Members.Any(m => m.UserId == user.Id))
+                    .Select(t => t.Id)
+                    .ToList();
+                foreach (var teamId in memberTeamIds)
                 {
                     try
                     {
                         await googleSyncService.RemoveUserFromTeamResourcesAsync(
-                            membership.TeamId,
+                            teamId,
                             user.Id,
                             cancellationToken);
                     }
                     catch (Exception ex)
                     {
                         logger.LogError(ex, "Failed to remove user {UserId} from team {TeamId} resources during suspension",
-                            user.Id, membership.TeamId);
+                            user.Id, teamId);
                     }
                 }
 
                 logger.LogWarning(
                     "User {UserId} ({Email}) suspended and flagged for removal from {Count} teams",
-                    user.Id, effectiveEmail, memberships.Count);
+                    user.Id, effectiveEmail, memberTeamIds.Count);
 
                 metrics.RecordMemberSuspended("job");
 
@@ -172,7 +176,7 @@ public class SuspendNonCompliantMembersJob(
                 await userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);
                 roleAssignmentClaimsInvalidator.Invalidate(user.Id);
                 shiftAuthorizationInvalidator.Invalidate(user.Id);
-                teamService.RemoveMemberFromAllTeamsCache(user.Id);
+                activeTeamsCacheInvalidator.Invalidate();
             }
 
             metrics.RecordJobRun("suspend_noncompliant_members", "success");

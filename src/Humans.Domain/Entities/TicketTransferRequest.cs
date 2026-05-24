@@ -6,11 +6,12 @@ namespace Humans.Domain.Entities;
 /// <summary>
 /// A user-initiated request to transfer a TicketAttendee (issued ticket) from
 /// the Sender (current ticket holder, must be the order's MatchedUserId) to
-/// a target Humans user (the Receiver). Pending until a TicketAdmin approves
-/// or rejects; the Sender may also cancel while still Pending. Approved
-/// transfers fire a TicketTailor void+reissue; if that fails, Option-C
-/// fallback applies (the request still ends in Approved state but VendorResult
-/// records the failure so an admin can edit the TT dashboard manually).
+/// a target Humans user (the Receiver). Pending until a TicketAdmin decides;
+/// the Sender may also cancel while still Pending. The ticket team processes
+/// the actual void+reissue manually in the TicketTailor dashboard, then marks
+/// the request Approved ("transfer successful") or Rejected ("cancel with a
+/// reason"). The next ticket sync reconciles the local attendee rows — this
+/// app never calls the vendor for a transfer.
 /// </summary>
 public class TicketTransferRequest
 {
@@ -31,14 +32,14 @@ public class TicketTransferRequest
 
     /// <summary>
     /// Snapshot of the Receiver's legal name (Profile.FullName) at request
-    /// time. Used for the vendor reissue payload so a profile rename between
-    /// request and approval doesn't change what the vendor records.
+    /// time, so a profile rename between request and processing doesn't change
+    /// what the ticket team reissues under. Shown to the team + in emails.
     /// </summary>
     public string ReceiverLegalName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Snapshot of the Receiver's primary email at request time. This is what
-    /// gets sent to TT as the new attendee's email on reissue.
+    /// Snapshot of the Receiver's primary email at request time — the address
+    /// the team reissues the ticket to, and where the decision email is sent.
     /// </summary>
     public string ReceiverEmail { get; init; } = string.Empty;
 
@@ -48,32 +49,22 @@ public class TicketTransferRequest
     /// <summary>Lifecycle state. See <see cref="TicketTransferStatus"/>.</summary>
     public TicketTransferStatus Status { get; set; } = TicketTransferStatus.Pending;
 
-    /// <summary>Vendor writeback outcome. NotAttempted until status is Approved.</summary>
+    // ── Dormant vendor-writeback columns ────────────────────────────────────────
+    // The automated TicketTailor void+reissue engine was removed when transfers
+    // moved to manual processing. These columns are no longer read or written by
+    // any code; they linger until a follow-up PR drops them after prod soak
+    // (memory/architecture/no-drops-until-prod-verified.md). Do not add new readers.
+
     public TicketTransferVendorResult VendorResult { get; set; } = TicketTransferVendorResult.NotAttempted;
-
-    /// <summary>Optional message captured during the vendor call (error text on failure, hold id on success-with-hold).</summary>
     public string? VendorMessage { get; set; }
-
-    /// <summary>
-    /// New TT issued-ticket id, set when the void+reissue succeeded. Null
-    /// otherwise. The fresh TicketAttendee row created at approval time will
-    /// also carry this in <see cref="TicketAttendee.VendorTicketId"/>.
-    /// </summary>
     public string? NewVendorTicketId { get; set; }
+    public string VendorStepsJson { get; set; } = "[]";
 
     /// <summary>TicketAdmin who decided (null while Pending or if Cancelled by the Sender).</summary>
     public Guid? DecidedByUserId { get; set; }
 
-    /// <summary>Free-text from the deciding admin (rejection reason or approval note).</summary>
+    /// <summary>Free-text from the deciding admin (required cancellation reason or optional success note).</summary>
     public string? AdminNotes { get; set; }
-
-    /// <summary>
-    /// JSON-serialised list of <c>TicketTransferVendorStep</c> capturing each
-    /// sub-step of the vendor writeback (void, issue, local upsert, retry,
-    /// manual reconcile). Empty list <c>"[]"</c> for transfers created before
-    /// this feature shipped; null is never expected.
-    /// </summary>
-    public string VendorStepsJson { get; set; } = "[]";
 
     public Instant RequestedAt { get; init; }
     public Instant? DecidedAt { get; set; }

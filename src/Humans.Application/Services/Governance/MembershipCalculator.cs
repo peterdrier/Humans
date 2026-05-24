@@ -12,16 +12,16 @@ namespace Humans.Application.Services.Governance;
 
 public sealed class MembershipCalculator(
     IMembershipQuery membershipQuery,
-    IUserService userService,
+    IUserServiceRead userService,
     ILegalDocumentSyncService legalDocumentSyncService,
     IServiceProvider serviceProvider,
     IClock clock) : IMembershipCalculator
 {
     // IMembershipQuery (not ITeamService/IRoleAssignmentService) breaks DI cycle through ISystemTeamSync.
 
-    // Lazy IConsentService resolve — ConsentService depends on IMembershipCalculator.
+    // Lazy IConsentServiceRead resolve — ConsentService depends on IMembershipCalculator.
 
-    private IConsentService ConsentService => serviceProvider.GetRequiredService<IConsentService>();
+    private IConsentServiceRead ConsentService => serviceProvider.GetRequiredService<IConsentServiceRead>();
 
     public async Task<MembershipStatus> ComputeStatusAsync(
         Guid userId,

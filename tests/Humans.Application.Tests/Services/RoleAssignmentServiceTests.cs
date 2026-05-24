@@ -10,9 +10,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Constants;
 using NSubstitute;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Repositories.Auth;
 

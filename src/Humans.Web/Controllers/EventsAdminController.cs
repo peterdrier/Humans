@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Admin")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsAdminController(IEventService guide, ILogger<EventsAdminController> logger, IUserService userService)
+public class EventsAdminController(IEventService guide, ILogger<EventsAdminController> logger, IUserServiceRead userService)
     : HumansControllerBase(userService)
 {
     // ─── Settings ────────────────────────────────────────────
