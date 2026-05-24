@@ -119,7 +119,10 @@ public class HomeController(
             .Select(a => new MyAttendeeRowVm(
                 AttendeeId: a.AttendeeId,
                 AttendeeName: a.AttendeeName,
+                AttendeeEmail: a.AttendeeEmail,
+                VendorTicketId: a.VendorTicketId,
                 TicketTypeName: a.TicketTypeName,
+                Status: a.Status,
                 CanSendTransfer: a.CanSendTransfer,
                 HasPendingOutgoingTransfer: a.HasPendingOutgoingTransfer,
                 PendingTransferRequestId: a.PendingTransferRequestId))

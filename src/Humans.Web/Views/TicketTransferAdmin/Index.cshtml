@@ -42,15 +42,6 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @ActiveCls("needs-attention")" href="@TabUrl("needs-attention")">
-            Needs attention
-            @if (Model.NeedsAttentionCount > 0)
-            {
-                <span class="badge bg-warning text-dark">@Model.NeedsAttentionCount</span>
-            }
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link @ActiveCls("all")" href="@TabUrl("all")">All</a>
     </li>
 </ul>
@@ -87,12 +78,6 @@ else
                     <td>@r.SenderReason</td>
                     <td>
                         <span class="badge bg-secondary">@r.Status</span>
-                        @if (r.Status == TicketTransferStatus.Approved
-                             && (r.VendorResult == TicketTransferVendorResult.Failed
-                              || r.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed))
-                        {
-                            <span class="badge bg-warning text-dark ms-1">@r.VendorResult</span>
-                        }
                     </td>
                     <td>
                         <a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@r.Id">Review</a>

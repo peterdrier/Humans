@@ -1,10 +1,9 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -15,46 +14,44 @@ public sealed class TicketTransferController(
     IUserServiceRead userService,
     ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
 {
-    [HttpGet("Send")]
-    public IActionResult Send(Guid attendeeId)
-    {
-        var vm = new TicketTransferRequestPageViewModel { AttendeeId = attendeeId };
-        return View("Send", vm);
-    }
-
-    [HttpPost("Lookup")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Lookup(
-        Guid attendeeId, string query, Guid? selectedUserId, CancellationToken ct)
+    // Step A + B of the wizard: pick a ticket, pick a recipient.
+    [HttpGet("")]
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        // Free-text query OR selectedUserId (direct resolve, skips search).
-        IReadOnlyList<ReceiverLookupResultDto> matches;
-        if (selectedUserId is { } pickedId)
-        {
-            var card = await service.GetReceiverCardAsync(pickedId, user.Id, ct);
-            matches = card is null
-                ? Array.Empty<ReceiverLookupResultDto>()
-                : new[] { card };
-        }
-        else
-        {
-            matches = await service.LookupReceiversAsync(query, user.Id, ct);
-        }
-
-        var vm = BuildPageViewModel(attendeeId, query, matches);
-        vm.LookupError = matches.Count == 0
-            ? "No match. Try a full email address or a different burner name."
-            : null;
-        return View("Send", vm);
+        var mine = await service.GetMyAttendeesAsync(user.Id, ct);
+        var transfers = await service.GetBySenderAsync(user.Id, ct);
+        return View("Index", new TicketTransferWizardViewModel { MyTickets = mine, MyTransfers = transfers });
     }
 
-    [HttpPost("Submit")]
+    // Step C: resolve the chosen (ticket, recipient) pair server-side and show the confirmation.
+    [HttpPost("Confirm")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Submit(
-        TicketTransferConfirmFormViewModel form, CancellationToken ct)
+    public async Task<IActionResult> Confirm(Guid attendeeId, Guid receiverUserId, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var mine = await service.GetMyAttendeesAsync(user.Id, ct);
+        var transfers = await service.GetBySenderAsync(user.Id, ct);
+        var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
+        return View("Index", new TicketTransferWizardViewModel
+        {
+            MyTickets = mine,
+            MyTransfers = transfers,
+            Confirm = confirm,
+            Error = confirm is null
+                ? "Couldn't set up that transfer — choose one of your tickets and a valid recipient (not yourself)."
+                : null,
+        });
+    }
+
+    // Final submit.
+    [HttpPost("")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Submit(Guid attendeeId, Guid receiverUserId, string? reason, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -62,25 +59,25 @@ public sealed class TicketTransferController(
         try
         {
             await service.CreateRequestAsync(
-                new TicketTransferRequestDto(form.AttendeeId, form.ReceiverUserId, form.Reason),
-                user.Id, ct);
-            SetSuccess("Transfer requested. A ticket admin will review it shortly.");
+                new TicketTransferRequestDto(attendeeId, receiverUserId, reason ?? string.Empty), user.Id, ct);
+            SetSuccess("Transfer requested. Our ticketing team will process it and let you know shortly.");
             return RedirectToAction(nameof(HomeController.Index), "Home");
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
-                form.AttendeeId, ex.Message);
-            SetError(ex.Message);
-
-            // Preserve Receiver + reason on re-render.
-            var card = await service.GetReceiverCardAsync(form.ReceiverUserId, user.Id, ct);
-            var matches = card is null
-                ? Array.Empty<ReceiverLookupResultDto>()
-                : new[] { card };
-            var vm = BuildPageViewModel(form.AttendeeId, query: null, matches);
-            vm.PrefilledReason = form.Reason;
-            return View("Send", vm);
+                attendeeId, ex.Message);
+            var mine = await service.GetMyAttendeesAsync(user.Id, ct);
+            var transfers = await service.GetBySenderAsync(user.Id, ct);
+            var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
+            return View("Index", new TicketTransferWizardViewModel
+            {
+                MyTickets = mine,
+                MyTransfers = transfers,
+                Confirm = confirm,
+                Reason = reason,
+                Error = ex.Message,
+            });
         }
     }
 
@@ -102,23 +99,6 @@ public sealed class TicketTransferController(
                 id, ex.Message);
             SetError(ex.Message);
         }
-        return RedirectToAction(nameof(HomeController.Index), "Home");
+        return RedirectToAction(nameof(Index));
     }
-
-    private static TicketTransferRequestPageViewModel BuildPageViewModel(
-        Guid attendeeId, string? query, IReadOnlyList<ReceiverLookupResultDto> matches) =>
-        new()
-        {
-            AttendeeId = attendeeId,
-            Query = query,
-            Receivers = matches.Select(m => new ReceiverCardViewModel
-            {
-                UserId = m.UserId,
-                DisplayName = m.DisplayName,
-                BurnerName = m.BurnerName,
-                PreferredEmail = m.PreferredEmail,
-                HasCustomProfilePicture = m.HasCustomProfilePicture,
-                ProfilePictureUrl = m.ProfilePictureUrl,
-            }).ToList(),
-        };
 }

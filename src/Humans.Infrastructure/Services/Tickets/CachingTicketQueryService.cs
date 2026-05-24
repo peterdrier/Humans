@@ -248,7 +248,10 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
                 .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
                 .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
                 .Select(a => new UserTicketHoldingRow(
+                    a.Id,
                     a.AttendeeName ?? string.Empty,
+                    a.AttendeeEmail,
+                    a.VendorTicketId,
                     a.TicketTypeName ?? string.Empty,
                     a.Status))
                 .ToList();

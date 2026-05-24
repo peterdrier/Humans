@@ -1,3 +1,4 @@
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -313,6 +314,37 @@ public class SmtpEmailService(
         var content = renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
         await SendEmailAsync(to, content.Subject, content.HtmlBody, ct);
         metrics.RecordEmailSent("issue_comment");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferRequestedAsync(
+        string senderEmail, string senderName, string receiverName, string ticketLabel,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferRequested(senderName, receiverName, ticketLabel, culture);
+        await SendEmailAsync(senderEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent("ticket_transfer_requested");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferTeamNotificationAsync(
+        string senderName, string receiverName, string receiverEmail, string ticketLabel,
+        string? reason, string reviewUrl, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferTeamNotification(
+            senderName, receiverName, receiverEmail, ticketLabel, reason, reviewUrl);
+        await SendEmailAsync(TicketConstants.TicketsTeamEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent("ticket_transfer_team");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferDecisionAsync(
+        string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferDecision(toName, successful, ticketLabel, receiverName, reason, culture);
+        await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent(successful ? "ticket_transfer_completed" : "ticket_transfer_cancelled");
     }
 
     public async Task SendGoogleGroupRemovalLossOfAccessAsync(

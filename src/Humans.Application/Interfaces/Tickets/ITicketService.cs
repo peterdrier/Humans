@@ -176,7 +176,10 @@ public record UserTicketHoldings(
 /// One ticket held by a user, with enough info for the holdings widget to render.
 /// </summary>
 public record UserTicketHoldingRow(
+    Guid AttendeeId,
     string AttendeeName,
+    string? AttendeeEmail,
+    string VendorTicketId,
     string TicketTypeName,
     TicketAttendeeStatus Status);
 

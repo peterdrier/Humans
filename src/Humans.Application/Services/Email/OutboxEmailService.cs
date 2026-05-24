@@ -4,6 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -460,5 +461,37 @@ public sealed class OutboxEmailService(
         await EnqueueAsync(userEmail, request.UserName, content,
             request.TemplateName(), cancellationToken,
             triggerImmediate: true);
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferRequestedAsync(
+        string senderEmail, string senderName, string receiverName, string ticketLabel,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferRequested(senderName, receiverName, ticketLabel, culture);
+        await EnqueueAsync(senderEmail, senderName, content, "ticket_transfer_requested", cancellationToken,
+            category: MessageCategory.System);
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferTeamNotificationAsync(
+        string senderName, string receiverName, string receiverEmail, string ticketLabel,
+        string? reason, string reviewUrl, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferTeamNotification(
+            senderName, receiverName, receiverEmail, ticketLabel, reason, reviewUrl);
+        await EnqueueAsync(TicketConstants.TicketsTeamEmail, "Ticket team", content,
+            "ticket_transfer_team", cancellationToken, category: MessageCategory.System);
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferDecisionAsync(
+        string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferDecision(toName, successful, ticketLabel, receiverName, reason, culture);
+        await EnqueueAsync(toEmail, toName, content,
+            successful ? "ticket_transfer_completed" : "ticket_transfer_cancelled",
+            cancellationToken, category: MessageCategory.System);
     }
 }

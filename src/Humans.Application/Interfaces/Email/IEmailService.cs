@@ -344,6 +344,45 @@ public interface IEmailService : IApplicationService
         string currentGoogleEmail,
         string? culture = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Confirmation to the Sender that their ticket-transfer request was received
+    /// and the ticket team will process it.
+    /// </summary>
+    Task SendTicketTransferRequestedAsync(
+        string senderEmail,
+        string senderName,
+        string receiverName,
+        string ticketLabel,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Action-needed notification to the ticket team inbox (tickets@) that a new
+    /// transfer request is awaiting manual processing. Always English (admin).
+    /// </summary>
+    Task SendTicketTransferTeamNotificationAsync(
+        string senderName,
+        string receiverName,
+        string receiverEmail,
+        string ticketLabel,
+        string? reason,
+        string reviewUrl,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Decision notification sent to both Sender and Receiver: the transfer was
+    /// completed (<paramref name="successful"/> true) or cancelled with a reason.
+    /// </summary>
+    Task SendTicketTransferDecisionAsync(
+        string toEmail,
+        string toName,
+        bool successful,
+        string ticketLabel,
+        string receiverName,
+        string? reason,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

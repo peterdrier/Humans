@@ -27,6 +27,15 @@ public class HumanSearchPickerViewModel
     /// <summary>User ids to hide from the dropdown results.</summary>
     public IEnumerable<Guid>? ExcludeUserIds { get; set; }
 
+    /// <summary>
+    /// When true, a query containing '@' is resolved as an exact (case-insensitive)
+    /// verified-email match returning at most one person, instead of a name search.
+    /// Exact-match-only means no enumeration leak, so it is safe on non-admin
+    /// surfaces (e.g. ticket-transfer recipient lookup). See
+    /// <c>memory/architecture/person-search.md</c>.
+    /// </summary>
+    public bool AllowEmail { get; set; }
+
     /// <summary>Optional prefill — the picked user id (null = empty picker).</summary>
     public Guid? SelectedUserId { get; set; }
 

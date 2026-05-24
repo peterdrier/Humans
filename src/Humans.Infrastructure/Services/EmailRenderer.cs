@@ -369,4 +369,81 @@ public class EmailRenderer(
             };
         }
     }
+
+    public EmailContent RenderTicketTransferRequested(
+        string senderName, string receiverName, string ticketLabel, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var name = HtmlEncode(senderName);
+            var receiver = HtmlEncode(receiverName);
+            var ticket = HtmlEncode(ticketLabel);
+            return new EmailContent(
+                "Ticket transfer requested",
+                $"""
+                    <p>Hi {name},</p>
+                    <p>We've received your request to transfer ticket <strong>{ticket}</strong> to <strong>{receiver}</strong>.</p>
+                    <p>Our ticketing team will process this and let you know shortly. No further action is needed from you.</p>
+                    """);
+        }
+    }
+
+    public EmailContent RenderTicketTransferTeamNotification(
+        string senderName, string receiverName, string receiverEmail,
+        string ticketLabel, string? reason, string reviewUrl)
+    {
+        var sender = HtmlEncode(senderName);
+        var receiver = HtmlEncode(receiverName);
+        var email = HtmlEncode(receiverEmail);
+        var ticket = HtmlEncode(ticketLabel);
+        var reasonHtml = string.IsNullOrWhiteSpace(reason)
+            ? ""
+            : $"<p><strong>Reason given:</strong> {HtmlEncode(reason)}</p>";
+        var fullUrl = reviewUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? reviewUrl
+            : $"{_settings.BaseUrl.TrimEnd('/')}{(reviewUrl.StartsWith('/') ? "" : "/")}{reviewUrl}";
+        return new EmailContent(
+            "Ticket transfer to process",
+            $"""
+                <p>A new ticket transfer is awaiting manual processing in TicketTailor.</p>
+                <p><strong>From:</strong> {sender}<br>
+                <strong>To:</strong> {receiver} &lt;{email}&gt;<br>
+                <strong>Ticket:</strong> {ticket}</p>
+                {reasonHtml}
+                <p>Void the original and reissue to the recipient in TicketTailor, then mark the request
+                resolved here: <a href="{HtmlEncode(fullUrl)}">Review transfer</a></p>
+                """);
+    }
+
+    public EmailContent RenderTicketTransferDecision(
+        string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var name = HtmlEncode(toName);
+            var receiver = HtmlEncode(receiverName);
+            var ticket = HtmlEncode(ticketLabel);
+            if (successful)
+            {
+                return new EmailContent(
+                    "Ticket transfer complete",
+                    $"""
+                        <p>Hi {name},</p>
+                        <p>The transfer of ticket <strong>{ticket}</strong> to <strong>{receiver}</strong> is complete.</p>
+                        """);
+            }
+            var reasonHtml = string.IsNullOrWhiteSpace(reason)
+                ? ""
+                : $"<p><strong>Reason:</strong> {HtmlEncode(reason)}</p>";
+            return new EmailContent(
+                "Ticket transfer cancelled",
+                $"""
+                    <p>Hi {name},</p>
+                    <p>The requested transfer of ticket <strong>{ticket}</strong> to <strong>{receiver}</strong> was not completed.</p>
+                    {reasonHtml}
+                    <p>If you have questions, reply to this email and our ticketing team will help.</p>
+                    """);
+        }
+    }
 }

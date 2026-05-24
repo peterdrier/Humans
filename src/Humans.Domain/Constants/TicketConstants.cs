@@ -15,4 +15,10 @@ public static class TicketConstants
     /// Spanish event ticket VAT rate (10%).
     /// </summary>
     public const decimal VatRate = 0.10m;
+
+    /// <summary>
+    /// Shared inbox for the ticket team. Transfer requests are emailed here so the
+    /// team can process the void+reissue manually in the TicketTailor dashboard.
+    /// </summary>
+    public const string TicketsTeamEmail = "tickets@nobodies.team";
 }
