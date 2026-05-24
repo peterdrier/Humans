@@ -53,7 +53,7 @@ public sealed class ShiftManagementService(
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
-    private ITicketQueryService TicketQueryService => serviceProvider.GetRequiredService<ITicketQueryService>();
+    private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
@@ -1104,8 +1104,11 @@ public sealed class ShiftManagementService(
                 Pct(perPeriod, ShiftPeriod.Strike));
         }
 
-        var ticketHolderIds = await TicketQueryService.GetMatchedUserIdsForPaidOrdersAsync();
-        var ticketHolders = ticketHolderIds as HashSet<Guid> ?? ticketHolderIds.ToHashSet();
+        var ticketOrders = await TicketQueryService.GetTicketOrdersAsync();
+        var ticketHolders = ticketOrders
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
+            .Select(o => o.MatchedUserId!.Value)
+            .ToHashSet();
 
         var engagedUserIds = await repo.GetEngagedUserIdsForShiftsAsync(shiftIds);
         var engaged = engagedUserIds.ToHashSet();
@@ -1452,7 +1455,12 @@ public sealed class ShiftManagementService(
         var signupsInWindow = await repo.GetSignupCreatedAtsInWindowAsync(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
 
-        var ticketsInWindow = await TicketQueryService.GetPaidOrderDatesInWindowAsync(startInstant, endInstant);
+        var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync())
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+                && o.PurchasedAt >= startInstant
+                && o.PurchasedAt < endInstant)
+            .Select(o => o.PurchasedAt)
+            .ToList();
         var loginsInWindow = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
             .Select(u => u.LastLoginAt!.Value)

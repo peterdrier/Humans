@@ -7,7 +7,7 @@ namespace Humans.Web.Models.Tickets;
 public sealed class TicketDashboardPageBuilder(
     ITicketVendorService vendorService,
     IOptions<TicketVendorSettings> settings,
-    ITicketQueryService ticketQueryService,
+    ITicketService ticketQueryService,
     ILogger<TicketDashboardPageBuilder> logger)
 {
     private readonly TicketVendorSettings _settings = settings.Value;

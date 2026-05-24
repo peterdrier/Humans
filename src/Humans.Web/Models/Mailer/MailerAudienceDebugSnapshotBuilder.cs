@@ -13,7 +13,7 @@ namespace Humans.Web.Models.Mailer;
 /// </summary>
 /// <remarks>
 /// All Humans-side reads route through cached interfaces — the audience compute
-/// uses <c>IShiftView</c> + <c>ITicketQueryService</c> (decorated by their
+/// uses <c>IShiftView</c> + <c>ITicketServiceRead</c> (decorated by their
 /// caching layers), and name/email rendering reads <see cref="UserInfo"/>
 /// from <c>IUserServiceRead.GetUserInfosAsync</c>. The MailerLite read is
 /// intentional (we're diffing against the remote we don't own).

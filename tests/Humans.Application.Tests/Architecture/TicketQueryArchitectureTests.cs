@@ -23,9 +23,9 @@ namespace Humans.Application.Tests.Architecture;
 /// The inner <see cref="TicketQueryService"/> lives in Application, goes
 /// through <see cref="ITicketRepository"/>, and never imports EF types or
 /// <c>IMemoryCache</c>. The Singleton <see cref="CachingTicketQueryService"/>
-/// decorator (Infrastructure) owns only the per-user short-TTL entries and
-/// invalidation seam; it is the only impl that touches <c>IMemoryCache</c> in
-/// this section.
+/// decorator (Infrastructure) owns the tracked ticket slices and invalidation
+/// seam; it is the only impl that touches <c>IMemoryCache</c> in this section
+/// for the per-event vendor summary.
 /// </para>
 /// </summary>
 public class TicketQueryArchitectureTests
@@ -101,10 +101,52 @@ public class TicketQueryArchitectureTests
     }
 
     [HumansFact]
-    public void CachingTicketQueryService_ImplementsITicketQueryService()
+    public void CachingTicketQueryService_ImplementsITicketService()
     {
-        typeof(ITicketQueryService).IsAssignableFrom(typeof(CachingTicketQueryService))
+        typeof(ITicketService).IsAssignableFrom(typeof(CachingTicketQueryService))
             .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void ITicketService_InheritsITicketServiceRead()
+    {
+        typeof(ITicketServiceRead).IsAssignableFrom(typeof(ITicketService))
+            .Should().BeTrue(
+                because: "ITicketService is the full Tickets surface; external sections inject the narrow ITicketServiceRead");
+    }
+
+    [HumansFact]
+    public void CachingTicketQueryService_ImplementsITicketServiceRead()
+    {
+        typeof(ITicketServiceRead).IsAssignableFrom(typeof(CachingTicketQueryService))
+            .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void ITicketServiceRead_ExposesNoEntityTypes()
+    {
+        var offenders = typeof(ITicketServiceRead).GetMethods()
+            .SelectMany(m => m.ReturnParameter.ParameterType
+                .GetGenericArguments()
+                .Append(m.ReturnParameter.ParameterType)
+                .Concat(m.GetParameters().Select(p => p.ParameterType))
+                .SelectMany(FlattenType))
+            .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
+            .Select(t => t.Name)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "ITicketServiceRead is the cross-section read contract and must not expose EF entity types");
+
+        static IEnumerable<Type> FlattenType(Type type)
+        {
+            yield return type;
+            foreach (var arg in type.GetGenericArguments())
+                foreach (var nested in FlattenType(arg))
+                    yield return nested;
+        }
     }
 
     [HumansFact]
@@ -142,94 +184,19 @@ public class TicketQueryArchitectureTests
     }
 
     [HumansFact]
-    public void TicketQueryService_InvalidateMethodsAreNoOps()
+    public void TicketQueryService_DoesNotImplementITicketCacheInvalidator()
     {
-        // The inner's invalidation methods exist only to satisfy the
-        // ITicketQueryService surface contract — the decorator intercepts
-        // in normal DI resolution and owns the cache. If someone resolves
-        // the keyed inner directly and calls these, eviction silently
-        // doesn't happen, so the bodies MUST stay empty (any added work
-        // would imply the inner has hidden state to drop, which it doesn't).
-        //
-        // An empty C# method body compiles to IL containing only `nop` (0x00,
-        // debug only) and a single trailing `ret` (0x2A). Any other opcode
-        // means there's real work in the body.
-        const byte Nop = 0x00;
-        const byte Ret = 0x2A;
-        var methodNames = new[] { nameof(TicketQueryService.InvalidateAfterTransfer), nameof(TicketQueryService.InvalidateAfterContactImport) };
-
-        foreach (var name in methodNames)
-        {
-            var method = typeof(TicketQueryService).GetMethod(name);
-            method.Should().NotBeNull(because: $"{name} is on the ITicketQueryService surface");
-
-            var body = method.GetMethodBody();
-            body.Should().NotBeNull(because: $"{name} is a concrete method on the inner");
-
-            var il = body.GetILAsByteArray();
-            il.Should().NotBeNull();
-            il.Should().OnlyContain(b => b == Nop || b == Ret,
-                because: $"TicketQueryService.{name} must remain a no-op (only nop/ret opcodes) — the decorator owns invalidation; any non-empty body implies hidden inner cache state");
-        }
+        typeof(ITicketCacheInvalidator).IsAssignableFrom(typeof(TicketQueryService))
+            .Should().BeFalse(
+                because: "cache eviction belongs on the Singleton decorator seam, not on the scoped inner service or the ticket read/query contract");
     }
 
     [HumansFact]
-    public void CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter()
+    public void ITicketServiceRead_DoesNotExposeHasCurrentEventTicketAsync()
     {
-        // §5a rule 4: decorators contain zero business logic. The previous
-        // body of HasCurrentEventTicketAsync on the decorator did a live
-        // GetSyncStateAsync round-trip AND applied payment/attendee-status
-        // filtering — both belong on the inner. This pin walks the IL of
-        // the decorator method and confirms none of its referenced methods
-        // resolve to ITicketRepository (any method on it) — the only call
-        // surface should be the inner ITicketQueryService.
-        var method = typeof(CachingTicketQueryService)
-            .GetMethod(nameof(CachingTicketQueryService.HasCurrentEventTicketAsync));
-        method.Should().NotBeNull();
-
-        var body = method.GetMethodBody();
-        body.Should().NotBeNull();
-
-        var il = body.GetILAsByteArray()!;
-        var module = method.Module;
-
-        // Walk the IL collecting any method-token references. Tokens for
-        // method-call opcodes (call 0x28, callvirt 0x6F, newobj 0x73, ldftn,
-        // ldvirtftn) are followed by a 4-byte metadata token. We resolve
-        // each token and check the declaring type.
-        var repositoryCalls = new List<string>();
-        for (var i = 0; i < il.Length; i++)
-        {
-            var op = il[i];
-            var isCall = op is 0x28 or 0x6F or 0x73;
-            var isLdftn = op == 0xFE && i + 1 < il.Length && (il[i + 1] == 0x06 || il[i + 1] == 0x07);
-
-            if (isCall && i + 4 < il.Length)
-            {
-                var token = BitConverter.ToInt32(il, i + 1);
-                try
-                {
-                    var resolved = module.ResolveMethod(token);
-                    if (resolved?.DeclaringType is { } dt &&
-                        typeof(ITicketRepository).IsAssignableFrom(dt))
-                    {
-                        repositoryCalls.Add($"{resolved.DeclaringType.Name}.{resolved.Name}");
-                    }
-                }
-                catch
-                {
-                    // Token couldn't be resolved (generic context); ignore.
-                }
-                i += 4;
-            }
-            else if (isLdftn && i + 5 < il.Length)
-            {
-                i += 5;
-            }
-        }
-
-        repositoryCalls.Should().BeEmpty(
-            because: "HasCurrentEventTicketAsync on the decorator must be a pure pass-through (§5a rule 4); active-event resolution and payment/attendee-status filtering belong on the inner TicketQueryService, not the cache wrapper");
+        typeof(ITicketServiceRead).GetMethod("HasCurrentEventTicketAsync")
+            .Should().BeNull(
+                because: "current-event ticket status is carried by UserTicketHoldings instead of a separate read method");
     }
 
     [HumansFact]

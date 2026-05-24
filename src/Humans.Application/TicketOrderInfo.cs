@@ -35,4 +35,5 @@ public sealed record TicketOrderInfo(
     string VendorEventId,
     Instant PurchasedAt,
     Guid? MatchedUserId,
+    bool IsCurrentEvent,
     IReadOnlyList<TicketAttendeeInfo> Attendees);

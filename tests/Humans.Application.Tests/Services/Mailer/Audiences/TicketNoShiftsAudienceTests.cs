@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
@@ -86,8 +87,9 @@ public class TicketNoShiftsAudienceTests
         HashSet<Guid> ticketHolders,
         HashSet<Guid> shiftCommitted)
     {
-        var tickets = Substitute.For<ITicketQueryService>();
-        tickets.GetUserIdsWithTicketsAsync().Returns(ticketHolders);
+        var tickets = Substitute.For<ITicketService>();
+        tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(OrdersForTicketHolders(ticketHolders));
 
         var shiftView = Substitute.For<IShiftView>();
         shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -109,6 +111,30 @@ public class TicketNoShiftsAudienceTests
 
         return new TicketNoShiftsAudience(tickets, shiftView, users);
     }
+
+    private static IReadOnlyList<TicketOrderInfo> OrdersForTicketHolders(IEnumerable<Guid> userIds) =>
+        userIds.Select(userId => new TicketOrderInfo(
+            Id: Guid.NewGuid(),
+            VendorOrderId: $"ord_{userId:N}",
+            BuyerName: null,
+            BuyerEmail: null,
+            TotalAmount: 0m,
+            Currency: "EUR",
+            DiscountCode: null,
+            PaymentStatus: TicketPaymentStatus.Paid,
+            VendorEventId: "ev_test",
+            PurchasedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+            MatchedUserId: null,
+            IsCurrentEvent: true,
+            Attendees: [new TicketAttendeeInfo(
+                Id: Guid.NewGuid(),
+                VendorTicketId: $"tkt_{userId:N}",
+                AttendeeName: null,
+                AttendeeEmail: null,
+                TicketTypeName: null,
+                Price: 0m,
+                Status: TicketAttendeeStatus.Valid,
+                MatchedUserId: userId)])).ToList();
 
     private static ShiftUserView ViewWithShift(Guid userId) => new(
         userId,

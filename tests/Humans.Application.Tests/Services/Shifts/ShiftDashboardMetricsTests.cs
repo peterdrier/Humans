@@ -31,14 +31,16 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         : base(TestNow)
     {
         // The dashboard compute methods now reach cross-domain data through
-        // ITicketQueryService / ITeamService / IUserService. Wire thin fakes that
+        // ITicketService / ITeamService / IUserService. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
         var fakeUserService = new FakeUserService(Db);
+        var fakeTicketService = new FakeTicketQueryService(Db);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(new FakeTeamService(Db))
-            .With<ITicketQueryService>(new FakeTicketQueryService(Db))
+            .With<ITicketService>(fakeTicketService)
+            .With<ITicketServiceRead>(fakeTicketService)
             .With<IUserService>(fakeUserService)
             .With<IUserServiceRead>(fakeUserService)
             .With<IRoleAssignmentService>()
@@ -940,35 +942,29 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
     // so the test seed helpers (Db.*.Add) drive results end-to-end.
     // ================================================================
 
-    private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketQueryService
+    private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketService
     {
-        public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
+        public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
         {
-            return await db.TicketOrders
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
-                .Select(o => o.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync(ct);
-        }
-
-        public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-        {
-            return await db.TicketOrders
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                            && o.PurchasedAt >= fromInclusive
-                            && o.PurchasedAt < toExclusive)
-                .Select(o => o.PurchasedAt)
-                .ToListAsync(ct);
+            var orders = await db.TicketOrders.ToListAsync(ct);
+            return orders.Select(o => new TicketOrderInfo(
+                Id: o.Id,
+                VendorOrderId: o.VendorOrderId,
+                BuyerName: o.BuyerName,
+                BuyerEmail: o.BuyerEmail,
+                TotalAmount: o.TotalAmount,
+                Currency: o.Currency,
+                DiscountCode: o.DiscountCode,
+                PaymentStatus: o.PaymentStatus,
+                VendorEventId: o.VendorEventId,
+                PurchasedAt: o.PurchasedAt,
+                MatchedUserId: o.MatchedUserId,
+                IsCurrentEvent: true,
+                Attendees: [])).ToList();
         }
 
         // Members below are unused by the dashboard compute paths under test.
-        public Task<int> GetUserTicketCountAsync(Guid userId) => throw new NotSupportedException();
-        public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() => throw new NotSupportedException();
-        public Task<HashSet<Guid>> GetAllMatchedUserIdsAsync() => throw new NotSupportedException();
-        public Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<TicketDashboardStats> GetDashboardStatsAsync() => throw new NotSupportedException();
-        public Task<decimal> GetGrossTicketRevenueAsync() => throw new NotSupportedException();
         public Task<BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) => throw new NotSupportedException();
         public Task<TicketSalesAggregates> GetSalesAggregatesAsync() => throw new NotSupportedException();
         public Task<List<string>> GetAvailableTicketTypesAsync() => throw new NotSupportedException();
@@ -978,17 +974,9 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(string? search, string? filterTeam, string? filterTier, string? filterTicketStatus, int page, int pageSize) => throw new NotSupportedException();
         public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync() => throw new NotSupportedException();
         public Task<List<OrderExportRow>> GetOrderExportDataAsync() => throw new NotSupportedException();
-        public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) => throw new NotSupportedException();
-        public Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId) => throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) => throw new NotSupportedException();
-        public void InvalidateAfterContactImport() => throw new NotSupportedException();
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrderInfosAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUserService(HumansDbContext db) : IUserService

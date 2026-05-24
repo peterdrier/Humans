@@ -20,7 +20,7 @@ public class DashboardService(
     IApplicationDecisionService applicationDecisionService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
     IOptions<TicketVendorSettings> ticketSettings,
@@ -166,7 +166,8 @@ public class DashboardService(
         {
             if (ticketsConfigured)
             {
-                userTicketCount = await ticketQueryService.GetUserTicketCountAsync(userId);
+                var holdings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, cancellationToken);
+                userTicketCount = holdings.TicketCount;
                 hasTicket = userTicketCount > 0;
             }
         }

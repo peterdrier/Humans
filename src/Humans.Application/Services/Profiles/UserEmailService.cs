@@ -29,10 +29,10 @@ public sealed class UserEmailService(
     // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
-    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketQueryService.
+    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketServiceRead.
     // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
-    private Interfaces.Tickets.ITicketQueryService TicketQueryService =>
-        serviceProvider.GetRequiredService<Interfaces.Tickets.ITicketQueryService>();
+    private Interfaces.Tickets.ITicketServiceRead TicketServiceRead =>
+        serviceProvider.GetRequiredService<Interfaces.Tickets.ITicketServiceRead>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -680,17 +680,16 @@ public sealed class UserEmailService(
     private async Task<bool> IsAddressTicketLinkedAsync(
         Guid userId, string address, CancellationToken cancellationToken)
     {
-        var export = await TicketQueryService.GetUserTicketExportDataAsync(userId, cancellationToken);
+        var orders = await TicketServiceRead.GetTicketOrdersAsync(cancellationToken);
 
-        foreach (var order in export.Orders)
+        foreach (var order in orders)
         {
-            if (EmailNormalization.EmailsMatch(address, order.BuyerEmail))
+            if (order.MatchedUserId == userId
+                && EmailNormalization.EmailsMatch(address, order.BuyerEmail))
                 return true;
-        }
 
-        foreach (var attendee in export.Attendees)
-        {
-            if (EmailNormalization.EmailsMatch(address, attendee.AttendeeEmail))
+            if (order.Attendees.Any(a => a.MatchedUserId == userId
+                    && EmailNormalization.EmailsMatch(address, a.AttendeeEmail)))
                 return true;
         }
 

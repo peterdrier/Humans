@@ -64,7 +64,7 @@ public class ProfileController(
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
     IStringLocalizer<SharedResource> localizer,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     ITeamServiceRead teamService,
     ICampaignService campaignService,
     IEmailOutboxService emailOutboxService,
@@ -78,7 +78,7 @@ public class ProfileController(
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly ITicketQueryService _ticketQueryService = ticketQueryService;
+    private readonly ITicketServiceRead _ticketQueryService = ticketQueryService;
     private readonly IUserService _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
@@ -2454,15 +2454,18 @@ public class ProfileController(
 
         // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
         // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
-        var ticketExport = await _ticketQueryService.GetUserTicketExportDataAsync(user.Id, ct);
-        var ticketEmails = ticketExport.Orders.Select(o => o.BuyerEmail)
-            .Concat(ticketExport.Attendees.Select(a => a.AttendeeEmail))
-            .Where(addr => !string.IsNullOrWhiteSpace(addr))
-            .Select(addr => Humans.Domain.Helpers.EmailNormalization.NormalizeForComparison(addr!))
-            .ToHashSet(StringComparer.Ordinal);
+        var ticketOrders = await _ticketQueryService.GetTicketOrdersAsync(ct);
+        var ticketEmails = ticketOrders
+            .Where(o => o.MatchedUserId == user.Id && !string.IsNullOrWhiteSpace(o.BuyerEmail))
+            .Select(o => o.BuyerEmail!)
+            .Concat(ticketOrders
+                .SelectMany(o => o.Attendees)
+                .Where(a => a.MatchedUserId == user.Id && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
+                .Select(a => a.AttendeeEmail!))
+            .ToList();
 
         bool RowIsTicketLinked(string address) =>
-            ticketEmails.Contains(Humans.Domain.Helpers.EmailNormalization.NormalizeForComparison(address));
+            ticketEmails.Any(ticketEmail => Humans.Domain.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
 
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
@@ -2531,8 +2534,6 @@ public class ProfileController(
     }
 
 }
-
-
 
 
 

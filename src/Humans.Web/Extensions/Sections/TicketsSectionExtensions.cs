@@ -25,16 +25,18 @@ internal static class TicketsSectionExtensions
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
 
         // T-07 keyed-inner + Singleton decorator. IUserDataContributor on the inner — GDPR contributor is one-per-section.
-        services.AddKeyedScoped<ITicketQueryService, TicketsTicketQueryService>(
+        services.AddKeyedScoped<ITicketService, TicketsTicketQueryService>(
             CachingTicketQueryService.InnerServiceKey);
         services.AddScoped<TicketsTicketQueryService>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
 
         services.AddSingleton<CachingTicketQueryService>();
-        services.AddSingleton<ITicketQueryService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketServiceRead>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().UserHoldingsCacheStats);
 
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
         services.AddScoped<ITicketTransferService, TicketTransferService>();

@@ -103,7 +103,7 @@ public class ProfileControllerEditTests
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
-            Substitute.For<ITicketQueryService>(),
+            Substitute.For<ITicketService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),

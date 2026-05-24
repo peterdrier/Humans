@@ -20,7 +20,7 @@ public class FinanceController(
     IBudgetService budgetService,
     ITeamServiceRead teamService,
     ITicketingBudgetService ticketingBudgetService,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IClock clock,
     IUserServiceRead userService,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
@@ -128,7 +128,9 @@ public class FinanceController(
                 return RedirectToAction(nameof(Index));
             }
 
-            var grossTicketRevenue = await ticketQueryService.GetGrossTicketRevenueAsync();
+            var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                .Sum(o => o.TotalAmount);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }

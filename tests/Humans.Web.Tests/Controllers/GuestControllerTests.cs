@@ -31,7 +31,7 @@ public class GuestControllerTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IGdprExportService _gdprExportService = Substitute.For<IGdprExportService>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
@@ -101,7 +101,8 @@ public class GuestControllerTests
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
         _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(OnboardingWidgetStep.Complete);
-        _ticketQueryService.HasTicketAttendeeMatchAsync(user.Id).Returns(false);
+        _ticketQueryService.GetUserTicketHoldingsAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
         var ctrl = BuildSut(user);
 
         var result = await ctrl.Index(CancellationToken.None);

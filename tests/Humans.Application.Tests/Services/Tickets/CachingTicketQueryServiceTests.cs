@@ -7,6 +7,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Tickets;
@@ -15,122 +16,232 @@ public sealed class CachingTicketQueryServiceTests
 {
     private static readonly Guid UserA = Guid.NewGuid();
     private static readonly Guid UserB = Guid.NewGuid();
+    private static readonly Guid UserC = Guid.NewGuid();
 
-    private readonly ITicketQueryService _inner;
-    private readonly MemoryCache _perUserCache;
+    private readonly ITicketService _inner;
+    private readonly MemoryCache _memoryCache;
+    private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
 
     public CachingTicketQueryServiceTests()
     {
-        _inner = Substitute.For<ITicketQueryService>();
-        _perUserCache = new MemoryCache(new MemoryCacheOptions());
+        _inner = Substitute.For<ITicketService>();
 
         var services = new ServiceCollection();
-        services.AddKeyedScoped<ITicketQueryService>(
+        services.AddKeyedScoped<ITicketService>(
             CachingTicketQueryService.InnerServiceKey,
             (_, _) => _inner);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        _clock = new FakeClock(Instant.FromUtc(2026, 5, 1, 0, 0));
+        _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
         _decorator = new CachingTicketQueryService(
-            _perUserCache,
-            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            _memoryCache,
+            scopeFactory,
+            _clock,
             NullLogger<CachingTicketQueryService>.Instance);
 
-        _inner.GetTicketOrderInfosAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
+        SeedOrders();
+        _inner.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new UserTicketHoldings(0, [])));
     }
 
     [HumansFact]
-    public async Task GetUserTicketCountAsync_UsesOrderProjectionBeforeInnerFallback()
+    public async Task GetTicketOrdersAsync_ProjectionDerivesCurrentTicketHolders()
     {
-        SeedOrders(MakeOrder(Guid.NewGuid(), UserB, [
-            MakeAttendee(UserA, TicketAttendeeStatus.Valid),
-            MakeAttendee(UserA, TicketAttendeeStatus.CheckedIn),
+        SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: null, attendees: [
+            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
+            MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.CheckedIn),
+            MakeAttendee(matchedUserId: UserC, status: TicketAttendeeStatus.Void),
         ]));
 
-        var first = await _decorator.GetUserTicketCountAsync(UserA);
-        var second = await _decorator.GetUserTicketCountAsync(UserA);
+        var result = (await _decorator.GetTicketOrdersAsync())
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .Where(a => a.MatchedUserId.HasValue
+                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.MatchedUserId!.Value)
+            .ToHashSet();
 
-        first.Should().Be(2);
-        second.Should().Be(2);
-        await _inner.DidNotReceive().GetUserTicketCountAsync(UserA);
+        result.Should().BeEquivalentTo([UserA, UserB]);
     }
 
     [HumansFact]
-    public async Task GetUserTicketHoldingsAsync_UsesOrderProjectionAndCachesResult()
+    public async Task GetTicketOrdersAsync_CachesInnerProjection()
     {
-        SeedOrders(MakeOrder(Guid.NewGuid(), UserA, [
-            MakeAttendee(null, TicketAttendeeStatus.Valid, name: "Buyer visible"),
-            MakeAttendee(UserB, TicketAttendeeStatus.Valid, name: "Other user"),
-        ]));
+        SeedOrders(
+            MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []),
+            MakeOrder(Guid.NewGuid(), matchedUserId: null, attendees: [
+                MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
+            ]));
+
+        var first = await _decorator.GetTicketOrdersAsync();
+        var second = await _decorator.GetTicketOrdersAsync();
+
+        first.Should().BeEquivalentTo(second);
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetUserTicketHoldingsAsync_UsesTrackedUserCache()
+    {
+        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
 
         var first = await _decorator.GetUserTicketHoldingsAsync(UserA);
         var second = await _decorator.GetUserTicketHoldingsAsync(UserA);
 
-        first.OrderCount.Should().Be(1);
-        first.Tickets.Should().ContainSingle(t => t.AttendeeName == "Buyer visible");
-        second.Should().BeEquivalentTo(first);
-        await _inner.DidNotReceive().GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        first.TicketCount.Should().Be(1);
+        second.TicketCount.Should().Be(1);
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task InvalidateAfterTransfer_DropsProjectionAndAffectedPerUserEntries()
+    public async Task GetUserTicketHoldingsAsync_ReloadsExpiredTrackedEntry()
     {
-        SeedOrders(MakeOrder(Guid.NewGuid(), UserA, []));
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 5);
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserB), 0);
-        _perUserCache.Set(CacheKeys.UserTicketHoldings(UserA), new UserTicketHoldings(1, []));
-        _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB), new UserTicketHoldings(0, []));
+        var stale = new UserTicketHoldings(1, [], TicketCount: 1);
+        var fresh = new UserTicketHoldings(1, [], TicketCount: 2);
+        _inner.GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(stale), Task.FromResult(fresh));
 
-        _ = await _decorator.GetAllMatchedUserIdsAsync();
-        _decorator.Entries.Should().Be(1);
+        var first = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _clock.Advance(Duration.FromMinutes(6));
+        var second = await _decorator.GetUserTicketHoldingsAsync(UserA);
 
-        _decorator.InvalidateAfterTransfer(UserA, UserB);
-
-        _decorator.Entries.Should().Be(0);
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeFalse();
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserB), out _).Should().BeFalse();
-        _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserA), out _).Should().BeFalse();
-        _perUserCache.TryGetValue(CacheKeys.UserTicketHoldings(UserB), out _).Should().BeFalse();
+        first.TicketCount.Should().Be(1);
+        second.TicketCount.Should().Be(2);
+        await _inner.Received(2).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task InvalidateAll_DropsProjection_LeavesPerUserEntries()
+    public async Task InvalidateAfterTransfer_DropsProjectionAndBothUsersPerUserEntries()
     {
-        SeedOrders(MakeOrder(Guid.NewGuid(), UserA, []));
-        _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 3);
+        await SeedTwoUserHoldings();
 
-        _ = await _decorator.GetAllMatchedUserIdsAsync();
-        _decorator.Entries.Should().Be(1);
+        _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
+
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task InvalidateAfterTransfer_NullReceiver_LeavesOtherUsersAlone()
+    {
+        await SeedTwoUserHoldings();
+
+        _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
+
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task InvalidateAfterUserMerge_DropsProjectionAndBothUsersPerUserEntries()
+    {
+        await SeedTwoUserHoldings();
+
+        _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
+
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task InvalidateAll_DropsProjectionAndPerUserEntries()
+    {
+        await SeedOneUserHolding();
 
         _decorator.InvalidateAll();
 
-        _decorator.Entries.Should().Be(0);
-        _perUserCache.TryGetValue(CacheKeys.UserTicketCount(UserA), out _).Should().BeTrue();
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task PassThroughRead_DelegatesToInner()
+    public async Task InvalidateAfterContactImport_DropsProjectionAndAllUserHoldings()
     {
-        var expected = Instant.FromUtc(2026, 5, 1, 0, 0);
-        _inner.GetPostEventHoldDateAsync(Arg.Any<CancellationToken>())
-            .Returns(expected);
+        await SeedTwoUserHoldings();
 
-        var actual = await _decorator.GetPostEventHoldDateAsync();
+        _decorator.InvalidateAfterContactImport();
 
-        actual.Should().Be(expected);
-        await _inner.Received(1).GetPostEventHoldDateAsync(Arg.Any<CancellationToken>());
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public void InvalidateVendorEventSummary_RemovesMemoryCacheEntry()
+    {
+        const string eventId = "ev_test";
+        var key = CacheKeys.TicketEventSummary(eventId);
+        _memoryCache.Set(key, "cached-summary");
+
+        _decorator.InvalidateVendorEventSummary(eventId);
+
+        _memoryCache.TryGetValue(key, out _).Should().BeFalse();
+    }
+
+    private async Task SeedTwoUserHoldings()
+    {
+        SeedOrders(
+            MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
+                MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
+            ]),
+            MakeOrder(Guid.NewGuid(), matchedUserId: UserB, attendees: [
+                MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
+            ]));
+        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
+        SeedHoldings(UserB, new UserTicketHoldings(1, [], TicketCount: 1));
+
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB);
+        _inner.ClearReceivedCalls();
+    }
+
+    private async Task SeedOneUserHolding()
+    {
+        SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
+            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
+        ]));
+        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
+
+        _ = await _decorator.GetTicketOrdersAsync();
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _inner.ClearReceivedCalls();
     }
 
     private void SeedOrders(params TicketOrderInfo[] orders)
     {
-        _inner.GetTicketOrderInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(orders.ToList());
+        _inner.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>(orders));
     }
 
+    private void SeedHoldings(Guid userId, UserTicketHoldings holdings) =>
+        _inner.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(holdings));
+
     private static TicketOrderInfo MakeOrder(
-        Guid id,
-        Guid? matchedUserId,
-        IReadOnlyList<TicketAttendeeInfo> attendees) => new(
+        Guid id, Guid? matchedUserId, params TicketAttendeeInfo[] attendees) => new(
             Id: id,
             VendorOrderId: $"ord_{id:N}",
             BuyerName: "Buyer",
@@ -142,16 +253,17 @@ public sealed class CachingTicketQueryServiceTests
             VendorEventId: "ev_test",
             PurchasedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             MatchedUserId: matchedUserId,
-            Attendees: attendees);
+            IsCurrentEvent: true,
+            Attendees: attendees.ToList());
 
     private static TicketAttendeeInfo MakeAttendee(
         Guid? matchedUserId,
         TicketAttendeeStatus status,
-        string name = "Attendee") => new(
+        string? email = null) => new(
             Id: Guid.NewGuid(),
             VendorTicketId: $"tkt_{Guid.NewGuid():N}",
-            AttendeeName: name,
-            AttendeeEmail: null,
+            AttendeeName: "Attendee",
+            AttendeeEmail: email,
             TicketTypeName: "Full Week",
             Price: 50m,
             Status: status,

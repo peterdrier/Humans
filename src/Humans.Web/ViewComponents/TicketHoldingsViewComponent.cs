@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.ViewComponents;
 
 public sealed class TicketHoldingsViewComponent(
-    ITicketQueryService queryService,
+    ITicketServiceRead queryService,
     ITicketTransferService transferService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool showEmpty = false)

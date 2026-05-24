@@ -22,7 +22,7 @@ public class GuestController(
     IUserServiceRead userService,
     ICommunicationPreferenceService commPrefService,
     IProfileService profileService,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IGdprExportService gdprExportService,
     IOnboardingWidgetState widgetState,
     IAccountDeletionService accountDeletionService,
@@ -221,14 +221,14 @@ public class GuestController(
             DisplayName = user.BurnerName,
         };
 
-        var hasTickets = await ticketQueryService.HasTicketAttendeeMatchAsync(user.Id);
+        var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(user.Id);
+        var hasTickets = ticketHoldings.HasTicketAttendeeMatch;
 
         if (hasTickets)
         {
             viewModel.HasTickets = true;
 
-            var orderSummaries = await ticketQueryService.GetUserTicketOrderSummariesAsync(user.Id);
-            viewModel.TicketOrders = orderSummaries
+            viewModel.TicketOrders = ticketHoldings.OrderSummaries
                 .Select(s => new GuestTicketOrderSummary
                 {
                     BuyerName = s.BuyerName,
@@ -273,7 +273,8 @@ public class GuestController(
         var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = await ticketQueryService.HasTicketAttendeeMatchAsync(userId);
+        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId))
+            .HasTicketAttendeeMatch;
 
         var categories = new List<CategoryPreferenceItem>();
 

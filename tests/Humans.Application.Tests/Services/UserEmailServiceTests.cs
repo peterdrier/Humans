@@ -1,6 +1,8 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -20,8 +22,7 @@ public class UserEmailServiceTests
     private readonly IUserEmailRepository _repository = Substitute.For<IUserEmailRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly Humans.Application.Interfaces.Tickets.ITicketQueryService _ticketQueryService =
-        Substitute.For<Humans.Application.Interfaces.Tickets.ITicketQueryService>();
+    private readonly ITicketServiceRead _ticketServiceRead = Substitute.For<ITicketServiceRead>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
@@ -35,12 +36,12 @@ public class UserEmailServiceTests
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
         // Default: user holds no ticket-linked emails, so the #758 delete-guard is a no-op
-        // unless a test overrides GetUserTicketExportDataAsync.
-        _ticketQueryService.GetUserTicketExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.Interfaces.Tickets.UserTicketExportData([], []));
+        // unless a test overrides GetTicketOrdersAsync.
+        _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([]));
         _serviceProvider = new ServiceLocatorBuilder()
             .With(_mergeService)
-            .With(_ticketQueryService)
+            .With(_ticketServiceRead)
             .Build();
 
         _service = new UserEmailService(
@@ -358,19 +359,34 @@ public class UserEmailServiceTests
             .Returns(ticketEmail);
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { ticketEmail, primary });
-        _ticketQueryService.GetUserTicketExportDataAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.Interfaces.Tickets.UserTicketExportData(
-                Orders: [],
-                Attendees:
-                [
-                    new Humans.Application.Interfaces.Tickets.UserTicketAttendeeExportRow(
-                        AttendeeName: "Katja",
-                        // googlemail alternate must still match the gmail row.
-                        AttendeeEmail: "katja@googlemail.com",
-                        TicketTypeName: "Full Week",
-                        Price: 100m,
-                        Status: "Valid")
-                ]));
+        _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([
+                new TicketOrderInfo(
+                    Guid.NewGuid(),
+                    "vendor-order",
+                    "Buyer",
+                    null,
+                    100m,
+                    "USD",
+                    null,
+                    TicketPaymentStatus.Paid,
+                    "event",
+                    _clock.GetCurrentInstant(),
+                    null,
+                    true,
+                    [
+                        new TicketAttendeeInfo(
+                            Guid.NewGuid(),
+                            "vendor-ticket",
+                            "Katja",
+                            // googlemail alternate must still match the gmail row.
+                            "katja@googlemail.com",
+                            "Full Week",
+                            100m,
+                            TicketAttendeeStatus.Valid,
+                            userId)
+                    ])
+            ]));
 
         var act = async () => await _service.DeleteEmailAsync(userId, ticketEmailId);
 

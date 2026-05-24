@@ -22,7 +22,7 @@ public class AttendeeContactImportArchitectureTests
         paramTypes.Should().Contain(typeof(IAccountProvisioningService));
         paramTypes.Should().Contain(typeof(IUserService));
         paramTypes.Should().Contain(typeof(IShiftManagementService));
-        paramTypes.Should().Contain(typeof(ITicketQueryService));
+        paramTypes.Should().Contain(typeof(ITicketCacheInvalidator));
         paramTypes.Should().Contain(typeof(IAuditLogService));
     }
 }

@@ -1,9 +1,7 @@
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Tickets;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,197 +11,48 @@ using NodaTime;
 namespace Humans.Infrastructure.Services.Tickets;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ITicketQueryService"/>. It owns a
-/// per-order projection cache plus short-lived per-user entries.
+/// Singleton caching decorator for Tickets. Internally it keeps two tracked
+/// slices: orders keyed by order id, and user holdings keyed by user id.
 /// </summary>
-public sealed class CachingTicketQueryService(
-    IMemoryCache perUserCache,
-    IServiceScopeFactory scopeFactory,
-    ILogger<CachingTicketQueryService> logger) : ITicketQueryService, ITicketCacheInvalidator, IHostedService
+public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInvalidator, IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
-    private static readonly TimeSpan UserPerUserCacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly Duration UserHoldingsCacheTtl = Duration.FromMinutes(5);
 
-    private readonly OrdersCache _orders = new(
-        async ct =>
-        {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
-            return await inner.GetTicketOrderInfosAsync(ct);
-        },
-        logger);
+    private readonly IMemoryCache _memoryCache;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly OrdersCache _orders;
+    private readonly UserHoldingsCache _userHoldings;
+
+    public CachingTicketQueryService(
+        IMemoryCache memoryCache,
+        IServiceScopeFactory scopeFactory,
+        IClock clock,
+        ILogger<CachingTicketQueryService> logger)
+    {
+        _memoryCache = memoryCache;
+        _scopeFactory = scopeFactory;
+        _orders = new OrdersCache(
+            async ct => await WithInner(inner => inner.GetTicketOrdersAsync(ct)),
+            logger);
+        _userHoldings = new UserHoldingsCache(scopeFactory, clock, UserHoldingsCacheTtl, logger);
+    }
 
     public ICacheStats OrdersCacheStats => _orders;
+    public ICacheStats UserHoldingsCacheStats => _userHoldings;
 
-    public int Entries => _orders.Entries;
-
-    public async Task<int> GetUserTicketCountAsync(Guid userId)
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.UserTicketCount(userId);
-        if (perUserCache.TryGetExistingValue(cacheKey, out int cached))
-            return cached;
-
-        var count = await ComputeUserTicketCountAsync(userId);
-        perUserCache.Set(cacheKey, count, UserPerUserCacheTtl);
-        return count;
-    }
-
-    private async Task<int> ComputeUserTicketCountAsync(Guid userId)
-    {
-        var orders = await GetOrdersAsync();
-
-        var matchedCount = orders.Values
-            .SelectMany(o => o.Attendees)
-            .Count(a => a.MatchedUserId == userId && IsValidOrCheckedIn(a.Status));
-        if (matchedCount > 0)
-            return matchedCount;
-
-        return await WithInner(inner => inner.GetUserTicketCountAsync(userId));
-    }
-
-    public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() =>
-        WithInner(inner => inner.GetUserIdsWithTicketsAsync());
-
-    public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
-    {
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (order.MatchedUserId is { } orderUid) ids.Add(orderUid);
-            foreach (var a in order.Attendees)
-                if (a.MatchedUserId is { } attUid) ids.Add(attUid);
-        }
-        return ids;
-    }
-
-    public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(
-        int year, CancellationToken ct = default)
-    {
-        var start = Instant.FromUtc(year, 1, 1, 0, 0);
-        var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
-
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (order.PurchasedAt < start || order.PurchasedAt >= end)
-                continue;
-
-            if (order.MatchedUserId is { } orderUid) ids.Add(orderUid);
-            foreach (var a in order.Attendees)
-                if (a.MatchedUserId is { } attUid) ids.Add(attUid);
-        }
-        return ids;
-    }
-
-    public async Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.MatchedUserId.HasValue)
-            .Select(o => o.PurchasedAt.InUtc().Year)
-            .Distinct()
-            .OrderByDescending(y => y)
-            .ToList();
-    }
-
-    public async Task<bool> HasTicketAttendeeMatchAsync(Guid userId)
-    {
-        var orders = await GetOrdersAsync();
-        foreach (var order in orders.Values)
-        {
-            if (order.MatchedUserId == userId) return true;
-            foreach (var a in order.Attendees)
-                if (a.MatchedUserId == userId) return true;
-        }
-        return false;
-    }
-
-    public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.HasCurrentEventTicketAsync(userId, ct));
-
-    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.MatchedUserId == userId)
-            .OrderByDescending(o => o.PurchasedAt)
-            .Select(o => new UserTicketOrderSummary(
-                o.BuyerName ?? string.Empty,
-                o.PurchasedAt,
-                o.Attendees.Count,
-                o.TotalAmount,
-                o.Currency))
-            .ToList();
+        var orders = await GetOrdersAsync(ct);
+        return orders.Values.ToList();
     }
 
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.UserTicketHoldings(userId);
-        if (perUserCache.TryGetExistingValue<UserTicketHoldings>(cacheKey, out var cached))
-            return cached;
-
-        var orders = await GetOrdersAsync();
-        var orderCount = orders.Values.Count(o => o.MatchedUserId == userId);
-
-        var visibleAttendees = orders.Values
-            .Where(o => o.MatchedUserId == userId
-                || o.Attendees.Any(a => a.MatchedUserId == userId))
-            .SelectMany(o => o.Attendees.Select(a => (Order: o, Attendee: a)))
-            .Where(pair => IsCurrentOwner(pair.Order, pair.Attendee, userId))
-            .Select(pair => pair.Attendee)
-            .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
-            .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
-            .Select(a => new UserTicketHoldingRow(
-                a.Id,
-                a.AttendeeName ?? string.Empty,
-                a.AttendeeEmail,
-                a.VendorTicketId,
-                a.TicketTypeName ?? string.Empty,
-                a.Status))
-            .ToList();
-
-        var holdings = new UserTicketHoldings(orderCount, visibleAttendees);
-        perUserCache.Set(cacheKey, holdings, UserPerUserCacheTtl);
-        return holdings;
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.MatchedUserId == userId
-                && (o.PaymentStatus == TicketPaymentStatus.Paid
-                    || o.PaymentStatus == TicketPaymentStatus.Pending))
-            .Select(o => o.Id)
-            .ToList();
-    }
-
-    public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
-        CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                && o.PurchasedAt >= fromInclusive
-                && o.PurchasedAt < toExclusive)
-            .Select(o => o.PurchasedAt)
-            .ToList();
+        var holdings = await _userHoldings.GetHoldingsAsync(userId, ct);
+        return holdings ?? new UserTicketHoldings(0, []);
     }
 
     public Task<List<string>> GetAvailableTicketTypesAsync() =>
@@ -211,9 +60,6 @@ public sealed class CachingTicketQueryService(
 
     public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
         WithInner(inner => inner.GetDashboardStatsAsync());
-
-    public Task<decimal> GetGrossTicketRevenueAsync() =>
-        WithInner(inner => inner.GetGrossTicketRevenueAsync());
 
     public Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold, decimal grossRevenue, string currency,
@@ -256,9 +102,6 @@ public sealed class CachingTicketQueryService(
     public Task<List<OrderExportRow>> GetOrderExportDataAsync() =>
         WithInner(inner => inner.GetOrderExportDataAsync());
 
-    public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetPostEventHoldDateAsync(ct));
-
     public Task<UserTicketExportData> GetUserTicketExportDataAsync(
         Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserTicketExportDataAsync(userId, ct));
@@ -266,66 +109,57 @@ public sealed class CachingTicketQueryService(
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrderDriftAsync(ct));
 
-    public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrderInfosAsync(CancellationToken ct = default)
-    {
-        await _orders.EnsureWarmedPublicAsync(ct);
-        return _orders.AsReadOnlyDictionary.Values.ToList();
-    }
-
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
         _orders.Clear();
-        perUserCache.Remove(CacheKeys.UserTicketCount(senderUserId));
-        perUserCache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
+        _userHoldings.Invalidate(senderUserId);
         if (receiverUserId is { } receiver)
         {
-            perUserCache.Remove(CacheKeys.UserTicketCount(receiver));
-            perUserCache.Remove(CacheKeys.UserTicketHoldings(receiver));
+            _userHoldings.Invalidate(receiver);
         }
     }
 
-    public void InvalidateAfterContactImport() => _orders.Clear();
+    public void InvalidateAfterContactImport()
+    {
+        _orders.Clear();
+        _userHoldings.Clear();
+    }
 
-    public void InvalidateAll() => _orders.Clear();
+    public void InvalidateAll()
+    {
+        _orders.Clear();
+        _userHoldings.Clear();
+    }
 
     public void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId)
     {
         _orders.Clear();
-        perUserCache.Remove(CacheKeys.UserTicketCount(sourceUserId));
-        perUserCache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
-        perUserCache.Remove(CacheKeys.UserTicketCount(targetUserId));
-        perUserCache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
+        _userHoldings.Invalidate(sourceUserId);
+        _userHoldings.Invalidate(targetUserId);
     }
 
     public void InvalidateVendorEventSummary(string vendorEventId) =>
-        perUserCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
+        _memoryCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
 
-    Task IHostedService.StartAsync(CancellationToken ct) =>
-        ((IHostedService)_orders).StartAsync(ct);
+    async Task IHostedService.StartAsync(CancellationToken ct)
+    {
+        await ((IHostedService)_orders).StartAsync(ct);
+        await ((IHostedService)_userHoldings).StartAsync(ct);
+    }
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 
     private async Task<IReadOnlyDictionary<Guid, TicketOrderInfo>> GetOrdersAsync(
         CancellationToken ct = default)
     {
-        await _orders.EnsureWarmedPublicAsync(ct);
+        await _orders.EnsureWarmedForReadAsync(ct);
         return _orders.AsReadOnlyDictionary;
     }
 
-    private static bool IsValidOrCheckedIn(TicketAttendeeStatus status) =>
-        status == TicketAttendeeStatus.Valid || status == TicketAttendeeStatus.CheckedIn;
-
-    private static bool IsCurrentOwner(TicketOrderInfo order, TicketAttendeeInfo attendee, Guid userId)
+    private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
     {
-        if (attendee.MatchedUserId is { } matchedUid)
-            return matchedUid == userId;
-        return order.MatchedUserId == userId;
-    }
-
-    private async Task<TResult> WithInner<TResult>(Func<ITicketQueryService, Task<TResult>> action)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketService>(InnerServiceKey);
         return await action(inner);
     }
 
@@ -341,6 +175,44 @@ public sealed class CachingTicketQueryService(
                 Set(order.Id, order);
         }
 
-        public Task EnsureWarmedPublicAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
+        internal Task EnsureWarmedForReadAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
     }
+
+    private sealed class UserHoldingsCache(
+        IServiceScopeFactory scopeFactory,
+        IClock clock,
+        Duration ttl,
+        ILogger logger)
+        : TrackedCache<Guid, CachedUserTicketHoldings>("Tickets.UserHoldings", warmOnStartup: false, logger)
+    {
+        internal async ValueTask<UserTicketHoldings?> GetHoldingsAsync(Guid userId, CancellationToken ct)
+        {
+            if (TryGet(userId, out var cached))
+            {
+                if (cached.ExpiresAt > clock.GetCurrentInstant())
+                    return cached.Value;
+
+                DeleteKey(userId);
+            }
+
+            var loaded = await LoadRowAsync(userId, ct).ConfigureAwait(false);
+            if (loaded is not null) Set(userId, loaded);
+            return loaded?.Value;
+        }
+
+        protected override async ValueTask<CachedUserTicketHoldings?> LoadRowAsync(Guid userId, CancellationToken ct)
+        {
+            var holdings = await WithInner(inner => inner.GetUserTicketHoldingsAsync(userId, ct));
+            return new CachedUserTicketHoldings(holdings, clock.GetCurrentInstant() + ttl);
+        }
+
+        private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketService>(InnerServiceKey);
+            return await action(inner);
+        }
+    }
+
+    private sealed record CachedUserTicketHoldings(UserTicketHoldings Value, Instant ExpiresAt);
 }
