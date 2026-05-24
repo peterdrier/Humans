@@ -49,6 +49,13 @@ public record TeamInfo(
         GoogleGroupPrefix is null
             ? null
             : $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}";
+
+    /// <summary>
+    /// Whether this team appears in the directory as its own entry.
+    /// Mirrors <c>Team.IsInDirectory</c>: top-level teams always qualify;
+    /// sub-teams qualify only when <see cref="IsPromotedToDirectory"/> is set.
+    /// </summary>
+    public bool IsInDirectory => ParentTeamId is null || IsPromotedToDirectory;
 }
 
 public record TeamMemberInfo(

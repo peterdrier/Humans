@@ -22,7 +22,7 @@ namespace Humans.Application.Tests.Services.Shifts.Workload;
 public sealed class WorkloadServiceTests : ServiceTestHarness
 {
     private readonly WorkloadService _service;
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 
     public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {
@@ -37,17 +37,21 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             Substitute.For<IGeneralAvailabilityRepository>(),
             Substitute.For<IVolunteerTrackingRepository>());
 
-        _teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => GetTeamsByIdsAsync(call.Arg<IReadOnlyCollection<Guid>>()));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => GetAllTeamInfosAsync());
 
         _service = new WorkloadService(repo, view, _teamService, NewDbBackedUserService());
     }
 
-    private async Task<IReadOnlyDictionary<Guid, Team>> GetTeamsByIdsAsync(IReadOnlyCollection<Guid> ids)
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetAllTeamInfosAsync()
     {
-        if (ids.Count == 0) return new Dictionary<Guid, Team>();
-        var teams = await Db.Teams.Where(t => ids.Contains(t.Id)).ToListAsync();
-        return teams.ToDictionary(t => t.Id);
+        var teams = await Db.Teams.ToListAsync();
+        return teams.ToDictionary(t => t.Id, t => new TeamInfo(
+            Id: t.Id, Name: t.Name, Description: t.Description, Slug: t.Slug,
+            IsActive: t.IsActive, IsSystemTeam: t.IsSystemTeam, SystemTeamType: t.SystemTeamType,
+            RequiresApproval: t.RequiresApproval, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: t.CreatedAt, Members: [],
+            ParentTeamId: t.ParentTeamId));
     }
 
     [HumansFact]

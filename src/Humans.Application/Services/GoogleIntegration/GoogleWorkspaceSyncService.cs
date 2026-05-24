@@ -1296,8 +1296,7 @@ public sealed class GoogleWorkspaceSyncService(
 
         // Filter to resources whose team is still active.
         if (driveResources.Count == 0) return 0;
-        var teamIds = driveResources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var filtered = driveResources
             .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
             .ToList();
@@ -1408,8 +1407,7 @@ public sealed class GoogleWorkspaceSyncService(
         var driveResources = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
 
         if (driveResources.Count == 0) return 0;
-        var teamIds = driveResources.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
         var restricted = driveResources
             .Where(r => r.RestrictInheritedAccess

@@ -50,18 +50,6 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             });
         _userService.StubGetUserInfosFromContext(Db);
 
-        _teamService.GetByIdsWithParentsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(
-                    Db.Teams
-                        .Where(t => ids.Contains(t.Id))
-                        .AsEnumerable()
-                        .ToDictionary(t => t.Id));
-            });
-
         _teamService.GetAllTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<Team>>(Db.Teams.AsEnumerable().ToList()));
 

@@ -10,7 +10,7 @@ namespace Humans.Application.Services.AuditLog;
 public sealed class AuditViewerService(
     IAuditLogService auditLog,
     IUserServiceRead userService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ITeamResourceService teamResourceService) : IAuditViewerService
 {
     public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default)
@@ -207,8 +207,10 @@ public sealed class AuditViewerService(
     private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
         IReadOnlyList<Guid> teamIds, CancellationToken ct)
     {
-        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
-        return teams.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value.Name, kvp.Value.Slug));
+        var all = await teamService.GetTeamsAsync(ct);
+        return teamIds
+            .Where(all.ContainsKey)
+            .ToDictionary(id => id, id => (all[id].Name, all[id].Slug));
     }
 
     private static (List<Guid> UserIds, List<Guid> TeamIds, List<Guid> ResourceIds) CollectIds(IReadOnlyList<AuditLogEntry> entries)

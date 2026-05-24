@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Shifts.Workload;
 public sealed class WorkloadService(
     IShiftManagementRepository repo,
     IShiftView view,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserServiceRead userService) : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
@@ -48,10 +48,7 @@ public sealed class WorkloadService(
             .SelectMany(v => v.Shifts.Select(s => (Rota: v.Rota!, Shift: s)))
             .ToList();
 
-        var teamIds = entries.Select(e => e.Rota.TeamId).Distinct().ToList();
-        var teamLookup = teamIds.Count > 0
-            ? await teamService.GetByIdsWithParentsAsync(teamIds, ct)
-            : new Dictionary<Guid, Team>();
+        var teamLookup = await teamService.GetTeamsAsync(ct);
 
         var byRota = BuildByRota(entries, teamLookup);
         var byDepartment = BuildByDepartment(entries, teamLookup);
@@ -71,7 +68,7 @@ public sealed class WorkloadService(
     // Unsorted; controller assembles display order (display-sort-in-controllers).
     private static List<WorkloadByRotaRow> BuildByRota(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        IReadOnlyDictionary<Guid, Team> teamLookup) =>
+        IReadOnlyDictionary<Guid, TeamInfo> teamLookup) =>
         entries
             .GroupBy(e => e.Rota.Id)
             .Select(g =>
@@ -103,7 +100,7 @@ public sealed class WorkloadService(
 
     private static List<WorkloadByDepartmentRow> BuildByDepartment(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        IReadOnlyDictionary<Guid, Team> teamLookup) =>
+        IReadOnlyDictionary<Guid, TeamInfo> teamLookup) =>
         entries
             .GroupBy(e => e.Rota.TeamId)
             .Select(g =>

@@ -13,7 +13,7 @@ namespace Humans.Application.Services.Legal;
 public sealed partial class AdminLegalDocumentService(
     ILegalDocumentRepository repository,
     ILegalDocumentSyncService legalDocumentSyncService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IOptions<GitHubSettings> githubSettings,
     IClock clock) : IAdminLegalDocumentService
 {
@@ -29,9 +29,8 @@ public sealed partial class AdminLegalDocumentService(
 
         var now = clock.GetCurrentInstant();
 
-        // Stitch team names in memory (no .Include).
-        var teamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        // Stitch team names in memory via the cached read model (no .Include).
+        var teams = await teamService.GetTeamsAsync(cancellationToken);
 
         return documents
             .Select(d =>

@@ -20,7 +20,7 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
 {
     private readonly ILegalDocumentRepository _repository;
     private readonly FakeLegalDocumentSyncService _syncService;
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly AdminLegalDocumentService _service;
     private readonly Team _team;
 
@@ -46,14 +46,14 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
 
         // Team-name stitch: return the seed team when queried.
         _teamService
-            .GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>
             {
-                var ids = ci.ArgAt<IReadOnlyCollection<Guid>>(0);
-                IReadOnlyDictionary<Guid, Team> map = ids.Contains(_team.Id)
-                    ? new Dictionary<Guid, Team> { [_team.Id] = _team }
-                    : new Dictionary<Guid, Team>();
-                return Task.FromResult(map);
+                [_team.Id] = new TeamInfo(
+                    Id: _team.Id, Name: _team.Name, Description: _team.Description, Slug: _team.Slug,
+                    IsActive: _team.IsActive, IsSystemTeam: _team.IsSystemTeam, SystemTeamType: _team.SystemTeamType,
+                    RequiresApproval: _team.RequiresApproval, IsPublicPage: false, IsHidden: false,
+                    IsPromotedToDirectory: false, CreatedAt: _team.CreatedAt, Members: [])
             });
 
         _service = new AdminLegalDocumentService(

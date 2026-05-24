@@ -26,21 +26,18 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     {
         _teamService = Substitute.For<ITeamService>();
 
-        // Resolve teams (with their parents) directly from the in-memory DB —
-        // the production wrapper does the same join in SQL.
-        _teamService.GetByIdsWithParentsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                var direct = Db.Teams.Where(t => ids.Contains(t.Id)).AsEnumerable().ToList();
-                var parentIds = direct.Where(t => t.ParentTeamId.HasValue).Select(t => t.ParentTeamId!.Value).ToList();
-                var parents = parentIds.Count == 0
-                    ? []
-                    : Db.Teams.Where(t => parentIds.Contains(t.Id)).AsEnumerable().ToList();
-                var all = direct.Concat(parents).GroupBy(t => t.Id).Select(g => g.First());
-                return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(all.ToDictionary(t => t.Id));
-            });
+        // Return all teams from the in-memory DB as TeamInfo so production
+        // code using GetTeamsAsync() can resolve names and parent chains.
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                Db.Teams.AsEnumerable().ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory, t.CreatedAt,
+                        Members: [],
+                        ParentTeamId: t.ParentTeamId))));
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)

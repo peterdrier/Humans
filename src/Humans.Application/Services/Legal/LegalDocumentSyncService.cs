@@ -14,7 +14,7 @@ public sealed class LegalDocumentSyncService(
     ILegalDocumentRepository repository,
     IGitHubLegalDocumentConnector gitHub,
     INotificationService notificationService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserServiceRead userService,
     IClock clock,
     ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncService
@@ -181,9 +181,8 @@ public sealed class LegalDocumentSyncService(
         var documents = await repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
         if (documents.Count == 0) return [];
 
-        // Team names via ITeamService — no cross-section EF join (memory/architecture/no-cross-section-ef-joins.md).
-        var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
+        // Team names via ITeamServiceRead — no cross-section EF join (memory/architecture/no-cross-section-ef-joins.md).
+        var teams = await teamService.GetTeamsAsync(cancellationToken);
 
         return documents.Select(d =>
         {

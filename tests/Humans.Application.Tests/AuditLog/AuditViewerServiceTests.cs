@@ -38,9 +38,9 @@ public class AuditViewerServiceTests
             (actor, "Frank"),
             (viewer, "Peter"));
 
-        var teamService = Substitute.For<ITeamService>();
-        teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Team>());
+        var teamService = Substitute.For<ITeamServiceRead>();
+        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -123,9 +123,9 @@ public class AuditViewerServiceTests
 
         var userService = StubUserService();
 
-        var teamService = Substitute.For<ITeamService>();
-        teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Team>());
+        var teamService = Substitute.For<ITeamServiceRead>();
+        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -160,9 +160,9 @@ public class AuditViewerServiceTests
 
         var userService = StubUserService((actor, "Frank"));
 
-        var teamService = Substitute.For<ITeamService>();
-        teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Team>());
+        var teamService = Substitute.For<ITeamServiceRead>();
+        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -177,7 +177,7 @@ public class AuditViewerServiceTests
         result.Items[0].ActorDisplayName.Should().Be("Frank");
     }
 
-    private static (IAuditLogService, IUserService, ITeamService, ITeamResourceService) MakeServices(
+    private static (IAuditLogService, IUserService, ITeamServiceRead, ITeamResourceService) MakeServices(
         AuditLogEntry entry, Guid actor, Guid viewer, string actorName, string viewerName)
     {
         var auditLog = Substitute.For<IAuditLogService>();
@@ -188,9 +188,9 @@ public class AuditViewerServiceTests
             (actor, actorName),
             (viewer, viewerName));
 
-        var teamService = Substitute.For<ITeamService>();
-        teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Team>());
+        var teamService = Substitute.For<ITeamServiceRead>();
+        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
