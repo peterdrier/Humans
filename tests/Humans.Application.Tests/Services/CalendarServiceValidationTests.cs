@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Calendar;
@@ -109,7 +110,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
+    public async Task MutateCalendarAsync_create_returns_validation_member_for_malformed_recurrence()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
@@ -125,7 +126,9 @@ public class CalendarServiceValidationTests
             RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
             RecurrenceTimezone: "Europe/Madrid");
 
-        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+        var result = await service.MutateCalendarAsync(
+            new CreateCalendarEventMutation(dto),
+            Guid.NewGuid());
 
         result.Succeeded.Should().BeFalse();
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
@@ -134,7 +137,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
+    public async Task MutateCalendarAsync_update_returns_validation_member_for_unknown_timezone()
     {
         var service = BuildService(Substitute.For<ICalendarRepository>());
         var dto = new UpdateCalendarEventDto(
@@ -149,7 +152,9 @@ public class CalendarServiceValidationTests
             RecurrenceRule: "FREQ=DAILY",
             RecurrenceTimezone: "Europe/Madird");
 
-        var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid());
+        var result = await service.MutateCalendarAsync(
+            new UpdateCalendarEventMutation(Guid.NewGuid(), dto),
+            Guid.NewGuid());
 
         result.Succeeded.Should().BeFalse();
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
@@ -160,12 +165,11 @@ public class CalendarServiceValidationTests
     // PR #585 follow-up — audit-best-effort invariant
     // ==========================================================================
     //
-    // The §15 caching decorator (CachingCalendarService) keys invalidation off
-    // the inner result's Succeeded flag (or, for void overloads, the absence
-    // of a thrown exception). If the audit-log call re-raises AFTER the DB
-    // write committed, the inner's WithResultAsync catch-all would have
-    // returned Failed — which would make the decorator skip invalidation,
-    // leaving the cache silently stale. Codex P1 on PR #585.
+    // The §15 caching decorator keys invalidation off MutateCalendarAsync's
+    // Succeeded flag and AffectedEventId. If the audit-log call re-raises
+    // AFTER the DB write committed, the mutation would return Failed — which
+    // would make the decorator skip invalidation, leaving the cache silently
+    // stale. Codex P1 on PR #585.
     //
     // The fix wraps each _audit.LogAsync call in try-catch (LogCritical and
     // continue). These tests pin the new invariant: a post-write audit
@@ -173,7 +177,7 @@ public class CalendarServiceValidationTests
     // DB write (so the decorator invalidates correctly).
 
     [HumansFact]
-    public async Task CreateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
+    public async Task MutateCalendarAsync_create_AuditThrowsAfterWrite_StillReturnsSuccess()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var audit = Substitute.For<IAuditLogService>();
@@ -194,7 +198,9 @@ public class CalendarServiceValidationTests
             RecurrenceRule: null,
             RecurrenceTimezone: null);
 
-        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+        var result = await service.MutateCalendarAsync(
+            new CreateCalendarEventMutation(dto),
+            Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue(
             because: "the DB write committed; audit failure is best-effort and must not void the result " +
@@ -205,7 +211,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task UpdateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
+    public async Task MutateCalendarAsync_update_AuditThrowsAfterWrite_StillReturnsSuccess()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var eventId = Guid.NewGuid();
@@ -249,7 +255,9 @@ public class CalendarServiceValidationTests
             RecurrenceRule: null,
             RecurrenceTimezone: null);
 
-        var result = await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid());
+        var result = await service.MutateCalendarAsync(
+            new UpdateCalendarEventMutation(eventId, dto),
+            Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue(
             because: "the DB write committed; audit failure is best-effort and must not void the result");
@@ -258,7 +266,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task DeleteEventAsync_AuditThrowsAfterWrite_DoesNotThrow()
+    public async Task MutateCalendarAsync_delete_AuditThrowsAfterWrite_StillReturnsSuccess()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var eventId = Guid.NewGuid();
@@ -275,14 +283,17 @@ public class CalendarServiceValidationTests
 
         var service = BuildService(repo, audit);
 
-        // Void overload — re-throwing audit would also skip the decorator's
-        // post-delete invalidation, leaving the soft-deleted event in cache.
-        var act = async () => await service.DeleteEventAsync(eventId, Guid.NewGuid());
-        await act.Should().NotThrowAsync();
+        var result = await service.MutateCalendarAsync(
+            new DeleteCalendarEventMutation(eventId),
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue(
+            because: "the soft-delete committed; audit failure is best-effort and must not void the result");
+        result.AffectedEventId.Should().Be(eventId);
     }
 
     [HumansFact]
-    public async Task CancelOccurrenceAsync_AuditThrowsAfterWrite_DoesNotThrow()
+    public async Task MutateCalendarAsync_cancel_AuditThrowsAfterWrite_StillReturnsSuccess()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var audit = Substitute.For<IAuditLogService>();
@@ -295,9 +306,16 @@ public class CalendarServiceValidationTests
 
         var service = BuildService(repo, audit);
 
-        var act = async () => await service.CancelOccurrenceAsync(
-            Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 10, 0), Guid.NewGuid());
-        await act.Should().NotThrowAsync();
+        var eventId = Guid.NewGuid();
+        var result = await service.MutateCalendarAsync(
+            new CancelCalendarOccurrenceMutation(
+                eventId,
+                Instant.FromUtc(2026, 6, 1, 10, 0)),
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue(
+            because: "the exception upsert committed; audit failure is best-effort and must not void the result");
+        result.AffectedEventId.Should().Be(eventId);
     }
 
     private static CalendarService BuildService(ICalendarRepository repo)

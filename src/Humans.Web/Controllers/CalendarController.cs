@@ -197,12 +197,14 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        var result = await _calendar.CreateEventWithResultAsync(new CreateCalendarEventDto(
-            form.Title, form.Description, form.Location, form.LocationUrl,
-            form.OwningTeamId, start, end, form.IsAllDay,
-            form.IsRecurring ? form.RecurrenceRule : null,
-            form.IsRecurring ? form.RecurrenceTimezone : null),
-            createdByUserId: RequireCurrentUserId(), ct);
+        var result = await _calendar.MutateCalendarAsync(
+            new CreateCalendarEventMutation(new CreateCalendarEventDto(
+                form.Title, form.Description, form.Location, form.LocationUrl,
+                form.OwningTeamId, start, end, form.IsAllDay,
+                form.IsRecurring ? form.RecurrenceRule : null,
+                form.IsRecurring ? form.RecurrenceTimezone : null)),
+            RequireCurrentUserId(),
+            ct);
 
         if (result.Succeeded && result.Event is not null)
         {
@@ -263,12 +265,14 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        var result = await _calendar.UpdateEventWithResultAsync(id, new UpdateCalendarEventDto(
-            form.Title, form.Description, form.Location, form.LocationUrl,
-            form.OwningTeamId, start, end, form.IsAllDay,
-            form.IsRecurring ? form.RecurrenceRule : null,
-            form.IsRecurring ? form.RecurrenceTimezone : null),
-            updatedByUserId: RequireCurrentUserId(), ct);
+        var result = await _calendar.MutateCalendarAsync(
+            new UpdateCalendarEventMutation(id, new UpdateCalendarEventDto(
+                form.Title, form.Description, form.Location, form.LocationUrl,
+                form.OwningTeamId, start, end, form.IsAllDay,
+                form.IsRecurring ? form.RecurrenceRule : null,
+                form.IsRecurring ? form.RecurrenceTimezone : null)),
+            RequireCurrentUserId(),
+            ct);
 
         if (result.NotFound) return NotFound();
         if (result.Succeeded) return RedirectToAction(nameof(Event), new { id });
@@ -332,7 +336,16 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        await _calendar.DeleteEventAsync(id, deletedByUserId: RequireCurrentUserId(), ct);
+        var result = await _calendar.MutateCalendarAsync(
+            new DeleteCalendarEventMutation(id),
+            RequireCurrentUserId(),
+            ct);
+        if (result.NotFound) return NotFound();
+        if (!result.Succeeded)
+        {
+            SetError(result.ErrorMessage ?? "Failed to delete calendar event.");
+        }
+
         return RedirectToAction(nameof(Index));
     }
 
@@ -344,7 +357,16 @@ public class CalendarController : HumansControllerBase
         if (ev is null) return NotFound();
 
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
-        await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct);
+        var result = await _calendar.MutateCalendarAsync(
+            new CancelCalendarOccurrenceMutation(id, original),
+            RequireCurrentUserId(),
+            ct);
+        if (result.NotFound) return NotFound();
+        if (!result.Succeeded)
+        {
+            SetError(result.ErrorMessage ?? "Failed to cancel calendar occurrence.");
+        }
+
         return RedirectToAction(nameof(Event), new { id });
     }
 
@@ -384,11 +406,20 @@ public class CalendarController : HumansControllerBase
             ? LocalDateTime.FromDateTime(e).InZoneLeniently(zone).ToInstant()
             : null;
 
-        await _calendar.OverrideOccurrenceAsync(id, original,
-            new OverrideOccurrenceDto(overrideStart, overrideEnd,
-                form.OverrideTitle, form.OverrideDescription,
-                form.OverrideLocation, form.OverrideLocationUrl),
-            RequireCurrentUserId(), ct);
+        var result = await _calendar.MutateCalendarAsync(
+            new OverrideCalendarOccurrenceMutation(
+                id,
+                original,
+                new OverrideOccurrenceDto(overrideStart, overrideEnd,
+                    form.OverrideTitle, form.OverrideDescription,
+                    form.OverrideLocation, form.OverrideLocationUrl)),
+            RequireCurrentUserId(),
+            ct);
+        if (result.NotFound) return NotFound();
+        if (!result.Succeeded)
+        {
+            SetError(result.ErrorMessage ?? "Failed to update calendar occurrence.");
+        }
 
         return RedirectToAction(nameof(Event), new { id });
     }
@@ -408,7 +439,7 @@ public class CalendarController : HumansControllerBase
 
     private void AddCalendarEventMutationError(
         CalendarEventFormViewModel form,
-        CalendarEventMutationResult result)
+        CalendarMutationResult result)
     {
         var memberName = string.Equals(
                 result.ValidationMemberName,

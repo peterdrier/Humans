@@ -79,64 +79,21 @@ public sealed class CachingCalendarService(
             .ToDictionary(id => id, id => teamsById[id].Name);
     }
 
-    // Writes — delegate then refresh
+    // Writes — single mutation surface delegates then refreshes the affected event.
 
-    public async Task<CalendarEvent> CreateEventAsync(
-        CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
+    public async Task<CalendarMutationResult> MutateCalendarAsync(
+        CalendarMutation mutation,
+        Guid actorUserId,
+        CancellationToken ct = default)
     {
-        var result = await WithInner(inner => inner.CreateEventAsync(dto, createdByUserId, ct));
-        await InvalidateEventAsync(result.Id, ct);
+        var result = await WithInner(inner => inner.MutateCalendarAsync(mutation, actorUserId, ct));
+        if (result.AffectedEventId is { } eventId)
+        {
+            // Refresh the affected parent; not-found deletes can tombstone stale cache entries.
+            await InvalidateEventAsync(eventId, ct);
+        }
+
         return result;
-    }
-
-    public async Task<CalendarEventMutationResult> CreateEventWithResultAsync(
-        CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
-    {
-        var result = await WithInner(inner => inner.CreateEventWithResultAsync(dto, createdByUserId, ct));
-        if (result.Succeeded && result.Event is not null)
-            await InvalidateEventAsync(result.Event.Id, ct);
-        return result;
-    }
-
-    public async Task<CalendarEvent> UpdateEventAsync(
-        Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
-    {
-        var result = await WithInner(inner => inner.UpdateEventAsync(id, dto, updatedByUserId, ct));
-        await InvalidateEventAsync(id, ct);
-        return result;
-    }
-
-    public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
-        Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
-    {
-        var result = await WithInner(inner => inner.UpdateEventWithResultAsync(id, dto, updatedByUserId, ct));
-        if (result.Succeeded)
-            await InvalidateEventAsync(id, ct);
-        return result;
-    }
-
-    public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.DeleteEventAsync(id, deletedByUserId, ct));
-        await InvalidateEventAsync(id, ct);
-    }
-
-    public async Task CancelOccurrenceAsync(
-        Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
-    {
-        // Exception writes evict the PARENT — Exceptions list is embedded in CalendarEventInfo.
-        await WithInner(inner => inner.CancelOccurrenceAsync(
-            eventId, originalOccurrenceStartUtc, userId, ct));
-        await InvalidateEventAsync(eventId, ct);
-    }
-
-    public async Task OverrideOccurrenceAsync(
-        Guid eventId, Instant originalOccurrenceStartUtc, OverrideOccurrenceDto dto,
-        Guid userId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.OverrideOccurrenceAsync(
-            eventId, originalOccurrenceStartUtc, dto, userId, ct));
-        await InvalidateEventAsync(eventId, ct);
     }
 
     private Task InvalidateEventAsync(Guid eventId, CancellationToken ct) =>
@@ -168,10 +125,4 @@ public sealed class CachingCalendarService(
         return await action(inner);
     }
 
-    private async Task WithInner(Func<ICalendarService, Task> action)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
-        await action(inner);
-    }
 }

@@ -178,7 +178,7 @@ public class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task CreateEventAsync_DelegatesToInner_AndRefreshesCacheEntry()
+    public async Task MutateCalendarAsync_Create_DelegatesToInner_AndRefreshesCacheEntry()
     {
         var teamId = Guid.NewGuid();
         var dto = new CreateCalendarEventDto(
@@ -193,8 +193,11 @@ public class CachingCalendarServiceTests
 
         var created = BuildEvent(teamId: teamId, title: "New",
             start: dto.StartUtc, end: dto.EndUtc);
-        _inner.CreateEventAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(created);
+        _inner.MutateCalendarAsync(
+                Arg.Is<CreateCalendarEventMutation>(m => ReferenceEquals(m.Event, dto)),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CalendarMutationResult.Success(created));
 
         // After-write refresh: the decorator routes through ReplaceAsync, which
         // drives LoadRowAsync → _repo.GetEventByIdAsync, then upserts into the dict.
@@ -202,20 +205,28 @@ public class CachingCalendarServiceTests
             .Returns(created);
 
         var sut = CreateSut();
-        var result = await sut.CreateEventAsync(dto, Guid.NewGuid());
+        var result = await sut.MutateCalendarAsync(
+            new CreateCalendarEventMutation(dto),
+            Guid.NewGuid());
 
-        result.Should().BeSameAs(created);
+        result.Succeeded.Should().BeTrue();
+        result.Event.Should().BeSameAs(created);
         sut.ContainsKey(created.Id).Should().BeTrue(
             because: "after-write refresh inserts the new event into the cache");
         await _repo.Received(1).GetEventByIdAsync(created.Id, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task DeleteEventAsync_RemovesEntryFromCache_WhenRepoReturnsNull()
+    public async Task MutateCalendarAsync_Delete_RemovesEntryFromCache_WhenMutationReturnsNotFound()
     {
         var ev = BuildEvent(title: "To be deleted");
         _repo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(new List<CalendarEvent> { ev });
+        _inner.MutateCalendarAsync(
+                Arg.Is<DeleteCalendarEventMutation>(m => m.EventId == ev.Id),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CalendarMutationResult.Missing(ev.Id, "Calendar event not found."));
 
         // The inner soft-deletes; the post-delete re-fetch returns null
         // because the repo's GetEventByIdAsync filters soft-deleted rows.
@@ -226,15 +237,21 @@ public class CachingCalendarServiceTests
         await WarmAsync(sut);
         sut.ContainsKey(ev.Id).Should().BeTrue();
 
-        await sut.DeleteEventAsync(ev.Id, Guid.NewGuid());
+        var result = await sut.MutateCalendarAsync(
+            new DeleteCalendarEventMutation(ev.Id),
+            Guid.NewGuid());
 
+        result.NotFound.Should().BeTrue();
         sut.ContainsKey(ev.Id).Should().BeFalse(
-            because: "soft-deleted event must be evicted from cache (tombstoned via DeleteKey)");
-        await _inner.Received(1).DeleteEventAsync(ev.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            because: "not-found deletes still identify the affected key and must tombstone stale cache entries");
+        await _inner.Received(1).MutateCalendarAsync(
+            Arg.Is<DeleteCalendarEventMutation>(m => m.EventId == ev.Id),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CancelOccurrenceAsync_EvictsParentEventEntry_NotJustException()
+    public async Task MutateCalendarAsync_CancelOccurrence_EvictsParentEventEntry_NotJustException()
     {
         // T-08 invariant: the cache is keyed by parent event id; exception
         // writes refresh the PARENT entry (which re-loads its Exceptions list).
@@ -266,17 +283,28 @@ public class CachingCalendarServiceTests
             });
         _repo.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(after);
+        _inner.MutateCalendarAsync(
+                Arg.Is<CancelCalendarOccurrenceMutation>(m =>
+                    m.EventId == eventId && m.OriginalOccurrenceStartUtc == originalStart),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CalendarMutationResult.Success(eventId));
 
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        await sut.CancelOccurrenceAsync(eventId, originalStart, Guid.NewGuid());
+        await sut.MutateCalendarAsync(
+            new CancelCalendarOccurrenceMutation(eventId, originalStart),
+            Guid.NewGuid());
 
         // The decorator did re-fetch (parent eviction + repopulation).
         await _repo.Received(1).GetEventByIdAsync(eventId, Arg.Any<CancellationToken>());
         // The inner service was actually called.
-        await _inner.Received(1).CancelOccurrenceAsync(
-            eventId, originalStart, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _inner.Received(1).MutateCalendarAsync(
+            Arg.Is<CancelCalendarOccurrenceMutation>(m =>
+                m.EventId == eventId && m.OriginalOccurrenceStartUtc == originalStart),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
         // The cached event now has the exception attached.
         sut.TryGet(eventId, out var refreshed).Should().BeTrue();
         refreshed.Exceptions.Should().HaveCount(1);
@@ -284,9 +312,9 @@ public class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task OverrideOccurrenceAsync_EvictsParentEventEntry_NotJustException()
+    public async Task MutateCalendarAsync_OverrideOccurrence_EvictsParentEventEntry_NotJustException()
     {
-        // Same invariant as CancelOccurrenceAsync — override writes also flow
+        // Same invariant as cancel occurrence — override writes also flow
         // through parent-event eviction + refresh.
         var eventId = Guid.NewGuid();
         var originalStart = Instant.FromUtc(2026, 9, 1, 10, 0);
@@ -320,7 +348,16 @@ public class CachingCalendarServiceTests
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        await sut.OverrideOccurrenceAsync(eventId, originalStart, dto, Guid.NewGuid());
+        _inner.MutateCalendarAsync(
+                Arg.Is<OverrideCalendarOccurrenceMutation>(m =>
+                    m.EventId == eventId && m.OriginalOccurrenceStartUtc == originalStart),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CalendarMutationResult.Success(eventId));
+
+        await sut.MutateCalendarAsync(
+            new OverrideCalendarOccurrenceMutation(eventId, originalStart, dto),
+            Guid.NewGuid());
 
         await _repo.Received(1).GetEventByIdAsync(eventId, Arg.Any<CancellationToken>());
         sut.TryGet(eventId, out var refreshed).Should().BeTrue();

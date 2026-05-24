@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
@@ -15,7 +14,7 @@ namespace Humans.Integration.Tests.Services;
 public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
 {
     [HumansFact]
-    public async Task CreateEventAsync_persists_and_GetEventById_returns_it()
+    public async Task MutateCalendarAsync_create_persists_and_GetEventById_returns_it()
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
@@ -27,7 +26,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var start = Instant.FromUtc(2026, 5, 1, 17, 0);
         var end = Instant.FromUtc(2026, 5, 1, 18, 0);
 
-        var created = await svc.CreateEventAsync(
+        var created = await ApplyCreateMutationAsync(svc,
             new CreateCalendarEventDto(
                 Title: "Community call",
                 Description: "Monthly sync",
@@ -61,13 +60,13 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Inside", null, null, null, team.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
             Instant.FromUtc(2026, 6, 15, 18, 0),
             false, null, null), userId);
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Outside", null, null, null, team.Id,
             Instant.FromUtc(2027, 1, 1, 0, 0),
             Instant.FromUtc(2027, 1, 1, 1, 0),
@@ -94,12 +93,12 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var b = await SeedTeamAsync(db, $"B-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "A-evt", null, null, null, a.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
             Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "B-evt", null, null, null, b.Id,
             Instant.FromUtc(2026, 6, 15, 19, 0),
             Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid);
@@ -123,12 +122,12 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "DoomedEvent", null, null, null, team.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
             Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
 
-        await svc.DeleteEventAsync(ev.Id, uid);
+        await ApplyDeleteMutationAsync(svc, ev.Id, uid);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
@@ -154,7 +153,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var firstLocal = new LocalDateTime(2026, 3, 24, 19, 0);
         var firstUtc = firstLocal.InZoneLeniently(zone).ToInstant();
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Tuesday call", null, null, null, team.Id,
             StartUtc: firstUtc,
             EndUtc: firstUtc.Plus(Duration.FromHours(1)),
@@ -186,7 +185,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Old", null, null, null, team.Id,
             StartUtc: Instant.FromUtc(2024, 1, 7, 18, 0),
             EndUtc: Instant.FromUtc(2024, 1, 7, 19, 0),
@@ -215,14 +214,14 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Weekly", null, null, null, team.Id,
             first, first.Plus(Duration.FromHours(1)),
             false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
 
         // Cancel the 3rd occurrence (2026-05-19 19:00 Madrid).
         var cancel = new LocalDateTime(2026, 5, 19, 19, 0).InZoneLeniently(zone).ToInstant();
-        await svc.CancelOccurrenceAsync(ev.Id, cancel, uid);
+        await ApplyCancelOccurrenceMutationAsync(svc, ev.Id, cancel, uid);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
@@ -246,7 +245,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Weekly", null, null, null, team.Id,
             first, first.Plus(Duration.FromHours(1)),
             false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
@@ -255,7 +254,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var original = new LocalDateTime(2026, 5, 12, 19, 0).InZoneLeniently(zone).ToInstant();
         var moved = new LocalDateTime(2026, 5, 12, 20, 0).InZoneLeniently(zone).ToInstant();
 
-        await svc.OverrideOccurrenceAsync(ev.Id, original, new OverrideOccurrenceDto(
+        await ApplyOverrideOccurrenceMutationAsync(svc, ev.Id, original, new OverrideOccurrenceDto(
             OverrideStartUtc: moved,
             OverrideEndUtc: moved.Plus(Duration.FromHours(1)),
             OverrideTitle: "Special week",
@@ -284,12 +283,12 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
             Instant.FromUtc(2026, 7, 1, 17, 0),
             Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid);
 
-        await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+        await ApplyUpdateMutationAsync(svc, ev.Id, new UpdateCalendarEventDto(
             "Updated", "new desc", "Hall", null, team.Id,
             Instant.FromUtc(2026, 7, 2, 17, 0),
             Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid);
@@ -302,7 +301,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
     }
 
     [HumansFact]
-    public async Task CreateEvent_rejects_malformed_rrule()
+    public async Task MutateCalendarAsync_create_rejects_malformed_rrule()
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
@@ -311,20 +310,23 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var act = async () => await svc.CreateEventAsync(new CreateCalendarEventDto(
-            "Bad", null, null, null, team.Id,
-            Instant.FromUtc(2026, 5, 1, 17, 0),
-            Instant.FromUtc(2026, 5, 1, 18, 0),
-            false,
-            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
-            RecurrenceTimezone: "Europe/Madrid"), uid);
+        var result = await svc.MutateCalendarAsync(
+            new CreateCalendarEventMutation(new CreateCalendarEventDto(
+                "Bad", null, null, null, team.Id,
+                Instant.FromUtc(2026, 5, 1, 17, 0),
+                Instant.FromUtc(2026, 5, 1, 18, 0),
+                false,
+                RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+                RecurrenceTimezone: "Europe/Madrid")),
+            uid);
 
-        await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Recurrence rule is malformed*");
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
+        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
     }
 
     [HumansFact]
-    public async Task UpdateEvent_rejects_malformed_rrule()
+    public async Task MutateCalendarAsync_update_rejects_malformed_rrule()
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
@@ -333,21 +335,24 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
             Instant.FromUtc(2026, 5, 1, 17, 0),
             Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid);
 
-        var act = async () => await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
-            "Updated", null, null, null, team.Id,
-            Instant.FromUtc(2026, 5, 2, 17, 0),
-            Instant.FromUtc(2026, 5, 2, 18, 0),
-            false,
-            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
-            RecurrenceTimezone: "Europe/Madrid"), uid);
+        var result = await svc.MutateCalendarAsync(
+            new UpdateCalendarEventMutation(ev.Id, new UpdateCalendarEventDto(
+                "Updated", null, null, null, team.Id,
+                Instant.FromUtc(2026, 5, 2, 17, 0),
+                Instant.FromUtc(2026, 5, 2, 18, 0),
+                false,
+                RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+                RecurrenceTimezone: "Europe/Madrid")),
+            uid);
 
-        await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Recurrence rule is malformed*");
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
+        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
     }
 
     [HumansFact]
@@ -360,14 +365,72 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await ApplyCreateMutationAsync(svc, new CreateCalendarEventDto(
             "ToDelete", null, null, null, team.Id,
             Instant.FromUtc(2026, 8, 1, 10, 0),
             Instant.FromUtc(2026, 8, 1, 11, 0), false, null, null), uid);
 
-        await svc.DeleteEventAsync(ev.Id, uid);
+        await ApplyDeleteMutationAsync(svc, ev.Id, uid);
 
         (await svc.GetEventByIdAsync(ev.Id)).Should().BeNull();
+    }
+
+    private static async Task<CalendarEvent> ApplyCreateMutationAsync(
+        ICalendarService svc,
+        CreateCalendarEventDto dto,
+        Guid createdByUserId)
+    {
+        var result = await svc.MutateCalendarAsync(
+            new CreateCalendarEventMutation(dto),
+            createdByUserId);
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        result.Event.Should().NotBeNull();
+        return result.Event!;
+    }
+
+    private static async Task ApplyUpdateMutationAsync(
+        ICalendarService svc,
+        Guid eventId,
+        UpdateCalendarEventDto dto,
+        Guid updatedByUserId)
+    {
+        var result = await svc.MutateCalendarAsync(
+            new UpdateCalendarEventMutation(eventId, dto),
+            updatedByUserId);
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+    }
+
+    private static async Task ApplyDeleteMutationAsync(ICalendarService svc, Guid eventId, Guid deletedByUserId)
+    {
+        var result = await svc.MutateCalendarAsync(
+            new DeleteCalendarEventMutation(eventId),
+            deletedByUserId);
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+    }
+
+    private static async Task ApplyCancelOccurrenceMutationAsync(
+        ICalendarService svc,
+        Guid eventId,
+        Instant originalOccurrenceStartUtc,
+        Guid userId)
+    {
+        var result = await svc.MutateCalendarAsync(
+            new CancelCalendarOccurrenceMutation(eventId, originalOccurrenceStartUtc),
+            userId);
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+    }
+
+    private static async Task ApplyOverrideOccurrenceMutationAsync(
+        ICalendarService svc,
+        Guid eventId,
+        Instant originalOccurrenceStartUtc,
+        OverrideOccurrenceDto dto,
+        Guid userId)
+    {
+        var result = await svc.MutateCalendarAsync(
+            new OverrideCalendarOccurrenceMutation(eventId, originalOccurrenceStartUtc, dto),
+            userId);
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
     }
 
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)

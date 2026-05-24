@@ -90,6 +90,23 @@ public class CalendarArchitectureTests
     }
 
     [HumansFact]
+    public void CalendarService_ExposesSingleTypedMutationSurface()
+    {
+        var methodNames = typeof(ICalendarService)
+            .GetMethods()
+            .Select(m => m.Name)
+            .ToArray();
+
+        methodNames.Should().BeEquivalentTo(
+            [
+                nameof(ICalendarService.GetOccurrencesInWindowAsync),
+                nameof(ICalendarService.GetEventByIdAsync),
+                nameof(ICalendarService.MutateCalendarAsync)
+            ],
+            because: "Calendar writes should extend the typed CalendarMutation command family, not grow one public method per event operation");
+    }
+
+    [HumansFact]
     public void CachingCalendarService_IsSealed()
     {
         typeof(CachingCalendarService).IsSealed.Should().BeTrue(

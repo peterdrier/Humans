@@ -53,7 +53,74 @@ public sealed class CalendarService(
         return ev is null ? null : ToDetail(ev);
     }
 
-    public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
+    public async Task<CalendarMutationResult> MutateCalendarAsync(
+        CalendarMutation mutation,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            return mutation switch
+            {
+                CreateCalendarEventMutation create =>
+                    CalendarMutationResult.Success(
+                        await ApplyCreateMutationCoreAsync(create.Event, actorUserId, ct)),
+
+                UpdateCalendarEventMutation update =>
+                    CalendarMutationResult.Success(
+                        await ApplyUpdateMutationCoreAsync(update.EventId, update.Event, actorUserId, ct)),
+
+                DeleteCalendarEventMutation delete =>
+                    await ApplyDeleteMutationCoreAsync(delete.EventId, actorUserId, ct)
+                        ? CalendarMutationResult.Success(delete.EventId)
+                        : CalendarMutationResult.Missing(delete.EventId, "Calendar event not found."),
+
+                CancelCalendarOccurrenceMutation cancel =>
+                    await ApplyOccurrenceMutationAsync(
+                        cancel.EventId,
+                        cancel.OriginalOccurrenceStartUtc,
+                        actorUserId,
+                        null,
+                        ct),
+
+                OverrideCalendarOccurrenceMutation occurrenceOverride =>
+                    await ApplyOccurrenceMutationAsync(
+                        occurrenceOverride.EventId,
+                        occurrenceOverride.OriginalOccurrenceStartUtc,
+                        actorUserId,
+                        occurrenceOverride.Override,
+                        ct),
+
+                _ => CalendarMutationResult.Failed(
+                    $"Unsupported calendar mutation type '{mutation.GetType().Name}'.")
+            };
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning("Calendar mutation rejected: {Reason}", ex.Message);
+            return CalendarMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning("Calendar mutation target not found: {Reason}", ex.Message);
+            var eventId = MutationEventId(mutation);
+            return eventId is { } id
+                ? CalendarMutationResult.Missing(id, "Calendar event not found.")
+                : CalendarMutationResult.Failed("Calendar event not found.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning("Calendar mutation rejected: {Reason}", ex.Message);
+            return CalendarMutationResult.Failed(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to apply calendar mutation {MutationType}", mutation.GetType().Name);
+            return CalendarMutationResult.Failed("Failed to apply calendar mutation.");
+        }
+    }
+
+    private async Task<CalendarEvent> ApplyCreateMutationCoreAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -105,33 +172,6 @@ public sealed class CalendarService(
         return ev;
     }
 
-    public async Task<CalendarEventMutationResult> CreateEventWithResultAsync(
-        CreateCalendarEventDto dto,
-        Guid createdByUserId,
-        CancellationToken ct = default)
-    {
-        try
-        {
-            var ev = await CreateEventAsync(dto, createdByUserId, ct);
-            return CalendarEventMutationResult.Success(ev);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
-            return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
-            return CalendarEventMutationResult.Failed(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to create calendar event");
-            return CalendarEventMutationResult.Failed("Failed to create calendar event.");
-        }
-    }
-
     // Reject malformed RRULE at write time so reads can't crash during occurrence expansion.
     internal static void ValidateRecurrenceRule(string? rrule)
     {
@@ -158,6 +198,15 @@ public sealed class CalendarService(
         ex.Message.Contains("timezone", StringComparison.OrdinalIgnoreCase)
             ? nameof(CreateCalendarEventDto.RecurrenceTimezone)
             : nameof(CreateCalendarEventDto.RecurrenceRule);
+
+    private static Guid? MutationEventId(CalendarMutation mutation) => mutation switch
+    {
+        UpdateCalendarEventMutation update => update.EventId,
+        DeleteCalendarEventMutation delete => delete.EventId,
+        CancelCalendarOccurrenceMutation cancel => cancel.EventId,
+        OverrideCalendarOccurrenceMutation occurrenceOverride => occurrenceOverride.EventId,
+        _ => null
+    };
 
     // Denormalised RRULE end (UNTIL or COUNT-bounded last-occurrence) for SQL window prefilter.
     // Returns null only for truly open-ended rules.
@@ -233,7 +282,7 @@ public sealed class CalendarService(
         return lastStart.Plus(duration);
     }
 
-    public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    private async Task<CalendarEvent> ApplyUpdateMutationCoreAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -266,7 +315,7 @@ public sealed class CalendarService(
         if (!found || mutated is null)
             throw new InvalidOperationException($"CalendarEvent {id} not found.");
 
-        // Audit best-effort: DB write already committed. See CreateEventAsync.
+        // Audit best-effort: DB write already committed. See ApplyCreateMutationCoreAsync.
         try
         {
             await audit.LogAsync(
@@ -285,46 +334,13 @@ public sealed class CalendarService(
         return mutated;
     }
 
-    public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
-        Guid id,
-        UpdateCalendarEventDto dto,
-        Guid updatedByUserId,
-        CancellationToken ct = default)
-    {
-        try
-        {
-            var ev = await UpdateEventAsync(id, dto, updatedByUserId, ct);
-            return CalendarEventMutationResult.Success(ev);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
-            return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} not found during update", id);
-            return CalendarEventMutationResult.Missing("Calendar event not found.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
-            return CalendarEventMutationResult.Failed(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update calendar event {EventId}", id);
-            return CalendarEventMutationResult.Failed("Failed to update calendar event.");
-        }
-    }
-
-    public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
+    private async Task<bool> ApplyDeleteMutationCoreAsync(Guid id, Guid deletedByUserId, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
         var result = await repo.SoftDeleteAsync(id, now, ct);
-        if (result is null) return;
+        if (result is null) return false;
 
-        // Audit best-effort: soft-delete already committed. See CreateEventAsync.
+        // Audit best-effort: soft-delete already committed. See ApplyCreateMutationCoreAsync.
         try
         {
             await audit.LogAsync(
@@ -339,33 +355,44 @@ public sealed class CalendarService(
                 "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was deleted by {UserId}. Soft-delete was committed; reconcile audit trail manually.",
                 id, result.Value.Title, deletedByUserId);
         }
+
+        return true;
     }
 
-    public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
+    private async Task<CalendarMutationResult> ApplyOccurrenceMutationAsync(
+        Guid eventId,
+        Instant originalOccurrenceStartUtc,
+        Guid userId,
+        OverrideOccurrenceDto? occurrenceOverride,
+        CancellationToken ct)
     {
-        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
-            apply: x => x.IsCancelled = true,
-            auditAction: AuditAction.CalendarOccurrenceCancelled,
-            auditDescription: $"Cancelled occurrence {originalOccurrenceStartUtc}",
-            ct);
-    }
+        if (occurrenceOverride is null)
+        {
+            await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+                apply: x => x.IsCancelled = true,
+                auditAction: AuditAction.CalendarOccurrenceCancelled,
+                auditDescription: $"Cancelled occurrence {originalOccurrenceStartUtc}",
+                ct);
+        }
+        else
+        {
+            await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+                apply: x =>
+                {
+                    x.IsCancelled = false;
+                    x.OverrideStartUtc = occurrenceOverride.OverrideStartUtc;
+                    x.OverrideEndUtc = occurrenceOverride.OverrideEndUtc;
+                    x.OverrideTitle = occurrenceOverride.OverrideTitle;
+                    x.OverrideDescription = occurrenceOverride.OverrideDescription;
+                    x.OverrideLocation = occurrenceOverride.OverrideLocation;
+                    x.OverrideLocationUrl = occurrenceOverride.OverrideLocationUrl;
+                },
+                auditAction: AuditAction.CalendarOccurrenceOverridden,
+                auditDescription: $"Overrode occurrence {originalOccurrenceStartUtc}",
+                ct);
+        }
 
-    public async Task OverrideOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default)
-    {
-        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
-            apply: x =>
-            {
-                x.IsCancelled = false;
-                x.OverrideStartUtc = dto.OverrideStartUtc;
-                x.OverrideEndUtc = dto.OverrideEndUtc;
-                x.OverrideTitle = dto.OverrideTitle;
-                x.OverrideDescription = dto.OverrideDescription;
-                x.OverrideLocation = dto.OverrideLocation;
-                x.OverrideLocationUrl = dto.OverrideLocationUrl;
-            },
-            auditAction: AuditAction.CalendarOccurrenceOverridden,
-            auditDescription: $"Overrode occurrence {originalOccurrenceStartUtc}",
-            ct);
+        return CalendarMutationResult.Success(eventId);
     }
 
     private async Task UpsertExceptionAsync(
@@ -384,7 +411,7 @@ public sealed class CalendarService(
             apply: apply,
             ct: ct);
 
-        // Audit best-effort: exception upsert already committed (see CreateEventAsync).
+        // Audit best-effort: exception upsert already committed (see ApplyCreateMutationCoreAsync).
         try
         {
             await audit.LogAsync(

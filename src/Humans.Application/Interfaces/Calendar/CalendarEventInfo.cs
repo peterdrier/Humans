@@ -18,7 +18,8 @@ namespace Humans.Application.Interfaces.Calendar;
 /// (<see cref="Services.Calendar.CalendarOccurrenceExpander"/>).
 /// </para>
 /// <para>
-/// Exception writes (<c>CancelOccurrenceAsync</c> / <c>OverrideOccurrenceAsync</c>)
+/// Occurrence mutations (<see cref="CancelCalendarOccurrenceMutation"/> /
+/// <see cref="OverrideCalendarOccurrenceMutation"/>)
 /// upsert into the <c>calendar_event_exceptions</c> child table but the cache
 /// is keyed by the <em>parent</em> event id — these writes evict the parent
 /// <see cref="CalendarEventInfo"/> entry, NOT a separate exception row. The
