@@ -256,6 +256,26 @@ public sealed class VolunteerTrackingExportServiceTests
         cellsDay3.TeamId.Should().Be(TeamB);
     }
 
+    [HumansFact]
+    public async Task ServiceTrustsRepoFilter_DoesNotReFilterByStatus()
+    {
+        // Whatever the repo returns is treated as authoritative.
+        // The repo's integration test (Chunk 2) covers the actual WHERE clause.
+        var shifts = new[] { ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 17) };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        model.Groups.Should().HaveCount(1);
+        // The service does not call any status filter on the rows it receives.
+        await repo.Received(1).GetConfirmedShiftsInRangeAsync(
+            Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
     private static readonly Guid Carol = Guid.Parse("c0000000-0000-0000-0000-000000000003");
 
     [HumansFact]
