@@ -9,7 +9,7 @@ public static class DateFormattingExtensions
     /// Formats a date as "Wed Jul 1". Mirrors the Web-layer ToDisplayShiftDate() extension.
     /// </summary>
     public static string ToDisplayShiftDate(this LocalDate date) =>
-        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", CultureInfo.InvariantCulture);
+        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
 
     public static string ToIsoDateString(this LocalDate value) =>
         value.ToString("yyyy-MM-dd", null);
