@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
@@ -823,7 +824,7 @@ public sealed class ShiftManagementService(
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+            var dateLabel = dayDate.ToDisplayShiftDate();
 
             var overlapping = shifts.Where(s =>
             {
@@ -864,7 +865,7 @@ public sealed class ShiftManagementService(
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+            var dateLabel = dayDate.ToDisplayShiftDate();
 
             var overlapping = shifts.Where(s =>
             {
@@ -1517,7 +1518,7 @@ public sealed class ShiftManagementService(
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+            var dateLabel = dayDate.ToDisplayShiftDate();
 
             var overlapping = shifts.Where(s =>
             {
@@ -1575,7 +1576,7 @@ public sealed class ShiftManagementService(
             .Select(off =>
             {
                 var date = es.GateOpeningDate.PlusDays(off);
-                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                var label = date.ToDisplayShiftDate();
                 var dayPeriod = off < 0 ? ShiftPeriod.Build : off <= es.EventEndOffset ? ShiftPeriod.Event : ShiftPeriod.Strike;
                 return new CoverageHeatmapDay(off, date, label, dayPeriod);
             })
