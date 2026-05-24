@@ -108,4 +108,58 @@ public sealed class VolunteerTrackingExportServiceTests
         model.GeneratedByName.Should().Be("TestActor");
         model.SuggestedFileName.Should().Be("volunteer-tracking-2026-07-07-to-2026-07-13.xlsx");
     }
+
+    private static readonly Guid Alice = Guid.Parse("a0000000-0000-0000-0000-000000000001");
+
+    [HumansFact]
+    public async Task SingleHuman_ThreeConsecutiveShifts_SingleTeam()
+    {
+        // Alice has confirmed TeamA shifts on Day3, Day4, Day5 (in event-local).
+        var shifts = new[]
+        {
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 17),
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(3), 9, 17),
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(4), 9, 17),
+        };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        model.Groups.Should().HaveCount(1);
+        var group = model.Groups[0];
+        group.TeamId.Should().Be(TeamA);
+        group.TeamName.Should().Be("TeamA");
+        group.Humans.Should().HaveCount(1);
+
+        var row = group.Humans[0];
+        row.PlayaName.Should().Be("Alice");
+        row.Cells.Should().HaveCount(7);
+        // Day 0 = before arrival (Alice's first shift is Day3 → arrival = Day2).
+        row.Cells[0].Kind.Should().Be(CellKind.Empty);
+        // Day 1 (index 1 = Day2) is one day before her first shift → arrival = white.
+        row.Cells[1].Kind.Should().Be(CellKind.Arrival);
+        // Day 2 (index 2 = Day3) — first shift — worked TeamA.
+        row.Cells[2].Kind.Should().Be(CellKind.Worked);
+        row.Cells[2].TeamId.Should().Be(TeamA);
+        row.Cells[3].Kind.Should().Be(CellKind.Worked);
+        row.Cells[4].Kind.Should().Be(CellKind.Worked);
+        row.Cells[5].Kind.Should().Be(CellKind.Empty); // no shift Day6
+        row.Cells[6].Kind.Should().Be(CellKind.Empty); // no shift Day7
+
+        // Totals: 1 on Day3-5, 0 elsewhere (presence = has shift that day per spec).
+        model.TotalsPerDay.Should().Equal(0, 0, 1, 1, 1, 0, 0);
+    }
+
+    /// <summary>Helper: build a ConfirmedShiftRow with start/end specified as event-local hours on a given local date.</summary>
+    private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, string teamName, LocalDate localDate, int startHourLocal, int endHourLocal)
+    {
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var startInstant = (localDate + LocalTime.FromHourMinuteSecondTick(startHourLocal, 0, 0, 0)).InZoneStrictly(zone).ToInstant();
+        var endInstant = (localDate + LocalTime.FromHourMinuteSecondTick(endHourLocal, 0, 0, 0)).InZoneStrictly(zone).ToInstant();
+        return new ConfirmedShiftRow(userId, teamId, teamName, startInstant, endInstant);
+    }
 }
