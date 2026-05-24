@@ -144,8 +144,8 @@ public class TicketQueryArchitectureTests
         {
             yield return type;
             foreach (var arg in type.GetGenericArguments())
-            foreach (var nested in FlattenType(arg))
-                yield return nested;
+                foreach (var nested in FlattenType(arg))
+                    yield return nested;
         }
     }
 
