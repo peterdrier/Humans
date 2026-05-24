@@ -37,8 +37,6 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
         _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(ci => LoadCampsForYearAsync(ci.Arg<int>(), ci.Arg<CancellationToken>()));
-        _innerSubstitute.GetCampInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => LoadCampInfoAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
@@ -65,11 +63,6 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             return camps.Select(ProjectCampInfo).ToList();
         }
 
-        async Task<CampInfo?> LoadCampInfoAsync(Guid campId, CancellationToken ct)
-        {
-            var camp = await repo.GetByIdAsync(campId, ct);
-            return camp is null ? null : ProjectCampInfo(camp);
-        }
     }
 
     public override void Dispose()

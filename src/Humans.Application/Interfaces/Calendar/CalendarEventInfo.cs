@@ -24,7 +24,7 @@ namespace Humans.Application.Interfaces.Calendar;
 /// <see cref="CalendarEventInfo"/> entry, NOT a separate exception row. The
 /// next read repopulates the parent (with its refreshed <see cref="Exceptions"/>
 /// list) from the repository. Documented at the decorator call site
-/// (<c>CachingCalendarService.InvalidateEvent</c>).
+/// by the calendar occurrence expander.
 /// </para>
 /// <para>
 /// Future load: an iCal feed endpoint (planned — <c>User.ICalToken</c> already

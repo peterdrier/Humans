@@ -250,8 +250,5 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
         public Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 
-        public Task<IReadOnlyList<LegalDocumentInfo>> GetActiveRequiredDocumentInfosForCacheAsync(
-            CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<LegalDocumentInfo>>([]);
     }
 }

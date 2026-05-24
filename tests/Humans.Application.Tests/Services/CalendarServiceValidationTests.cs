@@ -157,20 +157,12 @@ public class CalendarServiceValidationTests
     }
 
     // ==========================================================================
-    // PR #585 follow-up — audit-best-effort invariant
+    // Audit-best-effort invariant
     // ==========================================================================
     //
-    // The §15 caching decorator (CachingCalendarService) keys invalidation off
-    // the inner result's Succeeded flag (or, for void overloads, the absence
-    // of a thrown exception). If the audit-log call re-raises AFTER the DB
-    // write committed, the inner's WithResultAsync catch-all would have
-    // returned Failed — which would make the decorator skip invalidation,
-    // leaving the cache silently stale. Codex P1 on PR #585.
-    //
-    // The fix wraps each _audit.LogAsync call in try-catch (LogCritical and
-    // continue). These tests pin the new invariant: a post-write audit
-    // throw MUST NOT propagate, and the result MUST reflect the successful
-    // DB write (so the decorator invalidates correctly).
+    // Audit logging is best-effort after the DB write has committed. A
+    // post-write audit failure must not propagate or turn a successful
+    // mutation result into a failed one.
 
     [HumansFact]
     public async Task CreateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
@@ -197,8 +189,7 @@ public class CalendarServiceValidationTests
         var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue(
-            because: "the DB write committed; audit failure is best-effort and must not void the result " +
-                     "(otherwise CachingCalendarService skips invalidation and serves stale data)");
+            because: "the DB write committed; audit failure is best-effort and must not void the result");
         result.Event.Should().NotBeNull();
         result.Event!.Title.Should().Be("Audit-fails-after-create");
         await repo.Received(1).AddAsync(Arg.Any<Humans.Domain.Entities.CalendarEvent>(), Arg.Any<CancellationToken>());

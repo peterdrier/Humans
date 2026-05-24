@@ -58,21 +58,7 @@ public sealed class UserService(
             communicationPreferences);
     }
 
-    public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetAllUserInfosAsync is only meaningful through CachingUserService. " +
-            "If this is being called on the inner UserService it indicates a DI " +
-            "registration mistake — IUserService should resolve to CachingUserService.");
-
-    public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetUserInfosAsync is only meaningful through CachingUserService — " +
-            "the decorator serves cached hits from the dict and refills misses " +
-            "through inner.GetUserInfoAsync. If this is being called on the inner " +
-            "UserService it indicates a DI registration mistake.");
-
-    public async Task<IReadOnlyCollection<UserInfo>> GetUserInfosForCacheAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
         var users = await repo.GetAllAsync(ct);
         if (users.Count == 0) return [];
@@ -130,6 +116,19 @@ public sealed class UserService(
         }
 
         return result;
+    }
+
+    public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, UserInfo>();
+
+        var requested = userIds as IReadOnlySet<Guid> ?? new HashSet<Guid>(userIds);
+        var all = await GetAllUserInfosAsync(ct);
+        return all
+            .Where(u => requested.Contains(u.Id))
+            .ToDictionary(u => u.Id);
     }
 
     public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(

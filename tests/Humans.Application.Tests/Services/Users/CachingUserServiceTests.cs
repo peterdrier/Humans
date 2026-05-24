@@ -209,13 +209,13 @@ public class CachingUserServiceTests
     {
         var userA = SampleUser();
         var userB = SampleUser();
-        _inner.GetUserInfosForCacheAsync(Arg.Any<CancellationToken>())
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id)]);
 
         var sut = CreateSut();
         await ((IHostedService)sut).StartAsync(CancellationToken.None);
 
-        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
 
         var hitA = await sut.GetUserInfoAsync(userA.Id);
         var hitB = await sut.GetUserInfoAsync(userB.Id);
@@ -230,7 +230,7 @@ public class CachingUserServiceTests
     {
         var userA = SampleUser();
         var userB = SampleUser();
-        _inner.GetUserInfosForCacheAsync(Arg.Any<CancellationToken>())
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id)]);
 
         var sut = CreateSut();
@@ -240,10 +240,10 @@ public class CachingUserServiceTests
         all.Should().HaveCount(2);
 
         // Subsequent load-all reads do not re-drive warmup.
-        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
         var again = await sut.GetAllUserInfosAsync();
         again.Should().HaveCount(2);
-        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -256,7 +256,7 @@ public class CachingUserServiceTests
         var userA = SampleUser();
         var userB = SampleUser();
         var userC = SampleUser();
-        _inner.GetUserInfosForCacheAsync(Arg.Any<CancellationToken>())
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id), SampleUserInfo(userC.Id)]);
 
         var sut = CreateSut();
@@ -267,7 +267,7 @@ public class CachingUserServiceTests
         result.Should().HaveCount(3);
 
         // Bulk warm path ran exactly once.
-        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
         // The inner per-id loader was never called — the bug would have
         // routed each of the three misses through inner.GetUserInfoAsync.
         await _inner.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());

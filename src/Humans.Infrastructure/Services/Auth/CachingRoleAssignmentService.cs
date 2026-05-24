@@ -84,9 +84,25 @@ public sealed class CachingRoleAssignmentService
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var rows = await WithInner(inner => inner.GetRowsForCacheAsync(ct));
-        foreach (var row in rows)
+        var now = _clock.GetCurrentInstant();
+        var (items, _) = await WithInner(inner => inner.GetFilteredAsync(
+            roleFilter: null,
+            activeOnly: false,
+            page: 1,
+            pageSize: int.MaxValue,
+            now: now,
+            ct: ct));
+
+        foreach (var item in items)
+        {
+            var row = new RoleAssignmentRow(
+                item.Id,
+                item.UserId,
+                item.RoleName,
+                item.ValidFrom,
+                item.ValidTo);
             Set(row.Id, row);
+        }
     }
 
     // ==========================================================================
@@ -152,12 +168,6 @@ public sealed class CachingRoleAssignmentService
             .OrderBy(row => row.RoleName, StringComparer.Ordinal)
             .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
             .ToList();
-    }
-
-    public async Task<IReadOnlyList<RoleAssignmentRow>> GetRowsForCacheAsync(CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct);
-        return AsReadOnlyDictionary.Values.ToList();
     }
 
     public void InvalidateClaimsCacheForUser(Guid userId)

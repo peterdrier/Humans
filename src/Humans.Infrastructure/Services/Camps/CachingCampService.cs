@@ -37,9 +37,6 @@ public sealed class CachingCampService(
     public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
 
-    public async Task<CampInfo?> GetCampInfoAsync(Guid campId, CancellationToken cancellationToken = default) =>
-        await GetAsync(campId, cancellationToken);
-
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
@@ -448,7 +445,8 @@ public sealed class CachingCampService(
         logger.LogDebug(
             "CampInfo invalidate campId={CampId} caller={CallerMember} file={CallerFile}",
             campId, memberName, Path.GetFileName(filePath));
-        return RefreshEntryAsync(campId, ct);
+        RefreshAll();
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc cref="ICampInfoInvalidator.InvalidateSettingsAsync" />
@@ -517,19 +515,6 @@ public sealed class CachingCampService(
     }
 
     private int SystemClockYear() => clock.GetCurrentInstant().InUtc().Year;
-
-    private async Task RefreshEntryAsync(Guid campId, CancellationToken ct)
-    {
-        // Per-row replace; preserves the all-rows invariant. Never Invalidate(key)
-        // here — it would flip warmth and force a full re-warm.
-        var camp = await WithInner(inner => inner.GetCampInfoAsync(campId, ct));
-        if (camp is null)
-        {
-            DeleteKey(campId);
-            return;
-        }
-        Set(campId, camp);
-    }
 
     /// <summary>Drop the dict; next read triggers a fresh <see cref="WarmAllAsync"/>.</summary>
     private void RefreshAll()

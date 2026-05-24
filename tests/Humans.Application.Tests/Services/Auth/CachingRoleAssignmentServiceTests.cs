@@ -188,7 +188,13 @@ public class CachingRoleAssignmentServiceTests
         IClock clock)
     {
         var inner = Substitute.For<IRoleAssignmentService>();
-        inner.GetRowsForCacheAsync(Arg.Any<CancellationToken>())
+        inner.GetFilteredAsync(
+                roleFilter: null,
+                activeOnly: false,
+                page: 1,
+                pageSize: int.MaxValue,
+                now: Arg.Any<Instant>(),
+                ct: Arg.Any<CancellationToken>())
             .Returns(ci => LoadRowsAsync(ci.Arg<CancellationToken>()));
 
         var services = new ServiceCollection();
@@ -201,12 +207,24 @@ public class CachingRoleAssignmentServiceTests
             clock,
             NullLogger<CachingRoleAssignmentService>.Instance);
 
-        async Task<IReadOnlyList<RoleAssignmentRow>> LoadRowsAsync(CancellationToken ct)
+        async Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> LoadRowsAsync(CancellationToken ct)
         {
             var rows = await repository.GetAllRowsForCacheAsync(ct);
-            return rows
-                .Select(ra => new RoleAssignmentRow(ra.Id, ra.UserId, ra.RoleName, ra.ValidFrom, ra.ValidTo))
+            var items = rows
+                .Select(ra => new RoleAssignmentSummarySnapshot(
+                    ra.Id,
+                    ra.UserId,
+                    UserEmail: null,
+                    UserDisplayName: string.Empty,
+                    ra.RoleName,
+                    ra.ValidFrom,
+                    ra.ValidTo,
+                    Notes: null,
+                    CreatedByUserId: Guid.Empty,
+                    CreatedByDisplayName: null,
+                    CreatedAt: ra.CreatedAt))
                 .ToList();
+            return (items, items.Count);
         }
     }
 

@@ -175,31 +175,6 @@ public sealed class LegalDocumentSyncService(
         return documents.Count;
     }
 
-    public async Task<IReadOnlyList<LegalDocumentInfo>> GetActiveRequiredDocumentInfosForCacheAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var documents = await repository.GetActiveRequiredDocumentsAsync(cancellationToken);
-        if (documents.Count == 0) return [];
-
-        var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
-
-        return documents.Select(d =>
-        {
-            var teamName = teams.TryGetValue(d.TeamId, out var team) ? team.Name : string.Empty;
-            return new LegalDocumentInfo(
-                d.Id,
-                d.Name,
-                d.TeamId,
-                teamName,
-                d.LastSyncedAt,
-                d.Versions
-                    .OrderBy(v => v.EffectiveFrom)
-                    .Select(ToVersionSnapshot)
-                    .ToList());
-        }).ToList();
-    }
-
     public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
     {

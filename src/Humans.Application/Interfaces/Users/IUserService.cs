@@ -39,12 +39,6 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the compact user projection used to warm the UserInfo cache.
-    /// Intended for the infrastructure caching decorator.
-    /// </summary>
-    Task<IReadOnlyCollection<UserInfo>> GetUserInfosForCacheAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Get all participation records for a given year.
     /// </summary>
     Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default);

@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -78,13 +79,6 @@ public sealed class CachingLegalDocumentSyncService(
     {
         var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
         return docs.Count;
-    }
-
-    public async Task<IReadOnlyList<LegalDocumentInfo>> GetActiveRequiredDocumentInfosForCacheAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
-        return docs.Values.ToList();
     }
 
     public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
@@ -218,7 +212,18 @@ public sealed class CachingLegalDocumentSyncService(
         // stitched here via ITeamService so the cache warm path stays
         // free of the cross-domain nav (docs/sections/LegalAndConsent.md
         // "Touch-and-clean guidance").
-        var docs = await WithInner(inner => inner.GetActiveRequiredDocumentInfosForCacheAsync(ct));
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
+        var allDocs = await inner.GetActiveDocumentsAsync(ct);
+        var docs = allDocs
+            .Where(d => d.IsActive && d.IsRequired)
+            .ToList();
+
+        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
+        var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
+        var teams = teamIds.Count == 0
+            ? new Dictionary<Guid, Team>()
+            : await teamService.GetByIdsWithParentsAsync(teamIds, ct);
 
         // Resolve team display names via ITeamService — scoped, so
         // pulled through a fresh DI scope per-warm.
@@ -226,9 +231,18 @@ public sealed class CachingLegalDocumentSyncService(
 
         foreach (var info in docs)
         {
-            Set(info.Id, info);
-            foreach (var v in info.Versions)
-                versionIndex[v.Id] = info.Id;
+            var teamName = teams.TryGetValue(info.TeamId, out var team) ? team.Name : string.Empty;
+            var cacheInfo = new LegalDocumentInfo(
+                info.Id,
+                info.Name,
+                info.TeamId,
+                teamName,
+                info.LastSyncedAt,
+                info.Versions.OrderBy(v => v.EffectiveFrom).ToList());
+
+            Set(cacheInfo.Id, cacheInfo);
+            foreach (var v in cacheInfo.Versions)
+                versionIndex[v.Id] = cacheInfo.Id;
         }
 
         _versionToDocument = versionIndex;

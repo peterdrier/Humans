@@ -223,12 +223,6 @@ public interface ITicketQueryService : IApplicationService
     /// edits without resync, refunds, etc.).
     /// </summary>
     Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the compact order projection used to warm the ticket query
-    /// cache. Intended for the infrastructure caching decorator.
-    /// </summary>
-    Task<IReadOnlyList<TicketOrderInfo>> GetOrderInfosForCacheAsync(CancellationToken ct = default);
 }
 
 /// <summary>

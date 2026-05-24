@@ -1,10 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Calendar;
-using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Calendar;
-using Humans.Infrastructure.Services.Calendar;
 using CalendarService = Humans.Application.Services.Calendar.CalendarService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -16,9 +14,7 @@ namespace Humans.Application.Tests.Architecture;
 /// lives in Application, goes through <see cref="ICalendarRepository"/>,
 /// never injects <c>DbContext</c>, and resolves owning-team display names via
 /// <see cref="ITeamService"/> rather than the <c>CalendarEvent.OwningTeam</c>
-/// cross-domain nav. <see cref="CachingCalendarService"/> wraps the inner
-/// service as a Singleton decorator and is the only type that holds the
-/// <see cref="CalendarEventInfo"/> read-model.
+/// cross-domain nav.
 /// </summary>
 public class CalendarArchitectureTests
 {
@@ -77,32 +73,7 @@ public class CalendarArchitectureTests
 
         paramTypes.Should().NotContain(
             n => n.Contains("Microsoft.Extensions.Caching.Memory.IMemoryCache", StringComparison.Ordinal),
-            because: "T-08: the canonical CalendarEventInfo cache lives on CachingCalendarService in Infrastructure; the inner service is cache-free.");
-    }
-
-    // ── CachingCalendarService ───────────────────────────────────────────────
-
-    [HumansFact]
-    public void CachingCalendarService_ImplementsICalendarService()
-    {
-        typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarService>(
-            because: "decorator pattern — Singleton wraps the keyed Scoped inner ICalendarService");
-    }
-
-    [HumansFact]
-    public void CachingCalendarService_IsSealed()
-    {
-        typeof(CachingCalendarService).IsSealed.Should().BeTrue(
-            because: "decorator implementations are sealed to prevent ad-hoc extension");
-    }
-
-    [HumansFact]
-    public void CachingCalendarService_IsTrackedCache()
-    {
-        // TrackedCache<Guid, CalendarEventInfo> base — surfaces hit/miss/invalidation
-        // counters on /Admin/CacheStats via ICacheStats.
-        typeof(CachingCalendarService).Should().BeAssignableTo<ICacheStats>(
-            because: "T-08 surfaces the CalendarEventInfo cache on /Admin/CacheStats");
+            because: "CalendarService is cache-free; decorators own any infrastructure cache concerns.");
     }
 
     // ── CalendarEventInfo projection ─────────────────────────────────────────

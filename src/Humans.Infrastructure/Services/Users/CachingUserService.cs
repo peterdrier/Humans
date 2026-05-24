@@ -79,12 +79,6 @@ public sealed class CachingUserService(
         return Values.ToArray();
     }
 
-    public async Task<IReadOnlyCollection<UserInfo>> GetUserInfosForCacheAsync(CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        return Values.ToArray();
-    }
-
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -290,7 +284,7 @@ public sealed class CachingUserService(
     /// </remarks>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var users = await WithInnerAsync(inner => inner.GetUserInfosForCacheAsync(ct));
+        var users = await WithInnerAsync(inner => inner.GetAllUserInfosAsync(ct));
         foreach (var user in users)
             Set(user.Id, user);
     }

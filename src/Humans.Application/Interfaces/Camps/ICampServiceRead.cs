@@ -11,7 +11,6 @@ namespace Humans.Application.Interfaces.Camps;
 public interface ICampServiceRead
 {
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<CampInfo?> GetCampInfoAsync(Guid campId, CancellationToken cancellationToken = default);
     Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<CampSeasonInfo?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
