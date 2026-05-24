@@ -129,19 +129,8 @@ public static class CantinaRosterCsvWriter
     // are interpreted as formulas when opened in Excel/LibreOffice. Source text
     // includes user-controlled profile fields (BurnerName, AllergyOtherText,
     // IntoleranceOtherText), so we prepend a literal apostrophe before applying
-    // RFC 4180 quoting so the cell renders as text.
-    private static string Quote(string s)
-    {
-        if (s.Length == 0)
-            return string.Empty;
-
-        var escaped = NeedsFormulaEscape(s) ? "'" + s : s;
-        if (escaped.IndexOfAny(['"', ',', '\n', '\r']) < 0)
-            return escaped;
-
-        return "\"" + escaped.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
-    }
-
-    private static bool NeedsFormulaEscape(string s) =>
-        !string.IsNullOrEmpty(s) && s[0] is '=' or '+' or '-' or '@' or '\t' or '\r';
+    // RFC 4180 quoting so the cell renders as text. Implementation lives in
+    // <see cref="CsvCellQuoting"/> so the per-day matrix writer reuses the same
+    // sanitization rules.
+    private static string Quote(string s) => CsvCellQuoting.Quote(s);
 }

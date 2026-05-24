@@ -42,4 +42,24 @@ public interface ICantinaRosterService : IApplicationService
     /// URL.
     /// </summary>
     int GetCurrentWeekStartOffsetForActiveEvent(EventSettings eventSettings, Instant now);
+
+    /// <summary>
+    /// Builds the per-day matrix payload for the Cantina Daily Matrix page
+    /// (drill-down from the weekly view's per-day mini-table). One row per
+    /// unique on-site human on the requested day, plus day-scoped aggregates
+    /// (dietary breakdown, allergy + intolerance rollups, "Other" free-text
+    /// entries). Returns a fully-populated DTO with zero counts and empty
+    /// lists when there is no active event or no on-site humans for the day.
+    /// People are returned in unspecified order; display sort is the Web
+    /// layer's responsibility (<c>CantinaRosterAssembler.WithSortedPeople</c>).
+    /// </summary>
+    Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default);
+
+    /// <summary>
+    /// Computes the day-offset of "today" in the active event's timezone,
+    /// relative to <c>EventSettings.GateOpeningDate</c>. The controller
+    /// calls this to resolve a default when no explicit <c>dayOffset</c>
+    /// is on the URL.
+    /// </summary>
+    int GetCurrentDayOffsetForActiveEvent(EventSettings eventSettings, Instant now);
 }

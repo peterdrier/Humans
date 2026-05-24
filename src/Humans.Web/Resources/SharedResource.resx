@@ -1507,6 +1507,18 @@
   <data name="Cantina_Roster_PerDayTable_Unanswered" xml:space="preserve"><value>Unanswered</value></data>
   <data name="Cantina_Roster_RosterHeading" xml:space="preserve"><value>Roster</value></data>
   <data name="Cantina_Roster_ShowRoster" xml:space="preserve"><value>Show roster ({0} humans)</value></data>
+  <data name="Cantina_Day_PageTitle" xml:space="preserve"><value>Daily roster</value></data>
+  <data name="Cantina_Day_TodayBadge" xml:space="preserve"><value>Today</value></data>
+  <data name="Cantina_Day_TotalOnSite" xml:space="preserve"><value>humans on site</value></data>
+  <data name="Cantina_Day_Unanswered" xml:space="preserve"><value>haven't answered yet</value></data>
+  <data name="Cantina_Day_DownloadCsv" xml:space="preserve"><value>Download matrix CSV</value></data>
+  <data name="Cantina_Day_EmptyState" xml:space="preserve"><value>No humans signed up for this day yet.</value></data>
+  <data name="Cantina_Matrix_BurnerColumn" xml:space="preserve"><value>Burner name</value></data>
+  <data name="Cantina_Matrix_OtherAllergy" xml:space="preserve"><value>Other allergy</value></data>
+  <data name="Cantina_Matrix_OtherAllergyText" xml:space="preserve"><value>Other allergy text</value></data>
+  <data name="Cantina_Matrix_OtherIntolerance" xml:space="preserve"><value>Other intolerance</value></data>
+  <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Other intolerance text</value></data>
+  <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALS</value></data>
   <data name="Nav_Cantina" xml:space="preserve"><value>Cantina</value></data>
 
   <!-- Notification Inbox -->

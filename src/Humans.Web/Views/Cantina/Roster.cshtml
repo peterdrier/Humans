@@ -59,13 +59,18 @@
 
 @section Styles {
     <style>
+        /* Whole-row hyperlink in the per-day mini-table — coordinators click
+           a day to drill into the per-person matrix. Cells wrap their own
+           <a> for cell-by-cell hyperlinkability (no JS); the <tr> hover +
+           pointer cursor signals affordance over the entire row. */
+        .day-table tbody tr:hover { background-color: var(--bs-table-hover-bg); cursor: pointer; }
+        .day-table tbody tr a { color: inherit; text-decoration: none; display: block; }
         @@media print {
             .week-picker, .btn-download-csv, nav, footer, .alert { display: none !important; }
             .card { border: 1px solid #ddd; page-break-inside: avoid; }
             .table { font-size: 0.9rem; }
             body { background: white; }
-            details > summary { list-style: none; }
-            details:not([open]) > *:not(summary) { display: block !important; }
+            .day-table tbody tr { background-color: transparent !important; cursor: auto !important; }
         }
     </style>
 }
@@ -193,7 +198,7 @@
         <div class="card-body">
             <h6 class="card-title text-muted text-uppercase small">@Localizer["Cantina_Roster_PerDayTable_Heading"]</h6>
             <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+                <table class="table table-sm mb-0 align-middle day-table">
                     <thead>
                         <tr>
                             <th scope="col">@Localizer["Cantina_Roster_PerDayTable_Date"]</th>
@@ -211,9 +216,9 @@
                                 ? FormatDay(day.CalendarDate.Value)
                                 : $"Day {day.DayOffset}";
                             <tr class="@(isToday ? "table-active fw-semibold" : "")">
-                                <td>@label</td>
-                                <td class="text-end">@day.TotalOnSite</td>
-                                <td class="text-end @(day.UnansweredOnDay > 0 ? "text-warning" : "text-muted")">@day.UnansweredOnDay</td>
+                                <td><a asp-action="Day" asp-route-dayOffset="@day.DayOffset">@label</a></td>
+                                <td class="text-end"><a asp-action="Day" asp-route-dayOffset="@day.DayOffset">@day.TotalOnSite</a></td>
+                                <td class="text-end @(day.UnansweredOnDay > 0 ? "text-warning" : "text-muted")"><a asp-action="Day" asp-route-dayOffset="@day.DayOffset">@day.UnansweredOnDay</a></td>
                             </tr>
                         }
                     </tbody>
@@ -222,94 +227,17 @@
         </div>
     </div>
 
-    @* === Per-person section (collapsible details, default OPEN) ============= *@
-    @if (Model.People.Count == 0)
+    @* The weekly view is overview-only. Per-person detail moved to the
+       per-day drill-down (CantinaController.Day → Views/Cantina/Day.cshtml)
+       reached by clicking a row in the per-day mini-table above —
+       coordinators planning a specific meal scan the matrix by column. *@
+    @if (Model.TotalUniqueOnSite == 0)
     {
         <div class="card">
             <div class="card-body text-center text-muted py-5">
                 <i class="fa-solid fa-users-slash fa-2x mb-2"></i>
                 <div>@Localizer["Cantina_Roster_EmptyState"]</div>
             </div>
-        </div>
-    }
-    else
-    {
-        <details open class="mb-3">
-            <summary class="h5 mb-3" style="cursor: pointer;">
-                @string.Format(Localizer["Cantina_Roster_ShowRoster"].Value, Model.People.Count)
-            </summary>
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead>
-                        <tr>
-                            <th scope="col">@Localizer["Cantina_Roster_TablePerson"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableArrivesOn"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableNoShift"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableDietary"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableAllergies"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableAllergyOther"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableIntolerances"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableIntoleranceOther"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var person in Model.People)
-                        {
-                            <tr>
-                                <td class="fw-semibold">@person.BurnerName</td>
-                                <td>
-                                    <span class="badge bg-secondary">@FormatDay(person.ArrivesOn)</span>
-                                </td>
-                                <td>
-                                    @if (person.NoShift.Count == 0)
-                                    {
-                                        <span class="text-muted small">@Localizer["Cantina_Roster_NoShift_FullWeek"]</span>
-                                    }
-                                    else
-                                    {
-                                        foreach (var d in person.NoShift)
-                                        {
-                                            <span class="badge bg-light text-muted me-1">@FormatDay(d)</span>
-                                        }
-                                    }
-                                </td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(person.DietaryPreference))
-                                    {
-                                        <span class="badge bg-success">@person.DietaryPreference</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">@Localizer["Cantina_Roster_Unanswered_RowLabel"]</span>
-                                    }
-                                </td>
-                                <td>
-                                    @foreach (var chip in person.Allergies)
-                                    {
-                                        <span class="badge bg-warning text-dark me-1">@chip</span>
-                                    }
-                                </td>
-                                <td class="small">@person.AllergyOtherText</td>
-                                <td>
-                                    @foreach (var chip in person.Intolerances)
-                                    {
-                                        <span class="badge bg-info text-dark me-1">@chip</span>
-                                    }
-                                </td>
-                                <td class="small">@person.IntoleranceOtherText</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </details>
-
-        @* Secondary CSV download at the bottom for convenience *@
-        <div class="d-flex justify-content-end mt-3">
-            <a asp-action="Csv" asp-route-weekStartOffset="@Model.WeekStartOffset"
-               class="btn btn-sm btn-outline-primary btn-download-csv">
-                <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Roster_DownloadCsv"]
-            </a>
         </div>
     }
 </div>

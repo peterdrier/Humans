@@ -160,4 +160,69 @@ public class CantinaRosterAssemblerTests
         CantinaRosterAssembler.DietaryPriority("UnknownLegacy").Should().BeGreaterThan(
             CantinaRosterAssembler.DietaryPriority("Pescatarian"));
     }
+
+    // ---- Daily matrix assembler tests --------------------------------------
+
+    private static DailyPersonRowDto DP(string burnerName) =>
+        new(
+            UserId: Guid.NewGuid(),
+            BurnerName: burnerName,
+            DietaryPreference: null,
+            Allergies: new HashSet<string>(StringComparer.Ordinal),
+            AllergyOtherText: null,
+            Intolerances: new HashSet<string>(StringComparer.Ordinal),
+            IntoleranceOtherText: null);
+
+    private static DailyMatrixDto Matrix(IReadOnlyList<DailyPersonRowDto> people) =>
+        new(
+            DayOffset: 0,
+            CalendarDate: GateOpening,
+            EventTodayDate: GateOpening,
+            EventName: "Elsewhere 2026",
+            WeekStartOffset: -1,
+            TotalOnSite: people.Count,
+            UnansweredCount: people.Count,
+            DietaryBreakdown: new Dictionary<string, int>(StringComparer.Ordinal),
+            AllergyRollup: Array.Empty<RollupItemDto>(),
+            AllergyOtherEntries: Array.Empty<string>(),
+            IntoleranceRollup: Array.Empty<RollupItemDto>(),
+            IntoleranceOtherEntries: Array.Empty<string>(),
+            People: people);
+
+    [HumansFact]
+    public void WithSortedPeople_Daily_AlphabeticalByBurnerName()
+    {
+        var input = Matrix(new[] { DP("Charlie"), DP("Alice"), DP("Bob") });
+
+        var sorted = CantinaRosterAssembler.WithSortedPeople(input);
+
+        sorted.People.Select(p => p.BurnerName).Should().Equal("Alice", "Bob", "Charlie");
+        // Other fields preserved.
+        sorted.DayOffset.Should().Be(input.DayOffset);
+        sorted.WeekStartOffset.Should().Be(input.WeekStartOffset);
+    }
+
+    [HumansFact]
+    public void WithSortedPeople_Daily_CulturalCollation_CaseInsensitive()
+    {
+        // Smoke check: lower-case "alice" must sort BEFORE upper-case "Bob"
+        // (cultural-collation, case-insensitive). Ordinal would put 'B' (0x42)
+        // before 'a' (0x61). The daily matrix sort matches the weekly view's
+        // BurnerName tiebreaker on this dimension.
+        var input = Matrix(new[] { DP("Bob"), DP("alice") });
+
+        var sorted = CantinaRosterAssembler.WithSortedPeople(input);
+
+        sorted.People.Select(p => p.BurnerName).Should().Equal("alice", "Bob");
+    }
+
+    [HumansFact]
+    public void WithSortedPeople_Daily_EmptyAndSingle_ReturnAsIs()
+    {
+        var empty = Matrix(Array.Empty<DailyPersonRowDto>());
+        CantinaRosterAssembler.WithSortedPeople(empty).People.Should().BeEmpty();
+
+        var single = Matrix(new[] { DP("Solo") });
+        CantinaRosterAssembler.WithSortedPeople(single).People.Should().HaveCount(1);
+    }
 }

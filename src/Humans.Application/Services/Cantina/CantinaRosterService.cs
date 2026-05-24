@@ -264,6 +264,149 @@ public sealed class CantinaRosterService : ICantinaRosterService
         return Period.Between(eventSettings.GateOpeningDate, monday, PeriodUnits.Days).Days;
     }
 
+    public int GetCurrentDayOffsetForActiveEvent(EventSettings eventSettings, Instant now)
+    {
+        ArgumentNullException.ThrowIfNull(eventSettings);
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var todayLocal = now.InZone(zone).Date;
+        return Period.Between(eventSettings.GateOpeningDate, todayLocal, PeriodUnits.Days).Days;
+    }
+
+    public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
+    {
+        var eventSettings = await _shiftRepo.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var calendarDate = eventSettings is null
+            ? (LocalDate?)null
+            : eventSettings.GateOpeningDate.PlusDays(dayOffset);
+        var eventName = eventSettings?.EventName;
+
+        // "Today" must be in event timezone (same rationale as the weekly view —
+        // a Madrid coordinator late in the evening must not see tomorrow flagged).
+        LocalDate? eventTodayDate = null;
+        if (eventSettings is not null)
+        {
+            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+                ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+            eventTodayDate = _clock.GetCurrentInstant().InZone(zone).Date;
+        }
+
+        // Monday-of-week containing this day. With active event use NodaTime
+        // day-of-week so the result respects ISO Monday=1. Fallback when no
+        // active event: pure offset arithmetic so the "← back to weekly"
+        // link still routes to a valid week. Both branches return the
+        // gate-opening-relative offset of that Monday.
+        int weekStartOffset;
+        if (calendarDate is { } cd)
+        {
+            var daysSinceMonday = ((int)cd.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
+            weekStartOffset = dayOffset - daysSinceMonday;
+        }
+        else
+        {
+            // Without an event we don't know which day-offset is a Monday;
+            // bucket on the integer offset modulo 7 so prev/next-week links
+            // still partition cleanly.
+            weekStartOffset = dayOffset - ((dayOffset % DaysPerWeek + DaysPerWeek) % DaysPerWeek);
+        }
+
+        var userIds = await _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
+        var veps = userIds.Count == 0
+            ? Array.Empty<VolunteerEventProfile>()
+            : await _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
+
+        if (userIds.Count == 0)
+        {
+            return new DailyMatrixDto(
+                DayOffset: dayOffset,
+                CalendarDate: calendarDate,
+                EventTodayDate: eventTodayDate,
+                EventName: eventName,
+                WeekStartOffset: weekStartOffset,
+                TotalOnSite: 0,
+                UnansweredCount: 0,
+                DietaryBreakdown: EmptyDietaryBreakdown(),
+                AllergyRollup: EmptyRollup(DietaryOptions.AllergyOptions),
+                AllergyOtherEntries: Array.Empty<string>(),
+                IntoleranceRollup: EmptyRollup(DietaryOptions.IntoleranceOptions),
+                IntoleranceOtherEntries: Array.Empty<string>(),
+                People: Array.Empty<DailyPersonRowDto>());
+        }
+
+        var vepByUserId = new Dictionary<Guid, VolunteerEventProfile>(veps.Count);
+        foreach (var v in veps)
+            vepByUserId[v.UserId] = v;
+
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct).ConfigureAwait(false);
+        var users = await _userService.GetByIdsAsync(userIds, ct).ConfigureAwait(false);
+
+        // People — built in repo-order (caller is expected to sort for display
+        // via CantinaRosterAssembler.WithSortedPeople; see
+        // memory/architecture/display-sort-in-controllers.md).
+        var people = new List<DailyPersonRowDto>(userIds.Count);
+        foreach (var id in userIds)
+        {
+            profiles.TryGetValue(id, out var profile);
+            users.TryGetValue(id, out var user);
+            vepByUserId.TryGetValue(id, out var vep);
+
+            IReadOnlySet<string> allergies = vep?.Allergies is { Count: > 0 } a
+                ? new HashSet<string>(a, StringComparer.Ordinal)
+                : new HashSet<string>(StringComparer.Ordinal);
+            IReadOnlySet<string> intolerances = vep?.Intolerances is { Count: > 0 } i
+                ? new HashSet<string>(i, StringComparer.Ordinal)
+                : new HashSet<string>(StringComparer.Ordinal);
+
+            people.Add(new DailyPersonRowDto(
+                UserId: id,
+                BurnerName: ResolveBurnerName(profile, user),
+                DietaryPreference: vep?.DietaryPreference,
+                Allergies: allergies,
+                AllergyOtherText: vep?.AllergyOtherText,
+                Intolerances: intolerances,
+                IntoleranceOtherText: vep?.IntoleranceOtherText));
+        }
+
+        // Aggregates are over the day's cohort (no week dedup needed — each
+        // user appears exactly once in userIds for this single day).
+        var dayVeps = new List<VolunteerEventProfile>(userIds.Count);
+        foreach (var id in userIds)
+        {
+            if (vepByUserId.TryGetValue(id, out var v))
+                dayVeps.Add(v);
+        }
+
+        var dietaryBreakdown = BuildDietaryBreakdown(dayVeps, userIds.Count);
+        var (allergyRollup, allergyOther) = BuildRollup(
+            dayVeps,
+            vep => vep.Allergies,
+            vep => vep.AllergyOtherText,
+            DietaryOptions.AllergyOptions);
+        var (intoleranceRollup, intoleranceOther) = BuildRollup(
+            dayVeps,
+            vep => vep.Intolerances,
+            vep => vep.IntoleranceOtherText,
+            DietaryOptions.IntoleranceOptions);
+
+        var answeredCount = dayVeps.Count(v => !string.IsNullOrEmpty(v.DietaryPreference));
+        var unanswered = userIds.Count - answeredCount;
+
+        return new DailyMatrixDto(
+            DayOffset: dayOffset,
+            CalendarDate: calendarDate,
+            EventTodayDate: eventTodayDate,
+            EventName: eventName,
+            WeekStartOffset: weekStartOffset,
+            TotalOnSite: userIds.Count,
+            UnansweredCount: unanswered,
+            DietaryBreakdown: dietaryBreakdown,
+            AllergyRollup: allergyRollup,
+            AllergyOtherEntries: allergyOther,
+            IntoleranceRollup: intoleranceRollup,
+            IntoleranceOtherEntries: intoleranceOther,
+            People: people);
+    }
+
     private static string ResolveBurnerName(ProfileEntity? profile, User? user)
     {
         if (profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName))

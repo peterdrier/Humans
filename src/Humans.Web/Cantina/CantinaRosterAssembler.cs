@@ -86,4 +86,30 @@ public static class CantinaRosterAssembler
         ArgumentNullException.ThrowIfNull(roster);
         return roster with { People = SortForDisplay(roster.People) };
     }
+
+    /// <summary>
+    /// Returns a copy of <paramref name="matrix"/> with its
+    /// <see cref="DailyMatrixDto.People"/> replaced by an alphabetical sort
+    /// of <see cref="DailyPersonRowDto.BurnerName"/> (cultural-collation,
+    /// case-insensitive — Spanish event, Spanish names with ñ/á/í).
+    ///
+    /// <para>
+    /// Deliberately NOT the same multi-key sort used for the weekly view
+    /// (<see cref="SortForDisplay(IReadOnlyList{RosterPersonDto})"/>): the
+    /// daily matrix is a coordinator look-up surface (matrix-scan by column,
+    /// then "find this specific person on the row"), so alphabetical is
+    /// more useful than arrival/allergy/dietary priority.
+    /// </para>
+    /// </summary>
+    public static DailyMatrixDto WithSortedPeople(DailyMatrixDto matrix)
+    {
+        ArgumentNullException.ThrowIfNull(matrix);
+        if (matrix.People.Count <= 1)
+            return matrix;
+
+        var sorted = matrix.People
+            .OrderBy(p => p.BurnerName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        return matrix with { People = sorted };
+    }
 }
