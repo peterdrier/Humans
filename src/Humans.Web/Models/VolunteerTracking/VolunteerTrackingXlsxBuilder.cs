@@ -104,9 +104,13 @@ public sealed class VolunteerTrackingXlsxBuilder
 
     private static void WriteTotalsRow(IXLWorksheet sheet, VolunteerExportModel model, int totalsRow)
     {
-        // Filled in Task 4.5.
-        _ = sheet;
-        _ = model;
-        _ = totalsRow;
+        sheet.Cell(totalsRow, 1).Value = "Total humans on-site";
+        sheet.Cell(totalsRow, 1).Style.Font.Bold = true;
+        for (var i = 0; i < model.TotalsPerDay.Count; i++)
+        {
+            var cell = sheet.Cell(totalsRow, i + 2);
+            cell.Value = model.TotalsPerDay[i];
+            cell.Style.Font.Bold = true;
+        }
     }
 }

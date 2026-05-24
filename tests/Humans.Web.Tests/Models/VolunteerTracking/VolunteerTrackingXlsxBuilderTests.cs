@@ -132,6 +132,31 @@ public sealed class VolunteerTrackingXlsxBuilderTests
         sheet.Cell("D8").Style.Fill.BackgroundColor.ToString().Should().NotEndWith("FFFFFF");
     }
 
+    [HumansFact]
+    public void TotalsRow_RendersUnderLastGroup_WithLabelAndPerDayCounts()
+    {
+        var days = new[] { new LocalDate(2026, 7, 7), new LocalDate(2026, 7, 8) };
+        var teamA = Guid.Parse("11111111-0000-0000-0000-000000000000");
+        var humans = new[]
+        {
+            new HumanRow(Guid.NewGuid(), "Alice", [CellState.Worked(teamA, "#1F77B4"), CellState.Empty]),
+            new HumanRow(Guid.NewGuid(), "Bob",   [CellState.Worked(teamA, "#1F77B4"), CellState.Worked(teamA, "#1F77B4")]),
+        };
+        var group = new DepartmentGroup(teamA, "Cantina", "#1F77B4", humans);
+        var model = NewEmptyModel(days) with { Groups = [group], TotalsPerDay = [2, 1] };
+
+        var sut = new VolunteerTrackingXlsxBuilder();
+        using var workbook = new XLWorkbook(new MemoryStream(sut.Build(model).Content));
+        var sheet = workbook.Worksheets.First();
+
+        // Row layout: 1-3 metadata, 4 blank, 5-6 day headers, 7 banner, 8 Alice, 9 Bob, 10 totals.
+        sheet.Cell("A10").GetString().Should().Be("Total humans on-site");
+        sheet.Cell("A10").Style.Font.Bold.Should().BeTrue();
+        sheet.Cell("B10").GetDouble().Should().Be(2);
+        sheet.Cell("C10").GetDouble().Should().Be(1);
+        sheet.Cell("B10").Style.Font.Bold.Should().BeTrue();
+    }
+
     private static VolunteerExportModel NewEmptyModel(IReadOnlyList<LocalDate> days) => new(
         MethodologyBlurb: "M.",
         FilterSummary: "F.",
