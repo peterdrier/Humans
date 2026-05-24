@@ -17,7 +17,10 @@ public sealed class VolunteerTrackingXlsxBuilder
         var sheet = workbook.Worksheets.Add("Volunteers");
 
         WriteMetadataBlock(sheet, model);
-        // Day headers + body come in later tasks.
+        WriteDayHeaders(sheet, model);
+        sheet.SheetView.FreezeRows(6);
+        sheet.SheetView.FreezeColumns(1);
+        // Body comes in later tasks.
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -32,5 +35,18 @@ public sealed class VolunteerTrackingXlsxBuilder
         sheet.Cell("A3").Value = model.MethodologyBlurb;
         sheet.Cell("A3").Style.Alignment.WrapText = true;
         sheet.Cell("A3").Style.Font.Italic = true;
+    }
+
+    private static void WriteDayHeaders(IXLWorksheet sheet, VolunteerExportModel model)
+    {
+        for (var i = 0; i < model.Days.Count; i++)
+        {
+            var col = i + 2;  // start at column B
+            var d = model.Days[i];
+            sheet.Cell(5, col).Value = d.DayOfWeek.ToString().Substring(0, 3); // Mon, Tue, ...
+            sheet.Cell(6, col).Value = $"{d.Day:D2}/{d.Month:D2}/{d.Year:D4}";
+            sheet.Cell(5, col).Style.Font.Bold = true;
+            sheet.Cell(6, col).Style.Font.Bold = true;
+        }
     }
 }
