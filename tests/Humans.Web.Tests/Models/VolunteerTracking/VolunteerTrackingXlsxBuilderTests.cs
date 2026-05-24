@@ -97,6 +97,41 @@ public sealed class VolunteerTrackingXlsxBuilderTests
         merged!.RangeAddress.LastAddress.ColumnNumber.Should().Be(3); // A..C (1 label + 2 day cols)
     }
 
+    [HumansFact]
+    public void HumanRow_RendersNameAndColoredCells()
+    {
+        var days = new[] { new LocalDate(2026, 7, 7), new LocalDate(2026, 7, 8), new LocalDate(2026, 7, 9) };
+        var teamA = Guid.Parse("11111111-0000-0000-0000-000000000000");
+        var aliceCells = new[]
+        {
+            CellState.Arrival,
+            CellState.Worked(teamA, "#1F77B4"),
+            CellState.Empty,
+        };
+        var group = new DepartmentGroup(
+            TeamId: teamA,
+            TeamName: "Cantina",
+            TeamColorHex: "#1F77B4",
+            Humans: [new HumanRow(Guid.NewGuid(), "Alice", aliceCells)]);
+        var model = NewEmptyModel(days) with { Groups = [group], TotalsPerDay = [0, 1, 0] };
+
+        var sut = new VolunteerTrackingXlsxBuilder();
+        using var workbook = new XLWorkbook(new MemoryStream(sut.Build(model).Content));
+        var sheet = workbook.Worksheets.First();
+
+        // Row 7 banner, row 8 Alice.
+        sheet.Cell("A8").GetString().Should().Be("Alice");
+        // Day 1 (col B) = Arrival — white fill, name in cell.
+        sheet.Cell("B8").GetString().Should().Be("Alice");
+        sheet.Cell("B8").Style.Fill.BackgroundColor.ToString().Should().EndWith("FFFFFF");
+        // Day 2 (col C) = Worked — team color fill, name.
+        sheet.Cell("C8").GetString().Should().Be("Alice");
+        sheet.Cell("C8").Style.Fill.BackgroundColor.ToString().Should().EndWith("1F77B4");
+        // Day 3 (col D) = Empty — no fill, no text.
+        sheet.Cell("D8").GetString().Should().BeEmpty();
+        sheet.Cell("D8").Style.Fill.BackgroundColor.ToString().Should().NotEndWith("FFFFFF");
+    }
+
     private static VolunteerExportModel NewEmptyModel(IReadOnlyList<LocalDate> days) => new(
         MethodologyBlurb: "M.",
         FilterSummary: "F.",

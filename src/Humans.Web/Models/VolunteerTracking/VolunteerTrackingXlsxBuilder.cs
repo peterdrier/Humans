@@ -60,17 +60,44 @@ public sealed class VolunteerTrackingXlsxBuilder
         foreach (var group in model.Groups)
         {
             // Banner row
-            var banner = sheet.Cell(row, 1);
-            banner.Value = $"{group.TeamName} ({group.Humans.Count} humans)";
-            var range = sheet.Range(row, 1, row, lastCol);
-            range.Merge();
-            range.Style.Fill.BackgroundColor = XLColor.FromHtml(group.TeamColorHex);
-            range.Style.Font.Bold = true;
-            range.Style.Font.FontColor = XLColor.White;
+            var bannerRange = sheet.Range(row, 1, row, lastCol);
+            sheet.Cell(row, 1).Value = $"{group.TeamName} ({group.Humans.Count} humans)";
+            bannerRange.Merge();
+            bannerRange.Style.Fill.BackgroundColor = XLColor.FromHtml(group.TeamColorHex);
+            bannerRange.Style.Font.Bold = true;
+            bannerRange.Style.Font.FontColor = XLColor.White;
             row++;
 
-            // Human rows come in Task 4.4 — for now, just advance the row counter to leave space.
-            foreach (var _ in group.Humans) row++;
+            // Human rows
+            foreach (var human in group.Humans)
+            {
+                sheet.Cell(row, 1).Value = human.PlayaName;
+                for (var i = 0; i < human.Cells.Count; i++)
+                {
+                    var cell = sheet.Cell(row, i + 2);
+                    var state = human.Cells[i];
+                    switch (state.Kind)
+                    {
+                        case CellKind.Empty:
+                            // no value, no fill
+                            break;
+                        case CellKind.Arrival:
+                            cell.Value = human.PlayaName;
+                            cell.Style.Fill.BackgroundColor = XLColor.White;
+                            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                            break;
+                        case CellKind.Worked:
+                            cell.Value = human.PlayaName;
+                            cell.Style.Fill.BackgroundColor = XLColor.FromHtml(state.TeamColorHex!);
+                            cell.Style.Font.FontColor = XLColor.White;
+                            cell.Style.Font.Bold = true;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                row++;
+            }
         }
         return row;
     }
