@@ -212,16 +212,10 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
 
         if (raw.Count == 0) return [];
 
-        // Cross-domain: Rota has no Team nav (see IShiftManagementRepository
-        // docs — callers stitch via ITeamService / direct Teams query). Pull
-        // the names in one batched read.
-        var teamIds = raw.Select(r => r.TeamId).Distinct().ToArray();
-        var teamNames = await db.Teams
-            .AsNoTracking()
-            .Where(t => teamIds.Contains(t.Id))
-            .Select(t => new { t.Id, t.Name })
-            .ToDictionaryAsync(t => t.Id, t => t.Name, ct);
-
+        // Team names are NOT resolved here: Teams is another section's table and a
+        // Shifts repo must not query db.Teams (memory/architecture/no-cross-section-ef-joins.md).
+        // The caller (VolunteerTrackingExportService) stitches TeamId → name via
+        // IShiftManagementService.GetDepartmentsWithRotasAsync.
         var rows = new List<ConfirmedShiftRow>(raw.Count);
         foreach (var r in raw)
         {
@@ -241,7 +235,6 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
                 rows.Add(new ConfirmedShiftRow(
                     r.UserId,
                     r.TeamId,
-                    teamNames.GetValueOrDefault(r.TeamId, string.Empty),
                     startsAtUtc,
                     endsAtUtc));
             }

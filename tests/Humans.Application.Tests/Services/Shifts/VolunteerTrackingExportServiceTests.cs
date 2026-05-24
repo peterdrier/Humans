@@ -117,9 +117,9 @@ public sealed class VolunteerTrackingExportServiceTests
         // Alice has confirmed TeamA shifts on Day3, Day4, Day5 (in event-local).
         var shifts = new[]
         {
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 17),
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(3), 9, 17),
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(4), 9, 17),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 17),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(3), 9, 17),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(4), 9, 17),
         };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
@@ -164,7 +164,7 @@ public sealed class VolunteerTrackingExportServiceTests
             .InZoneStrictly(zone).ToInstant();
         var endInstant = (Day1.PlusDays(3) + LocalTime.FromHourMinuteSecondTick(6, 0, 0, 0))
             .InZoneStrictly(zone).ToInstant();
-        var shifts = new[] { new ConfirmedShiftRow(Alice, TeamA, "TeamA", startInstant, endInstant) };
+        var shifts = new[] { new ConfirmedShiftRow(Alice, TeamA, startInstant, endInstant) };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
@@ -185,7 +185,7 @@ public sealed class VolunteerTrackingExportServiceTests
     {
         // Bob worked TeamA on Day3, TeamB on Day4. Filtered to TeamA: row appears,
         // Day3 colored, Day4 empty, arrival = Day2 (day before TeamA's first shift).
-        var teamAOnly = new[] { ShiftRow(Bob, TeamA, "TeamA", Day1.PlusDays(2), 9, 17) };
+        var teamAOnly = new[] { ShiftRow(Bob, TeamA, Day1.PlusDays(2), 9, 17) };
         var repo = Substitute.For<IVolunteerTrackingRepository>();
         repo.GetConfirmedShiftsInRangeAsync(EventId, Day1, Day7, TeamA, Arg.Any<CancellationToken>())
             .Returns(teamAOnly);
@@ -217,8 +217,8 @@ public sealed class VolunteerTrackingExportServiceTests
         // Alice's first confirmed shift is exactly Day1 (=range start). Arrival = Day0 = outside.
         var shifts = new[]
         {
-            ShiftRow(Alice, TeamA, "TeamA", Day1, 9, 17),
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(1), 9, 17),
+            ShiftRow(Alice, TeamA, Day1, 9, 17),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(1), 9, 17),
         };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
@@ -240,8 +240,8 @@ public sealed class VolunteerTrackingExportServiceTests
         // Alice on Day3: TeamA 3h + TeamB 5h → cell = TeamB color.
         var shifts = new[]
         {
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 12),
-            ShiftRow(Alice, TeamB, "TeamB", Day1.PlusDays(2), 13, 18),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 12),
+            ShiftRow(Alice, TeamB, Day1.PlusDays(2), 13, 18),
         };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
@@ -261,7 +261,7 @@ public sealed class VolunteerTrackingExportServiceTests
     {
         // Whatever the repo returns is treated as authoritative.
         // The repo's integration test (Chunk 2) covers the actual WHERE clause.
-        var shifts = new[] { ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 17) };
+        var shifts = new[] { ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 17) };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
@@ -287,12 +287,12 @@ public sealed class VolunteerTrackingExportServiceTests
         // Tie → alphabetical → TeamA first.
         var shifts = new[]
         {
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 17),
-            ShiftRow(Bob,   TeamA, "TeamA", Day1.PlusDays(2), 9, 17),
-            ShiftRow(Bob,   TeamA, "TeamA", Day1.PlusDays(3), 9, 17),
-            ShiftRow(Carol, TeamB, "TeamB", Day1.PlusDays(2), 9, 17),
-            ShiftRow(Carol, TeamB, "TeamB", Day1.PlusDays(3), 9, 17),
-            ShiftRow(Carol, TeamB, "TeamB", Day1.PlusDays(4), 9, 17),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 17),
+            ShiftRow(Bob,   TeamA, Day1.PlusDays(2), 9, 17),
+            ShiftRow(Bob,   TeamA, Day1.PlusDays(3), 9, 17),
+            ShiftRow(Carol, TeamB, Day1.PlusDays(2), 9, 17),
+            ShiftRow(Carol, TeamB, Day1.PlusDays(3), 9, 17),
+            ShiftRow(Carol, TeamB, Day1.PlusDays(4), 9, 17),
         };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
@@ -321,8 +321,8 @@ public sealed class VolunteerTrackingExportServiceTests
         // Even though "Alice" sorts before "Zara" alphabetically, Zara arrives earlier so appears first.
         var shifts = new[]
         {
-            ShiftRow(Zara,  TeamA, "TeamA", Day1.PlusDays(1), 9, 17),
-            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(3), 9, 17),
+            ShiftRow(Zara,  TeamA, Day1.PlusDays(1), 9, 17),
+            ShiftRow(Alice, TeamA, Day1.PlusDays(3), 9, 17),
         };
         var (repo, shiftMgmt, users) = BuildMocks(
             shifts: shifts,
@@ -340,11 +340,11 @@ public sealed class VolunteerTrackingExportServiceTests
     }
 
     /// <summary>Helper: build a ConfirmedShiftRow with start/end specified as event-local hours on a given local date.</summary>
-    private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, string teamName, LocalDate localDate, int startHourLocal, int endHourLocal)
+    private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, LocalDate localDate, int startHourLocal, int endHourLocal)
     {
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var startInstant = (localDate + LocalTime.FromHourMinuteSecondTick(startHourLocal, 0, 0, 0)).InZoneStrictly(zone).ToInstant();
         var endInstant = (localDate + LocalTime.FromHourMinuteSecondTick(endHourLocal, 0, 0, 0)).InZoneStrictly(zone).ToInstant();
-        return new ConfirmedShiftRow(userId, teamId, teamName, startInstant, endInstant);
+        return new ConfirmedShiftRow(userId, teamId, startInstant, endInstant);
     }
 }

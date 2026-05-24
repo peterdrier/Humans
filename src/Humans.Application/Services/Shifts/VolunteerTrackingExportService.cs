@@ -29,13 +29,17 @@ public sealed class VolunteerTrackingExportService(
         var shifts = await _repository.GetConfirmedShiftsInRangeAsync(
             request.EventSettingsId, request.StartDate, request.EndDate, request.DepartmentId, ct);
 
-        // Resolve the filtered team name (if filtered) for the filename + summary.
-        string? filteredTeamName = null;
-        if (request.DepartmentId is Guid deptId)
-        {
-            var depts = await _shiftManagementService.GetDepartmentsWithRotasAsync(request.EventSettingsId);
-            filteredTeamName = depts.FirstOrDefault(d => d.TeamId == deptId).TeamName;
-        }
+        // Resolve team names via the Teams-aware service surface (the Shifts repo
+        // deliberately returns TeamId only — no cross-section db.Teams query).
+        var depts = await _shiftManagementService.GetDepartmentsWithRotasAsync(request.EventSettingsId);
+        var teamNames = depts
+            .GroupBy(d => d.TeamId)
+            .ToDictionary(g => g.Key, g => g.First().TeamName);
+
+        // Filtered team name (if filtered) for the filename + summary.
+        string? filteredTeamName = request.DepartmentId is Guid deptId
+            ? teamNames.GetValueOrDefault(deptId)
+            : null;
 
         if (shifts.Count == 0)
             return BuildEmptyModel(request, days, filteredTeamName);
@@ -47,7 +51,7 @@ public sealed class VolunteerTrackingExportService(
         var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
 
         // (1) Build (userId, day) → list of (teamId, teamName, hours) for the range.
-        var perUserPerDay = BucketByUserDayTeam(shifts, days, zone);
+        var perUserPerDay = BucketByUserDayTeam(shifts, days, zone, teamNames);
 
         // (2) Per user: primary team = team with most total hours; first-shift date.
         var userIds = perUserPerDay.Keys.Select(k => k.userId).Distinct().ToList();
@@ -113,7 +117,11 @@ public sealed class VolunteerTrackingExportService(
     }
 
     private static Dictionary<(Guid userId, LocalDate day), List<(Guid teamId, string teamName, double hours)>>
-        BucketByUserDayTeam(IReadOnlyList<ConfirmedShiftRow> shifts, IReadOnlyList<LocalDate> days, DateTimeZone zone)
+        BucketByUserDayTeam(
+            IReadOnlyList<ConfirmedShiftRow> shifts,
+            IReadOnlyList<LocalDate> days,
+            DateTimeZone zone,
+            IReadOnlyDictionary<Guid, string> teamNames)
     {
         var result = new Dictionary<(Guid, LocalDate), List<(Guid, string, double)>>();
         var rangeStart = days[0];
@@ -135,7 +143,7 @@ public sealed class VolunteerTrackingExportService(
                 var key = (s.UserId, d);
                 if (!result.TryGetValue(key, out var list))
                     result[key] = list = [];
-                list.Add((s.TeamId, s.TeamName, hours));
+                list.Add((s.TeamId, teamNames.GetValueOrDefault(s.TeamId, string.Empty), hours));
             }
         }
         return result;
