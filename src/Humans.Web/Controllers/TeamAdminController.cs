@@ -808,7 +808,6 @@ public class TeamAdminController(
     }
 
     [HttpPost("Roles/{roleId}/ToggleManagement")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleManagement(string slug, Guid roleId)
     {
@@ -816,6 +815,11 @@ public class TeamAdminController(
         if (teamError is not null)
         {
             return teamError;
+        }
+
+        if (!RoleChecks.IsTeamsAdmin(User) && !RoleChecks.IsAdmin(User))
+        {
+            return Forbid();
         }
 
         try
