@@ -154,6 +154,39 @@ public sealed class VolunteerTrackingExportServiceTests
         model.TotalsPerDay.Should().Equal(0, 0, 1, 1, 1, 0, 0);
     }
 
+    private static readonly Guid Bob = Guid.Parse("b0000000-0000-0000-0000-000000000002");
+
+    [HumansFact]
+    public async Task DepartmentFilter_OnlyShowsThatDeptsWork()
+    {
+        // Bob worked TeamA on Day3, TeamB on Day4. Filtered to TeamA: row appears,
+        // Day3 colored, Day4 empty, arrival = Day2 (day before TeamA's first shift).
+        var teamAOnly = new[] { ShiftRow(Bob, TeamA, "TeamA", Day1.PlusDays(2), 9, 17) };
+        var repo = Substitute.For<IVolunteerTrackingRepository>();
+        repo.GetConfirmedShiftsInRangeAsync(EventId, Day1, Day7, TeamA, Arg.Any<CancellationToken>())
+            .Returns(teamAOnly);
+        var shiftMgmt = Substitute.For<IShiftManagementService>();
+        shiftMgmt.GetDepartmentsWithRotasAsync(EventId).Returns([(TeamA, "TeamA")]);
+        shiftMgmt.GetByIdAsync(EventId).Returns(new EventSettings
+        {
+            Id = EventId,
+            Year = 2026,
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = Day1,
+        });
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Bob, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Bob, "Bob"));
+
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var model = await sut.BuildAsync(BuildRequest(departmentId: TeamA), ct: default);
+
+        model.Groups.Should().HaveCount(1);
+        var cells = model.Groups[0].Humans[0].Cells;
+        cells[1].Kind.Should().Be(CellKind.Arrival);          // Day2
+        cells[2].Kind.Should().Be(CellKind.Worked);           // Day3 — TeamA
+        cells[3].Kind.Should().Be(CellKind.Empty);            // Day4 — TeamB excluded
+    }
+
     [HumansFact]
     public async Task ArrivalDayOutsideRange_NoWhiteCell_FirstInRangeCellColorsNormally()
     {
