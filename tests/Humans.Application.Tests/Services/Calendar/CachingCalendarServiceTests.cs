@@ -21,13 +21,13 @@ namespace Humans.Application.Tests.Services.Calendar;
 /// <remarks>
 /// Covers:
 /// <list type="bullet">
-///   <item>Warmup populates the dict from <c>ICalendarRepository.GetAllAsync</c>.</item>
+///   <item>Warmup populates the dict from the keyed inner projection loader.</item>
 ///   <item><c>GetEventByIdAsync</c> hits the cache after warmup (does not call
 ///     the inner service).</item>
 ///   <item><c>GetOccurrencesInWindowAsync</c> answers from the cache snapshot
 ///     (does not call the inner service after warmup).</item>
 ///   <item>Write paths invalidate via <c>ReplaceAsync</c> (driving
-///     <c>LoadRowAsync</c> against the repository).</item>
+///     <c>LoadRowAsync</c> through the keyed inner projection loader).</item>
 ///   <item>Exception writes (cancel / override) evict the PARENT event entry.</item>
 ///   <item>Soft-deleted events are removed from the cache on invalidation
 ///     (tombstoned via <c>DeleteKey</c>, warmed flag preserved).</item>
@@ -42,6 +42,10 @@ public class CachingCalendarServiceTests
     private CachingCalendarService CreateSut()
     {
         var services = new ServiceCollection();
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(ci => LoadAllEventInfosAsync(ci.Arg<CancellationToken>()));
+        _inner.GetEventInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => LoadEventInfoAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
         services.AddKeyedScoped<ICalendarService>(
             CachingCalendarService.InnerServiceKey, (_, _) => _inner);
         services.AddScoped(_ => _teamService);
@@ -50,9 +54,24 @@ public class CachingCalendarServiceTests
         var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
         return new CachingCalendarService(
-            _repo,
             scopeFactory,
             NullLogger<CachingCalendarService>.Instance);
+
+        async Task<IReadOnlyList<CalendarEventInfo>> LoadAllEventInfosAsync(CancellationToken ct)
+        {
+            var events = await _repo.GetAllAsync(ct);
+            return events
+                .Select(Humans.Application.Services.Calendar.CalendarOccurrenceExpander.ToInfo)
+                .ToList();
+        }
+
+        async Task<CalendarEventInfo?> LoadEventInfoAsync(Guid id, CancellationToken ct)
+        {
+            var ev = await _repo.GetEventByIdAsync(id, ct);
+            return ev is null
+                ? null
+                : Humans.Application.Services.Calendar.CalendarOccurrenceExpander.ToInfo(ev);
+        }
     }
 
     private static Task WarmAsync(CachingCalendarService sut) =>
@@ -119,16 +138,15 @@ public class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventByIdAsync_NotInCache_LoadsViaRepository()
+    public async Task GetEventByIdAsync_NotInCache_LoadsViaInnerProjection()
     {
         // Empty warmup
         _repo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(new List<CalendarEvent>());
 
         var unknownId = Guid.NewGuid();
-        // LoadRowAsync drives the per-key fetch via the repository directly —
-        // not through the inner ICalendarService. (The inner service exists
-        // for writes; reads are cache-mediated.)
+        // LoadRowAsync drives the per-key fetch via the keyed inner projection
+        // loader. The repository substitute here is only the inner test fixture.
         _repo.GetEventByIdAsync(unknownId, Arg.Any<CancellationToken>())
             .Returns((CalendarEvent?)null);
 
@@ -197,7 +215,7 @@ public class CachingCalendarServiceTests
             .Returns(created);
 
         // After-write refresh: the decorator routes through ReplaceAsync, which
-        // drives LoadRowAsync → _repo.GetEventByIdAsync, then upserts into the dict.
+        // drives LoadRowAsync through the keyed inner projection loader.
         _repo.GetEventByIdAsync(created.Id, Arg.Any<CancellationToken>())
             .Returns(created);
 
@@ -348,7 +366,7 @@ public class CachingCalendarServiceTests
     // PR #585 follow-up — warmup-vs-concurrent-write race invariant
     // ==========================================================================
     //
-    // Codex P1: warmup reads _repo.GetAllAsync() at T0 then loops Set(...) at
+    // Codex P1: warmup reads the inner projection snapshot at T0 then loops Set(...) at
     // T1+. If a concurrent mutation's post-write ReplaceAsync runs between T0
     // and the foreach reaching that event's key, it has already upserted a
     // FRESHER projection. Warmup must NOT clobber that with its older

@@ -45,18 +45,16 @@ project at least one fix commit.
   or one of its nested helper types, must not structurally reference any
   `IRepository` implementation/interface. Cache misses and warm paths go
   through the keyed inner application service, never sideways into persistence.
-- Source: generalized from
-  `CachingTeamServiceBypassArchitectureTests.GetTeamDetailAsync_does_not_reference_bypassed_repository_methods`
-  and `TicketQueryArchitectureTests.CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter`.
+- Source: generalized from the deleted `CachingTeamServiceBypassArchitectureTests`
+  one-off and `TicketQueryArchitectureTests.CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter`.
 - Why analyzer, not one-off test: the important invariant is system-wide:
   decorators are transparent wrappers around the application service surface.
   If a decorator injects a repository, it can bypass the inner service's
   authorization, write orchestration, section boundaries, and cache invalidation
   behavior. The call-site/constructor shape is crisp and should fail at build
   time for every new decorator.
-- Status: shipped as `HUM0020`. Existing repository-backed caching decorators
-  are class-level `[Grandfathered("HUM0020", ...)]` warnings while their warm
-  paths are migrated to the inner service.
+- Status: shipped as `HUM0020` and enforced as an error. The original
+  repository-backed cache loaders now route through keyed inner services.
 
 ### 2026-05-24 architecture-test audit follow-ups
 

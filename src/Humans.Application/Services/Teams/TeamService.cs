@@ -1833,15 +1833,25 @@ public sealed class TeamService(
             : await UserService.GetUserInfosAsync(allUserIds, ct);
         var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
+        var childIdsByParent = teams
+            .Where(t => t.ParentTeamId.HasValue)
+            .GroupBy(t => t.ParentTeamId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
+        var pendingCounts = await repo.GetPendingCountsByTeamIdsAsync(
+            teams.Select(t => t.Id).ToList(), ct);
 
-        return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam));
+        return teams.ToDictionary(
+            t => t.Id,
+            t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
     }
 
     private static TeamInfo BuildTeamInfo(
         Team team,
         IReadOnlyDictionary<Guid, UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
+        IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent,
+        IReadOnlyDictionary<Guid, int> pendingCounts) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -1879,7 +1889,14 @@ public sealed class TeamService(
         ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
         RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
             ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
-            : null);
+            : null,
+        ChildTeamIds: childIdsByParent.TryGetValue(team.Id, out var childIds) ? childIds : null,
+        ShowCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+        PageContent: team.PageContent,
+        CallsToAction: team.CallsToAction,
+        PageContentUpdatedAt: team.PageContentUpdatedAt,
+        PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0);
 
     private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
         new(

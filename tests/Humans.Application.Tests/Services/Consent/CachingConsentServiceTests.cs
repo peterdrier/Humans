@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Services.Consent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,7 +18,6 @@ namespace Humans.Application.Tests.Services.Consent;
 public class CachingConsentServiceTests
 {
     private readonly IConsentService _inner = Substitute.For<IConsentService>();
-    private readonly IConsentRepository _repo = Substitute.For<IConsentRepository>();
     private readonly ILegalDocumentSyncService _legalSync = Substitute.For<ILegalDocumentSyncService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
@@ -31,7 +29,7 @@ public class CachingConsentServiceTests
         var scopeFactory = services.BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
         return new CachingConsentService(
-            _repo, _legalSync, _clock,
+            _legalSync, _clock,
             scopeFactory,
             NullLogger<CachingConsentService>.Instance);
     }

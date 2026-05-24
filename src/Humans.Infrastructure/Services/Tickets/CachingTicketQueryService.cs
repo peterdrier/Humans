@@ -1,11 +1,8 @@
-using Humans.Application.Architecture;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,13 +47,7 @@ namespace Humans.Infrastructure.Services.Tickets;
 /// nobodies-collective/Humans#587.
 /// </para>
 /// </remarks>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingTicketQueryService(
-    ITicketRepository ticketRepository,
     IMemoryCache perUserCache,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTicketQueryService> logger) : ITicketQueryService, ITicketCacheInvalidator, IHostedService
@@ -65,7 +56,14 @@ public sealed class CachingTicketQueryService(
 
     private static readonly TimeSpan UserPerUserCacheTtl = TimeSpan.FromMinutes(5);
 
-    private readonly OrdersCache _orders = new(ticketRepository, logger);
+    private readonly OrdersCache _orders = new(
+        async ct =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
+            return await inner.GetOrderInfosForCacheAsync(ct);
+        },
+        logger);
 
     /// <summary>
     /// Stats for the projection cache, surfaced on <c>/Admin/CacheStats</c>.
@@ -113,31 +111,8 @@ public sealed class CachingTicketQueryService(
         return await WithInner(inner => inner.GetUserTicketCountAsync(userId));
     }
 
-    public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
-    {
-        // Scope to the active vendor event: the orders projection holds every
-        // order ever pulled from TicketTailor, so an unfiltered walk would
-        // include historical ticket holders in current-event audiences /
-        // dashboard stats.
-        var syncState = await ticketRepository.GetSyncStateAsync();
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return [];
-        var currentEventId = syncState.VendorEventId;
-
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (!string.Equals(order.VendorEventId, currentEventId, StringComparison.Ordinal))
-                continue;
-            foreach (var a in order.Attendees)
-            {
-                if (a.MatchedUserId is { } uid && IsValidOrCheckedIn(a.Status))
-                    ids.Add(uid);
-            }
-        }
-        return ids;
-    }
+    public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() =>
+        WithInner(inner => inner.GetUserIdsWithTicketsAsync());
 
     public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
     {
@@ -358,6 +333,12 @@ public sealed class CachingTicketQueryService(
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrderDriftAsync(ct));
 
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetOrderInfosForCacheAsync(CancellationToken ct = default)
+    {
+        await _orders.EnsureWarmedPublicAsync(ct);
+        return _orders.AsReadOnlyDictionary.Values.ToList();
+    }
+
     // ==========================================================================
     // Invalidation seams (ITicketQueryService + ITicketCacheInvalidator)
     //
@@ -440,28 +421,6 @@ public sealed class CachingTicketQueryService(
         return order.MatchedUserId == userId;
     }
 
-    private static TicketOrderInfo Project(TicketOrder o) => new(
-        Id: o.Id,
-        VendorOrderId: o.VendorOrderId,
-        BuyerName: o.BuyerName,
-        BuyerEmail: o.BuyerEmail,
-        TotalAmount: o.TotalAmount,
-        Currency: o.Currency,
-        DiscountCode: o.DiscountCode,
-        PaymentStatus: o.PaymentStatus,
-        VendorEventId: o.VendorEventId,
-        PurchasedAt: o.PurchasedAt,
-        MatchedUserId: o.MatchedUserId,
-        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
-            Id: a.Id,
-            VendorTicketId: a.VendorTicketId,
-            AttendeeName: a.AttendeeName,
-            AttendeeEmail: a.AttendeeEmail,
-            TicketTypeName: a.TicketTypeName,
-            Price: a.Price,
-            Status: a.Status,
-            MatchedUserId: a.MatchedUserId)).ToList());
-
     // ==========================================================================
     // Inner-scope resolver
     // ==========================================================================
@@ -482,7 +441,9 @@ public sealed class CachingTicketQueryService(
     // Keeping it nested keeps the projection shape + load query co-located
     // with the decorator that owns the projection's invalidation seam.
     // ==========================================================================
-    private sealed class OrdersCache(ITicketRepository repository, ILogger logger)
+    private sealed class OrdersCache(
+        Func<CancellationToken, Task<IReadOnlyList<TicketOrderInfo>>> loadOrders,
+        ILogger logger)
         : TrackedCache<Guid, TicketOrderInfo>("Tickets.Orders", warmOnStartup: true, logger)
     {
         /// <summary>
@@ -495,9 +456,9 @@ public sealed class CachingTicketQueryService(
         /// </summary>
         protected override async Task WarmAllAsync(CancellationToken ct)
         {
-            var orders = await repository.GetAllOrdersWithAttendeesAsync(ct);
+            var orders = await loadOrders(ct);
             foreach (var order in orders)
-                Set(order.Id, Project(order));
+                Set(order.Id, order);
         }
 
         /// <summary>Public seam for the outer decorator's load-all read path.</summary>

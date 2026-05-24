@@ -290,6 +290,14 @@ public sealed class RoleAssignmentService(
     public Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default) =>
         repository.GetActiveCountsByRoleAsync(clock.GetCurrentInstant(), ct);
 
+    public async Task<IReadOnlyList<RoleAssignmentRow>> GetRowsForCacheAsync(CancellationToken ct = default)
+    {
+        var assignments = await repository.GetAllRowsForCacheAsync(ct);
+        return assignments
+            .Select(ra => new RoleAssignmentRow(ra.Id, ra.UserId, ra.RoleName, ra.ValidFrom, ra.ValidTo))
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var assignments = await repository.GetByUserIdAsync(userId, ct);

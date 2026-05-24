@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
@@ -13,6 +14,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Tickets;
 
@@ -71,6 +73,12 @@ public sealed class TicketQueryService(
         var fromAttendees = await ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
         var fromOrders = await ticketRepository.GetAllMatchedOrderUserIdsAsync();
         return fromAttendees.Concat(fromOrders).ToHashSet();
+    }
+
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetOrderInfosForCacheAsync(CancellationToken ct = default)
+    {
+        var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
+        return orders.Select(ProjectOrderInfo).ToList();
     }
 
     public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default)
@@ -795,6 +803,28 @@ public sealed class TicketQueryService(
 
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
+
+    private static TicketOrderInfo ProjectOrderInfo(TicketOrder o) => new(
+        Id: o.Id,
+        VendorOrderId: o.VendorOrderId,
+        BuyerName: o.BuyerName,
+        BuyerEmail: o.BuyerEmail,
+        TotalAmount: o.TotalAmount,
+        Currency: o.Currency,
+        DiscountCode: o.DiscountCode,
+        PaymentStatus: o.PaymentStatus,
+        VendorEventId: o.VendorEventId,
+        PurchasedAt: o.PurchasedAt,
+        MatchedUserId: o.MatchedUserId,
+        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
+            Id: a.Id,
+            VendorTicketId: a.VendorTicketId,
+            AttendeeName: a.AttendeeName,
+            AttendeeEmail: a.AttendeeEmail,
+            TicketTypeName: a.TicketTypeName,
+            Price: a.Price,
+            Status: a.Status,
+            MatchedUserId: a.MatchedUserId)).ToList());
 
     // Invalidation no-ops on the inner; CachingTicketQueryService intercepts.
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) { }

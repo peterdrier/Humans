@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Auth;
@@ -184,12 +185,30 @@ public class CachingRoleAssignmentServiceTests
 
     private static CachingRoleAssignmentService BuildService(
         IRoleAssignmentRepository repository,
-        IClock clock) =>
-        new(
-            repository,
-            Substitute.For<IServiceScopeFactory>(),
+        IClock clock)
+    {
+        var inner = Substitute.For<IRoleAssignmentService>();
+        inner.GetRowsForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(ci => LoadRowsAsync(ci.Arg<CancellationToken>()));
+
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IRoleAssignmentService>(
+            CachingRoleAssignmentService.InnerServiceKey, (_, _) => inner);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+
+        return new CachingRoleAssignmentService(
+            scopeFactory,
             clock,
             NullLogger<CachingRoleAssignmentService>.Instance);
+
+        async Task<IReadOnlyList<RoleAssignmentRow>> LoadRowsAsync(CancellationToken ct)
+        {
+            var rows = await repository.GetAllRowsForCacheAsync(ct);
+            return rows
+                .Select(ra => new RoleAssignmentRow(ra.Id, ra.UserId, ra.RoleName, ra.ValidFrom, ra.ValidTo))
+                .ToList();
+        }
+    }
 
     private static RoleAssignment Active(string role, Instant now) =>
         new()

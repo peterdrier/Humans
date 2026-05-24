@@ -1,8 +1,6 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -28,11 +26,6 @@ namespace Humans.Infrastructure.Services.Auth;
 /// callers arrive — the cache shape (<see cref="RoleAssignmentRow"/>) holds
 /// the fields needed to answer "active-at-now" predicates by user or role.
 /// </remarks>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
       IRoleAssignmentService,
@@ -46,18 +39,15 @@ public sealed class CachingRoleAssignmentService
     /// </summary>
     public const string InnerServiceKey = "role-assignment-inner";
 
-    private readonly IRoleAssignmentRepository _repository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
 
     public CachingRoleAssignmentService(
-        IRoleAssignmentRepository repository,
         IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<CachingRoleAssignmentService> logger)
         : base("Auth.RoleAssignmentRow", warmOnStartup: true, logger)
     {
-        _repository = repository;
         _scopeFactory = scopeFactory;
         _clock = clock;
     }
@@ -94,9 +84,9 @@ public sealed class CachingRoleAssignmentService
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var entities = await _repository.GetAllRowsForCacheAsync(ct);
-        foreach (var ra in entities)
-            Set(ra.Id, new RoleAssignmentRow(ra.Id, ra.UserId, ra.RoleName, ra.ValidFrom, ra.ValidTo));
+        var rows = await WithInner(inner => inner.GetRowsForCacheAsync(ct));
+        foreach (var row in rows)
+            Set(row.Id, row);
     }
 
     // ==========================================================================
@@ -162,6 +152,12 @@ public sealed class CachingRoleAssignmentService
             .OrderBy(row => row.RoleName, StringComparer.Ordinal)
             .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<RoleAssignmentRow>> GetRowsForCacheAsync(CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct);
+        return AsReadOnlyDictionary.Values.ToList();
     }
 
     public void InvalidateClaimsCacheForUser(Guid userId)

@@ -77,6 +77,13 @@ public interface ILegalDocumentSyncService : IApplicationService
     /// read <c>legal_documents</c> directly.
     /// </summary>
     Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the compact active+required document projection used to warm the
+    /// legal-document cache. Intended for the infrastructure caching decorator.
+    /// </summary>
+    Task<IReadOnlyList<LegalDocumentInfo>> GetActiveRequiredDocumentInfosForCacheAsync(
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record ActiveRequiredLegalDocumentSnapshot(

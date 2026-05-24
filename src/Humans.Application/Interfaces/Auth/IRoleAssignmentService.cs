@@ -124,6 +124,13 @@ public interface IRoleAssignmentService : IApplicationService
     /// not need to read <c>role_assignments</c> directly.
     /// </summary>
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the compact rows used to warm the role-assignment cache.
+    /// Intended for the infrastructure caching decorator; callers should prefer
+    /// the narrower role/query methods above.
+    /// </summary>
+    Task<IReadOnlyList<RoleAssignmentRow>> GetRowsForCacheAsync(CancellationToken ct = default);
 }
 
 public sealed record RoleAssignmentSnapshot(

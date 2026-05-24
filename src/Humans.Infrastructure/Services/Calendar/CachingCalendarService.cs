@@ -1,8 +1,6 @@
-using Humans.Application.Architecture;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Calendar;
 using Humans.Domain.Entities;
@@ -17,13 +15,7 @@ namespace Humans.Infrastructure.Services.Calendar;
 /// non-soft-deleted <c>calendar_events</c> row with its <c>Exceptions</c>
 /// embedded, keyed by event id. Exception writes evict the parent.
 /// </summary>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingCalendarService(
-    ICalendarRepository repo,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingCalendarService> logger)
     : TrackedCache<Guid, CalendarEventInfo>("Calendar.Event", warmOnStartup: true, logger), ICalendarService
@@ -69,6 +61,15 @@ public sealed class CachingCalendarService(
             CreatedAt: info.CreatedAt,
             UpdatedAt: info.UpdatedAt);
     }
+
+    public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct);
+        return AsReadOnlyDictionary.Values.ToList();
+    }
+
+    public async Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default) =>
+        await GetAsync(id, ct);
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
         IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
@@ -150,20 +151,17 @@ public sealed class CachingCalendarService(
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var events = await repo.GetAllAsync(ct);
+        var events = await WithInner(inner => inner.GetAllEventInfosAsync(ct));
         foreach (var ev in events)
         {
             // Skip if a concurrent post-commit invalidate already wrote a fresher row (PR #585 race).
             if (ContainsKey(ev.Id)) continue;
-            Set(ev.Id, CalendarOccurrenceExpander.ToInfo(ev));
+            Set(ev.Id, ev);
         }
     }
 
-    protected override async ValueTask<CalendarEventInfo?> LoadRowAsync(Guid key, CancellationToken ct)
-    {
-        var ev = await repo.GetEventByIdAsync(key, ct);
-        return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
-    }
+    protected override async ValueTask<CalendarEventInfo?> LoadRowAsync(Guid key, CancellationToken ct) =>
+        await WithInner(inner => inner.GetEventInfoAsync(key, ct));
 
     // Inner-resolution
 

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -39,54 +38,29 @@ public sealed class CachingTicketQueryServiceTests
     private static readonly Guid UserB = Guid.NewGuid();
     private static readonly Guid UserC = Guid.NewGuid();
 
-    private readonly ITicketRepository _repo;
+    private readonly ITicketQueryService _inner;
     private readonly MemoryCache _perUserCache;
     private readonly CachingTicketQueryService _decorator;
 
     public CachingTicketQueryServiceTests()
     {
-        _repo = Substitute.For<ITicketRepository>();
+        _inner = Substitute.For<ITicketQueryService>();
         _perUserCache = new MemoryCache(new MemoryCacheOptions());
 
-        // The decorator delegates the GetUserTicketCount email-fallback path
-        // to the keyed inner via WithInner. Tests that don't drive that path
-        // (matchedCount > 0 from the projection) can leave the inner unregistered.
         var services = new ServiceCollection();
         services.AddSingleton(_perUserCache);
+        services.AddKeyedScoped<ITicketQueryService>(
+            CachingTicketQueryService.InnerServiceKey,
+            (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 
         _decorator = new CachingTicketQueryService(
-            _repo,
             _perUserCache,
             scopeFactory,
             NullLogger<CachingTicketQueryService>.Instance);
 
-        // Default: empty projection. Tests that need orders override via
-        // SeedOrders(...) which re-stubs the repo and re-warms.
-        _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
+        _inner.GetOrderInfosForCacheAsync(Arg.Any<CancellationToken>())
             .Returns([]);
-
-        // Default sync state: VendorEventId matches the "ev_test" id stamped on
-        // MakeOrder/MakeAttendee, so event-scoped reads (GetUserIdsWithTicketsAsync)
-        // see the seeded orders.
-        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new TicketSyncState { Id = 1, VendorEventId = "ev_test" });
-    }
-
-    [HumansFact]
-    public async Task GetUserIdsWithTicketsAsync_AnswersFromProjection_ValidCheckedInOnly()
-    {
-        var orderId = Guid.NewGuid();
-        SeedOrders(MakeOrder(orderId, matchedUserId: null, attendees: [
-            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
-            MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.CheckedIn),
-            MakeAttendee(matchedUserId: UserC, status: TicketAttendeeStatus.Void),
-        ]));
-
-        var result = await _decorator.GetUserIdsWithTicketsAsync();
-
-        result.Should().BeEquivalentTo([UserA, UserB],
-            because: "void attendees don't count as ticket coverage; matched buyer-only orders also excluded");
     }
 
     [HumansFact]
@@ -144,7 +118,7 @@ public sealed class CachingTicketQueryServiceTests
             new UserTicketHoldings(0, []));
 
         // Force initial projection warm before invalidation.
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetAllMatchedUserIdsAsync();
         _decorator.Entries.Should().BeGreaterThan(0);
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
@@ -163,7 +137,7 @@ public sealed class CachingTicketQueryServiceTests
         _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 5);
         _perUserCache.Set(CacheKeys.UserTicketCount(UserB), 7);
 
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetAllMatchedUserIdsAsync();
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
 
@@ -183,7 +157,7 @@ public sealed class CachingTicketQueryServiceTests
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB),
             new UserTicketHoldings(1, []));
 
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetAllMatchedUserIdsAsync();
         _decorator.Entries.Should().BeGreaterThan(0);
 
         _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
@@ -203,7 +177,7 @@ public sealed class CachingTicketQueryServiceTests
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []));
         _perUserCache.Set(CacheKeys.UserTicketCount(UserA), 3);
 
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetAllMatchedUserIdsAsync();
 
         _decorator.InvalidateAll();
 
@@ -216,9 +190,33 @@ public sealed class CachingTicketQueryServiceTests
 
     private void SeedOrders(params TicketOrder[] orders)
     {
-        _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
-            .Returns(orders);
+        _inner.GetOrderInfosForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns(orders.Select(ProjectOrderInfo).ToList());
     }
+
+    private static TicketOrderInfo ProjectOrderInfo(TicketOrder order) => new(
+        order.Id,
+        order.VendorOrderId,
+        order.BuyerName,
+        order.BuyerEmail,
+        order.TotalAmount,
+        order.Currency,
+        order.DiscountCode,
+        order.PaymentStatus,
+        order.VendorEventId,
+        order.PurchasedAt,
+        order.MatchedUserId,
+        order.Attendees.Select(ProjectAttendeeInfo).ToList());
+
+    private static TicketAttendeeInfo ProjectAttendeeInfo(TicketAttendee attendee) => new(
+        attendee.Id,
+        attendee.VendorTicketId,
+        attendee.AttendeeName,
+        attendee.AttendeeEmail,
+        attendee.TicketTypeName,
+        attendee.Price,
+        attendee.Status,
+        attendee.MatchedUserId);
 
     private static TicketOrder MakeOrder(
         Guid id, Guid? matchedUserId, params TicketAttendee[] attendees) => new()

@@ -14,6 +14,10 @@ public interface ICalendarService : IApplicationService
 
     Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default);
+
+    Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default);
+
     Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
 
     Task<CalendarEventMutationResult> CreateEventWithResultAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);

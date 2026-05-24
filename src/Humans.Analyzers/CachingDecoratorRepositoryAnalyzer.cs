@@ -98,6 +98,9 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
 
         foreach (var member in type.GetMembers())
         {
+            if (member.IsImplicitlyDeclared)
+                continue;
+
             switch (member)
             {
                 case IFieldSymbol field when ImplementsRepositoryMarker(field.Type, repositoryMarker):
@@ -110,6 +113,8 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
 
                 case IMethodSymbol method:
                     if (method.MethodKind == MethodKind.Constructor)
+                        break;
+                    if (method.AssociatedSymbol is IPropertySymbol)
                         break;
 
                     if (ImplementsRepositoryMarker(method.ReturnType, repositoryMarker))
@@ -148,6 +153,17 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
 
     private static bool ImplementsRepositoryMarker(ITypeSymbol? type, INamedTypeSymbol repositoryMarker)
     {
+        if (type is ITypeParameterSymbol typeParameter)
+        {
+            foreach (var constraint in typeParameter.ConstraintTypes)
+            {
+                if (ImplementsRepositoryMarker(constraint, repositoryMarker))
+                    return true;
+            }
+
+            return false;
+        }
+
         if (type is not INamedTypeSymbol named)
             return false;
 
@@ -159,6 +175,13 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
             if (SymbolEqualityComparer.Default.Equals(iface, repositoryMarker))
                 return true;
         }
+
+        foreach (var argument in named.TypeArguments)
+        {
+            if (ImplementsRepositoryMarker(argument, repositoryMarker))
+                return true;
+        }
+
         return false;
     }
 

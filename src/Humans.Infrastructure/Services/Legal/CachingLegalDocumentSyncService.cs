@@ -1,8 +1,5 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,13 +34,7 @@ namespace Humans.Infrastructure.Services.Legal;
 /// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> itself.
 /// </para>
 /// </remarks>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingLegalDocumentSyncService(
-    ILegalDocumentRepository repository,
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingLegalDocumentSyncService> logger)
@@ -87,6 +78,13 @@ public sealed class CachingLegalDocumentSyncService(
     {
         var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
         return docs.Count;
+    }
+
+    public async Task<IReadOnlyList<LegalDocumentInfo>> GetActiveRequiredDocumentInfosForCacheAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
+        return docs.Values.ToList();
     }
 
     public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
@@ -220,37 +218,20 @@ public sealed class CachingLegalDocumentSyncService(
         // stitched here via ITeamService so the cache warm path stays
         // free of the cross-domain nav (docs/sections/LegalAndConsent.md
         // "Touch-and-clean guidance").
-        var docs = await repository.GetActiveRequiredDocumentsAsync(ct);
+        var docs = await WithInner(inner => inner.GetActiveRequiredDocumentInfosForCacheAsync(ct));
 
         // Resolve team display names via ITeamService — scoped, so
         // pulled through a fresh DI scope per-warm.
-        IReadOnlyDictionary<Guid, string> teamNames = await ResolveTeamNamesAsync(docs, ct);
-
         var versionIndex = new Dictionary<Guid, Guid>();
 
-        foreach (var doc in docs)
+        foreach (var info in docs)
         {
-            teamNames.TryGetValue(doc.TeamId, out var teamName);
-            var info = BuildLegalDocumentInfo(doc, teamName ?? string.Empty);
-            Set(doc.Id, info);
+            Set(info.Id, info);
             foreach (var v in info.Versions)
-                versionIndex[v.Id] = doc.Id;
+                versionIndex[v.Id] = info.Id;
         }
 
         _versionToDocument = versionIndex;
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
-        IReadOnlyList<LegalDocument> docs, CancellationToken ct)
-    {
-        if (docs.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
-        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
-        return teams.ToDictionary(kv => kv.Key, kv => kv.Value.Name);
     }
 
     private static LegalDocumentInfo BuildLegalDocumentInfo(LegalDocument document, string teamName) =>

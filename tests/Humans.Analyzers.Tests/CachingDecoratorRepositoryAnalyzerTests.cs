@@ -103,6 +103,96 @@ public class CachingDecoratorRepositoryAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_repository_typed_property_in_caching_decorator()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Services.Teams
+            {
+                public sealed class CachingTeamService
+                {
+                    public Humans.Application.Interfaces.Repositories.ITeamRepository Repo { get; init; } = null!;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CachingDecoratorRepositoryAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0020).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_repository_return_type_in_caching_decorator()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Services.Teams
+            {
+                public sealed class CachingTeamService
+                {
+                    public Humans.Application.Interfaces.Repositories.ITeamRepository GetRepo() => null!;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CachingDecoratorRepositoryAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0020).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_repository_wrapped_in_generic_type()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Services.Teams
+            {
+                public sealed class CachingTeamService(
+                    System.Func<Humans.Application.Interfaces.Repositories.ITeamRepository> repositoryFactory)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CachingDecoratorRepositoryAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0020).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_repository_constrained_type_parameter()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Services.Teams
+            {
+                public sealed class CachingTeamService
+                {
+                    public TRepository GetRepo<TRepository>()
+                        where TRepository : Humans.Application.Interfaces.Repositories.IRepository
+                        => default!;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CachingDecoratorRepositoryAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0020).Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_on_regular_infrastructure_service_repository_parameter()
     {
         var source = Stubs + """

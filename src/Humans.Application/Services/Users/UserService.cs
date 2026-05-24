@@ -72,6 +72,66 @@ public sealed class UserService(
             "through inner.GetUserInfoAsync. If this is being called on the inner " +
             "UserService it indicates a DI registration mistake.");
 
+    public async Task<IReadOnlyCollection<UserInfo>> GetUserInfosForCacheAsync(CancellationToken ct = default)
+    {
+        var users = await repo.GetAllAsync(ct);
+        if (users.Count == 0) return [];
+
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var allEmails = await userEmailRepo.GetAllAsync(ct);
+        var emailsByUser = allEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+
+        var loginsByUser = await repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
+
+        var profiles = await profileRepo.GetAllAsync(ct);
+        var profileByUser = profiles.ToDictionary(p => p.UserId);
+
+        var allContactFields = await contactFieldRepo.GetAllAsync(ct);
+        var contactFieldsByProfile = allContactFields
+            .GroupBy(c => c.ProfileId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
+
+        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync(userIds, ct);
+
+        var allPreferences = await communicationPreferenceRepo.GetAllAsync(ct);
+        var preferencesByUser = allPreferences
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<CommunicationPreference>)g.ToList());
+
+        var result = new List<UserInfo>(users.Count);
+        foreach (var user in users)
+        {
+            var emails = emailsByUser.TryGetValue(user.Id, out var es) ? es : [];
+            var logins = loginsByUser.TryGetValue(user.Id, out var ls) ? ls : [];
+            var participations = participationsByUser.TryGetValue(user.Id, out var ps)
+                ? ps
+                : (IReadOnlyList<EventParticipation>)[];
+
+            profileByUser.TryGetValue(user.Id, out var profile);
+            IReadOnlyList<ContactField> contactFields = [];
+            IReadOnlyList<ProfileLanguage> languages = [];
+            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
+            if (profile is not null)
+            {
+                contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf) ? cf : [];
+                languages = profile.Languages.ToList();
+                volunteerHistory = profile.VolunteerHistory.ToList();
+            }
+
+            var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
+
+            result.Add(UserInfo.Create(
+                user, emails, participations, logins,
+                profile, contactFields, languages, volunteerHistory,
+                preferences));
+        }
+
+        return result;
+    }
+
     public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default) =>
         throw new NotSupportedException(

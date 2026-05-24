@@ -1,10 +1,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -38,13 +36,7 @@ namespace Humans.Infrastructure.Services.Events;
 /// a fresh pending count and the cache only holds approved events.
 /// </para>
 /// </remarks>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingEventService(
-    IEventRepository repo,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger) : IEventService, IEventViewInvalidator, IHostedService
 {
@@ -478,10 +470,10 @@ public sealed class CachingEventService(
             // and slug-uniqueness must see inactive rows, matching the DB.
             // Active-only filtering happens at projection time in
             // GetActiveCategoriesAsync / GetActiveVenuesAsync.
-            var categories = await repo.GetAllCategoriesAsync(ct);
-            var venues = await repo.GetAllVenuesAsync(ct);
-            var settings = await repo.GetGuideSettingsAsync(ct);
-            var approved = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
+            var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
+            var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
+            var settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
+            var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
 
             var venuesById = venues.ToDictionary(v => v.Id);
 
@@ -519,7 +511,7 @@ public sealed class CachingEventService(
 
     private async Task RefreshSettingsAsync(CancellationToken ct)
     {
-        var fresh = await repo.GetGuideSettingsAsync(ct);
+        var fresh = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
         _settings = await BuildSettingsViewAsync(fresh, ct);
     }
 
@@ -561,19 +553,19 @@ public sealed class CachingEventService(
 
     private async Task RefreshCategoriesAsync(CancellationToken ct)
     {
-        var categories = await repo.GetAllCategoriesAsync(ct);
+        var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
         _categories = categories.Select(CategoryEntityToView).ToList();
     }
 
     private async Task RefreshVenuesAsync(CancellationToken ct)
     {
-        var venues = await repo.GetAllVenuesAsync(ct);
+        var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
         _venues = venues.Select(VenueEntityToView).ToList();
     }
 
     private async Task RefreshEventEntryAsync(Guid eventId, CancellationToken ct)
     {
-        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct);
+        var ev = await WithInner(inner => inner.GetApprovedEventByIdAsync(eventId, ct));
         if (ev is null)
         {
             _eventCache.Invalidate(eventId);
@@ -582,7 +574,7 @@ public sealed class CachingEventService(
 
         // All-rows lookup — an approved event can reference a now-inactive
         // venue, and we still want its flattened fields populated.
-        var venuesById = (await repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
+        var venuesById = (await WithInner(inner => inner.GetAllVenuesAsync(ct))).ToDictionary(v => v.Id);
         _eventCache.Set(eventId, BuildEventView(ev, venuesById));
     }
 
@@ -599,8 +591,8 @@ public sealed class CachingEventService(
             return;
         }
 
-        var approved = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        var venuesById = (await repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
+        var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
+        var venuesById = (await WithInner(inner => inner.GetAllVenuesAsync(ct))).ToDictionary(v => v.Id);
 
         // Rebuild the whole approved set — category / venue renames touch
         // every event row's flattened fields.

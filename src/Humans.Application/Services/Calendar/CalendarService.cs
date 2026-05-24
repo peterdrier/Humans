@@ -53,6 +53,18 @@ public sealed class CalendarService(
         return ev is null ? null : ToDetail(ev);
     }
 
+    public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
+    {
+        var events = await repo.GetAllAsync(ct);
+        return events.Select(CalendarOccurrenceExpander.ToInfo).ToList();
+    }
+
+    public async Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default)
+    {
+        var ev = await repo.GetEventByIdAsync(id, ct);
+        return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
+    }
+
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);

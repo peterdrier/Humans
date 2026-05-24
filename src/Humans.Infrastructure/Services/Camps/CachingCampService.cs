@@ -1,12 +1,10 @@
 using System.Runtime.CompilerServices;
-using Humans.Application.Architecture;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
@@ -20,13 +18,7 @@ namespace Humans.Infrastructure.Services.Camps;
 /// <see cref="CampInfo"/> dict plus a single-slot <see cref="CampSettingsInfo"/>.
 /// Year-keyed reads are filtered snapshots, not separate cache entries.
 /// </summary>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingCampService(
-    ICampRepository repo,
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
@@ -44,6 +36,9 @@ public sealed class CachingCampService(
 
     public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
+
+    public async Task<CampInfo?> GetCampInfoAsync(Guid campId, CancellationToken cancellationToken = default) =>
+        await GetAsync(campId, cancellationToken);
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
@@ -477,28 +472,24 @@ public sealed class CachingCampService(
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var settings = await repo.GetSettingsReadOnlyAsync(ct);
+        var settings = await WithInner(inner => inner.GetSettingsAsync(ct));
         var years = new HashSet<int>();
-        if (settings is not null)
-        {
-            years.Add(settings.PublicYear);
-            foreach (var y in settings.OpenSeasons) years.Add(y);
-        }
+        years.Add(settings.PublicYear);
+        foreach (var y in settings.OpenSeasons) years.Add(y);
         years.Add(SystemClockYear());
 
-        var byCampId = new Dictionary<Guid, Camp>();
+        var byCampId = new Dictionary<Guid, CampInfo>();
         foreach (var year in years)
         {
-            var camps = await repo.GetCampsWithLeadsForYearAsync(year, statusFilter: null, ct);
+            var camps = await WithInner(inner => inner.GetCampsForYearAsync(year, ct));
             foreach (var camp in camps)
             {
                 if (byCampId.TryGetValue(camp.Id, out var existing))
                 {
-                    foreach (var s in camp.Seasons)
-                    {
-                        if (!existing.Seasons.Any(es => es.Id == s.Id))
-                            existing.Seasons.Add(s);
-                    }
+                    var mergedSeasons = existing.Seasons
+                        .Concat(camp.Seasons.Where(s => existing.Seasons.All(es => es.Id != s.Id)))
+                        .ToList();
+                    byCampId[camp.Id] = existing with { Seasons = mergedSeasons };
                 }
                 else
                 {
@@ -509,26 +500,19 @@ public sealed class CachingCampService(
 
         foreach (var (campId, camp) in byCampId)
         {
-            Set(campId, ProjectCampInfo(camp));
+            Set(campId, camp);
         }
 
         _warmYears = years;
 
-        // Reuse the settings fetched above; null means lazy-load on first request.
-        if (settings is not null)
+        await _settingsLock.WaitAsync(ct);
+        try
         {
-            await _settingsLock.WaitAsync(ct);
-            try
-            {
-                _settings = new CampSettingsInfo(
-                    settings.PublicYear,
-                    settings.OpenSeasons.ToList(),
-                    settings.EeStartDate);
-            }
-            finally
-            {
-                _settingsLock.Release();
-            }
+            _settings = settings;
+        }
+        finally
+        {
+            _settingsLock.Release();
         }
     }
 
@@ -538,13 +522,13 @@ public sealed class CachingCampService(
     {
         // Per-row replace; preserves the all-rows invariant. Never Invalidate(key)
         // here — it would flip warmth and force a full re-warm.
-        var camp = await repo.GetByIdAsync(campId, ct);
+        var camp = await WithInner(inner => inner.GetCampInfoAsync(campId, ct));
         if (camp is null)
         {
             DeleteKey(campId);
             return;
         }
-        Set(campId, ProjectCampInfo(camp));
+        Set(campId, camp);
     }
 
     /// <summary>Drop the dict; next read triggers a fresh <see cref="WarmAllAsync"/>.</summary>
@@ -561,13 +545,7 @@ public sealed class CachingCampService(
         try
         {
             if (_settings is not null) return _settings;
-            var entity = await repo.GetSettingsReadOnlyAsync(ct);
-            if (entity is null)
-                throw new InvalidOperationException("Camp settings not found.");
-            _settings = new CampSettingsInfo(
-                entity.PublicYear,
-                entity.OpenSeasons.ToList(),
-                entity.EeStartDate);
+            _settings = await WithInner(inner => inner.GetSettingsAsync(ct));
             return _settings;
         }
         finally
@@ -587,7 +565,7 @@ public sealed class CachingCampService(
                 return;
             }
         }
-        var season = await repo.GetSeasonByIdAsync(seasonId, ct);
+        var season = await WithInner(inner => inner.GetCampSeasonByIdAsync(seasonId, ct));
         if (season is not null)
             await InvalidateCampAsync(season.CampId, ct);
     }

@@ -1,8 +1,6 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -48,13 +46,7 @@ namespace Humans.Infrastructure.Services.Consent;
 /// path; they pass through to the inner service.
 /// </para>
 /// </remarks>
-[Grandfathered(
-    ruleId: "HUM0020",
-    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
-    since: "2026-05-24",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingConsentService(
-    IConsentRepository repository,
     ILegalDocumentSyncService legalDocumentSync,
     IClock clock,
     IServiceScopeFactory scopeFactory,
@@ -295,22 +287,7 @@ public sealed class CachingConsentService(
         // the union path or the single-id path applies — same logic as the
         // inner ConsentService's GetChainFollowIdsAsync, lifted to warm time
         // so it does not run on every read.
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
-
-        IReadOnlySet<Guid> versions;
-        if (sourceIds.Count == 0)
-        {
-            versions = await repository.GetExplicitlyConsentedVersionIdsAsync(userId, ct);
-        }
-        else
-        {
-            var allIds = new List<Guid>(sourceIds.Count + 1);
-            allIds.AddRange(sourceIds);
-            allIds.Add(userId);
-            versions = await repository.GetExplicitlyConsentedVersionIdsForUserIdsAsync(allIds, ct);
-        }
+        var versions = await WithInner(inner => inner.GetConsentedVersionIdsAsync(userId, ct));
 
         // Defensively freeze with a copy on every load. The repo currently
         // returns a fresh HashSet, but we don't trust that across future

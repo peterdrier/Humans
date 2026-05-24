@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
@@ -25,11 +24,6 @@ public class CachingUserServiceTests
         ?? throw new InvalidOperationException("User.DisplayName property missing.");
 
     private readonly IUserService _inner = Substitute.For<IUserService>();
-    private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
-    private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
-    private readonly IProfileRepository _profileRepo = Substitute.For<IProfileRepository>();
-    private readonly IContactFieldRepository _contactFieldRepo = Substitute.For<IContactFieldRepository>();
-    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepo = Substitute.For<ICommunicationPreferenceRepository>();
 
     private CachingUserService CreateSut()
     {
@@ -37,8 +31,6 @@ public class CachingUserServiceTests
         services.AddKeyedScoped<IUserService>(CachingUserService.InnerServiceKey, (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         return new CachingUserService(
-            _userRepo, _userEmailRepo, _profileRepo, _contactFieldRepo,
-            _communicationPreferenceRepo,
             scopeFactory, NullLogger<CachingUserService>.Instance);
     }
 
@@ -123,23 +115,12 @@ public class CachingUserServiceTests
     public async Task UpdateDisplayNameAsync_RefreshesDictEntry()
     {
         var userId = Guid.NewGuid();
+        var stale = SampleUserInfo(userId, "Before");
+        var freshInfo = SampleUserInfo(userId, "After");
 
         // Prime cache with the stale entry.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, "Before")));
-
-        // RefreshEntryAsync rebuild path: user repo + email repo + profile repo.
-        var freshUser = SampleUser(userId);
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
-        _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _profileRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(SampleProfile(userId, "After"));
+            .Returns(new ValueTask<UserInfo?>(stale), new ValueTask<UserInfo?>(freshInfo));
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId); // prime
@@ -150,8 +131,7 @@ public class CachingUserServiceTests
         fresh.Should().NotBeNull();
         fresh.BurnerName.Should().Be("After");
 
-        // Inner GetUserInfoAsync called only on the initial prime.
-        await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
         await _inner.Received(1).UpdateDisplayNameAsync(userId, "After", Arg.Any<CancellationToken>());
     }
 
@@ -229,28 +209,13 @@ public class CachingUserServiceTests
     {
         var userA = SampleUser();
         var userB = SampleUser();
-        _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { userA, userB });
-        _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _userRepo.GetEventParticipationsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
-        _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
+        _inner.GetUserInfosForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id)]);
 
         var sut = CreateSut();
         await ((IHostedService)sut).StartAsync(CancellationToken.None);
 
-        await _userRepo.Received(1).GetEventParticipationsByUserIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
-        await _userRepo.DidNotReceive().GetEventParticipationsByUserIdAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
 
         var hitA = await sut.GetUserInfoAsync(userA.Id);
         var hitB = await sut.GetUserInfoAsync(userB.Id);
@@ -265,20 +230,8 @@ public class CachingUserServiceTests
     {
         var userA = SampleUser();
         var userB = SampleUser();
-        _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { userA, userB });
-        _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _userRepo.GetEventParticipationsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
-        _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
+        _inner.GetUserInfosForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id)]);
 
         var sut = CreateSut();
 
@@ -287,10 +240,10 @@ public class CachingUserServiceTests
         all.Should().HaveCount(2);
 
         // Subsequent load-all reads do not re-drive warmup.
-        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
         var again = await sut.GetAllUserInfosAsync();
         again.Should().HaveCount(2);
-        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -303,20 +256,8 @@ public class CachingUserServiceTests
         var userA = SampleUser();
         var userB = SampleUser();
         var userC = SampleUser();
-        _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { userA, userB, userC });
-        _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _userRepo.GetEventParticipationsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
-        _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
+        _inner.GetUserInfosForCacheAsync(Arg.Any<CancellationToken>())
+            .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id), SampleUserInfo(userC.Id)]);
 
         var sut = CreateSut();
 
@@ -326,7 +267,7 @@ public class CachingUserServiceTests
         result.Should().HaveCount(3);
 
         // Bulk warm path ran exactly once.
-        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserInfosForCacheAsync(Arg.Any<CancellationToken>());
         // The inner per-id loader was never called — the bug would have
         // routed each of the three misses through inner.GetUserInfoAsync.
         await _inner.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -657,9 +598,9 @@ public class CachingUserServiceTests
         };
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [stale])));
-        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([fresh]);
+            .Returns(
+                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [stale])),
+                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [fresh])));
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId);
@@ -668,13 +609,8 @@ public class CachingUserServiceTests
 
         await _inner.Received(1).SetParticipationFromTicketSyncAsync(
             userId, 2026, ParticipationStatus.Ticketed, null, Arg.Any<CancellationToken>());
-        await _userRepo.Received(1).GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
         // Slice refresh — sibling slices and repos are not touched.
-        await _userEmailRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
-        await _profileRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
-        await _contactFieldRepo.DidNotReceive().GetByProfileIdReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _communicationPreferenceRepo.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
-
         var info = await sut.GetUserInfoAsync(userId);
         info!.EventParticipations.Should().ContainSingle(p =>
             p.Year == 2026 && p.Status == ParticipationStatus.Ticketed && p.Source == ParticipationSource.TicketSync);
@@ -695,9 +631,9 @@ public class CachingUserServiceTests
         };
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [existing])));
-        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
+            .Returns(
+                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [existing])),
+                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [])));
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId);
@@ -705,7 +641,7 @@ public class CachingUserServiceTests
         await sut.RemoveTicketSyncParticipationAsync(userId, 2026);
 
         await _inner.Received(1).RemoveTicketSyncParticipationAsync(userId, 2026, Arg.Any<CancellationToken>());
-        await _userRepo.Received(1).GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
 
         var info = await sut.GetUserInfoAsync(userId);
         info!.EventParticipations.Should().BeEmpty();

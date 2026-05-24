@@ -172,6 +172,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return camp is null ? null : CreateCampInfo(camp, includeEarlyEntryGrantCount: false);
     }
 
+    public async Task<CampInfo?> GetCampInfoAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        return camp is null ? null : CreateCampInfo(camp);
+    }
+
     public async Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
         string slug,
         int? preferredYear = null,
