@@ -52,13 +52,18 @@ namespace Humans.Application.Services.Cantina.Dtos;
 /// distinct on-site count and "no dietary preference" count.
 /// </param>
 /// <param name="People">
-/// One row per unique on-site human across the week. Ordered for the
-/// Cantina coordinator: first by earliest arrival day asc, then humans with
-/// allergies/intolerances first, then by canonical dietary preference
-/// (Omnivore, Vegetarian, Vegan, Pescatarian, unknown, Unanswered last),
-/// then by <see cref="RosterPersonDto.BurnerName"/> (ordinal) as a stable
-/// tiebreaker. Humans with no <c>VolunteerEventProfile</c> still appear
+/// One row per unique on-site human across the week. Returned in unspecified
+/// order — the web layer's <c>CantinaRosterAssembler</c> sorts for display
+/// (first arrival → has-allergies → dietary priority → cultural-collation
+/// burner name). Humans with no <c>VolunteerEventProfile</c> still appear
 /// here with empty dietary fields.
+/// </param>
+/// <param name="EventTodayDate">
+/// Today's calendar date in the active event's timezone
+/// (<c>EventSettings.TimeZoneId</c>). Null when no active event exists.
+/// Used by the view to highlight the "today" row in the per-day mini-table
+/// — must come from the service, not from view-side <c>DateTime.UtcNow</c>,
+/// so a Madrid coordinator viewing late evening doesn't see tomorrow.
 /// </param>
 public sealed record WeeklyRosterDto(
     int WeekStartOffset,
@@ -73,4 +78,5 @@ public sealed record WeeklyRosterDto(
     IReadOnlyList<RollupItemDto> IntoleranceRollup,
     IReadOnlyList<string> IntoleranceOtherEntries,
     IReadOnlyList<DayRosterSummaryDto> Days,
-    IReadOnlyList<RosterPersonDto> People);
+    IReadOnlyList<RosterPersonDto> People,
+    LocalDate? EventTodayDate);

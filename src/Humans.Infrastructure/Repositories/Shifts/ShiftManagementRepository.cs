@@ -623,6 +623,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
 
     public async Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
         Guid userId,
+        Guid eventSettingsId,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -630,7 +631,8 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .AsNoTracking()
             .Include(s => s.Shift)
             .Where(s => s.UserId == userId
-                && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
+                && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
+                && s.Shift!.Rota!.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
     }
 

@@ -75,8 +75,8 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   - **Intolerance roll-up:** same shape as allergies, over the standard set (`Lactose`, `Gluten`, `Histamine`, `FODMAP`), same "Other (N): …" treatment, same week-level dedup.
   - **Unanswered cohort:** prominent count of unique humans with no `DietaryPreference`.
 - Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans signed up that day), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`).
-- Below that, a **per-person table** with one row per unique human on-site any day that week. Columns: **Burner Name** · **Days on site** (e.g. "Mon, Tue, Wed") · **Dietary chip** · **Allergies (chips)** · **Other allergy text** · **Intolerances (chips)** · **Other intolerance text**.
-- Per-person table is sortable by name (default ascending).
+- Below that, a **per-person table** with one row per unique human on-site any day that week. Columns: **Burner Name** · **Arrives on** (single short day label, e.g. "Mon 27 May") · **No shift** (list of short day labels for days within the week with no scheduled shift) · **Dietary chip** · **Allergies (chips)** · **Other allergy text** · **Intolerances (chips)** · **Other intolerance text**.
+- Per-person table default sort: first arrival day asc → has-allergies first → canonical dietary order → cultural-collation burner name (Spanish event, names with `ñ`/`á` sort correctly).
 - Per-person table does **not** include a `MedicalConditions` column under any role.
 - If there is no active event (no `EventSettings` with a `GateOpeningDate` resolvable), the page renders an empty-state message ("no active event") instead of throwing.
 
@@ -104,10 +104,11 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - Route: `GET /Cantina/Roster/Csv?weekStartOffset=<int>` — same data scope as the HTML page's per-person table, no UI chrome, no aggregates.
 - One row per unique human across the week; columns:
   ```
-  Name,DaysOnSite,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
-  "Dev Human 007","Mon 27 May, Tue 28 May, Wed 29 May",Vegetarian,"Peanut, Tree nut","","Other","MSG"
+  Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
+  "Dev Human 007","Mon 27 May","Wed 29 May, Sat 1 Jun",Vegetarian,"Peanut, Tree nut","","Other","MSG"
   ```
-- `DaysOnSite` column lists the calendar dates the human was on-site that week, formatted as short weekday + day + short month (e.g. `Mon 27 May`), comma-and-space-separated, wrapped in double quotes.
+- `ArrivesOn` is a single short calendar label (e.g. `Mon 27 May`) for the human's earliest on-site day within the week.
+- `NoShift` lists the calendar dates within the week on which the human had no scheduled shift — formatted as short weekday + day + short month (e.g. `Wed 29 May`), comma-and-space-separated, wrapped in double quotes. Empty when the human has a scheduled shift every day of the week.
 - UTF-8 BOM (`﻿`) prepended for Excel-friendliness.
 - RFC 4180 quoting: fields containing commas, quotes, or newlines are wrapped in double quotes; embedded double quotes are escaped by doubling.
 - `Allergies` / `Intolerances` cells contain the chip values comma-and-space-separated.
@@ -201,10 +202,12 @@ The mini-summary is the only place daily numbers surface. The per-person table g
 
 Header:
 ```
-Name,DaysOnSite,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
+Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
 ```
 
-`DaysOnSite` lists the human's on-site calendar dates **within the requested week**, formatted with NodaTime pattern `ddd d MMM` (invariant culture), e.g. `Mon 27 May, Tue 28 May, Wed 29 May`. The cell is wrapped in double quotes whenever it contains a comma (always, for ≥2 days).
+`ArrivesOn` is the human's earliest on-site day within the requested week, formatted with NodaTime pattern `ddd d MMM` (invariant culture), e.g. `Mon 27 May`. `NoShift` lists the calendar dates within the same week on which the human had no scheduled shift, same format, comma-and-space-separated, wrapped in double quotes whenever the cell contains a comma. `NoShift` is empty when the human has a scheduled shift every day of the week.
+
+(Note: "no shift" is the cantina semantic — the human could still be on-site that day, working informally or at barrio. The earlier "off-site / days off" wording was renamed to avoid that misread.)
 
 One row per unique human. Otherwise the same RFC 4180 quoting rules, UTF-8 BOM, and chip-join behaviour as before.
 

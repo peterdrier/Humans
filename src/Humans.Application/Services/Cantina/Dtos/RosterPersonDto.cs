@@ -26,10 +26,13 @@ namespace Humans.Application.Services.Cantina.Dtos;
 /// had a Pending/Confirmed signup. Non-nullable: every person in the cohort
 /// has at least one on-site day by definition.
 /// </param>
-/// <param name="DaysOff">
+/// <param name="NoShift">
 /// Calendar dates within the requested week range on which this human had
 /// NO signup — the complement of their on-site days within the 7-day week.
-/// Empty when the human is on-site every day of the week. Sorted ascending.
+/// Empty when the human has a scheduled shift every day of the week. Sorted
+/// ascending. Renamed from <c>DaysOff</c>: "off" suggested "off-site", but
+/// the cantina semantic is "no scheduled shift" — the human could still be
+/// on-site (at barrio, working informally) or off-event entirely.
 /// </param>
 /// <param name="DietaryPreference">
 /// One of the canonical preferences in
@@ -47,7 +50,7 @@ public sealed record RosterPersonDto(
     Guid UserId,
     string BurnerName,
     LocalDate ArrivesOn,
-    IReadOnlyList<LocalDate> DaysOff,
+    IReadOnlyList<LocalDate> NoShift,
     string? DietaryPreference,
     IReadOnlyList<string> Allergies,
     string? AllergyOtherText,

@@ -50,15 +50,11 @@
             : string.Join(", ", nonZero.Select(i => $"{i.Label} ({i.Count})"));
     }
 
-    // Highlight "today" in the per-day mini-table when we can compute it
-    // cleanly. "Today" is interpreted in UTC here — the active event's
-    // timezone isn't on the DTO, so we accept the off-by-a-few-hours risk
-    // (the highlight is a coordinator hint, not a load-bearing decision).
-    LocalDate? todayForHighlight = null;
-    if (Model.Days.Any(d => d.CalendarDate.HasValue))
-    {
-        todayForHighlight = LocalDate.FromDateTime(DateTime.UtcNow);
-    }
+    // "Today" comes from the service in the event's timezone (see
+    // WeeklyRosterDto.EventTodayDate). Using DateTime.UtcNow here would
+    // show tomorrow's row highlighted late in the evening for a Madrid
+    // coordinator (CET is ahead of UTC).
+    var todayForHighlight = Model.EventTodayDate;
 }
 
 @section Styles {
@@ -248,7 +244,7 @@
                         <tr>
                             <th scope="col">@Localizer["Cantina_Roster_TablePerson"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableArrivesOn"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableDaysOff"]</th>
+                            <th scope="col">@Localizer["Cantina_Roster_TableNoShift"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableDietary"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableAllergies"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableAllergyOther"]</th>
@@ -265,13 +261,13 @@
                                     <span class="badge bg-secondary">@FormatDay(person.ArrivesOn)</span>
                                 </td>
                                 <td>
-                                    @if (person.DaysOff.Count == 0)
+                                    @if (person.NoShift.Count == 0)
                                     {
-                                        <span class="text-muted small">@Localizer["Cantina_Roster_DaysOff_FullWeek"]</span>
+                                        <span class="text-muted small">@Localizer["Cantina_Roster_NoShift_FullWeek"]</span>
                                     }
                                     else
                                     {
-                                        foreach (var d in person.DaysOff)
+                                        foreach (var d in person.NoShift)
                                         {
                                             <span class="badge bg-light text-muted me-1">@FormatDay(d)</span>
                                         }
@@ -284,7 +280,7 @@
                                     }
                                     else
                                     {
-                                        <span class="text-muted small">(unanswered)</span>
+                                        <span class="text-muted small">@Localizer["Cantina_Roster_Unanswered_RowLabel"]</span>
                                     }
                                 </td>
                                 <td>

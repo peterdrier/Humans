@@ -1443,15 +1443,16 @@
   <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Otras intolerancias (texto libre)</value></data>
   <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Nombre playero</value></data>
   <data name="Cantina_Roster_TableArrivesOn" xml:space="preserve"><value>Llega el</value></data>
-  <data name="Cantina_Roster_TableDaysOff" xml:space="preserve"><value>Días libres</value></data>
-  <data name="Cantina_Roster_DaysOff_FullWeek" xml:space="preserve"><value>(toda la semana)</value></data>
+  <data name="Cantina_Roster_TableNoShift" xml:space="preserve"><value>Sin turno</value></data>
+  <data name="Cantina_Roster_NoShift_FullWeek" xml:space="preserve"><value>(con turno cada día)</value></data>
+  <data name="Cantina_Roster_Unanswered_RowLabel" xml:space="preserve"><value>(sin responder)</value></data>
   <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Alimentación</value></data>
   <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Alergias</value></data>
   <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Otra alergia</value></data>
   <data name="Cantina_Roster_TableIntolerances" xml:space="preserve"><value>Intolerancias</value></data>
   <data name="Cantina_Roster_TableIntoleranceOther" xml:space="preserve"><value>Otra intolerancia</value></data>
   <data name="Cantina_Roster_DownloadCsv" xml:space="preserve"><value>Descargar CSV</value></data>
-  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>Nadie se ha apuntado a turnos esta semana todavía.</value></data>
+  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>Ningún humano se ha apuntado a turnos esta semana todavía.</value></data>
   <data name="Cantina_Roster_WeekPickerLabel" xml:space="preserve"><value>Semana</value></data>
   <data name="Cantina_Roster_ThisWeek" xml:space="preserve"><value>Esta semana</value></data>
   <data name="Cantina_Roster_PrevWeek" xml:space="preserve"><value>Semana anterior</value></data>

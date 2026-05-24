@@ -26,6 +26,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
     private readonly IShiftManagementRepository _shiftRepo;
     private readonly IProfileService _profileService;
     private readonly IUserService _userService;
+    private readonly IClock _clock;
 
     // Canonical preference labels, with the "Unanswered" pseudo-bucket.
     private static readonly string UnansweredKey = "Unanswered";
@@ -33,11 +34,13 @@ public sealed class CantinaRosterService : ICantinaRosterService
     public CantinaRosterService(
         IShiftManagementRepository shiftRepo,
         IProfileService profileService,
-        IUserService userService)
+        IUserService userService,
+        IClock clock)
     {
         _shiftRepo = shiftRepo;
         _profileService = profileService;
         _userService = userService;
+        _clock = clock;
     }
 
     public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
@@ -48,6 +51,18 @@ public sealed class CantinaRosterService : ICantinaRosterService
             : eventSettings.GateOpeningDate.PlusDays(weekStartOffset);
         var weekEndDate = weekStartDate?.PlusDays(DaysPerWeek - 1);
         var eventName = eventSettings?.EventName;
+
+        // "Today" must be computed in the event timezone — the view uses this
+        // to highlight the current row in the per-day mini-table. Falling back
+        // to view-side DateTime.UtcNow caused a Madrid coordinator to see
+        // tomorrow highlighted late in the evening (CET is ahead of UTC).
+        LocalDate? eventTodayDate = null;
+        if (eventSettings is not null)
+        {
+            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+                ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+            eventTodayDate = _clock.GetCurrentInstant().InZone(zone).Date;
+        }
 
         // Per-day fetch: 7 sequential queries. At ~500 users this is fine
         // (see CLAUDE.md scale notes). Each tuple holds (dayOffset, userIds, veps).
@@ -127,7 +142,8 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 IntoleranceRollup: EmptyRollup(DietaryOptions.IntoleranceOptions),
                 IntoleranceOtherEntries: Array.Empty<string>(),
                 Days: days,
-                People: Array.Empty<RosterPersonDto>());
+                People: Array.Empty<RosterPersonDto>(),
+                EventTodayDate: eventTodayDate);
         }
 
         var profiles = await _profileService.GetByUserIdsAsync(uniqueUserIds, ct).ConfigureAwait(false);
@@ -143,7 +159,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 uniqueVeps.Add(v);
         }
 
-        // The 7 calendar dates of the week, used to compute DaysOff as the
+        // The 7 calendar dates of the week, used to compute NoShift as the
         // complement of each person's on-site days. Empty when the week
         // has no anchor date (no active event) — in that branch we don't
         // reach this code path anyway since uniqueUserIds.Count == 0.
@@ -153,63 +169,53 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 .Select(i => weekStartDate.Value.PlusDays(i))
                 .ToArray();
 
-        // Coordinator-friendly sort: people who arrived earliest come first
-        // (longest on-site / known faces), then within an arrival day,
-        // higher-attention dietary needs surface to the top:
-        //   1. First arrival date asc (ArrivesOn).
-        //   2. Has any allergies or intolerances desc (true first).
-        //   3. Dietary preference in canonical order (Omnivore, Vegetarian,
-        //      Vegan, Pescatarian), unknown values next, unanswered last.
-        //   4. BurnerName ordinal asc (final stable tiebreaker).
-        var people = uniqueUserIds
-            .Select(id =>
+        // People are returned in unspecified order. Display sort happens at
+        // the Web layer in CantinaRosterAssembler (see
+        // memory/architecture/display-sort-in-controllers.md).
+        var people = new List<RosterPersonDto>(uniqueUserIds.Count);
+        foreach (var id in uniqueUserIds)
+        {
+            profiles.TryGetValue(id, out var profile);
+            users.TryGetValue(id, out var user);
+            vepByUserId.TryGetValue(id, out var vep);
+            var daysList = daysOnSiteByUserId[id];
+            daysList.Sort();
+
+            // ArrivesOn is non-nullable by cohort invariant: every user
+            // in daysOnSiteByUserId got there by appearing on at least
+            // one day. If weekStartDate is null we never enter this
+            // branch (early-return above), so daysList is non-empty.
+            var arrivesOn = daysList[0];
+
+            // NoShift = weekDays \ on-site days. HashSet for O(1) lookup.
+            IReadOnlyList<LocalDate> noShift;
+            if (weekDays.Length == 0)
             {
-                profiles.TryGetValue(id, out var profile);
-                users.TryGetValue(id, out var user);
-                vepByUserId.TryGetValue(id, out var vep);
-                var daysList = daysOnSiteByUserId[id];
-                daysList.Sort();
-
-                // ArrivesOn is non-nullable by cohort invariant: every user
-                // in daysOnSiteByUserId got there by appearing on at least
-                // one day. If weekStartDate is null we never enter this
-                // branch (early-return above), so daysList is non-empty.
-                var arrivesOn = daysList[0];
-
-                // DaysOff = weekDays \ on-site days. HashSet for O(1) lookup.
-                IReadOnlyList<LocalDate> daysOff;
-                if (weekDays.Length == 0)
+                noShift = Array.Empty<LocalDate>();
+            }
+            else
+            {
+                var onSiteSet = new HashSet<LocalDate>(daysList);
+                var offList = new List<LocalDate>(DaysPerWeek);
+                foreach (var day in weekDays)
                 {
-                    daysOff = Array.Empty<LocalDate>();
+                    if (!onSiteSet.Contains(day))
+                        offList.Add(day);
                 }
-                else
-                {
-                    var onSiteSet = new HashSet<LocalDate>(daysList);
-                    var offList = new List<LocalDate>(DaysPerWeek);
-                    foreach (var day in weekDays)
-                    {
-                        if (!onSiteSet.Contains(day))
-                            offList.Add(day);
-                    }
-                    daysOff = offList;
-                }
+                noShift = offList;
+            }
 
-                return new RosterPersonDto(
-                    UserId: id,
-                    BurnerName: ResolveBurnerName(profile, user),
-                    ArrivesOn: arrivesOn,
-                    DaysOff: daysOff,
-                    DietaryPreference: vep?.DietaryPreference,
-                    Allergies: vep?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
-                    AllergyOtherText: vep?.AllergyOtherText,
-                    Intolerances: vep?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
-                    IntoleranceOtherText: vep?.IntoleranceOtherText);
-            })
-            .OrderBy(p => p.ArrivesOn)
-            .ThenByDescending(HasAnyAllergyOrIntolerance)
-            .ThenBy(p => DietaryPriority(p.DietaryPreference))
-            .ThenBy(p => p.BurnerName, StringComparer.Ordinal)
-            .ToList();
+            people.Add(new RosterPersonDto(
+                UserId: id,
+                BurnerName: ResolveBurnerName(profile, user),
+                ArrivesOn: arrivesOn,
+                NoShift: noShift,
+                DietaryPreference: vep?.DietaryPreference,
+                Allergies: vep?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
+                AllergyOtherText: vep?.AllergyOtherText,
+                Intolerances: vep?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
+                IntoleranceOtherText: vep?.IntoleranceOtherText));
+        }
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueVeps, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
@@ -242,7 +248,8 @@ public sealed class CantinaRosterService : ICantinaRosterService
             IntoleranceRollup: intoleranceRollup,
             IntoleranceOtherEntries: intoleranceOther,
             Days: days,
-            People: people);
+            People: people,
+            EventTodayDate: eventTodayDate);
     }
 
     public int GetCurrentWeekStartOffsetForActiveEvent(EventSettings eventSettings, Instant now)
@@ -256,31 +263,6 @@ public sealed class CantinaRosterService : ICantinaRosterService
         var monday = todayLocal.PlusDays(-daysSinceMonday);
         return Period.Between(eventSettings.GateOpeningDate, monday, PeriodUnits.Days).Days;
     }
-
-    // Sort key for the People list's dietary tiebreaker. Canonical order
-    // (Omnivore..Pescatarian) first, then unknown/legacy values, then
-    // null/empty Unanswered last so coordinators see the answered people
-    // grouped together at the top.
-    private static int DietaryPriority(string? dietary)
-    {
-        if (string.IsNullOrEmpty(dietary)) return int.MaxValue;
-        for (var i = 0; i < DietaryOptions.DietaryPreferences.Count; i++)
-        {
-            if (string.Equals(DietaryOptions.DietaryPreferences[i], dietary, StringComparison.Ordinal))
-                return i;
-        }
-        // Unknown/legacy value — sort right before the truly-unanswered bucket.
-        return int.MaxValue - 1;
-    }
-
-    // True when the human has any allergy or intolerance signal at all
-    // (chip or free-text). Used to surface higher-attention humans to the
-    // top of the People list.
-    private static bool HasAnyAllergyOrIntolerance(RosterPersonDto p) =>
-        p.Allergies.Count > 0
-        || p.Intolerances.Count > 0
-        || !string.IsNullOrWhiteSpace(p.AllergyOtherText)
-        || !string.IsNullOrWhiteSpace(p.IntoleranceOtherText);
 
     private static string ResolveBurnerName(ProfileEntity? profile, User? user)
     {

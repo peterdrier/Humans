@@ -49,7 +49,9 @@ public sealed class CantinaController : Controller
 
         var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
         var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
-        return View(roster);
+        // Display sort is a presentation concern; the service returns People
+        // in unspecified order. See memory/architecture/display-sort-in-controllers.md.
+        return View(CantinaRosterAssembler.WithSortedPeople(roster));
     }
 
     [HttpGet("Roster/Csv")]
@@ -60,6 +62,9 @@ public sealed class CantinaController : Controller
 
         var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
         var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
+        // Match the HTML view's sort order so an exported CSV reads the same
+        // as the on-screen roster (see CantinaRosterAssembler.SortForDisplay).
+        roster = CantinaRosterAssembler.WithSortedPeople(roster);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);
         var datePart = roster.WeekStartDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";

@@ -15,15 +15,15 @@ namespace Humans.Web.Cantina;
 /// without parser warnings. Multi-select fields (allergies, intolerances)
 /// are joined with <c>", "</c> into a single cell. The <c>ArrivesOn</c>
 /// column is a single short calendar label (e.g. "Mon 27 May"); the
-/// <c>DaysOff</c> column lists short calendar labels comma-and-space-
-/// separated (empty when the human is on-site every day of the week).
+/// <c>NoShift</c> column lists short calendar labels comma-and-space-
+/// separated (empty when the human has a scheduled shift every day of the week).
 ///
 /// Layout (top to bottom):
 ///   1. "Week of &lt;Mon d MMM&gt; – &lt;Sun d MMM&gt;" header line
 ///      (skipped when no active event).
 ///   2. Per-day summary table: Day,Date,On site,Unanswered (7 rows).
 ///   3. Blank separator row.
-///   4. Per-person rows: Name,ArrivesOn,DaysOff,Dietary,Allergies,
+///   4. Per-person rows: Name,ArrivesOn,NoShift,Dietary,Allergies,
 ///      AllergyOther,Intolerances,IntoleranceOther.
 /// </summary>
 public static class CantinaRosterCsvWriter
@@ -95,7 +95,7 @@ public static class CantinaRosterCsvWriter
             sw.WriteLine();
 
             // ---- Section 2: per-person rows ----
-            sw.WriteLine("Name,ArrivesOn,DaysOff,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther");
+            sw.WriteLine("Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther");
             foreach (var p in roster.People)
             {
                 sw.WriteLine(string.Format(
@@ -103,7 +103,7 @@ public static class CantinaRosterCsvWriter
                     "{0},{1},{2},{3},{4},{5},{6},{7}",
                     Quote(p.BurnerName),
                     Quote(DayOnSitePattern.Format(p.ArrivesOn)),
-                    Quote(FormatDayList(p.DaysOff)),
+                    Quote(FormatDayList(p.NoShift)),
                     Quote(p.DietaryPreference ?? string.Empty),
                     Quote(string.Join(", ", p.Allergies)),
                     Quote(p.AllergyOtherText ?? string.Empty),
@@ -125,15 +125,23 @@ public static class CantinaRosterCsvWriter
         return string.Join(", ", parts);
     }
 
+    // Per OWASP CSV-injection guidance: cells beginning with =, +, -, @, \t, or \r
+    // are interpreted as formulas when opened in Excel/LibreOffice. Source text
+    // includes user-controlled profile fields (BurnerName, AllergyOtherText,
+    // IntoleranceOtherText), so we prepend a literal apostrophe before applying
+    // RFC 4180 quoting so the cell renders as text.
     private static string Quote(string s)
     {
         if (s.Length == 0)
             return string.Empty;
 
-        var needsQuoting = s.IndexOfAny(['"', ',', '\n', '\r']) >= 0;
-        if (!needsQuoting)
-            return s;
+        var escaped = NeedsFormulaEscape(s) ? "'" + s : s;
+        if (escaped.IndexOfAny(['"', ',', '\n', '\r']) < 0)
+            return escaped;
 
-        return "\"" + s.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+        return "\"" + escaped.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
     }
+
+    private static bool NeedsFormulaEscape(string s) =>
+        !string.IsNullOrEmpty(s) && s[0] is '=' or '+' or '-' or '@' or '\t' or '\r';
 }

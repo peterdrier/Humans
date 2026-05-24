@@ -15,7 +15,12 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
-///   <item>48→49 — added HasQualifyingCantinaSignupAsync for the dietary/medical nudge gate (issue nobodies-collective/Humans#279).</item>
+///   <item>
+///     48→49 — added HasQualifyingCantinaSignupAsync for the dietary/medical nudge gate (issue nobodies-collective/Humans#279). Authorized by Frank, 2026-05-23. To be reviewed by Peter.
+///     <para>
+///     Justification: this is a single-bool view-gate helper for the dashboard Things-to-do nudge. The composition (active event + active signup + qualifying-shift rule + future-end clock check) is non-trivial enough that inlining at the call site would duplicate the logic across ThingsToDoViewComponent and any future consumer (e.g., a reminder job). Follows the precedent of peterdrier#602 (GetDepartmentCoveragePiesAsync, same interface, similar dashboard-aggregator shape, authorized by Peter 2026-05-16).
+///     </para>
+///   </item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(48)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>49→48 — collapsed GetAllTagsAsync and SearchTagsAsync into one GetTagsAsync(query) method.</item>
 ///   <item>50→49 — tech-debt interface consolidation: collapsed GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync into one GetShiftsSummaryAsync(eventId, teamIds) method.</item>

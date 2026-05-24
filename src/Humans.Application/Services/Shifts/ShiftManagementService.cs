@@ -1721,7 +1721,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             return false;
 
         var now = _clock.GetCurrentInstant();
-        var signups = await _repo.GetUserActiveSignupsForCantinaGateAsync(userId, ct);
+        var signups = await _repo.GetUserActiveSignupsForCantinaGateAsync(userId, eventSettings.Id, ct);
 
         return signups.Any(s =>
             s.Shift is not null
