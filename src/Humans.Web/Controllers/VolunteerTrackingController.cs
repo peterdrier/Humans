@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;
@@ -114,6 +115,7 @@ public sealed class VolunteerTrackingController(
         string? startDate,
         string? endDate,
         ShiftPeriod? period,
+        BuildSubPeriod? subPeriod = null,
         CancellationToken ct = default)
     {
         var eventSettings = await shiftManagementService.GetActiveAsync();
@@ -128,11 +130,18 @@ public sealed class VolunteerTrackingController(
         var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(period, parsedStart, parsedEnd);
 
         // Resolve range:
+        //   period=Build + subPeriod set → narrow to that sub-period's day-offset window
         //   period set → period's window (Build/Event/Strike each have distinct windows)
         //   period null + explicit dates → those dates
         //   period null + no dates → whole event (Build → Strike inclusive)
         LocalDate rangeStart, rangeEnd;
-        if (period.HasValue)
+        if (period == ShiftPeriod.Build && subPeriod.HasValue)
+        {
+            var (startOffset, endExclusive) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, eventSettings);
+            rangeStart = eventSettings.GateOpeningDate.PlusDays(startOffset);
+            rangeEnd = eventSettings.GateOpeningDate.PlusDays(endExclusive - 1);
+        }
+        else if (period.HasValue)
         {
             (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(period.Value, eventSettings);
         }

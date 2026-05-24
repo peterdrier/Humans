@@ -1,6 +1,25 @@
 @model Humans.Web.Models.VolunteerTracking.VolunteerTrackingExportFormViewModel
 @using Humans.Domain.Enums
 
+@{
+    string PeriodLabel(ShiftPeriod p) => p switch
+    {
+        ShiftPeriod.Build => Localizer["ShiftDash_PeriodFilter_BuildDays"].Value,
+        ShiftPeriod.Event => Localizer["ShiftDash_PeriodFilter_EventShifts"].Value,
+        ShiftPeriod.Strike => Localizer["ShiftDash_PeriodFilter_Strike"].Value,
+        _ => p.ToString(),
+    };
+    string SubPeriodLabel(BuildSubPeriod s) => s switch
+    {
+        BuildSubPeriod.FirstCrew => Localizer["ShiftDash_SubPeriodFilter_FirstCrew"].Value,
+        BuildSubPeriod.SetupWeek => Localizer["ShiftDash_SubPeriodFilter_SetupWeek"].Value,
+        BuildSubPeriod.PreEventWeek => Localizer["ShiftDash_SubPeriodFilter_PreEventWeek"].Value,
+        BuildSubPeriod.FinishingWeekend => Localizer["ShiftDash_SubPeriodFilter_FinishingWeekend"].Value,
+        _ => s.ToString(),
+    };
+    var subPeriodHidden = Model.SelectedPeriod != ShiftPeriod.Build;
+}
+
 <details class="card mb-4" open>
     <summary class="card-header h5 mb-0" style="cursor: pointer;">
         @Localizer["VolTrack_Export_Title"]
@@ -23,7 +42,17 @@
                     <option value="">@Localizer["VolTrack_Export_PeriodCustom"]</option>
                     @foreach (var p in Enum.GetValues<ShiftPeriod>())
                     {
-                        <option value="@p" selected="@(Model.SelectedPeriod == p)">@p</option>
+                        <option value="@p" selected="@(Model.SelectedPeriod == p)">@PeriodLabel(p)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 @(subPeriodHidden ? "d-none" : "")" id="exp-subperiod-wrapper">
+                <label class="form-label" for="exp-subperiod">@Localizer["ShiftDash_SubPeriodFilter_Label"]</label>
+                <select id="exp-subperiod" name="subPeriod" class="form-select" disabled="@subPeriodHidden">
+                    <option value="">@Localizer["ShiftDash_SubPeriodFilter_All"]</option>
+                    @foreach (var s in Enum.GetValues<BuildSubPeriod>())
+                    {
+                        <option value="@s" selected="@(Model.SelectedSubPeriod == s)">@SubPeriodLabel(s)</option>
                     }
                 </select>
             </div>
@@ -46,3 +75,19 @@
         </form>
     </div>
 </details>
+
+<script>
+    (function () {
+        var periodSelect = document.getElementById('exp-period');
+        var subWrapper = document.getElementById('exp-subperiod-wrapper');
+        var subSelect = document.getElementById('exp-subperiod');
+        if (!periodSelect || !subWrapper || !subSelect) return;
+        var buildValue = '@ShiftPeriod.Build';
+        periodSelect.addEventListener('change', function () {
+            var isBuild = periodSelect.value === buildValue;
+            subWrapper.classList.toggle('d-none', !isBuild);
+            subSelect.disabled = !isBuild;
+            if (!isBuild) subSelect.value = '';
+        });
+    })();
+</script>

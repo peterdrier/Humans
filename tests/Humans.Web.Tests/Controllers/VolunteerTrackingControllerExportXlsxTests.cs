@@ -54,12 +54,52 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             startDate: null,
             endDate: null,
             period: ShiftPeriod.Event,
+            subPeriod: null,
             ct: default);
 
         var file = result.Should().BeOfType<FileContentResult>().Subject;
         file.ContentType.Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         file.FileDownloadName.Should().Be(model.SuggestedFileName);
         file.FileContents.Should().NotBeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ExportXlsx_BuildPeriodWithSetupWeekSubPeriod_NarrowsRangeToSubPeriodBounds()
+    {
+        var exportService = Substitute.For<IVolunteerTrackingExportService>();
+        VolunteerExportRequest? captured = null;
+        var model = new VolunteerExportModel(
+            MethodologyBlurb: "M",
+            FilterSummary: "F",
+            GeneratedAtUtc: Instant.FromUtc(2026, 5, 23, 0, 0),
+            GeneratedByName: "Actor",
+            Days: [new LocalDate(2026, 6, 23)],
+            Groups: [],
+            TotalsPerDay: [0],
+            SuggestedFileName: "volunteer-tracking-setup-week.xlsx");
+        exportService
+            .BuildAsync(Arg.Do<VolunteerExportRequest>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(model);
+
+        var sut = BuildController(exportService);
+
+        var result = await sut.ExportXlsx(
+            departmentId: null,
+            startDate: null,
+            endDate: null,
+            period: ShiftPeriod.Build,
+            subPeriod: BuildSubPeriod.SetupWeek,
+            ct: default);
+
+        result.Should().BeOfType<FileContentResult>();
+        captured.Should().NotBeNull();
+
+        // BuildController seeds GateOpeningDate=2026-07-09 with the EventSettings
+        // defaults for sub-period offsets (SetupWeek=-16, PreEventWeek=-9). So
+        // SetupWeek bounds → [Gate-16, Gate-10] inclusive (end is exclusive-1).
+        var gate = new LocalDate(2026, 7, 9);
+        captured!.StartDate.Should().Be(gate.PlusDays(-16));
+        captured.EndDate.Should().Be(gate.PlusDays(-10));
     }
 
     private static VolunteerTrackingController BuildController(IVolunteerTrackingExportService exportService)
