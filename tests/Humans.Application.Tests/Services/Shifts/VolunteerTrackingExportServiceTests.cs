@@ -16,8 +16,8 @@ public sealed class VolunteerTrackingExportServiceTests
 {
     // Fixed test event: Elsewhere 2026 in Europe/Madrid, with stable IDs for assertions.
     private static readonly Guid EventId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-    private static readonly Guid TeamA   = Guid.Parse("11111111-0000-0000-0000-000000000000");
-    private static readonly Guid TeamB   = Guid.Parse("22222222-0000-0000-0000-000000000000");
+    private static readonly Guid TeamA = Guid.Parse("11111111-0000-0000-0000-000000000000");
+    private static readonly Guid TeamB = Guid.Parse("22222222-0000-0000-0000-000000000000");
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 5, 23, 12, 0);
     private static readonly LocalDate Day1 = new(2026, 7, 7);
@@ -299,7 +299,9 @@ public sealed class VolunteerTrackingExportServiceTests
             departments: [(TeamA, "TeamA"), (TeamB, "TeamB")],
             playaNames: new Dictionary<Guid, string>
             {
-                [Alice] = "Alice", [Bob] = "Bob", [Carol] = "Carol",
+                [Alice] = "Alice",
+                [Bob] = "Bob",
+                [Carol] = "Carol",
             });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
@@ -329,7 +331,8 @@ public sealed class VolunteerTrackingExportServiceTests
             departments: [(TeamA, "TeamA")],
             playaNames: new Dictionary<Guid, string>
             {
-                [Alice] = "Alice", [Zara] = "Zara",
+                [Alice] = "Alice",
+                [Zara] = "Zara",
             });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
