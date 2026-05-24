@@ -8,7 +8,6 @@ using ApplicationDecisionService = Humans.Application.Services.Governance.Applic
 using BudgetService = Humans.Application.Services.Budget.BudgetService;
 using ExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
 using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
-using ProfilesProfileService = Humans.Application.Services.Profiles.ProfileService;
 using ProfilesAccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
@@ -71,7 +70,6 @@ public class GdprExportDependencyInjectionTests
     /// </summary>
     public static readonly Type[] ExpectedContributorTypes =
     [
-        typeof(ProfilesProfileService),
         typeof(UsersUserService),
         typeof(ProfilesAccountMergeService),
         typeof(ApplicationDecisionService),

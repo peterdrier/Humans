@@ -152,7 +152,6 @@ src/Humans.Web/HangfireAuthorizationFilter.cs:User#2
 src/Humans.Web/Hubs/CityPlanningHub.cs:User#1
 src/Humans.Web/Hubs/CityPlanningHub.cs:User#2
 src/Humans.Web/Hubs/CityPlanningHub.cs:User#3
-src/Humans.Web/Models/ProfileViewModel.cs:User#1
 src/Humans.Web/Models/ShiftViewModels.cs:User#1
 src/Humans.Web/Models/TeamViewModels.cs:User#1
 src/Humans.Web/Models/TeamViewModels.cs:User#2
