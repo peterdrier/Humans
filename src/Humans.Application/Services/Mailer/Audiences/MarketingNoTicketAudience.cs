@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
@@ -20,7 +21,12 @@ public sealed class MarketingNoTicketAudience(
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
         var ticketHolders = (await tickets.GetTicketOrdersAsync(ct))
-            .CurrentEventTicketHolderUserIds();
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .Where(a => a.MatchedUserId.HasValue
+                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.MatchedUserId!.Value)
+            .ToHashSet();
         var allUsers = await Users.GetAllUserInfosAsync(ct);
         return allUsers
             .Where(u => u.MarketingOptedOut == false && !ticketHolders.Contains(u.Id))

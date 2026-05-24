@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
@@ -19,6 +20,12 @@ public sealed class HasTicketAudience(
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
         var orders = await tickets.GetTicketOrdersAsync(ct);
-        return orders.CurrentEventTicketHolderUserIds();
+        return orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .Where(a => a.MatchedUserId.HasValue
+                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.MatchedUserId!.Value)
+            .ToHashSet();
     }
 }

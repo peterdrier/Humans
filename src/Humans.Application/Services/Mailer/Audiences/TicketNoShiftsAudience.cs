@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
@@ -29,7 +30,12 @@ public sealed class TicketNoShiftsAudience(
     {
         // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketServiceRead.
         var ticketHolders = (await tickets.GetTicketOrdersAsync(ct))
-            .CurrentEventTicketHolderUserIds();
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .Where(a => a.MatchedUserId.HasValue
+                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.MatchedUserId!.Value)
+            .ToHashSet();
         if (ticketHolders.Count == 0) return new HashSet<Guid>();
 
         var views = await shiftView.GetUsersAsync(ticketHolders, ct);

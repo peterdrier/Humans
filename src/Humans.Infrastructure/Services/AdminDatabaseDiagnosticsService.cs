@@ -1,8 +1,8 @@
-using Humans.Application;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
@@ -21,9 +21,19 @@ public sealed class AdminDatabaseDiagnosticsService(
     {
         var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
-        IReadOnlySet<Guid> ticketUserIds = year.HasValue
-            ? ticketOrders.MatchedUserIdsForYear(year.Value)
-            : ticketOrders.AllMatchedUserIds();
+        var start = year.HasValue ? Instant.FromUtc(year.Value, 1, 1, 0, 0) : default;
+        var end = year.HasValue ? Instant.FromUtc(year.Value + 1, 1, 1, 0, 0) : default;
+        IReadOnlySet<Guid> ticketUserIds = ticketOrders
+            .Where(o => !year.HasValue || (o.PurchasedAt >= start && o.PurchasedAt < end))
+            .SelectMany(o => o.MatchedUserId.HasValue
+                ? o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value)
+                    .Append(o.MatchedUserId.Value)
+                : o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value))
+            .ToHashSet();
 
         var withProfile = 0;
         var withTicket = 0;
@@ -41,7 +51,12 @@ public sealed class AdminDatabaseDiagnosticsService(
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var years = ticketOrders.MatchedTicketYears();
+        var years = ticketOrders
+            .Where(o => o.MatchedUserId.HasValue)
+            .Select(o => o.PurchasedAt.InUtc().Year)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToList();
 
         return new AudienceSegmentation(
             TotalAccounts: allUsers.Count,

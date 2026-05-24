@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -129,7 +128,8 @@ public class FinanceController(
             }
 
             var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
-                .GrossPaidRevenue();
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                .Sum(o => o.TotalAmount);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }
