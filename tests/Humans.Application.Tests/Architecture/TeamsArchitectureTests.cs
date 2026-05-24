@@ -21,12 +21,9 @@ namespace Humans.Application.Tests.Architecture;
 /// <item><description><c>TeamService</c> never imports <c>Microsoft.EntityFrameworkCore</c> (structurally enforced by the project reference graph — this test acts as a defence-in-depth).</description></item>
 /// <item><description><see cref="ITeamRepository"/> lives in <c>Humans.Application.Interfaces.Repositories</c> and has a sealed EF-backed implementation.</description></item>
 /// </list>
-/// Teams follows Option A (no caching decorator): the section uses an
-/// in-service short-TTL <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/>
-/// projection keyed on <c>CacheKeys.ActiveTeams</c>, same pattern the Camps
-/// section uses per design-rules §15f / §15i — Camps entry. The decorator
-/// split can be layered on later without changing the <see cref="ITeamService"/>
-/// surface if profiling warrants it.
+/// Teams uses the §15 caching decorator pattern: <see cref="CachingTeamService"/>
+/// wraps the keyed inner <see cref="ITeamService"/> and exposes the read split
+/// via <see cref="ITeamServiceRead"/>.
 /// </summary>
 public class TeamsArchitectureTests
 {
@@ -94,11 +91,12 @@ public class TeamsArchitectureTests
     /// <summary>
     /// Production code outside the Teams section namespace must not inject
     /// <see cref="ITeamRepository"/> directly. Cross-section reads route through
-    /// the public <see cref="ITeamService"/> surface (decorated by
-    /// <see cref="CachingTeamService"/>) so they hit the cache instead of the DB
-    /// on every request. Repository injection inside the Teams section
-    /// (<c>TeamService</c>, <c>CachingTeamService</c>, and the EF impl itself) is
-    /// the intended layering and is allowed. Scans all three production
+    /// the public <see cref="ITeamService"/> / <see cref="ITeamServiceRead"/>
+    /// surface (decorated by <see cref="CachingTeamService"/>) so they hit the
+    /// cache instead of the DB on every request. Repository injection is allowed
+    /// only in the scoped inner <c>TeamService</c> and the EF impl itself; caching
+    /// decorators must resolve the keyed inner instead of injecting repositories
+    /// directly (HUM0020). Scans all three production
     /// assemblies — Application, Infrastructure, and Web — so a future regression
     /// where a controller, page handler, or filter takes <see cref="ITeamRepository"/>
     /// directly fails this test.
@@ -148,10 +146,8 @@ public class TeamsArchitectureTests
 
         // Teams section homes for production code that legitimately injects ITeamRepository:
         //   - Humans.Application.Services.Teams.*   (TeamService and helpers)
-        //   - Humans.Infrastructure.Services.Teams.* (CachingTeamService decorator)
         //   - Humans.Infrastructure.Repositories.Teams.* (the EF impl itself)
         return ns.StartsWith("Humans.Application.Services.Teams", StringComparison.Ordinal)
-            || ns.StartsWith("Humans.Infrastructure.Services.Teams", StringComparison.Ordinal)
             || ns.StartsWith("Humans.Infrastructure.Repositories.Teams", StringComparison.Ordinal);
     }
 

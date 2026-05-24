@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
@@ -11,7 +12,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// </summary>
 public sealed class MarketingNoTicketAudience(
     IUserServiceRead users,
-    ITicketQueryService tickets) : MailerAudienceBase(users)
+    ITicketServiceRead tickets) : MailerAudienceBase(users)
 {
     public override string Key => "marketing-no-ticket";
     public override string DisplayName => "Marketing opt-ins without a ticket";
@@ -19,7 +20,13 @@ public sealed class MarketingNoTicketAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
+        var ticketHolders = (await tickets.GetTicketOrdersAsync(ct))
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .Where(a => a.MatchedUserId.HasValue
+                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.MatchedUserId!.Value)
+            .ToHashSet();
         var allUsers = await Users.GetAllUserInfosAsync(ct);
         return allUsers
             .Where(u => u.MarketingOptedOut == false && !ticketHolders.Contains(u.Id))

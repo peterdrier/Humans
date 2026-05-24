@@ -1,15 +1,16 @@
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Mailer.Audiences;
 
 /// <summary>
 /// "Humans - Has Ticket" — humans with a Valid/CheckedIn matched ticket
 /// attendee in the active vendor event (buyer-only excluded — see
-/// <see cref="ITicketQueryService.GetUserIdsWithTicketsAsync"/>).
+/// derived from the ticket order projection).
 /// </summary>
 public sealed class HasTicketAudience(
-    ITicketQueryService tickets,
+    ITicketServiceRead tickets,
     IUserServiceRead users) : MailerAudienceBase(users)
 {
     public override string Key => "has-ticket";
@@ -18,7 +19,13 @@ public sealed class HasTicketAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        _ = ct;
-        return await tickets.GetUserIdsWithTicketsAsync();
+        var orders = await tickets.GetTicketOrdersAsync(ct);
+        return orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .Where(a => a.MatchedUserId.HasValue
+                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.MatchedUserId!.Value)
+            .ToHashSet();
     }
 }

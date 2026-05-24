@@ -249,5 +249,6 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
 
         public Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(0);
+
     }
 }

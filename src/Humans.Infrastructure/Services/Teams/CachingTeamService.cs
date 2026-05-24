@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Teams;
@@ -25,7 +24,6 @@ namespace Humans.Infrastructure.Services.Teams;
 /// count.
 /// </summary>
 public sealed class CachingTeamService(
-    ITeamRepository teamRepository,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamInfo>("Team.TeamInfo", warmOnStartup: true, logger),
     ITeamService, IUserMerge
@@ -955,50 +953,22 @@ public sealed class CachingTeamService(
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var teams = await teamRepository.GetAllWithMembersAsync(ct);
-        var allUserIds = teams
-            .SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-            .Distinct()
-            .ToList();
-
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
-        var users = allUserIds.Count == 0
-            ? new Dictionary<Guid, Application.UserInfo>()
-            : await userService.GetUserInfosAsync(allUserIds, ct);
-        var managementHolders = await teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
-        var roleDefinitionsByTeam = await teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
-
-        // Build the child-team index once from the parent FK so each TeamInfo
-        // can cheaply enumerate its children without walking the whole map.
-        var childIdsByParent = teams
-            .Where(t => t.ParentTeamId.HasValue)
-            .GroupBy(t => t.ParentTeamId!.Value)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
-
-        // Bulk pending-request counts so TeamInfo.PendingRequestCount is part of
-        // the cache projection. Teams with zero pending requests are absent from
-        // the dictionary; BuildTeamInfo defaults to 0 in that case.
-        var pendingCounts = await teamRepository.GetPendingCountsByTeamIdsAsync(
-            teams.Select(t => t.Id).ToList(), ct);
+        var teams = await WithInner(inner => inner.GetTeamsAsync(ct));
 
         // No defensive Clear() — InvalidateTeamsCache already emptied the cache
         // before flipping the warmed flag to false (or the cache is empty on first
         // startup). Set is upsert, so any rare leftover entry is overwritten.
-        foreach (var team in teams)
-            Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
+        foreach (var (teamId, team) in teams)
+            Set(teamId, team);
 
         // Rebuild the inverse user→teams index from scratch. The base coalesces
         // WarmAllAsync under its warm semaphore so this body runs serially;
         // readers wait at EnsureWarmedAsync until both maps are populated.
         _teamIdsByUserId.Clear();
-        foreach (var team in teams)
+        foreach (var team in teams.Values)
         {
             foreach (var member in team.Members)
             {
-                if (member.LeftAt is not null)
-                    continue;
-
                 var set = _teamIdsByUserId.GetOrAdd(member.UserId, static _ => new HashSet<Guid>());
                 set.Add(team.Id);
             }

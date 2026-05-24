@@ -473,7 +473,7 @@
                     </div>
                     <div class="wg-card-note">Renders one held ticket as a physical admission stub. Shared by the transfer wizard, the <code>/Profile/Me</code> ticket card, and the homepage. A pending outgoing transfer shows a diagonal "Transfer pending" stamp; voided tickets render muted with a struck name. The event label is currently a constant (open item to source from the active event).</div>
                     @ParamsBlock(
-                        ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, <code>VendorTicketId</code> serial, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>) from <code>ITicketQueryService</code>")
+                        ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, <code>VendorTicketId</code> serial, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>) from <code>ITicketServiceRead</code>")
                     )
                     <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
                         <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-001", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null))" />

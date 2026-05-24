@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 [Route("Tickets/Admin/Transfers")]
 public sealed class TicketTransferAdminController(
     ITicketTransferService service,
-    ITicketQueryService ticketQueryService,
+    ITicketService ticketQueryService,
     IUserServiceRead userService,
     ILogger<TicketTransferAdminController> logger) : HumansControllerBase(userService)
 {

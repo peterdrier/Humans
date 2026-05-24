@@ -36,7 +36,7 @@ public class AccountDeletionServiceTests
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
@@ -52,6 +52,8 @@ public class AccountDeletionServiceTests
     {
         _userService.AnonymizeProfileForDeletionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserProfileAnonymizeResult(false, null, null));
+        _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
 
         _service = new AccountDeletionService(
             _userService,
@@ -174,8 +176,12 @@ public class AccountDeletionServiceTests
         var user = MakeUser(userId);
         var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(60));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        _ticketQueryService.HasCurrentEventTicketAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
-        _ticketQueryService.GetPostEventHoldDateAsync(Arg.Any<CancellationToken>()).Returns(holdDate);
+        _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(
+                1,
+                [],
+                HasCurrentEventTicket: true,
+                PostEventHoldDate: holdDate));
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());

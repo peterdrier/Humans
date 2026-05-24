@@ -385,4 +385,3 @@ public sealed class LegalDocumentSyncService(
         return files.GetValueOrDefault("es");
     }
 }
-

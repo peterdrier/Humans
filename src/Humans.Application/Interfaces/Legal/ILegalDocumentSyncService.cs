@@ -77,6 +77,7 @@ public interface ILegalDocumentSyncService : IApplicationService
     /// read <c>legal_documents</c> directly.
     /// </summary>
     Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
+
 }
 
 public sealed record ActiveRequiredLegalDocumentSnapshot(

@@ -1218,9 +1218,6 @@ public sealed class TeamService(
         var team = await repo.GetByIdAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 
-        if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot add role definitions to system teams");
-
         ValidateSlotCountAndPriorities(slotCount, priorities);
         ValidateRoleName(name);
 
@@ -1271,6 +1268,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1302,7 +1300,7 @@ public sealed class TeamService(
         definition.SortOrder = sortOrder;
 
         var usersNeedingShiftAuthorizationInvalidation =
-            definition.Team.SystemTeamType == SystemTeamType.None &&
+            team.SystemTeamType == SystemTeamType.None &&
             definition.IsManagement != isManagement &&
             definition.Assignments.Count > 0
                 ? definition.Assignments
@@ -1333,7 +1331,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{name}' updated for team {definition.Team.Name}",
+            $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
@@ -1348,6 +1346,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         if (definition.IsManagement && definition.Assignments.Count > 0)
             throw new InvalidOperationException("Cannot delete the management role while members are assigned to it. Unassign all members first.");
@@ -1360,7 +1359,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{definition.Name}' deleted from team {definition.Team.Name}",
+            $"Role definition '{definition.Name}' deleted from team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
     }
@@ -1371,6 +1370,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1410,7 +1410,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
-            $"IsManagement set to {isManagement} on role '{definition.Name}' in {definition.Team.Name}",
+            $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
@@ -1537,6 +1537,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1549,6 +1550,10 @@ public sealed class TeamService(
         GoogleSyncOutboxEvent? outboxEvent = null;
         if (existingMember is null)
         {
+            if (team.IsSystemTeam)
+                throw new InvalidOperationException(
+                    "Cannot add members to system teams via role assignment; only existing members can be assigned to roles on system teams.");
+
             autoAddMember = new TeamMember
             {
                 Id = Guid.NewGuid(),
@@ -1576,14 +1581,14 @@ public sealed class TeamService(
         {
             await auditLogService.LogAsync(
                 AuditAction.TeamMemberAdded, nameof(Team), definition.TeamId,
-                $"Auto-added to {definition.Team.Name} via role assignment",
+                $"Auto-added to {team.Name} via role assignment",
                 actorUserId,
                 relatedEntityId: targetUserId, relatedEntityType: nameof(User));
         }
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
-            $"Assigned to role '{definition.Name}' in {definition.Team.Name}",
+            $"Assigned to role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
@@ -1598,6 +1603,7 @@ public sealed class TeamService(
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
@@ -1608,7 +1614,7 @@ public sealed class TeamService(
 
         await auditLogService.LogAsync(
             AuditAction.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
-            $"Unassigned from role '{definition.Name}' in {definition.Team.Name}",
+            $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
@@ -1772,10 +1778,12 @@ public sealed class TeamService(
         var sourceMemberships = await GetUserTeamsAsync(sourceUserId, cancellationToken);
         var targetMemberships = await GetUserTeamsAsync(targetUserId, cancellationToken);
         var targetTeamIds = targetMemberships.Select(m => m.TeamId).ToHashSet();
+        var sourceTeamsById = await repo.GetByIdsWithParentsAsync(
+            sourceMemberships.Select(m => m.TeamId).Distinct().ToList(), cancellationToken);
 
         foreach (var membership in sourceMemberships)
         {
-            if (membership.Team.IsSystemTeam)
+            if (sourceTeamsById.TryGetValue(membership.TeamId, out var team) && team.IsSystemTeam)
                 continue;
 
             if (!targetTeamIds.Contains(membership.TeamId))
@@ -1794,10 +1802,18 @@ public sealed class TeamService(
     {
         var memberships = await repo.GetAllMembershipsForUserAsync(userId, ct);
         var joinRequests = await repo.GetAllJoinRequestsForUserAsync(userId, ct);
+        var teamIds = memberships.Select(tm => tm.TeamId)
+            .Concat(joinRequests.Select(tjr => tjr.TeamId))
+            .Distinct()
+            .ToList();
+        var teamsById = await repo.GetByIdsWithParentsAsync(teamIds, ct);
+
+        string GetTeamName(Guid teamId) =>
+            teamsById.TryGetValue(teamId, out var team) ? team.Name : string.Empty;
 
         var membershipSlice = new UserDataSlice(GdprExportSections.TeamMemberships, memberships.Select(tm => new
         {
-            TeamName = tm.Team.Name,
+            TeamName = GetTeamName(tm.TeamId),
             tm.Role,
             JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
             LeftAt = tm.LeftAt.ToInvariantInstantString(),
@@ -1808,16 +1824,14 @@ public sealed class TeamService(
             })
         }).ToList());
 
-#pragma warning disable CS0618 // TeamJoinRequest.Team — in-section nav read for GDPR export.
         var joinRequestSlice = new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
         {
-            TeamName = tjr.Team.Name,
+            TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
             tjr.Message,
             RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
             ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
         }).ToList());
-#pragma warning restore CS0618
 
         return [membershipSlice, joinRequestSlice];
     }
@@ -1833,15 +1847,25 @@ public sealed class TeamService(
             : await UserService.GetUserInfosAsync(allUserIds, ct);
         var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
+        var childIdsByParent = teams
+            .Where(t => t.ParentTeamId.HasValue)
+            .GroupBy(t => t.ParentTeamId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
+        var pendingCounts = await repo.GetPendingCountsByTeamIdsAsync(
+            teams.Select(t => t.Id).ToList(), ct);
 
-        return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam));
+        return teams.ToDictionary(
+            t => t.Id,
+            t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
     }
 
     private static TeamInfo BuildTeamInfo(
         Team team,
         IReadOnlyDictionary<Guid, UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
+        IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent,
+        IReadOnlyDictionary<Guid, int> pendingCounts) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -1879,7 +1903,14 @@ public sealed class TeamService(
         ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
         RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
             ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
-            : null);
+            : null,
+        ChildTeamIds: childIdsByParent.TryGetValue(team.Id, out var childIds) ? childIds : null,
+        ShowCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+        PageContent: team.PageContent,
+        CallsToAction: team.CallsToAction,
+        PageContentUpdatedAt: team.PageContentUpdatedAt,
+        PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0);
 
     private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
         new(
@@ -1920,6 +1951,14 @@ public sealed class TeamService(
     {
         foreach (var userId in userIds.Distinct())
             shiftAuthInvalidator.Invalidate(userId);
+    }
+
+    private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
+    {
+        var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
+        return teamsById.TryGetValue(definition.TeamId, out var team)
+            ? team
+            : throw new InvalidOperationException($"Team {definition.TeamId} not found");
     }
 
     private static bool IsShiftAuthorizationAssignment(TeamRoleAssignment assignment) =>

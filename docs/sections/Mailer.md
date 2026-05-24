@@ -65,7 +65,7 @@ All routes are `AdminOnly`.
 
 - **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
 - **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads `IUserService.GetByIdAsync` (tombstone follow), `IUserService.GetCountByContactSourceAsync`.
-- **Tickets**: `ITicketQueryService.GetUserIdsWithTicketsAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`, `HasTicketAudience`, and `MarketingNoTicketAudience`. Scoped to the active vendor event by the cached decorator (see `TicketSyncState.VendorEventId`).
+- **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`, `HasTicketAudience`, and `MarketingNoTicketAudience` is derived from the current-event `TicketOrderInfo` projection.
 - **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`).
 - **Users**: `IUserService.GetAllUserInfosAsync` — read by `MailerAudienceBase` to drop explicit Marketing opt-outs from *every* audience, and by `MarketingAudience` / `MarketingNoTicketAudience` to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`).
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
@@ -78,5 +78,5 @@ All routes are `AdminOnly`.
 
 - Services live in `Humans.Application.Services.Mailer/` and never import `Microsoft.EntityFrameworkCore`. `MailerLiteClient` lives in `Humans.Infrastructure.Services.Mailer/` (it owns the `HttpClient` + JSON parsing). `MailerAudienceSyncJob` lives in `Humans.Infrastructure.Jobs/`.
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at 500 users.
-- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketQueryService`, `IShiftView`, `IAuditLogService`.
+- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketServiceRead`, `IShiftView`, `IAuditLogService`.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/MailerArchitectureTests.cs` pins: namespace, no-EF on `MailerImportService` and `MailerAudienceSyncService`, allowed-write surface on `IMailerLiteService`, audience group-name prefix + uniqueness, and no cross-section repository injection in `MailerImportService`. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard.

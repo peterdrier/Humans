@@ -157,7 +157,7 @@
                             </td>
                             <td>@(item.ResponsibleTeamName ?? "\u2014")</td>
                             <td class="text-muted">@(item.Notes ?? "")</td>
-                            <td>@item.ExpectedDate?.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+                            <td>@item.ExpectedDate?.ToDisplayDate()</td>
                             @if (Model.CanEdit)
                             {
                                 <td class="text-end">
@@ -352,7 +352,7 @@
                                     <span class="badge bg-success">VAT Credit</span>
                                 }
                             </td>
-                            <td>@vat.SettlementDate.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+                            <td>@vat.SettlementDate.ToDisplayDate()</td>
                         </tr>
                     }
                 </tbody>

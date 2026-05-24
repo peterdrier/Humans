@@ -19,7 +19,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 ## Today vs Planned
 
-**Today** (built): `FinanceController` at `/Finance/*` is the treasurer's window over Budget data — Budget years, groups, categories, line items, ticketing projections, audit log, cash-flow view. Gated on `FinanceAdmin` or `Admin`. All reads/writes route through `IBudgetService`, `ITicketingBudgetService`, `ITicketQueryService`. Finance owns no tables and no Application-layer services yet.
+**Today** (built): `FinanceController` at `/Finance/*` is the treasurer's window over Budget data — Budget years, groups, categories, line items, ticketing projections, audit log, cash-flow view. Gated on `FinanceAdmin` or `Admin`. All reads/writes route through `IBudgetService`, `ITicketingBudgetService`, `ITicketServiceRead`. Finance owns no tables and no Application-layer services yet.
 
 **Planned** (specified, not yet implemented): external-accounting reconciliation via Holded integration — pull purchase docs from Holded each cycle, match to `BudgetCategory` via the `{group-slug}-{category-slug}` tag convention, surface unmatched docs in a treasurer queue, and write resolved tags back to Holded. Concepts, data model, and the four `/Finance/Holded*` routes below describe the **target shape**, not current code.
 
@@ -184,7 +184,7 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 ## Cross-Section Dependencies
 
 - **(current)** **Budget:** `IBudgetService` (read + write — all budget year/group/category/line-item mutations in `FinanceController` route through it), `ITicketingBudgetService` (ticketing projection and actuals sync).
-- **(current)** **Tickets:** `ITicketQueryService.GetGrossTicketRevenueAsync` (cash flow view).
+- **(current)** **Tickets:** `ITicketServiceRead.GetTicketOrdersAsync` (cash flow view derives gross paid revenue from `TicketOrderInfo`).
 - *(target)* **Budget:** `IBudgetService.GetCategoryBySlugAsync`, `GetYearForDateAsync`, `GetCategoriesByYearAsync`, `GetTagInventoryAsync` — all read-only from the Holded sync path.
 - *(target)* **Audit Log:** `IAuditLogService.LogAsync` — manual-reassignment audit trail.
 
@@ -197,7 +197,7 @@ Budget never calls into Finance.
 **Status:** (C) Pre-migration — `FinanceController` exists as a Budget-backed UI shell; Finance-domain services, entities, repository, and job have not been implemented.
 
 > **What currently exists:**
-> - `src/Humans.Web/Controllers/FinanceController.cs` — Budget admin + treasurer view. Injects `IBudgetService`, `ITicketingBudgetService`, `ITicketQueryService`. Zero Finance-owned infrastructure.
+> - `src/Humans.Web/Controllers/FinanceController.cs` — Budget admin + treasurer view. Injects `IBudgetService`, `ITicketingBudgetService`, `ITicketServiceRead`. Zero Finance-owned infrastructure.
 > - `PolicyNames.FinanceAdminOrAdmin` and `RoleNames.FinanceAdmin` — role + policy wired in `AuthorizationPolicyExtensions.cs`.
 >
 > **What does not yet exist:**

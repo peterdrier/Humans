@@ -5,8 +5,8 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -15,8 +15,13 @@ namespace Humans.Application.Tests.Services;
 
 public sealed class CachingTeamServiceTests : ServiceTestHarness
 {
+    private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
+        typeof(User).GetProperty("DisplayName")
+        ?? throw new InvalidOperationException("User.DisplayName property missing.");
+
     private readonly ServiceProvider _serviceProvider;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly ITeamService _innerTeamService;
     private readonly CachingTeamService _service;
 
     public CachingTeamServiceTests()
@@ -27,6 +32,9 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         _roleAssignmentService
             .IsUserBoardMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
+        _innerTeamService = Substitute.For<ITeamService>();
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => BuildTeamInfosAsync());
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
@@ -34,11 +42,10 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         services.AddSingleton(_roleAssignmentService);
         services.AddKeyedScoped<ITeamService>(
             CachingTeamService.InnerServiceKey,
-            (_, _) => Substitute.For<ITeamService>());
+            (_, _) => _innerTeamService);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingTeamService(
-            new TeamRepository(DbFactory),
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
     }
@@ -470,6 +477,82 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         Db.TeamJoinRequests.Add(request);
         return request;
     }
+
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> BuildTeamInfosAsync()
+    {
+        var teams = await Db.Teams.AsNoTracking()
+            .Include(t => t.Members.Where(m => m.LeftAt == null))
+            .ToListAsync();
+        var userIds = teams
+            .SelectMany(t => t.Members.Select(m => m.UserId))
+            .Distinct()
+            .ToList();
+        var users = userIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await Db.Users.AsNoTracking()
+                .Include(u => u.UserEmails)
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id);
+        var childIdsByParent = teams
+            .Where(t => t.ParentTeamId.HasValue)
+            .GroupBy(t => t.ParentTeamId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
+        var pendingRows = await Db.TeamJoinRequests.AsNoTracking()
+            .Where(r => r.Status == TeamJoinRequestStatus.Pending)
+            .ToListAsync();
+        var pendingCounts = pendingRows
+            .GroupBy(r => r.TeamId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return teams.ToDictionary(
+            t => t.Id,
+            t => new TeamInfo(
+                t.Id,
+                t.Name,
+                t.Description,
+                t.Slug,
+                t.IsActive,
+                t.IsSystemTeam,
+                t.SystemTeamType,
+                t.RequiresApproval,
+                t.IsPublicPage,
+                t.IsHidden,
+                t.IsPromotedToDirectory,
+                t.CreatedAt,
+                t.Members
+                    .Where(m => m.LeftAt is null)
+                    .Select(m =>
+                    {
+                        users.TryGetValue(m.UserId, out var user);
+                        var email = user?.UserEmails.FirstOrDefault(e => e.IsPrimary)?.Email ?? user?.Email;
+                        return new TeamMemberInfo(
+                            m.Id,
+                            m.UserId,
+                            user is null ? string.Empty : LegacyDisplayName(user),
+                            email,
+                            user?.ProfilePictureUrl,
+                            m.Role,
+                            m.JoinedAt,
+                            user?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
+                    })
+                    .ToList(),
+                ParentTeamId: t.ParentTeamId,
+                GoogleGroupPrefix: t.GoogleGroupPrefix,
+                HasBudget: t.HasBudget,
+                IsSensitive: t.IsSensitive,
+                UpdatedAt: t.UpdatedAt,
+                CustomSlug: t.CustomSlug,
+                ChildTeamIds: childIdsByParent.TryGetValue(t.Id, out var childIds) ? childIds : null,
+                ShowCoordinatorsOnPublicPage: t.ShowCoordinatorsOnPublicPage,
+                PageContent: t.PageContent,
+                CallsToAction: t.CallsToAction,
+                PageContentUpdatedAt: t.PageContentUpdatedAt,
+                PageContentUpdatedByUserId: t.PageContentUpdatedByUserId,
+                PendingRequestCount: pendingCounts.TryGetValue(t.Id, out var pending) ? pending : 0));
+    }
+
+    private static string LegacyDisplayName(User user) =>
+        (string?)LegacyDisplayNameProperty.GetValue(user) ?? string.Empty;
 
     public override void Dispose()
     {

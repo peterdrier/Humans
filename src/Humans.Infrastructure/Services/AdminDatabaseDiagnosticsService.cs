@@ -2,13 +2,14 @@ using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
 public sealed class AdminDatabaseDiagnosticsService(
     IAdminDatabaseDiagnosticsRepository repository,
     IUserServiceRead userService,
-    ITicketQueryService ticketQueryService) : IAdminDatabaseDiagnosticsService
+    ITicketServiceRead ticketQueryService) : IAdminDatabaseDiagnosticsService
 {
     public Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default) =>
         repository.GetMigrationStatusAsync(ct);
@@ -19,9 +20,20 @@ public sealed class AdminDatabaseDiagnosticsService(
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
         var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        IReadOnlySet<Guid> ticketUserIds = year.HasValue
-            ? await ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
-            : await ticketQueryService.GetAllMatchedUserIdsAsync();
+        var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
+        var start = year.HasValue ? Instant.FromUtc(year.Value, 1, 1, 0, 0) : default;
+        var end = year.HasValue ? Instant.FromUtc(year.Value + 1, 1, 1, 0, 0) : default;
+        IReadOnlySet<Guid> ticketUserIds = ticketOrders
+            .Where(o => !year.HasValue || (o.PurchasedAt >= start && o.PurchasedAt < end))
+            .SelectMany(o => o.MatchedUserId.HasValue
+                ? o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value)
+                    .Append(o.MatchedUserId.Value)
+                : o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value))
+            .ToHashSet();
 
         var withProfile = 0;
         var withTicket = 0;
@@ -39,7 +51,12 @@ public sealed class AdminDatabaseDiagnosticsService(
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var years = await ticketQueryService.GetMatchedTicketYearsAsync(ct);
+        var years = ticketOrders
+            .Where(o => o.MatchedUserId.HasValue)
+            .Select(o => o.PurchasedAt.InUtc().Year)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToList();
 
         return new AudienceSegmentation(
             TotalAccounts: allUsers.Count,

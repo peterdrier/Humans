@@ -18,7 +18,7 @@ public sealed class AttendeeContactImportService(
     IAccountProvisioningService provisioning,
     IUserService users,
     IShiftManagementService shifts,
-    ITicketQueryService ticketQuery,
+    ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
     IClock clock,
     ILogger<AttendeeContactImportService> logger) : IAttendeeContactImportService
@@ -201,7 +201,7 @@ public sealed class AttendeeContactImportService(
         }
 
         // Evict before participation loop so attendee mutation always invalidates caches.
-        ticketQuery.InvalidateAfterContactImport();
+        ticketCacheInvalidator.InvalidateAfterContactImport();
 
         var active = await shifts.GetActiveAsync();
         if (active is not null && newlyMatchedUserIds.Count > 0)

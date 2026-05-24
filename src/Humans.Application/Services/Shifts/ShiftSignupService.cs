@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -102,7 +101,7 @@ public sealed class ShiftSignupService(
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
 
-        var shiftDate = FormatShiftDate(es.GateOpeningDate.PlusDays(shift.DayOffset));
+        var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate();
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), signup.Id,
@@ -279,7 +278,7 @@ public sealed class ShiftSignupService(
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
-            $"shift '{shift.Rota.Name}' on {FormatShiftDate(es.GateOpeningDate.PlusDays(shift.DayOffset))}",
+            $"shift '{shift.Rota.Name}' on {es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()}",
             enrollerUserId,
             userId, nameof(User));
 
@@ -403,7 +402,7 @@ public sealed class ShiftSignupService(
         {
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {FormatShiftDate(es.GateOpeningDate.PlusDays(dayOffset))} (range)",
+                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToDisplayShiftDate()} (range)",
                 enrollerUserId,
                 userId, nameof(User));
         }
@@ -527,7 +526,7 @@ public sealed class ShiftSignupService(
                 .Select(s => s.DayOffset)
                 .ToList();
             var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
-                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+                es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
             skipMessages.Add($"Already signed up for day(s): {dayList}.");
 
             shiftsInRange = shiftsInRange.Where(s => !activeShiftIds.Contains(s.Id)).ToList();
@@ -556,7 +555,7 @@ public sealed class ShiftSignupService(
         if (conflictingDays.Count > 0)
         {
             var dayList = string.Join(", ", conflictingDays.Select(offset =>
-                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+                es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
 
             if (!skipConflicts)
                 return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
@@ -591,7 +590,7 @@ public sealed class ShiftSignupService(
         if (fullDays.Count > 0)
         {
             var dayList = string.Join(", ", fullDays.Select(offset =>
-                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+                es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
             var capacityWarning = $"Day(s) {dayList} are at capacity.";
             warning = warning is null ? capacityWarning : $"{warning} {capacityWarning}";
         }
@@ -613,7 +612,7 @@ public sealed class ShiftSignupService(
             if (fullEeDays.Count > 0)
             {
                 var eeDayList = string.Join(", ", fullEeDays.Select(offset =>
-                    FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+                    es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
                 var eeWarning = $"Early entry capacity reached for day(s): {eeDayList}.";
                 warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
             }
@@ -662,7 +661,7 @@ public sealed class ShiftSignupService(
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupCreated,
                 nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {FormatShiftDate(es.GateOpeningDate.PlusDays(dayOffset))} (range, {statusSuffix})",
+                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToDisplayShiftDate()} (range, {statusSuffix})",
                 userId,
                 userId, nameof(User));
         }
@@ -1011,7 +1010,7 @@ public sealed class ShiftSignupService(
 
             var es = rota.EventSettings;
             var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
-            var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatShiftDate(shiftDate)})";
+            var enrichedDescription = $"{changeDescription} ({rotaName}, {shiftDate.ToDisplayShiftDate()})";
 
             var team = await TeamService.GetTeamAsync(teamId);
             var coordinatorIds = team?.Members
@@ -1037,10 +1036,6 @@ public sealed class ShiftSignupService(
             logger.LogError(ex, "Failed to dispatch ShiftSignupChange notification for signup {SignupId}", signup.Id);
         }
     }
-
-    // Mirrors the Web-layer ToDisplayShiftDate() extension. Format: "Wed Jul 1".
-    private static string FormatShiftDate(LocalDate date) =>
-        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", CultureInfo.InvariantCulture);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

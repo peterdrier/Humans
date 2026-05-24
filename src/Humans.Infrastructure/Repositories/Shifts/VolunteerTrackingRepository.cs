@@ -1,3 +1,4 @@
+using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -154,5 +155,90 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
             .Select(s => new EligibleBuildSignup(
                 s.UserId, s.Shift.DayOffset, s.Status, s.Shift.Rota.Name))
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
+        Guid eventSettingsId,
+        LocalDate startDate,
+        LocalDate endDate,
+        Guid? departmentId,
+        CancellationToken ct)
+    {
+        // Look up the event so we can resolve absolute shift times in memory.
+        // Shift.StartsAtUtc / EndsAtUtc are NOT stored columns: absolute times are
+        // computed from (GateOpeningDate + DayOffset + StartTime + Duration) via
+        // Shift.GetAbsoluteStart / GetAbsoluteEnd, which involve a NodaTime zone
+        // conversion that cannot be translated to SQL. We narrow in SQL by
+        // DayOffset and finalise the overlap check in memory.
+        var settings = await db.EventSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == eventSettingsId, ct)
+            ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
+
+        var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+        var rangeStartUtc = startDate.AtStartOfDayInZone(zone).ToInstant();
+        var rangeEndUtcExclusive = endDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
+
+        // DayOffset window matching [startDate, endDate] inclusive, with a one-day
+        // buffer on either side to defend against per-shift wall-time edge cases
+        // and DST. Final filter below clips to the real instant overlap.
+        var startOffset = Period.Between(settings.GateOpeningDate, startDate, PeriodUnits.Days).Days - 1;
+        var endOffset = Period.Between(settings.GateOpeningDate, endDate, PeriodUnits.Days).Days + 1;
+
+        var query = db.ShiftSignups
+            .AsNoTracking()
+            .Where(s => s.Status == SignupStatus.Confirmed)
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId)
+            .Where(s => s.Shift.DayOffset >= startOffset && s.Shift.DayOffset <= endOffset);
+
+        if (departmentId.HasValue)
+        {
+            var deptId = departmentId.Value;
+            query = query.Where(s => s.Shift.Rota.TeamId == deptId);
+        }
+
+        var raw = await query
+            .Select(s => new
+            {
+                s.UserId,
+                s.Shift.RotaId,
+                TeamId = s.Shift.Rota.TeamId,
+                s.Shift.DayOffset,
+                s.Shift.StartTime,
+                s.Shift.Duration,
+                s.Shift.IsAllDay,
+            })
+            .ToListAsync(ct);
+
+        if (raw.Count == 0) return [];
+
+        // Team names are NOT resolved here: Teams is another section's table and a
+        // Shifts repo must not query db.Teams (memory/architecture/no-cross-section-ef-joins.md).
+        // The caller (VolunteerTrackingExportService) stitches TeamId → name via
+        // IShiftManagementService.GetDepartmentsWithRotasAsync.
+        var rows = new List<ConfirmedShiftRow>(raw.Count);
+        foreach (var r in raw)
+        {
+            // Reconstruct a minimal Shift so we can reuse the canonical helpers.
+            var shift = new Shift
+            {
+                RotaId = r.RotaId,
+                DayOffset = r.DayOffset,
+                StartTime = r.StartTime,
+                Duration = r.Duration,
+                IsAllDay = r.IsAllDay,
+            };
+            var startsAtUtc = shift.GetAbsoluteStart(settings);
+            var endsAtUtc = shift.GetAbsoluteEnd(settings);
+            if (startsAtUtc < rangeEndUtcExclusive && endsAtUtc > rangeStartUtc)
+            {
+                rows.Add(new ConfirmedShiftRow(
+                    r.UserId,
+                    r.TeamId,
+                    startsAtUtc,
+                    endsAtUtc));
+            }
+        }
+        return rows;
     }
 }

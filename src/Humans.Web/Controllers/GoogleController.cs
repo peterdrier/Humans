@@ -279,11 +279,7 @@ public class GoogleController(
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public IActionResult Sync()
     {
-        var viewModel = new TeamSyncViewModel
-        {
-            CanExecuteActions = RoleChecks.IsAdmin(User)
-        };
-        return View(viewModel);
+        return View(new TeamSyncViewModel());
     }
 
     [HttpGet("Sync/Preview/{resourceType}")]
@@ -311,9 +307,7 @@ public class GoogleController(
         var viewModel = new SyncTabContentViewModel
         {
             Result = result,
-            ResourceType = resourceType.ToString(),
-            CanExecuteActions = RoleChecks.IsAdmin(User),
-            CanViewAudit = RoleChecks.IsAdminOrBoard(User)
+            ResourceType = resourceType.ToString()
         };
 
         return PartialView("_SyncTabContent", viewModel);

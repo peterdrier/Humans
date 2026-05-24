@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Domain.Enums;
-using Humans.Web.Controllers;
+using Humans.Web.Models.Shifts;
 using NodaTime;
 
 namespace Humans.Web.Tests.Controllers;
@@ -8,11 +8,11 @@ namespace Humans.Web.Tests.Controllers;
 /// <summary>
 /// Covers <c>Shifts.md</c> invariant line 237 (dashboard filter period↔date-range
 /// mutex): when both period and dates arrive on a single request, period wins for
-/// filtering. The server defends this via
-/// <see cref="ShiftDashboardController.ResolveActiveDateRange"/> — when a period
-/// is selected, the dates are zeroed out before being passed to the urgent-shifts
-/// query, so the date inputs round-trip back to the form but are not applied
-/// as bounds.
+/// filtering. The server defends this via <see cref="ShiftFilterResolver.Resolve"/>
+/// (formerly an internal helper on <c>ShiftDashboardController</c>; lifted into the
+/// shared resolver so the export pipeline reuses it). When a period is selected,
+/// the dates are zeroed out before being passed to the urgent-shifts query, so the
+/// date inputs round-trip back to the form but are not applied as bounds.
 /// </summary>
 public class ShiftDashboardControllerTests
 {
@@ -26,7 +26,7 @@ public class ShiftDashboardControllerTests
         LocalDate? end = new LocalDate(2026, 7, 8);
 
         // Act
-        var (activeStart, activeEnd) = ShiftDashboardController.ResolveActiveDateRange(
+        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(
             period, start, end);
 
         // Assert: dates are dropped — period is the filter; dates round-trip
@@ -44,7 +44,7 @@ public class ShiftDashboardControllerTests
         LocalDate? end = new LocalDate(2026, 7, 8);
 
         // Act
-        var (activeStart, activeEnd) = ShiftDashboardController.ResolveActiveDateRange(
+        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(
             period, start, end);
 
         // Assert: dates are the active filter.
@@ -61,7 +61,7 @@ public class ShiftDashboardControllerTests
         LocalDate? end = null;
 
         // Act
-        var (activeStart, activeEnd) = ShiftDashboardController.ResolveActiveDateRange(
+        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(
             period, start, end);
 
         // Assert: dates stay null (period filters).

@@ -70,19 +70,78 @@ public sealed class UserService(
             communicationPreferences);
     }
 
-    public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetAllUserInfosAsync is only meaningful through CachingUserService. " +
-            "If this is being called on the inner UserService it indicates a DI " +
-            "registration mistake — IUserService should resolve to CachingUserService.");
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
+    {
+        var users = await repo.GetAllAsync(ct);
+        if (users.Count == 0) return [];
 
-    public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetUserInfosAsync is only meaningful through CachingUserService — " +
-            "the decorator serves cached hits from the dict and refills misses " +
-            "through inner.GetUserInfoAsync. If this is being called on the inner " +
-            "UserService it indicates a DI registration mistake.");
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var allEmails = await userEmailRepo.GetAllAsync(ct);
+        var emailsByUser = allEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+
+        var loginsByUser = await repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
+
+        var profiles = await profileRepo.GetAllAsync(ct);
+        var profileByUser = profiles.ToDictionary(p => p.UserId);
+
+        var allContactFields = await contactFieldRepo.GetAllAsync(ct);
+        var contactFieldsByProfile = allContactFields
+            .GroupBy(c => c.ProfileId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
+
+        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync(userIds, ct);
+
+        var allPreferences = await communicationPreferenceRepo.GetAllAsync(ct);
+        var preferencesByUser = allPreferences
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<CommunicationPreference>)g.ToList());
+
+        var result = new List<UserInfo>(users.Count);
+        foreach (var user in users)
+        {
+            var emails = emailsByUser.TryGetValue(user.Id, out var es) ? es : [];
+            var logins = loginsByUser.TryGetValue(user.Id, out var ls) ? ls : [];
+            var participations = participationsByUser.TryGetValue(user.Id, out var ps)
+                ? ps
+                : (IReadOnlyList<EventParticipation>)[];
+
+            profileByUser.TryGetValue(user.Id, out var profile);
+            IReadOnlyList<ContactField> contactFields = [];
+            IReadOnlyList<ProfileLanguage> languages = [];
+            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
+            if (profile is not null)
+            {
+                contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf) ? cf : [];
+                languages = profile.Languages.ToList();
+                volunteerHistory = profile.VolunteerHistory.ToList();
+            }
+
+            var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
+
+            result.Add(UserInfo.Create(
+                user, emails, participations, logins,
+                profile, contactFields, languages, volunteerHistory,
+                preferences));
+        }
+
+        return result;
+    }
+
+    public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, UserInfo>();
+
+        var requested = userIds as IReadOnlySet<Guid> ?? new HashSet<Guid>(userIds);
+        var all = await GetAllUserInfosAsync(ct);
+        return all
+            .Where(u => requested.Contains(u.Id))
+            .ToDictionary(u => u.Id);
+    }
 
     public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default) =>

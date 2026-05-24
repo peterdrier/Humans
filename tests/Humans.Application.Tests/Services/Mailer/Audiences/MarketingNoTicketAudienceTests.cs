@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Mailer.Audiences;
@@ -61,11 +62,36 @@ public class MarketingNoTicketAudienceTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
 
-        var ticketService = Substitute.For<ITicketQueryService>();
-        ticketService.GetUserIdsWithTicketsAsync().Returns(ticketHolders);
+        var ticketService = Substitute.For<ITicketService>();
+        ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(OrdersForTicketHolders(ticketHolders));
 
         return new MarketingNoTicketAudience(userService, ticketService);
     }
+
+    private static IReadOnlyList<TicketOrderInfo> OrdersForTicketHolders(IEnumerable<Guid> userIds) =>
+        userIds.Select(userId => new TicketOrderInfo(
+            Id: Guid.NewGuid(),
+            VendorOrderId: $"ord_{userId:N}",
+            BuyerName: null,
+            BuyerEmail: null,
+            TotalAmount: 0m,
+            Currency: "EUR",
+            DiscountCode: null,
+            PaymentStatus: TicketPaymentStatus.Paid,
+            VendorEventId: "ev_test",
+            PurchasedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+            MatchedUserId: null,
+            IsCurrentEvent: true,
+            Attendees: [new TicketAttendeeInfo(
+                Id: Guid.NewGuid(),
+                VendorTicketId: $"tkt_{userId:N}",
+                AttendeeName: null,
+                AttendeeEmail: null,
+                TicketTypeName: null,
+                Price: 0m,
+                Status: TicketAttendeeStatus.Valid,
+                MatchedUserId: userId)])).ToList();
 
     private static UserInfo UserWithMarketingPref(Guid userId, bool optedOut) =>
         UserInfo.Create(

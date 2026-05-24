@@ -33,16 +33,6 @@ public class ShiftDashboardController(
         return parsed.Success ? parsed.Value : null;
     }
 
-    // Server-side period↔date-range mutex (Shifts.md L237): dates filter only when period is null.
-    internal static (LocalDate? activeStart, LocalDate? activeEnd) ResolveActiveDateRange(
-        ShiftPeriod? period, LocalDate? filterStartDate, LocalDate? filterEndDate)
-    {
-        var datesAreFilter = !period.HasValue && (filterStartDate.HasValue || filterEndDate.HasValue);
-        return (
-            datesAreFilter ? filterStartDate : null,
-            datesAreFilter ? filterEndDate : null);
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid? departmentId,
@@ -62,7 +52,7 @@ public class ShiftDashboardController(
 
         var filterStartDate = ParseIsoDateOrNull(startDate);
         var filterEndDate = ParseIsoDateOrNull(endDate);
-        var (activeStart, activeEnd) = ResolveActiveDateRange(period, filterStartDate, filterEndDate);
+        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(period, filterStartDate, filterEndDate);
 
         var model = await pageBuilder.BuildAsync(new ShiftDashboardPageRequest(
             es,

@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -40,18 +39,15 @@ public sealed class CachingRoleAssignmentService
     /// </summary>
     public const string InnerServiceKey = "role-assignment-inner";
 
-    private readonly IRoleAssignmentRepository _repository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
 
     public CachingRoleAssignmentService(
-        IRoleAssignmentRepository repository,
         IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<CachingRoleAssignmentService> logger)
         : base("Auth.RoleAssignmentRow", warmOnStartup: true, logger)
     {
-        _repository = repository;
         _scopeFactory = scopeFactory;
         _clock = clock;
     }
@@ -88,9 +84,25 @@ public sealed class CachingRoleAssignmentService
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var entities = await _repository.GetAllRowsForCacheAsync(ct);
-        foreach (var ra in entities)
-            Set(ra.Id, new RoleAssignmentRow(ra.Id, ra.UserId, ra.RoleName, ra.ValidFrom, ra.ValidTo));
+        var now = _clock.GetCurrentInstant();
+        var (items, _) = await WithInner(inner => inner.GetFilteredAsync(
+            roleFilter: null,
+            activeOnly: false,
+            page: 1,
+            pageSize: int.MaxValue,
+            now: now,
+            ct: ct));
+
+        foreach (var item in items)
+        {
+            var row = new RoleAssignmentRow(
+                item.Id,
+                item.UserId,
+                item.RoleName,
+                item.ValidFrom,
+                item.ValidTo);
+            Set(row.Id, row);
+        }
     }
 
     // ==========================================================================

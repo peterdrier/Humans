@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
@@ -206,8 +207,10 @@ public class EventsController(
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
-        if (guideEvent == null) return NotFound();
+        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        if (guideEvent is null || guideEvent.CampId != null) return NotFound();
+        if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
+            return Forbid();
 
         if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
@@ -253,8 +256,10 @@ public class EventsController(
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
-        if (guideEvent == null) return NotFound();
+        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        if (guideEvent is null || guideEvent.CampId != null) return NotFound();
+        if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
+            return Forbid();
 
         if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {

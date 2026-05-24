@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
 [Route("Tickets")]
 public class TicketController(
-    ITicketQueryService ticketQueryService,
+    ITicketService ticketQueryService,
     ITicketSyncService ticketSyncService,
     IUserParticipationBackfillService participationBackfillService,
     TicketDashboardPageBuilder dashboardPageBuilder,

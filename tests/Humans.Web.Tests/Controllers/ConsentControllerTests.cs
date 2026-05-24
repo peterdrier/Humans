@@ -139,7 +139,7 @@ public class ConsentControllerTests
             .Returns(WrapInUserInfo(StubProfile(userId)));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Submit(new Models.ConsentSubmitModel
+        var result = await ctrl.Submit(new Humans.Web.Models.ConsentSubmitModel
         {
             DocumentVersionId = Guid.NewGuid(),
             ExplicitConsent = true,

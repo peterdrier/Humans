@@ -20,7 +20,7 @@ public class DashboardService(
     IApplicationDecisionService applicationDecisionService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,
-    ITicketQueryService ticketQueryService,
+    ITicketServiceRead ticketQueryService,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
     IOptions<TicketVendorSettings> ticketSettings,
@@ -31,11 +31,8 @@ public class DashboardService(
 
     public async Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,
-        bool isPrivileged,
         CancellationToken cancellationToken = default)
     {
-        _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
-
         var userInfo = await userService.GetUserInfoAsync(userId, cancellationToken);
         var profile = userInfo?.Profile;
         var userView = await shiftView.GetUserAsync(userId, cancellationToken);
@@ -169,7 +166,8 @@ public class DashboardService(
         {
             if (ticketsConfigured)
             {
-                userTicketCount = await ticketQueryService.GetUserTicketCountAsync(userId);
+                var holdings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, cancellationToken);
+                userTicketCount = holdings.TicketCount;
                 hasTicket = userTicketCount > 0;
             }
         }

@@ -50,8 +50,7 @@ public class HomeController(
             return RedirectToAction(nameof(Index), "Guest");
         }
 
-        var isPrivileged = User.IsInRole("Admin");
-        var data = await dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
+        var data = await dashboardService.GetMemberDashboardAsync(user.Id, cancellationToken);
 
         var viewModel = new DashboardViewModel
         {
