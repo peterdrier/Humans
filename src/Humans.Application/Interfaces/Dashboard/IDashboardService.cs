@@ -14,7 +14,6 @@ public interface IDashboardService : IApplicationService
 {
     Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,
-        bool isPrivileged,
         CancellationToken cancellationToken = default);
 }
 
