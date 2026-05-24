@@ -154,6 +154,28 @@ public sealed class VolunteerTrackingExportServiceTests
         model.TotalsPerDay.Should().Equal(0, 0, 1, 1, 1, 0, 0);
     }
 
+    [HumansFact]
+    public async Task MultiTeamDay_CellColoredByMaxHoursTeam()
+    {
+        // Alice on Day3: TeamA 3h + TeamB 5h → cell = TeamB color.
+        var shifts = new[]
+        {
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(2), 9, 12),
+            ShiftRow(Alice, TeamB, "TeamB", Day1.PlusDays(2), 13, 18),
+        };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA"), (TeamB, "TeamB")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        var cellsDay3 = model.Groups.SelectMany(g => g.Humans).First().Cells[2];
+        cellsDay3.Kind.Should().Be(CellKind.Worked);
+        cellsDay3.TeamId.Should().Be(TeamB);
+    }
+
     /// <summary>Helper: build a ConfirmedShiftRow with start/end specified as event-local hours on a given local date.</summary>
     private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, string teamName, LocalDate localDate, int startHourLocal, int endHourLocal)
     {
