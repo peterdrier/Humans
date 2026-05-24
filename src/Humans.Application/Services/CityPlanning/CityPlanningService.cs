@@ -30,7 +30,7 @@ public sealed class CityPlanningService(
     public async Task<List<CampPolygonDto>> GetCampPolygonsAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        var displayData = await campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var displayData = await BuildSeasonDisplayDataAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
         var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
@@ -63,7 +63,7 @@ public sealed class CityPlanningService(
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        var displayData = await campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var displayData = await BuildSeasonDisplayDataAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
         var polygonSeasonIds = await repo.GetCampSeasonIdsWithPolygonAsync(seasonIds, cancellationToken);
@@ -75,6 +75,21 @@ public sealed class CityPlanningService(
                 kvp.Key, kvp.Value.Name, kvp.Value.CampSlug,
                 SpaceSizeToSqm(kvp.Value.SpaceRequirement), kvp.Value.SoundZone))
             .ToList();
+    }
+
+    /// <summary>
+    /// Builds the season-id → display-data map via LINQ over the cached
+    /// <see cref="ICampServiceRead.GetCampsForYearAsync"/> projection, avoiding
+    /// the ICampService-only <c>GetCampSeasonDisplayDataForYearAsync</c>.
+    /// </summary>
+    private async Task<Dictionary<Guid, CampSeasonDisplayData>> BuildSeasonDisplayDataAsync(
+        int year, CancellationToken cancellationToken)
+    {
+        var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+        return camps
+            .SelectMany(c => c.Seasons, (c, s) =>
+                (SeasonId: s.Id, Data: new CampSeasonDisplayData(s.Name, c.Slug, s.SoundZone, s.SpaceRequirement, c.Id)))
+            .ToDictionary(x => x.SeasonId, x => x.Data);
     }
 
     // Keep in sync with SpaceSize enum — adding a new enum value requires a matching case here.
@@ -438,7 +453,7 @@ public sealed class CityPlanningService(
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
-        var displayData = await campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var displayData = await BuildSeasonDisplayDataAsync(year, cancellationToken);
         var seasonIds = displayData.Keys.ToList();
 
         var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
