@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
 using Humans.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -55,23 +56,22 @@ public class EventsExportController(
 
             foreach (var (date, time) in GetOccurrences(e, eventSettings?.GateOpeningDate, tz))
             {
-                sb.AppendLine(string.Join(",",
-                    CsvEscape(e.Id.ToString()),
-                    CsvEscape(e.Title),
-                    CsvEscape(e.Description),
-                    CsvEscape(e.Category.Name),
-                    CsvEscape(campName),
-                    CsvEscape(venueName),
-                    CsvEscape(submitterName),
-                    CsvEscape(e.LocationNote ?? ""),
-                    CsvEscape(date),
-                    CsvEscape(time),
-                    e.DurationMinutes.ToString(CultureInfo.InvariantCulture),
+                sb.AppendCsvRow(
+                    e.Id.ToString(),
+                    e.Title,
+                    e.Description,
+                    e.Category.Name,
+                    campName,
+                    venueName,
+                    submitterName,
+                    e.LocationNote ?? "",
+                    date,
+                    time,
+                    e.DurationMinutes,
                     e.IsRecurring ? "Yes" : "No",
-                    e.PriorityRank.ToString(CultureInfo.InvariantCulture),
+                    e.PriorityRank,
                     e.Status.ToString(),
-                    CsvEscape(ToLocalDateTime(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
-                ));
+                    ToLocalDateTime(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
             }
         }
 
@@ -153,13 +153,6 @@ public class EventsExportController(
             results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));
         }
         return results;
-    }
-
-    private static string CsvEscape(string value)
-    {
-        if (value.Contains('"', StringComparison.Ordinal) || value.Contains(',', StringComparison.Ordinal) || value.Contains('\n', StringComparison.Ordinal))
-            return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
-        return value;
     }
 
     public sealed class PrintGuideViewModel

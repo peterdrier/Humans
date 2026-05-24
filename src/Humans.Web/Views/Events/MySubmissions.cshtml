@@ -19,7 +19,7 @@
         <i class="fa-solid fa-clock me-1"></i>
         @if (Model.SubmissionOpenAt.HasValue && Model.SubmissionCloseAt.HasValue)
         {
-            <text>Submission window: @Model.SubmissionOpenAt.Value.ToString("d MMM yyyy HH:mm") — @Model.SubmissionCloseAt.Value.ToString("d MMM yyyy HH:mm")</text>
+            <text>Submission window: @Model.SubmissionOpenAt.Value.ToDisplayDateTime() — @Model.SubmissionCloseAt.Value.ToDisplayDateTime()</text>
             if (Model.TimeZoneId != null)
             {
                 <text> (@Model.TimeZoneId)</text>

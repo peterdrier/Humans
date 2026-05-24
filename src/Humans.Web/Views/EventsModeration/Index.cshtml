@@ -134,7 +134,7 @@ else
                                     }
 
                                     <dt class="col-sm-3">Submitted</dt>
-                                    <dd class="col-sm-9">@evt.SubmittedAt.ToString("d MMM yyyy HH:mm")</dd>
+                                    <dd class="col-sm-9">@evt.SubmittedAt.ToDisplayDateTime()</dd>
                                 </dl>
 
                                 @if (evt.DuplicateCandidates.Count > 0)
@@ -163,7 +163,7 @@ else
                                             <li class="mb-2">
                                                 <span class="badge @h.ActionBadgeClass">@h.Action</span>
                                                 by <strong>@h.ActorName</strong>
-                                                <small class="text-muted">@h.CreatedAt.ToString("d MMM yyyy HH:mm")</small>
+                                                <small class="text-muted">@h.CreatedAt.ToDisplayDateTime()</small>
                                                 @if (!string.IsNullOrEmpty(h.Reason))
                                                 {
                                                     <br /><small class="text-muted fst-italic">@h.Reason</small>
