@@ -13,7 +13,7 @@
 @if (emitCss)
 {
     <style>
-        .ticket-stub { display:flex; max-width:440px; border-radius:12px; overflow:hidden;
+        .ticket-stub { display:flex; width:330px; max-width:100%; border-radius:12px; overflow:hidden;
             background:#fff; border:1px solid #e3ddd0; box-shadow:0 3px 10px rgba(0,0,0,.12); position:relative; }
         .ticket-stub-main { flex:1; padding:13px 16px; background:linear-gradient(135deg,#faf7f0,#f3ecdd); min-width:0; }
         .ticket-stub-event { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#9a8f78; font-weight:700; }
@@ -30,8 +30,8 @@
             border:3px solid #b5532e; color:#b5532e; font-weight:900; font-size:14px; letter-spacing:.08em;
             padding:3px 10px; border-radius:6px; text-transform:uppercase; opacity:.82; background:rgba(255,255,255,.35);
             pointer-events:none; white-space:nowrap; }
-        .ticket-stub-badge { position:absolute; top:8px; right:84px; font-size:9.5px; font-weight:800; text-transform:uppercase;
-            letter-spacing:.05em; padding:2px 8px; border-radius:20px; z-index:1; white-space:nowrap; }
+        .ticket-stub-badge { display:inline-block; margin-top:8px; font-size:9.5px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; padding:2px 8px; border-radius:20px; white-space:nowrap; }
         .ticket-stub-badge.checkedin { background:#2f6b3d; color:#fff; }
         .ticket-stub-badge.void { background:#8a7f68; color:#fff; }
     </style>
@@ -44,6 +44,14 @@
         {
             <div class="ticket-stub-email">@Model.AttendeeEmail</div>
         }
+        @if (isCheckedIn)
+        {
+            <div class="ticket-stub-badge checkedin"><i class="fa-solid fa-check me-1"></i>Checked in</div>
+        }
+        else if (isVoid)
+        {
+            <div class="ticket-stub-badge void">Void</div>
+        }
     </div>
     <div class="ticket-stub-side">
         <span class="ticket-stub-ico">🎟️</span>
@@ -52,14 +60,6 @@
             <span class="ticket-stub-serial">@Model.VendorTicketId</span>
         }
     </div>
-    @if (isCheckedIn)
-    {
-        <div class="ticket-stub-badge checkedin"><i class="fa-solid fa-check me-1"></i>Checked in</div>
-    }
-    else if (isVoid)
-    {
-        <div class="ticket-stub-badge void">Void</div>
-    }
     @if (pending)
     {
         <div class="ticket-stub-stamp">Transfer pending</div>

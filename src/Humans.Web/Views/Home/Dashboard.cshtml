@@ -186,10 +186,10 @@
                     </div>
                     @if (Model.MyAttendees.Count > 0)
                     {
-                        <div class="d-flex flex-column gap-2 mt-3">
+                        <div class="d-flex flex-wrap gap-3 mt-3">
                             @foreach (var att in Model.MyAttendees)
                             {
-                                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                <div class="d-flex flex-column align-items-start gap-1">
                                     <vc:ticket-stub stub="@TicketStub(att)" />
                                     @if (att.HasPendingOutgoingTransfer && att.PendingTransferRequestId is Guid pendingId)
                                     {
