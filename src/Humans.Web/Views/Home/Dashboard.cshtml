@@ -189,22 +189,12 @@
                         <div class="d-flex flex-wrap gap-3 mt-3">
                             @foreach (var att in Model.MyAttendees)
                             {
-                                <div class="d-flex flex-column align-items-start gap-1">
-                                    <vc:ticket-stub stub="@TicketStub(att)" />
-                                    @if (att.HasPendingOutgoingTransfer && att.PendingTransferRequestId is Guid pendingId)
-                                    {
-                                        <form asp-controller="TicketTransfer" asp-action="Cancel" method="post" class="m-0">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@pendingId" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["TicketTransfer_CancelButton"]</button>
-                                        </form>
-                                    }
-                                </div>
+                                <vc:ticket-stub stub="@TicketStub(att)" />
                             }
                         </div>
                         <div class="mt-3">
                             <a class="btn btn-sm btn-outline-secondary"
-                               asp-controller="TicketTransfer" asp-action="Index">Transfer a ticket?</a>
+                               asp-controller="TicketTransfer" asp-action="Index">Transfers…</a>
                         </div>
                     }
                 }

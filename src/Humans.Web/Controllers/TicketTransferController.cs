@@ -22,7 +22,8 @@ public sealed class TicketTransferController(
         if (errorResult is not null) return errorResult;
 
         var mine = await service.GetMyAttendeesAsync(user.Id, ct);
-        return View("Index", new TicketTransferWizardViewModel { MyTickets = mine });
+        var transfers = await service.GetBySenderAsync(user.Id, ct);
+        return View("Index", new TicketTransferWizardViewModel { MyTickets = mine, MyTransfers = transfers });
     }
 
     // Step C: resolve the chosen (ticket, recipient) pair server-side and show the confirmation.
@@ -34,10 +35,12 @@ public sealed class TicketTransferController(
         if (errorResult is not null) return errorResult;
 
         var mine = await service.GetMyAttendeesAsync(user.Id, ct);
+        var transfers = await service.GetBySenderAsync(user.Id, ct);
         var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
         return View("Index", new TicketTransferWizardViewModel
         {
             MyTickets = mine,
+            MyTransfers = transfers,
             Confirm = confirm,
             Error = confirm is null
                 ? "Couldn't set up that transfer — choose one of your tickets and a valid recipient (not yourself)."
@@ -65,10 +68,12 @@ public sealed class TicketTransferController(
             logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
                 attendeeId, ex.Message);
             var mine = await service.GetMyAttendeesAsync(user.Id, ct);
+            var transfers = await service.GetBySenderAsync(user.Id, ct);
             var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
             return View("Index", new TicketTransferWizardViewModel
             {
                 MyTickets = mine,
+                MyTransfers = transfers,
                 Confirm = confirm,
                 Reason = reason,
                 Error = ex.Message,
@@ -94,6 +99,6 @@ public sealed class TicketTransferController(
                 id, ex.Message);
             SetError(ex.Message);
         }
-        return RedirectToAction(nameof(HomeController.Index), "Home");
+        return RedirectToAction(nameof(Index));
     }
 }

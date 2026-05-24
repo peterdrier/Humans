@@ -19,6 +19,9 @@ public sealed class TicketTransferWizardViewModel
 {
     public IReadOnlyList<MyAttendeeRowDto> MyTickets { get; init; } = [];
 
+    /// <summary>The user's own transfer requests (any status) — shown as a status/cancel list.</summary>
+    public IReadOnlyList<TicketTransferRowDto> MyTransfers { get; init; } = [];
+
     /// <summary>Non-null on the confirm step: the resolved ticket + recipient summary.</summary>
     public TicketTransferConfirmDto? Confirm { get; init; }
 
