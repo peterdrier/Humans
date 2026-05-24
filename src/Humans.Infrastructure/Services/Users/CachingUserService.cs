@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Humans.Application.Architecture;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -42,6 +43,11 @@ namespace Humans.Infrastructure.Services.Users;
 /// (<c>IDbContextFactory</c>-based).
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingUserService(
     IUserRepository userRepository,
     IUserEmailRepository userEmailRepository,

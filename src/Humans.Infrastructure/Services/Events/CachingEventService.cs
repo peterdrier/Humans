@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
@@ -37,6 +38,11 @@ namespace Humans.Infrastructure.Services.Events;
 /// a fresh pending count and the cache only holds approved events.
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingEventService(
     IEventRepository repo,
     IServiceScopeFactory scopeFactory,

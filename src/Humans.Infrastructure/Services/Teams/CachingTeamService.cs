@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -24,6 +25,11 @@ namespace Humans.Infrastructure.Services.Teams;
 /// recorded; the meaningful diagnostics here are entry count and invalidation
 /// count.
 /// </summary>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingTeamService(
     ITeamRepository teamRepository,
     IServiceScopeFactory scopeFactory,

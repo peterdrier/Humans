@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Caching;
@@ -16,6 +17,11 @@ namespace Humans.Infrastructure.Services.Calendar;
 /// non-soft-deleted <c>calendar_events</c> row with its <c>Exceptions</c>
 /// embedded, keyed by event id. Exception writes evict the parent.
 /// </summary>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingCalendarService(
     ICalendarRepository repo,
     IServiceScopeFactory scopeFactory,

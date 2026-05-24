@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
@@ -49,6 +50,11 @@ namespace Humans.Infrastructure.Services.Tickets;
 /// nobodies-collective/Humans#587.
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingTicketQueryService(
     ITicketRepository ticketRepository,
     IMemoryCache perUserCache,

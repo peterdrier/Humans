@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Onboarding;
@@ -27,6 +28,11 @@ namespace Humans.Infrastructure.Services.Auth;
 /// callers arrive — the cache shape (<see cref="RoleAssignmentRow"/>) holds
 /// the fields needed to answer "active-at-now" predicates by user or role.
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Existing repository-backed warm path; migrate cache loading through the keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
 public sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
       IRoleAssignmentService,

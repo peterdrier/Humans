@@ -53,8 +53,12 @@
           legacy reads (computed-override projections of UserEmails) are
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
+        - HUM0020: caching decorator references a repository directly.
+          Existing repository-backed decorator warm paths are tagged
+          [Grandfathered("HUM0020", ...)] while they migrate to keyed inner
+          service calls. Promote to error once all tags are gone.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0020;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
