@@ -10,6 +10,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [In-App Guide Browser](features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
 | [Google Group Membership Sync](features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
 | [Volunteer Tracking](features/47-volunteer-tracking.md) | `/ShiftDashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
+| [Active User Metrics](features/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
 | [Agent Section](features/agent/agent-section.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
 | [F-12: Audit Log](features/audit-log/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
 | [User Authentication & Accounts](features/auth/authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
@@ -19,6 +20,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Feature 22: Campaigns](features/campaigns/campaigns.md) | Bulk individualized code distribution (e.g., presale ticket codes) sent in team-filtered email waves |
 | [Camps](features/camps/camps.md) | Annual camping area ("barrio") registration, admin approval, public listing, and seasonal opt-ins |
 | [City Planning](features/city-planning/city-planning.md) | Real-time collaborative aerial-map polygon tool for camp leads to stake out their barrio before the event |
+| [Client Stats (Debug)](features/debug/client-stats.md) | `/Debug/ClientStats` screen showing, since process start, the OS / browser / device-type mix of visitors, their screen-resolution distribution, and HTTP response status-code tallies — all in-memory, no DB |
 | [Email Flag Violations — Admin & Self Remediation](features/email/email-flag-violations-remediation.md) | Recovery surface for stuck `UserEmail` IsGoogle/IsPrimary duplicates with admin scan page and self-service clear actions |
 | [Feature 21: Email Outbox](features/email/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
 | [`[ExpiresOn]` — Hard removal deadlines](features/expires-on-deadline.md) | Analyzer-enforced removal deadlines that escalate deprecation warnings to errors on a fixed date |
@@ -38,6 +40,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [In-App Guide](features/guide/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
 | [Issues System](features/issues/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
 | [Legal Documents & Consent Management](features/legal-and-consent/legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
+| [Mailer Audience Debug Screen](features/mailer/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
 | [Notification Inbox](features/notifications/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
 | [Onboarding Pipeline](features/onboarding/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
 | [Volunteer Status](features/onboarding/volunteer-status.md) | Volunteer status determined by presence in the system-managed Volunteers team requiring consent check clearance and legal document consents |
@@ -51,12 +54,16 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Profiles](features/profiles/profiles.md) | Personal information management distinguishing legal names from public "burner names" with location data for event planning |
 | [Scanner — Barcode (Phase 1)](features/scanner/scanner-barcode.md) | Camera-based in-app barcode/QR decoder for staff to inspect TicketTailor ticket stubs (decode only, no check-in) |
 | [Coordinator Roles](features/shifts/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
+| [Department Coverage Pies](features/shifts/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
+| [Email a Rota](features/shifts/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
 | [Shift Management](features/shifts/shift-management.md) | Multi-day event shift configuration, signup workflows, urgency scoring, and coordinator tooling |
 | [Shift Preference Wizard](features/shifts/shift-preference-wizard.md) | Guided 3-step mobile-friendly wizard collecting skills, work style, and languages for shift matching |
 | [Shift Signup Visibility](features/shifts/shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |
+| [Workload Dashboard](features/shifts/workload-dashboard.md) | Cross-event "who is doing how much" view sliced three ways to spot burnout candidates, idle volunteers, and under-staffed departments |
 | [Store](features/store/store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
 | [Hidden Teams](features/teams/hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
 | [Teams & Working Groups](features/teams/teams.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
+| [Test System Reliability](features/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
 | [Event Participation Tracking](features/tickets/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
 | [Ticket Transfer](features/tickets/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, vendor-voided and reissued under the receiver after admin approval |
 | [Ticket Vendor Integration](features/tickets/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
@@ -77,6 +84,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Camps](sections/Camps.md) | Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history |
 | [City Planning](sections/CityPlanning.md) | Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement |
 | [Containers](sections/Containers.md) | Physical shipping containers managed per-barrio or at org level, placed on the City Planning map |
+| [Debug](sections/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
 | [Email](sections/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
 | [Events](sections/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
 | [Expenses](sections/Expenses.md) | Expense reports submitted by members, approved by Finance Admin, paid by SEPA batch, and notified asynchronously to Holded |

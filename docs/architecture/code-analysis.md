@@ -20,6 +20,7 @@ Runs during `dotnet build`:
 - `HUM_PROFILE_ISSUSPENDED` - Legacy reads of `Profile.IsSuspended` permitted until lazy-State-backfill follow-up (issue #635 §15i)
 - `HUM_USER_NORMALIZEDEMAIL` - Legacy reads of Identity's shadow-populated `User.NormalizedEmail` permitted (issue #635 §15i)
 - `xUnit1051` - Pass `TestContext.Current.CancellationToken` to methods accepting `CancellationToken` (test projects only, via `tests/Directory.Build.props`)
+- `HUM_USER_DISPLAYNAME` - Legacy `User.DisplayName` seeded in test fixtures (account creation/merge/deletion, cached `UserInfo` fallback) — not render-path violations (test projects only, via `tests/Directory.Build.props`)
 
 <!-- /freshness:auto -->
 

@@ -1,19 +1,18 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-05-15 (freshness-sweep regeneration).
+Living document. Last updated: 2026-05-25 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
 - Controllers audited: 76 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
-- Total actions: 603
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-Controllers documented in the previous audit that no longer exist (renamed or merged): `BoardController`, `NotificationController`.
+Controllers documented in the previous audit that no longer exist: `BarrioEventsController` (its actions folded into `EventsController` as the `Barrio*` family). `EventsApiController` and `MailerAdminController` were not removed — they moved into the `Controllers/Api/` and `Controllers/Mailer/` subfolders respectively.
 
-Newly added since the previous audit (purposes are name-derived defaults — review for accuracy): `AdminAgentController`, `AgentApiController`, `AgentController`, `AuditLogController`, `BarrioEventsController`, `ContainerController`, `EventsAdminController`, `EventsApiController`, `EventsController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`, `ExpensesController`, `IssuesApiController`, `IssuesController`, `MailerAdminController`, `NotificationsController`, `OnboardingWidgetController`, `ProfileAdminController`, `ProfileBackfillAdminController`, `ProfilePictureMigrationAdminController`, `SearchController`, `StoreAdminController`, `StoreController`, `StoreStripeWebhookController`, `TicketTransferAdminController`, `TicketTransferController`, `TicketsContactsAdminController`, `UsersAdminDebugController`, `VolunteerTrackingController`, `WelcomeController`, `WidgetGalleryController`.
+Newly added since the previous audit (purposes are name-derived defaults — review for accuracy): `ShiftWorkloadAdminController`, `TicketsOnsiteAdminController`.
 
 ---
 
@@ -43,9 +42,11 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Settings | /Agent/Admin/Settings | GET | Settings | OK |
-| Settings | /Agent/Admin/Settings | POST | Settings | OK |
-| ConversationPrompt | /Agent/Admin/Conversations/{id:guid}/Prompt | GET | Conversation prompt | OK |
+| Index | /Agent/Admin | GET | Redirect to Status | OK |
+| Status | /Agent/Admin/Status | GET | Agent service status dashboard | OK |
+| Settings | /Agent/Admin/Settings | GET | Agent settings form | OK |
+| Settings | /Agent/Admin/Settings | POST | Save agent settings | OK |
+| ConversationPrompt | /Agent/Admin/Conversations/{id:guid}/Prompt | GET | View the resolved prompt for a conversation | OK |
 
 ## AdminController
 
@@ -100,37 +101,27 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| List | /api/agent/conversations | GET | List | OK |
-| Get | /api/agent/conversations/{id:guid} | GET | Get | OK |
-| GetMessages | /api/agent/conversations/{id:guid}/messages | GET | Get messages | OK |
+| List | /api/agent/conversations | GET | List conversations (API) | OK |
+| Get | /api/agent/conversations/{id:guid} | GET | Get a conversation (API) | OK |
+| GetMessages | /api/agent/conversations/{id:guid}/messages | GET | Get conversation messages (API) | OK |
 
 ## AgentController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Conversations | /Agent/Conversations | GET | Conversations | OK |
-| Conversation | /Agent/Conversation/{id:guid} | GET | Conversation | OK |
+| Ask | /Agent/Ask | POST | Stream an agent answer (SSE) | OK |
+| Conversations | /Agent/Conversations | GET | List own agent conversations | OK |
+| Conversation | /Agent/Conversation/{id:guid} | GET | Conversation (single) | OK |
 | ConversationDetail | /Agent/Conversations/{id:guid} | GET | Conversation detail | OK |
 
 ## AuditLogController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /AuditLog | GET | Index/landing page | OK |
+| Index | /AuditLog | GET | Audit log landing | OK |
 | CheckDriveActivity | /AuditLog/CheckDriveActivity | POST | Check drive activity | OK |
-| Resource | /AuditLog/Resource/{id:guid} | GET | Resource | OK |
-| Human | /AuditLog/Human/{id:guid} | GET | Human | OK |
-
-## BarrioEventsController
-
-| Method | Route | Verb | Purpose | Suggestion |
-|--------|-------|------|---------|------------|
-| Index | /Barrios/{slug}/Events | GET | Index/landing page | OK |
-| New | /Barrios/{slug}/Events/New | GET | New | OK |
-| Create | /Barrios/{slug}/Events/New | POST | Create | OK |
-| Edit | /Barrios/{slug}/Events/{eventId:guid}/Edit | GET | Edit | OK |
-| Update | /Barrios/{slug}/Events/{eventId:guid}/Edit | POST | Update | OK |
-| Withdraw | /Barrios/{slug}/Events/{eventId:guid}/Withdraw | POST | Withdraw | OK |
+| Resource | /AuditLog/Resource/{id:guid} | GET | Resource sync audit detail | OK |
+| Human | /AuditLog/Human/{id:guid} | GET | Human sync audit detail | OK |
 
 ## BudgetController
 
@@ -172,20 +163,22 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | CloseSeason | /Camps/Admin/CloseSeason/{year} | POST | Close a season | OK |
 | SetPublicYear | /Camps/Admin/SetPublicYear | POST | Set the public display year | OK |
 | SetNameLockDate | /Camps/Admin/SetNameLockDate | POST | Set name lock date for a season | OK |
-| SetCampSeasonEeSlotCount | /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId:guid} | POST | Set camp season ee slot count | OK |
-| SetEeStartDate | /Camps/Admin/SetEeStartDate | POST | Set ee start date | OK |
+| SetCampSeasonEeSlotCount | /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId:guid} | POST | Set camp season early-entry slot count | OK |
+| SetEeStartDate | /Camps/Admin/SetEeStartDate | POST | Set early-entry start date | OK |
 | Reactivate | /Camps/Admin/Reactivate/{seasonId} | POST | Reactivate a withdrawn season | OK |
 | ExportCamps | /Camps/Admin/Export | GET | Export camps as CSV | OK |
 | UpdateRegistrationInfo | /Camps/Admin/UpdateRegistrationInfo | POST | Update camps registration info banner | OK |
 | Delete | /Camps/Admin/Delete | POST | Delete a camp (Admin only) | OK |
-| Roles | /Camps/Admin/Roles | GET | Roles | OK |
-| CreateRole | /Camps/Admin/Roles/Create | GET | Create role | OK |
-| CreateRole | /Camps/Admin/Roles/Create | POST | Create role | OK |
-| EditRole | /Camps/Admin/Roles/{id:guid}/Edit | GET | Edit role | OK |
-| EditRole | /Camps/Admin/Roles/{id:guid}/Edit | POST | Edit role | OK |
+| Roles | /Camps/Admin/Roles | GET | List camp role definitions | OK |
+| RolesDrillDown | /Camps/Admin/Roles/{slug} | GET | Role assignments for one camp | OK |
+| CreateRole | /Camps/Admin/Roles/Create | GET | Create role form | OK |
+| CreateRole | /Camps/Admin/Roles/Create | POST | Submit new role | OK |
+| EditRole | /Camps/Admin/Roles/{id:guid}/Edit | GET | Edit role form | OK |
+| EditRole | /Camps/Admin/Roles/{id:guid}/Edit | POST | Submit role edits | OK |
 | DeactivateRole | /Camps/Admin/Roles/{id:guid}/Deactivate | POST | Deactivate role | OK |
 | ReactivateRole | /Camps/Admin/Roles/{id:guid}/Reactivate | POST | Reactivate role | OK |
-| Compliance | /Camps/Admin/Compliance | GET | Compliance | OK |
+| SeedSystemRoles | /Camps/Admin/SeedSystemRoles | POST | Seed system role definitions | OK |
+| Compliance | /Camps/Admin/Compliance | GET | Camp compliance overview | OK |
 
 ## CampApiController
 
@@ -206,13 +199,11 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Register | /Camps/Register | GET | Register new camp form | OK |
 | Register | /Camps/Register | POST | Submit camp registration | OK |
 | Edit | /Camps/{slug}/Edit | GET | Edit camp form | OK |
-| Members | /Camps/{slug}/Edit/Members | GET | Members | OK |
+| Members | /Camps/{slug}/Edit/Members | GET | Camp member management | OK |
 | Edit | /Camps/{slug}/Edit | POST | Submit camp edits | OK |
 | OptIn | /Camps/{slug}/OptIn/{year} | POST | Opt in to a new season | OK |
 | Withdraw | /Camps/{slug}/Withdraw/{seasonId} | POST | Withdraw from a season | OK |
 | Rejoin | /Camps/{slug}/Rejoin/{seasonId} | POST | Rejoin a withdrawn season | OK |
-| AddLead | /Camps/{slug}/Leads/Add | POST | Add a co-lead | OK |
-| RemoveLead | /Camps/{slug}/Leads/Remove/{leadId} | POST | Remove a lead | OK |
 | AddHistoricalName | /Camps/{slug}/HistoricalNames/Add | POST | Add a historical name | OK |
 | RemoveHistoricalName | /Camps/{slug}/HistoricalNames/Remove/{nameId} | POST | Remove a historical name | OK |
 | UploadImage | /Camps/{slug}/Images/Upload | POST | Upload camp image | OK |
@@ -225,8 +216,8 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | RejectMembership | /Camps/{slug}/Members/Reject/{campMemberId} | POST | Reject a membership request | OK |
 | RemoveMembership | /Camps/{slug}/Members/Remove/{campMemberId} | POST | Remove an existing camp member | OK |
 | SetMemberEarlyEntry | /Camps/{slug}/Members/{campMemberId:guid}/EarlyEntry | POST | Set member early entry | OK |
-| AddMember | /Camps/{slug}/Members/Add | POST | Add member | OK |
-| AssignRole | /Camps/{slug}/Roles/Assign | POST | Assign role | OK |
+| AddMember | /Camps/{slug}/Members/Add | POST | Add a member directly | OK |
+| AssignRole | /Camps/{slug}/Roles/Assign | POST | Assign role to a camp member | OK |
 | AssignRoleByUser | /Camps/{slug}/Roles/AssignByUser | POST | Assign role by user | OK |
 | UnassignRole | /Camps/{slug}/Roles/{assignmentId:guid}/Unassign | POST | Unassign role | OK |
 
@@ -259,7 +250,7 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | RestoreCampPolygon | /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId} | POST | Restore a polygon from history | OK |
 | ExportGeoJson | /api/city-planning/export.geojson | GET | Export all camp polygons as GeoJSON | OK |
 | GetContainers | /api/city-planning/containers/{year:int} | GET | Get containers | OK |
-| ExportContainersGeoJson | /api/city-planning/containers/{year:int}/export.geojson | GET | Export containers geo json | OK |
+| ExportContainersGeoJson | /api/city-planning/containers/{year:int}/export.geojson | GET | Export containers as GeoJSON | OK |
 | SaveContainerPlacement | /api/city-planning/containers/{id:guid}/placement/{year:int} | PUT | Save container placement | OK |
 | UpdateContainerPlacementNotes | /api/city-planning/containers/{id:guid}/placement/{year:int}/notes | PUT | Update container placement notes | OK |
 | ClearContainerPlacement | /api/city-planning/containers/{id:guid}/placement/{year:int} | DELETE | Clear container placement | OK |
@@ -270,20 +261,20 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 |--------|-------|------|---------|------------|
 | Index | /CityPlanning | GET | City planning map (lead view) | OK |
 | BarrioMap | /CityPlanning/BarrioMap | GET | Barrio map | OK |
-| Admin | /CityPlanning/Admin | GET | City planning admin dashboard | OK |
-| OpenPlacement | /CityPlanning/Admin/OpenPlacement | POST | Open placement window | OK |
-| ClosePlacement | /CityPlanning/Admin/ClosePlacement | POST | Close placement window | OK |
+| Admin | /CityPlanning/BarrioMap/Admin | GET | City planning admin dashboard | OK |
+| OpenPlacement | /CityPlanning/BarrioMap/Admin/OpenPlacement | POST | Open placement window | OK |
+| ClosePlacement | /CityPlanning/BarrioMap/Admin/ClosePlacement | POST | Close placement window | OK |
 | OpenContainerPlacement | /CityPlanning/BarrioMap/Admin/OpenContainerPlacement | POST | Open container placement | OK |
 | CloseContainerPlacement | /CityPlanning/BarrioMap/Admin/CloseContainerPlacement | POST | Close container placement | OK |
-| UploadLimitZone | /CityPlanning/Admin/UploadLimitZone | POST | Upload limit-zone GeoJSON | OK |
-| UploadOfficialZones | /CityPlanning/Admin/UploadOfficialZones | POST | Upload official zones GeoJSON | OK |
-| DownloadLimitZone | /CityPlanning/Admin/DownloadLimitZone | GET | Download stored limit-zone GeoJSON | OK |
-| DownloadOfficialZones | /CityPlanning/Admin/DownloadOfficialZones | GET | Download stored official zones GeoJSON | OK |
-| DeleteLimitZone | /CityPlanning/Admin/DeleteLimitZone | POST | Remove the limit-zone polygon | OK |
-| DeleteOfficialZones | /CityPlanning/Admin/DeleteOfficialZones | POST | Remove official zones | OK |
-| UpdatePlacementDates | /CityPlanning/Admin/UpdatePlacementDates | POST | Update placement window dates | OK |
+| UploadLimitZone | /CityPlanning/BarrioMap/Admin/UploadLimitZone | POST | Upload limit-zone GeoJSON | OK |
+| UploadOfficialZones | /CityPlanning/BarrioMap/Admin/UploadOfficialZones | POST | Upload official zones GeoJSON | OK |
+| DownloadLimitZone | /CityPlanning/BarrioMap/Admin/DownloadLimitZone | GET | Download stored limit-zone GeoJSON | OK |
+| DownloadOfficialZones | /CityPlanning/BarrioMap/Admin/DownloadOfficialZones | GET | Download stored official zones GeoJSON | OK |
+| DeleteLimitZone | /CityPlanning/BarrioMap/Admin/DeleteLimitZone | POST | Remove the limit-zone polygon | OK |
+| DeleteOfficialZones | /CityPlanning/BarrioMap/Admin/DeleteOfficialZones | POST | Remove official zones | OK |
+| UpdatePlacementDates | /CityPlanning/BarrioMap/Admin/UpdatePlacementDates | POST | Update placement window dates | OK |
 | ContainerMap | /CityPlanning/ContainerMap/{year:int} | GET | Container map | OK |
-| Containers | /CityPlanning/BarrioMap/Admin/Containers/{year:int} | GET | Containers | OK |
+| Containers | /CityPlanning/BarrioMap/Admin/Containers/{year:int} | GET | Container admin list | OK |
 | CreateBarrioContainer | /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create | POST | Create barrio container | OK |
 | EditContainer | /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit | POST | Edit container | OK |
 | DeleteContainer | /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete | POST | Delete container | OK |
@@ -306,10 +297,10 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Camp/{slug}/Containers | GET | Index/landing page | OK |
-| Create | /Camp/{slug}/Containers/Create | POST | Create | OK |
-| Edit | /Camp/{slug}/Containers/{id}/Edit | POST | Edit | OK |
-| Delete | /Camp/{slug}/Containers/{id}/Delete | POST | Delete | OK |
+| Index | /Camp/{slug}/Containers | GET | List a camp's containers | OK |
+| Create | /Camp/{slug}/Containers/Create | POST | Create a container | OK |
+| Edit | /Camp/{slug}/Containers/{id}/Edit | POST | Edit a container | OK |
+| Delete | /Camp/{slug}/Containers/{id}/Delete | POST | Delete a container | OK |
 
 ## DevLoginController
 
@@ -344,26 +335,28 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Settings | /Events/Admin/Settings | GET | Settings | OK |
-| SaveSettings | /Events/Admin/Settings | POST | Save settings | OK |
-| Categories | /Events/Admin/Categories | GET | Categories | OK |
-| CreateCategory | /Events/Admin/Categories/Create | GET | Create category | OK |
-| CreateCategory | /Events/Admin/Categories/Create | POST | Create category | OK |
-| EditCategory | /Events/Admin/Categories/{id:guid}/Edit | GET | Edit category | OK |
-| EditCategory | /Events/Admin/Categories/{id:guid}/Edit | POST | Edit category | OK |
+| Settings | /Events/Admin/Settings | GET | Events settings form | OK |
+| SaveSettings | /Events/Admin/Settings | POST | Save events settings | OK |
+| Categories | /Events/Admin/Categories | GET | List event categories | OK |
+| CreateCategory | /Events/Admin/Categories/Create | GET | Create category form | OK |
+| CreateCategory | /Events/Admin/Categories/Create | POST | Submit new category | OK |
+| EditCategory | /Events/Admin/Categories/{id:guid}/Edit | GET | Edit category form | OK |
+| EditCategory | /Events/Admin/Categories/{id:guid}/Edit | POST | Submit category edits | OK |
 | DeleteCategory | /Events/Admin/Categories/{id:guid}/Delete | POST | Delete category | OK |
 | MoveCategoryUp | /Events/Admin/Categories/{id:guid}/MoveUp | POST | Move category up | OK |
 | MoveCategoryDown | /Events/Admin/Categories/{id:guid}/MoveDown | POST | Move category down | OK |
-| Venues | /Events/Admin/Venues | GET | Venues | OK |
-| CreateVenue | /Events/Admin/Venues/Create | GET | Create venue | OK |
-| CreateVenue | /Events/Admin/Venues/Create | POST | Create venue | OK |
-| EditVenue | /Events/Admin/Venues/{id:guid}/Edit | GET | Edit venue | OK |
-| EditVenue | /Events/Admin/Venues/{id:guid}/Edit | POST | Edit venue | OK |
+| Venues | /Events/Admin/Venues | GET | List venues | OK |
+| CreateVenue | /Events/Admin/Venues/Create | GET | Create venue form | OK |
+| CreateVenue | /Events/Admin/Venues/Create | POST | Submit new venue | OK |
+| EditVenue | /Events/Admin/Venues/{id:guid}/Edit | GET | Edit venue form | OK |
+| EditVenue | /Events/Admin/Venues/{id:guid}/Edit | POST | Submit venue edits | OK |
 | DeleteVenue | /Events/Admin/Venues/{id:guid}/Delete | POST | Delete venue | OK |
 | MoveVenueUp | /Events/Admin/Venues/{id:guid}/MoveUp | POST | Move venue up | OK |
 | MoveVenueDown | /Events/Admin/Venues/{id:guid}/MoveDown | POST | Move venue down | OK |
 
 ## EventsApiController
+
+(`Controllers/Api/EventsApiController.cs`)
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
@@ -382,67 +375,75 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| MySubmissions | /Events/MySubmissions | GET | My submissions | OK |
-| Submit | /Events/Submit | GET | Submit | OK |
-| Create | /Events/Submit | POST | Create | OK |
-| Edit | /Events/Submit/{eventId:guid}/Edit | GET | Edit | OK |
-| Update | /Events/Submit/{eventId:guid}/Edit | POST | Update | OK |
-| Withdraw | /Events/Submit/{eventId:guid}/Withdraw | POST | Withdraw | OK |
-| Schedule | /Events/Schedule | GET | Schedule | OK |
-| Browse | /Events/Browse | GET | Browse | OK |
-| ToggleFavourite | /Events/Browse/Favourite/{eventId:guid} | POST | Toggle favourite | OK |
-| Unfavourite | /Events/Schedule/Unfavourite/{eventId:guid} | POST | Unfavourite | OK |
+| MySubmissions | /Events/MySubmissions | GET | User's own event submissions | OK |
+| Submit | /Events/Submit | GET | Individual event submission form | OK |
+| Create | /Events/Submit | POST | Submit an individual event | OK |
+| Edit | /Events/Submit/{eventId:guid}/Edit | GET | Edit own event submission form | OK |
+| Update | /Events/Submit/{eventId:guid}/Edit | POST | Save event submission edits | OK |
+| Withdraw | /Events/Submit/{eventId:guid}/Withdraw | POST | Withdraw an event submission | OK |
+| Schedule | /Events/Schedule | GET | Personal event schedule | OK |
+| Browse | /Events/Browse | GET | Browse the event programme | OK |
+| ToggleFavourite | /Events/Browse/Favourite/{eventId:guid} | POST | Toggle favourite from Browse | OK |
+| Unfavourite | /Events/Schedule/Unfavourite/{eventId:guid} | POST | Remove a favourite from Schedule | OK |
+| BarrioSubmit | /Events/Barrio/{slug}/Submit | GET | Barrio event submission form | OK |
+| BarrioCreate | /Events/Barrio/{slug}/Submit | POST | Submit a barrio event | OK |
+| BarrioEdit | /Events/Barrio/{slug}/{eventId:guid}/Edit | GET | Edit barrio event form | OK |
+| BarrioUpdate | /Events/Barrio/{slug}/{eventId:guid}/Edit | POST | Save barrio event edits | OK |
+| BarrioWithdraw | /Events/Barrio/{slug}/{eventId:guid}/Withdraw | POST | Withdraw a barrio event | OK |
+| BulkUploadTemplate | /Events/Barrio/{slug}/BulkUpload/Template | GET | Download barrio bulk-upload template | OK |
+| BulkUploadImport | /Events/Barrio/{slug}/BulkUpload | POST | Bulk-import barrio events from a file | OK |
 
 ## EventsDashboardController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Events/Dashboard | GET | Index/landing page | OK |
+| Index | /Events/Dashboard | GET | Events dashboard | OK |
 
 ## EventsExportController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Events/Export | GET | Index/landing page | OK |
-| DownloadCsv | /Events/Export/Csv | GET | Download csv | OK |
-| PrintGuide | /Events/Export/PrintGuide | GET | Print guide | OK |
+| Index | /Events/Export | GET | Events export landing | OK |
+| DownloadCsv | /Events/Export/Csv | GET | Download events as CSV | OK |
+| PrintGuide | /Events/Export/PrintGuide | GET | Printable programme guide | OK |
 
 ## EventsModerationController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Events/Moderate | GET | Index/landing page | OK |
-| Approve | /Events/Moderate/Approve | POST | Approve | OK |
-| Reject | /Events/Moderate/Reject | POST | Reject | OK |
-| RequestEdit | /Events/Moderate/RequestEdit | POST | Request edit | OK |
+| Index | /Events/Moderate | GET | Event moderation queue | OK |
+| Approve | /Events/Moderate/Approve | POST | Approve an event | OK |
+| Reject | /Events/Moderate/Reject | POST | Reject an event | OK |
+| Withdraw | /Events/Moderate/Withdraw | POST | Withdraw a submitted event (moderator) | OK |
+| RequestEdit | /Events/Moderate/RequestEdit | POST | Request edits from submitter | OK |
 
 ## ExpensesController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Expenses | GET | Index/landing page | OK |
-| New | /Expenses/New | GET | New | OK |
-| New | /Expenses/New | POST | New | OK |
-| Detail | /Expenses/{id:guid} | GET | Detail | OK |
-| Edit | /Expenses/{id:guid}/Edit | GET | Edit | OK |
-| Edit | /Expenses/{id:guid}/Edit | POST | Edit | OK |
-| AddLine | /Expenses/{id:guid}/Lines/Add | POST | Add line | OK |
-| UpdateLine | /Expenses/{id:guid}/Lines/Update | POST | Update line | OK |
-| RemoveLine | /Expenses/{id:guid}/Lines/{lineId:guid}/Remove | POST | Remove line | OK |
-| AttachFile | /Expenses/{id:guid}/Lines/{lineId:guid}/Attach | POST | Attach file | OK |
-| RemoveAttachment | /Expenses/{id:guid}/Lines/{lineId:guid}/RemoveAttachment | POST | Remove attachment | OK |
-| Submit | /Expenses/{id:guid}/Submit | POST | Submit | OK |
-| Withdraw | /Expenses/{id:guid}/Withdraw | POST | Withdraw | OK |
-| Iban | /Expenses/{id:guid}/Iban | GET | Iban | OK |
-| Iban | /Expenses/{id:guid}/Iban | POST | Iban | OK |
-| Attachment | /Expenses/Attachment/{attachmentId:guid} | GET | Attachment | OK |
-| Coordinator | /Expenses/Coordinator | GET | Coordinator | OK |
-| Endorse | /Expenses/{id:guid}/Endorse | POST | Endorse | OK |
-| CoordinatorReject | /Expenses/{id:guid}/CoordinatorReject | POST | Coordinator reject | OK |
-| Review | /Expenses/Review | GET | Review | OK |
-| Approve | /Expenses/{id:guid}/Approve | POST | Approve | OK |
-| Reject | /Expenses/{id:guid}/Reject | POST | Reject | OK |
-| SepaGenerate | /Expenses/Sepa/Generate | POST | Sepa generate | OK |
+| Index | /Expenses | GET | My expense reports | OK |
+| New | /Expenses/New | GET | New expense form | OK |
+| New | /Expenses/New | POST | Create a new expense report | OK |
+| Detail | /Expenses/{id:guid} | GET | Expense report detail | OK |
+| Edit | /Expenses/{id:guid}/Edit | GET | Edit expense form | OK |
+| Edit | /Expenses/{id:guid}/Edit | POST | Save expense edits | OK |
+| AddLine | /Expenses/{id:guid}/Lines/Add | POST | Add an expense line | OK |
+| UpdateLine | /Expenses/{id:guid}/Lines/Update | POST | Update an expense line | OK |
+| RemoveLine | /Expenses/{id:guid}/Lines/{lineId:guid}/Remove | POST | Remove an expense line | OK |
+| AttachFile | /Expenses/{id:guid}/Lines/{lineId:guid}/Attach | POST | Attach a file to a line | OK |
+| RemoveAttachment | /Expenses/{id:guid}/Lines/{lineId:guid}/RemoveAttachment | POST | Remove a line attachment | OK |
+| Submit | /Expenses/{id:guid}/Submit | POST | Submit an expense report | OK |
+| Withdraw | /Expenses/{id:guid}/Withdraw | POST | Withdraw an expense report | OK |
+| Iban | /Expenses/{id:guid}/Iban | GET | IBAN entry form | OK |
+| Iban | /Expenses/{id:guid}/Iban | POST | Save IBAN for reimbursement | OK |
+| Attachment | /Expenses/Attachment/{attachmentId:guid} | GET | Serve an expense attachment | OK |
+| Coordinator | /Expenses/Coordinator | GET | Coordinator endorsement queue | OK |
+| Endorse | /Expenses/{id:guid}/Endorse | POST | Coordinator endorse an expense | OK |
+| CoordinatorReject | /Expenses/{id:guid}/CoordinatorReject | POST | Coordinator reject an expense | OK |
+| Review | /Expenses/Review | GET | Finance review queue | OK |
+| Approve | /Expenses/{id:guid}/Approve | POST | Approve an expense | OK |
+| Reject | /Expenses/{id:guid}/Reject | POST | Reject an expense | OK |
+| SepaGenerate | /Expenses/Sepa/Generate | POST | Generate SEPA payment file | OK |
 
 ## FeedbackApiController
 
@@ -520,7 +521,7 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | SuspendAccount | /Google/Accounts/Suspend | POST | Suspend a workspace account | OK |
 | ReactivateAccount | /Google/Accounts/Reactivate | POST | Reactivate a workspace account | OK |
 | ResetPassword | /Google/Accounts/ResetPassword | POST | Reset workspace account password | OK |
-| ResetPasswordAndGenerate2Fa | /Google/Accounts/ResetPasswordAndGenerate2Fa | POST | Reset password and generate2 fa | OK |
+| ResetPasswordAndGenerate2Fa | /Google/Accounts/ResetPasswordAndGenerate2Fa | POST | Reset password and generate 2FA | OK |
 | LinkAccount | /Google/Accounts/Link | POST | Link workspace email to a human | OK |
 | SyncOutbox | /Google/SyncOutbox | GET | View Google sync outbox events | OK |
 | CheckEmailRenames | /Google/CheckEmailRenames | POST | Detect renamed Workspace emails | OK |
@@ -554,7 +555,6 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Governance | GET | Governance info page (statutes, tier info) | OK |
-| Roles | /Governance/Roles | GET | Role assignments list (Board/Admin) | OK |
 
 ## GuestController
 
@@ -589,29 +589,29 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| List | /api/issues/List | GET | List | OK |
-| Get | /api/issues/{id} | GET | Get | OK |
-| Create | /api/issues/Create | POST | Create | OK |
-| GetComments | /api/issues/{id}/comments | GET | Get comments | OK |
-| PostComment | /api/issues/{id}/comments | POST | Post comment | OK |
-| UpdateStatus | /api/issues/{id}/status | PATCH | Update status | OK |
-| UpdateAssignee | /api/issues/{id}/assignee | PATCH | Update assignee | OK |
-| UpdateSection | /api/issues/{id}/section | PATCH | Update section | OK |
-| SetGitHubIssue | /api/issues/{id}/github-issue | PATCH | Set git hub issue | OK |
+| List | /api/issues | GET | List issues (API) | OK |
+| Get | /api/issues/{id} | GET | Get single issue (API) | OK |
+| Create | /api/issues | POST | Create an issue (API) | OK |
+| GetComments | /api/issues/{id}/comments | GET | Get comments (API) | OK |
+| PostComment | /api/issues/{id}/comments | POST | Post comment (API) | OK |
+| UpdateStatus | /api/issues/{id}/status | PATCH | Update status (API) | OK |
+| UpdateAssignee | /api/issues/{id}/assignee | PATCH | Update assignee (API) | OK |
+| UpdateSection | /api/issues/{id}/section | PATCH | Update section (API) | OK |
+| SetGitHubIssue | /api/issues/{id}/github-issue | PATCH | Link GitHub issue (API) | OK |
 
 ## IssuesController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Issues | GET | Index/landing page | OK |
-| New | /Issues/New | GET | New | OK |
-| Submit | /Issues | POST | Submit | OK |
-| Detail | /Issues/{id} | GET | Detail | OK |
+| Index | /Issues | GET | Issues list page | OK |
+| New | /Issues/New | GET | New issue form | OK |
+| Submit | /Issues | POST | Submit a new issue | OK |
+| Detail | /Issues/{id} | GET | Issue detail | OK |
 | PostComment | /Issues/{id}/Comments | POST | Post comment | OK |
 | UpdateStatus | /Issues/{id}/Status | POST | Update status | OK |
 | UpdateAssignee | /Issues/{id}/Assignee | POST | Update assignee | OK |
 | UpdateSection | /Issues/{id}/Section | POST | Update section | OK |
-| SetGitHubIssue | /Issues/{id}/GitHubIssue | POST | Set git hub issue | OK |
+| SetGitHubIssue | /Issues/{id}/GitHubIssue | POST | Link GitHub issue | OK |
 
 ## LanguageController
 
@@ -633,27 +633,30 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 ## MailerAdminController
 
+(`Controllers/Mailer/MailerAdminController.cs`)
+
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Mailer/Admin | GET | Index/landing page | OK |
-| SyncAudience | /Mailer/Admin/Audiences/{key}/Sync | POST | Sync audience | OK |
-| Refresh | /Mailer/Admin/Refresh | POST | Refresh | OK |
-| Commit | /Mailer/Admin/Import/Commit | POST | Commit | OK |
-| Import | /Mailer/Admin/Import | GET | Import | OK |
+| Index | /Mailer/Admin | GET | Mailer admin landing | OK |
+| Debug | /Mailer/Admin/Audiences/{key}/Debug | GET | Inspect a single audience's members | OK |
+| SyncAudience | /Mailer/Admin/Audiences/{key}/Sync | POST | Sync an audience | OK |
+| Refresh | /Mailer/Admin/Refresh | POST | Refresh audience data | OK |
+| Commit | /Mailer/Admin/Import/Commit | POST | Commit a staged import | OK |
+| Import | /Mailer/Admin/Import | GET | Import preview page | OK |
 
 ## NotificationsController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Notifications | GET | Index/landing page | OK |
-| GetPopup | /Notifications/Popup | GET | Get popup | OK |
-| Resolve | /Notifications/Resolve/{id} | POST | Resolve | OK |
-| Dismiss | /Notifications/Dismiss/{id} | POST | Dismiss | OK |
-| MarkRead | /Notifications/MarkRead/{id} | POST | Mark read | OK |
-| MarkAllRead | /Notifications/MarkAllRead | POST | Mark all read | OK |
+| Index | /Notifications | GET | Notifications list | OK |
+| GetPopup | /Notifications/Popup | GET | Notification popup partial | OK |
+| Resolve | /Notifications/Resolve/{id} | POST | Resolve a notification | OK |
+| Dismiss | /Notifications/Dismiss/{id} | POST | Dismiss a notification | OK |
+| MarkRead | /Notifications/MarkRead/{id} | POST | Mark a notification read | OK |
+| MarkAllRead | /Notifications/MarkAllRead | POST | Mark all notifications read | OK |
 | BulkResolve | /Notifications/BulkResolve | POST | Bulk resolve | OK |
 | BulkDismiss | /Notifications/BulkDismiss | POST | Bulk dismiss | OK |
-| ClickThrough | /Notifications/ClickThrough/{id} | GET | Click through | OK |
+| ClickThrough | /Notifications/ClickThrough/{id} | GET | Record click-through and redirect | OK |
 
 ## OnboardingReviewController
 
@@ -670,24 +673,24 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /OnboardingWidget | GET | Index/landing page | OK |
-| Names | /OnboardingWidget/Names | GET | Names | OK |
-| Names | /OnboardingWidget/Names | POST | Names | OK |
-| Shifts | /OnboardingWidget/Shifts | GET | Shifts | OK |
-| SignUp | /OnboardingWidget/SignUp | POST | Sign up | OK |
-| SignUpRange | /OnboardingWidget/SignUpRange | POST | Sign up range | OK |
-| Skip | /OnboardingWidget/Skip | POST | Skip | OK |
-| Consents | /OnboardingWidget/Consents | GET | Consents | OK |
-| SignConsent | /OnboardingWidget/SignConsent | POST | Sign consent | OK |
+| Index | /OnboardingWidget | GET | Onboarding widget shell | OK |
+| Names | /OnboardingWidget/Names | GET | Names step form | OK |
+| Names | /OnboardingWidget/Names | POST | Save names step | OK |
+| Shifts | /OnboardingWidget/Shifts | GET | Shifts step | OK |
+| SignUp | /OnboardingWidget/SignUp | POST | Sign up for a shift | OK |
+| SignUpRange | /OnboardingWidget/SignUpRange | POST | Sign up for a shift range | OK |
+| Skip | /OnboardingWidget/Skip | POST | Skip the shifts step | OK |
+| Consents | /OnboardingWidget/Consents | GET | Consents step | OK |
+| SignConsent | /OnboardingWidget/SignConsent | POST | Sign a consent | OK |
 
 ## ProfileAdminController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| EmailProblems | /Profile/Admin/EmailProblems | GET | Email problems | OK |
-| EmailProblemsCompare | /Profile/Admin/EmailProblems/Compare | GET | Email problems compare | OK |
-| Merge | /Profile/Admin/EmailProblems/Merge | POST | Merge | OK |
-| DeleteOrphanEmail | /Profile/Admin/EmailProblems/DeleteOrphanEmail | POST | Delete orphan email | OK |
+| EmailProblems | /Profile/Admin/EmailProblems | GET | Email problems queue | OK |
+| EmailProblemsCompare | /Profile/Admin/EmailProblems/Compare | GET | Compare two email-problem accounts | OK |
+| Merge | /Profile/Admin/EmailProblems/Merge | POST | Merge two accounts | OK |
+| DeleteOrphanEmail | /Profile/Admin/EmailProblems/DeleteOrphanEmail | POST | Delete an orphan email | OK |
 | BackfillLegacyEmails | /Profile/Admin/EmailProblems/BackfillLegacyEmails | POST | Backfill legacy emails | OK |
 
 ## ProfileApiController
@@ -695,14 +698,14 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Search | /api/profiles/search | GET | Profile autocomplete API | OK |
-| GetByUserId | /api/profiles/by-userid/{userId:guid} | GET | Get by user id | OK |
+| GetByUserId | /api/profiles/by-userid/{userId:guid} | GET | Get a profile by user id (API) | OK |
 
 ## ProfileBackfillAdminController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Profile/Admin/Backfill | GET | Index/landing page | OK |
-| Run | /Profile/Admin/Backfill/Run | POST | Run | OK |
+| Index | /Profile/Admin/Backfill | GET | Profile backfill landing | OK |
+| Run | /Profile/Admin/Backfill/Run | POST | Run the profile backfill | OK |
 
 ## ProfileController
 
@@ -715,23 +718,24 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Emails | /Profile/Me/Emails | GET | Email management page | OK |
 | AddEmail | /Profile/Me/Emails/Add | POST | Add a new email | OK |
 | VerifyEmail | /Profile/Me/Emails/Verify | GET | Verify email via token | OK |
-| SetPrimary | /Profile/Me/Emails/SetPrimary | POST | Set primary | OK |
+| SetPrimary | /Profile/Me/Emails/SetPrimary | POST | Set primary email | OK |
 | SetEmailVisibility | /Profile/Me/Emails/SetVisibility | POST | Change email visibility | OK |
 | DeleteEmail | /Profile/Me/Emails/Delete | POST | Remove an email | OK |
-| SetGoogle | /Profile/Me/Emails/SetGoogle | POST | Set google | OK |
-| ClearGoogle | /Profile/Me/Emails/ClearGoogle | POST | Clear google | OK |
-| ClearPrimary | /Profile/Me/Emails/ClearPrimary | POST | Clear primary | OK |
-| Link | /Profile/Me/Emails/Link/{provider} | POST | Link | OK |
-| Unlink | /Profile/Me/Emails/Unlink/{id:guid} | POST | Unlink | OK |
-| AdminEmails | /Profile/{id:guid}/Admin/Emails | GET | Admin emails | OK |
-| AdminSetGoogle | /Profile/{id:guid}/Admin/Emails/SetGoogle | POST | Admin set google | OK |
+| SetGoogle | /Profile/Me/Emails/SetGoogle | POST | Mark email as Google sign-in | OK |
+| ClearGoogle | /Profile/Me/Emails/ClearGoogle | POST | Clear Google sign-in flag | OK |
+| ClearPrimary | /Profile/Me/Emails/ClearPrimary | POST | Clear primary email | OK |
+| Link | /Profile/Me/Emails/Link/{provider} | POST | Begin linking an external login provider | OK |
+| Unlink | /Profile/Me/Emails/Unlink/{id:guid} | POST | Unlink an email | OK |
+| UnlinkLinkedAccount | /Profile/Me/LinkedAccounts/Unlink | POST | Unlink an external login provider | OK |
+| AdminEmails | /Profile/{id:guid}/Admin/Emails | GET | Admin: email management for a human | OK |
+| AdminSetGoogle | /Profile/{id:guid}/Admin/Emails/SetGoogle | POST | Admin set Google flag | OK |
 | AdminSetPrimary | /Profile/{id:guid}/Admin/Emails/SetPrimary | POST | Admin set primary | OK |
-| AdminClearGoogle | /Profile/{id:guid}/Admin/Emails/ClearGoogle | POST | Admin clear google | OK |
+| AdminClearGoogle | /Profile/{id:guid}/Admin/Emails/ClearGoogle | POST | Admin clear Google flag | OK |
 | AdminClearPrimary | /Profile/{id:guid}/Admin/Emails/ClearPrimary | POST | Admin clear primary | OK |
 | AdminAddEmail | /Profile/{id:guid}/Admin/Emails/Add | POST | Admin add email | OK |
 | AdminAddVerifiedEmail | /Profile/{id:guid}/Admin/Emails/AddVerified | POST | Admin add verified email | OK |
 | AdminVerifyEmail | /Profile/{id:guid}/Admin/Emails/Verify | POST | Admin verify email | OK |
-| AdminUnlink | /Profile/{id:guid}/Admin/Emails/Unlink/{emailId:guid} | POST | Admin unlink | OK |
+| AdminUnlink | /Profile/{id:guid}/Admin/Emails/Unlink/{emailId:guid} | POST | Admin unlink email | OK |
 | AdminDeleteEmail | /Profile/{id:guid}/Admin/Emails/Delete | POST | Admin delete email | OK |
 | AdminSetVisibility | /Profile/{id:guid}/Admin/Emails/SetVisibility | POST | Admin set visibility | OK |
 | MyOutbox | /Profile/Me/Outbox | GET | View own email outbox | OK |
@@ -745,15 +749,16 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Notifications | /Profile/Me/Notifications | GET | Permanent redirect to CommunicationPreferences | OK |
 | DownloadData | /Profile/Me/DownloadData | GET | GDPR data export | OK |
 | Picture | /Profile/Picture | GET | Serve custom profile picture | OK |
-| ImportGooglePhoto | /Profile/Me/ImportGooglePhoto | POST | Import google photo | OK |
+| ImportGooglePhoto | /Profile/Me/ImportGooglePhoto | POST | Import Google photo | OK |
 | ViewProfile | /Profile/{id} | GET | Public profile page for a human | OK |
 | Popover | /Profile/{id}/Popover | GET | Mini profile popover (partial) | OK |
 | SendMessage | /Profile/{id}/SendMessage | GET | Facilitated message form | OK |
 | SendMessage | /Profile/{id}/SendMessage | POST | Send facilitated message | OK |
 | Search | /Profile/Search | GET | Human search page | OK |
 | AdminList | /Profile/Admin | GET | Admin: human list with filters | OK |
+| Roles | /Profile/Admin/Roles | GET | Admin: governance role assignments list | OK |
 | AdminDetail | /Profile/{id}/Admin | GET | Admin: human detail page | OK |
-| RevealIban | /Profile/{id:guid}/Admin/RevealIban | POST | Reveal iban | OK |
+| RevealIban | /Profile/{id:guid}/Admin/RevealIban | POST | Reveal a human's IBAN | OK |
 | AdminOutbox | /Profile/{id}/Admin/Outbox | GET | Admin: email outbox for a human | OK |
 | SuspendHuman | /Profile/{id}/Admin/Suspend | POST | Suspend a human | OK |
 | UnsuspendHuman | /Profile/{id}/Admin/Unsuspend | POST | Unsuspend a human | OK |
@@ -767,8 +772,8 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Profile/Admin/PictureMigration | GET | Index/landing page | OK |
-| Run | /Profile/Admin/PictureMigration/Run | POST | Run | OK |
+| Index | /Profile/Admin/PictureMigration | GET | Picture migration landing | OK |
+| Run | /Profile/Admin/PictureMigration/Run | POST | Run the picture migration | OK |
 
 ## ScannerController
 
@@ -781,7 +786,7 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Search | GET | Index/landing page | OK |
+| Index | /Search | GET | Global search landing | OK |
 
 ## ShiftAdminController
 
@@ -796,6 +801,8 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | EditShift | /Teams/{slug}/Shifts/Shifts/{shiftId} | POST | Update a shift | OK |
 | ToggleVisibility | /Teams/{slug}/Shifts/Rotas/{rotaId}/ToggleVisibility | POST | Toggle rota volunteer visibility | OK |
 | MoveRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Move | POST | Move a rota to another team | OK |
+| EmailRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Email | GET | Email-rota compose form | OK |
+| EmailRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Email | POST | Email the rota's volunteers | OK |
 | DeleteRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Delete | POST | Delete a rota | OK |
 | DeleteShift | /Teams/{slug}/Shifts/Shifts/{shiftId}/Delete | POST | Delete a shift | OK |
 | BailRange | /Teams/{slug}/Shifts/BailRange | POST | Admin bail a signup range | OK |
@@ -819,6 +826,12 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | SearchVolunteers | /Shifts/Dashboard/SearchVolunteers | GET | Search volunteers for a shift (JSON) | OK |
 | Voluntell | /Shifts/Dashboard/Voluntell | POST | Assign volunteer from dashboard | OK |
 
+## ShiftWorkloadAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Shifts/Admin/Workload | GET | Site-wide read-only shift workload dashboard | OK |
+
 ## ShiftsController
 
 | Method | Route | Verb | Purpose | Suggestion |
@@ -840,29 +853,30 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Catalog | /Store/Admin/Catalog | GET | Catalog | OK |
-| Edit | /Store/Admin/Catalog/Edit | GET | Edit | OK |
-| Edit | /Store/Admin/Catalog/Edit/{id:guid} | GET | Edit | OK |
-| Save | /Store/Admin/Catalog/Save | POST | Save | OK |
-| Deactivate | /Store/Admin/Catalog/Deactivate/{id:guid} | POST | Deactivate | OK |
+| Catalog | /Store/Admin/Catalog | GET | Store product catalog | OK |
+| Summary | /Store/Admin/Summary | GET | Store sales/order summary | OK |
+| Edit | /Store/Admin/Catalog/Edit | GET | New product form | OK |
+| Edit | /Store/Admin/Catalog/Edit/{id:guid} | GET | Edit product form | OK |
+| Save | /Store/Admin/Catalog/Save | POST | Save a product | OK |
+| Deactivate | /Store/Admin/Catalog/Deactivate/{id:guid} | POST | Deactivate a product | OK |
 
 ## StoreController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Store | GET | Index/landing page | OK |
-| Order | /Store/Order/{id:guid} | GET | Order | OK |
-| Pay | /Store/Order/{id:guid}/Pay | POST | Pay | OK |
-| Create | /Store/Order/Create/{campSeasonId:guid} | POST | Create | OK |
-| AddLine | /Store/Order/{id:guid}/AddLine | POST | Add line | OK |
-| RemoveLine | /Store/Order/{id:guid}/RemoveLine | POST | Remove line | OK |
-| UpdateCounterparty | /Store/Order/{id:guid}/UpdateCounterparty | POST | Update counterparty | OK |
+| Index | /Store | GET | Store landing | OK |
+| Order | /Store/Order/{id:guid} | GET | Order detail | OK |
+| Pay | /Store/Order/{id:guid}/Pay | POST | Pay for an order | OK |
+| Create | /Store/Order/Create/{campSeasonId:guid} | POST | Create an order | OK |
+| AddLine | /Store/Order/{id:guid}/AddLine | POST | Add an order line | OK |
+| RemoveLine | /Store/Order/{id:guid}/RemoveLine | POST | Remove an order line | OK |
+| UpdateCounterparty | /Store/Order/{id:guid}/UpdateCounterparty | POST | Update order counterparty | OK |
 
 ## StoreStripeWebhookController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Receive | /Store/StripeWebhook | POST | Receive | OK |
+| Receive | /Store/StripeWebhook | POST | Receive Stripe webhook events | OK |
 
 ## TeamAdminController
 
@@ -933,30 +947,36 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | ExportAttendees | /Tickets/Export/Attendees | GET | Export attendees as CSV | OK |
 | ExportOrders | /Tickets/Export/Orders | GET | Export orders as CSV | OK |
 
+## TicketsContactsAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Tickets/Admin/Contacts | GET | Ticket contacts admin landing | OK |
+| Apply | /Tickets/Admin/Contacts/Apply | POST | Apply contact matching | OK |
+
+## TicketsOnsiteAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Tickets/Admin/Onsite | GET | "Who's onsite" roster (checked-in attendees) | OK |
+
 ## TicketTransferAdminController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Tickets/Admin/Transfers | GET | Index/landing page | OK |
-| Detail | /Tickets/Admin/Transfers/Detail/{id:guid} | GET | Detail | OK |
-| Decide | /Tickets/Admin/Transfers/Decide | POST | Decide | OK |
-| RetryIssue | /Tickets/Admin/Transfers/{id:guid}/RetryIssue | POST | Retry issue | OK |
+| Index | /Tickets/Admin/Transfers | GET | Ticket transfer requests list | OK |
+| Detail | /Tickets/Admin/Transfers/Detail/{id:guid} | GET | Transfer request detail | OK |
+| Decide | /Tickets/Admin/Transfers/Decide | POST | Approve/reject a transfer | OK |
+| RetryIssue | /Tickets/Admin/Transfers/{id:guid}/RetryIssue | POST | Retry a failed ticket issue | OK |
 
 ## TicketTransferController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Send | /Tickets/Transfers/Send | GET | Send | OK |
-| Lookup | /Tickets/Transfers/Lookup | POST | Lookup | OK |
-| Submit | /Tickets/Transfers/Submit | POST | Submit | OK |
-| Cancel | /Tickets/Transfers/Cancel | POST | Cancel | OK |
-
-## TicketsContactsAdminController
-
-| Method | Route | Verb | Purpose | Suggestion |
-|--------|-------|------|---------|------------|
-| Index | /Tickets/Admin/Contacts | GET | Index/landing page | OK |
-| Apply | /Tickets/Admin/Contacts/Apply | POST | Apply | OK |
+| Send | /Tickets/Transfers/Send | GET | Send-transfer form | OK |
+| Lookup | /Tickets/Transfers/Lookup | POST | Look up a recipient | OK |
+| Submit | /Tickets/Transfers/Submit | POST | Submit a transfer | OK |
+| Cancel | /Tickets/Transfers/Cancel | POST | Cancel a transfer | OK |
 
 ## TimezoneApiController
 
@@ -976,13 +996,13 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Users/Admin/Debug | GET | Index/landing page | OK |
+| Index | /Users/Admin/Debug | GET | User identity debug page | OK |
 
 ## VolunteerTrackingController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Shifts/Dashboard/VolunteerTracking | GET | Index/landing page | OK |
+| Index | /Shifts/Dashboard/VolunteerTracking | GET | Volunteer tracking dashboard | OK |
 | SetCampSetup | /Shifts/Dashboard/VolunteerTracking/SetCampSetup | POST | Set camp setup | OK |
 | ClearCampSetup | /Shifts/Dashboard/VolunteerTracking/ClearCampSetup | POST | Clear camp setup | OK |
 | SetDayOff | /Shifts/Dashboard/VolunteerTracking/SetDayOff | POST | Set day off | OK |
@@ -992,13 +1012,13 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Welcome | GET | Index/landing page | OK |
+| Index | /Welcome | GET | Welcome / first-run page | OK |
 
 ## WidgetGalleryController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /WidgetGallery | GET | Index/landing page | OK |
+| Index | /WidgetGallery | GET | UI widget gallery (design reference) | OK |
 
 ---
 
@@ -1023,19 +1043,15 @@ ViewComponents don't have routes — they are invoked from views via `@await Com
 | Controller | Current | Suggested | Reason |
 |------------|---------|-----------|--------|
 | EmailController | `EmailOutbox` / `RetryEmailOutboxMessage` / `DiscardEmailOutboxMessage` / `EmailPreview` | `Outbox` / `RetryOutboxMessage` / `DiscardOutboxMessage` / `Preview` | The `Email` prefix duplicates the controller name |
-| GoogleController | `GoogleSyncResourceAudit` | `ResourceAudit` | The `Google` prefix duplicates the controller name |
-| GoogleController | `HumanGoogleSyncAudit` | `HumanSyncAudit` | The `Google` prefix duplicates the controller name |
 | ProfileController | `Privacy` | `DataPrivacy` ? | Avoids overlap with `HomeController.Privacy` (site policy vs user GDPR page) |
 | UnsubscribeController | `Index` | `Landing` ? | This isn't a list page — it's a token-specific landing/redirect |
 
 **Note:** Items marked with `?` are suggestions where the rename benefit is marginal — worth discussing but not critical.
 
 **High-confidence renames (no `?`):**
-1. `GoogleController.GoogleSyncResourceAudit` → `ResourceAudit` — redundant prefix — *(resolved: moved to AuditLogController.Resource — see PR #499)*
-2. `GoogleController.HumanGoogleSyncAudit` → `HumanSyncAudit` — redundant prefix — *(resolved: moved to AuditLogController.Human — see PR #499)*
-3. `EmailController.EmailOutbox` → `Outbox` (and matching peers) — redundant prefix
+1. `EmailController.EmailOutbox` → `Outbox` (and matching peers) — redundant prefix
 
-All other actions have names that adequately describe what the user sees or what the action does, given their route context.
+All other actions have names that adequately describe what the user sees or what the action does, given their route context. The earlier `GoogleController` redundant-prefix renames (`GoogleSyncResourceAudit` / `HumanGoogleSyncAudit`) were resolved in PR #499 — those actions now live on `AuditLogController` as `Resource` / `Human`.
 
 ---
 
@@ -1045,17 +1061,18 @@ All other actions have names that adequately describe what the user sees or what
 
 Several of the splits proposed in the original audit have since shipped:
 
-- **HumanController has been merged into `ProfileController`** — `View`/`Popover`/`SendMessage`, the admin actions (`AdminList`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole`, `EndRole`), and even the `Search` page now live on `/Profile`. The `View` → `HumanProfile` rename was implemented as `ViewProfile`. The `HumanGoogleSyncAudit` action moved to `GoogleController` (still carries the redundant `Human`/`Google` prefixes — see Part 1).
-- **GoogleController** absorbed all sync, workspace-account, and email-rename actions previously spread across `AdminController`, `BoardController`, `AdminEmailController`, and the team-controller `Sync*` actions.
+- **HumanController has been merged into `ProfileController`** — `View`/`Popover`/`SendMessage`, the admin actions (`AdminList`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole`, `EndRole`), and even the `Search` page now live on `/Profile`. The `View` → `HumanProfile` rename was implemented as `ViewProfile`.
+- **GoogleController** absorbed all sync, workspace-account, and email-rename actions previously spread across `AdminController`, `BoardController`, `AdminEmailController`, and the team-controller `Sync*` actions. The two redundant-prefix Google audit actions later moved to `AuditLogController` (#499).
 - **EmailController** is now its own controller (`/Email`) holding the email outbox + preview that previously lived on `AdminController`.
-- **AdminDuplicateAccountsController** is new and handles the duplicate-account workflow.
-- **CalendarController** and **CityPlanningController** / **CityPlanningApiController** are new sections.
+- **AdminDuplicateAccountsController** handles the duplicate-account workflow.
+- **CalendarController** and **CityPlanningController** / **CityPlanningApiController** are dedicated sections.
 - **GuestController** owns the profileless-account dashboard, with its own GDPR / comms-prefs actions parallel to `ProfileController`.
-- **NotificationController** is its own section.
+- **NotificationsController** is its own section.
+- **GovernanceController.Roles moved to `ProfileController.Roles`** (`/Profile/Admin/Roles`) — the governance role-assignments admin list now lives with the human-admin surface, leaving `GovernanceController` as a single info page. (Note: this lands the admin role list on the user-profile controller; see the ProfileController split discussion below.)
 
 ### Remaining misplaced actions
 
-#### TeamController — community features still on a team controller (17 actions)
+#### TeamController — community features still on a team controller
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
@@ -1064,44 +1081,30 @@ Several of the splits proposed in the original audit have since shipped:
 | `Roster` | TeamController | Shift roster — belongs with shift domain | **ShiftsController** |
 | `Summary`, `CreateTeam`, `EditTeam`, `DeleteTeam` | TeamController | Admin team CRUD | **TeamAdminController** already exists — move these there (route: `/Teams/Admin/...`) |
 
-#### OnboardingReviewController
+#### ProfileController — multiple concerns in one (~55 actions)
+
+The profile controller has grown — it now owns own-profile, email, linked-account, privacy, shift info, comms prefs, public viewing, the entire human-admin surface, and (newly) the governance role-assignments admin list.
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
-| `Index`, `Detail`, `Clear`, `Flag`, `Reject` | OnboardingReviewController | Consent review queue | Stay |
-
-#### ProfileController — five concerns in one (~37 actions)
-
-The profile controller has grown — it now owns own-profile, email, privacy, shift info, comms prefs, public viewing, and the entire human-admin surface.
-
-| Action Group | Current Location | Problem | Better Home |
-|-------------|-----------------|---------|------------|
-| `Index`, `Me`, `Edit` (GET+POST), `Picture`, `ShiftInfo`, `ViewProfile`, `Popover`, `SendMessage`, `Search` | ProfileController | Core profile + public viewing — fine here | Stay |
-| `Emails`, `AddEmail`, `VerifyEmail`, `SetNotificationTarget`, `SetEmailVisibility`, `DeleteEmail`, `SetGoogleServiceEmail` | ProfileController | Email management — 7 actions, own sub-domain | **ProfileEmailController** (`/Profile/Me/Emails/...`) |
+| `Index`, `Me`, `Edit` (GET+POST), `Picture`, `ImportGooglePhoto`, `ShiftInfo`, `ViewProfile`, `Popover`, `SendMessage`, `Search` | ProfileController | Core profile + public viewing — fine here | Stay |
+| `Emails`, `AddEmail`, `VerifyEmail`, `SetPrimary`, `SetEmailVisibility`, `DeleteEmail`, `SetGoogle`, `ClearGoogle`, `ClearPrimary`, `Link`, `Unlink`, `UnlinkLinkedAccount` + all `Admin*Email*` actions | ProfileController | Email / linked-account management — large own sub-domain | **ProfileEmailController** (`/Profile/Me/Emails/...`) |
 | `Privacy`, `RequestDeletion`, `CancelDeletion`, `DownloadData`, `MyOutbox` | ProfileController | GDPR/data rights | **ProfilePrivacyController** (`/Profile/Me/Privacy/...`) |
 | `CommunicationPreferences`, `UpdatePreference`, `Notifications` | ProfileController | Communication prefs | Could stay or move to email controller |
-| `AdminList`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole` (GET+POST), `EndRole` | ProfileController | Admin human management — 10 actions behind `[Authorize(Policy = HumanAdminBoardOrAdmin)]` overrides | **HumanAdminController** (`/Profile/Admin/...` or `/Humans/Admin/...`) |
+| `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `RevealIban`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole` (GET+POST), `EndRole` | ProfileController | Admin human management + role assignments — behind admin-policy overrides | **HumanAdminController** (`/Profile/Admin/...` or `/Humans/Admin/...`) |
 
 #### ShiftsController — admin settings mixed with user browsing
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
 | `Index`, `SignUp`, `SignUpRange`, `Bail`, `BailRange`, `Mine`, `SaveAvailability`, `RegenerateIcal`, `SaveTagPreferences` | ShiftsController | User-facing shift browsing | Stay |
-| `Settings` (GET+POST) | ShiftsController | Admin-only event settings | **ShiftDashboardController** or a dedicated **EventSettingsController** |
-
-#### GovernanceController — admin action on user page
-
-| Action Group | Current Location | Problem | Better Home |
-|-------------|-----------------|---------|------------|
-| `Index` | GovernanceController | Governance info page | Stay |
-| `Roles` | GovernanceController | Admin role assignment list (Board/Admin only) | Move to a dedicated **RoleAdminController** or under `/Profile/Admin/Roles` |
+| `Settings` (GET+POST), `OrphanSignups` | ShiftsController | Admin-only event settings / diagnostics | **ShiftDashboardController** or a dedicated **EventSettingsController** |
 
 ### Priority Ranking for Splits
 
 If tackling this incrementally, ordered by impact:
 
-1. **ProfileController → HumanAdminController** — highest impact, ~10 admin actions on a user-profile controller; clear `[Authorize]`-policy boundary makes the split mechanical.
-2. **ProfileController → ProfileEmailController + ProfilePrivacyController** — ~12 actions across two clear sub-domains.
-3. **TeamController → TeamManagementController + CommunityController** — community features (`Birthdays`, `Map`, `Roster`) hiding on a team controller; admin team CRUD belongs on `TeamAdminController`.
-4. **ShiftsController → EventSettingsController** — minor, just 2 actions.
-5. **GovernanceController → RoleAdminController** — minor, just 1 action.
+1. **ProfileController → HumanAdminController** — highest impact, ~11 admin actions (now including the governance `Roles` list) on a user-profile controller; clear `[Authorize]`-policy boundary makes the split mechanical.
+2. **ProfileController → ProfileEmailController + ProfilePrivacyController** — email/linked-account + GDPR sub-domains across two clear boundaries.
+3. **TeamController → TeamAdminController + CommunityController** — community features (`Birthdays`, `Map`, `Roster`) hiding on a team controller; admin team CRUD belongs on the existing `TeamAdminController`.
+4. **ShiftsController → EventSettingsController** — minor, just the settings + orphan-signups actions.
