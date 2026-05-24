@@ -1441,7 +1441,9 @@
   <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Other allergies (free-text)</value></data>
   <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Other intolerances (free-text)</value></data>
   <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Burner name</value></data>
-  <data name="Cantina_Roster_TableDaysOnSite" xml:space="preserve"><value>Days on site</value></data>
+  <data name="Cantina_Roster_TableArrivesOn" xml:space="preserve"><value>Arrives on</value></data>
+  <data name="Cantina_Roster_TableDaysOff" xml:space="preserve"><value>Days off</value></data>
+  <data name="Cantina_Roster_DaysOff_FullWeek" xml:space="preserve"><value>(on-site all week)</value></data>
   <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Dietary</value></data>
   <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Allergies</value></data>
   <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Other allergy</value></data>

@@ -169,8 +169,17 @@ public class CantinaRosterServiceTests
         p.UserId.Should().Be(userId);
         p.BurnerName.Should().Be("AlicePrime");
         p.DietaryPreference.Should().Be("Omnivore");
-        p.DaysOnSite.Should().HaveCount(1);
-        p.DaysOnSite[0].Should().Be(GateOpening);
+        p.ArrivesOn.Should().Be(GateOpening);
+        // DaysOff is the complement of on-site days within the 7-day week:
+        // user is only on Mon, so Tue..Sun (6 days) are off.
+        p.DaysOff.Should().HaveCount(6);
+        p.DaysOff.Should().Equal(
+            GateOpening.PlusDays(1),
+            GateOpening.PlusDays(2),
+            GateOpening.PlusDays(3),
+            GateOpening.PlusDays(4),
+            GateOpening.PlusDays(5),
+            GateOpening.PlusDays(6));
     }
 
     [HumansFact]
@@ -213,14 +222,17 @@ public class CantinaRosterServiceTests
         result.Days[5].TotalOnSite.Should().Be(0);
         result.Days[6].TotalOnSite.Should().Be(0);
 
-        // Person has DaysOnSite listing all three days, sorted ascending.
+        // Person arrived Mon (earliest on-site) and is off Tue/Thu/Sat/Sun
+        // (the 4 days of the week with no signup).
         result.People.Should().HaveCount(1);
         var p = result.People[0];
-        p.DaysOnSite.Should().HaveCount(3);
-        p.DaysOnSite.Should().Equal(
-            GateOpening.PlusDays(0),
-            GateOpening.PlusDays(2),
-            GateOpening.PlusDays(4));
+        p.ArrivesOn.Should().Be(GateOpening);
+        p.DaysOff.Should().HaveCount(4);
+        p.DaysOff.Should().Equal(
+            GateOpening.PlusDays(1),
+            GateOpening.PlusDays(3),
+            GateOpening.PlusDays(5),
+            GateOpening.PlusDays(6));
     }
 
     [HumansFact]
@@ -261,7 +273,9 @@ public class CantinaRosterServiceTests
         p.AllergyOtherText.Should().BeNull();
         p.Intolerances.Should().BeEmpty();
         p.IntoleranceOtherText.Should().BeNull();
-        p.DaysOnSite.Should().HaveCount(3);
+        // On-site Mon/Tue/Wed → arrives Mon, off Thu/Fri/Sat/Sun.
+        p.ArrivesOn.Should().Be(GateOpening);
+        p.DaysOff.Should().HaveCount(4);
     }
 
     [HumansFact]
@@ -612,6 +626,53 @@ public class CantinaRosterServiceTests
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
         result.People.Select(p => p.BurnerName).Should().Equal("Bertha", "Aaron");
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_ArrivesOn_IsEarliestOnSiteDay_AndDaysOff_IsComplement()
+    {
+        // Single human on-site Mon + Wed + Sat (days 0, 2, 5).
+        // Expected: ArrivesOn = Mon (earliest), DaysOff = [Tue, Thu, Fri, Sun].
+        // Also verifies the cohort-exclusion invariant: a second user with NO
+        // signups all week does NOT appear in People (the "all week off" rule).
+        var es = ActiveEvent();
+        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var onSiteUserId = Guid.NewGuid();
+        var excludedUserId = Guid.NewGuid(); // never appears on any day → must be excluded
+        var onSiteUser = new User { Id = onSiteUserId, DisplayName = "OnSite" };
+        var excludedUser = new User { Id = excludedUserId, DisplayName = "Excluded" };
+        var onSiteProfile = new Profile { UserId = onSiteUserId, BurnerName = "OnSite" };
+        var excludedProfile = new Profile { UserId = excludedUserId, BurnerName = "Excluded" };
+        var vep = new VolunteerEventProfile
+        {
+            UserId = onSiteUserId,
+            DietaryPreference = "Omnivore",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+
+        SetupDay(WeekStartOffset + 0, new[] { onSiteUserId }, new[] { vep });
+        SetupDay(WeekStartOffset + 2, new[] { onSiteUserId }, new[] { vep });
+        SetupDay(WeekStartOffset + 5, new[] { onSiteUserId }, new[] { vep });
+        SetupUsers(onSiteUser, excludedUser);
+        SetupProfiles(onSiteProfile, excludedProfile);
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+
+        // Cohort-exclusion: excludedUserId never had a signup → not in People.
+        result.People.Should().HaveCount(1);
+        result.People.Should().NotContain(p => p.UserId == excludedUserId);
+
+        var p = result.People[0];
+        p.UserId.Should().Be(onSiteUserId);
+        p.ArrivesOn.Should().Be(GateOpening); // Mon = week day 0
+        p.DaysOff.Should().HaveCount(4);
+        p.DaysOff.Should().Equal(
+            GateOpening.PlusDays(1), // Tue
+            GateOpening.PlusDays(3), // Thu
+            GateOpening.PlusDays(4), // Fri
+            GateOpening.PlusDays(6)); // Sun
     }
 
     // ---- helpers ----

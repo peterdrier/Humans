@@ -1443,7 +1443,9 @@
   <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Otras alergias (texto libre)</value></data>
   <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Otras intolerancias (texto libre)</value></data>
   <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Nombre playero</value></data>
-  <data name="Cantina_Roster_TableDaysOnSite" xml:space="preserve"><value>Días en el sitio</value></data>
+  <data name="Cantina_Roster_TableArrivesOn" xml:space="preserve"><value>Llega el</value></data>
+  <data name="Cantina_Roster_TableDaysOff" xml:space="preserve"><value>Días libres</value></data>
+  <data name="Cantina_Roster_DaysOff_FullWeek" xml:space="preserve"><value>(toda la semana)</value></data>
   <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Alimentación</value></data>
   <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Alergias</value></data>
   <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Otra alergia</value></data>

@@ -8,6 +8,12 @@ namespace Humans.Application.Services.Cantina.Dtos;
 /// boundary in the roster surface. The volunteer's <see cref="BurnerName"/>
 /// is stitched in by the service layer via <c>IProfileService</c>
 /// (cross-section read; no nav-property include).
+///
+/// Cohort invariant: users with no Pending/Confirmed signups for the week
+/// are excluded from the cohort entirely (see
+/// <see cref="WeeklyRosterDto.People"/>). Every <see cref="RosterPersonDto"/>
+/// therefore has at least one on-site day, which makes
+/// <see cref="ArrivesOn"/> non-nullable by construction.
 /// </summary>
 /// <param name="UserId">The human's user id.</param>
 /// <param name="BurnerName">
@@ -15,9 +21,15 @@ namespace Humans.Application.Services.Cantina.Dtos;
 /// falls back to the user's <c>DisplayName</c> if no profile / burner
 /// name is set, and finally to <c>"(unknown)"</c> if neither resolves.
 /// </param>
-/// <param name="DaysOnSite">
-/// Calendar dates within the requested week on which this human had a
-/// Pending/Confirmed signup. Ordered Mon..Sun ascending.
+/// <param name="ArrivesOn">
+/// Earliest calendar date within the requested week on which this human
+/// had a Pending/Confirmed signup. Non-nullable: every person in the cohort
+/// has at least one on-site day by definition.
+/// </param>
+/// <param name="DaysOff">
+/// Calendar dates within the requested week range on which this human had
+/// NO signup — the complement of their on-site days within the 7-day week.
+/// Empty when the human is on-site every day of the week. Sorted ascending.
 /// </param>
 /// <param name="DietaryPreference">
 /// One of the canonical preferences in
@@ -34,7 +46,8 @@ namespace Humans.Application.Services.Cantina.Dtos;
 public sealed record RosterPersonDto(
     Guid UserId,
     string BurnerName,
-    IReadOnlyList<LocalDate> DaysOnSite,
+    LocalDate ArrivesOn,
+    IReadOnlyList<LocalDate> DaysOff,
     string? DietaryPreference,
     IReadOnlyList<string> Allergies,
     string? AllergyOtherText,

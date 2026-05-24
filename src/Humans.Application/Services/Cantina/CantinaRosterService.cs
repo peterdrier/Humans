@@ -143,10 +143,20 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 uniqueVeps.Add(v);
         }
 
+        // The 7 calendar dates of the week, used to compute DaysOff as the
+        // complement of each person's on-site days. Empty when the week
+        // has no anchor date (no active event) — in that branch we don't
+        // reach this code path anyway since uniqueUserIds.Count == 0.
+        var weekDays = weekStartDate is null
+            ? Array.Empty<LocalDate>()
+            : Enumerable.Range(0, DaysPerWeek)
+                .Select(i => weekStartDate.Value.PlusDays(i))
+                .ToArray();
+
         // Coordinator-friendly sort: people who arrived earliest come first
         // (longest on-site / known faces), then within an arrival day,
         // higher-attention dietary needs surface to the top:
-        //   1. First arrival date asc (earliest day in DaysOnSite).
+        //   1. First arrival date asc (ArrivesOn).
         //   2. Has any allergies or intolerances desc (true first).
         //   3. Dietary preference in canonical order (Omnivore, Vegetarian,
         //      Vegan, Pescatarian), unknown values next, unanswered last.
@@ -159,17 +169,43 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 vepByUserId.TryGetValue(id, out var vep);
                 var daysList = daysOnSiteByUserId[id];
                 daysList.Sort();
+
+                // ArrivesOn is non-nullable by cohort invariant: every user
+                // in daysOnSiteByUserId got there by appearing on at least
+                // one day. If weekStartDate is null we never enter this
+                // branch (early-return above), so daysList is non-empty.
+                var arrivesOn = daysList[0];
+
+                // DaysOff = weekDays \ on-site days. HashSet for O(1) lookup.
+                IReadOnlyList<LocalDate> daysOff;
+                if (weekDays.Length == 0)
+                {
+                    daysOff = Array.Empty<LocalDate>();
+                }
+                else
+                {
+                    var onSiteSet = new HashSet<LocalDate>(daysList);
+                    var offList = new List<LocalDate>(DaysPerWeek);
+                    foreach (var day in weekDays)
+                    {
+                        if (!onSiteSet.Contains(day))
+                            offList.Add(day);
+                    }
+                    daysOff = offList;
+                }
+
                 return new RosterPersonDto(
                     UserId: id,
                     BurnerName: ResolveBurnerName(profile, user),
-                    DaysOnSite: daysList,
+                    ArrivesOn: arrivesOn,
+                    DaysOff: daysOff,
                     DietaryPreference: vep?.DietaryPreference,
                     Allergies: vep?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
                     AllergyOtherText: vep?.AllergyOtherText,
                     Intolerances: vep?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
                     IntoleranceOtherText: vep?.IntoleranceOtherText);
             })
-            .OrderBy(p => p.DaysOnSite.Count == 0 ? LocalDate.MaxIsoValue : p.DaysOnSite[0])
+            .OrderBy(p => p.ArrivesOn)
             .ThenByDescending(HasAnyAllergyOrIntolerance)
             .ThenBy(p => DietaryPriority(p.DietaryPreference))
             .ThenBy(p => p.BurnerName, StringComparer.Ordinal)

@@ -247,7 +247,8 @@
                     <thead>
                         <tr>
                             <th scope="col">@Localizer["Cantina_Roster_TablePerson"]</th>
-                            <th scope="col">@Localizer["Cantina_Roster_TableDaysOnSite"]</th>
+                            <th scope="col">@Localizer["Cantina_Roster_TableArrivesOn"]</th>
+                            <th scope="col">@Localizer["Cantina_Roster_TableDaysOff"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableDietary"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableAllergies"]</th>
                             <th scope="col">@Localizer["Cantina_Roster_TableAllergyOther"]</th>
@@ -261,9 +262,19 @@
                             <tr>
                                 <td class="fw-semibold">@person.BurnerName</td>
                                 <td>
-                                    @foreach (var d in person.DaysOnSite)
+                                    <span class="badge bg-secondary">@FormatDay(person.ArrivesOn)</span>
+                                </td>
+                                <td>
+                                    @if (person.DaysOff.Count == 0)
                                     {
-                                        <span class="badge bg-secondary me-1">@FormatDay(d)</span>
+                                        <span class="text-muted small">@Localizer["Cantina_Roster_DaysOff_FullWeek"]</span>
+                                    }
+                                    else
+                                    {
+                                        foreach (var d in person.DaysOff)
+                                        {
+                                            <span class="badge bg-light text-muted me-1">@FormatDay(d)</span>
+                                        }
                                     }
                                 </td>
                                 <td>

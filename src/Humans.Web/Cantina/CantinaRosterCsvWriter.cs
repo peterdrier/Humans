@@ -13,17 +13,18 @@ namespace Humans.Web.Cantina;
 /// field unconditionally; the cantina export follows RFC 4180 conditional
 /// quoting so the output stays readable when opened in a spreadsheet
 /// without parser warnings. Multi-select fields (allergies, intolerances)
-/// are joined with <c>", "</c> into a single cell. The <c>DaysOnSite</c>
-/// column lists short calendar labels (e.g. "Mon 27 May") comma-and-space-
-/// separated.
+/// are joined with <c>", "</c> into a single cell. The <c>ArrivesOn</c>
+/// column is a single short calendar label (e.g. "Mon 27 May"); the
+/// <c>DaysOff</c> column lists short calendar labels comma-and-space-
+/// separated (empty when the human is on-site every day of the week).
 ///
 /// Layout (top to bottom):
 ///   1. "Week of &lt;Mon d MMM&gt; – &lt;Sun d MMM&gt;" header line
 ///      (skipped when no active event).
 ///   2. Per-day summary table: Day,Date,On site,Unanswered (7 rows).
 ///   3. Blank separator row.
-///   4. Per-person rows: Name,DaysOnSite,Dietary,Allergies,AllergyOther,
-///      Intolerances,IntoleranceOther.
+///   4. Per-person rows: Name,ArrivesOn,DaysOff,Dietary,Allergies,
+///      AllergyOther,Intolerances,IntoleranceOther.
 /// </summary>
 public static class CantinaRosterCsvWriter
 {
@@ -94,14 +95,15 @@ public static class CantinaRosterCsvWriter
             sw.WriteLine();
 
             // ---- Section 2: per-person rows ----
-            sw.WriteLine("Name,DaysOnSite,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther");
+            sw.WriteLine("Name,ArrivesOn,DaysOff,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther");
             foreach (var p in roster.People)
             {
                 sw.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,
-                    "{0},{1},{2},{3},{4},{5},{6}",
+                    "{0},{1},{2},{3},{4},{5},{6},{7}",
                     Quote(p.BurnerName),
-                    Quote(FormatDaysOnSite(p.DaysOnSite)),
+                    Quote(DayOnSitePattern.Format(p.ArrivesOn)),
+                    Quote(FormatDayList(p.DaysOff)),
                     Quote(p.DietaryPreference ?? string.Empty),
                     Quote(string.Join(", ", p.Allergies)),
                     Quote(p.AllergyOtherText ?? string.Empty),
@@ -113,7 +115,7 @@ public static class CantinaRosterCsvWriter
         return ms.ToArray();
     }
 
-    private static string FormatDaysOnSite(IReadOnlyList<NodaTime.LocalDate> days)
+    private static string FormatDayList(IReadOnlyList<NodaTime.LocalDate> days)
     {
         if (days.Count == 0)
             return string.Empty;
