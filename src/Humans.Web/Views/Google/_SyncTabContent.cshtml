@@ -1,7 +1,12 @@
 @model Humans.Web.Models.SyncTabContentViewModel
+@using Humans.Web.Authorization
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthService
 @{
     var result = Model.Result;
     var resourceType = Model.ResourceType;
+    var canExecuteActions = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+    var canViewAudit = (await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded;
 }
 
 <div class="row mb-4">
@@ -50,7 +55,7 @@ else
             <input class="form-check-input sync-changes-toggle" type="checkbox" id="changesOnly-@resourceType" checked>
             <label class="form-check-label" for="changesOnly-@resourceType">Show changes only</label>
         </div>
-        @if (Model.CanExecuteActions && result.DriftCount > 0)
+        @if (canExecuteActions && result.DriftCount > 0)
         {
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-outline-success"
@@ -122,12 +127,12 @@ else
                             <span class="text-muted">None</span>
                         }
                     </small>
-                    @if (Model.CanViewAudit)
+                    @if (canViewAudit)
                     {
                         <a class="btn btn-sm btn-outline-secondary"
                            href="@Url.Action(nameof(Humans.Web.Controllers.AuditLogController.Resource), "AuditLog", new { id = diff.ResourceId })">Audit</a>
                     }
-                    @if (Model.CanExecuteActions && !diff.IsInSync && !hasError)
+                    @if (canExecuteActions && !diff.IsInSync && !hasError)
                     {
                         <button class="btn btn-sm btn-outline-success"
                                 data-action="executeSingle" data-resource-id="@diff.ResourceId"

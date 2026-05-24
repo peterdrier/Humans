@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Web.Models.VolunteerTracking;
 using NodaTime;
 
 namespace Humans.Web.Models;
@@ -29,6 +30,13 @@ public sealed class VolunteerTrackingPageViewModel
     public bool HideNoGaps { get; init; }
     public bool HideCampSetup { get; init; }
     public bool HideUnbookedSection { get; init; }
+
+    /// <summary>
+    /// State for the Export card. Populated by the controller alongside the
+    /// active-event branch; the empty-event short-circuit uses a default
+    /// instance with no departments so the partial can render safely.
+    /// </summary>
+    public VolunteerTrackingExportFormViewModel ExportForm { get; init; } = new();
 
     public VolunteerTrackingPageViewModel() { }
 

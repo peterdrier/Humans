@@ -20,4 +20,4 @@ HUM0016 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(
 HUM0017 | Humans.Architecture   | Warning  | Application service injects a repository whose [Section] differs from the service's namespace section
 HUM0018 | Humans.Architecture   | Warning  | Section-aware analyzer (e.g. HUM0017) cannot determine the section of a type — missing [Section] or unsection'd namespace
 HUM0019 | Humans.Architecture   | Warning  | Read of Identity-derived User column (Email/NormalizedEmail/UserName/NormalizedUserName) from Application or Web
-HUM0020 | Humans.Architecture   | Error    | Caching service injects a repository directly (downgrades to Warning for classes carrying [Grandfathered("HUM0020", ...)])
+HUM0020 | Humans.Architecture   | Error    | Caching decorator references a repository directly instead of routing through the keyed inner service

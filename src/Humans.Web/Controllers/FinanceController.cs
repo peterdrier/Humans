@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -695,7 +696,7 @@ public class FinanceController(
                 var monday = g.Key;
                 var sunday = monday.PlusDays(6);
                 return new CashFlowPeriodGroup(
-                    $"{monday.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture)} - {sunday.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+                    $"{monday.ToDateTimeUnspecified().ToDisplayDayMonth()} - {sunday.ToDisplayDate()}",
                     monday,
                     sunday,
                     g.ToList());
@@ -716,7 +717,7 @@ public class FinanceController(
                 var firstDay = new LocalDate(g.Key.Year, g.Key.Month, 1);
                 var lastDay = firstDay.PlusDays(firstDay.Calendar.GetDaysInMonth(g.Key.Year, g.Key.Month) - 1);
                 return new CashFlowPeriodGroup(
-                    firstDay.ToString("MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                    firstDay.ToDateTimeUnspecified().ToDisplayMonthYear(),
                     firstDay,
                     lastDay,
                     g.ToList());

@@ -18,12 +18,12 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
+    private static readonly Duration UserHoldingsCacheTtl = Duration.FromMinutes(5);
+
     private readonly IMemoryCache _memoryCache;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly OrdersCache _orders;
     private readonly UserHoldingsCache _userHoldings;
-
-    private static readonly Duration UserHoldingsCacheTtl = Duration.FromMinutes(5);
 
     public CachingTicketQueryService(
         IMemoryCache memoryCache,
@@ -33,7 +33,9 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
     {
         _memoryCache = memoryCache;
         _scopeFactory = scopeFactory;
-        _orders = new OrdersCache(scopeFactory, logger);
+        _orders = new OrdersCache(
+            async ct => await WithInner(inner => inner.GetTicketOrdersAsync(ct)),
+            logger);
         _userHoldings = new UserHoldingsCache(scopeFactory, clock, UserHoldingsCacheTtl, logger);
     }
 
@@ -164,24 +166,19 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
         return await action(inner);
     }
 
-    private sealed class OrdersCache(IServiceScopeFactory scopeFactory, ILogger logger)
+    private sealed class OrdersCache(
+        Func<CancellationToken, Task<IReadOnlyList<TicketOrderInfo>>> loadOrders,
+        ILogger logger)
         : TrackedCache<Guid, TicketOrderInfo>("Tickets.Orders", warmOnStartup: true, logger)
     {
         protected override async Task WarmAllAsync(CancellationToken ct)
         {
-            var orders = await WithInner(inner => inner.GetTicketOrdersAsync(ct));
+            var orders = await loadOrders(ct);
             foreach (var order in orders)
                 Set(order.Id, order);
         }
 
         public Task EnsureWarmedPublicAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
-
-        private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
-        {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketService>(InnerServiceKey);
-            return await action(inner);
-        }
     }
 
     private sealed class UserHoldingsCache(

@@ -23,9 +23,9 @@ namespace Humans.Application.Tests.Architecture;
 /// The inner <see cref="TicketQueryService"/> lives in Application, goes
 /// through <see cref="ITicketRepository"/>, and never imports EF types or
 /// <c>IMemoryCache</c>. The Singleton <see cref="CachingTicketQueryService"/>
-/// decorator (Infrastructure) owns the per-order <c>TicketOrderInfo</c>
-/// projection and the per-user short-TTL entries; it is the only impl that
-/// touches <c>IMemoryCache</c> in this section.
+/// decorator (Infrastructure) owns only the per-user short-TTL entries and
+/// invalidation seam; it is the only impl that touches <c>IMemoryCache</c> in
+/// this section.
 /// </para>
 /// </summary>
 public class TicketQueryArchitectureTests
@@ -58,7 +58,7 @@ public class TicketQueryArchitectureTests
                 .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
 
         cachingParam.Should().BeNull(
-            because: "the inner TicketQueryService is cache-free per T-07; CachingTicketQueryService owns the projection and the per-user short-TTL entries");
+            because: "the inner TicketQueryService is cache-free per T-07; CachingTicketQueryService owns only short-TTL cache entries");
     }
 
     [HumansFact]
@@ -97,7 +97,7 @@ public class TicketQueryArchitectureTests
     public void CachingTicketQueryService_IsSealed()
     {
         typeof(CachingTicketQueryService).IsSealed.Should().BeTrue(
-            because: "the caching decorator is terminal — section-internal logic stays on the inner service and the projection layout is private to the decorator");
+            because: "the caching decorator is terminal — section-internal logic stays on the inner service and cache layout is private to the decorator");
     }
 
     [HumansFact]
@@ -210,7 +210,7 @@ public class TicketQueryArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(ITicketCacheInvalidator),
-            because: "TicketSyncService drives InvalidateAll (post-sync) and InvalidateAfterUserMerge (ReassignAsync) — it must take the seam through DI so the decorator's projection drops");
+            because: "TicketSyncService drives InvalidateAll (post-sync) and InvalidateAfterUserMerge (ReassignAsync) — it must take the seam through DI so the decorator owns cache eviction");
     }
 
     // ── ITicketRepository ────────────────────────────────────────────────────

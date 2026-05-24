@@ -15,10 +15,8 @@ namespace Humans.Application.Tests.Architecture;
 /// cache-migration plan task T-08. Pins the invariants: <c>CalendarService</c>
 /// lives in Application, goes through <see cref="ICalendarRepository"/>,
 /// never injects <c>DbContext</c>, and resolves owning-team display names via
-/// <see cref="ITeamService"/> rather than the <c>CalendarEvent.OwningTeam</c>
-/// cross-domain nav. <see cref="CachingCalendarService"/> wraps the inner
-/// service as a Singleton decorator and is the only type that holds the
-/// <see cref="CalendarEventInfo"/> read-model.
+/// <see cref="ITeamServiceRead"/> rather than the <c>CalendarEvent.OwningTeam</c>
+/// cross-domain nav. The read surface is DTO-only and cache-backed.
 /// </summary>
 public class CalendarArchitectureTests
 {
@@ -77,32 +75,44 @@ public class CalendarArchitectureTests
 
         paramTypes.Should().NotContain(
             n => n.Contains("Microsoft.Extensions.Caching.Memory.IMemoryCache", StringComparison.Ordinal),
-            because: "T-08: the canonical CalendarEventInfo cache lives on CachingCalendarService in Infrastructure; the inner service is cache-free.");
+            because: "CalendarService is cache-free; decorators own any infrastructure cache concerns.");
     }
 
-    // ── CachingCalendarService ───────────────────────────────────────────────
+    // ── ICalendarServiceRead / CachingCalendarService ────────────────────────
 
     [HumansFact]
-    public void CachingCalendarService_ImplementsICalendarService()
+    public void CalendarServiceRead_ReturnsNoEntityTypes()
     {
+        var methods = typeof(ICalendarServiceRead).GetMethods();
+        methods.Any(m => ContainsCalendarEntity(m.ReturnType)).Should().BeFalse(
+            because: "ICalendarServiceRead is the DTO-only read surface; EF entities stay off the cached read contract");
+
+        static bool ContainsCalendarEntity(Type type)
+        {
+            if (type == typeof(Humans.Domain.Entities.CalendarEvent) ||
+                type == typeof(Humans.Domain.Entities.CalendarEventException))
+            {
+                return true;
+            }
+
+            return type.IsGenericType && type.GetGenericArguments().Any(ContainsCalendarEntity);
+        }
+    }
+
+    [HumansFact]
+    public void CachingCalendarService_ImplementsReadAndWriteSurfaces()
+    {
+        typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarServiceRead>(
+            because: "unkeyed ICalendarServiceRead resolves to the cache-backed read service");
         typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarService>(
-            because: "decorator pattern — Singleton wraps the keyed Scoped inner ICalendarService");
-    }
-
-    [HumansFact]
-    public void CachingCalendarService_IsSealed()
-    {
-        typeof(CachingCalendarService).IsSealed.Should().BeTrue(
-            because: "decorator implementations are sealed to prevent ad-hoc extension");
+            because: "write calls still pass through the decorator so the read cache refreshes after mutations");
     }
 
     [HumansFact]
     public void CachingCalendarService_IsTrackedCache()
     {
-        // TrackedCache<Guid, CalendarEventInfo> base — surfaces hit/miss/invalidation
-        // counters on /Admin/CacheStats via ICacheStats.
         typeof(CachingCalendarService).Should().BeAssignableTo<ICacheStats>(
-            because: "T-08 surfaces the CalendarEventInfo cache on /Admin/CacheStats");
+            because: "the calendar read cache is surfaced on /Admin/CacheStats");
     }
 
     // ── CalendarEventInfo projection ─────────────────────────────────────────

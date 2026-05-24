@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Auth;
@@ -184,12 +185,48 @@ public class CachingRoleAssignmentServiceTests
 
     private static CachingRoleAssignmentService BuildService(
         IRoleAssignmentRepository repository,
-        IClock clock) =>
-        new(
-            repository,
-            Substitute.For<IServiceScopeFactory>(),
+        IClock clock)
+    {
+        var inner = Substitute.For<IRoleAssignmentService>();
+        inner.GetFilteredAsync(
+                roleFilter: null,
+                activeOnly: false,
+                page: 1,
+                pageSize: int.MaxValue,
+                now: Arg.Any<Instant>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns(ci => LoadRowsAsync(ci.Arg<CancellationToken>()));
+
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IRoleAssignmentService>(
+            CachingRoleAssignmentService.InnerServiceKey, (_, _) => inner);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+
+        return new CachingRoleAssignmentService(
+            scopeFactory,
             clock,
             NullLogger<CachingRoleAssignmentService>.Instance);
+
+        async Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> LoadRowsAsync(CancellationToken ct)
+        {
+            var rows = await repository.GetAllRowsForCacheAsync(ct);
+            var items = rows
+                .Select(ra => new RoleAssignmentSummarySnapshot(
+                    ra.Id,
+                    ra.UserId,
+                    UserEmail: null,
+                    UserDisplayName: string.Empty,
+                    ra.RoleName,
+                    ra.ValidFrom,
+                    ra.ValidTo,
+                    Notes: null,
+                    CreatedByUserId: Guid.Empty,
+                    CreatedByDisplayName: null,
+                    CreatedAt: ra.CreatedAt))
+                .ToList();
+            return (items, items.Count);
+        }
+    }
 
     private static RoleAssignment Active(string role, Instant now) =>
         new()

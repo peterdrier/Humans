@@ -39,6 +39,54 @@ Rules where the call-site shape is crisp, no baseline is required, and the
 in-editor feedback prevents a class of regression that has already cost the
 project at least one fix commit.
 
+### HUM0020 — Caching decorators must not reference repositories (SHIPPED)
+
+- Rule: a `Caching*Service` class under `Humans.Infrastructure.Services.*`,
+  or one of its nested helper types, must not structurally reference any
+  `IRepository` implementation/interface. Cache misses and warm paths go
+  through the keyed inner application service, never sideways into persistence.
+- Source: generalized from the deleted `CachingTeamServiceBypassArchitectureTests`
+  one-off and `TicketQueryArchitectureTests.CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter`.
+- Why analyzer, not one-off test: the important invariant is system-wide:
+  decorators are transparent wrappers around the application service surface.
+  If a decorator injects a repository, it can bypass the inner service's
+  authorization, write orchestration, section boundaries, and cache invalidation
+  behavior. The call-site/constructor shape is crisp and should fail at build
+  time for every new decorator.
+- Status: shipped as `HUM0020` and enforced as an error. The original
+  repository-backed cache loaders now route through keyed inner services.
+
+### 2026-05-24 architecture-test audit follow-ups
+
+The current architecture-test suite still contains several repeated one-off
+assertion families that are plausible analyzer candidates:
+
+- Application services should not inject forbidden infrastructure-ish
+  dependencies: `IMemoryCache`, store abstractions, `IServiceProvider`,
+  `UserManager`, or direct SDK clients. `IMemoryCache` is already covered by a
+  generalized arch test; promote it to an analyzer once the remaining
+  grandfather story is clear.
+- Repository implementations should be sealed, live under
+  `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory` rather
+  than direct `HumansDbContext` construction. The first two are already
+  generalized arch tests.
+- Interface marker obligations should be compile-time enforced:
+  `I*Service`/`I*Query`/`I*Calculator` extend `IApplicationService`, and
+  `I*Repository` extends `IRepository`.
+- External SDK types must not leak across Application/Web boundaries. The
+  repeated Ticket Tailor, Stripe, and Google bridge tests are one rule family:
+  application interfaces expose DTOs/abstractions, infrastructure owns vendor
+  SDK types.
+- DbSet write ownership should become one analyzer family: only the owning
+  repository/section writes its owned DbSets. Today AuditLog, Events, and
+  Notifications each carry bespoke ratchets for the same invariant.
+- Application service read methods should not expose domain/EF entities.
+  `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
+  needs either a grandfather mechanism or a warning-first migration.
+- Cross-section EF/nav rules are high value but need a semantic section
+  ownership map before analyzer promotion. The current regex/folder ratchets
+  should stay until that framework exists.
+
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 
 - Rule: an EF configuration `Property(...)` chain may not call

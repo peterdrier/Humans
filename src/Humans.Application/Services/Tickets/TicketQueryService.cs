@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
@@ -854,4 +855,5 @@ public sealed class TicketQueryService(
     // Invalidation no-ops on the inner; CachingTicketQueryService intercepts.
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         ticketRepository.GetOrderDriftAsync(ct);
+
 }

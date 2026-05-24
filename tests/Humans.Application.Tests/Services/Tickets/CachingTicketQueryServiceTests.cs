@@ -65,7 +65,7 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansFact]
-    public async Task GetTicketOrdersAsync_ProjectionDerivesAllMatchedUserIds()
+    public async Task GetTicketOrdersAsync_CachesInnerProjection()
     {
         SeedOrders(
             MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []),
@@ -73,50 +73,18 @@ public sealed class CachingTicketQueryServiceTests
                 MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
             ]));
 
-        var result = (await _decorator.GetTicketOrdersAsync())
-            .SelectMany(o => o.MatchedUserId.HasValue
-                ? o.Attendees
-                    .Where(a => a.MatchedUserId.HasValue)
-                    .Select(a => a.MatchedUserId!.Value)
-                    .Append(o.MatchedUserId.Value)
-                : o.Attendees
-                    .Where(a => a.MatchedUserId.HasValue)
-                    .Select(a => a.MatchedUserId!.Value))
-            .ToHashSet();
+        var first = await _decorator.GetTicketOrdersAsync();
+        var second = await _decorator.GetTicketOrdersAsync();
 
-        result.Should().BeEquivalentTo([UserA, UserB]);
-    }
-
-    [HumansFact]
-    public async Task GetTicketOrdersAsync_ProjectionDerivesBuyerOrAttendeeMatch()
-    {
-        SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
-            MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
-        ]));
-
-        var matchedIds = (await _decorator.GetTicketOrdersAsync())
-            .SelectMany(o => o.MatchedUserId.HasValue
-                ? o.Attendees
-                    .Where(a => a.MatchedUserId.HasValue)
-                    .Select(a => a.MatchedUserId!.Value)
-                    .Append(o.MatchedUserId.Value)
-                : o.Attendees
-                    .Where(a => a.MatchedUserId.HasValue)
-                    .Select(a => a.MatchedUserId!.Value))
-            .ToHashSet();
-
-        matchedIds.Should().Contain(UserA);
-        matchedIds.Should().Contain(UserB);
-        matchedIds.Should().NotContain(UserC);
+        first.Should().BeEquivalentTo(second);
+        _decorator.Entries.Should().Be(2);
+        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task GetUserTicketHoldingsAsync_UsesTrackedUserCache()
     {
         SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
-        SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
-            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
-        ]));
 
         var first = await _decorator.GetUserTicketHoldingsAsync(UserA);
         var second = await _decorator.GetUserTicketHoldingsAsync(UserA);

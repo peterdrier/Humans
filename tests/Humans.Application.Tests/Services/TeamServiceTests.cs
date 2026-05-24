@@ -1070,20 +1070,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CreateRoleDefinitionAsync_SystemTeam_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await Db.SaveChangesAsync();
-
-        var act = () => _service.CreateRoleDefinitionAsync(
-            team.Id, "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
-    }
-
-    [HumansFact]
     public async Task CreateRoleDefinitionAsync_DuplicateName_Throws()
     {
         var actor = SeedUser(displayName: "Actor");

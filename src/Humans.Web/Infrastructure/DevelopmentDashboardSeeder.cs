@@ -328,15 +328,65 @@ public sealed class DevelopmentDashboardSeeder(
             }
         }
 
+        // Per-user team assignments: ~80% stick to a single parent team, ~20% switch
+        // primary→secondary at a given day offset. Produces realistic block-shaped rows
+        // in the volunteer-tracking export instead of fully-scattered signups.
+        var assignableTeams = parentTeams.Values.ToList();
+        var userAssignments = new Dictionary<Guid, UserAssignment>(users.Count);
+        foreach (var user in users)
+        {
+            var primary = assignableTeams[_rng.Next(assignableTeams.Count)];
+            UserAssignment assignment;
+            if (_rng.NextDouble() < 0.20)
+            {
+                Team secondary;
+                do { secondary = assignableTeams[_rng.Next(assignableTeams.Count)]; } while (secondary.Id == primary.Id);
+                // Switch day chosen from -7 to +4 (Build/Event overlap), biased to mid-range so each block has some days.
+                var switchDayOffset = _rng.Next(-7, 5);
+                assignment = new UserAssignment(primary.Id, secondary.Id, switchDayOffset);
+            }
+            else
+            {
+                assignment = new UserAssignment(primary.Id, null, null);
+            }
+            userAssignments[user.Id] = assignment;
+        }
+
+        // Rota → parent team Id. Parent rotas map to themselves; subteam rotas map to their parent.
+        var teamIdToParent = parentTeams.Values.ToDictionary(t => t.Id, t => t.Id);
+        foreach (var (subName, _) in subteamRates)
+        {
+            var sub = subteams[subName];
+            teamIdToParent[sub.Id] = sub.ParentTeamId ?? sub.Id;
+        }
+        var rotaToParentTeamId = allRotas.ToDictionary(
+            r => r.Rota.Id,
+            r => teamIdToParent.GetValueOrDefault(r.Rota.TeamId, r.Rota.TeamId));
+
         // Signups: rate-driven Confirmed vs Pending, plus a few Bailed / Refused, and some stale Pending.
+        // Candidate filter: only users whose effective team for this shift's day matches the shift's parent.
         var signupsCreated = 0;
         var pickedSignups = new HashSet<(Guid ShiftId, Guid UserId)>();
         foreach (var (shift, rate) in shifts)
         {
+            var shiftTeamId = rotaToParentTeamId[shift.RotaId];
+            var candidates = users.Where(u =>
+            {
+                var a = userAssignments[u.Id];
+                var effectiveTeam = (a.SecondaryTeamId, a.SwitchDayOffset) switch
+                {
+                    (Guid sec, int switchDay) when shift.DayOffset >= switchDay => sec,
+                    _ => a.PrimaryTeamId,
+                };
+                return effectiveTeam == shiftTeamId;
+            }).ToList();
+
+            if (candidates.Count == 0) continue;
+
             var targetConfirmed = (int)Math.Round(shift.MaxVolunteers * rate);
             for (var i = 0; i < targetConfirmed && i < shift.MaxVolunteers; i++)
             {
-                var user = users[_rng.Next(users.Count)];
+                var user = candidates[_rng.Next(candidates.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
                 var signup = await shiftSignupService.VoluntellAsync(user.Id, shift.Id, users[0].Id);
@@ -347,7 +397,7 @@ public sealed class DevelopmentDashboardSeeder(
             // A couple of pending per shift to create visible pending load.
             for (var i = 0; i < 2; i++)
             {
-                var user = users[_rng.Next(users.Count)];
+                var user = candidates[_rng.Next(candidates.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
                 var signup = await shiftSignupService.SignUpAsync(user.Id, shift.Id);
@@ -431,6 +481,13 @@ public sealed class DevelopmentDashboardSeeder(
 
         return new DashboardResetResult(eventsDeleted, teamsDeleted, usersDeleted);
     }
+
+    /// <summary>
+    /// Per-user team assignment for the dashboard seeder. Primary team is always present;
+    /// when SecondaryTeamId is set, the user switches from primary→secondary at SwitchDayOffset
+    /// (so shifts with DayOffset &gt;= switchDay belong to the secondary).
+    /// </summary>
+    private sealed record UserAssignment(Guid PrimaryTeamId, Guid? SecondaryTeamId, int? SwitchDayOffset);
 
     private static IEnumerable<string> SeededTeamSlugsForDelete()
     {

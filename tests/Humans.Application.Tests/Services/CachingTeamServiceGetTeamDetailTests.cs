@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -15,22 +14,17 @@ namespace Humans.Application.Tests.Services;
 
 /// <summary>
 /// Pins the T-01 invariant: <see cref="CachingTeamService.GetTeamDetailAsync"/>
-/// projects entirely from the cached <c>TeamInfo</c> snapshot and never calls
-/// the previously-bypassed repository methods
-/// (<see cref="ITeamRepository.GetBySlugWithRelationsAsync"/>,
-/// <see cref="ITeamRepository.GetRoleDefinitionsAsync"/>) on the read path.
+/// projects entirely from the cached <c>TeamInfo</c> snapshot.
 /// </summary>
 public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
-    private readonly ITeamRepository _teamRepository;
     private readonly ITeamService _innerTeamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly CachingTeamService _service;
 
     public CachingTeamServiceGetTeamDetailTests()
     {
-        _teamRepository = Substitute.For<ITeamRepository>();
         _innerTeamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
@@ -38,18 +32,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         userService
             .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
-
-        // WarmAllAsync needs these three reads; return empty maps so warmup
-        // proceeds without DB. The team set itself is supplied per-test.
-        _teamRepository
-            .GetActiveManagementRoleHolderUserIdsByTeamAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>());
-        _teamRepository
-            .GetAllRoleDefinitionsByTeamAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<TeamRoleDefinition>>());
-        _teamRepository
-            .GetPendingCountsByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
@@ -61,7 +43,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingTeamService(
-            _teamRepository,
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
     }
@@ -76,7 +57,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         result.Should().NotBeNull();
         result.Team.Slug.Should().Be("public");
-        await AssertNoBypassedReadsAsync();
     }
 
     [HumansFact]
@@ -88,7 +68,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var result = await _service.GetTeamDetailAsync("hidden", userId: null);
 
         result.Should().BeNull();
-        await AssertNoBypassedReadsAsync();
     }
 
     [HumansFact]
@@ -120,7 +99,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         result.IsCurrentUserMember.Should().BeTrue();
         result.CanCurrentUserLeave.Should().BeTrue();
         result.CanCurrentUserJoin.Should().BeFalse();
-        await AssertNoBypassedReadsAsync();
     }
 
     [HumansFact]
@@ -134,7 +112,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         result.Should().NotBeNull();
         result.Team.Slug.Should().Be("original");
-        await AssertNoBypassedReadsAsync();
     }
 
     [HumansFact]
@@ -157,7 +134,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         result.Should().NotBeNull();
         result.ChildTeams.Should().ContainSingle(c => c.Id == child.Id);
-        await AssertNoBypassedReadsAsync();
     }
 
     [HumansFact]
@@ -176,24 +152,54 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         result.Should().NotBeNull();
         result.ChildTeams.Select(c => c.Id).Should().BeEquivalentTo([publicChild.Id]);
-        await AssertNoBypassedReadsAsync();
-    }
-
-    private async Task AssertNoBypassedReadsAsync()
-    {
-        // T-01 invariant: GetTeamDetailAsync MUST NOT call the two repository
-        // methods that defined the previous every-request bypass.
-        await _teamRepository.DidNotReceive().GetBySlugWithRelationsAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _teamRepository.DidNotReceive().GetRoleDefinitionsAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     private void SeedTeams(params Team[] teams)
     {
-        _teamRepository
-            .GetAllWithMembersAsync(Arg.Any<CancellationToken>())
-            .Returns(teams.ToList());
+        var childIdsByParent = teams
+            .Where(t => t.ParentTeamId.HasValue)
+            .GroupBy(t => t.ParentTeamId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
+        var infos = teams.ToDictionary(
+            t => t.Id,
+            t => new TeamInfo(
+                t.Id,
+                t.Name,
+                t.Description,
+                t.Slug,
+                t.IsActive,
+                t.IsSystemTeam,
+                t.SystemTeamType,
+                t.RequiresApproval,
+                t.IsPublicPage,
+                t.IsHidden,
+                t.IsPromotedToDirectory,
+                t.CreatedAt,
+                t.Members
+                    .Where(m => m.LeftAt is null)
+                    .Select(m => new TeamMemberInfo(
+                        m.Id,
+                        m.UserId,
+                        string.Empty,
+                        null,
+                        null,
+                        m.Role,
+                        m.JoinedAt))
+                    .ToList(),
+                ParentTeamId: t.ParentTeamId,
+                GoogleGroupPrefix: t.GoogleGroupPrefix,
+                HasBudget: t.HasBudget,
+                IsSensitive: t.IsSensitive,
+                UpdatedAt: t.UpdatedAt,
+                CustomSlug: t.CustomSlug,
+                ChildTeamIds: childIdsByParent.TryGetValue(t.Id, out var childIds) ? childIds : null,
+                ShowCoordinatorsOnPublicPage: t.ShowCoordinatorsOnPublicPage,
+                PageContent: t.PageContent,
+                CallsToAction: t.CallsToAction,
+                PageContentUpdatedAt: t.PageContentUpdatedAt,
+                PageContentUpdatedByUserId: t.PageContentUpdatedByUserId));
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(infos);
     }
 
     private static Team MakeTeam(string name, bool isPublicPage = false, bool isHidden = false)
