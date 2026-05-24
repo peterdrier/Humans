@@ -20,7 +20,9 @@ public sealed class VolunteerTrackingXlsxBuilder
         WriteDayHeaders(sheet, model);
         sheet.SheetView.FreezeRows(6);
         sheet.SheetView.FreezeColumns(1);
-        // Body comes in later tasks.
+
+        var nextRow = WriteGroupsAndHumans(sheet, model, startRow: 7);
+        WriteTotalsRow(sheet, model, totalsRow: nextRow);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -48,5 +50,36 @@ public sealed class VolunteerTrackingXlsxBuilder
             sheet.Cell(5, col).Style.Font.Bold = true;
             sheet.Cell(6, col).Style.Font.Bold = true;
         }
+    }
+
+    private static int WriteGroupsAndHumans(IXLWorksheet sheet, VolunteerExportModel model, int startRow)
+    {
+        var dayCount = model.Days.Count;
+        var lastCol = dayCount + 1;  // 1 label + day columns
+        var row = startRow;
+        foreach (var group in model.Groups)
+        {
+            // Banner row
+            var banner = sheet.Cell(row, 1);
+            banner.Value = $"{group.TeamName} ({group.Humans.Count} humans)";
+            var range = sheet.Range(row, 1, row, lastCol);
+            range.Merge();
+            range.Style.Fill.BackgroundColor = XLColor.FromHtml(group.TeamColorHex);
+            range.Style.Font.Bold = true;
+            range.Style.Font.FontColor = XLColor.White;
+            row++;
+
+            // Human rows come in Task 4.4 — for now, just advance the row counter to leave space.
+            foreach (var _ in group.Humans) row++;
+        }
+        return row;
+    }
+
+    private static void WriteTotalsRow(IXLWorksheet sheet, VolunteerExportModel model, int totalsRow)
+    {
+        // Filled in Task 4.5.
+        _ = sheet;
+        _ = model;
+        _ = totalsRow;
     }
 }

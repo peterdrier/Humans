@@ -66,6 +66,37 @@ public sealed class VolunteerTrackingXlsxBuilderTests
         sheet.SheetView.SplitColumn.Should().Be(1);
     }
 
+    [HumansFact]
+    public void DepartmentBanner_RenderedAsMergedColoredRow()
+    {
+        var days = new[] { new LocalDate(2026, 7, 7), new LocalDate(2026, 7, 8) };
+        var teamA = Guid.Parse("11111111-0000-0000-0000-000000000000");
+        var group = new DepartmentGroup(
+            TeamId: teamA,
+            TeamName: "Cantina",
+            TeamColorHex: "#1F77B4",
+            Humans:
+            [
+                new HumanRow(Guid.NewGuid(), "Alice", [CellState.Empty, CellState.Empty]),
+            ]);
+        var model = NewEmptyModel(days) with { Groups = [group], TotalsPerDay = [0, 0] };
+
+        var sut = new VolunteerTrackingXlsxBuilder();
+        using var workbook = new XLWorkbook(new MemoryStream(sut.Build(model).Content));
+        var sheet = workbook.Worksheets.First();
+
+        // Body starts at row 7. Banner is row 7. Humans below from row 8.
+        var bannerCell = sheet.Cell("A7");
+        bannerCell.GetString().Should().Be("Cantina (1 humans)");
+        bannerCell.Style.Fill.BackgroundColor.ToString().Should().EndWith("1F77B4");
+        bannerCell.Style.Font.Bold.Should().BeTrue();
+        bannerCell.Style.Font.FontColor.ToString().Should().EndWith("FFFFFF");
+
+        var merged = sheet.MergedRanges.FirstOrDefault(r => r.RangeAddress.FirstAddress.RowNumber == 7);
+        merged.Should().NotBeNull();
+        merged!.RangeAddress.LastAddress.ColumnNumber.Should().Be(3); // A..C (1 label + 2 day cols)
+    }
+
     private static VolunteerExportModel NewEmptyModel(IReadOnlyList<LocalDate> days) => new(
         MethodologyBlurb: "M.",
         FilterSummary: "F.",
