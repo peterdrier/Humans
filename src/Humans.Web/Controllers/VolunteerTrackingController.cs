@@ -1,13 +1,18 @@
+using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
+using Humans.Web.Models.VolunteerTracking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using NodaTime;
 using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
@@ -20,6 +25,9 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 public sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
+    IShiftManagementService shiftManagementService,
+    IVolunteerTrackingExportService exportService,
+    VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserServiceRead userService,
     IAuditLogService auditLogService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -67,6 +75,16 @@ public sealed class VolunteerTrackingController(
                 .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+        // Export card form state — driven by the active event's departments.
+        // GetActiveAsync is the same lookup the Index page is gated on (we
+        // already know HasActiveEvent is true here), so the result is non-null
+        // in practice; defensive fall-back keeps the page renderable if a race
+        // empties EventSettings between the two calls.
+        var activeEvent = await shiftManagementService.GetActiveAsync();
+        var departments = activeEvent is null
+            ? []
+            : await shiftManagementService.GetDepartmentsWithRotasAsync(activeEvent.Id);
+
         var model = new VolunteerTrackingPageViewModel(
             data.BuildStartOffset,
             data.GateOpeningDate,
@@ -76,9 +94,95 @@ public sealed class VolunteerTrackingController(
             nameByUserId,
             hideNoGaps,
             hideCampSetup,
-            hideUnbookedSection);
+            hideUnbookedSection)
+        {
+            ExportForm = new VolunteerTrackingExportFormViewModel
+            {
+                Departments = departments,
+                SelectedDepartmentId = null,
+                SelectedPeriod = ShiftPeriod.Event,
+                StartDate = null,
+                EndDate = null,
+            },
+        };
 
         return View(model);
+    }
+
+    [HttpGet("ExportXlsx")]
+    public async Task<IActionResult> ExportXlsx(
+        Guid? departmentId,
+        string? startDate,
+        string? endDate,
+        ShiftPeriod? period,
+        BuildSubPeriod? subPeriod = null,
+        CancellationToken ct = default)
+    {
+        var eventSettings = await shiftManagementService.GetActiveAsync();
+        if (eventSettings is null)
+        {
+            SetError(localizer["VolTrack_NoActiveEvent"]);
+            return RedirectToAction(nameof(Index));
+        }
+
+        var parsedStart = TryParseLocalDate(startDate);
+        var parsedEnd = TryParseLocalDate(endDate);
+        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(period, parsedStart, parsedEnd);
+
+        // Resolve range:
+        //   period=Build + subPeriod set → narrow to that sub-period's day-offset window
+        //   period set → period's window (Build/Event/Strike each have distinct windows)
+        //   period null + explicit dates → those dates
+        //   period null + no dates → whole event (Build → Strike inclusive)
+        LocalDate rangeStart, rangeEnd;
+        if (period == ShiftPeriod.Build && subPeriod.HasValue)
+        {
+            var (startOffset, endExclusive) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, eventSettings);
+            rangeStart = eventSettings.GateOpeningDate.PlusDays(startOffset);
+            rangeEnd = eventSettings.GateOpeningDate.PlusDays(endExclusive - 1);
+        }
+        else if (period.HasValue)
+        {
+            (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(period.Value, eventSettings);
+        }
+        else if (activeStart.HasValue && activeEnd.HasValue)
+        {
+            (rangeStart, rangeEnd) = (activeStart.Value, activeEnd.Value);
+        }
+        else
+        {
+            rangeStart = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
+            rangeEnd = eventSettings.GateOpeningDate.PlusDays(eventSettings.StrikeEndOffset);
+        }
+        // Guard against a hand-crafted URL with endDate before startDate (the form's HTML5
+        // validation would block this, but the action is reachable directly).
+        if (rangeEnd < rangeStart)
+        {
+            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+        }
+
+        var actorInfo = await GetCurrentUserInfoAsync(ct);
+        var actor = actorInfo?.BurnerName ?? localizer["VolTrack_UnknownUser"].Value;
+
+        var request = new VolunteerExportRequest(
+            EventSettingsId: eventSettings.Id,
+            DepartmentId: departmentId,
+            StartDate: rangeStart,
+            EndDate: rangeEnd,
+            Period: period,
+            ActorPlayaName: actor,
+            GeneratedAtUtc: SystemClock.Instance.GetCurrentInstant());
+
+        var model = await exportService.BuildAsync(request, ct);
+        var result = xlsxBuilder.Build(model);
+        return File(result.Content, result.ContentType, result.FileName);
+    }
+
+    private static LocalDate? TryParseLocalDate(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var parsed = LocalDatePattern.Iso.Parse(input);
+        return parsed.Success ? parsed.Value : null;
     }
 
     [HttpPost("SetCampSetup")]

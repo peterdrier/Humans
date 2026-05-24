@@ -46,6 +46,10 @@ public class VolunteerTrackingControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IVolunteerTrackingExportService _exportService =
+        Substitute.For<IVolunteerTrackingExportService>();
+    private readonly Humans.Web.Models.VolunteerTracking.VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
@@ -79,7 +83,8 @@ public class VolunteerTrackingControllerTests
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _userService, _auditLog, _localizer);
+            _service, _shiftMgmt, _exportService, _xlsxBuilder,
+            _userService, _auditLog, _localizer);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)

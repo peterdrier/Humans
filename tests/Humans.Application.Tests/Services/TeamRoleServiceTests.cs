@@ -80,22 +80,6 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task CreateRoleDefinitionAsync_SystemTeam_Throws()
-    {
-        var admin = SeedUser("Admin");
-        SeedAdminRole(admin);
-        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await Db.SaveChangesAsync();
-
-        var act = () => _service.CreateRoleDefinitionAsync(
-            team.Id, "Designer", null, 2,
-            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, admin.Id);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
-    }
-
-    [HumansFact]
     public async Task CreateRoleDefinitionAsync_ValidInput_CreatesDefinition()
     {
         var admin = SeedUser("Admin");
@@ -425,6 +409,48 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var memberInDb = await Db.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null);
         memberInDb.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task AssignToRoleAsync_NonMemberOnSystemTeam_Throws()
+    {
+        // System-team membership is sync-managed; role assignment must not be a
+        // backdoor for injecting non-members (and firing Google sync side effects).
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Board", type: SystemTeamType.Board);
+        var user = SeedUser("Outsider");
+        var role = SeedRoleDefinition(team, "President", slotCount: 1, sortOrder: 1);
+        // Deliberately not adding user as team member
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.AssignToRoleAsync(role.Id, user.Id, admin.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+
+        var memberInDb = await Db.TeamMembers
+            .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null);
+        memberInDb.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task AssignToRoleAsync_ExistingMemberOnSystemTeam_CreatesAssignment()
+    {
+        // The legitimate case: synced members of a system team (e.g. Board) can be
+        // assigned to roles on that team without tripping the auto-add guard.
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Board", type: SystemTeamType.Board);
+        var user = SeedUser("BoardMember");
+        var role = SeedRoleDefinition(team, "President", slotCount: 1, sortOrder: 1);
+        SeedMember(team, user);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id);
+
+        result.Should().NotBeNull();
+        result.TeamRoleDefinitionId.Should().Be(role.Id);
     }
 
     [HumansFact]

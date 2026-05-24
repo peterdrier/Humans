@@ -1,0 +1,93 @@
+@model Humans.Web.Models.VolunteerTracking.VolunteerTrackingExportFormViewModel
+@using Humans.Domain.Enums
+
+@{
+    string PeriodLabel(ShiftPeriod p) => p switch
+    {
+        ShiftPeriod.Build => Localizer["ShiftDash_PeriodFilter_BuildDays"].Value,
+        ShiftPeriod.Event => Localizer["ShiftDash_PeriodFilter_EventShifts"].Value,
+        ShiftPeriod.Strike => Localizer["ShiftDash_PeriodFilter_Strike"].Value,
+        _ => p.ToString(),
+    };
+    string SubPeriodLabel(BuildSubPeriod s) => s switch
+    {
+        BuildSubPeriod.FirstCrew => Localizer["ShiftDash_SubPeriodFilter_FirstCrew"].Value,
+        BuildSubPeriod.SetupWeek => Localizer["ShiftDash_SubPeriodFilter_SetupWeek"].Value,
+        BuildSubPeriod.PreEventWeek => Localizer["ShiftDash_SubPeriodFilter_PreEventWeek"].Value,
+        BuildSubPeriod.FinishingWeekend => Localizer["ShiftDash_SubPeriodFilter_FinishingWeekend"].Value,
+        _ => s.ToString(),
+    };
+    var subPeriodHidden = Model.SelectedPeriod != ShiftPeriod.Build;
+}
+
+<details class="card mb-4" open>
+    <summary class="card-header h5 mb-0" style="cursor: pointer;">
+        @Localizer["VolTrack_Export_Title"]
+    </summary>
+    <div class="card-body">
+        <form method="get" action="@Url.Action("ExportXlsx", "VolunteerTracking")" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label" for="exp-dept">@Localizer["VolTrack_Export_Department"]</label>
+                <select id="exp-dept" name="departmentId" class="form-select">
+                    <option value="">@Localizer["VolTrack_Export_AllDepartments"]</option>
+                    @foreach (var d in Model.Departments)
+                    {
+                        <option value="@d.TeamId" selected="@(Model.SelectedDepartmentId == d.TeamId)">@d.TeamName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="exp-period">@Localizer["VolTrack_Export_Period"]</label>
+                <select id="exp-period" name="period" class="form-select">
+                    <option value="">@Localizer["VolTrack_Export_PeriodCustom"]</option>
+                    @foreach (var p in Enum.GetValues<ShiftPeriod>())
+                    {
+                        <option value="@p" selected="@(Model.SelectedPeriod == p)">@PeriodLabel(p)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 @(subPeriodHidden ? "d-none" : "")" id="exp-subperiod-wrapper">
+                <label class="form-label" for="exp-subperiod">@Localizer["ShiftDash_SubPeriodFilter_Label"]</label>
+                <select id="exp-subperiod" name="subPeriod" class="form-select" disabled="@subPeriodHidden">
+                    <option value="">@Localizer["ShiftDash_SubPeriodFilter_All"]</option>
+                    @foreach (var s in Enum.GetValues<BuildSubPeriod>())
+                    {
+                        <option value="@s" selected="@(Model.SelectedSubPeriod == s)">@SubPeriodLabel(s)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="exp-from">@Localizer["VolTrack_Export_From"]</label>
+                <input id="exp-from" name="startDate" type="date" class="form-control"
+                       value="@(Model.StartDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="exp-to">@Localizer["VolTrack_Export_To"]</label>
+                <input id="exp-to" name="endDate" type="date" class="form-control"
+                       value="@(Model.EndDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">@Localizer["VolTrack_Export_Download"]</button>
+            </div>
+            <div class="col-12">
+                <small class="text-muted fst-italic">@Localizer["VolTrack_Export_Methodology"]</small>
+            </div>
+        </form>
+    </div>
+</details>
+
+<script>
+    (function () {
+        var periodSelect = document.getElementById('exp-period');
+        var subWrapper = document.getElementById('exp-subperiod-wrapper');
+        var subSelect = document.getElementById('exp-subperiod');
+        if (!periodSelect || !subWrapper || !subSelect) return;
+        var buildValue = '@ShiftPeriod.Build';
+        periodSelect.addEventListener('change', function () {
+            var isBuild = periodSelect.value === buildValue;
+            subWrapper.classList.toggle('d-none', !isBuild);
+            subSelect.disabled = !isBuild;
+            if (!isBuild) subSelect.value = '';
+        });
+    })();
+</script>
