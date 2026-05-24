@@ -1218,9 +1218,6 @@ public sealed class TeamService(
         var team = await repo.GetByIdAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 
-        if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot add role definitions to system teams");
-
         ValidateSlotCountAndPriorities(slotCount, priorities);
         ValidateRoleName(name);
 

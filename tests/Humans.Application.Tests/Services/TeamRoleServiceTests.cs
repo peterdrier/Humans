@@ -80,22 +80,6 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task CreateRoleDefinitionAsync_SystemTeam_Throws()
-    {
-        var admin = SeedUser("Admin");
-        SeedAdminRole(admin);
-        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await Db.SaveChangesAsync();
-
-        var act = () => _service.CreateRoleDefinitionAsync(
-            team.Id, "Designer", null, 2,
-            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, admin.Id);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
-    }
-
-    [HumansFact]
     public async Task CreateRoleDefinitionAsync_ValidInput_CreatesDefinition()
     {
         var admin = SeedUser("Admin");
