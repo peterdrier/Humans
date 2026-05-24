@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Auth;
@@ -35,9 +36,11 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
         var fakeUserService = new FakeUserService(Db);
+        var fakeTicketService = new FakeTicketQueryService(Db);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(new FakeTeamService(Db))
-            .With<ITicketService>(new FakeTicketQueryService(Db))
+            .With<ITicketService>(fakeTicketService)
+            .With<ITicketServiceRead>(fakeTicketService)
             .With<IUserService>(fakeUserService)
             .With<IUserServiceRead>(fakeUserService)
             .With<IRoleAssignmentService>()
@@ -941,6 +944,25 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 
     private sealed class FakeTicketQueryService(HumansDbContext db) : ITicketService
     {
+        public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
+        {
+            var orders = await db.TicketOrders.ToListAsync(ct);
+            return orders.Select(o => new TicketOrderInfo(
+                Id: o.Id,
+                VendorOrderId: o.VendorOrderId,
+                BuyerName: o.BuyerName,
+                BuyerEmail: o.BuyerEmail,
+                TotalAmount: o.TotalAmount,
+                Currency: o.Currency,
+                DiscountCode: o.DiscountCode,
+                PaymentStatus: o.PaymentStatus,
+                VendorEventId: o.VendorEventId,
+                PurchasedAt: o.PurchasedAt,
+                MatchedUserId: o.MatchedUserId,
+                IsCurrentEvent: true,
+                Attendees: [])).ToList();
+        }
+
         public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
         {
             return await db.TicketOrders

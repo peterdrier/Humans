@@ -1103,8 +1103,8 @@ public sealed class ShiftManagementService(
                 Pct(perPeriod, ShiftPeriod.Strike));
         }
 
-        var ticketHolderIds = await TicketQueryService.GetMatchedUserIdsForPaidOrdersAsync();
-        var ticketHolders = ticketHolderIds as HashSet<Guid> ?? ticketHolderIds.ToHashSet();
+        var ticketOrders = await TicketQueryService.GetTicketOrdersAsync();
+        var ticketHolders = ticketOrders.MatchedBuyerUserIdsForPaidOrders().ToHashSet();
 
         var engagedUserIds = await repo.GetEngagedUserIdsForShiftsAsync(shiftIds);
         var engaged = engagedUserIds.ToHashSet();
@@ -1451,7 +1451,8 @@ public sealed class ShiftManagementService(
         var signupsInWindow = await repo.GetSignupCreatedAtsInWindowAsync(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
 
-        var ticketsInWindow = await TicketQueryService.GetPaidOrderDatesInWindowAsync(startInstant, endInstant);
+        var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync())
+            .PaidOrderDatesInWindow(startInstant, endInstant);
         var loginsInWindow = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
             .Select(u => u.LastLoginAt!.Value)

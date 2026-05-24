@@ -71,7 +71,8 @@ public class CommunicationPreferencesPanelViewComponentTests
             .Returns(prefs);
 
         var tickets = Substitute.For<ITicketService>();
-        tickets.HasTicketAttendeeMatchAsync(Arg.Any<Guid>()).Returns(false);
+        tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
 
         var sut = new CommunicationPreferencesPanelViewComponent(
             commPrefs, tickets, new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))

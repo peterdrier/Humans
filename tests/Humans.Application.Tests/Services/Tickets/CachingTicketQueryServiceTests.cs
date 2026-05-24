@@ -73,7 +73,7 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserIdsWithTicketsAsync_AnswersFromProjection_ValidCheckedInOnly()
+    public async Task GetTicketOrdersAsync_ProjectionDerivesCurrentTicketHolders()
     {
         var orderId = Guid.NewGuid();
         SeedOrders(MakeOrder(orderId, matchedUserId: null, attendees: [
@@ -82,14 +82,15 @@ public sealed class CachingTicketQueryServiceTests
             MakeAttendee(matchedUserId: UserC, status: TicketAttendeeStatus.Void),
         ]));
 
-        var result = await _decorator.GetUserIdsWithTicketsAsync();
+        var result = (await _decorator.GetTicketOrdersAsync())
+            .CurrentEventTicketHolderUserIds();
 
         result.Should().BeEquivalentTo([UserA, UserB],
             because: "void attendees don't count as ticket coverage; matched buyer-only orders also excluded");
     }
 
     [HumansFact]
-    public async Task GetAllMatchedUserIdsAsync_UnionsBuyerAndAttendeeMatches()
+    public async Task GetTicketOrdersAsync_ProjectionDerivesAllMatchedUserIds()
     {
         SeedOrders(
             MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: []),
@@ -97,21 +98,24 @@ public sealed class CachingTicketQueryServiceTests
                 MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
             ]));
 
-        var result = await _decorator.GetAllMatchedUserIdsAsync();
+        var result = (await _decorator.GetTicketOrdersAsync())
+            .AllMatchedUserIds();
 
         result.Should().BeEquivalentTo([UserA, UserB]);
     }
 
     [HumansFact]
-    public async Task HasTicketAttendeeMatchAsync_TrueForBuyerOrAttendeeMatch()
+    public async Task GetTicketOrdersAsync_ProjectionDerivesBuyerOrAttendeeMatch()
     {
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
             MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
         ]));
 
-        (await _decorator.HasTicketAttendeeMatchAsync(UserA)).Should().BeTrue();
-        (await _decorator.HasTicketAttendeeMatchAsync(UserB)).Should().BeTrue();
-        (await _decorator.HasTicketAttendeeMatchAsync(UserC)).Should().BeFalse();
+        var matchedIds = (await _decorator.GetTicketOrdersAsync()).AllMatchedUserIds();
+
+        matchedIds.Should().Contain(UserA);
+        matchedIds.Should().Contain(UserB);
+        matchedIds.Should().NotContain(UserC);
     }
 
     [HumansFact]
@@ -124,7 +128,7 @@ public sealed class CachingTicketQueryServiceTests
             new UserTicketHoldings(0, []));
 
         // Force initial projection warm before invalidation.
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetTicketOrdersAsync();
         _decorator.Entries.Should().BeGreaterThan(0);
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
@@ -143,7 +147,7 @@ public sealed class CachingTicketQueryServiceTests
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB),
             new UserTicketHoldings(0, [], TicketCount: 7));
 
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetTicketOrdersAsync();
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
 
@@ -161,7 +165,7 @@ public sealed class CachingTicketQueryServiceTests
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserB),
             new UserTicketHoldings(1, [], TicketCount: 1));
 
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetTicketOrdersAsync();
         _decorator.Entries.Should().BeGreaterThan(0);
 
         _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
@@ -178,7 +182,7 @@ public sealed class CachingTicketQueryServiceTests
         _perUserCache.Set(CacheKeys.UserTicketHoldings(UserA),
             new UserTicketHoldings(1, [], TicketCount: 3));
 
-        _ = await _decorator.GetUserIdsWithTicketsAsync();
+        _ = await _decorator.GetTicketOrdersAsync();
 
         _decorator.InvalidateAll();
 

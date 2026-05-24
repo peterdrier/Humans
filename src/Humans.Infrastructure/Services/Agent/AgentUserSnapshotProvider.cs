@@ -37,7 +37,8 @@ public sealed class AgentUserSnapshotProvider(
             .ToList();
         var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
         var openFeedback = await feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
-        var openTickets = await tickets.GetOpenTicketIdsForUserAsync(userId, cancellationToken);
+        var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);
+        var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles

@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
@@ -19,9 +20,10 @@ public sealed class AdminDatabaseDiagnosticsService(
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
         var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
         IReadOnlySet<Guid> ticketUserIds = year.HasValue
-            ? await ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
-            : await ticketQueryService.GetAllMatchedUserIdsAsync();
+            ? ticketOrders.MatchedUserIdsForYear(year.Value)
+            : ticketOrders.AllMatchedUserIds();
 
         var withProfile = 0;
         var withTicket = 0;
@@ -39,7 +41,7 @@ public sealed class AdminDatabaseDiagnosticsService(
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var years = await ticketQueryService.GetMatchedTicketYearsAsync(ct);
+        var years = ticketOrders.MatchedTicketYears();
 
         return new AudienceSegmentation(
             TotalAccounts: allUsers.Count,

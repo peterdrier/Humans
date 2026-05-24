@@ -6,7 +6,7 @@ namespace Humans.Application.Services.Mailer.Audiences;
 /// <summary>
 /// "Humans - Has Ticket" — humans with a Valid/CheckedIn matched ticket
 /// attendee in the active vendor event (buyer-only excluded — see
-/// <see cref="ITicketServiceRead.GetUserIdsWithTicketsAsync"/>).
+/// derived from the ticket order projection).
 /// </summary>
 public sealed class HasTicketAudience(
     ITicketServiceRead tickets,
@@ -18,7 +18,7 @@ public sealed class HasTicketAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        _ = ct;
-        return await tickets.GetUserIdsWithTicketsAsync();
+        var orders = await tickets.GetTicketOrdersAsync(ct);
+        return orders.CurrentEventTicketHolderUserIds();
     }
 }

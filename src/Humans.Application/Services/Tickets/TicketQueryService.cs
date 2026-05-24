@@ -13,6 +13,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Tickets;
 
@@ -48,6 +49,17 @@ public sealed class TicketQueryService(
 
         var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
         return attendeeEmails.Count(verifiedSet.Contains);
+    }
+
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
+    {
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var currentEventId = syncState?.VendorEventId;
+        var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
+
+        return orders
+            .Select(o => Project(o, currentEventId))
+            .ToList();
     }
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
@@ -672,6 +684,16 @@ public sealed class TicketQueryService(
     {
         var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
         var orderCount = orders.Count;
+        var orderSummaries = orders.Select(o => new UserTicketOrderSummary(
+            o.BuyerName,
+            o.PurchasedAt,
+            o.Attendees.Count,
+            o.TotalAmount,
+            o.Currency)).ToList();
+        var openTicketOrderIds = orders
+            .Where(o => o.PaymentStatus is TicketPaymentStatus.Paid or TicketPaymentStatus.Pending)
+            .Select(o => o.Id)
+            .ToList();
 
         var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
         var tickets = attendees
@@ -698,7 +720,11 @@ public sealed class TicketQueryService(
             tickets,
             hasCurrentEventTicket,
             ticketCount,
-            postEventHoldDate);
+            postEventHoldDate)
+        {
+            OrderSummaries = orderSummaries,
+            OpenTicketOrderIds = openTicketOrderIds,
+        };
     }
 
     public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
@@ -749,6 +775,30 @@ public sealed class TicketQueryService(
 
         return new UserTicketExportData(orderRows, attendeeRows);
     }
+
+    private static TicketOrderInfo Project(TicketOrder o, string? currentEventId) => new(
+        Id: o.Id,
+        VendorOrderId: o.VendorOrderId,
+        BuyerName: o.BuyerName,
+        BuyerEmail: o.BuyerEmail,
+        TotalAmount: o.TotalAmount,
+        Currency: o.Currency,
+        DiscountCode: o.DiscountCode,
+        PaymentStatus: o.PaymentStatus,
+        VendorEventId: o.VendorEventId,
+        PurchasedAt: o.PurchasedAt,
+        MatchedUserId: o.MatchedUserId,
+        IsCurrentEvent: !string.IsNullOrEmpty(currentEventId)
+            && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
+        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
+            Id: a.Id,
+            VendorTicketId: a.VendorTicketId,
+            AttendeeName: a.AttendeeName,
+            AttendeeEmail: a.AttendeeEmail,
+            TicketTypeName: a.TicketTypeName,
+            Price: a.Price,
+            Status: a.Status,
+            MatchedUserId: a.MatchedUserId)).ToList());
 
     public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
         CancellationToken ct = default)

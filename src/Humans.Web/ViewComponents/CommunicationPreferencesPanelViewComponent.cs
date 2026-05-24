@@ -26,7 +26,8 @@ public sealed class CommunicationPreferencesPanelViewComponent(
         var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = await ticketQueryService.HasTicketAttendeeMatchAsync(userId);
+        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId))
+            .HasTicketAttendeeMatch;
 
         var categories = new List<CategoryPreferenceItem>();
         foreach (var category in MessageCategoryExtensions.ActiveCategories)

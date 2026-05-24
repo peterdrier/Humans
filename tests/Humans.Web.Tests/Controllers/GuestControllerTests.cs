@@ -101,7 +101,8 @@ public class GuestControllerTests
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
         _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(OnboardingWidgetStep.Complete);
-        _ticketQueryService.HasTicketAttendeeMatchAsync(user.Id).Returns(false);
+        _ticketQueryService.GetUserTicketHoldingsAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
         var ctrl = BuildSut(user);
 
         var result = await ctrl.Index(CancellationToken.None);

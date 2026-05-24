@@ -76,6 +76,21 @@ public sealed class CachingTicketQueryService(
     // Projection-served reads (answer from the in-memory TicketOrderInfo dict)
     // ==========================================================================
 
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
+    {
+        var orders = await GetOrdersAsync(ct);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var currentEventId = syncState?.VendorEventId;
+
+        return orders.Values
+            .Select(o => o with
+            {
+                IsCurrentEvent = !string.IsNullOrEmpty(currentEventId)
+                    && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
+            })
+            .ToList();
+    }
+
     private async Task<int> ComputeUserTicketCountAsync(
         Guid userId,
         IReadOnlyDictionary<Guid, TicketOrderInfo> orders,
@@ -97,107 +112,6 @@ public sealed class CachingTicketQueryService(
         return innerHoldings.TicketCount;
     }
 
-    public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
-    {
-        // Scope to the active vendor event: the orders projection holds every
-        // order ever pulled from TicketTailor, so an unfiltered walk would
-        // include historical ticket holders in current-event audiences /
-        // dashboard stats.
-        var syncState = await ticketRepository.GetSyncStateAsync();
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return [];
-        var currentEventId = syncState.VendorEventId;
-
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (!string.Equals(order.VendorEventId, currentEventId, StringComparison.Ordinal))
-                continue;
-            foreach (var a in order.Attendees)
-            {
-                if (a.MatchedUserId is { } uid && IsValidOrCheckedIn(a.Status))
-                    ids.Add(uid);
-            }
-        }
-        return ids;
-    }
-
-    public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
-    {
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (order.MatchedUserId is { } orderUid) ids.Add(orderUid);
-            foreach (var a in order.Attendees)
-                if (a.MatchedUserId is { } attUid) ids.Add(attUid);
-        }
-        return ids;
-    }
-
-    public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(
-        int year, CancellationToken ct = default)
-    {
-        var start = Instant.FromUtc(year, 1, 1, 0, 0);
-        var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
-
-        var orders = await GetOrdersAsync();
-        var ids = new HashSet<Guid>();
-        foreach (var order in orders.Values)
-        {
-            if (order.PurchasedAt < start || order.PurchasedAt >= end)
-                continue;
-
-            if (order.MatchedUserId is { } orderUid) ids.Add(orderUid);
-            foreach (var a in order.Attendees)
-                if (a.MatchedUserId is { } attUid) ids.Add(attUid);
-        }
-        return ids;
-    }
-
-    public async Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default)
-    {
-        // Mirror inner contract: years in which a matched ticket *order* was
-        // purchased (buyer-matched). Attendee-only matches are intentionally
-        // excluded so the admin audience-segmentation year picker stays
-        // consistent with TicketRepository.GetMatchedOrderYearsAsync.
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.MatchedUserId.HasValue)
-            .Select(o => o.PurchasedAt.InUtc().Year)
-            .Distinct()
-            .OrderByDescending(y => y)
-            .ToList();
-    }
-
-    public async Task<bool> HasTicketAttendeeMatchAsync(Guid userId)
-    {
-        var orders = await GetOrdersAsync();
-        foreach (var order in orders.Values)
-        {
-            if (order.MatchedUserId == userId) return true;
-            foreach (var a in order.Attendees)
-                if (a.MatchedUserId == userId) return true;
-        }
-        return false;
-    }
-
-    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.MatchedUserId == userId)
-            .OrderByDescending(o => o.PurchasedAt)
-            .Select(o => new UserTicketOrderSummary(
-                o.BuyerName ?? string.Empty,
-                o.PurchasedAt,
-                o.Attendees.Count,
-                o.TotalAmount,
-                o.Currency))
-            .ToList();
-    }
-
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -207,6 +121,22 @@ public sealed class CachingTicketQueryService(
 
         var orders = await GetOrdersAsync();
         var orderCount = orders.Values.Count(o => o.MatchedUserId == userId);
+        var orderSummaries = orders.Values
+            .Where(o => o.MatchedUserId == userId)
+            .OrderByDescending(o => o.PurchasedAt)
+            .Select(o => new UserTicketOrderSummary(
+                o.BuyerName ?? string.Empty,
+                o.PurchasedAt,
+                o.Attendees.Count,
+                o.TotalAmount,
+                o.Currency))
+            .ToList();
+        var openTicketOrderIds = orders.Values
+            .Where(o => o.MatchedUserId == userId
+                && (o.PaymentStatus == TicketPaymentStatus.Paid
+                    || o.PaymentStatus == TicketPaymentStatus.Pending))
+            .Select(o => o.Id)
+            .ToList();
 
         // Attendee visibility cascade: an order's attendees are visible to its
         // buyer; an attendee's matched user always sees their own. The two
@@ -244,44 +174,13 @@ public sealed class CachingTicketQueryService(
             visibleAttendees,
             hasCurrentEventTicket,
             ticketCount,
-            innerHoldings?.PostEventHoldDate);
+            innerHoldings?.PostEventHoldDate)
+        {
+            OrderSummaries = orderSummaries,
+            OpenTicketOrderIds = openTicketOrderIds,
+        };
         perUserCache.Set(cacheKey, holdings, UserPerUserCacheTtl);
         return holdings;
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.MatchedUserId == userId
-                && (o.PaymentStatus == TicketPaymentStatus.Paid
-                    || o.PaymentStatus == TicketPaymentStatus.Pending))
-            .Select(o => o.Id)
-            .ToList();
-    }
-
-    public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
-        CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-    {
-        var orders = await GetOrdersAsync();
-        return orders.Values
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                && o.PurchasedAt >= fromInclusive
-                && o.PurchasedAt < toExclusive)
-            .Select(o => o.PurchasedAt)
-            .ToList();
     }
 
     // ==========================================================================
@@ -294,9 +193,6 @@ public sealed class CachingTicketQueryService(
 
     public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
         WithInner(inner => inner.GetDashboardStatsAsync());
-
-    public Task<decimal> GetGrossTicketRevenueAsync() =>
-        WithInner(inner => inner.GetGrossTicketRevenueAsync());
 
     public Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold, decimal grossRevenue, string currency,
@@ -436,6 +332,7 @@ public sealed class CachingTicketQueryService(
         VendorEventId: o.VendorEventId,
         PurchasedAt: o.PurchasedAt,
         MatchedUserId: o.MatchedUserId,
+        IsCurrentEvent: false,
         Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
             Id: a.Id,
             VendorTicketId: a.VendorTicketId,

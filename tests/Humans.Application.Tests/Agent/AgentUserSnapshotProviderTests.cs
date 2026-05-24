@@ -191,8 +191,11 @@ public class AgentUserSnapshotProviderTests
             .Returns([]);
 
         var tickets = Substitute.For<ITicketService>();
-        tickets.GetOpenTicketIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(openTicketIds ?? []);
+        tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, [])
+            {
+                OpenTicketOrderIds = openTicketIds ?? [],
+            });
 
         var shiftView = Substitute.For<IShiftView>();
         // Pre-built view: the inner ShiftViewService filters Signups to the

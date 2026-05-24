@@ -28,7 +28,8 @@ public sealed class TicketNoShiftsAudience(
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
         // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketServiceRead.
-        var ticketHolders = await tickets.GetUserIdsWithTicketsAsync();
+        var ticketHolders = (await tickets.GetTicketOrdersAsync(ct))
+            .CurrentEventTicketHolderUserIds();
         if (ticketHolders.Count == 0) return new HashSet<Guid>();
 
         var views = await shiftView.GetUsersAsync(ticketHolders, ct);

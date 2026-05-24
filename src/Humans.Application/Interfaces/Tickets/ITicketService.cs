@@ -10,70 +10,15 @@ namespace Humans.Application.Interfaces.Tickets;
 /// interface; it exposes only DTO/read-model projections, primitives, NodaTime,
 /// and collections. It must not expose EF entity types.
 /// </summary>
-[SurfaceBudget(11)]
+[SurfaceBudget(2)]
 public interface ITicketServiceRead
 {
     /// <summary>
-    /// Get the set of user IDs that have at least one valid ticket as an
-    /// attendee in the active vendor event, using MatchedUserId on attendees
-    /// (valid/checked-in only). A buyer who purchased tickets for others does
-    /// NOT count.
+    /// Returns the ticket order projection used by cross-section read callers.
+    /// Callers derive aggregate questions from this DTO instead of adding
+    /// one-off service methods.
     /// </summary>
-    Task<HashSet<Guid>> GetUserIdsWithTicketsAsync();
-
-    /// <summary>
-    /// Get all user IDs that have any ticket match, regardless of payment or
-    /// attendee status. Used for diagnostics and "who hasn't bought" views.
-    /// </summary>
-    Task<HashSet<Guid>> GetAllMatchedUserIdsAsync();
-
-    /// <summary>
-    /// Returns the set of user ids matched to any ticket order or attendee
-    /// whose purchase falls within the given calendar year (UTC).
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct calendar years (UTC, descending) in which any
-    /// matched ticket order was purchased.
-    /// </summary>
-    Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Get total gross ticket revenue (sum of TotalAmount for paid orders).
-    /// Used by cash flow runway calculations.
-    /// </summary>
-    Task<decimal> GetGrossTicketRevenueAsync();
-
-    /// <summary>
-    /// Checks whether a user has a matched ticket record as either an attendee
-    /// or an order buyer.
-    /// </summary>
-    Task<bool> HasTicketAttendeeMatchAsync(Guid userId);
-
-    /// <summary>
-    /// Gets ticket order summaries for a specific user (as buyer), ordered by most recent first.
-    /// </summary>
-    Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId);
-
-    /// <summary>
-    /// Returns the order ids of every paid or pending ticket order matched to the user.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct set of matched user IDs across paid ticket orders.
-    /// </summary>
-    Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the PurchasedAt timestamp of every paid ticket order that falls
-    /// within the half-open window [fromInclusive, toExclusive).
-    /// </summary>
-    Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default);
+    Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Snapshot of a user's ticket holdings: count of orders where they're the
@@ -216,7 +161,16 @@ public record UserTicketHoldings(
     IReadOnlyList<UserTicketHoldingRow> Tickets,
     bool HasCurrentEventTicket = false,
     int TicketCount = 0,
-    Instant? PostEventHoldDate = null);
+    Instant? PostEventHoldDate = null)
+{
+    public IReadOnlyList<UserTicketOrderSummary> OrderSummaries { get; init; } =
+        Array.Empty<UserTicketOrderSummary>();
+
+    public IReadOnlyList<Guid> OpenTicketOrderIds { get; init; } =
+        Array.Empty<Guid>();
+
+    public bool HasTicketAttendeeMatch => OrderCount > 0 || Tickets.Count > 0;
+}
 
 /// <summary>
 /// One ticket held by a user, with enough info for the holdings widget to render.
