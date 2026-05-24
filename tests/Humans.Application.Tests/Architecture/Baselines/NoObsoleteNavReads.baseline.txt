@@ -71,7 +71,6 @@ src/Humans.Application/Services/Teams/TeamService.cs:Team#15
 src/Humans.Application/Services/Teams/TeamService.cs:Team#16
 src/Humans.Application/Services/Teams/TeamService.cs:Team#17
 src/Humans.Application/Services/Teams/TeamService.cs:Team#18
-src/Humans.Application/Services/Teams/TeamService.cs:Team#19
 src/Humans.Application/Services/Teams/TeamService.cs:Team#2
 src/Humans.Application/Services/Teams/TeamService.cs:Team#3
 src/Humans.Application/Services/Teams/TeamService.cs:Team#4

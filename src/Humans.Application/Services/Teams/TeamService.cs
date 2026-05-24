@@ -1772,10 +1772,12 @@ public sealed class TeamService(
         var sourceMemberships = await GetUserTeamsAsync(sourceUserId, cancellationToken);
         var targetMemberships = await GetUserTeamsAsync(targetUserId, cancellationToken);
         var targetTeamIds = targetMemberships.Select(m => m.TeamId).ToHashSet();
+        var sourceTeamsById = await repo.GetByIdsWithParentsAsync(
+            sourceMemberships.Select(m => m.TeamId).Distinct().ToList(), cancellationToken);
 
         foreach (var membership in sourceMemberships)
         {
-            if (membership.Team.IsSystemTeam)
+            if (sourceTeamsById.TryGetValue(membership.TeamId, out var team) && team.IsSystemTeam)
                 continue;
 
             if (!targetTeamIds.Contains(membership.TeamId))
