@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -24,6 +25,11 @@ namespace Humans.Infrastructure.Services.Teams;
 /// recorded; the meaningful diagnostics here are entry count and invalidation
 /// count.
 /// </summary>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Pre-existing cache decorator warms TeamInfo and secondary user-team indexes directly from ITeamRepository. Migrate warm/load paths to keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "peterdrier/Humans#744")]
 public sealed class CachingTeamService(
     ITeamRepository teamRepository,
     IServiceScopeFactory scopeFactory,

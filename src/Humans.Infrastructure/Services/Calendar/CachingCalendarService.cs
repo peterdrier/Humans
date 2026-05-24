@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Caching;
@@ -16,6 +17,11 @@ namespace Humans.Infrastructure.Services.Calendar;
 /// non-soft-deleted <c>calendar_events</c> row with its <c>Exceptions</c>
 /// embedded, keyed by event id. Exception writes evict the parent.
 /// </summary>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Pre-existing cache decorator warms CalendarEventInfo directly from ICalendarRepository. Migrate warm/load paths to keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "peterdrier/Humans#744")]
 public sealed class CachingCalendarService(
     ICalendarRepository repo,
     IServiceScopeFactory scopeFactory,

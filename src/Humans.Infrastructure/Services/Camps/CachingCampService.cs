@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Humans.Application.Architecture;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -19,6 +20,11 @@ namespace Humans.Infrastructure.Services.Camps;
 /// <see cref="CampInfo"/> dict plus a single-slot <see cref="CampSettingsInfo"/>.
 /// Year-keyed reads are filtered snapshots, not separate cache entries.
 /// </summary>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Pre-existing cache decorator warms CampInfo directly from ICampRepository. Migrate warm/load paths to keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "peterdrier/Humans#744")]
 public sealed class CachingCampService(
     ICampRepository repo,
     IServiceScopeFactory scopeFactory,

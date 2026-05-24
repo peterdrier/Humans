@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
@@ -42,6 +43,11 @@ namespace Humans.Infrastructure.Services.Users;
 /// (<c>IDbContextFactory</c>-based).
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Pre-existing cache decorator warms UserInfo directly from IUserRepository. Migrate warm/load paths to keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "peterdrier/Humans#744")]
 public sealed class CachingUserService(
     IUserRepository userRepository,
     IUserEmailRepository userEmailRepository,

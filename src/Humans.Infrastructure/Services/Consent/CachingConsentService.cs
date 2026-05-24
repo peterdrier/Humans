@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
@@ -47,6 +48,11 @@ namespace Humans.Infrastructure.Services.Consent;
 /// path; they pass through to the inner service.
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Pre-existing cache decorator loads UserConsentInfo directly from IConsentRepository. Migrate warm/load paths to keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "peterdrier/Humans#744")]
 public sealed class CachingConsentService(
     IConsentRepository repository,
     ILegalDocumentSyncService legalDocumentSync,

@@ -46,13 +46,17 @@ internal static class GrandfatheredCheck
         INamedTypeSymbol? attributeSymbol,
         string ruleId)
     {
-        if (attributeSymbol is null)
-            return false;
-
         foreach (var attr in type.GetAttributes())
         {
-            if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attributeSymbol))
+            if ((attributeSymbol is null ||
+                 !SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attributeSymbol)) &&
+                !string.Equals(
+                    attr.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    "global::" + AttributeFullName,
+                    System.StringComparison.Ordinal))
+            {
                 continue;
+            }
 
             if (attr.ConstructorArguments.Length == 0)
                 continue;

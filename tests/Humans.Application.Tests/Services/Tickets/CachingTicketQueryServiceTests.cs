@@ -1,12 +1,13 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
+using Humans.Application;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Tickets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Tickets;
@@ -17,26 +18,30 @@ public sealed class CachingTicketQueryServiceTests
     private static readonly Guid UserB = Guid.NewGuid();
     private static readonly Guid UserC = Guid.NewGuid();
 
-    private readonly ITicketRepository _repo;
+    private readonly ITicketService _inner;
+    private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
 
     public CachingTicketQueryServiceTests()
     {
-        _repo = Substitute.For<ITicketRepository>();
+        _inner = Substitute.For<ITicketService>();
 
         var services = new ServiceCollection();
+        services.AddKeyedScoped<ITicketService>(
+            CachingTicketQueryService.InnerServiceKey,
+            (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        _clock = new FakeClock(Instant.FromUtc(2026, 5, 1, 0, 0));
 
         _decorator = new CachingTicketQueryService(
-            _repo,
             new MemoryCache(new MemoryCacheOptions()),
             scopeFactory,
+            _clock,
             NullLogger<CachingTicketQueryService>.Instance);
 
-        _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new TicketSyncState { Id = 1, VendorEventId = "ev_test" });
+        SeedOrders();
+        _inner.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new UserTicketHoldings(0, [])));
     }
 
     [HumansFact]
@@ -108,7 +113,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansFact]
     public async Task GetUserTicketHoldingsAsync_UsesTrackedUserCache()
     {
-        UseNonCurrentEvent();
+        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
             MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
         ]));
@@ -121,6 +126,24 @@ public sealed class CachingTicketQueryServiceTests
         _decorator.UserHoldingsCacheStats.Entries.Should().Be(1);
         _decorator.UserHoldingsCacheStats.Hits.Should().Be(1);
         _decorator.UserHoldingsCacheStats.Misses.Should().Be(1);
+        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetUserTicketHoldingsAsync_ReloadsExpiredTrackedEntry()
+    {
+        var stale = new UserTicketHoldings(1, [], TicketCount: 1);
+        var fresh = new UserTicketHoldings(1, [], TicketCount: 2);
+        _inner.GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(stale), Task.FromResult(fresh));
+
+        var first = await _decorator.GetUserTicketHoldingsAsync(UserA);
+        _clock.Advance(Duration.FromMinutes(6));
+        var second = await _decorator.GetUserTicketHoldingsAsync(UserA);
+
+        first.TicketCount.Should().Be(1);
+        second.TicketCount.Should().Be(2);
+        await _inner.Received(2).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -168,7 +191,6 @@ public sealed class CachingTicketQueryServiceTests
 
     private async Task SeedTwoUserHoldings()
     {
-        UseNonCurrentEvent();
         SeedOrders(
             MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
                 MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
@@ -176,6 +198,8 @@ public sealed class CachingTicketQueryServiceTests
             MakeOrder(Guid.NewGuid(), matchedUserId: UserB, attendees: [
                 MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
             ]));
+        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
+        SeedHoldings(UserB, new UserTicketHoldings(1, [], TicketCount: 1));
 
         _ = await _decorator.GetTicketOrdersAsync();
         _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
@@ -186,10 +210,10 @@ public sealed class CachingTicketQueryServiceTests
 
     private async Task SeedOneUserHolding()
     {
-        UseNonCurrentEvent();
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
             MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
         ]));
+        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
 
         _ = await _decorator.GetTicketOrdersAsync();
         _ = await _decorator.GetUserTicketHoldingsAsync(UserA);
@@ -197,49 +221,42 @@ public sealed class CachingTicketQueryServiceTests
         _decorator.UserHoldingsCacheStats.Entries.Should().Be(1);
     }
 
-    private void SeedOrders(params TicketOrder[] orders)
+    private void SeedOrders(params TicketOrderInfo[] orders)
     {
-        _repo.GetAllOrdersWithAttendeesAsync(Arg.Any<CancellationToken>())
-            .Returns(orders);
+        _inner.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>(orders));
     }
 
-    private void UseNonCurrentEvent()
-    {
-        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new TicketSyncState { Id = 1, VendorEventId = "ev_other" });
-    }
+    private void SeedHoldings(Guid userId, UserTicketHoldings holdings) =>
+        _inner.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(holdings));
 
-    private static TicketOrder MakeOrder(
-        Guid id, Guid? matchedUserId, params TicketAttendee[] attendees) => new()
-        {
-            Id = id,
-            VendorOrderId = $"ord_{id:N}",
-            BuyerName = "Buyer",
-            BuyerEmail = "buyer@example.com",
-            TotalAmount = 100m,
-            Currency = "EUR",
-            PaymentStatus = TicketPaymentStatus.Paid,
-            VendorEventId = "ev_test",
-            PurchasedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-            SyncedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-            MatchedUserId = matchedUserId,
-            Attendees = attendees.ToList(),
-        };
+    private static TicketOrderInfo MakeOrder(
+        Guid id, Guid? matchedUserId, params TicketAttendeeInfo[] attendees) => new(
+            Id: id,
+            VendorOrderId: $"ord_{id:N}",
+            BuyerName: "Buyer",
+            BuyerEmail: "buyer@example.com",
+            TotalAmount: 100m,
+            Currency: "EUR",
+            DiscountCode: null,
+            PaymentStatus: TicketPaymentStatus.Paid,
+            VendorEventId: "ev_test",
+            PurchasedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
+            MatchedUserId: matchedUserId,
+            IsCurrentEvent: true,
+            Attendees: attendees.ToList());
 
-    private static TicketAttendee MakeAttendee(
+    private static TicketAttendeeInfo MakeAttendee(
         Guid? matchedUserId,
         TicketAttendeeStatus status,
-        string? email = null) => new()
-        {
-            Id = Guid.NewGuid(),
-            VendorTicketId = $"tkt_{Guid.NewGuid():N}",
-            AttendeeName = "Attendee",
-            AttendeeEmail = email,
-            TicketTypeName = "Full Week",
-            Price = 50m,
-            Status = status,
-            VendorEventId = "ev_test",
-            SyncedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-            MatchedUserId = matchedUserId,
-        };
+        string? email = null) => new(
+            Id: Guid.NewGuid(),
+            VendorTicketId: $"tkt_{Guid.NewGuid():N}",
+            AttendeeName: "Attendee",
+            AttendeeEmail: email,
+            TicketTypeName: "Full Week",
+            Price: 50m,
+            Status: status,
+            MatchedUserId: matchedUserId);
 }

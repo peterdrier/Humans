@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
@@ -36,6 +37,11 @@ namespace Humans.Infrastructure.Services.Legal;
 /// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> itself.
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0020",
+    justification: "Pre-existing cache decorator warms legal document snapshots directly from ILegalDocumentRepository. Migrate warm/load paths to keyed inner service before removing.",
+    since: "2026-05-24",
+    issueRef: "peterdrier/Humans#744")]
 public sealed class CachingLegalDocumentSyncService(
     ILegalDocumentRepository repository,
     IServiceScopeFactory scopeFactory,
