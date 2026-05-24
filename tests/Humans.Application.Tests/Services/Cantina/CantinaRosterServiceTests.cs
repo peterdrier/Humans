@@ -449,36 +449,169 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_PeopleOrderedByBurnerName()
+    public async Task GetWeeklyRoster_People_OrderedByFirstArrivalThenAllergiesThenDietaryThenName()
     {
+        // Coordinator-friendly sort priorities (see CantinaRosterService comment):
+        //   1. First arrival date asc
+        //   2. Has any allergies / intolerances desc (true first)
+        //   3. Dietary in canonical order (Omnivore, Vegetarian, Vegan, Pescatarian, then unanswered last)
+        //   4. BurnerName ordinal asc
+        //
+        // Fixture (week day 0 = Tue Jul 7 2026, day 1 = Wed Jul 8 2026):
+        //   Alice   — day 0 (Tue), Vegan,      no allergies
+        //   Bob     — day 0 (Tue), Omnivore,   Peanut allergy
+        //   Charlie — day 1 (Wed), Omnivore,   no allergies
+        //   Donna   — day 1 (Wed), Vegetarian, no allergies
+        //
+        // Expected order:
+        //   Bob     (day 0, has allergy → first within day 0)
+        //   Alice   (day 0, Vegan — only one non-allergy person on day 0)
+        //   Charlie (day 1, Omnivore — first in canonical dietary order)
+        //   Donna   (day 1, Vegetarian — second in canonical dietary order)
         var es = ActiveEvent();
         _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var alice = Guid.NewGuid();
         var bob = Guid.NewGuid();
         var charlie = Guid.NewGuid();
+        var donna = Guid.NewGuid();
 
         var users = new[]
         {
             new User { Id = alice, DisplayName = "Alice" },
             new User { Id = bob, DisplayName = "Bob" },
-            new User { Id = charlie, DisplayName = "Charlie" }
+            new User { Id = charlie, DisplayName = "Charlie" },
+            new User { Id = donna, DisplayName = "Donna" }
         };
         var profiles = new[]
         {
             new Profile { UserId = alice, BurnerName = "Alice" },
             new Profile { UserId = bob, BurnerName = "Bob" },
-            new Profile { UserId = charlie, BurnerName = "Charlie" }
+            new Profile { UserId = charlie, BurnerName = "Charlie" },
+            new Profile { UserId = donna, BurnerName = "Donna" }
         };
 
-        // Deliberately scramble input order to prove ordering is service-side.
-        SetupDay(WeekStartOffset + 0, new[] { charlie, alice, bob }, Array.Empty<VolunteerEventProfile>());
+        var vepAlice = new VolunteerEventProfile
+        {
+            UserId = alice,
+            DietaryPreference = "Vegan",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+        var vepBob = new VolunteerEventProfile
+        {
+            UserId = bob,
+            DietaryPreference = "Omnivore",
+            Allergies = new List<string> { "Peanut" },
+            Intolerances = new List<string>()
+        };
+        var vepCharlie = new VolunteerEventProfile
+        {
+            UserId = charlie,
+            DietaryPreference = "Omnivore",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+        var vepDonna = new VolunteerEventProfile
+        {
+            UserId = donna,
+            DietaryPreference = "Vegetarian",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+
+        // Day 0: Alice + Bob; Day 1: Charlie + Donna. Scrambled per-day order
+        // to prove sort is service-side.
+        SetupDay(WeekStartOffset + 0, new[] { bob, alice }, new[] { vepAlice, vepBob });
+        SetupDay(WeekStartOffset + 1, new[] { donna, charlie }, new[] { vepCharlie, vepDonna });
         SetupUsers(users);
         SetupProfiles(profiles);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
-        result.People.Select(p => p.BurnerName).Should().Equal("Alice", "Bob", "Charlie");
+        result.People.Select(p => p.BurnerName).Should().Equal("Bob", "Alice", "Charlie", "Donna");
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_People_NameTiebreakWhenArrivalAllergyAndDietaryMatch()
+    {
+        // Two humans, same arrival day (0), same dietary (Omnivore), no allergies.
+        // BurnerName ordinal asc should be the final tiebreaker.
+        var es = ActiveEvent();
+        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var zane = Guid.NewGuid();
+        var anne = Guid.NewGuid();
+        var users = new[]
+        {
+            new User { Id = zane, DisplayName = "Zane" },
+            new User { Id = anne, DisplayName = "Anne" }
+        };
+        var profiles = new[]
+        {
+            new Profile { UserId = zane, BurnerName = "Zane" },
+            new Profile { UserId = anne, BurnerName = "Anne" }
+        };
+        var vepZ = new VolunteerEventProfile
+        {
+            UserId = zane,
+            DietaryPreference = "Omnivore",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+        var vepA = new VolunteerEventProfile
+        {
+            UserId = anne,
+            DietaryPreference = "Omnivore",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+
+        SetupDay(WeekStartOffset + 0, new[] { zane, anne }, new[] { vepZ, vepA });
+        SetupUsers(users);
+        SetupProfiles(profiles);
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+
+        result.People.Select(p => p.BurnerName).Should().Equal("Anne", "Zane");
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_People_UnansweredDietarySortsAfterAnswered()
+    {
+        // Two humans, same arrival day (0), same allergy status (none).
+        // The one with a known dietary (Omnivore) sorts before the unanswered one
+        // even when the unanswered one's BurnerName is alphabetically earlier.
+        var es = ActiveEvent();
+        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var aaron = Guid.NewGuid();   // Unanswered (no VEP), BurnerName "Aaron"
+        var bertha = Guid.NewGuid();  // Omnivore, BurnerName "Bertha"
+        var users = new[]
+        {
+            new User { Id = aaron, DisplayName = "Aaron" },
+            new User { Id = bertha, DisplayName = "Bertha" }
+        };
+        var profiles = new[]
+        {
+            new Profile { UserId = aaron, BurnerName = "Aaron" },
+            new Profile { UserId = bertha, BurnerName = "Bertha" }
+        };
+        var vepBertha = new VolunteerEventProfile
+        {
+            UserId = bertha,
+            DietaryPreference = "Omnivore",
+            Allergies = new List<string>(),
+            Intolerances = new List<string>()
+        };
+
+        SetupDay(WeekStartOffset + 0, new[] { aaron, bertha }, new[] { vepBertha });
+        SetupUsers(users);
+        SetupProfiles(profiles);
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+
+        result.People.Select(p => p.BurnerName).Should().Equal("Bertha", "Aaron");
     }
 
     // ---- helpers ----

@@ -52,9 +52,13 @@ namespace Humans.Application.Services.Cantina.Dtos;
 /// distinct on-site count and "no dietary preference" count.
 /// </param>
 /// <param name="People">
-/// One row per unique on-site human across the week, ordered alphabetically
-/// by <see cref="RosterPersonDto.BurnerName"/> (ordinal). Humans with no
-/// <c>VolunteerEventProfile</c> still appear here with empty dietary fields.
+/// One row per unique on-site human across the week. Ordered for the
+/// Cantina coordinator: first by earliest arrival day asc, then humans with
+/// allergies/intolerances first, then by canonical dietary preference
+/// (Omnivore, Vegetarian, Vegan, Pescatarian, unknown, Unanswered last),
+/// then by <see cref="RosterPersonDto.BurnerName"/> (ordinal) as a stable
+/// tiebreaker. Humans with no <c>VolunteerEventProfile</c> still appear
+/// here with empty dietary fields.
 /// </param>
 public sealed record WeeklyRosterDto(
     int WeekStartOffset,

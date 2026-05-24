@@ -16,6 +16,14 @@ namespace Humans.Web.Cantina;
 /// are joined with <c>", "</c> into a single cell. The <c>DaysOnSite</c>
 /// column lists short calendar labels (e.g. "Mon 27 May") comma-and-space-
 /// separated.
+///
+/// Layout (top to bottom):
+///   1. "Week of &lt;Mon d MMM&gt; – &lt;Sun d MMM&gt;" header line
+///      (skipped when no active event).
+///   2. Per-day summary table: Day,Date,On site,Unanswered (7 rows).
+///   3. Blank separator row.
+///   4. Per-person rows: Name,DaysOnSite,Dietary,Allergies,AllergyOther,
+///      Intolerances,IntoleranceOther.
 /// </summary>
 public static class CantinaRosterCsvWriter
 {
@@ -27,6 +35,14 @@ public static class CantinaRosterCsvWriter
     private static readonly LocalDatePattern DayOnSitePattern =
         LocalDatePattern.CreateWithInvariantCulture("ddd d MMM");
 
+    // Short weekday name only (e.g. "Mon"); used for the per-day summary table.
+    private static readonly LocalDatePattern WeekdayPattern =
+        LocalDatePattern.CreateWithInvariantCulture("ddd");
+
+    // Date column in the per-day summary (e.g. "30 Jun").
+    private static readonly LocalDatePattern DayMonthPattern =
+        LocalDatePattern.CreateWithInvariantCulture("d MMM");
+
     public static byte[] Write(WeeklyRosterDto roster)
     {
         ArgumentNullException.ThrowIfNull(roster);
@@ -35,6 +51,49 @@ public static class CantinaRosterCsvWriter
         ms.Write(Utf8Bom, 0, Utf8Bom.Length);
         using (var sw = new StreamWriter(ms, Utf8NoBom, leaveOpen: true) { NewLine = "\r\n" })
         {
+            // ---- Section 1: per-day summary header ----
+            if (roster.WeekStartDate is not null && roster.WeekEndDate is not null)
+            {
+                sw.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Week of {0} – {1}",
+                    DayOnSitePattern.Format(roster.WeekStartDate.Value),
+                    DayOnSitePattern.Format(roster.WeekEndDate.Value)));
+            }
+            else
+            {
+                sw.WriteLine("Week (no active event)");
+            }
+            sw.WriteLine("Day,Date,On site,Unanswered");
+            foreach (var d in roster.Days)
+            {
+                string dayCol;
+                string dateCol;
+                if (d.CalendarDate is { } cd)
+                {
+                    dayCol = WeekdayPattern.Format(cd);
+                    dateCol = DayMonthPattern.Format(cd);
+                }
+                else
+                {
+                    // No active event — render the day-offset so coordinators
+                    // can still tell rows apart. Blank weekday column.
+                    dayCol = string.Empty;
+                    dateCol = string.Format(CultureInfo.InvariantCulture, "Day {0}", d.DayOffset);
+                }
+                sw.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0},{1},{2},{3}",
+                    Quote(dayCol),
+                    Quote(dateCol),
+                    d.TotalOnSite,
+                    d.UnansweredOnDay));
+            }
+
+            // ---- blank separator ----
+            sw.WriteLine();
+
+            // ---- Section 2: per-person rows ----
             sw.WriteLine("Name,DaysOnSite,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther");
             foreach (var p in roster.People)
             {

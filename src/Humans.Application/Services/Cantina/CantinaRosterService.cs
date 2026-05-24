@@ -143,6 +143,14 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 uniqueVeps.Add(v);
         }
 
+        // Coordinator-friendly sort: people who arrived earliest come first
+        // (longest on-site / known faces), then within an arrival day,
+        // higher-attention dietary needs surface to the top:
+        //   1. First arrival date asc (earliest day in DaysOnSite).
+        //   2. Has any allergies or intolerances desc (true first).
+        //   3. Dietary preference in canonical order (Omnivore, Vegetarian,
+        //      Vegan, Pescatarian), unknown values next, unanswered last.
+        //   4. BurnerName ordinal asc (final stable tiebreaker).
         var people = uniqueUserIds
             .Select(id =>
             {
@@ -161,7 +169,10 @@ public sealed class CantinaRosterService : ICantinaRosterService
                     Intolerances: vep?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
                     IntoleranceOtherText: vep?.IntoleranceOtherText);
             })
-            .OrderBy(p => p.BurnerName, StringComparer.Ordinal)
+            .OrderBy(p => p.DaysOnSite.Count == 0 ? LocalDate.MaxIsoValue : p.DaysOnSite[0])
+            .ThenByDescending(HasAnyAllergyOrIntolerance)
+            .ThenBy(p => DietaryPriority(p.DietaryPreference))
+            .ThenBy(p => p.BurnerName, StringComparer.Ordinal)
             .ToList();
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueVeps, uniqueUserIds.Count);
@@ -209,6 +220,31 @@ public sealed class CantinaRosterService : ICantinaRosterService
         var monday = todayLocal.PlusDays(-daysSinceMonday);
         return Period.Between(eventSettings.GateOpeningDate, monday, PeriodUnits.Days).Days;
     }
+
+    // Sort key for the People list's dietary tiebreaker. Canonical order
+    // (Omnivore..Pescatarian) first, then unknown/legacy values, then
+    // null/empty Unanswered last so coordinators see the answered people
+    // grouped together at the top.
+    private static int DietaryPriority(string? dietary)
+    {
+        if (string.IsNullOrEmpty(dietary)) return int.MaxValue;
+        for (var i = 0; i < DietaryOptions.DietaryPreferences.Count; i++)
+        {
+            if (string.Equals(DietaryOptions.DietaryPreferences[i], dietary, StringComparison.Ordinal))
+                return i;
+        }
+        // Unknown/legacy value — sort right before the truly-unanswered bucket.
+        return int.MaxValue - 1;
+    }
+
+    // True when the human has any allergy or intolerance signal at all
+    // (chip or free-text). Used to surface higher-attention humans to the
+    // top of the People list.
+    private static bool HasAnyAllergyOrIntolerance(RosterPersonDto p) =>
+        p.Allergies.Count > 0
+        || p.Intolerances.Count > 0
+        || !string.IsNullOrWhiteSpace(p.AllergyOtherText)
+        || !string.IsNullOrWhiteSpace(p.IntoleranceOtherText);
 
     private static string ResolveBurnerName(ProfileEntity? profile, User? user)
     {
