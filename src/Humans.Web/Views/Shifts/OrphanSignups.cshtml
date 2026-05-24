@@ -74,11 +74,7 @@
                 @foreach (var row in Model.Rows)
                 {
                     <tr>
-                        <td>
-                            <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.UserId">
-                                @row.UserDisplayName
-                            </a>
-                        </td>
+                        <td><vc:human user-id="@row.UserId" /></td>
                         <td>@row.RotaName</td>
                         <td>@row.ShiftDate.ToDisplayShiftDate()</td>
                         <td>
@@ -101,9 +97,7 @@
                         <td>
                             @if (row.ReviewedByUserId.HasValue)
                             {
-                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.ReviewedByUserId">
-                                    @(row.ReviewedByDisplayName ?? row.ReviewedByUserId.Value.ToString())
-                                </a>
+                                <vc:human user-id="@row.ReviewedByUserId.Value" />
                             }
                             else
                             {
@@ -113,9 +107,7 @@
                         <td>
                             @if (row.EnrolledByUserId.HasValue)
                             {
-                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.EnrolledByUserId">
-                                    @(row.EnrolledByDisplayName ?? row.EnrolledByUserId.Value.ToString())
-                                </a>
+                                <vc:human user-id="@row.EnrolledByUserId.Value" />
                             }
                             else
                             {

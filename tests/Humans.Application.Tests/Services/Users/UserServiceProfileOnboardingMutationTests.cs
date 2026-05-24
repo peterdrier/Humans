@@ -340,6 +340,27 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task AddUserEmailAsync_LegacyIdentityEmailWithoutRows_AddsVerifiedRow()
+    {
+        var userId = Guid.NewGuid();
+        var user = SeedUser(userId);
+        user.Email = "legacy@example.com";
+        user.UserName = "legacy@example.com";
+        await Db.SaveChangesAsync();
+
+        var result = await _service.AddUserEmailAsync(
+            userId,
+            new UserEmailAddCommand("legacy@example.com", IsVerified: true),
+            CancellationToken.None);
+
+        result.Added.Should().BeTrue();
+        var row = await Db.UserEmails.AsNoTracking().SingleAsync(e => e.Id == result.EmailId);
+        row.UserId.Should().Be(userId);
+        row.Email.Should().Be("legacy@example.com");
+        row.IsVerified.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task SetMembershipTierAsync_UpdatesTierAndUpdatedAt()
     {
         var userId = Guid.NewGuid();

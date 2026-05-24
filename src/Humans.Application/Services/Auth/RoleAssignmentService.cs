@@ -16,10 +16,10 @@ using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Application.Services.Auth;
 
-// Stitches display data onto obsolete RoleAssignment nav props in memory — design-rules §6b in-memory join.
+// Stitches display data from UserInfo in memory — design-rules §6b in-memory join.
 public sealed class RoleAssignmentService(
     IRoleAssignmentRepository repository,
-    IUserService userService,
+    IUserServiceRead userService,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     ISystemTeamSync systemTeamSyncJob,
@@ -304,32 +304,4 @@ public sealed class RoleAssignmentService(
         return [new UserDataSlice(GdprExportSections.RoleAssignments, shaped)];
     }
 
-    // --- Cross-domain nav stitching (in-memory join, §6b) ---
-#pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
-
-    private async Task StitchCrossDomainNavsAsync(
-        IReadOnlyList<RoleAssignment> assignments, CancellationToken ct)
-    {
-        if (assignments.Count == 0) return;
-
-        var userIds = new HashSet<Guid>();
-        foreach (var ra in assignments)
-        {
-            userIds.Add(ra.UserId);
-            userIds.Add(ra.CreatedByUserId);
-        }
-
-        var users = await userService.GetByIdsAsync(userIds, ct);
-
-        foreach (var ra in assignments)
-        {
-            if (users.TryGetValue(ra.UserId, out var user))
-                ra.User = user;
-
-            if (users.TryGetValue(ra.CreatedByUserId, out var creator))
-                ra.CreatedByUser = creator;
-        }
-    }
-
-#pragma warning restore CS0618
 }

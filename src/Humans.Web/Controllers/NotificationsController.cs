@@ -11,7 +11,7 @@ namespace Humans.Web.Controllers;
 [Route("Notifications")]
 public class NotificationsController(
     INotificationInboxService inboxService,
-    IUserService userService,
+    IUserServiceRead userService,
     INotificationMeterProvider meterProvider,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {

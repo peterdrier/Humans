@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
 public sealed class WidgetGalleryController(
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamServiceRead teamService,
     IShiftManagementService shiftMgmt,
     ILogger<WidgetGalleryController> logger) : HumansControllerBase(userService)

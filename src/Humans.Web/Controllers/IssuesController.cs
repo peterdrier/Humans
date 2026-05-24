@@ -23,8 +23,8 @@ namespace Humans.Web.Controllers;
 public class IssuesController(
     IIssuesService issues,
     IAuthorizationService authorization,
-    IUserService users,
-    IUserService userService,
+    IUserServiceRead users,
+    IUserServiceRead userService,
     IStringLocalizer<SharedResource> localizer,
     ILogger<IssuesController> logger) : HumansControllerBase(userService)
 {

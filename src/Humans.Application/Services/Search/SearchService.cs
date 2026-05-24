@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Search;
 public sealed class SearchService(
     IUserServiceRead userService,
     ITeamServiceRead teamService,
-    ICampService campService,
+    ICampServiceRead campService,
     IShiftManagementService shiftService,
     IEventService eventService,
     IConfiguration configuration) : ISearchService

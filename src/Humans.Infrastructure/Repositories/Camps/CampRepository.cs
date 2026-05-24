@@ -368,6 +368,7 @@ internal sealed class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampSeasons
             .AsNoTracking()
+            .Include(s => s.Camp)
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 

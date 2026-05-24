@@ -18,7 +18,7 @@ namespace Humans.Web.Controllers;
 
 [Route("Admin")]
 public class AdminController(
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<AdminController> logger,
     IWebHostEnvironment environment,
     IAccountDeletionService accountDeletionService,
@@ -37,7 +37,7 @@ public class AdminController(
         [FromServices] IFeedbackService feedback,
         [FromServices] IAuditViewerService auditViewer,
         [FromServices] IAdminDashboardService adminDashboardService,
-        [FromServices] IUserService userService,
+        [FromServices] IUserServiceRead userService,
         [FromServices] IUserActivityTracker activityTracker,
         CancellationToken ct)
     {

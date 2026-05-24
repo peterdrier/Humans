@@ -65,13 +65,6 @@
                 </a>
             }
         </div>
-        @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn)
-        {
-            <div class="alert alert-warning mt-2 mb-0">
-                This ticket has already been checked in. Approving will void it at the vendor
-                and reissue to the Receiver — confirm with the Sender before proceeding.
-            </div>
-        }
     </div>
 </div>
 
@@ -86,6 +79,7 @@
         <h3 class="h6 text-uppercase text-muted">Recipient</h3>
         <div class="card"><div class="card-body">
             <vc:human-summary user-id="@row.ReceiverUserId" />
+            <div class="small text-muted mt-2">@row.ReceiverLegalName — @row.ReceiverEmail</div>
         </div></div>
     </div>
 </div>
@@ -93,31 +87,43 @@
 <dl class="row">
     <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@row.SenderReason</dd>
     <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@row.RequestedAt.ToDisplayDateTime()</dd>
+    @if (!string.IsNullOrEmpty(row.AdminNotes))
+    {
+        <dt class="col-sm-3">Admin notes</dt><dd class="col-sm-9">@row.AdminNotes</dd>
+    }
 </dl>
 
 @if (row.Status == TicketTransferStatus.Pending)
 {
     <div class="card mb-3 border-info">
         <div class="card-body">
-            <h2 class="h6 mb-2">If you approve, this will happen:</h2>
+            <h2 class="h6 mb-2">How to process this transfer</h2>
             <ol class="mb-0">
-                <li>Void ticket <strong>@Model.OriginalAttendeeVendorTicketId</strong> at TicketTailor with a hold (seat is reserved, not resold).</li>
-                <li>Issue a new ticket to <strong>@row.ReceiverLegalName</strong> / <strong>@row.ReceiverEmail</strong> using the hold from step&nbsp;1.</li>
-                <li>TicketTailor emails @row.ReceiverLegalName the new ticket / barcode directly.</li>
-                <li>Each step (success or failure) is recorded in the audit history below.</li>
+                <li>In the TicketTailor dashboard, void ticket <strong>@Model.OriginalAttendeeVendorTicketId</strong>
+                    and reissue it to <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>).</li>
+                <li>Then mark this request <strong>successful</strong> below — the next ticket sync updates the
+                    local records automatically. Or <strong>cancel</strong> it with a reason.</li>
             </ol>
         </div>
     </div>
+
+    @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn)
+    {
+        <div class="alert alert-warning">
+            This ticket has already been checked in — confirm with the Sender before processing.
+        </div>
+    }
 
     <form asp-action="Decide" method="post" class="mt-3">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@row.Id" />
         <div class="mb-3">
-            <label for="adminNotes">Admin notes (optional)</label>
+            <label for="adminNotes">Notes / cancellation reason</label>
             <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
+            <div class="form-text">A reason is required to cancel. Optional when marking successful.</div>
         </div>
-        <button type="submit" name="approve" value="true" class="btn btn-success">Approve</button>
-        <button type="submit" name="approve" value="false" class="btn btn-danger">Reject</button>
+        <button type="submit" name="approve" value="true" class="btn btn-success">Mark transfer successful</button>
+        <button type="submit" name="approve" value="false" class="btn btn-danger">Cancel transfer</button>
         <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
     </form>
 }
@@ -125,24 +131,5 @@ else
 {
     <a class="btn btn-outline-secondary mt-2" asp-action="Index">Back</a>
 }
-
-@if (row.Status == TicketTransferStatus.Approved
-     && row.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
-{
-    <form asp-action="RetryIssue" asp-route-id="@row.Id" method="post" class="mt-3">
-        @Html.AntiForgeryToken()
-        <div class="alert alert-warning mb-2">
-            Void succeeded but reissue failed. The hold is still reserved at the vendor.
-            Retry will issue against the existing hold.
-        </div>
-        <div class="mb-2">
-            <label for="retryNotes">Notes (optional)</label>
-            <textarea id="retryNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
-        </div>
-        <button type="submit" class="btn btn-warning">Retry issue</button>
-    </form>
-}
-
-<vc:ticket-transfer-timeline request="@Model.Row" vendor-steps-json="@Model.VendorStepsJson" />
 
 <vc:audit-log entity-type="TicketTransferRequest" entity-id="@row.Id" title="Request audit history" limit="20" />

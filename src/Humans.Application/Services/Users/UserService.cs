@@ -496,12 +496,8 @@ public sealed class UserService(
 
         var isConflict = existing is not null && existing.UserId != userId && existing.IsVerified;
 
-        var user = await repo.GetByIdAsync(userId, ct)
+        _ = await repo.GetByIdAsync(userId, ct)
             ?? throw new InvalidOperationException("User not found.");
-
-        var primaryEmail = await GetPrimaryEmailFromRowsAsync(user, userId, ct);
-        if (EmailNormalization.EmailsMatch(email, primaryEmail))
-            throw new ValidationException("This is already your sign-in email.");
 
         var now = clock.GetCurrentInstant();
         var row = new UserEmail
@@ -761,6 +757,7 @@ public sealed class UserService(
             .Select(e => e.Email)
             .FirstOrDefault();
 
+#pragma warning disable HUM_USER_DISPLAYNAME // GDPR export must include the legacy Identity column value.
         var shaped = new
         {
             user.Id,
@@ -776,6 +773,7 @@ public sealed class UserService(
             CreatedAt = user.CreatedAt.ToInvariantInstantString(),
             LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var participationsShaped = participations
@@ -893,14 +891,6 @@ public sealed class UserService(
             languagesSlice,
             commPrefsSlice
         ];
-    }
-
-    private async Task<string?> GetPrimaryEmailFromRowsAsync(User user, Guid userId, CancellationToken ct)
-    {
-        var emails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
-        return emails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
-            ?? emails.FirstOrDefault(e => e.IsVerified)?.Email
-            ?? user.IdentityEmailColumn;
     }
 
     private async Task SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)

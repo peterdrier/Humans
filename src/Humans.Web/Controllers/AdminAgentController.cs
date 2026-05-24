@@ -13,11 +13,8 @@ public class AdminAgentController(
     IAgentSettingsService settings,
     IAgentService agent,
     IAgentAdminStatusService status,
-    IUserService users,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    private readonly IUserService _users = users;
-
     /// <summary>Index lands on Status — the operational view is the default
     /// destination for an admin clicking through the nav.</summary>
     [HttpGet("")]

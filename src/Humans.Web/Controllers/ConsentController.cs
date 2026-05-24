@@ -10,13 +10,13 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 public class ConsentController(
-    IUserService userService,
+    IUserServiceRead userService,
     IConsentService consentService,
     IOnboardingService onboardingService,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ConsentController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     public async Task<IActionResult> Index()
     {

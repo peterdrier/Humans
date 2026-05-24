@@ -28,6 +28,11 @@ public sealed class UserEmailService(
     // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
+    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketQueryService.
+    // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
+    private Interfaces.Tickets.ITicketQueryService TicketQueryService =>
+        serviceProvider.GetRequiredService<Interfaces.Tickets.ITicketQueryService>();
+
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -276,7 +281,49 @@ public sealed class UserEmailService(
     public async Task<bool> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
+        var email = await repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken)
+            ?? throw new InvalidOperationException("Email not found.");
+
+        if (!string.IsNullOrEmpty(email.Provider))
+        {
+            // Provider-attached rows must go through UnlinkAsync; this guards non-UI callers.
+            return false;
+        }
+
+        // see nobodies-collective/Humans#758 — block removal of the primary email.
+        // The user must promote another verified email to primary first, otherwise they
+        // can accidentally delete their sign-in/notification target (the original incident).
+        if (email.IsPrimary)
+        {
+            throw new ValidationException(
+                "Cannot remove your primary email. Set another verified email as primary first, " +
+                "then remove this one.");
+        }
+
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
+        if (email.IsVerified)
+        {
+            var allEmails = await repository.GetByUserIdForMutationAsync(userId, cancellationToken);
+            var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
+
+            if (verifiedRemaining == 0)
+            {
+                throw new ValidationException(
+                    "Cannot remove your last verified email. Add another verified email first " +
+                    "so you can still receive system notifications.");
+            }
+        }
+
+        // see nobodies-collective/Humans#758 — block removal of a ticket-linked email.
+        // Tickets are matched to users by email address; removing the linked address risks
+        // un-matching the user's event ticket on the next vendor re-sync.
+        if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
+        {
+            throw new ValidationException(
+                "Cannot remove this email — it is linked to your event ticket. " +
+                "Removing it could disconnect your ticket. Contact an admin if you need to change it.");
+        }
+
         return await userService.RemoveUserEmailAsync(
             userId,
             emailId,
@@ -580,6 +627,28 @@ public sealed class UserEmailService(
         return null;
     }
 
+    // see nobodies-collective/Humans#758 — true when the address matches one of the user's
+    // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
+    // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
+    private async Task<bool> IsAddressTicketLinkedAsync(
+        Guid userId, string address, CancellationToken cancellationToken)
+    {
+        var export = await TicketQueryService.GetUserTicketExportDataAsync(userId, cancellationToken);
+
+        foreach (var order in export.Orders)
+        {
+            if (EmailNormalization.EmailsMatch(address, order.BuyerEmail))
+                return true;
+        }
+
+        foreach (var attendee in export.Attendees)
+        {
+            if (EmailNormalization.EmailsMatch(address, attendee.AttendeeEmail))
+                return true;
+        }
+
+        return false;
+    }
     /// <inheritdoc />
     public async Task AddProvisionedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
@@ -715,7 +784,7 @@ public sealed class UserEmailService(
         var infos = await userService.GetAllUserInfosAsync(cancellationToken);
 
         var violations = new List<UserEmailFlagViolation>();
-        foreach (var info in infos)
+        foreach (var info in infos.OrderBy(i => i.BurnerName, StringComparer.OrdinalIgnoreCase))
         {
             if (info.UserEmails.Count == 0) continue;
 
@@ -732,7 +801,6 @@ public sealed class UserEmailService(
 
             violations.Add(new UserEmailFlagViolation(
                 info.Id,
-                info.BurnerName,
                 isGoogleCount,
                 verified.Count,
                 verifiedPrimaryCount,

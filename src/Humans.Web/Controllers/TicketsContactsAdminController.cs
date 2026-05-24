@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 [Route("Tickets/Admin/Contacts")]
 public sealed class TicketsContactsAdminController(
     IAttendeeContactImportService import,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<TicketsContactsAdminController> logger) : HumansControllerBase(userService)
 {
     private readonly ILogger<TicketsContactsAdminController> _logger = logger;

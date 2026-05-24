@@ -35,7 +35,7 @@ public sealed class ProfileBackfillAdminController(
         foreach (var row in missing)
         {
             // Idempotent — UserService takes a per-userId lock around the get/add pair.
-            await UserService.EnsureStubProfileAsync(row.UserId, ct);
+            await userService.EnsureStubProfileAsync(row.UserId, ct);
         }
 
         logger.LogInformation(
@@ -46,7 +46,7 @@ public sealed class ProfileBackfillAdminController(
 
     private async Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
     {
-        IReadOnlyList<MissingProfileRow> rows = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
+        IReadOnlyList<MissingProfileRow> rows = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.Profile is null && !u.IsTombstone)
             .Select(u => new MissingProfileRow(
                 u.Id,

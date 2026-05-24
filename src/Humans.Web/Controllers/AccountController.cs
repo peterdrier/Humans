@@ -208,6 +208,7 @@ public class AccountController(
         }
 
         var newUserId = Guid.NewGuid();
+#pragma warning disable HUM_USER_DISPLAYNAME // OAuth signup seeds the legacy Identity fallback column.
         var user = new User
         {
             Id = newUserId,
@@ -215,6 +216,7 @@ public class AccountController(
             CreatedAt = clock.GetCurrentInstant(),
             LastLoginAt = clock.GetCurrentInstant()
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var createResult = await userManager.CreateAsync(user);
         if (!createResult.Succeeded)
@@ -294,7 +296,7 @@ public class AccountController(
         }
 
         // see #635 (§15i) — Stub Profile invariant.
-        await UserService.EnsureStubProfileAsync(user.Id);
+        await userService.EnsureStubProfileAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: false);
         logger.LogInformation("User created an account using {Provider}", info.LoginProvider);

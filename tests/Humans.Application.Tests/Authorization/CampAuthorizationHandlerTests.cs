@@ -57,15 +57,15 @@ public sealed class CampAuthorizationHandlerTests
 
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
-        var campLookup = CreateCampLookup(campKind);
+        var campInfo = CreateCampInfo(campKind);
         var campId = camp.Id;
 
         var result = await EvaluateAsync(user, camp, CampOperationRequirement.Manage);
-        var lookupResult = await EvaluateAsync(user, campLookup, CampOperationRequirement.Manage);
+        var infoResult = await EvaluateAsync(user, campInfo, CampOperationRequirement.Manage);
         var idResult = await EvaluateAsync(user, campId, CampOperationRequirement.Manage);
 
         result.Should().Be(expected);
-        lookupResult.Should().Be(expected);
+        infoResult.Should().Be(expected);
         idResult.Should().Be(expected);
     }
 
@@ -94,15 +94,15 @@ public sealed class CampAuthorizationHandlerTests
 
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
-        var campLookup = CreateCampLookup(campKind);
+        var campInfo = CreateCampInfo(campKind);
         var campId = camp.Id;
 
         var result = await EvaluateAsync(user, camp, CampOperationRequirement.SubmitEvent);
-        var lookupResult = await EvaluateAsync(user, campLookup, CampOperationRequirement.SubmitEvent);
+        var infoResult = await EvaluateAsync(user, campInfo, CampOperationRequirement.SubmitEvent);
         var idResult = await EvaluateAsync(user, campId, CampOperationRequirement.SubmitEvent);
 
         result.Should().Be(expected);
-        lookupResult.Should().Be(expected);
+        infoResult.Should().Be(expected);
         idResult.Should().Be(expected);
     }
 
@@ -125,7 +125,7 @@ public sealed class CampAuthorizationHandlerTests
             }
         };
 
-    private static CampLookup CreateCampLookup(string kind) =>
+    private static CampInfo CreateCampInfo(string kind) =>
         new(
             kind switch
             {
@@ -135,6 +135,9 @@ public sealed class CampAuthorizationHandlerTests
             },
             Slug: "camp",
             ContactEmail: "camp@example.com",
+            ContactPhone: string.Empty,
+            IsSwissCamp: false,
+            TimesAtNowhere: 0,
             Seasons: []);
 
     private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>

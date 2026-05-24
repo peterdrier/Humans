@@ -21,6 +21,10 @@ namespace Humans.Application.Tests.Services.Users;
 /// </summary>
 public class CachingUserServiceTests
 {
+    private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
+        typeof(User).GetProperty("DisplayName")
+        ?? throw new InvalidOperationException("User.DisplayName property missing.");
+
     private readonly IUserService _inner = Substitute.For<IUserService>();
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
@@ -42,7 +46,6 @@ public class CachingUserServiceTests
     private static User SampleUser(Guid? id = null) => new()
     {
         Id = id ?? Guid.NewGuid(),
-        DisplayName = "Alice",
         PreferredLanguage = "en",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
@@ -52,15 +55,35 @@ public class CachingUserServiceTests
         string displayName = "Alice",
         IReadOnlyList<EventParticipation>? eventParticipations = null) =>
         UserInfo.Create(
-            new User { Id = userId, DisplayName = displayName, PreferredLanguage = "en" },
+            new User { Id = userId, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: eventParticipations ?? [],
             externalLogins: [],
-            profile: null,
+            profile: SampleProfile(userId, displayName),
             contactFields: [],
             profileLanguages: [],
             volunteerHistory: [],
             communicationPreferences: []);
+
+    private static Profile SampleProfile(Guid userId, string burnerName) => new()
+    {
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        BurnerName = burnerName,
+        CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        State = ProfileState.Active,
+        IsApproved = true,
+    };
+
+    private static User WithLegacyDisplayName(User user, string displayName)
+    {
+        LegacyDisplayNameProperty.SetValue(user, displayName);
+        return user;
+    }
+
+    private static string LegacyDisplayName(User user) =>
+        (string?)LegacyDisplayNameProperty.GetValue(user) ?? string.Empty;
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -108,7 +131,6 @@ public class CachingUserServiceTests
 
         // RefreshEntryAsync rebuild path: user repo + email repo + profile repo.
         var freshUser = SampleUser(userId);
-        freshUser.DisplayName = "After";
         _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
         _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
@@ -118,7 +140,7 @@ public class CachingUserServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
         _profileRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+            .Returns(SampleProfile(userId, "After"));
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId); // prime
@@ -127,7 +149,7 @@ public class CachingUserServiceTests
 
         var fresh = await sut.GetUserInfoAsync(userId);
         fresh.Should().NotBeNull();
-        fresh.DisplayName.Should().Be("After");
+        fresh.BurnerName.Should().Be("After");
 
         // Inner GetUserInfoAsync called only on the initial prime.
         await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
@@ -175,7 +197,7 @@ public class CachingUserServiceTests
         await sut.InvalidateAsync(userId);
 
         var hit = await sut.GetUserInfoAsync(userId);
-        hit!.DisplayName.Should().Be("After");
+        hit!.BurnerName.Should().Be("After");
     }
 
     [HumansFact]
@@ -341,7 +363,8 @@ public class CachingUserServiceTests
 
         result.ProfileId.Should().Be(profileId);
         var refreshed = await sut.GetUserInfoAsync(userId);
-        refreshed!.DisplayName.Should().Be("After");
+        refreshed.Should().NotBeNull();
+        refreshed!.BurnerName.Should().Be("New Burner");
         refreshed.Profile.Should().NotBeNull();
         refreshed.Profile!.BurnerName.Should().Be("New Burner");
         refreshed.Profile.ProfilePictureContentType.Should().Be("image/png");
@@ -719,7 +742,6 @@ public class CachingUserServiceTests
         var user = new User
         {
             Id = userId,
-            DisplayName = "Eight",
             PreferredLanguage = "es",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Valid,
@@ -802,7 +824,7 @@ public class CachingUserServiceTests
 
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
-        result.DisplayName.Should().Be("Eight");
+        result.BurnerName.Should().Be("Octa");
         result.PreferredLanguage.Should().Be("es");
         result.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         result.UserEmails.Should().ContainSingle(e =>
@@ -855,7 +877,6 @@ public class CachingUserServiceTests
         var user = new User
         {
             Id = userId,
-            DisplayName = "Cached",
             PreferredLanguage = "es",
             ProfilePictureUrl = "https://example.com/pic.png",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
@@ -876,7 +897,7 @@ public class CachingUserServiceTests
             user, [userEmail],
             eventParticipations: [],
             externalLogins: [],
-            profile: null,
+            profile: SampleProfile(userId, "Cached"),
             contactFields: [],
             profileLanguages: [],
             volunteerHistory: [],
@@ -895,9 +916,7 @@ public class CachingUserServiceTests
 
         result.Should().ContainKey(userId);
         var hit = result[userId];
-#pragma warning disable CS0618 // DisplayName legacy mirror — preservation is the point of this test.
-        hit.DisplayName.Should().Be("Cached");
-#pragma warning restore CS0618
+        LegacyDisplayName(hit).Should().Be("Cached");
         hit.ProfilePictureUrl.Should().Be("https://example.com/pic.png");
         hit.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         hit.UserEmails.Should().ContainSingle(e =>
@@ -918,10 +937,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(hitId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
 
-        var missUser = SampleUser(missId);
-#pragma warning disable CS0618
-        missUser.DisplayName = "Fresh";
-#pragma warning restore CS0618
+        var missUser = WithLegacyDisplayName(SampleUser(missId), "Fresh");
         _inner.GetByIdsAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(missId)),
             Arg.Any<CancellationToken>())
@@ -933,10 +949,8 @@ public class CachingUserServiceTests
         var result = await sut.GetByIdsAsync([hitId, missId]);
 
         result.Should().HaveCount(2);
-#pragma warning disable CS0618
-        result[hitId].DisplayName.Should().Be("Cached");
-        result[missId].DisplayName.Should().Be("Fresh");
-#pragma warning restore CS0618
+        LegacyDisplayName(result[hitId]).Should().Be("Cached");
+        LegacyDisplayName(result[missId]).Should().Be("Fresh");
 
         // Inner was called for the miss with only the missing id.
         await _inner.Received(1).GetByIdsAsync(
@@ -958,9 +972,7 @@ public class CachingUserServiceTests
         var user = await sut.GetByIdAsync(userId);
 
         user.Should().NotBeNull();
-#pragma warning disable CS0618
-        user.DisplayName.Should().Be("Cached");
-#pragma warning restore CS0618
+        LegacyDisplayName(user).Should().Be("Cached");
 
         // GetByIdAsync should not have been delegated.
         await _inner.DidNotReceive().GetByIdAsync(userId, Arg.Any<CancellationToken>());
@@ -1100,7 +1112,6 @@ public class CachingUserServiceTests
         var user = new User
         {
             Id = userId,
-            DisplayName = burnerName ?? "Display",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

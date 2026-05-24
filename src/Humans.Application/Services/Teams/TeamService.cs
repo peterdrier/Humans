@@ -1212,6 +1212,7 @@ public sealed class TeamService(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdAsync(teamId, cancellationToken)
@@ -1240,6 +1241,7 @@ public sealed class TeamService(
             Name = name,
             Description = description,
             SlotCount = slotCount,
+            EstimatedHours = estimatedHours,
             Priorities = priorities,
             SortOrder = sortOrder,
             IsPublic = isPublic,
@@ -1264,6 +1266,7 @@ public sealed class TeamService(
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
         bool canToggleManagement = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
@@ -1294,6 +1297,7 @@ public sealed class TeamService(
         definition.Name = name;
         definition.Description = description;
         definition.SlotCount = slotCount;
+        definition.EstimatedHours = estimatedHours;
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
 
@@ -1440,6 +1444,7 @@ public sealed class TeamService(
             definition.Name,
             definition.Description,
             definition.SlotCount,
+            definition.EstimatedHours,
             definition.Priorities,
             definition.SortOrder,
             definition.IsManagement,
@@ -1885,6 +1890,7 @@ public sealed class TeamService(
             d.Name,
             d.Description,
             d.SlotCount,
+            d.EstimatedHours,
             d.Priorities,
             d.SortOrder,
             d.IsManagement,

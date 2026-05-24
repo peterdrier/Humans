@@ -17,7 +17,7 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("Expenses")]
 public sealed class ExpensesController(
-    IUserService userService,
+    IUserServiceRead userService,
     IExpenseReportService service,
     IBudgetService budgetService,
     IClock clock,
@@ -26,7 +26,7 @@ public sealed class ExpensesController(
     IOptions<SepaConfig> sepaConfig,
     ILogger<ExpensesController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -688,7 +688,6 @@ public sealed class ExpensesController(
         return result;
     }
 
-    /// <summary>Submitter id → display name (BurnerName → DisplayName → sentinel).</summary>
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports)
     {

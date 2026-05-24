@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Email")]
 public class EmailController(
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailOutboxService outboxService,
     ILogger<EmailController> logger) : HumansControllerBase(userService)
 {

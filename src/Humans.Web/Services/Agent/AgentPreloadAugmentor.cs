@@ -46,4 +46,9 @@ public sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
         - /Feedback — submit a bug, feature request, or question
         - /Agent — conversational helper (this tool's own history page)
         """;
+
+    public string BuildFaqMarkdown() =>
+        "# Frequently Asked Questions" + Environment.NewLine + Environment.NewLine +
+        "Distilled from real user questions. Prefer these answers; they are verified against the live app." +
+        Environment.NewLine + Environment.NewLine + SectionHelpContent.Faq;
 }

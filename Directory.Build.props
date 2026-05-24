@@ -36,13 +36,13 @@
           true warnings so existing violations surface without breaking the
           build; promote to error once they're all fixed (delete these
           entries).
-        - HUM_USER_DISPLAYNAME / HUM_USERINFO_DISPLAYNAME: [Obsolete] markers
-          on User.DisplayName and UserInfo.DisplayName. Legitimate consumers
-          (Identity claims, merge/purge/delete labels, GDPR export, dev
-          seeders, email greetings, admin merge UI) remain until UserInfo
-          handles are threaded through every Application-layer service entry
-          point per issue #691. Kept visible as warnings (not hidden via
-          NoWarn) so new render-path violations stay surfaced.
+        - HUM_USER_DISPLAYNAME: [Obsolete] marker on User.DisplayName.
+          Legitimate consumers (Identity claims, merge/purge/delete labels,
+          GDPR export, dev seeders, email greetings, admin merge UI) remain
+          until UserInfo handles are threaded through every Application-layer
+          service entry point per issue #691. Kept visible as warnings (not
+          hidden via NoWarn in production projects) so new render-path
+          violations stay surfaced.
         - HUM_USER_GetById: [Obsolete] marker on IUserService.GetByIdAsync.
           Callers are being migrated to GetUserInfoAsync; remaining sites
           (e.g. CampaignService.cs:550 private-helper overload) ride the
@@ -54,7 +54,7 @@
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

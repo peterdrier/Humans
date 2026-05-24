@@ -12,7 +12,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/PictureMigration")]
 public sealed class ProfilePictureMigrationAdminController(
-    IUserService userService,
+    IUserServiceRead userService,
     IProfilePictureService profilePictureService,
     ILogger<ProfilePictureMigrationAdminController> logger) : HumansControllerBase(userService)
 {

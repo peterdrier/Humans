@@ -279,7 +279,10 @@ public record UserTicketHoldings(
 /// list so they're visible but visually muted).
 /// </summary>
 public record UserTicketHoldingRow(
+    Guid AttendeeId,
     string AttendeeName,
+    string? AttendeeEmail,
+    string VendorTicketId,
     string TicketTypeName,
     Humans.Domain.Enums.TicketAttendeeStatus Status);
 

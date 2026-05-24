@@ -4221,6 +4221,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<int?>("EstimatedHours")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsManagement")
                         .HasColumnType("boolean");
 

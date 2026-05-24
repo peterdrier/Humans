@@ -1,10 +1,11 @@
-@using Microsoft.AspNetCore.Authorization
-@using Humans.Web.Authorization
-@inject IAuthorizationService AuthService
+@using Humans.Application.DTOs
+@using Humans.Domain.Enums
 @model Humans.Web.Models.DashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
-    var canSendTicketTransfer = (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
+    TicketStubInfo TicketStub(MyAttendeeRowVm a) =>
+        new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
+            a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
 }
 
 <vc:temp-data-alerts />
@@ -185,43 +186,16 @@
                     </div>
                     @if (Model.MyAttendees.Count > 0)
                     {
-                        <ul class="list-group list-group-flush mt-2">
+                        <div class="d-flex flex-wrap gap-3 mt-3">
                             @foreach (var att in Model.MyAttendees)
                             {
-                                <li class="list-group-item d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div>@att.AttendeeName</div>
-                                        <small class="text-muted">@att.TicketTypeName</small>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        @if (att.HasPendingOutgoingTransfer)
-                                        {
-                                            <span class="badge bg-warning">@Localizer["TicketTransfer_Pending"]</span>
-                                            @if (att.PendingTransferRequestId is Guid pendingId)
-                                            {
-                                                <form asp-controller="TicketTransfer" asp-action="Cancel" method="post" class="m-0">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="id" value="@pendingId" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["TicketTransfer_CancelButton"]</button>
-                                                </form>
-                                            }
-                                        }
-                                        else if (att.CanSendTransfer && canSendTicketTransfer)
-                                        {
-                                            <a class="btn btn-sm btn-outline-secondary"
-                                               asp-controller="TicketTransfer" asp-action="Send"
-                                               asp-route-attendeeId="@att.AttendeeId">
-                                                @Localizer["TicketTransfer_SendButton"]
-                                            </a>
-                                        }
-                                        else if (att.CanSendTransfer)
-                                        {
-                                            <small class="text-muted fst-italic">Ticket Transfers coming soon…</small>
-                                        }
-                                    </div>
-                                </li>
+                                <vc:ticket-stub stub="@TicketStub(att)" />
                             }
-                        </ul>
+                        </div>
+                        <div class="mt-3">
+                            <a class="btn btn-sm btn-outline-secondary"
+                               asp-controller="TicketTransfer" asp-action="Index">Transfers…</a>
+                        </div>
                     }
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)

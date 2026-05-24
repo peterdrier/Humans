@@ -37,7 +37,6 @@ public sealed record OnsiteRosterResult(
 
 public sealed record OnsiteRosterRow(
     Guid UserId,
-    string DisplayName,
     Instant CheckedInAt,
     IReadOnlyList<string> CampNames,
     IReadOnlyList<string> TeamNames,

@@ -10,7 +10,7 @@ namespace Humans.Application.Interfaces.Camps;
 /// <summary>
 /// Service for managing camps and camp-season state.
 /// </summary>
-public interface ICampService : IApplicationService
+public interface ICampService : ICampServiceRead, IApplicationService
 {
     // Registration
     Task<Camp> CreateCampAsync(
@@ -28,7 +28,6 @@ public interface ICampService : IApplicationService
         CancellationToken cancellationToken = default);
 
     // Queries
-    Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
         string slug,
         int? preferredYear = null,
@@ -42,32 +41,9 @@ public interface ICampService : IApplicationService
         Guid? userId,
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
-    /// <summary>
-    /// Gets camps participating in a year — every camp that has any season
-    /// for the year, with the year-filtered season(s) populated. Leads are no
-    /// longer carried here; they live in the role system (Camp Lead special role).
-    /// </summary>
-    Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Camps participating in the current public-year whose
-    /// <c>CampSeason.Name</c> contains <paramref name="query"/>
-    /// (case-insensitive). The public year is resolved from
-    /// <c>CampSettings.PublicYear</c>. Only camps with a public-status
-    /// season (<c>Active</c> / <c>Full</c>) for the year are surfaced —
-    /// the same filter the public camp directory uses. Capped at
-    /// <paramref name="max"/>; returned in unspecified order — the global
-    /// search orchestrator scores and ranks. Used by the global /Search
-    /// page (<c>SearchService</c>); every caller sees the public surface
-    /// regardless of role.
-    /// </summary>
-    Task<IReadOnlyList<CampSearchHit>> SearchAsync(
-        string query, int max,
-        CancellationToken cancellationToken = default);
 
     // Season management
     Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
@@ -84,8 +60,7 @@ public interface ICampService : IApplicationService
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
 
-    // Cross-service queries (used by CityPlanningService)
-    Task<CampSeasonLookup?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    // Cross-service queries
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
 
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
@@ -111,7 +86,7 @@ public interface ICampService : IApplicationService
     /// <see cref="IsUserCampEventManagerAsync"/>). Used by
     /// <c>EventsController.MySubmissions</c> to build the barrio blocks.
     /// </summary>
-    Task<IReadOnlyList<CampLookup>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
@@ -260,23 +235,10 @@ public interface ICampService : IApplicationService
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
 
-public sealed record CampLookup(
-    Guid Id,
-    string Slug,
-    string ContactEmail,
-    IReadOnlyList<CampSeasonInfo> Seasons);
-
 public sealed record CampSettingsInfo(
     int PublicYear,
     IReadOnlyList<int> OpenSeasons,
     LocalDate? EeStartDate);
-
-public sealed record CampSeasonLookup(
-    Guid Id,
-    Guid CampId,
-    int Year,
-    string Name,
-    SoundZone? SoundZone);
 
 /// <summary>
 /// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per
@@ -317,7 +279,13 @@ public sealed record CampInfo(
     string ContactPhone,
     bool IsSwissCamp,
     int TimesAtNowhere,
-    IReadOnlyList<CampSeasonInfo> Seasons);
+    IReadOnlyList<CampSeasonInfo> Seasons)
+{
+    /// <summary>
+    /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
+    /// </summary>
+    public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+}
 
 public sealed record CampSeasonInfo(
     Guid Id,

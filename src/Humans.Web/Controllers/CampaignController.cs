@@ -10,7 +10,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Admin/Campaigns")]
-public class CampaignController(ICampaignService campaignService, IUserService userService)
+public class CampaignController(ICampaignService campaignService, IUserServiceRead userService)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]

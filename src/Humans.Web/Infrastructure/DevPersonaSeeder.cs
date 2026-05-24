@@ -91,6 +91,7 @@ public sealed class DevPersonaSeeder(
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
 
+#pragma warning disable HUM_USER_DISPLAYNAME // Dev persona seeding writes the legacy Identity fallback column.
         var user = new User
         {
             Id = id,
@@ -98,6 +99,7 @@ public sealed class DevPersonaSeeder(
             CreatedAt = now,
             LastLoginAt = now
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var result = await userManager.CreateAsync(user);
         if (!result.Succeeded)
@@ -255,6 +257,7 @@ public sealed class DevPersonaSeeder(
     /// </summary>
     private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
     {
+#pragma warning disable HUM_USER_DISPLAYNAME // Dev guest seeding writes the legacy Identity fallback column.
         var user = new User
         {
             Id = id,
@@ -262,6 +265,7 @@ public sealed class DevPersonaSeeder(
             CreatedAt = now,
             LastLoginAt = now
         };
+#pragma warning restore HUM_USER_DISPLAYNAME
 
         var result = await userManager.CreateAsync(user);
         if (!result.Succeeded)
@@ -391,7 +395,7 @@ public sealed class DevPersonaSeeder(
         }
     }
 
-    private async Task<bool> EnsureCampLeadAsync(CampLookup camp, Guid leadUserId)
+    private async Task<bool> EnsureCampLeadAsync(CampInfo camp, Guid leadUserId)
     {
         // Idempotent: skip if the user already holds the Camp Lead role.
         if (await campService.IsUserCampLeadAsync(leadUserId, camp.Id))
