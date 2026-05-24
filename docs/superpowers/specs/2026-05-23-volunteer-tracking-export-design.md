@@ -39,7 +39,7 @@ When `departmentId` is unset:
 
 When `departmentId` is set:
 - Only the filtered department's group renders. No banner needed (single team), but the methodology block still names the team.
-- Humans alphabetical by playa name.
+- Humans sorted by **arrival day ascending** (earliest arrivals first), tie-break by playa name ascending. This puts the longest-tenured humans at the top of each department block.
 
 ## Cell Rules
 
@@ -95,6 +95,31 @@ paletteIndex = stableHash(team.Id.ToString("D")) % palette.Length
 `palette` is a fixed list of ~20 distinct fills with sufficient contrast for white bold text. Hash is stable across runs (`SHA256` of the Id string, take first 4 bytes interpreted as `uint`). Same team → same color across exports.
 
 If two teams collide on the same color in a given export, it's accepted — the row grouping by team name keeps them visually distinct.
+
+## Period Sub-filters (set-up phase)
+
+When `period = Build` (labelled "Set-up" in the UI per existing project terminology), an optional `subPeriod: BuildSubPeriod?` narrows the range to one of the four established set-up sub-windows:
+
+| Sub-period | Day-offset window (relative to `GateOpeningDate`) |
+|---|---|
+| `FirstCrew` | `FirstCrewStartOffset` → `SetupWeekStartOffset - 1` |
+| `SetupWeek` | `SetupWeekStartOffset` → `PreEventWeekStartOffset - 1` |
+| `PreEventWeek` | `PreEventWeekStartOffset` → `FinishingWeekendStartOffset - 1` |
+| `FinishingWeekend` | `FinishingWeekendStartOffset` → `-1` |
+
+Bounds come from the existing `Humans.Domain.Helpers.BuildSubPeriodClassifier.BoundsFor(...)` helper so the export and the shift dashboard share one source of truth. The sub-period dropdown is only enabled when "Set-up" is the selected period.
+
+When `subPeriod` is set alongside `period = Build`, the action uses the sub-period bounds; otherwise the full period window applies as in §Filters.
+
+## Period label localization
+
+Period dropdown labels use the existing resource keys from the shift dashboard so the export and dashboard read the same:
+
+- `ShiftDash_PeriodFilter_BuildDays` → "Set-up" (in English; localized in `.es.resx`)
+- Existing Event/Strike labels via their established keys
+- Sub-periods via `ShiftDash_SubPeriodFilter_{FirstCrew|SetupWeek|PreEventWeek|FinishingWeekend}`
+
+No new period-label keys are introduced; only the export-specific helper labels (`VolTrack_Export_*`) are new.
 
 ## File Output
 
