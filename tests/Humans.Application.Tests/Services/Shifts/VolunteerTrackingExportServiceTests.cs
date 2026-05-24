@@ -154,6 +154,30 @@ public sealed class VolunteerTrackingExportServiceTests
         model.TotalsPerDay.Should().Equal(0, 0, 1, 1, 1, 0, 0);
     }
 
+    [HumansFact]
+    public async Task ShiftSpanningTwoDays_AppearsOnBothDays()
+    {
+        // Alice has a TeamA shift starting 22:00 Day3 (local), ending 06:00 Day4 (local).
+        // 2h on Day3, 6h on Day4.
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var startInstant = (Day1.PlusDays(2) + LocalTime.FromHourMinuteSecondTick(22, 0, 0, 0))
+            .InZoneStrictly(zone).ToInstant();
+        var endInstant = (Day1.PlusDays(3) + LocalTime.FromHourMinuteSecondTick(6, 0, 0, 0))
+            .InZoneStrictly(zone).ToInstant();
+        var shifts = new[] { new ConfirmedShiftRow(Alice, TeamA, "TeamA", startInstant, endInstant) };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        var cells = model.Groups[0].Humans[0].Cells;
+        cells[2].Kind.Should().Be(CellKind.Worked); // Day3
+        cells[3].Kind.Should().Be(CellKind.Worked); // Day4
+    }
+
     private static readonly Guid Bob = Guid.Parse("b0000000-0000-0000-0000-000000000002");
 
     [HumansFact]
