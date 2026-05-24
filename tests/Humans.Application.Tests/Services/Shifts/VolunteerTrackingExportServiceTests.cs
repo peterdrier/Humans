@@ -155,6 +155,29 @@ public sealed class VolunteerTrackingExportServiceTests
     }
 
     [HumansFact]
+    public async Task ArrivalDayOutsideRange_NoWhiteCell_FirstInRangeCellColorsNormally()
+    {
+        // Alice's first confirmed shift is exactly Day1 (=range start). Arrival = Day0 = outside.
+        var shifts = new[]
+        {
+            ShiftRow(Alice, TeamA, "TeamA", Day1, 9, 17),
+            ShiftRow(Alice, TeamA, "TeamA", Day1.PlusDays(1), 9, 17),
+        };
+        var (repo, shiftMgmt, users) = BuildMocks(
+            shifts: shifts,
+            departments: [(TeamA, "TeamA")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+
+        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+
+        var cells = model.Groups[0].Humans[0].Cells;
+        cells.Should().NotContain(c => c.Kind == CellKind.Arrival);
+        cells[0].Kind.Should().Be(CellKind.Worked);
+        cells[1].Kind.Should().Be(CellKind.Worked);
+    }
+
+    [HumansFact]
     public async Task MultiTeamDay_CellColoredByMaxHoursTeam()
     {
         // Alice on Day3: TeamA 3h + TeamB 5h → cell = TeamB color.
