@@ -114,6 +114,72 @@ public sealed class HoldedClient : IHoldedClient
         };
     }
 
+    public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/expensesaccounts");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
+        return arr.Select(n => new HoldedExpenseAccountDto
+        {
+            Id = n!["id"]?.GetValue<string>() ?? "",
+            AccountNum = (int)(n["accountNum"]?.GetValue<long>() ?? 0),
+            Name = n["name"]?.GetValue<string>() ?? "",
+        }).ToList();
+    }
+
+    public async Task<string> CreateExpenseAccountAsync(
+        int accountNum, string name, CancellationToken ct = default)
+    {
+        // TODO(probe): confirm create-expenses-account payload field names against live API
+        var payload = new { name, accountNum };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/invoicing/v1/expensesaccounts")
+            { Content = JsonContent.Create(payload) };
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
+            ?? throw new HoldedTransientException("Holded returned empty body");
+        return node["id"]?.GetValue<string>()
+            ?? throw new HoldedTransientException("Holded create-account response missing id");
+    }
+
+    public async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsPageAsync(
+        int page, int limit, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get,
+            $"/api/invoicing/v1/documents/purchase?page={page}&limit={limit}");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
+        return arr.Select(ParsePurchaseDoc).ToList();
+    }
+
+    private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
+    {
+        Id = n!["id"]?.GetValue<string>() ?? "",
+        DocNumber = n["docNumber"]?.GetValue<string>() ?? "",
+        ContactName = n["contactName"]?.GetValue<string>() ?? "",
+        Date = ReadInstant(n["date"]) ?? Instant.FromUnixTimeSeconds(0),
+        Subtotal = ReadDecimal(n["subtotal"]),
+        Tax = ReadDecimal(n["tax"]),
+        Total = ReadDecimal(n["total"]),
+        ApprovedAt = ReadInstant(n["approvedAt"]),
+        Currency = n["currency"]?.GetValue<string>() ?? "eur",
+        Tags = ReadTags(n["tags"]),
+        Lines = (n["products"]?.AsArray() ?? []).Select(p => new HoldedPurchaseLineDto
+        {
+            Amount = ReadDecimal(p!["price"]),
+            AccountId = p["account"]?.GetValue<string>(),
+            Tags = ReadTags(p["tags"]),
+        }).ToList(),
+    };
+
+    private static IReadOnlyList<string> ReadTags(JsonNode? node) =>
+        node?.AsArray().Where(t => t is not null).Select(t => t!.GetValue<string>()).ToList() ?? [];
+
     private void AttachAuth(HttpRequestMessage req) =>
         req.Headers.Add("key", _options.ApiKey);
 
