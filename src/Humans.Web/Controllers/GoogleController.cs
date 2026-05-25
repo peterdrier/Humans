@@ -36,7 +36,9 @@ public class GoogleController(
         [FromServices] ISyncSettingsService syncSettingsService,
         [FromServices] IUserServiceRead userService)
     {
-        var settings = await syncSettingsService.GetAllAsync();
+        var settings = (await syncSettingsService.GetAllAsync())
+            .OrderBy(s => s.ServiceType)
+            .ToList();
 
         // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
         // rather than an EF .Include across the section boundary (design-rules §6).
