@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using CantinaRosterServiceImpl = Humans.Application.Services.Cantina.CantinaRosterService;
-using CantinaAccessServiceImpl = Humans.Application.Services.Cantina.CantinaAccessService;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
@@ -35,15 +34,11 @@ internal static class ShiftsSectionExtensions
         // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings — see #719.
         services.AddScoped<IBurnSettingsService, ShiftsBurnSettingsService>();
 
-        // Cantina Daily Roster — read-only cross-section service that stitches the
-        // on-site cohort + dietary breakdown for the /Cantina/Roster page
-        // (feature #36 — docs/features/cantina/daily-roster.md).
+        // Cantina Daily Roster — read-only service that stitches the on-site
+        // cohort + dietary breakdown for the /Cantina/Roster page (feature #36 —
+        // docs/features/cantina/daily-roster.md). Access is gated by the
+        // CantinaAdminOrAdmin authorization policy, not a bespoke service.
         services.AddScoped<ICantinaRosterService, CantinaRosterServiceImpl>();
-
-        // Cantina access gate — (Admin | NoInfoAdmin | VolunteerCoordinator) OR
-        // active membership on any team whose Name contains "Cantina". Reused by
-        // the CantinaController 403 gate and the nav-link visibility check.
-        services.AddScoped<ICantinaAccessService, CantinaAccessServiceImpl>();
 
         // ShiftSignup — see #541b. Repository is Scoped so multi-step mutation transactions share one change-tracker.
         services.AddScoped<IShiftSignupRepository, ShiftSignupRepository>();

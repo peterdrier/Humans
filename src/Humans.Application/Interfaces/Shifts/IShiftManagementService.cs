@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -367,6 +368,27 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct user ids of volunteers on-site for the given event
+    /// day — those with a Pending/Confirmed signup on a <see cref="Shift"/> whose
+    /// <see cref="Shift.DayOffset"/> matches. Service-layer read for the Cantina
+    /// roster (feature #36) so it never reaches into the Shifts repository.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the on-site cohort's dietary read-models for the given event day
+    /// (same on-site rule as <see cref="GetOnSiteUserIdsForDayAsync"/>), projected
+    /// from <c>VolunteerEventProfile</c>. <see cref="OnSiteDietaryProfile"/> omits
+    /// medical conditions, so GDPR Art. 9 data never leaves the Shifts service.
+    /// Service-layer read for the Cantina roster (feature #36).
+    /// </summary>
+    Task<IReadOnlyList<OnSiteDietaryProfile>> GetOnSiteVolunteerProfilesForDayAsync(
+        int dayOffset,
         CancellationToken ct = default);
 
     /// <summary>

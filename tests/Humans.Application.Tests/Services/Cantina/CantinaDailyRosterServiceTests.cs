@@ -1,7 +1,8 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application;
+using Humans.Application.DTOs.Shifts;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina;
 using Humans.Domain.Constants;
@@ -21,9 +22,8 @@ namespace Humans.Application.Tests.Services.Cantina;
 /// </summary>
 public class CantinaDailyRosterServiceTests
 {
-    private readonly IShiftManagementRepository _shiftRepo;
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
+    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
     private readonly CantinaRosterService _service;
 
@@ -32,27 +32,32 @@ public class CantinaDailyRosterServiceTests
 
     public CantinaDailyRosterServiceTests()
     {
-        _shiftRepo = Substitute.For<IShiftManagementRepository>();
-        _profileService = Substitute.For<IProfileService>();
-        _userService = Substitute.For<IUserService>();
+        _shiftMgmt = Substitute.For<IShiftManagementService>();
+        _userRead = Substitute.For<IUserServiceRead>();
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
-        _profileService.GetByUserIdsAsync(
+        _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(
-                new Dictionary<Guid, Profile>()));
-        _userService.GetByIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                new Dictionary<Guid, User>()));
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>()));
 
-        _shiftRepo.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
-        _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<VolunteerEventProfile>>(Array.Empty<VolunteerEventProfile>()));
+        _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<OnSiteDietaryProfile>>(Array.Empty<OnSiteDietaryProfile>()));
 
-        _service = new CantinaRosterService(_shiftRepo, _profileService, _userService, _clock);
+        _service = new CantinaRosterService(_shiftMgmt, _userRead, _clock);
     }
+
+    /// <summary>Builds an on-site dietary read-model (the shape the service returns).</summary>
+    private static OnSiteDietaryProfile Vep(
+        Guid userId,
+        string? dietary = null,
+        IReadOnlyList<string>? allergies = null,
+        string? allergyOther = null,
+        IReadOnlyList<string>? intolerances = null,
+        string? intoleranceOther = null) =>
+        new(userId, dietary, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther);
 
     private static EventSettings ActiveEvent() => new()
     {
@@ -66,8 +71,7 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_NoActiveEventSettings_ReturnsEmpty()
     {
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
+        _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 3);
 
@@ -97,8 +101,8 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_NoOnSiteUsers_ReturnsZeroState()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
-        // Default repo behaviour returns empty for every day.
+        _shiftMgmt.GetActiveAsync().Returns(es);
+        // Default service behaviour returns empty for every day.
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -116,45 +120,25 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_PopulatedDay_BuildsAggregatesAndPeople()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         // 3-user fixture mixing dietary, allergy, intolerance and "Other"-with-text combinations.
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
         var c = Guid.NewGuid();
 
-        var users = new[]
-        {
-            new User { Id = a, DisplayName = "A" },
-            new User { Id = b, DisplayName = "B" },
-            new User { Id = c, DisplayName = "C" }
-        };
         var profiles = new[]
         {
             new Profile { UserId = a, BurnerName = "Ava" },
             new Profile { UserId = b, BurnerName = "Beth" },
             new Profile { UserId = c, BurnerName = "Cleo" }
         };
-        var vepA = new VolunteerEventProfile
-        {
-            UserId = a,
-            DietaryPreference = "Vegan",
-            Allergies = new List<string> { "Peanut", "Other" },
-            AllergyOtherText = "MSG",
-            Intolerances = new List<string> { "Lactose" }
-        };
-        var vepB = new VolunteerEventProfile
-        {
-            UserId = b,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string> { "Peanut" },
-            Intolerances = new List<string>()
-        };
+        var vepA = Vep(a, "Vegan", allergies: ["Peanut", "Other"], allergyOther: "MSG", intolerances: ["Lactose"]);
+        var vepB = Vep(b, "Omnivore", allergies: ["Peanut"]);
         // c intentionally has no VEP — must count as Unanswered.
 
         SetupDay(0, new[] { a, b, c }, new[] { vepA, vepB });
-        SetupUsers(users);
-        SetupProfiles(profiles);
+        SetupHumans(profiles);
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -198,37 +182,28 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_MedicalConditionsNeverInDto()
     {
-        // Compile-time guarantee — DailyPersonRowDto must NOT expose MedicalConditions.
-        var hasMedicalProp = typeof(Humans.Application.Services.Cantina.Dtos.DailyPersonRowDto)
-            .GetProperty("MedicalConditions");
-        hasMedicalProp.Should().BeNull(
+        // Medical data is excluded structurally: the service hands the cantina
+        // OnSiteDietaryProfile (no medical field), and the output DailyPersonRowDto
+        // has none either. Both are GDPR Art.9 boundaries — verify at compile time.
+        typeof(OnSiteDietaryProfile).GetProperty("MedicalConditions").Should().BeNull(
+            "OnSiteDietaryProfile must not carry MedicalConditions — medical never leaves the Shifts service.");
+        typeof(Humans.Application.Services.Cantina.Dtos.DailyPersonRowDto)
+            .GetProperty("MedicalConditions").Should().BeNull(
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
-        // Runtime guard: even when the VEP carries medical text, the serialized
-        // DTO must not contain it.
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Sensitive" };
         var profile = new Profile { UserId = userId, BurnerName = "Sensitive" };
-        var vep = new VolunteerEventProfile
-        {
-            UserId = userId,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string>(),
-            Intolerances = new List<string>(),
-            MedicalConditions = "Severe peanut allergy"
-        };
+        var vep = Vep(userId, "Omnivore");
 
         SetupDay(0, new[] { userId }, new[] { vep });
-        SetupUsers(user);
-        SetupProfiles(profile);
+        SetupHumans(profile);
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
         var json = JsonSerializer.Serialize(result);
-        json.Should().NotContain("Severe peanut allergy");
         json.Should().NotContain("MedicalConditions");
     }
 
@@ -240,7 +215,7 @@ public class CantinaDailyRosterServiceTests
         //   day -3 = Sat 4 Jul   → Monday of week = Mon 29 Jun → offset -8
         //   day +5 = Sun 12 Jul  → Monday of week = Mon 6 Jul → offset -1
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         (await _service.GetDailyRosterAsync(0)).WeekStartOffset.Should().Be(-1);
         (await _service.GetDailyRosterAsync(-3)).WeekStartOffset.Should().Be(-8);
@@ -251,20 +226,14 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_PeopleNotSorted_ReturnsInRepoOrder()
     {
         // Service must NOT sort People — that's the Web-layer assembler's job
-        // (memory/architecture/display-sort-in-controllers.md). Hand the repo a
+        // (memory/architecture/display-sort-in-controllers.md). Hand the service a
         // reverse-alphabetical order; the result must preserve it.
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var c = Guid.NewGuid();
         var b = Guid.NewGuid();
         var a = Guid.NewGuid();
-        var users = new[]
-        {
-            new User { Id = c, DisplayName = "C" },
-            new User { Id = b, DisplayName = "B" },
-            new User { Id = a, DisplayName = "A" }
-        };
         var profiles = new[]
         {
             new Profile { UserId = c, BurnerName = "Charlie" },
@@ -273,9 +242,8 @@ public class CantinaDailyRosterServiceTests
         };
 
         // Order on the wire: C, B, A. Service must not re-sort.
-        SetupDay(0, new[] { c, b, a }, Array.Empty<VolunteerEventProfile>());
-        SetupUsers(users);
-        SetupProfiles(profiles);
+        SetupDay(0, new[] { c, b, a }, Array.Empty<OnSiteDietaryProfile>());
+        SetupHumans(profiles);
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -289,9 +257,9 @@ public class CantinaDailyRosterServiceTests
         // not from UTC. With clock pinned to 23:30 UTC on day 0, Europe/Madrid
         // is already day 1 (CET = UTC+2 in July).
         var fakeClock = new FakeClock(Instant.FromUtc(2026, 7, 7, 23, 30));
-        var service = new CantinaRosterService(_shiftRepo, _profileService, _userService, fakeClock);
+        var service = new CantinaRosterService(_shiftMgmt, _userRead, fakeClock);
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var result = await service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -301,27 +269,30 @@ public class CantinaDailyRosterServiceTests
 
     // ---- helpers ----
 
-    private void SetupDay(int dayOffset, IReadOnlyList<Guid> onSiteIds, IReadOnlyList<VolunteerEventProfile> veps)
+    private void SetupDay(int dayOffset, IReadOnlyList<Guid> onSiteIds, IReadOnlyList<OnSiteDietaryProfile> veps)
     {
-        _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(onSiteIds));
-        _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(veps));
     }
 
-    private void SetupUsers(params User[] users)
+    private void SetupHumans(params Profile[] profiles)
     {
-        var dict = users.ToDictionary(u => u.Id);
-        _userService.GetByIdsAsync(
+        var dict = profiles.ToDictionary(
+            p => p.UserId,
+            p => UserInfo.Create(
+                user: new User { Id = p.UserId, DisplayName = p.BurnerName, PreferredLanguage = "en" },
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
+                profile: p,
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: []));
+        _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(dict));
-    }
-
-    private void SetupProfiles(params Profile[] profiles)
-    {
-        var dict = profiles.ToDictionary(p => p.UserId);
-        _profileService.GetByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(dict));
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
     }
 }

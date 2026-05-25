@@ -1,6 +1,7 @@
 using System.Globalization;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Web.Authorization;
 using Humans.Web.Cantina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,31 +12,27 @@ namespace Humans.Web.Controllers;
 /// <summary>
 /// Cantina coordinator surface — weekly roster page and CSV export
 /// (feature #36 — docs/features/cantina/daily-roster.md). View-only.
-/// Authorization gate: <see cref="ICantinaAccessService.CanViewRosterAsync"/>
-/// returns true for Admin / NoInfoAdmin / VolunteerCoordinator, or for any
-/// human with an active membership on a team whose name contains "Cantina".
-/// Authenticated humans who fail the gate get HTTP 403; anonymous callers
-/// follow the standard <see cref="AuthorizeAttribute"/> challenge.
+/// Authorization gate: the <see cref="PolicyNames.CantinaAdminOrAdmin"/> policy
+/// (Admin or the grantable CantinaAdmin role). Anonymous callers follow the
+/// standard <see cref="AuthorizeAttribute"/> challenge; authenticated humans
+/// without the role get HTTP 403.
 /// </summary>
-[Authorize]
+[Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]
 [Route("Cantina")]
 public sealed class CantinaController : Controller
 {
     private readonly ICantinaRosterService _roster;
-    private readonly ICantinaAccessService _access;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IClock _clock;
     private readonly ILogger<CantinaController> _logger;
 
     public CantinaController(
         ICantinaRosterService roster,
-        ICantinaAccessService access,
         IShiftManagementService shiftMgmt,
         IClock clock,
         ILogger<CantinaController> logger)
     {
         _roster = roster;
-        _access = access;
         _shiftMgmt = shiftMgmt;
         _clock = clock;
         _logger = logger;
@@ -44,9 +41,6 @@ public sealed class CantinaController : Controller
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        if (!await _access.CanViewRosterAsync(User, ct).ConfigureAwait(false))
-            return Forbid();
-
         var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
         var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
         // Display sort is a presentation concern; the service returns People
@@ -57,9 +51,6 @@ public sealed class CantinaController : Controller
     [HttpGet("Roster/Csv")]
     public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        if (!await _access.CanViewRosterAsync(User, ct).ConfigureAwait(false))
-            return Forbid();
-
         var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
         var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
         // Match the HTML view's sort order so an exported CSV reads the same
@@ -83,9 +74,6 @@ public sealed class CantinaController : Controller
     [HttpGet("Roster/Day")]
     public async Task<IActionResult> Day(int? dayOffset = null, CancellationToken ct = default)
     {
-        if (!await _access.CanViewRosterAsync(User, ct).ConfigureAwait(false))
-            return Forbid();
-
         var offset = dayOffset ?? await ComputeDefaultDayOffsetAsync().ConfigureAwait(false);
         var matrix = await _roster.GetDailyRosterAsync(offset, ct).ConfigureAwait(false);
         // Display sort is a presentation concern; the service returns People
@@ -100,9 +88,6 @@ public sealed class CantinaController : Controller
     [HttpGet("Roster/Day/Csv")]
     public async Task<IActionResult> DayCsv(int? dayOffset = null, CancellationToken ct = default)
     {
-        if (!await _access.CanViewRosterAsync(User, ct).ConfigureAwait(false))
-            return Forbid();
-
         var offset = dayOffset ?? await ComputeDefaultDayOffsetAsync().ConfigureAwait(false);
         var matrix = await _roster.GetDailyRosterAsync(offset, ct).ConfigureAwait(false);
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);

@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
@@ -1833,6 +1834,27 @@ public sealed class ShiftManagementService(
             s.Shift is not null
             && s.Shift.QualifiesForCantinaMeal()
             && s.Shift.GetAbsoluteEnd(eventSettings) > now);
+    }
+
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset, CancellationToken ct = default) =>
+        repo.GetOnSiteUserIdsForDayAsync(dayOffset, ct);
+
+    public async Task<IReadOnlyList<OnSiteDietaryProfile>> GetOnSiteVolunteerProfilesForDayAsync(
+        int dayOffset, CancellationToken ct = default)
+    {
+        var veps = await repo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct);
+        // Project to the medical-free read-model here so MedicalConditions
+        // (GDPR Art. 9) never crosses the service boundary to the cantina.
+        return veps
+            .Select(v => new OnSiteDietaryProfile(
+                UserId: v.UserId,
+                DietaryPreference: v.DietaryPreference,
+                Allergies: v.Allergies,
+                AllergyOtherText: v.AllergyOtherText,
+                Intolerances: v.Intolerances,
+                IntoleranceOtherText: v.IntoleranceOtherText))
+            .ToList();
     }
 
     public async Task<int> DeleteShiftProfilesForUserAsync(

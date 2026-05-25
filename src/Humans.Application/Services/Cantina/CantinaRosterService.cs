@@ -1,21 +1,22 @@
+using Humans.Application;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Cantina;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using NodaTime;
-using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Application.Services.Cantina;
 
 /// <summary>
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
-/// Pulls the on-site cohort and their <c>VolunteerEventProfile</c> rows for
-/// each of the 7 days Mon–Sun from <c>IShiftManagementRepository</c>,
-/// unions them into a unique-humans cohort, stitches burner-name labels
-/// from <c>IProfileService</c> / <c>IUserService</c>, and computes the
+/// Reads the on-site cohort and their <c>OnSiteDietaryProfile</c> rows for
+/// each of the 7 days Mon–Sun through <see cref="IShiftManagementService"/>
+/// (never the Shifts repository), unions them into a unique-humans cohort,
+/// stitches burner-name labels from the cross-section
+/// <see cref="IUserServiceRead"/> (cached <c>UserInfo</c>), and computes the
 /// weekly aggregates the Cantina coordinator UI needs. Medical fields never
 /// leave the service — they are not present on any DTO.
 /// </summary>
@@ -23,29 +24,26 @@ public sealed class CantinaRosterService : ICantinaRosterService
 {
     private const int DaysPerWeek = 7;
 
-    private readonly IShiftManagementRepository _shiftRepo;
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
+    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
     // Canonical preference labels, with the "Unanswered" pseudo-bucket.
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
-        IShiftManagementRepository shiftRepo,
-        IProfileService profileService,
-        IUserService userService,
+        IShiftManagementService shiftMgmt,
+        IUserServiceRead userRead,
         IClock clock)
     {
-        _shiftRepo = shiftRepo;
-        _profileService = profileService;
-        _userService = userService;
+        _shiftMgmt = shiftMgmt;
+        _userRead = userRead;
         _clock = clock;
     }
 
     public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
     {
-        var eventSettings = await _shiftRepo.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var eventSettings = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
         var weekStartDate = eventSettings is null
             ? (LocalDate?)null
             : eventSettings.GateOpeningDate.PlusDays(weekStartOffset);
@@ -66,14 +64,14 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
         // Per-day fetch: 7 sequential queries. At ~500 users this is fine
         // (see CLAUDE.md scale notes). Each tuple holds (dayOffset, userIds, veps).
-        var perDay = new List<(int DayOffset, IReadOnlyList<Guid> UserIds, IReadOnlyList<VolunteerEventProfile> Veps)>(DaysPerWeek);
+        var perDay = new List<(int DayOffset, IReadOnlyList<Guid> UserIds, IReadOnlyList<OnSiteDietaryProfile> Veps)>(DaysPerWeek);
         for (var i = 0; i < DaysPerWeek; i++)
         {
             var dayOffset = weekStartOffset + i;
-            var userIds = await _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
+            var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
             var veps = userIds.Count == 0
-                ? Array.Empty<VolunteerEventProfile>()
-                : await _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
+                ? Array.Empty<OnSiteDietaryProfile>()
+                : await _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
             perDay.Add((dayOffset, userIds, veps));
         }
 
@@ -99,7 +97,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
         // for them across the week (VEPs are per-user not per-shift; for any
         // given user they're identical across days the user appeared).
         var uniqueUserIds = daysOnSiteByUserId.Keys.ToList();
-        var vepByUserId = new Dictionary<Guid, VolunteerEventProfile>();
+        var vepByUserId = new Dictionary<Guid, OnSiteDietaryProfile>();
         foreach (var (_, _, veps) in perDay)
         {
             foreach (var vep in veps)
@@ -111,7 +109,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
         for (var i = 0; i < DaysPerWeek; i++)
         {
             var (dayOffset, userIds, veps) = perDay[i];
-            var vepsById = new Dictionary<Guid, VolunteerEventProfile>(veps.Count);
+            var vepsById = new Dictionary<Guid, OnSiteDietaryProfile>(veps.Count);
             foreach (var v in veps)
                 vepsById[v.UserId] = v;
             var unanswered = 0;
@@ -146,13 +144,12 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 EventTodayDate: eventTodayDate);
         }
 
-        var profiles = await _profileService.GetByUserIdsAsync(uniqueUserIds, ct).ConfigureAwait(false);
-        var users = await _userService.GetByIdsAsync(uniqueUserIds, ct).ConfigureAwait(false);
+        var userInfos = await _userRead.GetUserInfosAsync(uniqueUserIds, ct).ConfigureAwait(false);
 
         // Build the unique-humans VEP cohort once — every aggregate below
         // is computed over this list so a person on-site multiple days
         // contributes exactly once.
-        var uniqueVeps = new List<VolunteerEventProfile>(uniqueUserIds.Count);
+        var uniqueVeps = new List<OnSiteDietaryProfile>(uniqueUserIds.Count);
         foreach (var id in uniqueUserIds)
         {
             if (vepByUserId.TryGetValue(id, out var v))
@@ -175,8 +172,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
         var people = new List<RosterPersonDto>(uniqueUserIds.Count);
         foreach (var id in uniqueUserIds)
         {
-            profiles.TryGetValue(id, out var profile);
-            users.TryGetValue(id, out var user);
+            userInfos.TryGetValue(id, out var info);
             vepByUserId.TryGetValue(id, out var vep);
             var daysList = daysOnSiteByUserId[id];
             daysList.Sort();
@@ -207,7 +203,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
             people.Add(new RosterPersonDto(
                 UserId: id,
-                BurnerName: ResolveBurnerName(profile, user),
+                BurnerName: ResolveBurnerName(info),
                 ArrivesOn: arrivesOn,
                 NoShift: noShift,
                 DietaryPreference: vep?.DietaryPreference,
@@ -275,7 +271,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
     public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
     {
-        var eventSettings = await _shiftRepo.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var eventSettings = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
         var calendarDate = eventSettings is null
             ? (LocalDate?)null
             : eventSettings.GateOpeningDate.PlusDays(dayOffset);
@@ -310,10 +306,10 @@ public sealed class CantinaRosterService : ICantinaRosterService
             weekStartOffset = dayOffset - ((dayOffset % DaysPerWeek + DaysPerWeek) % DaysPerWeek);
         }
 
-        var userIds = await _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
+        var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
         var veps = userIds.Count == 0
-            ? Array.Empty<VolunteerEventProfile>()
-            : await _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
+            ? Array.Empty<OnSiteDietaryProfile>()
+            : await _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, ct).ConfigureAwait(false);
 
         if (userIds.Count == 0)
         {
@@ -333,12 +329,11 @@ public sealed class CantinaRosterService : ICantinaRosterService
                 People: Array.Empty<DailyPersonRowDto>());
         }
 
-        var vepByUserId = new Dictionary<Guid, VolunteerEventProfile>(veps.Count);
+        var vepByUserId = new Dictionary<Guid, OnSiteDietaryProfile>(veps.Count);
         foreach (var v in veps)
             vepByUserId[v.UserId] = v;
 
-        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct).ConfigureAwait(false);
-        var users = await _userService.GetByIdsAsync(userIds, ct).ConfigureAwait(false);
+        var userInfos = await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
 
         // People — built in repo-order (caller is expected to sort for display
         // via CantinaRosterAssembler.WithSortedPeople; see
@@ -346,8 +341,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
         var people = new List<DailyPersonRowDto>(userIds.Count);
         foreach (var id in userIds)
         {
-            profiles.TryGetValue(id, out var profile);
-            users.TryGetValue(id, out var user);
+            userInfos.TryGetValue(id, out var info);
             vepByUserId.TryGetValue(id, out var vep);
 
             IReadOnlySet<string> allergies = vep?.Allergies is { Count: > 0 } a
@@ -359,7 +353,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
             people.Add(new DailyPersonRowDto(
                 UserId: id,
-                BurnerName: ResolveBurnerName(profile, user),
+                BurnerName: ResolveBurnerName(info),
                 DietaryPreference: vep?.DietaryPreference,
                 Allergies: allergies,
                 AllergyOtherText: vep?.AllergyOtherText,
@@ -369,7 +363,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
         // Aggregates are over the day's cohort (no week dedup needed — each
         // user appears exactly once in userIds for this single day).
-        var dayVeps = new List<VolunteerEventProfile>(userIds.Count);
+        var dayVeps = new List<OnSiteDietaryProfile>(userIds.Count);
         foreach (var id in userIds)
         {
             if (vepByUserId.TryGetValue(id, out var v))
@@ -407,14 +401,10 @@ public sealed class CantinaRosterService : ICantinaRosterService
             People: people);
     }
 
-    private static string ResolveBurnerName(ProfileEntity? profile, User? user)
-    {
-        if (profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName))
-            return profile.BurnerName;
-        if (user is not null && !string.IsNullOrWhiteSpace(user.DisplayName))
-            return user.DisplayName;
-        return "(unknown)";
-    }
+    private static string ResolveBurnerName(UserInfo? info) =>
+        info is not null && !string.IsNullOrWhiteSpace(info.BurnerName)
+            ? info.BurnerName
+            : "(unknown)";
 
     private static IReadOnlyDictionary<string, int> EmptyDietaryBreakdown()
     {
@@ -434,7 +424,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private static IReadOnlyDictionary<string, int> BuildDietaryBreakdown(
-        IReadOnlyList<VolunteerEventProfile> uniqueVeps, int totalUniqueOnSite)
+        IReadOnlyList<OnSiteDietaryProfile> uniqueVeps, int totalUniqueOnSite)
     {
         var dict = new Dictionary<string, int>(DietaryOptions.DietaryPreferences.Count + 1, StringComparer.Ordinal);
         foreach (var pref in DietaryOptions.DietaryPreferences)
@@ -458,9 +448,9 @@ public sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private static (IReadOnlyList<RollupItemDto> Rollup, IReadOnlyList<string> OtherEntries) BuildRollup(
-        IReadOnlyList<VolunteerEventProfile> uniqueVeps,
-        Func<VolunteerEventProfile, List<string>> pickChips,
-        Func<VolunteerEventProfile, string?> pickOtherText,
+        IReadOnlyList<OnSiteDietaryProfile> uniqueVeps,
+        Func<OnSiteDietaryProfile, IReadOnlyList<string>> pickChips,
+        Func<OnSiteDietaryProfile, string?> pickOtherText,
         IReadOnlyList<string> canonicalLabels)
     {
         var counts = new Dictionary<string, int>(canonicalLabels.Count, StringComparer.Ordinal);
@@ -482,7 +472,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
                     counts[chip]++;
             }
 
-            if (chips.Contains(DietaryOptions.OtherOption))
+            if (chips.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal))
             {
                 var text = pickOtherText(vep);
                 if (!string.IsNullOrWhiteSpace(text))

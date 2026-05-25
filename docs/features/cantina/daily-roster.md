@@ -24,8 +24,7 @@ A previous iteration produced a per-day roster; coordinators rejected it as too 
 
 View access to `/Cantina/Roster*`:
 
-- **Full access:** `Admin`, `NoInfoAdmin`, `VolunteerCoordinator` — these roles already see dietary data on individual profiles per the existing `_VolunteerProfileBadges` pattern.
-- **Cantina team members:** any authenticated user who is a member of a team whose name contains "Cantina" (case-insensitive). Cantina-team coordinators check the roster as their core workflow; gating by team membership avoids minting a dedicated role.
+- **Access:** `Admin` or the grantable `CantinaAdmin` role, via the `CantinaAdminOrAdmin` authorization policy — aligned with every other per-area `<Area>AdminOrAdmin` policy. `CantinaAdmin` is granted on the permissions page like any other admin role (no team-name heuristic).
 - **Other authenticated users:** 403 Forbidden.
 - **Unauthenticated:** redirected to login per the global `[Authorize]` policy.
 
@@ -117,12 +116,12 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - Same authorization gate as the HTML route — unauthorized requests get 403.
 
 ### US-36.4: Unauthorized user attempts access
-**As a** regular volunteer (no cantina-team membership, no admin role)
+**As a** regular volunteer (no `CantinaAdmin` or `Admin` role)
 **I want** the roster URL to refuse my access
 **So that** other volunteers' dietary data isn't broadcast to anyone who guesses the URL
 
 **Acceptance Criteria:**
-- Authenticated user without `Admin` / `NoInfoAdmin` / `VolunteerCoordinator` and not a member of any "Cantina"-named team gets a 403 Forbidden response on `GET /Cantina/Roster` and `GET /Cantina/Roster/Csv`.
+- Authenticated user without `Admin` or `CantinaAdmin` gets a 403 Forbidden response on the `/Cantina/Roster*` routes (the `CantinaAdminOrAdmin` policy fails).
 - Unauthenticated user is redirected to the login page (global `[Authorize]` policy).
 - A 403 must **not** leak any data (no headcount, no week label) — only the standard forbidden response.
 
@@ -215,28 +214,29 @@ Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv`, where `<yyyy-MM-dd>` is the
 
 ## Cross-section dependencies
 
-This feature is in the `Cantina/` section but reuses existing repositories — no new repo method introduced for the weekly view.
+This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.
 
-- **Shifts (read, on-site cohort):** existing per-day methods `GetOnSiteUserIdsForDayAsync` and `GetOnSiteVolunteerProfilesForDayAsync` on `IShiftManagementRepository`. The service calls each in a 7-day loop and unions the results.
-- **Volunteers/Profiles (read, dietary):** reads `VolunteerEventProfile` for the on-site cohort. `MedicalConditions` is dropped at the `RosterPersonDto` boundary (not at query) so the data never reaches the view layer. No new Profile-service method; `CantinaRosterService` projects directly.
-- **Event settings:** reads `EventSettings.GateOpeningDate` and `EventSettings.TimeZoneId` for week-boundary computation and per-day calendar labels.
-- **Teams (authorization):** authorization handler checks whether the current user is a member of any team whose `Name` matches `"*Cantina*"` (case-insensitive). Reuses the existing team-membership read surface; no new entity.
+- **Shifts (read, on-site cohort + dietary):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync` and `GetOnSiteVolunteerProfilesForDayAsync`, called in a 7-day loop and unioned. The dietary method returns the medical-free `OnSiteDietaryProfile` read-model — `MedicalConditions` is excluded at the service boundary and never reaches the cantina. (The service delegates to existing repo methods internally.)
+- **Users/Identity (read, burner names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
+- **Event settings:** `IShiftManagementService.GetActiveAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
+- **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
 - **No new Domain entity, no schema change, no migration.**
 
 New / updated components:
 
 | Layer | Component | Purpose |
 |---|---|---|
-| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; enforce `MedicalConditions` exclusion |
+| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService` + `IUserServiceRead` |
+| Application | `OnSiteDietaryProfile` | Medical-free dietary read-model returned by the Shifts service |
 | Application | `WeeklyRosterDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `RollupItemDto` | View-model contracts; no `MedicalConditions` field |
-| Web | `CantinaController` | `GET /Cantina/Roster`, `GET /Cantina/Roster/Csv` (weekly) |
-| Web | `Roster.cshtml` | View (rework: aggregates panel + per-day mini-table + per-person table) |
-| Web | `CantinaAccessHandler` (or equivalent) | Role-or-team authorization gate (unchanged) |
+| Domain | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
+| Web | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
+| Web | `Roster.cshtml` | View (aggregates panel + per-day mini-table + per-person table) |
 
 ## Negative access rules
 
-- A user **cannot** see the roster page or CSV unless they are `Admin` / `NoInfoAdmin` / `VolunteerCoordinator` **or** a member of a "Cantina"-named team. No other path grants access.
-- The roster page and CSV **never** include `MedicalConditions`, even for `Admin` / `NoInfoAdmin`. To see medical conditions, viewers use the existing per-profile badges path with `ShowMedical = true`.
+- A user **cannot** see the roster page or CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
+- The roster page and CSV **never** include `MedicalConditions` — the data never even reaches the cantina (excluded at the Shifts service boundary via `OnSiteDietaryProfile`). To see medical conditions, viewers use the existing per-profile badges path with `ShowMedical = true`.
 - The 403 response **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.

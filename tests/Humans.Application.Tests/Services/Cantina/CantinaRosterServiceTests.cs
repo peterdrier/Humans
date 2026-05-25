@@ -1,7 +1,8 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application;
+using Humans.Application.DTOs.Shifts;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina;
 using Humans.Domain.Constants;
@@ -13,19 +14,18 @@ using NSubstitute;
 namespace Humans.Application.Tests.Services.Cantina;
 
 /// <summary>
-/// Unit tests for <see cref="CantinaRosterService"/>. All dependencies
-/// (<see cref="IShiftManagementRepository"/>, <see cref="IProfileService"/>,
-/// <see cref="IUserService"/>) are substituted; the tests drive the
-/// weekly stitching/aggregation logic directly. Tests exercise the
-/// "unique humans across the week" contract end-to-end: a single human
-/// on-site multiple days contributes exactly once to every aggregate,
+/// Unit tests for <see cref="CantinaRosterService"/>. Dependencies
+/// (<see cref="IShiftManagementService"/> for shift/dietary reads,
+/// <see cref="IUserServiceRead"/> for burner-name resolution) are substituted;
+/// the tests drive the weekly stitching/aggregation logic directly. Tests
+/// exercise the "unique humans across the week" contract end-to-end: a single
+/// human on-site multiple days contributes exactly once to every aggregate,
 /// while still showing up in the correct per-day counts.
 /// </summary>
 public class CantinaRosterServiceTests
 {
-    private readonly IShiftManagementRepository _shiftRepo;
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
+    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
     private readonly CantinaRosterService _service;
 
@@ -35,32 +35,37 @@ public class CantinaRosterServiceTests
 
     public CantinaRosterServiceTests()
     {
-        _shiftRepo = Substitute.For<IShiftManagementRepository>();
-        _profileService = Substitute.For<IProfileService>();
-        _userService = Substitute.For<IUserService>();
+        _shiftMgmt = Substitute.For<IShiftManagementService>();
+        _userRead = Substitute.For<IUserServiceRead>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that
         // care about EventTodayDate semantics override on a per-test basis.
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
-        // Sensible defaults — most tests override these as needed.
-        _profileService.GetByUserIdsAsync(
+        // Sensible default — most tests override via SetupHumans as needed.
+        _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(
-                new Dictionary<Guid, Profile>()));
-        _userService.GetByIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                new Dictionary<Guid, User>()));
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>()));
 
-        // Default repo behaviour: every day in the week returns empty.
+        // Default service behaviour: every day in the week returns empty.
         // Individual tests override per-day with `SetupDay`.
-        _shiftRepo.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
-        _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<VolunteerEventProfile>>(Array.Empty<VolunteerEventProfile>()));
+        _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<OnSiteDietaryProfile>>(Array.Empty<OnSiteDietaryProfile>()));
 
-        _service = new CantinaRosterService(_shiftRepo, _profileService, _userService, _clock);
+        _service = new CantinaRosterService(_shiftMgmt, _userRead, _clock);
     }
+
+    /// <summary>Builds an on-site dietary read-model (the shape the service returns).</summary>
+    private static OnSiteDietaryProfile Vep(
+        Guid userId,
+        string? dietary = null,
+        IReadOnlyList<string>? allergies = null,
+        string? allergyOther = null,
+        IReadOnlyList<string>? intolerances = null,
+        string? intoleranceOther = null) =>
+        new(userId, dietary, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther);
 
     private static EventSettings ActiveEvent() => new()
     {
@@ -74,8 +79,7 @@ public class CantinaRosterServiceTests
     [HumansFact]
     public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
     {
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
+        _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -113,8 +117,8 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_NoOnSiteUsers_AnyDay_ReturnsZeroState()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
-        // All 7 days return empty (default repo behaviour, set in ctor).
+        _shiftMgmt.GetActiveAsync().Returns(es);
+        // All 7 days return empty (default service behaviour, set in ctor).
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -138,23 +142,15 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_OneOmnivoreOnOneDay_AggregatesCorrectly()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Alice" };
         var profile = new Profile { UserId = userId, BurnerName = "AlicePrime" };
-        var vep = new VolunteerEventProfile
-        {
-            UserId = userId,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string>(),
-            Intolerances = new List<string>()
-        };
+        var vep = Vep(userId, "Omnivore");
 
         // On-site Monday only (day 0 of the week).
         SetupDay(WeekStartOffset + 0, new[] { userId }, new[] { vep });
-        SetupUsers(user);
-        SetupProfiles(profile);
+        SetupHumans(profile);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -191,25 +187,17 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_OnePersonOnMultipleDays_CountedOnce()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Alice" };
         var profile = new Profile { UserId = userId, BurnerName = "Alice" };
-        var vep = new VolunteerEventProfile
-        {
-            UserId = userId,
-            DietaryPreference = "Vegan",
-            Allergies = new List<string>(),
-            Intolerances = new List<string>()
-        };
+        var vep = Vep(userId, "Vegan");
 
         // On-site Mon, Wed, Fri.
         SetupDay(WeekStartOffset + 0, new[] { userId }, new[] { vep });
         SetupDay(WeekStartOffset + 2, new[] { userId }, new[] { vep });
         SetupDay(WeekStartOffset + 4, new[] { userId }, new[] { vep });
-        SetupUsers(user);
-        SetupProfiles(profile);
+        SetupHumans(profile);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -244,18 +232,16 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_VolunteerWithoutVEP_CountsAsUnanswered_Once()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Bob" };
         var profile = new Profile { UserId = userId, BurnerName = "BobBurner" };
 
         // On-site Mon, Tue, Wed — no VEP at all.
-        SetupDay(WeekStartOffset + 0, new[] { userId }, Array.Empty<VolunteerEventProfile>());
-        SetupDay(WeekStartOffset + 1, new[] { userId }, Array.Empty<VolunteerEventProfile>());
-        SetupDay(WeekStartOffset + 2, new[] { userId }, Array.Empty<VolunteerEventProfile>());
-        SetupUsers(user);
-        SetupProfiles(profile);
+        SetupDay(WeekStartOffset + 0, new[] { userId }, Array.Empty<OnSiteDietaryProfile>());
+        SetupDay(WeekStartOffset + 1, new[] { userId }, Array.Empty<OnSiteDietaryProfile>());
+        SetupDay(WeekStartOffset + 2, new[] { userId }, Array.Empty<OnSiteDietaryProfile>());
+        SetupHumans(profile);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -287,20 +273,13 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_MixedCohort_RollsUpUniqueAcrossWeek()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
         var c = Guid.NewGuid();
         var d = Guid.NewGuid();
 
-        var users = new[]
-        {
-            new User { Id = a, DisplayName = "A" },
-            new User { Id = b, DisplayName = "B" },
-            new User { Id = c, DisplayName = "C" },
-            new User { Id = d, DisplayName = "D" }
-        };
         var profiles = new[]
         {
             new Profile { UserId = a, BurnerName = "Ava" },
@@ -309,28 +288,9 @@ public class CantinaRosterServiceTests
             new Profile { UserId = d, BurnerName = "Dee" }
         };
 
-        var vepA = new VolunteerEventProfile
-        {
-            UserId = a,
-            DietaryPreference = "Vegetarian",
-            Allergies = new List<string> { "Peanut", "Shellfish" },
-            Intolerances = new List<string> { "Lactose" }
-        };
-        var vepB = new VolunteerEventProfile
-        {
-            UserId = b,
-            DietaryPreference = "Vegan",
-            Allergies = new List<string> { "Peanut" },
-            Intolerances = new List<string>()
-        };
-        var vepC = new VolunteerEventProfile
-        {
-            UserId = c,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string> { "Other" },
-            AllergyOtherText = "MSG",
-            Intolerances = new List<string>()
-        };
+        var vepA = Vep(a, "Vegetarian", allergies: ["Peanut", "Shellfish"], intolerances: ["Lactose"]);
+        var vepB = Vep(b, "Vegan", allergies: ["Peanut"]);
+        var vepC = Vep(c, "Omnivore", allergies: ["Other"], allergyOther: "MSG");
         // user d intentionally has no VEP at all.
 
         // A on-site Mon+Tue, B on Wed, C on Thu, D on Fri.
@@ -338,9 +298,8 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 1, new[] { a }, new[] { vepA });
         SetupDay(WeekStartOffset + 2, new[] { b }, new[] { vepB });
         SetupDay(WeekStartOffset + 3, new[] { c }, new[] { vepC });
-        SetupDay(WeekStartOffset + 4, new[] { d }, Array.Empty<VolunteerEventProfile>());
-        SetupUsers(users);
-        SetupProfiles(profiles);
+        SetupDay(WeekStartOffset + 4, new[] { d }, Array.Empty<OnSiteDietaryProfile>());
+        SetupHumans(profiles);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -387,41 +346,22 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_OtherTextDeduplicatedAcrossWeek()
     {
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
-        var users = new[]
-        {
-            new User { Id = a, DisplayName = "A" },
-            new User { Id = b, DisplayName = "B" }
-        };
         var profiles = new[]
         {
             new Profile { UserId = a, BurnerName = "Ava" },
             new Profile { UserId = b, BurnerName = "Beth" }
         };
-        var vepA = new VolunteerEventProfile
-        {
-            UserId = a,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string> { "Other" },
-            AllergyOtherText = "MSG",
-            Intolerances = new List<string>()
-        };
-        var vepB = new VolunteerEventProfile
-        {
-            UserId = b,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string> { "Other" },
-            AllergyOtherText = "MSG", // identical free-text — must dedup
-            Intolerances = new List<string>()
-        };
+        var vepA = Vep(a, "Omnivore", allergies: ["Other"], allergyOther: "MSG");
+        // identical free-text — must dedup
+        var vepB = Vep(b, "Omnivore", allergies: ["Other"], allergyOther: "MSG");
 
         SetupDay(WeekStartOffset + 0, new[] { a }, new[] { vepA });
         SetupDay(WeekStartOffset + 2, new[] { b }, new[] { vepB });
-        SetupUsers(users);
-        SetupProfiles(profiles);
+        SetupHumans(profiles);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -433,37 +373,28 @@ public class CantinaRosterServiceTests
     [HumansFact]
     public async Task GetWeeklyRoster_MedicalConditionsNeverInDto()
     {
-        // Compile-time guarantee — verify RosterPersonDto has no MedicalConditions property.
-        var hasMedicalProp = typeof(Humans.Application.Services.Cantina.Dtos.RosterPersonDto)
-            .GetProperty("MedicalConditions");
-        hasMedicalProp.Should().BeNull(
+        // Medical data is excluded structurally: the service hands the cantina
+        // OnSiteDietaryProfile (no medical field), and the output RosterPersonDto
+        // has none either. Both are GDPR Art.9 boundaries — verify at compile time.
+        typeof(OnSiteDietaryProfile).GetProperty("MedicalConditions").Should().BeNull(
+            "OnSiteDietaryProfile must not carry MedicalConditions — medical never leaves the Shifts service.");
+        typeof(Humans.Application.Services.Cantina.Dtos.RosterPersonDto)
+            .GetProperty("MedicalConditions").Should().BeNull(
             "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
-        // Runtime check: even with a populated MedicalConditions on the VEP,
-        // the serialized DTO must not contain the medical-condition text.
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Sensitive" };
         var profile = new Profile { UserId = userId, BurnerName = "Sensitive" };
-        var vep = new VolunteerEventProfile
-        {
-            UserId = userId,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string>(),
-            Intolerances = new List<string>(),
-            MedicalConditions = "Severe peanut allergy"
-        };
+        var vep = Vep(userId, "Omnivore");
 
         SetupDay(WeekStartOffset + 0, new[] { userId }, new[] { vep });
-        SetupUsers(user);
-        SetupProfiles(profile);
+        SetupHumans(profile);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
         var json = JsonSerializer.Serialize(result);
-        json.Should().NotContain("Severe peanut allergy");
         json.Should().NotContain("MedicalConditions");
     }
 
@@ -478,27 +409,18 @@ public class CantinaRosterServiceTests
         // Also verifies the cohort-exclusion invariant: a second user with NO
         // signups all week does NOT appear in People (the "all week off" rule).
         var es = ActiveEvent();
-        _shiftRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _shiftMgmt.GetActiveAsync().Returns(es);
 
         var onSiteUserId = Guid.NewGuid();
         var excludedUserId = Guid.NewGuid(); // never appears on any day → must be excluded
-        var onSiteUser = new User { Id = onSiteUserId, DisplayName = "OnSite" };
-        var excludedUser = new User { Id = excludedUserId, DisplayName = "Excluded" };
         var onSiteProfile = new Profile { UserId = onSiteUserId, BurnerName = "OnSite" };
         var excludedProfile = new Profile { UserId = excludedUserId, BurnerName = "Excluded" };
-        var vep = new VolunteerEventProfile
-        {
-            UserId = onSiteUserId,
-            DietaryPreference = "Omnivore",
-            Allergies = new List<string>(),
-            Intolerances = new List<string>()
-        };
+        var vep = Vep(onSiteUserId, "Omnivore");
 
         SetupDay(WeekStartOffset + 0, new[] { onSiteUserId }, new[] { vep });
         SetupDay(WeekStartOffset + 2, new[] { onSiteUserId }, new[] { vep });
         SetupDay(WeekStartOffset + 5, new[] { onSiteUserId }, new[] { vep });
-        SetupUsers(onSiteUser, excludedUser);
-        SetupProfiles(onSiteProfile, excludedProfile);
+        SetupHumans(onSiteProfile, excludedProfile);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
 
@@ -520,30 +442,39 @@ public class CantinaRosterServiceTests
     // ---- helpers ----
 
     /// <summary>
-    /// Sets up the repo mocks for a single day in the week. Days not
+    /// Sets up the service mocks for a single day in the week. Days not
     /// configured fall back to the default (empty) behaviour set in the ctor.
     /// </summary>
-    private void SetupDay(int dayOffset, IReadOnlyList<Guid> onSiteIds, IReadOnlyList<VolunteerEventProfile> veps)
+    private void SetupDay(int dayOffset, IReadOnlyList<Guid> onSiteIds, IReadOnlyList<OnSiteDietaryProfile> veps)
     {
-        _shiftRepo.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(onSiteIds));
-        _shiftRepo.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(veps));
     }
 
-    private void SetupUsers(params User[] users)
+    /// <summary>
+    /// Stubs <see cref="IUserServiceRead.GetUserInfosAsync"/> to return a
+    /// <c>UserInfo</c> per profile. Burner-name resolution reads
+    /// <see cref="UserInfo.BurnerName"/>, which derives from the profile's
+    /// <c>BurnerName</c>.
+    /// </summary>
+    private void SetupHumans(params Profile[] profiles)
     {
-        var dict = users.ToDictionary(u => u.Id);
-        _userService.GetByIdsAsync(
+        var dict = profiles.ToDictionary(
+            p => p.UserId,
+            p => UserInfo.Create(
+                user: new User { Id = p.UserId, DisplayName = p.BurnerName, PreferredLanguage = "en" },
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
+                profile: p,
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: []));
+        _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(dict));
-    }
-
-    private void SetupProfiles(params Profile[] profiles)
-    {
-        var dict = profiles.ToDictionary(p => p.UserId);
-        _profileService.GetByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(dict));
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
     }
 }
