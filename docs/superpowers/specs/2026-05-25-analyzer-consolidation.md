@@ -9,6 +9,22 @@ Collapse the per-section architecture enforcers (analyzers + the 48 `tests/Human
 
 **Non-goal — and the discipline that governs this doc:** do not invent a universal rule to justify a consolidation. Every row below is tagged **grounded** (cites `peters-hard-rules.md`, `design-rules.md`, a `memory/` atom, a `Rules/*.cs` class, or a `HUM####` analyzer) or **proposed** (similar tests exist, no governing rule — a DECISION for Peter, never a silent migration). This bit twice in discussion; it's load-bearing.
 
+## A1 — resolved design (grill 2026-05-25; supersedes the "ownership-map" framing elsewhere in this doc)
+
+A1 is a **single-repository-per-table** analyzer (renamed from "cross-section DbSet write"). Resolved branches:
+
+- **Q1 — enforce both hard rules verbatim:** "only the repository writes its section's tables" (per-Lane) AND "a table must only exist in one repository" (per-table 1:1 within a Lane). A Lane may hold several repositories; they must not share a table.
+- **Q2 — no declared ownership map.** Ownership is *emergent*: whichever single repository references a table IS its owner.
+- **Q3 — count reads AND writes** (any `DbSet` reference, not just `Add/Update/Remove`). Rationale: in the §15 cache-first design a *foreign read* bypasses the owning section's cache → stale reads, so reads are a coherence bug, not soft coupling. Mechanism: across the Infrastructure compilation build `table → {repository types referencing its DbSet}`; **N>1 → diagnostic at each access site**. With HUM0009 (only repositories touch the DbContext) this yields "each table accessed by exactly one repository, in exactly one Lane." Cross-Lane sharing is subsumed (owner + foreigner both touch it → N≥2).
+- **Q4 — grandfather at (repo, table) granularity.** Add an optional `scope` param to `GrandfatheredAttribute` (the DbSet name); this analyzer matches (ruleId + scope). `AllowMultiple` already lets a repo list one per shared table. New sharing of an unlisted table still errors. `scope` defaults null; existing analyzers ignore it (no churn). Severity Error + grandfathered + a `WarningsNotAsErrors;HUM0025` ledger entry.
+- **Q5 — staged detection.** Phase 1 (this PR): direct `DbSet` references only (`ctx.X`, `ctx.Set<T>()`). Phase 2 (tracked fast-follow): reads via navigation/`Include` (closes the residual intra-Lane cache gap; cross-Lane navs already blocked by HUM0024).
+
+Accepted gaps: (a) sole-foreign-writer — N=1 but the repo's `[Section]` Lane ≠ the table's `Configurations/<Lane>/` folder — not caught by the count; optional cheap cross-check later. (b) nav/`Include` reads until Phase 2.
+
+Counting unit = top-level types implementing `IRepository` in the Infrastructure compilation; framework stores (Identity `UserStore` etc.) are not repositories and don't count (their DbContext access is already governed by HUM0009 grandfathers). HUM id: **HUM0025** (HUM0023 was skipped, HUM0024 taken). Initial `(repo, table)` grandfather set: read from `docs/architecture/service-data-access-map.md` §"Cross-Section Analysis" at build time.
+
+Replaces: `NotificationDbSetWriteAnalyzer` (HUM0022) and the `Only_*Repository_Writes_*` ratchet tests (Events, AuditLog).
+
 ## Current state (main @ 9355223d6)
 
 Analyzers: HUM0001–0022 + HUM0024 (no HUM0023). Active git pattern is "convert ratchet → analyzer" (concurrency HUM0007, obsolete-nav HUM0021, cross-section-EF-join HUM0024, **Notification DbSet writes HUM0022**).
