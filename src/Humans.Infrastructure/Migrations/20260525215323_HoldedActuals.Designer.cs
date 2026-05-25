@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260525163748_HoldedActuals")]
+    [Migration("20260525215323_HoldedActuals")]
     partial class HoldedActuals
     {
         /// <inheritdoc />
@@ -3241,6 +3241,14 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<string>("Allergies")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("AllergyOtherText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("Bio")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -3283,6 +3291,10 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<LocalDate?>("DateOfBirth")
                         .HasColumnType("date");
 
+                    b.Property<string>("DietaryPreference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("EmergencyContactName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -3304,6 +3316,14 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(34)
                         .HasColumnType("character varying(34)");
 
+                    b.Property<string>("IntoleranceOtherText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Intolerances")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<bool>("IsApproved")
                         .HasColumnType("boolean");
 
@@ -3320,6 +3340,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("MedicalConditions")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<string>("MembershipTier")
                         .IsRequired()
