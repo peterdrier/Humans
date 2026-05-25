@@ -773,10 +773,9 @@ public sealed class ExpenseReportService(
     }
 
     public async Task<bool> MarkPaidAsync(
-        Guid reportId, CancellationToken ct = default)
+        Guid reportId, Instant paidAt, CancellationToken ct = default)
     {
-        var now = clock.GetCurrentInstant();
-        var ok = await repo.MarkPaidAsync(reportId, now, ct);
+        var ok = await repo.MarkPaidAsync(reportId, paidAt, ct);
         if (!ok) return false;
 
         await auditLogService.LogAsync(
@@ -892,43 +891,59 @@ public sealed class ExpenseReportService(
             .Take(batchSize)
             .ToList();
 
-        if (batch.Count == 0)
-            return;
+        if (batch.Count == 0) return;
+
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
         foreach (var report in batch)
         {
-            if (report.HoldedDocId is null)
+            if (string.IsNullOrEmpty(report.HoldedContactId))
             {
                 logger.LogWarning(
-                    "SepaSent report {ReportId} has no HoldedDocId — skipping",
-                    report.Id);
+                    "SepaSent report {ReportId} has no HoldedContactId — skipping paid poll", report.Id);
                 continue;
             }
 
             try
             {
-                var doc = await holdedClient.GetPurchaseDocumentAsync(report.HoldedDocId, ct);
-
-                if (doc.PaymentsPending == 0 && doc.ApprovedAt is not null)
+                // Backfill the supplier-account number if it wasn't resolved at push time.
+                var accountNum = report.HoldedSupplierAccountNum;
+                if (accountNum is null)
                 {
-                    await MarkPaidAsync(report.Id, ct);
+                    var contact = await holdedClient.GetContactAsync(report.HoldedContactId, ct);
+                    accountNum = contact.SupplierAccountNum;
+                    if (accountNum is not null)
+                        await repo.SetHoldedContactLinkAsync(
+                            report.Id, report.HoldedContactId, accountNum, clock.GetCurrentInstant(), ct);
+                }
+
+                var status = await _holdedFinance.GetCreditorStatusAsync(
+                    accountNum, report.HoldedContactId, ct);
+                if (status is null) continue;
+
+                // Treasury pays the creditor account in aggregate: balance >= 0 means the member is settled.
+                if (status.Balance >= 0m)
+                {
+                    var paidAt = status.LastPaymentDate is { } d
+                        ? d.AtStartOfDayInZone(zone).ToInstant()
+                        : clock.GetCurrentInstant();
+                    await MarkPaidAsync(report.Id, paidAt, ct);
                     logger.LogInformation(
-                        "Marked expense report {ReportId} as Paid (HoldedDocId={HoldedDocId})",
-                        report.Id, report.HoldedDocId);
+                        "Marked expense report {ReportId} Paid via creditor balance (contact {ContactId})",
+                        report.Id, report.HoldedContactId);
                 }
             }
             catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
             {
                 logger.LogWarning(
-                    "Holded doc {HoldedDocId} for report {ReportId} deleted out-of-band — skipping",
-                    report.HoldedDocId, report.Id);
+                    "Holded contact {ContactId} for report {ReportId} missing — skipping",
+                    report.HoldedContactId, report.Id);
             }
             catch (HoldedTransientException ex)
             {
-                logger.LogWarning(
-                    ex,
-                    "Transient error polling Holded for report {ReportId} (HoldedDocId={HoldedDocId}) — will retry next run",
-                    report.Id, report.HoldedDocId);
+                logger.LogWarning(ex,
+                    "Transient error polling Holded creditor status for report {ReportId} — retry next run",
+                    report.Id);
             }
         }
     }

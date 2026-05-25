@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -1183,7 +1184,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.SepaSent);
 
-        var ok = await _sut.MarkPaidAsync(reportId);
+        var ok = await _sut.MarkPaidAsync(reportId, FakeNow);
         ok.Should().BeTrue();
 
         (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Paid);
@@ -1247,6 +1248,61 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
 
         result.Should().HaveCount(1);
         result[0].Id.Should().Be(submittedId);
+    }
+
+    // ─────────────────────── PollHoldedPaidStatus (creditor balance) ──────────
+
+    [HumansFact]
+    public async Task PollHoldedPaidStatus_marks_paid_when_creditor_balance_settled()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: 0m, OwedToMember: 0m,
+                LastPaymentDate: new LocalDate(2026, 5, 20), TotalPaid: 121m));
+
+        await _sut.PollHoldedPaidStatusAsync(batchSize: 50);
+
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Paid);
+        loaded.PaidAt.Should().Be(new LocalDate(2026, 5, 20).AtStartOfDayInZone(
+            NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+    }
+
+    [HumansFact]
+    public async Task PollHoldedPaidStatus_does_not_mark_paid_when_balance_still_negative()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        await _sut.PollHoldedPaidStatusAsync(batchSize: 50);
+
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+    }
+
+    /// <summary>
+    /// Seeds a report through Draft → Submit → Approve → SepaSent and sets the contact link,
+    /// mirroring the production flow that precedes paid polling.
+    /// </summary>
+    private async Task<Guid> SeedSepaSentReportAsync(
+        Guid userId, Guid categoryId, string contactId, int accountNum)
+    {
+        SetupUserAndProfile(userId, "Test User", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, categoryId);
+        var flipped = await _sut.MarkSepaSentAsync([reportId], Guid.NewGuid());
+        if (!flipped.Contains(reportId))
+            throw new InvalidOperationException("SeedSepaSentReportAsync: MarkSepaSentAsync did not flip the report");
+
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, contactId, accountNum, FakeNow);
+        return reportId;
     }
 
     // ─────────────────────── Holded contact enrichment ───────────────────────

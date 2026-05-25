@@ -150,7 +150,7 @@ public interface IExpenseReportService : IApplicationService
         CancellationToken ct = default);
 
     Task<bool> MarkPaidAsync(
-        Guid reportId, CancellationToken ct = default);
+        Guid reportId, NodaTime.Instant paidAt, CancellationToken ct = default);
 
     /// <summary>True iff the category has at least one budget coordinator
     /// (so the Submitted -> CoordinatorEndorsed step is required).</summary>
