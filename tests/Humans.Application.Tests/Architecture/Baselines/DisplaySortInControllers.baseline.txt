@@ -62,9 +62,6 @@ src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxReposit
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/SyncSettingsRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#2
-src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:OrderBy#1
