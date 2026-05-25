@@ -1414,6 +1414,10 @@
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We need this to plan cantina meals</value></data>
   <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Thanks — we've got it</value></data>
   <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Fill out</value></data>
+  <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Tell us about your food needs so we're ready when you sign up.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
   <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
@@ -1803,6 +1807,8 @@
   <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — ja inscrit/a a {1} ({2}–{3})</value></data>
   <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Ja estàs inscrit/a en alguns d'aquests dies, així que només afegirem els que estiguin lliures.</value></data>
   <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Sembla que ja tens un torn reservat cada dia d'aquest rang, així que no en podem afegir cap.</value></data>
+  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
+  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tauler de torns</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} torns</value><comment>{0} = count</comment></data>
