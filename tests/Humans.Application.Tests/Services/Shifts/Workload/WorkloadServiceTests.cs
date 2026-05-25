@@ -40,6 +40,11 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         _teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => GetTeamsByIdsAsync(call.Arg<IReadOnlyCollection<Guid>>()));
 
+        // Role hours come from the cached TeamInfo projection; default to none so
+        // shift-only tests are unaffected. Role tests override via StubTeams.
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+
         _service = new WorkloadService(repo, view, _teamService, NewDbBackedUserService());
     }
 
@@ -156,6 +161,155 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task ByPerson_RoleHours_MappedByPeriod_YearRoundIntoOwnColumn_OthersFoldIntoShiftColumns()
+    {
+        // Event has shifts (so the report isn't short-circuited). Alice holds two
+        // roles: a year-round role (10h) and a Build-period role (4h), plus a
+        // 5h Event shift signup. Year-round lands in its own column; Build role
+        // hours fold into the Build shift column.
+        var es = await SeedEventAsync();
+        var team = await SeedWorkloadTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es);
+        var eventShift = await SeedShiftAsync(rota, dayOffset: 1, hours: 5);
+        var alice = await SeedUserWithProfileAsync("Alice");
+        await SeedSignupAsync(eventShift, alice.Id, SignupStatus.Confirmed);
+
+        StubTeams(TeamWithRoles(team.Id, "Gate", "gate",
+            Role(team.Id, "Gate", "gate", RolePeriod.YearRound, estimatedHours: 10, slotCount: 1, alice.Id),
+            Role(team.Id, "Gate", "gate", RolePeriod.Build, estimatedHours: 4, slotCount: 1, alice.Id)));
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        var row = report.ByPerson.Single(p => p.UserId == alice.Id);
+        row.YearRoundHours.Should().Be(10m);
+        row.BuildHours.Should().Be(4m);
+        row.EventHours.Should().Be(5m);
+        row.StrikeHours.Should().Be(0m);
+        row.TotalHours.Should().Be(19m);
+    }
+
+    [HumansFact]
+    public async Task ByPerson_RoleOnlyHolder_AppearsWithNoSignups()
+    {
+        // The event has a shift (someone else, or none) so the report renders.
+        // Bob holds only a year-round role and has zero shift signups — he must
+        // still appear, with his role hours.
+        var es = await SeedEventAsync();
+        var team = await SeedWorkloadTeamAsync("Board");
+        var rota = await SeedRotaAsync(team, es);
+        await SeedShiftAsync(rota, dayOffset: 1, hours: 5); // un-signed shift, just to render the report
+
+        var bob = await SeedUserWithProfileAsync("Bob");
+        StubTeams(TeamWithRoles(team.Id, "Board", "board",
+            Role(team.Id, "Board", "board", RolePeriod.YearRound, estimatedHours: 12, slotCount: 1, bob.Id)));
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        var row = report.ByPerson.Single(p => p.UserId == bob.Id);
+        row.YearRoundHours.Should().Be(12m);
+        row.TotalHours.Should().Be(12m);
+        row.ConfirmedSignupCount.Should().Be(0);
+        row.PendingSignupCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ByPerson_RoleWithoutEstimatedHours_ContributesNothing()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedWorkloadTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es);
+        var shift = await SeedShiftAsync(rota, dayOffset: 1, hours: 5);
+        var alice = await SeedUserWithProfileAsync("Alice");
+        await SeedSignupAsync(shift, alice.Id, SignupStatus.Confirmed);
+
+        StubTeams(TeamWithRoles(team.Id, "Gate", "gate",
+            Role(team.Id, "Gate", "gate", RolePeriod.YearRound, estimatedHours: null, slotCount: 1, alice.Id)));
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        var row = report.ByPerson.Single(p => p.UserId == alice.Id);
+        row.YearRoundHours.Should().Be(0m);
+        row.TotalHours.Should().Be(5m); // shift only
+    }
+
+    [HumansFact]
+    public async Task ByDepartment_FoldsRolePlannedAndFilledHours()
+    {
+        // Gate has a 4h shift with 3 slots, 0 confirmed → shift planned 12, filled 0.
+        // Gate also owns a 10h role with 2 slots, 1 filled → role planned 20, filled 10.
+        var es = await SeedEventAsync();
+        var team = await SeedWorkloadTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es);
+        await SeedShiftAsync(rota, dayOffset: 1, hours: 4, max: 3);
+        var alice = await SeedUserWithProfileAsync("Alice");
+
+        StubTeams(TeamWithRoles(team.Id, "Gate", "gate",
+            Role(team.Id, "Gate", "gate", RolePeriod.Event, estimatedHours: 10, slotCount: 2, alice.Id)));
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        var dept = report.ByDepartment.Single(d => d.TeamId == team.Id);
+        dept.PlannedHours.Should().Be(32m); // 12 shift + 20 role
+        dept.FilledHours.Should().Be(10m); // 0 shift + 10 role
+        dept.PlannedSlots.Should().Be(3); // slots remain shift-only
+    }
+
+    [HumansFact]
+    public async Task ByDepartment_RoleOnlyTeam_AppearsWithZeroShiftColumns()
+    {
+        // Gate has shifts (renders the report). Board owns a role but no rotas —
+        // it must still appear as a department row, with shift columns at zero.
+        var es = await SeedEventAsync();
+        var gate = await SeedWorkloadTeamAsync("Gate");
+        var gateRota = await SeedRotaAsync(gate, es);
+        await SeedShiftAsync(gateRota, dayOffset: 1, hours: 4);
+
+        var board = await SeedWorkloadTeamAsync("Board");
+        var bob = await SeedUserWithProfileAsync("Bob");
+
+        StubTeams(
+            TeamWithRoles(board.Id, "Board", "board",
+                Role(board.Id, "Board", "board", RolePeriod.YearRound, estimatedHours: 8, slotCount: 1, bob.Id)));
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        var dept = report.ByDepartment.Single(d => d.TeamId == board.Id);
+        dept.TeamName.Should().Be("Board");
+        dept.TeamSlug.Should().Be("board");
+        dept.RotaCount.Should().Be(0);
+        dept.ShiftCount.Should().Be(0);
+        dept.PlannedSlots.Should().Be(0);
+        dept.PlannedHours.Should().Be(8m);
+        dept.FilledHours.Should().Be(8m);
+    }
+
+    [HumansFact]
+    public async Task RoleHours_FromInactiveTeams_AreExcluded()
+    {
+        // A retired (deactivated) team can still carry role assignments — they
+        // aren't cleared on deactivation — but its role hours must not leak into
+        // the workload report.
+        var es = await SeedEventAsync();
+        var gate = await SeedWorkloadTeamAsync("Gate");
+        var rota = await SeedRotaAsync(gate, es);
+        await SeedShiftAsync(rota, dayOffset: 1, hours: 5); // renders the report
+
+        var oldTeam = await SeedWorkloadTeamAsync("OldTeam");
+        var alice = await SeedUserWithProfileAsync("Alice");
+
+        StubTeams(
+            TeamWithRoles(oldTeam.Id, "OldTeam", "oldteam",
+                Role(oldTeam.Id, "OldTeam", "oldteam", RolePeriod.YearRound, estimatedHours: 40, slotCount: 1, alice.Id))
+            with
+            { IsActive = false });
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        report.ByPerson.Should().NotContain(p => p.UserId == alice.Id);
+        report.ByDepartment.Should().NotContain(d => d.TeamId == oldTeam.Id);
+    }
+
+    [HumansFact]
     public async Task ByRota_IncludesAdminOnlyAndHiddenRotas()
     {
         // Workload view is admin-only — coordinators need full visibility for
@@ -209,6 +363,32 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
         report.ByPerson.Single(p => p.UserId == alice.Id).BuildHours.Should().Be(10m); // 18:00 - 08:00
+    }
+
+    // ── Role-hours fixtures (cached TeamInfo projection the service reads) ─────────
+
+    private void StubTeams(params TeamInfo[] teams) =>
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(teams.ToDictionary(t => t.Id));
+
+    private static TeamInfo TeamWithRoles(
+        Guid teamId, string name, string slug, params TeamRoleDefinitionSnapshot[] roles) =>
+        new(teamId, name, null, slug,
+            IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+            IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
+            CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0), Members: [],
+            RoleDefinitions: roles);
+
+    private static TeamRoleDefinitionSnapshot Role(
+        Guid teamId, string teamName, string teamSlug,
+        RolePeriod period, int? estimatedHours, int slotCount, params Guid?[] assignedUserIds)
+    {
+        var assignments = assignedUserIds
+            .Select((uid, i) => new TeamRoleAssignmentSnapshot(Guid.NewGuid(), Guid.NewGuid(), i, uid))
+            .ToList();
+        return new TeamRoleDefinitionSnapshot(
+            Guid.NewGuid(), teamId, teamName, teamSlug, "Role", null, slotCount, estimatedHours,
+            [], 0, false, period, true, assignments);
     }
 
     // ── Test-local seeders (Workload-specific shape; harness covers User/Team/etc.) ─

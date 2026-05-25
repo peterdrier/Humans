@@ -119,8 +119,12 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetHistoryForCampSeasonAsync_ReturnsDescendingByModifiedAt()
+    public async Task GetHistoryForCampSeasonAsync_ReturnsAllEntriesForCampSeason()
     {
+        // Display ordering (newest first) moved to the controller
+        // (CityPlanningApiController.GetCampPolygonHistory) per
+        // memory/architecture/display-sort-in-controllers.md, so the repository
+        // only guarantees membership, not order.
         var campSeasonId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
@@ -133,8 +137,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var result = await _repo.GetHistoryForCampSeasonAsync(campSeasonId);
 
         result.Should().HaveCount(2);
-        result[0].AreaSqm.Should().Be(200.0);
-        result[1].AreaSqm.Should().Be(100.0);
+        result.Select(h => h.AreaSqm).Should().BeEquivalentTo([100.0, 200.0]);
     }
 
     [HumansFact]

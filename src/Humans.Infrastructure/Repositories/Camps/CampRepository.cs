@@ -821,9 +821,10 @@ internal sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(m => m.CampSeason)
                 .ThenInclude(s => s.Camp)
+            // Display ordering (year desc, then camp name) is applied by the
+            // consumer (MyCampsViewComponent) per
+            // memory/architecture/display-sort-in-controllers.md.
             .Where(m => m.UserId == userId && m.Status != CampMemberStatus.Removed)
-            .OrderByDescending(m => m.CampSeason.Year)
-            .ThenBy(m => m.CampSeason.Name)
             .ToListAsync(ct);
     }
 

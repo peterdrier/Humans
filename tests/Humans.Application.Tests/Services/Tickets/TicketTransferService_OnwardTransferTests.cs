@@ -150,7 +150,6 @@ public sealed class TicketTransferService_OnwardTransferTests
             });
         var carol = new User { Id = UserC, DisplayName = "Carol", PreferredLanguage = "en" };
         var carolProfile = new Profile { BurnerName = "Carol", FirstName = "Carol", LastName = "Cohen" };
-        _userService.GetByIdAsync(UserC, Arg.Any<CancellationToken>()).Returns(carol);
         _userService.GetUserInfoAsync(UserC, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 user: carol,

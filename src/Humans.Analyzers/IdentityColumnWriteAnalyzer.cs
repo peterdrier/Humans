@@ -44,9 +44,8 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
             "UserName",
             "NormalizedUserName");
 
-    // String built from segments so the NoObsoleteNavReads ratchet (which scans
-    // source text for dot-prefixed obsolete-nav names) doesn't false-positive on
-    // this metadata-name constant.
+    // String built from segments to keep architecture scans that operate on
+    // source text from confusing this metadata-name constant with a User nav.
     private const string UserFullName = "Humans.Domain.Entities" + "." + "User";
 
     public override void Initialize(AnalysisContext context)

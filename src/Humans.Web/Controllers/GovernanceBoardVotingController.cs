@@ -32,7 +32,10 @@ public class GovernanceBoardVotingController(
                     UserId = m.UserId
                 })
                 .ToList(),
-            Applications = applications.Select(a =>
+            Applications = applications
+                .OrderBy(a => a.MembershipTier)
+                .ThenBy(a => a.SubmittedAt)
+                .Select(a =>
             {
                 var appVm = new BoardVotingApplicationViewModel
                 {
