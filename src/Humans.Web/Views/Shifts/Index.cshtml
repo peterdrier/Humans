@@ -70,6 +70,8 @@
         <vc:temp-data-alerts />
     </div>
 
+    @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.UserId })
+
     @* === Hero Banner === *@
     <div class="shifts-hero-banner mb-4">
         <div class="d-flex align-items-center gap-3">
