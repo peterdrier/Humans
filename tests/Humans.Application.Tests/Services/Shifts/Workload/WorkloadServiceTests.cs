@@ -284,6 +284,31 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task RoleHours_FromInactiveTeams_AreExcluded()
+    {
+        // A retired (deactivated) team can still carry role assignments — they
+        // aren't cleared on deactivation — but its role hours must not leak into
+        // the workload report.
+        var es = await SeedEventAsync();
+        var gate = await SeedWorkloadTeamAsync("Gate");
+        var rota = await SeedRotaAsync(gate, es);
+        await SeedShiftAsync(rota, dayOffset: 1, hours: 5); // renders the report
+
+        var oldTeam = await SeedWorkloadTeamAsync("OldTeam");
+        var alice = await SeedUserWithProfileAsync("Alice");
+
+        StubTeams(
+            TeamWithRoles(oldTeam.Id, "OldTeam", "oldteam",
+                Role(oldTeam.Id, "OldTeam", "oldteam", RolePeriod.YearRound, estimatedHours: 40, slotCount: 1, alice.Id))
+            with { IsActive = false });
+
+        var report = await _service.GetForActiveEventAsync();
+        report.Should().NotBeNull();
+        report.ByPerson.Should().NotContain(p => p.UserId == alice.Id);
+        report.ByDepartment.Should().NotContain(d => d.TeamId == oldTeam.Id);
+    }
+
+    [HumansFact]
     public async Task ByRota_IncludesAdminOnlyAndHiddenRotas()
     {
         // Workload view is admin-only — coordinators need full visibility for

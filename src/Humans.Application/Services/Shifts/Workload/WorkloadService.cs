@@ -243,13 +243,21 @@ public sealed class WorkloadService(
 
     private sealed record RoleDeptHours(string TeamName, string TeamSlug, decimal PlannedHours, decimal FilledHours);
 
+    // Roles on deactivated teams are excluded — deactivation doesn't clear role
+    // assignments, so a retired team's stale holders would otherwise leak in.
+    private static IEnumerable<TeamRoleDefinitionSnapshot> ActiveRoles(
+        IReadOnlyDictionary<Guid, TeamInfo> allTeams) =>
+        allTeams.Values
+            .Where(t => t.IsActive)
+            .SelectMany(t => t.RoleDefinitions ?? []);
+
     // Per holder: each assigned user contributes the role's full annual estimate,
     // bucketed by the role's period (year-round in its own bucket).
     private static Dictionary<Guid, RolePersonHours> BuildRolePersonHours(
         IReadOnlyDictionary<Guid, TeamInfo> allTeams)
     {
         var perUser = new Dictionary<Guid, RolePersonHours>();
-        foreach (var role in allTeams.Values.SelectMany(t => t.RoleDefinitions ?? []))
+        foreach (var role in ActiveRoles(allTeams))
         {
             if (role.EstimatedHours is not { } est) continue;
             foreach (var assignment in role.Assignments)
@@ -268,7 +276,7 @@ public sealed class WorkloadService(
         IReadOnlyDictionary<Guid, TeamInfo> allTeams)
     {
         var perTeam = new Dictionary<Guid, RoleDeptHours>();
-        foreach (var role in allTeams.Values.SelectMany(t => t.RoleDefinitions ?? []))
+        foreach (var role in ActiveRoles(allTeams))
         {
             if (role.EstimatedHours is not { } est) continue;
             var assigned = role.Assignments.Count(a => a.AssignedUserId.HasValue);

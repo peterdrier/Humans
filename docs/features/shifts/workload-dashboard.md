@@ -83,7 +83,7 @@ planned    += estimate × SlotCount                     # per-department
 filled     += estimate × assignedSlotCount             # per-department
 ```
 
-Pending signups contribute to the per-user `PendingSignupCount` only, never to hours. Roles with a null `EstimatedHours` contribute nothing. Role assignments are current holders (no per-event-year history); role hours show only when the active event has at least one shift.
+Pending signups contribute to the per-user `PendingSignupCount` only, never to hours. Roles with a null `EstimatedHours` contribute nothing. Roles on **deactivated** teams are excluded (deactivation doesn't clear role assignments, so stale holders would otherwise leak in). Role assignments are current holders (no per-event-year history); role hours show only when the active event has at least one shift.
 
 ### Inclusion rule
 
