@@ -1,4 +1,5 @@
 using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -18,6 +19,8 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <see cref="ShiftSignupRepository"/>) so multi-step mutations on
 /// <see cref="VolunteerBuildStatus"/> share one EF change-tracker.
 /// </remarks>
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "EventSettings")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ShiftSignups")]
 internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunteerTrackingRepository
 {
     public Task<VolunteerBuildStatus?> GetAsync(

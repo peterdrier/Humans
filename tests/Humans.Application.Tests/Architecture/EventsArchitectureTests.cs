@@ -1,7 +1,5 @@
 using System.Reflection;
-using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
@@ -152,62 +150,6 @@ public class EventsArchitectureTests
 
         descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped,
             because: "MVC action filters resolve per-request; a Singleton filter would capture per-request state");
-    }
-
-    /// <summary>
-    /// Single-writer rule: only <c>EventRepository</c> may invoke
-    /// <c>.Add</c>, <c>.AddRange</c>, <c>.Update</c>, <c>.Remove</c>, or
-    /// <c>.Attach</c> on the seven event_* DbSets. Any other production class
-    /// performing such writes is a §6 cross-section boundary violation —
-    /// callers must go through <see cref="IEventService"/> / <see cref="IEventRepository"/>.
-    /// </summary>
-    [HumansFact]
-    public void Only_EventRepository_Writes_Event_DbSets()
-    {
-        var repoRoot = RatchetTestRunner.LocateRepoRoot();
-        var violations = ScanEventDbSetWrites(repoRoot);
-        RatchetTestRunner.Run(
-            "OnlyEventRepositoryWritesEventDbSets",
-            "tests/Humans.Application.Tests/Architecture/Baselines/OnlyEventRepositoryWritesEventDbSets.baseline.txt",
-            violations);
-    }
-
-    // Write-operation chains on any of the seven event_* DbSets:
-    //   ctx.Events.Add(...) / .AddRange / .Update / .Remove / .Attach
-    //   ctx.EventCategories.Add(...) / ...
-    //
-    // Word-boundary at the start avoids matching identifiers that merely END
-    // in "Events" (e.g. CalendarEvents, GoogleSyncOutboxEvents). Combined with
-    // a required leading non-identifier char so we don't match property names
-    // like SubmittedEvents either.
-    private static readonly Regex EventWriteRegex = new(
-        @"(?<![A-Za-z0-9_])(?:Events|EventCategories|EventVenues|EventFavourites|EventPreferences|EventGuideSettings|EventModerationActions)\s*\.\s*(?:Add|AddRange|Update|Remove|Attach)\b",
-        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
-        TimeSpan.FromSeconds(2));
-
-    internal static IEnumerable<string> ScanEventDbSetWrites(string repoRoot)
-    {
-        foreach (var path in RatchetTestRunner.EnumerateSourceFiles(repoRoot))
-        {
-            // The canonical owner is EventRepository — exclude it from violation reporting.
-            if (path.Replace('\\', '/').EndsWith(
-                    "Infrastructure/Repositories/Events/EventRepository.cs",
-                    StringComparison.Ordinal))
-                continue;
-
-            var content = File.ReadAllText(path);
-            if (!EventWriteRegex.IsMatch(content)) continue;
-
-            var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
-            var ordinal = 0;
-            foreach (var match in EventWriteRegex.Matches(content).Cast<Match>())
-            {
-                ordinal++;
-                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
-                var dbset = match.Value.Split('.')[0].Trim();
-                yield return $"{rel}:{dbset}-write#{ordinal} # L{line}";
-            }
-        }
     }
 
     // ── T-03: Caching decorator invariants ───────────────────────────────────

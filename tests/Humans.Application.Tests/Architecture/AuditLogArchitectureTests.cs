@@ -1,7 +1,5 @@
-using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Tests.Architecture.Ratchet;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -47,62 +45,5 @@ public class AuditLogArchitectureTests
                  || m.StartsWith("Delete", StringComparison.Ordinal)
                  || m.StartsWith("Remove", StringComparison.Ordinal),
             because: "audit_log is append-only (§12); repositories for append-only tables expose only Add/Get methods");
-    }
-
-    // ── Sole-writer DbSet rule ───────────────────────────────────────────────
-
-    /// <summary>
-    /// Only <c>AuditLogRepository</c> may write to <c>ctx.AuditLogEntries</c>.
-    /// Any other production class that calls <c>.Add</c>, <c>.AddRange</c>,
-    /// <c>.Update</c>, <c>.Remove</c>, or <c>.Attach</c> on
-    /// <c>AuditLogEntries</c> is a cross-section boundary violation.
-    ///
-    /// <para>
-    /// Current known violation: <c>DriveActivityMonitorRepository.PersistAnomaliesAsync</c>
-    /// calls <c>ctx.AuditLogEntries.AddRange(anomalies)</c> directly. This is
-    /// baselining until the GoogleIntegration /section-align run switches to
-    /// calling <c>IAuditLogService.LogAsync</c> per anomaly.
-    /// </para>
-    /// </summary>
-    [HumansFact]
-    public void Only_AuditLogRepository_Writes_AuditLogEntries_DbSet()
-    {
-        var repoRoot = RatchetTestRunner.LocateRepoRoot();
-        var violations = ScanAuditLogEntriesWrites(repoRoot);
-        RatchetTestRunner.Run(
-            "OnlyAuditLogRepositoryWritesAuditLogEntries",
-            "tests/Humans.Application.Tests/Architecture/Baselines/OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt",
-            violations);
-    }
-
-    // Matches the write-operation call chains on the AuditLogEntries DbSet.
-    // e.g. ctx.AuditLogEntries.Add(...)  /  .AddRange  /  .Update  /  .Remove  /  .Attach
-    private static readonly Regex AuditLogWriteRegex = new(
-        @"AuditLogEntries\s*\.\s*(?:Add|AddRange|Update|Remove|Attach)\b",
-        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
-        TimeSpan.FromSeconds(2));
-
-    internal static IEnumerable<string> ScanAuditLogEntriesWrites(string repoRoot)
-    {
-        foreach (var path in RatchetTestRunner.EnumerateSourceFiles(repoRoot))
-        {
-            // The canonical owner is AuditLogRepository — exclude it from violation reporting.
-            if (path.Replace('\\', '/').EndsWith(
-                    "Infrastructure/Repositories/AuditLog/AuditLogRepository.cs",
-                    StringComparison.Ordinal))
-                continue;
-
-            var content = File.ReadAllText(path);
-            if (!AuditLogWriteRegex.IsMatch(content)) continue;
-
-            var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
-            var ordinal = 0;
-            foreach (var match in AuditLogWriteRegex.Matches(content).Cast<Match>())
-            {
-                ordinal++;
-                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
-                yield return $"{rel}:AuditLogEntries-write#{ordinal} # L{line}";
-            }
-        }
     }
 }

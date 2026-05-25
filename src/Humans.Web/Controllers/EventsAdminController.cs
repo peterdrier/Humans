@@ -99,16 +99,19 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
     public async Task<IActionResult> Categories()
     {
         var categories = await guide.GetAllCategoriesAsync();
-        var rows = categories.Select(c => new EventCategoryRowViewModel
-        {
-            Id = c.Id,
-            Name = c.Name,
-            Slug = c.Slug,
-            IsSensitive = c.IsSensitive,
-            IsActive = c.IsActive,
-            DisplayOrder = c.DisplayOrder,
-            EventCount = c.Events.Count
-        }).ToList();
+        var rows = categories
+            .OrderBy(c => c.DisplayOrder)
+            .ThenBy(c => c.Name, StringComparer.Ordinal)
+            .Select(c => new EventCategoryRowViewModel
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Slug = c.Slug,
+                IsSensitive = c.IsSensitive,
+                IsActive = c.IsActive,
+                DisplayOrder = c.DisplayOrder,
+                EventCount = c.EventCount
+            }).ToList();
 
         return View(new EventCategoryListViewModel { Categories = rows });
     }
@@ -178,8 +181,8 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
             return View("CategoryForm", model);
         }
 
-        var category = await guide.GetCategoryAsync(id);
-        if (category == null) return NotFound();
+        var existing = await guide.GetCategoryAsync(id);
+        if (existing == null) return NotFound();
 
         if (await guide.CategorySlugExistsAsync(model.Slug, id))
         {
@@ -188,11 +191,15 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
             return View("CategoryForm", model);
         }
 
-        category.Name = model.Name;
-        category.Slug = model.Slug;
-        category.IsSensitive = model.IsSensitive;
-        category.IsActive = model.IsActive;
-        category.DisplayOrder = model.DisplayOrder;
+        var category = new EventCategory
+        {
+            Id = id,
+            Name = model.Name,
+            Slug = model.Slug,
+            IsSensitive = model.IsSensitive,
+            IsActive = model.IsActive,
+            DisplayOrder = model.DisplayOrder
+        };
 
         await guide.UpdateCategoryAsync(category);
         logger.LogInformation("Category '{Name}' ({Id}) updated", model.Name, id);
@@ -239,15 +246,18 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
     public async Task<IActionResult> Venues()
     {
         var venues = await guide.GetAllVenuesAsync();
-        var rows = venues.Select(v => new GuideVenueRowViewModel
-        {
-            Id = v.Id,
-            Name = v.Name,
-            LocationDescription = v.LocationDescription,
-            IsActive = v.IsActive,
-            DisplayOrder = v.DisplayOrder,
-            EventCount = v.Events.Count
-        }).ToList();
+        var rows = venues
+            .OrderBy(v => v.DisplayOrder)
+            .ThenBy(v => v.Name, StringComparer.Ordinal)
+            .Select(v => new GuideVenueRowViewModel
+            {
+                Id = v.Id,
+                Name = v.Name,
+                LocationDescription = v.LocationDescription,
+                IsActive = v.IsActive,
+                DisplayOrder = v.DisplayOrder,
+                EventCount = v.EventCount
+            }).ToList();
 
         return View(new GuideVenueListViewModel { Venues = rows });
     }
@@ -311,14 +321,18 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
             return View("VenueForm", model);
         }
 
-        var venue = await guide.GetVenueAsync(id);
-        if (venue == null) return NotFound();
+        var existing = await guide.GetVenueAsync(id);
+        if (existing == null) return NotFound();
 
-        venue.Name = model.Name;
-        venue.Description = model.Description;
-        venue.LocationDescription = model.LocationDescription;
-        venue.IsActive = model.IsActive;
-        venue.DisplayOrder = model.DisplayOrder;
+        var venue = new EventVenue
+        {
+            Id = id,
+            Name = model.Name,
+            Description = model.Description,
+            LocationDescription = model.LocationDescription,
+            IsActive = model.IsActive,
+            DisplayOrder = model.DisplayOrder
+        };
 
         await guide.UpdateVenueAsync(venue);
         logger.LogInformation("Venue '{Name}' ({Id}) updated", model.Name, id);

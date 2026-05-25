@@ -2,9 +2,15 @@ using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
 
+[Grandfathered(
+    ruleId: "HUM0024",
+    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
+    since: "2026-05-25",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class GeneralAvailabilityConfiguration : IEntityTypeConfiguration<GeneralAvailability>
 {
     public void Configure(EntityTypeBuilder<GeneralAvailability> builder)

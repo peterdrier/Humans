@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,6 +15,8 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
+[Grandfathered("HUM0025", justification: "Profiles-section table also accessed by ProfileRepository; converge the Profiles repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ContactFields")]
+[Grandfathered("HUM0025", justification: "Profiles-section table also accessed by ProfileRepository; converge the Profiles repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Profiles")]
 internal sealed class ContactFieldRepository(IDbContextFactory<HumansDbContext> factory) : IContactFieldRepository
 {
     public async Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(

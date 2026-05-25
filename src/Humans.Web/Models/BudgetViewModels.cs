@@ -1,13 +1,12 @@
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Budget;
-using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Web.Models;
 
 public class FinanceOverviewViewModel
 {
-    public required BudgetYear Year { get; init; }
+    public required BudgetYearDetail Year { get; init; }
     public required IReadOnlyList<BudgetYearSummarySnapshot> AllYears { get; init; }
 
     // Summary data (same logic as public summary, but includes restricted groups)
@@ -34,7 +33,7 @@ public class TicketingProjectionUpdateForm
 
 public class CoordinatorBudgetViewModel
 {
-    public required BudgetYear Year { get; init; }
+    public required BudgetYearDetail Year { get; init; }
     public required HashSet<Guid> EditableTeamIds { get; init; }
     public bool IsFinanceAdmin { get; init; }
 }

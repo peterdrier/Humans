@@ -72,15 +72,17 @@ public class CityPlanningApiController(
     public async Task<IActionResult> GetCampPolygonHistory(Guid campSeasonId, CancellationToken cancellationToken)
     {
         var history = await cityPlanningService.GetCampPolygonHistoryAsync(campSeasonId, cancellationToken);
-        var response = history.Select(h => new
-        {
-            id = h.Id,
-            modifiedByDisplayName = h.ModifiedByDisplayName,
-            modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
-            areaSqm = h.AreaSqm,
-            note = h.Note,
-            geoJson = h.GeoJson,
-        });
+        var response = history
+            .OrderByDescending(h => h.ModifiedAt)
+            .Select(h => new
+            {
+                id = h.Id,
+                modifiedByDisplayName = h.ModifiedByDisplayName,
+                modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
+                areaSqm = h.AreaSqm,
+                note = h.Note,
+                geoJson = h.GeoJson,
+            });
         return Ok(response);
     }
 

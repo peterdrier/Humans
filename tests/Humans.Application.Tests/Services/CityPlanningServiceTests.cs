@@ -473,7 +473,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampPolygonHistoryAsync_ReturnsEntriesInDescendingOrder_WithDisplayNamesFromUserService()
+    public async Task GetCampPolygonHistoryAsync_ReturnsEntries_WithDisplayNamesFromUserService()
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
@@ -497,10 +497,13 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId);
 
+        // Display ordering (newest first) moved to the controller
+        // (CityPlanningApiController.GetCampPolygonHistory) per
+        // memory/architecture/display-sort-in-controllers.md, so the service
+        // only guarantees the entries and the display-name mapping, not order.
         history.Should().HaveCount(2);
-        history[0].AreaSqm.Should().Be(200.0); // Most recent first
-        history[1].AreaSqm.Should().Be(100.0);
-        history[0].ModifiedByDisplayName.Should().Be("Test User");
+        history.Select(h => h.AreaSqm).Should().BeEquivalentTo([100.0, 200.0]);
+        history.Should().OnlyContain(h => h.ModifiedByDisplayName == "Test User");
     }
 
     [HumansFact(Timeout = 10000)]

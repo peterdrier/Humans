@@ -7,30 +7,9 @@
 # When the test reports new violations, fix the code — do not add lines to silence it.
 
 Humans.Application.Interfaces.Auth.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Domain.Entities.User
-Humans.Application.Interfaces.Budget.IBudgetService.GetActiveYearAsync:Humans.Domain.Entities.BudgetYear
-Humans.Application.Interfaces.Budget.IBudgetService.GetCoordinatorBudgetViewDataAsync:Humans.Domain.Entities.BudgetYear
-Humans.Application.Interfaces.Budget.IBudgetService.GetYearByIdAsync:Humans.Domain.Entities.BudgetYear
-Humans.Application.Interfaces.Events.IEventService.GetActiveCategoriesAsync:Humans.Domain.Entities.EventCategory
-Humans.Application.Interfaces.Events.IEventService.GetActiveVenuesAsync:Humans.Domain.Entities.EventVenue
-Humans.Application.Interfaces.Events.IEventService.GetAllCategoriesAsync:Humans.Domain.Entities.EventCategory
-Humans.Application.Interfaces.Events.IEventService.GetAllEventsForDashboardAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetAllVenuesAsync:Humans.Domain.Entities.EventVenue
-Humans.Application.Interfaces.Events.IEventService.GetApprovedEventByIdAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetApprovedEventsAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetApprovedEventsForExportAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetApprovedEventsForExportAsync:Humans.Domain.Entities.EventGuideSettings
 Humans.Application.Interfaces.Events.IEventService.GetCampEventAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetCampSubmissionsAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetCategoryAsync:Humans.Domain.Entities.EventCategory
 Humans.Application.Interfaces.Events.IEventService.GetEventForModerationAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetEventsByStatusAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetFavouritesWithEventsAsync:Humans.Domain.Entities.EventFavourite
-Humans.Application.Interfaces.Events.IEventService.GetGuideSettingsAsync:Humans.Domain.Entities.EventGuideSettings
-Humans.Application.Interfaces.Events.IEventService.GetPreferenceAsync:Humans.Domain.Entities.EventPreference
 Humans.Application.Interfaces.Events.IEventService.GetUserEventAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetUserSubmissionsAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetVenueAsync:Humans.Domain.Entities.EventVenue
-Humans.Application.Interfaces.Issues.IIssuesService.GetIssueByIdAsync:Humans.Domain.Entities.Issue
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetBrowseShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetByIdAsync:Humans.Domain.Entities.EventSettings

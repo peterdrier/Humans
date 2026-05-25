@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
@@ -20,7 +21,9 @@ public class DietaryMissingBannerViewComponentTests
 
     public DietaryMissingBannerViewComponentTests()
     {
-        _sut = new DietaryMissingBannerViewComponent(_shiftMgmt);
+        _sut = new DietaryMissingBannerViewComponent(
+            _shiftMgmt,
+            NullLogger<DietaryMissingBannerViewComponent>.Instance);
     }
 
     [HumansFact]
@@ -46,6 +49,19 @@ public class DietaryMissingBannerViewComponentTests
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(hasQualifying);
         _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false)
                   .Returns(new VolunteerEventProfile { DietaryPreference = dietary });
+
+        var result = await _sut.InvokeAsync(userId);
+
+        result.Should().BeOfType<ContentViewComponentResult>()
+              .Which.Content.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DoesNotRender_WhenServiceThrows()
+    {
+        var userId = Guid.NewGuid();
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId)
+                  .Returns<Task<bool>>(_ => throw new InvalidOperationException("transient DB error"));
 
         var result = await _sut.InvokeAsync(userId);
 

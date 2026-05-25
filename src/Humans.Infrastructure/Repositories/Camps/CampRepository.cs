@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -9,6 +10,8 @@ using NodaTime;
 namespace Humans.Infrastructure.Repositories.Camps;
 
 /// <summary>EF-backed <see cref="ICampRepository"/>.</summary>
+[Grandfathered("HUM0025", justification: "Camps-section table also accessed by CampRoleRepository; converge the Camps repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "CampMembers")]
+[Grandfathered("HUM0025", justification: "Camps-section table also accessed by CampRoleRepository; converge the Camps repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "CampRoleAssignments")]
 internal sealed class CampRepository : ICampRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
@@ -821,9 +824,10 @@ internal sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(m => m.CampSeason)
                 .ThenInclude(s => s.Camp)
+            // Display ordering (year desc, then camp name) is applied by the
+            // consumer (MyCampsViewComponent) per
+            // memory/architecture/display-sort-in-controllers.md.
             .Where(m => m.UserId == userId && m.Status != CampMemberStatus.Removed)
-            .OrderByDescending(m => m.CampSeason.Year)
-            .ThenBy(m => m.CampSeason.Name)
             .ToListAsync(ct);
     }
 

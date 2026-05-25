@@ -53,8 +53,20 @@
           legacy reads (computed-override projections of UserEmails) are
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
+        - HUM0024: cross-section EF navigation joins. Error by default;
+          existing configuration debt carries [Grandfathered("HUM0024", ...)]
+          to downgrade to warning while those joins are migrated to bare FK
+          columns and service-level stitching. Remove this entry once the
+          last [Grandfathered("HUM0024", ...)] is gone.
+        - HUM0025: a DbSet table referenced (read or written) by more than
+          one repository. Error by default; existing shared-table debt carries
+          [Grandfathered("HUM0025", ..., scope: "<DbSet>")] on each participating
+          repository to downgrade to warning while the foreign access is migrated
+          through the owning section's service. (Subsumes the retired per-section
+          HUM0022 Notifications + HUM0023 Events write analyzers.) Remove this
+          entry once the last [Grandfathered("HUM0025", ...)] is gone.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

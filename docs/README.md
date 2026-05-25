@@ -115,10 +115,13 @@ The end-user guide for the Humans app, organized by role within each section.
 |----------|-------------|
 | [Admin](guide/Admin.md) | The global control panel: managing humans, configuring Google sync, reading the audit log, triaging notifications, and running technical operations |
 | [Budget](guide/Budget.md) | Plan and track money across a fiscal year with a four-level structure and append-only audit log |
+| [Calendar](guide/Calendar.md) | Shared team calendars — view, create, and edit events on any team |
 | [Campaigns](guide/Campaigns.md) | Distribute individualised codes to humans via grants and email waves, with per-human profile lookup and unsubscribe |
 | [Camps](guide/Camps.md) | Self-organizing themed communities ("barrios") with annual registration, leads, images, and per-year seasons |
 | [City Planning](guide/CityPlanning.md) | Interactive aerial map where camps stake out their physical footprint before the event |
 | [Email](guide/Email.md) | Personal `@nobodies.team` mailboxes and team group emails: how they work and how to send "as" your team |
+| [Events](guide/Events.md) | Browse and submit community events; admins moderate submissions |
+| [Expenses](guide/Expenses.md) | Submit expense reports and track reimbursement; FinanceAdmin reviews |
 | [Feedback](guide/Feedback.md) | Report a bug, suggest an improvement, or ask a question without leaving the app |
 | [Google Integration](guide/GoogleIntegration.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
 | [Governance](guide/Governance.md) | Tier applications, Board votes, and coordinator/admin role assignments — not Volunteer onboarding |
@@ -126,8 +129,22 @@ The end-user guide for the Humans app, organized by role within each section.
 | [Onboarding](guide/Onboarding.md) | The path from signing up to becoming an active Volunteer |
 | [Profiles](guide/Profiles.md) | Your profile: personal info, contact handles, emails, shift preferences, and communication settings |
 | [Shifts](guide/Shifts.md) | Browse and sign up for event shifts across Set-up, Event, and Strike; coordinators manage team-owned rotas |
+| [Store](guide/Store.md) | Camp leads order barrio services; StoreAdmin manages the catalog and orders |
 | [Teams](guide/Teams.md) | Departments and sub-teams, system teams, and hidden teams |
 | [Tickets](guide/Tickets.md) | Mirror of external vendor ticket data with auto-matching to humans by email |
+
+### Common questions
+
+Plain-language pages for the things people ask most.
+
+| Document | Description |
+|----------|-------------|
+| [Your `@nobodies.team` email](guide/EmailAccount.md) | Your org mailbox: what it is, signing in, and using your team's shared address |
+| [Two-step verification (2FA)](guide/TwoStepVerification.md) | The required extra sign-in step on your `@nobodies.team` account, in plain language |
+| [Transferring your ticket](guide/TicketTransfers.md) | Hand a ticket you hold to someone else through the app |
+| [The in-app AI helper](guide/AiHelper.md) | What the chat helper does, what it can see, and that it's optional |
+| [Signing in & getting unstuck](guide/SigningIn.md) | The two ways into the app and what to do when you can't get in |
+| [Your data & privacy](guide/YourData.md) | Who can see your details, exporting your data, and deleting your account |
 
 ## Operational Guides
 

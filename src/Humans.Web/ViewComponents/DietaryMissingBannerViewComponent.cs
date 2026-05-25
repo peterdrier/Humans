@@ -12,20 +12,33 @@ namespace Humans.Web.ViewComponents;
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly ILogger<DietaryMissingBannerViewComponent> _logger;
 
-    public DietaryMissingBannerViewComponent(IShiftManagementService shiftMgmt)
+    public DietaryMissingBannerViewComponent(
+        IShiftManagementService shiftMgmt,
+        ILogger<DietaryMissingBannerViewComponent> logger)
     {
         _shiftMgmt = shiftMgmt;
+        _logger = logger;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
-        if (!hasQualifyingSignup) return Content(string.Empty);
+        try
+        {
+            var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
+            if (!hasQualifyingSignup) return Content(string.Empty);
 
-        var profile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
-        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return Content(string.Empty);
+            var profile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+            if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return Content(string.Empty);
 
-        return View();
+            return View();
+        }
+        catch (Exception ex)
+        {
+            // A banner-fetch failure shouldn't crash /Shifts — log and render nothing.
+            _logger.LogError(ex, "Failed to evaluate dietary banner for user {UserId}", userId);
+            return Content(string.Empty);
+        }
     }
 }

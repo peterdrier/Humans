@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -22,6 +23,12 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// registered as <b>Singleton</b> while <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </summary>
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "EventSettings")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Rotas")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ShiftSignups")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Shifts")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "VolunteerEventProfiles")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "VolunteerTagPreferences")]
 internal sealed class ShiftManagementRepository(IDbContextFactory<HumansDbContext> factory) : IShiftManagementRepository
 {
     // ==========================================================================

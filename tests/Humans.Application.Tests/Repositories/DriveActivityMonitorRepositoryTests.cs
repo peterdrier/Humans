@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 
@@ -94,34 +93,18 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task PersistAnomaliesAsync_InsertsAnomaliesAndAdvancesMarkerAtomically()
+    public async Task AdvanceLastRunMarkerAsync_AdvancesMarker()
     {
         var marker = Instant.FromUtc(2026, 4, 22, 11, 0);
-        var entry = new AuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            Action = AuditAction.AnomalousPermissionDetected,
-            EntityType = nameof(GoogleResource),
-            EntityId = Guid.NewGuid(),
-            Description = "test anomaly",
-            OccurredAt = marker,
-        };
 
-        await _repository.PersistAnomaliesAsync([entry], marker);
-
-        await using var verify = _factory.CreateDbContext();
-        var savedEntry = await verify.AuditLogEntries
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == entry.Id);
-        savedEntry.Should().NotBeNull();
-        savedEntry.Action.Should().Be(AuditAction.AnomalousPermissionDetected);
+        await _repository.AdvanceLastRunMarkerAsync(marker);
 
         var marker2 = await _repository.GetLastRunTimestampAsync();
         marker2.Should().Be(marker);
     }
 
     [HumansFact]
-    public async Task PersistAnomaliesAsync_WithNullMarker_InsertsAnomaliesButDoesNotAdvanceMarker()
+    public async Task AdvanceLastRunMarkerAsync_WithNullMarker_DoesNotAdvanceMarker()
     {
         var existingMarker = Instant.FromUtc(2026, 4, 21, 9, 0);
         _seedContext.SystemSettings.Add(new SystemSetting
@@ -131,39 +114,23 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         });
         await _seedContext.SaveChangesAsync();
 
-        var entry = new AuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            Action = AuditAction.AnomalousPermissionDetected,
-            EntityType = nameof(GoogleResource),
-            EntityId = Guid.NewGuid(),
-            Description = "partial failure run",
-            OccurredAt = existingMarker,
-        };
-
-        await _repository.PersistAnomaliesAsync([entry], newLastRunAt: null);
-
-        await using var verify = _factory.CreateDbContext();
-        var entryCount = await verify.AuditLogEntries.CountAsync();
-        entryCount.Should().Be(1);
+        await _repository.AdvanceLastRunMarkerAsync(newLastRunAt: null);
 
         var marker = await _repository.GetLastRunTimestampAsync();
         marker.Should().Be(existingMarker, because: "null newLastRunAt means the partial failure path — marker should not advance");
     }
 
     [HumansFact]
-    public async Task PersistAnomaliesAsync_WithNoAnomaliesAndNullMarker_IsNoOp()
+    public async Task AdvanceLastRunMarkerAsync_WithNullMarker_IsNoOp()
     {
-        await _repository.PersistAnomaliesAsync(
-            [], newLastRunAt: null);
+        await _repository.AdvanceLastRunMarkerAsync(newLastRunAt: null);
 
         await using var verify = _factory.CreateDbContext();
-        (await verify.AuditLogEntries.CountAsync()).Should().Be(0);
         (await verify.SystemSettings.CountAsync()).Should().Be(0);
     }
 
     [HumansFact]
-    public async Task PersistAnomaliesAsync_UpdatesExistingMarkerRowInPlace()
+    public async Task AdvanceLastRunMarkerAsync_UpdatesExistingMarkerRowInPlace()
     {
         var original = Instant.FromUtc(2026, 4, 21, 9, 0);
         _seedContext.SystemSettings.Add(new SystemSetting
@@ -174,7 +141,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         await _seedContext.SaveChangesAsync();
 
         var next = Instant.FromUtc(2026, 4, 22, 10, 0);
-        await _repository.PersistAnomaliesAsync([], next);
+        await _repository.AdvanceLastRunMarkerAsync(next);
 
         await using var verify = _factory.CreateDbContext();
         var rows = await verify.SystemSettings

@@ -633,7 +633,7 @@ public sealed class GoogleWorkspaceSyncService(
                 var teamMembers = membersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var tm in teamMembers)
                 {
-                    var memberEmail = TryGetGoogleEmail(tm, emailsByUserId);
+                    var memberEmail = TryGetGoogleEmail(tm.UserId, tm.GoogleEmailStatus, emailsByUserId);
                     if (memberEmail is null) continue;
 
                     if (membersByEmail.TryGetValue(memberEmail, out var existing))
@@ -650,13 +650,14 @@ public sealed class GoogleWorkspaceSyncService(
                 var childMembers = childMembersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var cm in childMembers)
                 {
-                    var memberEmail = TryGetGoogleEmail(cm, emailsByUserId);
+                    usersById.TryGetValue(cm.UserId, out var userInfo);
+                    var memberEmail = TryGetGoogleEmail(
+                        cm.UserId,
+                        userInfo?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown,
+                        emailsByUserId);
                     if (memberEmail is null) continue;
 
-                    // cm is a TeamMember (not obsolete); text-based ratchet false-positives on the property name.
-#pragma warning disable CS0618
                     var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug, level);
-#pragma warning restore CS0618
                     if (membersByEmail.TryGetValue(memberEmail, out var existing2))
                     {
                         if (!existing2.TeamLinks.Any(tl => string.Equals(tl.Name, childTeamLink.Name, StringComparison.Ordinal)))
@@ -664,7 +665,6 @@ public sealed class GoogleWorkspaceSyncService(
                     }
                     else
                     {
-                        usersById.TryGetValue(cm.UserId, out var userInfo);
                         membersByEmail[memberEmail] = (
                             userInfo?.BurnerName ?? string.Empty,
                             cm.UserId,
@@ -1670,28 +1670,22 @@ public sealed class GoogleWorkspaceSyncService(
     }
 
     /// <summary>
-    /// Gets the canonical Google Workspace email for a team member, returning
+    /// Gets the canonical Google Workspace email for a user, returning
     /// null when the user's <c>GoogleEmailStatus</c> is Rejected or when the
     /// user has no Workspace identity at all. Issue #635 (§15i): UserEmails
     /// are pre-fetched by the caller via <see cref="IUserEmailService.GetEntitiesByUserIdsAsync"/>
     /// and passed in as <paramref name="emailsByUserId"/> instead of being
-    /// traversed through <c>tm.User.UserEmails</c>.
+    /// traversed through cross-domain nav properties.
     /// </summary>
     private static string? TryGetGoogleEmail(
-        TeamMember tm,
+        Guid userId,
+        GoogleEmailStatus googleEmailStatus,
         IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
     {
-#pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
-        var user = tm.User;
-#pragma warning restore CS0618
-        // §6b stitcher can miss: User nav is annotated non-null but populated in-memory
-        // by ITeamService — if the stitch didn't include this row, user is null at runtime.
-        if (user is null)
-            return null;
-        if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        if (googleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
 
-        var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
+        var emails = emailsByUserId.TryGetValue(userId, out var list)
             ? list
             : [];
 
