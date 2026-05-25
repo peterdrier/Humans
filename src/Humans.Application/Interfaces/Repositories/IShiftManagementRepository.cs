@@ -334,6 +334,32 @@ public interface IShiftManagementRepository : IRepository
         Guid eventSettingsId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the on-site cohort for a given event day: every <see cref="VolunteerEventProfile"/>
+    /// belonging to a user who has at least one <see cref="ShiftSignup"/> with
+    /// status <c>Pending</c> or <c>Confirmed</c> on a <see cref="Shift"/> with the
+    /// matching <see cref="Shift.DayOffset"/>. Used by the Cantina daily roster
+    /// (feature #36 — docs/features/cantina/daily-roster.md).
+    ///
+    /// Returned VEPs include all fields including <see cref="VolunteerEventProfile.MedicalConditions"/>;
+    /// the service layer is responsible for filtering medical fields out at the DTO boundary
+    /// before the data leaves the Application layer.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerEventProfile>> GetOnSiteVolunteerProfilesForDayAsync(
+        int dayOffset,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct <see cref="ShiftSignup.UserId"/>s of volunteers
+    /// on-site for the given event day (same on-site rule as
+    /// <see cref="GetOnSiteVolunteerProfilesForDayAsync"/>). Used by the Cantina
+    /// daily roster service to compute the "unanswered" cohort (on-site but no
+    /// <see cref="VolunteerEventProfile"/> yet, or empty <see cref="VolunteerEventProfile.DietaryPreference"/>).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================

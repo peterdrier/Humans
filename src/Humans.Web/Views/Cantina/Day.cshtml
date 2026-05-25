@@ -1,0 +1,196 @@
+@using Humans.Application.Services.Cantina.Dtos
+@using Humans.Domain.Constants
+@using NodaTime
+@using NodaTime.Text
+@model DailyMatrixDto
+
+@functions {
+    // Long-form date "Tuesday 7 July 2026" in invariant culture so it reads
+    // the same regardless of the requester's browser locale (the surrounding
+    // labels are still resx-localized).
+    private static readonly LocalDatePattern LongDayPattern =
+        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM yyyy");
+
+    private static string FormatLong(LocalDate? d) =>
+        d.HasValue ? LongDayPattern.Format(d.Value) : "";
+
+    // Short abbreviations for column headers so the matrix stays narrow.
+    // Full name in the title= attribute keeps the header accessible.
+    private static string AbbrevChip(string name) => name switch
+    {
+        "Peanut" => "Pnt",
+        "Tree nut" => "TNt",
+        "Dairy" => "Dai",
+        "Egg" => "Egg",
+        "Shellfish" => "Shl",
+        "Wheat/Gluten" => "Wht",
+        "Soy" => "Soy",
+        "Sesame" => "Ses",
+        "Lactose" => "Lac",
+        "Gluten" => "Glt",
+        "Histamine" => "His",
+        "FODMAP" => "FOD",
+        _ => name.Length > 3 ? name.Substring(0, 3) : name,
+    };
+}
+
+@{
+    ViewData["Title"] = Localizer["Cantina_Day_PageTitle"].Value;
+
+    // Pre-filter the "Other" sentinel out of the chip lists — Other gets a
+    // dedicated flag column + a free-text column for the follow-up.
+    var dietPrefs = DietaryOptions.DietaryPreferences;
+    var allergyChips = DietaryOptions.AllergyOptions.Where(a => a != DietaryOptions.OtherOption).ToList();
+    var intoleranceChips = DietaryOptions.IntoleranceOptions.Where(i => i != DietaryOptions.OtherOption).ToList();
+
+    var isToday = Model.EventTodayDate is not null
+        && Model.CalendarDate.HasValue
+        && Model.EventTodayDate.Value == Model.CalendarDate.Value;
+}
+
+@section Styles {
+    <style>
+        .cantina-matrix table { font-size: 0.85rem; }
+        .cantina-matrix .matrix-narrow { width: 2.2em; min-width: 2.2em; }
+        .cantina-matrix .matrix-other-text { min-width: 8em; }
+        @@media print {
+            .breadcrumb, .btn, nav, footer { display: none !important; }
+            .cantina-matrix table { font-size: 0.75rem; }
+            body { background: white; }
+        }
+    </style>
+}
+
+<div class="container py-4">
+    @* === Breadcrumb back to weekly view ==================================== *@
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a asp-action="Roster" asp-route-weekStartOffset="@Model.WeekStartOffset">
+                    @Localizer["Cantina_Roster_PageTitle"]
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">@FormatLong(Model.CalendarDate)</li>
+        </ol>
+    </nav>
+
+    @* === Page header + CSV download ======================================== *@
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <h1 class="mb-0">
+            @if (Model.CalendarDate is not null)
+            {
+                @FormatLong(Model.CalendarDate)
+            }
+            else
+            {
+                @Localizer["Cantina_Roster_NoActiveEvent"]
+            }
+            @if (isToday)
+            {
+                <span class="badge bg-info ms-2 align-middle">@Localizer["Cantina_Day_TodayBadge"]</span>
+            }
+        </h1>
+        <a class="btn btn-sm btn-primary" asp-action="DayCsv" asp-route-dayOffset="@Model.DayOffset">
+            <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Day_DownloadCsv"]
+        </a>
+    </div>
+
+    @* === Day-level aggregates summary card ================================= *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col">
+                    <div class="h3 mb-0">@Model.TotalOnSite</div>
+                    <div class="text-muted small">@Localizer["Cantina_Day_TotalOnSite"]</div>
+                </div>
+                <div class="col">
+                    <div class="h3 mb-0 @(Model.UnansweredCount > 0 ? "text-warning" : "text-muted")">
+                        @Model.UnansweredCount
+                    </div>
+                    <div class="text-muted small">@Localizer["Cantina_Day_Unanswered"]</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.People.Count == 0)
+    {
+        <div class="alert alert-info text-center">
+            @Localizer["Cantina_Day_EmptyState"]
+        </div>
+    }
+    else
+    {
+        @* === THE MATRIX ==================================================== *@
+        <div class="table-responsive cantina-matrix">
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">@Localizer["Cantina_Matrix_BurnerColumn"]</th>
+                        @foreach (var d in dietPrefs)
+                        {
+                            <th scope="col" class="text-center matrix-narrow" title="@d">@d.Substring(0, 3)</th>
+                        }
+                        @foreach (var a in allergyChips)
+                        {
+                            <th scope="col" class="text-center matrix-narrow" title="@a">@AbbrevChip(a)</th>
+                        }
+                        <th scope="col" class="text-center matrix-narrow" title="@Localizer["Cantina_Matrix_OtherAllergy"]">OAl</th>
+                        <th scope="col" class="matrix-other-text">@Localizer["Cantina_Matrix_OtherAllergyText"]</th>
+                        @foreach (var i in intoleranceChips)
+                        {
+                            <th scope="col" class="text-center matrix-narrow" title="@i">@AbbrevChip(i)</th>
+                        }
+                        <th scope="col" class="text-center matrix-narrow" title="@Localizer["Cantina_Matrix_OtherIntolerance"]">OIt</th>
+                        <th scope="col" class="matrix-other-text">@Localizer["Cantina_Matrix_OtherIntoleranceText"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.People)
+                    {
+                        <tr>
+                            <th scope="row">@p.BurnerName</th>
+                            @foreach (var d in dietPrefs)
+                            {
+                                <td class="text-center">@(p.DietaryPreference == d ? "x" : Html.Raw("&middot;"))</td>
+                            }
+                            @foreach (var a in allergyChips)
+                            {
+                                <td class="text-center">@(p.Allergies.Contains(a) ? "x" : Html.Raw("&middot;"))</td>
+                            }
+                            <td class="text-center">@(p.Allergies.Contains(DietaryOptions.OtherOption) ? "x" : Html.Raw("&middot;"))</td>
+                            <td class="small">@(p.AllergyOtherText ?? "")</td>
+                            @foreach (var i in intoleranceChips)
+                            {
+                                <td class="text-center">@(p.Intolerances.Contains(i) ? "x" : Html.Raw("&middot;"))</td>
+                            }
+                            <td class="text-center">@(p.Intolerances.Contains(DietaryOptions.OtherOption) ? "x" : Html.Raw("&middot;"))</td>
+                            <td class="small">@(p.IntoleranceOtherText ?? "")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th scope="row">@Localizer["Cantina_Matrix_Totals"]</th>
+                        @foreach (var d in dietPrefs)
+                        {
+                            <td class="text-center fw-bold">@Model.People.Count(p => p.DietaryPreference == d)</td>
+                        }
+                        @foreach (var a in allergyChips)
+                        {
+                            <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(a))</td>
+                        }
+                        <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(DietaryOptions.OtherOption))</td>
+                        <td class="text-muted">—</td>
+                        @foreach (var i in intoleranceChips)
+                        {
+                            <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(i))</td>
+                        }
+                        <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(DietaryOptions.OtherOption))</td>
+                        <td class="text-muted">—</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>
