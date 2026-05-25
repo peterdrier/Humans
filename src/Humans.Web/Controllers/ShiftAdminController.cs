@@ -24,7 +24,7 @@ public class ShiftAdminController(
     IShiftSignupService signupService,
     IShiftView shiftView,
     IGeneralAvailabilityService availabilityService,
-    IUserService userService,
+    IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ShiftAdminPageBuilder pageBuilder,

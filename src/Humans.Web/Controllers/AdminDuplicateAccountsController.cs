@@ -12,12 +12,12 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Admin/DuplicateAccounts")]
 public class AdminDuplicateAccountsController(
-    IUserService userService,
+    IUserServiceRead userService,
     IDuplicateAccountService duplicateService,
     ITeamServiceRead teamService,
     ILogger<AdminDuplicateAccountsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
