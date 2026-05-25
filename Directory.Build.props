@@ -53,13 +53,19 @@
           legacy reads (computed-override projections of UserEmails) are
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
+        - HUM0023: non-EventRepository write to an Events-section DbSet.
+          Genuine violators (no attribute) fire effectiveSeverity: Error
+          directly and bypass this list. This entry only lets a future
+          [Grandfathered("HUM0023", ...)] downgrade through as a warning;
+          there are no grandfathers today, so remove this entry if none are
+          ever added.
         - HUM0024: cross-section EF navigation joins. Error by default;
           existing configuration debt carries [Grandfathered("HUM0024", ...)]
           to downgrade to warning while those joins are migrated to bare FK
           columns and service-level stitching. Remove this entry once the
           last [Grandfathered("HUM0024", ...)] is gone.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0023;HUM0024;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

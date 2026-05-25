@@ -77,8 +77,9 @@ HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-ins
 HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack) | Error
 HUM0020 | Caching decorator references a repository directly instead of the keyed inner service         | Error
 HUM0021 | Cross-domain navigation property must not be read                                            | Warning
-HUM0024 | EF configuration creates a navigation join across section boundaries                         | Error
 HUM0022 | Notification DbSets may only be written by NotificationRepository                            | Error
+HUM0023 | Event DbSets may only be written by EventRepository                                           | Error
+HUM0024 | EF configuration creates a navigation join across section boundaries                         | Error
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

@@ -103,15 +103,15 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
             .OrderBy(c => c.DisplayOrder)
             .ThenBy(c => c.Name, StringComparer.Ordinal)
             .Select(c => new EventCategoryRowViewModel
-        {
-            Id = c.Id,
-            Name = c.Name,
-            Slug = c.Slug,
-            IsSensitive = c.IsSensitive,
-            IsActive = c.IsActive,
-            DisplayOrder = c.DisplayOrder,
-            EventCount = c.EventCount
-        }).ToList();
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Slug = c.Slug,
+                IsSensitive = c.IsSensitive,
+                IsActive = c.IsActive,
+                DisplayOrder = c.DisplayOrder,
+                EventCount = c.EventCount
+            }).ToList();
 
         return View(new EventCategoryListViewModel { Categories = rows });
     }
@@ -250,14 +250,14 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Name, StringComparer.Ordinal)
             .Select(v => new GuideVenueRowViewModel
-        {
-            Id = v.Id,
-            Name = v.Name,
-            LocationDescription = v.LocationDescription,
-            IsActive = v.IsActive,
-            DisplayOrder = v.DisplayOrder,
-            EventCount = v.EventCount
-        }).ToList();
+            {
+                Id = v.Id,
+                Name = v.Name,
+                LocationDescription = v.LocationDescription,
+                IsActive = v.IsActive,
+                DisplayOrder = v.DisplayOrder,
+                EventCount = v.EventCount
+            }).ToList();
 
         return View(new GuideVenueListViewModel { Venues = rows });
     }
