@@ -52,6 +52,12 @@
                 </button>
             </form>
         }
+        <a asp-action="HoldedAccounts" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-building-columns me-1"></i>Holded Accounts
+        </a>
+        <a asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>Unmatched
+        </a>
         <a asp-action="AuditLog" asp-route-yearId="@year.Id" class="btn btn-outline-secondary">
             <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
         </a>
@@ -382,6 +388,12 @@
                                             <span class="@(displayRemaining >= 0 ? "text-success" : "text-danger")">
                                                 @remainingLabel: &euro;@Math.Abs(displayRemaining).ToString("N2")
                                             </span>
+                                            @{ var holdedActual = Model.HoldedActualsByCategory.GetValueOrDefault(cat.Id); }
+                                            @if (holdedActual != 0)
+                                            {
+                                                <span class="mx-1">&middot;</span>
+                                                <span class="text-muted">Holded:</span> <span class="text-info">&euro;@Math.Abs(holdedActual).ToString("N2")</span>
+                                            }
                                         </div>
                                     </div>
                                 </button>

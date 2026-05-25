@@ -1,0 +1,69 @@
+@model IReadOnlyList<Humans.Application.Services.Finance.Dtos.HoldedUnmatchedRow>
+@{
+    ViewData["Title"] = "Holded Unmatched Documents";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Holded Unmatched Documents</h1>
+    <div class="d-flex gap-2">
+        <form asp-action="RunHoldedSync" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Now
+            </button>
+        </form>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+        </a>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (!Model.Any())
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fa-solid fa-circle-check fa-2x text-success mb-3"></i>
+            <p class="mb-0 text-muted">No unmatched documents — every Holded purchase is mapped to a budget category.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Unmatched Documents</span>
+            <span class="badge bg-warning text-dark">@Model.Count unmatched</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Doc #</th>
+                        <th>Contact</th>
+                        <th class="text-end">Total</th>
+                        <th>Reason</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model)
+                    {
+                        <tr>
+                            <td>@row.DocNumber</td>
+                            <td>@row.ContactName</td>
+                            <td class="text-end text-danger">&euro;@row.Total.ToString("N2")</td>
+                            <td class="text-muted small">@row.Reason</td>
+                            <td>
+                                <a href="@row.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Holded
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
