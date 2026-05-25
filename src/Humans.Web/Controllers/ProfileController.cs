@@ -324,6 +324,12 @@ public class ProfileController : HumansControllerBase
             .ToList();
         var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
 
+        // Meal preference + allergies live on the shift profile (VolunteerEventProfile),
+        // not the main Profile. Surfaced on Edit as a second entry point alongside the
+        // dedicated DietaryMedical page. includeMedical:false — medical conditions stay
+        // owned by DietaryMedical (GDPR Art. 9 health data with restricted visibility).
+        var shiftProfile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
 
         // Initial setup = no profile or not yet approved (onboarding)
@@ -404,7 +410,10 @@ public class ProfileController : HumansControllerBase
                 Proficiency = pl.Proficiency
             }).ToList(),
             AllShiftTags = allShiftTags,
-            EditableShiftTagIds = preferredShiftTags.Select(t => t.Id).ToList()
+            EditableShiftTagIds = preferredShiftTags.Select(t => t.Id).ToList(),
+            DietaryPreference = shiftProfile?.DietaryPreference ?? string.Empty,
+            Allergies = shiftProfile is null ? [] : [.. shiftProfile.Allergies],
+            AllergyOtherText = shiftProfile?.AllergyOtherText
         };
 
         ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
@@ -447,6 +456,15 @@ public class ProfileController : HumansControllerBase
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
                 _localizer["Validation_PhoneE164", _localizer["Profile_EmergencyContactPhone"].Value].Value);
+        }
+
+        // Allergy "Other" requires accompanying free text (mirrors DietaryMedical POST).
+        // Validated here, before any persistence, so a bad submit can't half-save
+        // (main profile written but shift profile rejected, or vice versa).
+        if (model.Allergies.Contains(DietaryOptions.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
+        {
+            ModelState.AddModelError(nameof(model.AllergyOtherText),
+                _localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
         }
 
         if (ModelState.ErrorCount > 0)
@@ -692,6 +710,17 @@ public class ProfileController : HumansControllerBase
         await _profileService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
         await _shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
+
+        // Persist meal preference + allergies onto the shift profile. Load the
+        // existing profile and set ONLY these three fields so Intolerances,
+        // IntoleranceOtherText, and MedicalConditions (owned by the DietaryMedical
+        // page) are preserved — we deliberately do not use
+        // DietaryMedicalViewModel.ApplyTo, which would null those out.
+        var sp = await _shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+        sp.DietaryPreference = string.IsNullOrWhiteSpace(model.DietaryPreference) ? null : model.DietaryPreference;
+        sp.Allergies = [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))];
+        sp.AllergyOtherText = model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null;
+        await _shiftMgmt.UpdateShiftProfileAsync(sp);
 
         SetSuccess(_localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));

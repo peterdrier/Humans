@@ -346,6 +346,26 @@ public class ProfileViewModel
     /// Posted from the Edit form so the same submit saves preferences alongside the profile.
     /// </summary>
     public List<Guid> EditableShiftTagIds { get; set; } = [];
+
+    /// <summary>
+    /// Dietary preference (single choice). Surfaced on the Edit page as a second
+    /// entry point for the same <see cref="Humans.Domain.Entities.VolunteerEventProfile.DietaryPreference"/>
+    /// field also editable on the dedicated DietaryMedical page. Empty = not set.
+    /// </summary>
+    public string DietaryPreference { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Selected allergy chips. May include the "Other" sentinel, which pairs with
+    /// <see cref="AllergyOtherText"/>. Writes to
+    /// <see cref="Humans.Domain.Entities.VolunteerEventProfile.Allergies"/>.
+    /// </summary>
+    public List<string> Allergies { get; set; } = [];
+
+    /// <summary>
+    /// Free-text detail when "Other" allergy is selected.
+    /// </summary>
+    [StringLength(500)]
+    public string? AllergyOtherText { get; set; }
 }
 
 /// <summary>
