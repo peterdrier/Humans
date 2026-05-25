@@ -32,4 +32,18 @@ public class TeamPageArchitectureTests
             .Should().BeTrue(
                 because: "application services are terminal; behavior changes belong on the interface");
     }
+
+    [HumansFact]
+    public void TeamPageService_HasNoRepositoryDependencies()
+    {
+        // Orchestrator-no-repository guard. No universal enforcer covers this yet
+        // (A2 deferred); HUM0017 only catches cross-section repository injection.
+        var ctor = typeof(TeamPageService).GetConstructors().Single();
+        var repoParam = ctor.GetParameters()
+            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
+                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
+
+        repoParam.Should().BeNull(
+            because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");
+    }
 }
