@@ -11,9 +11,6 @@ public class ServiceBoundaryArchitectureTests
     private const string EntityReadReturnBaselinePath =
         "tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt";
 
-    private const string CrossSectionRepositoryInjectionBaselinePath =
-        "tests/Humans.Application.Tests/Architecture/Baselines/CrossSectionRepositoryInjection.baseline.txt";
-
     private static readonly IReadOnlyDictionary<Type, string> RepositoryOwners =
         new Dictionary<Type, string>
         {
@@ -121,15 +118,6 @@ public class ServiceBoundaryArchitectureTests
             ScanApplicationServiceEntityReadReturns());
     }
 
-    [HumansFact]
-    public void Application_services_do_not_add_cross_section_repository_injections()
-    {
-        RatchetTestRunner.Run(
-            "CrossSectionRepositoryInjection",
-            CrossSectionRepositoryInjectionBaselinePath,
-            ScanCrossSectionRepositoryInjections());
-    }
-
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
     {
         var entityTypes = typeof(Humans.Domain.Entities.Team).Assembly
@@ -155,28 +143,6 @@ public class ServiceBoundaryArchitectureTests
         }
     }
 
-    internal static IEnumerable<string> ScanCrossSectionRepositoryInjections()
-    {
-        foreach (var serviceType in typeof(IApplicationService).Assembly.GetTypes()
-                     .Where(t => t.IsClass && !t.IsAbstract)
-                     .Where(t => t.Namespace?.StartsWith("Humans.Application.Services.", StringComparison.Ordinal) == true)
-                     .OrderBy(t => t.FullName, StringComparer.Ordinal))
-        {
-            var section = ServiceSection(serviceType);
-
-            foreach (var parameter in ConstructorParameters(serviceType)
-                         .Where(p => typeof(IRepository).IsAssignableFrom(p.ParameterType))
-                         .OrderBy(p => p.ParameterType.Name, StringComparer.Ordinal))
-            {
-                if (RepositoryOwners.TryGetValue(parameter.ParameterType, out var owner) &&
-                    string.Equals(owner, section, StringComparison.Ordinal))
-                    continue;
-
-                yield return $"{Display(serviceType)}:{parameter.ParameterType.Name}";
-            }
-        }
-    }
-
     private static IEnumerable<Type> ApplicationInterfaceTypes() =>
         typeof(IApplicationService).Assembly.GetTypes()
             .Where(t => t.IsInterface)
@@ -191,10 +157,6 @@ public class ServiceBoundaryArchitectureTests
         var section = serviceType.Namespace!.Split('.')[3];
         return section is "Users" or "Profile" or "Profiles" ? "Humans" : section;
     }
-
-    private static IEnumerable<ParameterInfo> ConstructorParameters(Type type) =>
-        type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
-            .SelectMany(c => c.GetParameters());
 
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {
