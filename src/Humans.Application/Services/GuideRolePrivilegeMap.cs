@@ -22,6 +22,8 @@ public static class GuideRolePrivilegeMap
             ["Feedback Admin"] = RoleNames.FeedbackAdmin,
             ["Human Admin"] = RoleNames.HumanAdmin,
             ["Finance Admin"] = RoleNames.FinanceAdmin,
+            ["Events Admin"] = RoleNames.EventsAdmin,
+            ["Store Admin"] = RoleNames.StoreAdmin,
             ["Consent Coordinator"] = RoleNames.ConsentCoordinator,
             ["Volunteer Coordinator"] = RoleNames.VolunteerCoordinator
         };

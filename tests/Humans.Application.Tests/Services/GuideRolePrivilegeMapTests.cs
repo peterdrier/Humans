@@ -14,6 +14,8 @@ public class GuideRolePrivilegeMapTests
     [InlineData("NoInfo Admin", RoleNames.NoInfoAdmin)]
     [InlineData("Human Admin", RoleNames.HumanAdmin)]
     [InlineData("Finance Admin", RoleNames.FinanceAdmin)]
+    [InlineData("Events Admin", RoleNames.EventsAdmin)]
+    [InlineData("Store Admin", RoleNames.StoreAdmin)]
     [InlineData("Feedback Admin", RoleNames.FeedbackAdmin)]
     [InlineData("Ticket Admin", RoleNames.TicketAdmin)]
     [InlineData("Consent Coordinator", RoleNames.ConsentCoordinator)]
