@@ -25,6 +25,10 @@ public class ExpenseReport
     public Guid? LastRejectedByUserId { get; set; }
     public Instant? LastRejectedAt { get; set; }
     public string? HoldedDocId { get; set; }
+    /// <summary>Holded contact id for this submitter (set on first push). Links to creditor balance + payments.</summary>
+    public string? HoldedContactId { get; set; }
+    /// <summary>Resolved 400000xx supplier-account number (supplierRecord.num), cached at push time.</summary>
+    public int? HoldedSupplierAccountNum { get; set; }
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 

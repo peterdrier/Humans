@@ -22,6 +22,8 @@ public class ExpenseReportConfiguration : IEntityTypeConfiguration<ExpenseReport
         b.Property(x => x.Total).HasColumnType("decimal(12,2)");
         b.Property(x => x.LastRejectionReason).HasMaxLength(1000);
         b.Property(x => x.HoldedDocId).HasMaxLength(64);
+        b.Property(x => x.HoldedContactId).HasMaxLength(64);
+        b.HasIndex(x => x.HoldedContactId);
 
         b.HasMany(x => x.Lines)
             .WithOne()
