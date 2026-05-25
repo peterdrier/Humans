@@ -75,14 +75,14 @@ public class CityPlanningApiController(
         var response = history
             .OrderByDescending(h => h.ModifiedAt)
             .Select(h => new
-        {
-            id = h.Id,
-            modifiedByDisplayName = h.ModifiedByDisplayName,
-            modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
-            areaSqm = h.AreaSqm,
-            note = h.Note,
-            geoJson = h.GeoJson,
-        });
+            {
+                id = h.Id,
+                modifiedByDisplayName = h.ModifiedByDisplayName,
+                modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
+                areaSqm = h.AreaSqm,
+                note = h.Note,
+                geoJson = h.GeoJson,
+            });
         return Ok(response);
     }
 

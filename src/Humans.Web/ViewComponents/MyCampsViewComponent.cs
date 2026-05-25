@@ -31,11 +31,11 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
                     Memberships = g
                         .OrderBy(m => m.CampName, StringComparer.OrdinalIgnoreCase)
                         .Select(m => new MyCampsMembership
-                    {
-                        CampSlug = m.CampSlug,
-                        CampName = m.CampName,
-                        Status = m.Status
-                    }).ToList()
+                        {
+                            CampSlug = m.CampSlug,
+                            CampName = m.CampName,
+                            Status = m.Status
+                        }).ToList()
                 })
                 .ToList();
 
