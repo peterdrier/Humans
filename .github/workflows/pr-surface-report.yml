@@ -40,7 +40,7 @@ jobs:
             --json-output pr-surface-report.json
 
       - name: Post or update PR comment
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
