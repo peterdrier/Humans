@@ -176,6 +176,18 @@ TDD per project doctrine (logic + regression-prone). Place under `tests/Humans.W
 
 No changes. All authorization is delegated to the existing `/Profile/Me/DietaryMedical` page and `ShiftsController.SignUp` paths. No new data is collected, so GDPR posture (right-to-erasure, export, retention) is unchanged — `docs/features/profiles/dietary-medical-nudge.md` already covers it.
 
+## Edit-page entry point (added during implementation)
+
+Added at the user's request after smoke-testing, **not in the original design above**. Surfaces **meal preference + allergies** under the **General Information** section of `/Profile/Me/Edit` as a second entry point, keeping the dedicated `/Profile/Me/DietaryMedical` page.
+
+- **Scope:** only `DietaryPreference` + `Allergies` (+ `AllergyOtherText`). `Intolerances` / `IntoleranceOtherText` / `MedicalConditions` stay owned by the DietaryMedical page — medical is GDPR Art. 9 health data and is deliberately kept off the general profile form.
+- **Write path:** `ProfileController.Edit` POST loads the existing `VolunteerEventProfile` via `GetOrCreateShiftProfileAsync` and sets only the three fields, so it never clobbers the DietaryMedical-owned fields (regression-tested in `ProfileControllerEditTests`).
+- **Read path:** Edit GET populates the three fields from `GetShiftProfileAsync(includeMedical: false)`.
+- **UI:** mirrors `DietaryMedical.cshtml` (radio + allergy chips + "Other" reveal), reuses existing `Profile_DietaryMedical_*` resource keys and `DietaryOptions` sets.
+- **Validation:** allergy "Other" requires text (mirrors the DietaryMedical POST). `DietaryPreference` enum validation is the same known gap noted below.
+
+See US-35.7 in `docs/features/profiles/dietary-medical-nudge.md`.
+
 ## Out of Scope (YAGNI)
 
 Recorded so the next engineer doesn't ask:

@@ -1536,3 +1536,27 @@ EOF
 ```
 
 - [ ] **Step 3: Report the PR URL** back to the user and close out the implementation.
+
+---
+
+## Chunk 8 — Meal preference + allergies on Profile Edit (added mid-implementation)
+
+**Not in the original plan.** Added during execution at the user's request after smoke-testing: surface **meal preference + allergies** under the **General Information** section of `/Profile/Me/Edit`, as a second entry point alongside the dedicated `/Profile/Me/DietaryMedical` page (which stays). Decisions confirmed with the user: keep the DietaryMedical page; only meal preference + allergies on Edit (intolerances + medical conditions remain owned by the DietaryMedical page, medical being GDPR Art. 9 health data).
+
+**Files:**
+- `src/Humans.Web/Models/ProfileViewModel.cs` — added `DietaryPreference`, `Allergies` (`List<string>`), `AllergyOtherText`.
+- `src/Humans.Web/Controllers/ProfileController.cs` — Edit GET populates the 3 fields from `_shiftMgmt.GetShiftProfileAsync(includeMedical:false)`; Edit POST validates the allergy-Other rule, then `GetOrCreateShiftProfileAsync` → sets ONLY `DietaryPreference` + filtered `Allergies` + `AllergyOtherText` → `UpdateShiftProfileAsync`. **Load-bearing invariant:** loads the existing profile and never touches `Intolerances` / `IntoleranceOtherText` / `MedicalConditions` (regression-tested).
+- `src/Humans.Web/Views/Profile/Edit.cshtml` — meal-pref radio + allergy chips + "Other" reveal under General Information, mirroring `DietaryMedical.cshtml`, reusing existing `Profile_DietaryMedical_*` resource keys; CSP-nonce JS toggle for the Other reveal.
+- Tests: 4 added to `tests/Humans.Application.Tests/Controllers/ProfileControllerEditTests.cs` (writes dietary, does-NOT-clobber intolerances/medical regression, allergy-Other-invalid validation, GET populates).
+
+**Commit:** `3d9bc4e8`.
+
+## Execution record (2026-05-25)
+
+- All 8 chunks implemented via subagent-driven development (implementer + code-quality review per task; spec-review skipped per user after Chunk 1).
+- `dotnet test tests/Humans.Application.Tests` → **2599 passed, 0 failed, 1 skipped** on final branch (incl. architecture baselines + SurfaceBudget tests).
+- Manual browser smoke test PASSED for the production case (approved active volunteer + qualifying signup + empty dietary): dashboard nudge (qualifying copy), `/Shifts` red banner, all sign-up buttons disabled with tooltip, "Tell us now" → DietaryMedical form (`returnAction=shifts` carryover) → save → redirect to `/Shifts`, banner gone + buttons re-enabled. Negative case (dietary filled → no nudge) also confirmed.
+- Security review: no HIGH/MEDIUM-confidence vulnerabilities (CSV formula-injection neutralized, medical excluded from cantina roster, signup-replay owner-scoped, no unsafe `Html.Raw`).
+- Repo-rule check: `IShiftSignupService` is not `[SurfaceBudget]`-ratcheted, so `PeekRangeShiftsAsync` adds no budgeted surface; zero methods added to any budgeted interface.
+
+**Known follow-up (not blocking):** `DietaryPreference` is persisted as any non-blank string; spec US-35.2 expects validation against the four `DietaryOptions.DietaryPreferences` values. Same gap exists on the pre-existing `DietaryMedical` page. Low risk (Razor escapes on render, CSV writer neutralizes formulas). Tighten in both places if desired.

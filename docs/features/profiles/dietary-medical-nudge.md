@@ -115,6 +115,17 @@ No retention policy changes; the data lives only as long as the user account doe
 - A banner on `/Shifts` and `/Shifts/Mine` (`DietaryMissingBannerViewComponent`) plus disabled Sign-Up buttons catch humans who already have a qualifying signup but no dietary on file.
 - See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md`.
 
+### US-35.7: Meal preference + allergies editable from the main profile
+**As a** human filling in my profile
+**I want to** set my meal preference and allergies under General Information on `/Profile/Me/Edit`
+**So that** I don't have to discover the dedicated dietary page to record the basics
+
+**Acceptance Criteria:**
+- `/Profile/Me/Edit` → **General Information** shows a meal-preference radio group + allergy chips (with an "Other" free-text reveal), reusing the `Profile_DietaryMedical_*` resource keys and the `DietaryOptions` option sets.
+- These write to the **same** `VolunteerEventProfile` fields as the dedicated `/Profile/Me/DietaryMedical` page; the Edit save updates **only** `DietaryPreference` + `Allergies` (+ `AllergyOtherText`) and leaves `Intolerances` / `IntoleranceOtherText` / `MedicalConditions` untouched (those remain owned by the DietaryMedical page — medical is GDPR Art. 9 health data kept off the general profile form).
+- The dedicated `/Profile/Me/DietaryMedical` page is retained (it's the redirect target for the signup hard-gate and the banner CTA).
+- See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md` (§ "Edit-page entry point").
+
 ## Qualifying Shift
 
 A shift qualifies the user for the nudge when:
