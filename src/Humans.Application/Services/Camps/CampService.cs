@@ -31,6 +31,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
+    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
 
@@ -49,6 +50,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         INotificationEmitter notificationEmitter,
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
+        IEarlyEntryInvalidator earlyEntryInvalidator,
         IClock clock,
         ILogger<CampService> logger)
     {
@@ -61,6 +63,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         _notificationEmitter = notificationEmitter;
         _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
+        _earlyEntryInvalidator = earlyEntryInvalidator;
         _clock = clock;
         _logger = logger;
     }
@@ -1389,6 +1392,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         member.RemovedByUserId = actorUserId;
         member.HasEarlyEntry = false;
         await _repo.SaveMemberAsync(member, cancellationToken);
+        _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
             auditAction, nameof(CampMember), member.Id,
@@ -1866,6 +1870,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         member.HasEarlyEntry = granted;
         await _repo.SaveMemberAsync(member, cancellationToken);
+        _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
             granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,

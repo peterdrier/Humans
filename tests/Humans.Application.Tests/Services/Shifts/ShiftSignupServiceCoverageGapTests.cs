@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Shifts;
@@ -73,6 +74,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             _notificationService,
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
+            Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance);

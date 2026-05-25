@@ -1,6 +1,7 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
@@ -28,6 +29,7 @@ public sealed class ShiftSignupService(
     INotificationService notificationService,
     IAdminAuthorizationService adminAuthorization,
     IShiftViewInvalidator viewInvalidator,
+    IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge
@@ -157,6 +159,8 @@ public sealed class ShiftSignupService(
         await repo.SaveChangesAsync();
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
+        if (signup.Shift.IsEarlyEntry)
+            earlyEntryInvalidator.InvalidateUser(signup.UserId);
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
@@ -221,6 +225,8 @@ public sealed class ShiftSignupService(
         await repo.SaveChangesAsync();
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
+        if (signup.Shift.IsEarlyEntry)
+            earlyEntryInvalidator.InvalidateUser(signup.UserId);
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
@@ -738,6 +744,8 @@ public sealed class ShiftSignupService(
             }
 
             signup.Confirm(reviewerUserId, clock);
+            if (signup.Shift.IsEarlyEntry)
+                earlyEntryInvalidator.InvalidateUser(signup.UserId);
             approved.Add(signup);
         }
 
@@ -853,6 +861,8 @@ public sealed class ShiftSignupService(
         foreach (var signup in signups)
         {
             signup.Bail(actorUserId, clock, reason);
+            if (signup.Shift.IsEarlyEntry)
+                earlyEntryInvalidator.InvalidateUser(signup.UserId);
         }
 
         await repo.SaveChangesAsync();

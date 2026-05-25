@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Shifts;
@@ -67,6 +68,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             Substitute.For<INotificationService>(),
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
+            Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance);

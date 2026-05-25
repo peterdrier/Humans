@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Shifts;
@@ -77,6 +78,7 @@ public class ShiftSignupServicePeekRangeShiftsTests : IDisposable
             Substitute.For<INotificationService>(),
             adminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
+            Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             clock,
             NullLogger<ShiftSignupService>.Instance);

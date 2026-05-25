@@ -12,6 +12,7 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -62,6 +63,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             Substitute.For<INotificationService>(),
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
+            Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance);

@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
@@ -28,6 +29,7 @@ internal static class CampsSectionExtensions
             (CampsCampService)sp.GetRequiredKeyedService<ICampService>(CachingCampService.InnerServiceKey));
         // IUserDataContributor on the inner — matches User/Teams pattern (GDPR export iterates contributors).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
+        services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<CampsCampService>());
 
         // Owns CampInfo + CampSettingsInfo projection; invalidates after every write through this surface.
         services.AddSingleton<CachingCampService>();
