@@ -15,6 +15,10 @@ public class FinanceOverviewViewModel
     public decimal NetBalance { get; init; }
     public required IReadOnlyList<BudgetSlice> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSlice> ExpenseSlices { get; init; }
+
+    /// <summary>Holded actual spend per budget category (keyed by BudgetCategoryId).</summary>
+    public IReadOnlyDictionary<Guid, decimal> HoldedActualsByCategory { get; init; } =
+        new Dictionary<Guid, decimal>();
 }
 
 public class TicketingProjectionUpdateForm
