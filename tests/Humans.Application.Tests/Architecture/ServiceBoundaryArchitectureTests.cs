@@ -158,10 +158,6 @@ public class ServiceBoundaryArchitectureTests
         return section is "Users" or "Profile" or "Profiles" ? "Humans" : section;
     }
 
-    private static IEnumerable<ParameterInfo> ConstructorParameters(Type type) =>
-        type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
-            .SelectMany(c => c.GetParameters());
-
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {
         foreach (var method in serviceType.GetMethods().Where(IsReadMethod))
