@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Domain.Entities;
 using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
@@ -7,9 +6,8 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <summary>
 /// Repository for the persistent state owned by the Drive Activity monitor:
 /// the per-job "last run at" marker (stored in <c>system_settings</c> under a
-/// dedicated key), the anomaly audit-log entries the monitor emits, and the
-/// fallback lookup from a Google-OAuth <c>people/{id}</c> to a local user's
-/// email via the ASP.NET Identity login tables.
+/// dedicated key) and the fallback lookup from a Google-OAuth <c>people/{id}</c>
+/// to a local user's email via the ASP.NET Identity login tables.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,11 +17,10 @@ namespace Humans.Application.Interfaces.Repositories;
 /// respective services (e.g. <c>EmailOutboxService</c>).
 /// </para>
 /// <para>
-/// Anomaly audit entries are persisted here rather than through
-/// <c>IAuditLogService</c> so the write is atomic with the marker advance —
-/// the pre-§15 implementation relied on a shared Scoped <c>DbContext</c> to
-/// get that guarantee. <c>IAuditLogService</c> will migrate to the §15 pattern
-/// under issue #552; at that point this method can delegate to it.
+/// Anomaly audit entries are <em>not</em> persisted here — the service emits
+/// them through <c>IAuditLogService.LogAsync</c>, so the only section that
+/// writes <c>audit_log_entries</c> is the AuditLog section's repository
+/// (design-rules §2c / the AuditLog write boundary).
 /// </para>
 /// <para>
 /// The Identity login / user read is a cross-section fallback used only when
@@ -44,23 +41,15 @@ public interface IDriveActivityMonitorRepository : IRepository
     Task<Instant?> GetLastRunTimestampAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Persists the anomaly audit entries detected during this run, and — when
-    /// <paramref name="newLastRunAt"/> is not <c>null</c> — advances the
-    /// last-run marker. Everything commits in a single transaction so audit
-    /// entries and the marker never diverge.
+    /// Advances the last-run marker when <paramref name="newLastRunAt"/> is not
+    /// <c>null</c>; a <c>null</c> value is a no-op.
     /// </summary>
-    /// <param name="anomalies">
-    /// Fully-populated <see cref="AuditLogEntry"/> rows with their <c>Id</c>
-    /// and <c>OccurredAt</c> already set by the caller. The repository only
-    /// adds them to the context and saves.
-    /// </param>
     /// <param name="newLastRunAt">
     /// The instant to store as <c>DriveActivityMonitor:LastRunAt</c>. When
     /// <c>null</c>, the marker is left as-is so the next run re-processes the
     /// same window — used when at least one resource failed to query.
     /// </param>
-    Task PersistAnomaliesAsync(
-        IReadOnlyList<AuditLogEntry> anomalies,
+    Task AdvanceLastRunMarkerAsync(
         Instant? newLastRunAt,
         CancellationToken ct = default);
 

@@ -29,7 +29,7 @@ public class DriveActivityMonitorArchitectureTests
         paramTypes.Should().Contain(typeof(IGoogleDriveActivityClient),
             because: "Google Drive Activity API / Directory API calls go through the shape-neutral connector");
         paramTypes.Should().Contain(typeof(IDriveActivityMonitorRepository),
-            because: "SystemSettings and audit-log writes go through the owned repository (design-rules §3)");
+            because: "the last-run marker in SystemSettings goes through the owned repository (design-rules §3)");
         paramTypes.Should().Contain(typeof(ITeamResourceService),
             because: "the list of monitored resources comes from the team-resource section service, not a cross-section DB read");
     }
