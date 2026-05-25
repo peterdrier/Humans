@@ -75,6 +75,7 @@ HUM0009 | Class uses HumansDbContext but does not implement IRepository         
 HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods           | Error
 HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack) | Error
 HUM0020 | Caching decorator references a repository directly instead of the keyed inner service         | Error
+HUM0023 | Event DbSets may only be written by EventRepository                                           | Error
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
