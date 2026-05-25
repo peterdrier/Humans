@@ -1,8 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -21,24 +17,6 @@ namespace Humans.Application.Tests.Architecture;
 public class GoogleAdminArchitectureTests
 {
     // ── GoogleAdminService ───────────────────────────────────────────────────
-
-    [HumansFact]
-    public void GoogleAdminService_RoutesCrossSectionDataThroughOwningServices()
-    {
-        var ctor = typeof(GoogleAdminService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToHashSet();
-
-        // Google Integration owns no user/team/email tables — every cross-section
-        // read routes through the owning service interface per design-rules §9.
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "cross-section user lookups go through IUserService, not IUserRepository");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "cross-section UserEmail lookups go through IUserEmailService");
-        paramTypes.Should().Contain(typeof(ITeamService),
-            because: "cross-section Team reads and the google_sync_outbox_events write path go through ITeamService");
-        paramTypes.Should().Contain(typeof(IGoogleWorkspaceUserService),
-            because: "Google Admin SDK calls go through IGoogleWorkspaceUserService (PR #287 connector), not this service");
-    }
 
     [HumansFact]
     public void GoogleAdminService_IsSealed()

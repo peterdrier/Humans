@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
-using Humans.Application.Services.Calendar;
 using Humans.Application.Services.Camps;
 using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
@@ -22,11 +21,9 @@ namespace Humans.Application.Tests.Architecture.Rules;
 /// </para>
 ///
 /// <para>
-/// Allowlisted services (audited 2026-05-12, align/auditlog Phase 2 Step 5):
+/// Allowlisted services (audited 2026-05-25, Wave B drift reconciliation):
 /// <list type="bullet">
-///   <item><see cref="CalendarService"/> — short-TTL cache for Google Calendar data</item>
 ///   <item><see cref="CampContactService"/> — contact name cache</item>
-///   <item><see cref="CampService"/> — camp listing cache</item>
 ///   <item><see cref="IssuesService"/> — issues cache</item>
 ///   <item><see cref="LegalDocumentService"/> — document version cache</item>
 ///   <item><see cref="NotificationEmitter"/> — throttle-key cache</item>
@@ -35,24 +32,23 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="NotificationService"/> — notification preferences cache</item>
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
 /// </list>
+/// Removed (caching moved to decorators):
+/// <list type="bullet">
+///   <item><c>CalendarService</c> — no longer injects IMemoryCache (Wave B reconciliation)</item>
+///   <item><c>CampService</c> — caching moved to CachingCampService decorator (T-06)</item>
+/// </list>
 /// </para>
-///
-/// This rule generalises per-section tests such as
-/// <c>AuditLogService_HasNoIMemoryCacheConstructorParameter</c> — those can
-/// be deleted in Phase 3 once this generic rule is confirmed green.
 /// </summary>
 public class ApplicationServicesTakeNoMemoryCacheRule
 {
     /// <summary>
     /// Services that legitimately inject <see cref="IMemoryCache"/>.
-    /// Audited 2026-05-12. Add to this set only when a new cache usage is
+    /// Audited 2026-05-25 (Wave B drift reconciliation). Add to this set only when a new cache usage is
     /// intentional and reviewed.
     /// </summary>
     private static readonly HashSet<Type> Allowlist =
     [
-        typeof(CalendarService),
         typeof(CampContactService),
-        typeof(CampService),
         typeof(IssuesService),
         typeof(LegalDocumentService),
         typeof(NotificationEmitter),

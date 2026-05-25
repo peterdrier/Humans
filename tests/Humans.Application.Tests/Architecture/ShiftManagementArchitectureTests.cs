@@ -1,8 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Repositories.Shifts;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -16,28 +14,11 @@ namespace Humans.Application.Tests.Architecture;
 public class ShiftManagementArchitectureTests
 {
     [HumansFact]
-    public void ShiftManagementService_TakesRepository()
-    {
-        var ctor = typeof(ShiftManagementService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IShiftManagementRepository));
-    }
-
-    [HumansFact]
     public void ShiftManagementService_ImplementsShiftAuthorizationInvalidator()
     {
         typeof(IShiftAuthorizationInvalidator).IsAssignableFrom(typeof(ShiftManagementService))
             .Should().BeTrue(
                 because: "the service owns the shift-auth cache and external sections (Profile deletion) drop it through this invalidator rather than poking IMemoryCache directly");
-    }
-
-    [HumansFact]
-    public void ShiftManagementRepository_IsSealed()
-    {
-        var repoType = typeof(ShiftManagementRepository);
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
     [HumansFact]

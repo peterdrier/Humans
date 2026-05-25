@@ -1,8 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using TeamPageService = Humans.Application.Services.Teams.TeamPageService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -29,21 +26,18 @@ public class TeamPageArchitectureTests
     }
 
     [HumansFact]
-    public void TeamPageService_DependsOnlyOnSiblingServiceInterfaces()
+    public void TeamPageService_IsSealed()
     {
-        var ctor = typeof(TeamPageService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITeamService));
-        paramTypes.Should().Contain(typeof(ITeamResourceService));
-        paramTypes.Should().Contain(typeof(IShiftManagementService));
-        paramTypes.Should().Contain(typeof(IUserServiceRead),
-            because: "user display-name lookups route through IUserServiceRead instead of a direct AspNetUsers query (design-rules §2c)");
+        typeof(TeamPageService).IsSealed
+            .Should().BeTrue(
+                because: "application services are terminal; behavior changes belong on the interface");
     }
 
     [HumansFact]
     public void TeamPageService_HasNoRepositoryDependencies()
     {
+        // Orchestrator-no-repository guard. No universal enforcer covers this yet
+        // (A2 deferred); HUM0017 only catches cross-section repository injection.
         var ctor = typeof(TeamPageService).GetConstructors().Single();
         var repoParam = ctor.GetParameters()
             .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
@@ -51,13 +45,5 @@ public class TeamPageArchitectureTests
 
         repoParam.Should().BeNull(
             because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");
-    }
-
-    [HumansFact]
-    public void TeamPageService_IsSealed()
-    {
-        typeof(TeamPageService).IsSealed
-            .Should().BeTrue(
-                because: "application services are terminal; behavior changes belong on the interface");
     }
 }

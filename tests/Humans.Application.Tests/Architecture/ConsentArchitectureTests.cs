@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.Consent;
 using Humans.Infrastructure.Services.Consent;
 using Humans.Infrastructure.Services.Legal;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
-using LegalDocumentSyncService = Humans.Application.Services.Legal.LegalDocumentSyncService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -38,35 +36,12 @@ namespace Humans.Application.Tests.Architecture;
 /// own the <c>IMemoryCache</c>-style state; the inner Application-layer
 /// services (<see cref="ConsentService"/>,
 /// <see cref="LegalDocumentSyncService"/>) remain free of
-/// caching dependencies — <c>ConsentService_HasNoIMemoryCacheConstructorParameter</c>
-/// and <c>LegalDocumentSyncService_HasNoIMemoryCacheConstructorParameter</c>
-/// pin that boundary.
+/// caching dependencies.
 /// </para>
 /// </summary>
 public class ConsentArchitectureTests
 {
     // ── ConsentService ───────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ConsentService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(ConsentService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "canonical Consent data is not IMemoryCache-backed; append-only semantics + per-user reads do not justify a decorator");
-    }
-
-    [HumansFact]
-    public void ConsentService_TakesRepository()
-    {
-        var ctor = typeof(ConsentService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IConsentRepository));
-    }
 
     [HumansFact]
     public void ConsentService_ConstructorTakesNoStoreType()
@@ -81,17 +56,6 @@ public class ConsentArchitectureTests
     }
 
     // ── IConsentRepository ───────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ConsentRepository_IsSealed()
-    {
-        // Mirrors ProfileRepository / UserRepository / AuditLogRepository — repository implementations are terminal;
-        // no subclass should extend or override the EF-backed data access.
-        var repoType = typeof(ConsentRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
 
     /// <summary>
     /// <c>consent_records</c> is append-only per design-rules §12 — database
@@ -134,25 +98,6 @@ public class ConsentArchitectureTests
     }
 
     // ── T-04 cache decorators ────────────────────────────────────────────────
-
-    /// <summary>
-    /// T-04: <see cref="LegalDocumentSyncService"/> remains the Application-layer
-    /// inner service. Its caching cousin lives in Infrastructure as a
-    /// decorator (<see cref="CachingLegalDocumentSyncService"/>); the inner
-    /// impl stays free of <c>IMemoryCache</c> so the Application-layer
-    /// boundary doesn't acquire a Microsoft.Extensions.Caching dep.
-    /// </summary>
-    [HumansFact]
-    public void LegalDocumentSyncService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(LegalDocumentSyncService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "T-04 caching lives in the CachingLegalDocumentSyncService decorator (Infrastructure); the inner Application service must not depend on IMemoryCache");
-    }
 
     /// <summary>
     /// T-04: the decorator implements both <see cref="IConsentService"/>

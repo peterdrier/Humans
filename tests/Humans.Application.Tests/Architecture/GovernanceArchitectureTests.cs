@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Governance;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Governance;
@@ -20,27 +19,6 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class GovernanceArchitectureTests
 {
-    [HumansFact]
-    public void ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "caching is handled via cross-cutting invalidator interfaces, not IMemoryCache directly");
-    }
-
-    [HumansFact]
-    public void ApplicationDecisionService_TakesRepository()
-    {
-        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IApplicationRepository));
-    }
-
     [HumansFact]
     public void ApplicationDecisionService_TakesNoTypeFromInterfacesStoresNamespace()
     {

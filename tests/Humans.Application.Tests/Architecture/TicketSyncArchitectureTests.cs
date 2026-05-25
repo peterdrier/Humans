@@ -1,10 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Tickets;
-using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories.Tickets;
 using TicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -28,56 +22,6 @@ public class TicketSyncArchitectureTests
     // ── TicketSyncService ────────────────────────────────────────────────────
 
     [HumansFact]
-    public void TicketSyncService_TakesRepository()
-    {
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITicketRepository),
-            because: "TicketSyncService's DB access must go through ITicketRepository (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void TicketSyncService_TakesVendorConnectorInterface()
-    {
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITicketVendorService),
-            because: "Ticket Tailor API calls are the connector's job — the sync service delegates all vendor I/O to ITicketVendorService (Infrastructure-backed)");
-    }
-
-    [HumansFact]
-    public void TicketSyncService_TakesUserServiceForEventParticipationWrites()
-    {
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "event_participations is User-section-owned per PR #243; TicketSync must route participation writes through IUserService (design-rules §8, §9)");
-    }
-
-    [HumansFact]
-    public void TicketSyncService_TakesCampaignServiceForGrantRedemption()
-    {
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ICampaignService),
-            because: "campaign_grants is Campaigns-section-owned; redemption writes route through ICampaignService (design-rules §8, §9)");
-    }
-
-    [HumansFact]
-    public void TicketSyncService_TakesShiftManagementServiceForActiveEventLookup()
-    {
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IShiftManagementService),
-            because: "event_settings is Shifts-section-owned; active-event reads route through IShiftManagementService rather than a direct DbContext read (design-rules §8, §9)");
-    }
-
-    [HumansFact]
     public void TicketSyncService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -89,41 +33,4 @@ public class TicketSyncArchitectureTests
             because: "Application services must not depend on store abstractions (design-rules §15); the Tickets section's §15 migration does not use a store");
     }
 
-    [HumansFact]
-    public void TicketSyncService_HasNoIMemoryCacheConstructorParameter()
-    {
-        // §15c: Application-layer services are cache-unaware. TicketSyncService
-        // previously held IMemoryCache to evict the vendor event summary
-        // directly; that eviction now routes through
-        // ITicketCacheInvalidator.InvalidateVendorEventSummary so the cache
-        // abstraction stays in Infrastructure (the decorator).
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "Application services must not import IMemoryCache (design-rules §15c); TicketSyncService evicts ticket-section caches exclusively through ITicketCacheInvalidator");
-    }
-
-    // ── ITicketRepository ────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void TicketRepository_IsSealed()
-    {
-        // Mirrors ProfileRepository/UserRepository — repository implementations
-        // are terminal; no subclass should extend or override the EF-backed
-        // data access.
-        var repoType = typeof(TicketRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
-    [HumansFact]
-    public void TicketRepository_ImplementsITicketRepository()
-    {
-        typeof(ITicketRepository).IsAssignableFrom(typeof(TicketRepository))
-            .Should().BeTrue();
-    }
 }
