@@ -1,8 +1,10 @@
+using Humans.Domain.Attributes;
 using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
+[Section("Finance")]
 public interface IHoldedRepository : IRepository
 {
     // Category map
