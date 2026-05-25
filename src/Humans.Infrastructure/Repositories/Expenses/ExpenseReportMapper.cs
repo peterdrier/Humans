@@ -31,6 +31,8 @@ internal static class ExpenseReportMapper
         LastRejectedByUserId = r.LastRejectedByUserId,
         LastRejectedAt = r.LastRejectedAt,
         HoldedDocId = r.HoldedDocId,
+        HoldedContactId = r.HoldedContactId,
+        HoldedSupplierAccountNum = r.HoldedSupplierAccountNum,
         CreatedAt = r.CreatedAt,
         UpdatedAt = r.UpdatedAt,
         Lines = r.Lines.Select(ToLineDto).ToList()

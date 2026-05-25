@@ -25,6 +25,8 @@ public sealed record ExpenseReportDto
     public Guid? LastRejectedByUserId { get; init; }
     public Instant? LastRejectedAt { get; init; }
     public string? HoldedDocId { get; init; }
+    public string? HoldedContactId { get; init; }
+    public int? HoldedSupplierAccountNum { get; init; }
     public required Instant CreatedAt { get; init; }
     public required Instant UpdatedAt { get; init; }
     public required IReadOnlyList<ExpenseLineDto> Lines { get; init; }

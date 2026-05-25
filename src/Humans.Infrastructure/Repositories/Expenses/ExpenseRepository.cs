@@ -362,6 +362,19 @@ internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SetHoldedContactLinkAsync(
+        Guid reportId, string holdedContactId, int? supplierAccountNum,
+        Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == reportId, ct);
+        if (r is null) return;
+        r.HoldedContactId = holdedContactId;
+        if (supplierAccountNum is not null) r.HoldedSupplierAccountNum = supplierAccountNum;
+        r.UpdatedAt = updatedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task IncrementOutboxRetryAsync(
         Guid outboxEventId, string error, CancellationToken ct = default)
     {
