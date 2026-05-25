@@ -147,7 +147,7 @@ public class ShiftsController(
     // ProfileController.DietaryMedical with returnAction=signup so the
     // post-save handler can replay the signup. Medical conditions are
     // intentionally excluded from the gate (only DietaryPreference blocks).
-    private async Task<IActionResult?> RedirectIfDietaryMissingAsync(User user, Guid shiftId)
+    private async Task<IActionResult?> RedirectIfDietaryMissingAsync(UserInfo user, Guid shiftId)
     {
         var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
         if (shift is null || !shift.QualifiesForCantinaMeal()) return null;
@@ -169,7 +169,7 @@ public class ShiftsController(
     // SetInfo message key, so the user sees a consistent nudge regardless of
     // which signup path tripped the gate.
     private async Task<IActionResult?> RedirectIfDietaryMissingForRangeAsync(
-        User user, Guid rotaId, int startDayOffset, int endDayOffset)
+        UserInfo user, Guid rotaId, int startDayOffset, int endDayOffset)
     {
         var rangeShifts = await signupService.PeekRangeShiftsAsync(rotaId, startDayOffset, endDayOffset, HttpContext.RequestAborted);
         if (rangeShifts.Count == 0) return null;

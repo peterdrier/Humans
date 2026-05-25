@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
@@ -6,8 +5,6 @@ using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftMan
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
-using CantinaRosterServiceImpl = Humans.Application.Services.Cantina.CantinaRosterService;
-using CantinaAccessServiceImpl = Humans.Application.Services.Cantina.CantinaAccessService;
 using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
 using ShiftsWorkloadService = Humans.Application.Services.Shifts.Workload.WorkloadService;
 using ShiftsBurnSettingsService = Humans.Application.Services.Shifts.BurnSettingsService;
@@ -76,19 +73,6 @@ internal static class ShiftsSectionExtensions
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService,
             Humans.Application.Services.Shifts.RotaCoordinatorMessageService>();
-
-        // Cantina Daily Roster — read-only cross-section service that stitches
-        // the on-site cohort (from IShiftManagementRepository), their
-        // VolunteerEventProfile rows, burner-name labels (IProfileService),
-        // and User.DisplayName fallback (IUserService) into one DTO for the
-        // /Cantina/Roster page (feature #36 — docs/features/cantina/daily-roster.md).
-        // No repository of its own; supporting query lives on IShiftManagementRepository.
-        services.AddScoped<ICantinaRosterService, CantinaRosterServiceImpl>();
-
-        // Cantina access gate — OR-chain of (Admin | NoInfoAdmin | VolunteerCoordinator)
-        // OR active membership on any team whose Name contains "Cantina". Reused by the
-        // CantinaController HTTP 403 gate and by the nav-link visibility check (Task 7).
-        services.AddScoped<ICantinaAccessService, CantinaAccessServiceImpl>();
 
         return services;
     }

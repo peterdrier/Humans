@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -56,6 +57,7 @@ namespace Humans.Application.Tests.Controllers;
 public class ProfileControllerDietaryMedicalReplayTests
 {
     private readonly UserManager<User> _userManager;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly ProfileController _controller;
@@ -81,8 +83,10 @@ public class ProfileControllerDietaryMedicalReplayTests
             .Returns(AuthorizationResult.Success());
 
         _controller = new ProfileController(
+            _userService,
             _userManager,
-            Substitute.For<IProfileService>(),
+            Substitute.For<IProfilePictureService>(),
+            Substitute.For<IProfileEditorService>(),
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
             Substitute.For<IUserEmailService>(),
@@ -93,24 +97,22 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IRoleAssignmentService>(),
             _signupService,
             _shiftMgmt,
+            Substitute.For<IShiftView>(),
             Substitute.For<IGdprExportService>(),
             configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
-            Substitute.For<ITicketQueryService>(),
+            Substitute.For<ITicketService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),
-            new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             authorizationService,
-            Substitute.For<IUserService>(),
-            Substitute.For<IConsentService>(),
+            Substitute.For<IConsentServiceRead>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculator>(),
-            Substitute.For<IHttpClientFactory>(),
             Substitute.For<SignInManager<User>>(
                 _userManager,
                 Substitute.For<IHttpContextAccessor>(),
@@ -147,8 +149,17 @@ public class ProfileControllerDietaryMedicalReplayTests
         // branches succeed without a full MVC routing context.
         _controller.Url = Substitute.For<IUrlHelper>();
 
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
-            .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
+                profile: null,
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: []));
 
         // Happy-path scaffolding for the dietary save itself — every test
         // except the validation-failure case needs these to reach the

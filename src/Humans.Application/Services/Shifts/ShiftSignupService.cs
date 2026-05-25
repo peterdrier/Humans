@@ -495,7 +495,7 @@ public sealed class ShiftSignupService(
         int endDayOffset,
         CancellationToken ct = default)
     {
-        var rota = await _repo.GetRotaWithShiftsAsync(rotaId, ct);
+        var rota = await repo.GetRotaWithShiftsAsync(rotaId, ct);
         if (rota is null) return Array.Empty<Shift>();
 
         return rota.Shifts

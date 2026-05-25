@@ -672,45 +672,13 @@ internal sealed class ShiftManagementRepository(IDbContextFactory<HumansDbContex
         Guid eventSettingsId,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ShiftSignups
             .AsNoTracking()
             .Include(s => s.Shift)
             .Where(s => s.UserId == userId
                 && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
                 && s.Shift!.Rota!.EventSettingsId == eventSettingsId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<VolunteerEventProfile>> GetOnSiteVolunteerProfilesForDayAsync(
-        int dayOffset,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        // Subquery: distinct UserIds with an active signup on this day's shifts.
-        var onSiteUserIds = ctx.ShiftSignups
-            .Where(ss => (ss.Status == SignupStatus.Pending || ss.Status == SignupStatus.Confirmed)
-                      && ss.Shift!.DayOffset == dayOffset)
-            .Select(ss => ss.UserId)
-            .Distinct();
-
-        return await ctx.VolunteerEventProfiles
-            .AsNoTracking()
-            .Where(vep => onSiteUserIds.Contains(vep.UserId))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
-        int dayOffset, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftSignups
-            .AsNoTracking()
-            .Where(ss => (ss.Status == SignupStatus.Pending || ss.Status == SignupStatus.Confirmed)
-                      && ss.Shift!.DayOffset == dayOffset)
-            .Select(ss => ss.UserId)
-            .Distinct()
             .ToListAsync(ct);
     }
 

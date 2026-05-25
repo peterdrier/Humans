@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
@@ -59,6 +60,7 @@ public class ProfileControllerEditTests
         Substitute.For<IApplicationDecisionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _profileId = Guid.NewGuid();
@@ -100,7 +102,7 @@ public class ProfileControllerEditTests
             Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
             _shiftMgmt,
-            Substitute.For<IShiftView>(),
+            _shiftView,
             Substitute.For<IGdprExportService>(),
             _configuration,
             new ConfigurationRegistry(),
@@ -136,6 +138,11 @@ public class ProfileControllerEditTests
         userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
         userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
+
+        // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
+        // an empty view so the GET path doesn't NRE before the dietary population.
+        _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new ShiftUserView(_userId, null, null, null, [], []));
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
@@ -334,9 +341,8 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToShiftProfile()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<MemberApplication>());
+            .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
         model.DietaryPreference = "Vegan";
@@ -358,9 +364,8 @@ public class ProfileControllerEditTests
         // Load-bearing regression: the Edit page owns only meal-pref + allergies.
         // Intolerances, IntoleranceOtherText, and MedicalConditions are owned by the
         // DietaryMedical page (medical = GDPR Art. 9) and must survive an Edit save.
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<MemberApplication>());
+            .Returns([]);
 
         var existing = new VolunteerEventProfile
         {
@@ -387,9 +392,8 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveShiftProfile()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<MemberApplication>());
+            .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
         model.Allergies = ["Other"];
@@ -406,7 +410,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Get_PopulatesDietaryFieldsFromShiftProfile()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _shiftMgmt.GetShiftProfileAsync(_userId, false).Returns(new VolunteerEventProfile
         {
             UserId = _userId,

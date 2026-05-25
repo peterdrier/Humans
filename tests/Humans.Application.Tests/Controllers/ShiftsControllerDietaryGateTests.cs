@@ -1,18 +1,23 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web;
 using Humans.Web.Controllers;
+using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -39,9 +44,10 @@ public class ShiftsControllerDietaryGateTests
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IGeneralAvailabilityService _availabilityService =
         Substitute.For<IGeneralAvailabilityService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly UserManager<User> _userManager;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly User _user;
     private readonly ShiftsController _controller;
     private readonly ClaimsIdentity _identity;
@@ -50,25 +56,36 @@ public class ShiftsControllerDietaryGateTests
     {
         _user = new User { Id = Guid.NewGuid(), DisplayName = "Test Human", PreferredLanguage = "en" };
 
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(_user);
-
         var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
+        // The controller resolves the current user via IUserService.GetUserInfoAsync.
+        // The UserInfo carries a complete Profile so the name gate passes and the
+        // dietary gate (the unit under test) is reached.
+        _userService.GetUserInfoAsync(_user.Id, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfoWithName());
+
+        // Mine() reads shiftView.GetUserAsync(...).Signups (#720); return an
+        // empty, event-less view so the Mine-flag tests reach the dietary
+        // computation without a full shift-graph fixture.
+        _shiftView.GetUserAsync(_user.Id, Arg.Any<CancellationToken>())
+            .Returns(new ShiftUserView(_user.Id, null, null, null, [], []));
+
+        var builder = new ShiftBrowsePageBuilder(_shiftMgmt, _teamService);
+
         _controller = new ShiftsController(
             _shiftMgmt,
             _signupService,
             _availabilityService,
+            _shiftView,
             _teamService,
             _auditLogService,
+            _userService,
             localizer,
-            _userManager,
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
+            builder,
             NullLogger<ShiftsController>.Instance);
 
         _identity = new ClaimsIdentity(new[]
@@ -76,9 +93,32 @@ public class ShiftsControllerDietaryGateTests
             new Claim(ClaimTypes.NameIdentifier, _user.Id.ToString()),
         }, authenticationType: "TestAuth");
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(_identity) };
+        var services = new ServiceCollection();
+        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
+        httpContext.RequestServices = services.BuildServiceProvider();
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         _controller.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
+        _controller.Url = Substitute.For<IUrlHelper>();
     }
+
+    private UserInfo BuildUserInfoWithName() => UserInfo.Create(
+        user: _user,
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: new Profile
+        {
+            UserId = _user.Id,
+            BurnerName = "Burner",
+            FirstName = "First",
+            LastName = "Last",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        },
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task SignUp_DietaryEmpty_QualifyingShift_RedirectsToDietaryMedical()

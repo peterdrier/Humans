@@ -1,8 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
@@ -24,7 +24,7 @@ namespace Humans.Application.Tests.ViewComponents;
 /// </summary>
 public class ThingsToDoViewComponentDietaryGateTests
 {
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
@@ -47,14 +47,12 @@ public class ThingsToDoViewComponentDietaryGateTests
                 PendingConsentCount: 0,
                 MissingConsentVersionIds: Array.Empty<Guid>()));
 
-        // GetProfileAsync returns a 100%-complete-ish profile placeholder; the
-        // profile item always gets added but profileComplete is driven by the
-        // profileCompletionPercent arg, not by this object.
-        _profileService.GetProfileAsync(Arg.Any<Guid>())
-            .Returns(new Profile { BurnerName = "x", FirstName = "y", LastName = "z" });
+        // These tests run with isVolunteerMember: true, so the component never
+        // dereferences the UserInfo.Profile (the consent-check branch is skipped).
+        // GetUserInfoAsync left at its NSubstitute default (null) is sufficient.
 
         _sut = new ThingsToDoViewComponent(
-            _profileService,
+            _userService,
             _shiftMgmt,
             _membershipCalculator,
             _localizer,

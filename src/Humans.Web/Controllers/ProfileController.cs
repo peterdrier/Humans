@@ -14,6 +14,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -1590,7 +1591,7 @@ public class ProfileController(
     {
         try
         {
-            var user = await GetCurrentUserAsync();
+            var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound();
 
@@ -1640,7 +1641,7 @@ public class ProfileController(
 
         try
         {
-            var user = await GetCurrentUserAsync();
+            var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound();
 

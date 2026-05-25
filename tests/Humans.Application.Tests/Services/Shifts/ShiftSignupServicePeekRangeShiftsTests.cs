@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
@@ -54,12 +55,16 @@ public class ShiftSignupServicePeekRangeShiftsTests : IDisposable
         serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
 
+        var adminAuthorization = Substitute.For<IAdminAuthorizationService>();
+
         var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             auditLog,
+            adminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IShiftViewInvalidator>(),
             clock,
             NullLogger<ShiftManagementService>.Instance);
 
@@ -70,6 +75,8 @@ public class ShiftSignupServicePeekRangeShiftsTests : IDisposable
             membership,
             auditLog,
             Substitute.For<INotificationService>(),
+            adminAuthorization,
+            Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             clock,
             NullLogger<ShiftSignupService>.Instance);

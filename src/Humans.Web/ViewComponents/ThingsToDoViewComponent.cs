@@ -127,29 +127,29 @@ public class ThingsToDoViewComponent(
             // See docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md
             try
             {
-                var dietaryProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+                var dietaryProfile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
                 var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
                 if (dietaryEmpty)
                 {
-                    var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
+                    var hasQualifyingSignup = await shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
                     var descriptionKey = hasQualifyingSignup
                         ? "Todo_DietaryMedical_Pending"
                         : "Todo_DietaryMedical_NoShift_Pending";
                     model.Items.Add(new TodoItem
                     {
                         Key = "dietary-medical",
-                        Title = _localizer["Todo_DietaryMedical_Title"].Value,
-                        Description = _localizer[descriptionKey].Value,
+                        Title = localizer["Todo_DietaryMedical_Title"].Value,
+                        Description = localizer[descriptionKey].Value,
                         IsDone = false,
                         ActionUrl = Url.Action("DietaryMedical", "Profile"),
-                        ActionText = _localizer["Todo_DietaryMedical_Action"].Value,
+                        ActionText = localizer["Todo_DietaryMedical_Action"].Value,
                         IconClass = "fa-solid fa-utensils",
                     });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to check dietary/medical nudge for user {UserId}", userId);
+                logger.LogError(ex, "Failed to check dietary/medical nudge for user {UserId}", userId);
             }
         }
         catch (Exception ex)
