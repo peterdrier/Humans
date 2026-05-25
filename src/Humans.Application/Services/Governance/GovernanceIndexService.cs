@@ -13,7 +13,7 @@ public sealed class GovernanceIndexService(
     public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
     {
         var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, ct);
-        var latestApplication = applications.Count > 0 ? applications[0] : null;
+        var latestApplication = applications.MaxBy(a => a.SubmittedAt);
         var statutesContent = await legalDocService.GetDocumentContentAsync("statutes");
 
         var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
