@@ -300,7 +300,8 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         StubTeams(
             TeamWithRoles(oldTeam.Id, "OldTeam", "oldteam",
                 Role(oldTeam.Id, "OldTeam", "oldteam", RolePeriod.YearRound, estimatedHours: 40, slotCount: 1, alice.Id))
-            with { IsActive = false });
+            with
+            { IsActive = false });
 
         var report = await _service.GetForActiveEventAsync();
         report.Should().NotBeNull();
