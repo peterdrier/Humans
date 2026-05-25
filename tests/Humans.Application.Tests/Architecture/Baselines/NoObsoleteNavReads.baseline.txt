@@ -15,7 +15,6 @@ src/Humans.Application/DTOs/Governance/BoardVotingDashboardRow.cs:User#1
 src/Humans.Application/DTOs/Governance/BoardVotingDetailData.cs:User#1
 src/Humans.Application/Interfaces/Legal/IAdminLegalDocumentService.cs:Team#1
 src/Humans.Application/Interfaces/Legal/ILegalDocumentSyncService.cs:Team#1
-src/Humans.Application/Interfaces/Repositories/IAccountMergeRepository.cs:ResolvedByUser#1
 src/Humans.Application/Interfaces/Repositories/ICalendarRepository.cs:OwningTeam#1
 src/Humans.Application/Interfaces/Repositories/ICampRepository.cs:User#1
 src/Humans.Application/Interfaces/Repositories/IFeedbackRepository.cs:AssignedToTeam#1
