@@ -94,6 +94,27 @@ No retention policy changes; the data lives only as long as the user account doe
 - The nudge fires regardless of how the signup was created — self-signup (`Enrolled = false`) and coordinator-voluntolded (`Enrolled = true`) both qualify. The gate cares only about status (`Pending`/`Confirmed`) and shift duration; `Enrolled` is informational, not part of the gate.
 - No email or push notification is sent — surfacing on next dashboard visit is sufficient.
 
+### US-35.5: Nudge appears before any shift signup
+**As a** newly registered human with no shifts yet
+**I want to** be reminded to record my dietary and medical info
+**So that** the cantina has it on file the moment I sign up for a long shift
+
+**Acceptance Criteria:**
+- The dashboard `ThingsToDoViewComponent` dietary item appears whenever `VolunteerEventProfile.DietaryPreference` is empty, regardless of signups.
+- Description uses `Todo_DietaryMedical_NoShift_Pending` when there is no qualifying signup; the existing `_Pending` copy is used otherwise.
+- See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md`.
+
+### US-35.6: Hard gate on qualifying-shift signup
+**As** the system
+**I want to** block sign-up for a 6+ hour shift until the human's dietary preference is on file
+**So that** the cantina never gets blindsided
+
+**Acceptance Criteria:**
+- `ShiftsController.SignUp` / `SignUpRange` redirect to `/Profile/Me/DietaryMedical?returnAction=signup|signuprange&...` when the target shift `QualifiesForCantinaMeal()` and `DietaryPreference` is empty.
+- On successful save, the form replays the signup (`ProfileController.DietaryMedical` POST branches on `returnAction`).
+- A banner on `/Shifts` and `/Shifts/Mine` (`DietaryMissingBannerViewComponent`) plus disabled Sign-Up buttons catch humans who already have a qualifying signup but no dietary on file.
+- See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md`.
+
 ## Qualifying Shift
 
 A shift qualifies the user for the nudge when:
