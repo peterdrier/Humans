@@ -9,5 +9,13 @@ namespace Humans.Application.Interfaces.EarlyEntry;
 /// </summary>
 public interface IEarlyEntryInvalidator
 {
+    /// <summary>Evict one user's cached EE (member-level grant/signup change).</summary>
     void InvalidateUser(Guid userId);
+
+    /// <summary>
+    /// Evict the whole cache. For global config changes that shift every holder's
+    /// EE at once — the camps' global <c>EeStartDate</c> and EventSettings gate /
+    /// build-offset edits (which move every shift-derived date).
+    /// </summary>
+    void InvalidateAll();
 }

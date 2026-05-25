@@ -46,4 +46,6 @@ public sealed class CachingEarlyEntryService(
     }
 
     public void InvalidateUser(Guid userId) => Invalidate(userId);
+
+    public void InvalidateAll() => Clear();
 }

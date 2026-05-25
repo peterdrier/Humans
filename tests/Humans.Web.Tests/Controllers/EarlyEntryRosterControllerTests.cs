@@ -1,10 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Models.EarlyEntry;
 using Microsoft.AspNetCore.Http;
@@ -53,39 +50,6 @@ public class EarlyEntryRosterControllerTests
         return ctrl;
     }
 
-    private static UserInfo StubUserInfo(Guid userId, string burnerName)
-    {
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = burnerName,
-            PreferredLanguage = "en",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
-        };
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = burnerName,
-            FirstName = burnerName,
-            LastName = "Test",
-            IsApproved = true,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
-        return UserInfo.Create(
-            user: user,
-            userEmails: [],
-            eventParticipations: [],
-            externalLogins: [],
-            profile: profile,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
-    }
-
     [HumansFact]
     public async Task Index_SingleMultiSourceRow_ReturnsCorrectViewModel()
     {
@@ -98,16 +62,13 @@ public class EarlyEntryRosterControllerTests
                 new(userId, entryDate, ["Camp Alpha", "Build Shift"], HasMultiple: true),
             });
 
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(StubUserInfo(userId, "Spanner")));
-
         var ctrl = BuildSut();
         var result = await ctrl.Index(CancellationToken.None);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         var model = view.Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;
         model.Rows.Should().HaveCount(1);
-        model.Rows[0].DisplayName.Should().Be("Spanner");
+        model.Rows[0].UserId.Should().Be(userId);
         model.Rows[0].HasMultiple.Should().BeTrue();
         model.Rows[0].Sources.Should().HaveCount(2);
     }

@@ -13,27 +13,17 @@ public sealed class EarlyEntryRosterController(
     IEarlyEntryService earlyEntryService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct = default)
     {
         var rows = await earlyEntryService.GetRosterAsync(ct);
 
-        var vmRows = new List<EarlyEntryRosterRowVm>(rows.Count);
-        foreach (var r in rows)
-        {
-            var info = await _userService.GetUserInfoAsync(r.UserId, ct);
-            vmRows.Add(new EarlyEntryRosterRowVm(
-                info?.BurnerName ?? "(unknown)",
-                r.EarliestEntryDate,
-                r.Sources,
-                r.HasMultiple));
-        }
-
-        var ordered = vmRows
+        // Names are resolved at render via <vc:human>; the VM carries UserId only
+        // (no DisplayName field — see memory/code/no-new-displayname-fields.md).
+        var ordered = rows
             .OrderBy(r => r.EarliestEntryDate)
-            .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.UserId)
+            .Select(r => new EarlyEntryRosterRowVm(r.UserId, r.EarliestEntryDate, r.Sources, r.HasMultiple))
             .ToList();
 
         return View(new EarlyEntryRosterViewModel(ordered));

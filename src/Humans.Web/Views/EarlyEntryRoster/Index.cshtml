@@ -21,7 +21,7 @@ else
         @foreach (var row in Model.Rows)
         {
             <tr class="@(row.HasMultiple ? "table-warning" : "")">
-                <td>@row.DisplayName</td>
+                <td><vc:human user-id="@row.UserId" layout="AvatarName" size="32" /></td>
                 <td>@row.EarliestEntryDate.ToString("ddd d MMM", null)</td>
                 <td>@string.Join(", ", row.Sources)</td>
                 <td>@if (row.HasMultiple) { <span class="badge bg-warning text-dark">multiple</span> }</td>

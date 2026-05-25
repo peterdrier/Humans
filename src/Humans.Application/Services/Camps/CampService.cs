@@ -1824,6 +1824,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 ? "EE start date cleared."
                 : $"EE start date set to {eeStartDate.Value:yyyy-MM-dd}.",
             actorUserId);
+
+        // Global date change shifts EE for every camp holder at once.
+        _earlyEntryInvalidator.InvalidateAll();
     }
 
     public async Task SetCampSeasonEeSlotCountAsync(
