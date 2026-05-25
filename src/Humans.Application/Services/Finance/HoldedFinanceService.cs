@@ -318,6 +318,77 @@ public sealed class HoldedFinanceService(
         return "Tags not matched";
     }
 
+    // ─── Creditor data (Feature 2) ──────────────────────────────────────────────
+
+    private const int CreditorAccountMin = 40000000;
+    private const int CreditorAccountMax = 40000099;
+
+    public async Task SyncCreditorDataAsync(CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+        var chart = await client.ListChartOfAccountsAsync(ct);
+        var balances = chart
+            .Where(a => a.Num >= CreditorAccountMin && a.Num <= CreditorAccountMax)
+            .Select(a => new HoldedCreditorBalance
+            {
+                Id = Guid.NewGuid(),
+                SupplierAccountNum = a.Num,
+                Name = a.Name,
+                Balance = a.Balance,
+                CreatedAt = now,
+                UpdatedAt = now,
+            })
+            .ToList();
+        await repo.UpsertCreditorBalancesAsync(balances, now, ct);
+
+        var payments = (await client.ListPaymentsAsync(ct))
+            .Where(p => !string.IsNullOrEmpty(p.Id) && !string.IsNullOrEmpty(p.ContactId))
+            .Select(p => new HoldedPayment
+            {
+                Id = Guid.NewGuid(),
+                HoldedPaymentId = p.Id,
+                HoldedContactId = p.ContactId,
+                Amount = p.Amount,
+                Date = p.Date.InZone(zone).Date,
+                DocumentType = p.DocumentType,
+                CreatedAt = now,
+            })
+            .ToList();
+        await repo.UpsertPaymentsAsync(payments, now, ct);
+
+        logger.LogInformation(
+            "Holded creditor sync cached {BalanceCount} creditor balances and {PaymentCount} payments",
+            balances.Count, payments.Count);
+    }
+
+    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
+        int? supplierAccountNum, string holdedContactId, CancellationToken ct = default)
+    {
+        var balanceRow = supplierAccountNum is { } num
+            ? await repo.GetCreditorBalanceByAccountNumAsync(num, ct)
+            : null;
+        var payments = string.IsNullOrEmpty(holdedContactId)
+            ? Array.Empty<HoldedPayment>()
+            : (await repo.GetPaymentsByContactAsync(holdedContactId, ct)).ToArray();
+
+        if (balanceRow is null && payments.Length == 0)
+            return null;
+
+        var balance = balanceRow?.Balance ?? 0m;
+        var lastPaymentDate = payments.Length == 0
+            ? (LocalDate?)null
+            : payments.Max(p => p.Date);
+
+        return new HoldedCreditorStatus(
+            SupplierAccountNum: balanceRow?.SupplierAccountNum ?? supplierAccountNum,
+            Balance: balance,
+            OwedToMember: Math.Max(0m, -balance),
+            LastPaymentDate: lastPaymentDate,
+            TotalPaid: payments.Sum(p => p.Amount));
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────────
 
     /// <summary>
