@@ -77,14 +77,17 @@ public sealed class EventDbSetWriteAnalyzer : DiagnosticAnalyzer
         if (dbContextType is null)
             return;
 
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
+
         context.RegisterOperationAction(
-            ctx => AnalyzeInvocation(ctx, dbContextType),
+            ctx => AnalyzeInvocation(ctx, dbContextType, grandfatheredAttr),
             OperationKind.Invocation);
     }
 
     private static void AnalyzeInvocation(
         OperationAnalysisContext context,
-        INamedTypeSymbol dbContextType)
+        INamedTypeSymbol dbContextType,
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var op = (IInvocationOperation)context.Operation;
         if (!WriteMethods.Contains(op.TargetMethod.Name))
@@ -99,11 +102,16 @@ public sealed class EventDbSetWriteAnalyzer : DiagnosticAnalyzer
             return;
 
         var typeName = topLevelType?.Name ?? "<unknown>";
+        var severity = topLevelType is not null
+            ? GrandfatheredCheck.EffectiveSeverity(topLevelType, grandfatheredAttr, DiagnosticId)
+            : DiagnosticSeverity.Error;
         context.ReportDiagnostic(Diagnostic.Create(
-            Rule,
-            op.Syntax.GetLocation(),
-            typeName,
-            dbSetName));
+            descriptor: Rule,
+            location: op.Syntax.GetLocation(),
+            effectiveSeverity: severity,
+            additionalLocations: null,
+            properties: null,
+            messageArgs: [typeName, dbSetName]));
     }
 
     private static string? GetEventDbSetReceiverName(

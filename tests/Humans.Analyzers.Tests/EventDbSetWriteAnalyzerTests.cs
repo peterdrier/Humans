@@ -42,6 +42,15 @@ public sealed class EventDbSetWriteAnalyzerTests
                 public int Count() => 0;
             }
         }
+
+        namespace Humans.Application.Architecture
+        {
+            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+            public sealed class GrandfatheredAttribute : System.Attribute
+            {
+                public GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef) { }
+            }
+        }
         """;
 
     private static bool IsHum0023(Diagnostic d) =>
@@ -168,6 +177,64 @@ public sealed class EventDbSetWriteAnalyzerTests
             source);
 
         diagnostics.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Downgrades_to_warning_when_class_has_Grandfathered_for_HUM0023()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Jobs
+            {
+                [Humans.Application.Architecture.Grandfathered(
+                    ruleId: "HUM0023",
+                    justification: "Pending migration to EventRepository.",
+                    since: "2026-05-25",
+                    issueRef: "nobodies-collective/Humans#0")]
+                public sealed class EventImportJob
+                {
+                    public void Run(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                        ctx.Events.Add(new Humans.Infrastructure.Data.Event());
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EventDbSetWriteAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        var hit = diagnostics.Where(IsHum0023).Should().ContainSingle().Subject;
+        hit.Severity.Should().Be(DiagnosticSeverity.Warning);
+    }
+
+    [HumansFact]
+    public async Task Grandfathered_for_a_different_rule_still_fires_error()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Jobs
+            {
+                [Humans.Application.Architecture.Grandfathered(
+                    ruleId: "HUM0042",
+                    justification: "Different rule.",
+                    since: "2026-05-25",
+                    issueRef: "nobodies-collective/Humans#0")]
+                public sealed class EventImportJob
+                {
+                    public void Run(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                        ctx.Events.Add(new Humans.Infrastructure.Data.Event());
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EventDbSetWriteAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        var hit = diagnostics.Where(IsHum0023).Should().ContainSingle().Subject;
+        hit.Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     [HumansFact]

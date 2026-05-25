@@ -53,8 +53,14 @@
           legacy reads (computed-override projections of UserEmails) are
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
+        - HUM0023: non-EventRepository write to an Events-section DbSet.
+          Genuine violators (no attribute) fire effectiveSeverity: Error
+          directly and bypass this list. This entry only lets a future
+          [Grandfathered("HUM0023", ...)] downgrade through as a warning;
+          there are no grandfathers today, so remove this entry if none are
+          ever added.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0023;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
