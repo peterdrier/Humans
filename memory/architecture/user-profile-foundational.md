@@ -3,6 +3,8 @@ name: User and Profile are foundational — no outbound calls to higher-level se
 description: UserService and ProfileService sit at the bottom of the dependency stack. They must not call out to Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance. Crosscuts (Audit, Email, Notification, Metrics) are the only OK exceptions.
 ---
 
+> Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): **foundational** is a *descriptor* (a Section with outbound-width-into-sections = 0), not a separate tier; the "universal crosscuts" below are **Crosscuts** (Audit/Email/Notification/Metrics).
+
 User and Profile sit at the bottom of the service dependency hierarchy. Higher-level sections (Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance) can freely call into User/Profile. **The reverse is wrong direction and must be avoided.**
 
 The only outbound calls User/Profile may make are to universal crosscuts: `IAuditLogService`, `IEmailService`, `INotificationService`, `IHumansMetrics`. Even those should be minimised.

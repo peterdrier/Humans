@@ -3,6 +3,8 @@ name: No leaf-to-director callbacks
 description: Reject any ctor or call edge where a leaf service (ProfileService, ConsentService, etc.) reaches up to a director (OnboardingService, AdminDashboardService, etc.). Director-to-leaf is one-way.
 ---
 
+> Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): here **leaf** = a low-level **Section** (Profile/Consent/User); **director** = **Orchestrator**. The rule is the section→orchestrator direction — a Section never calls *up* into an Orchestrator; Orchestrator→Section is one-way.
+
 Leaf services never depend on or call back into directors. If you find yourself extracting a "narrow query interface" so a leaf can summon an orchestrator — stop. The predicate or side-effect is housed in the wrong class. Move it to the leaf that owns the field, or to the call site that already drives the leaf.
 
 **Why:** Directors fan out; leaves don't summon them. The narrow-interface band-aid pattern (`IXxxEligibilityQuery` etc.) papers over a DI cycle without fixing the inversion. The cycle keeps coming back as new methods get added, and the resulting runtime call graph has leaves double-writing state through synchronous self-referential service hops. Two real incidents:
