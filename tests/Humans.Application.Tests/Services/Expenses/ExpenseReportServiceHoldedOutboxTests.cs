@@ -71,6 +71,13 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = submitter.ToUserInfo() }));
 
+        // Contact enrichment (Feature 2): the create path upserts the Holded contact and then
+        // resolves its supplier-account number, so stub both calls for the outbox-mechanics tests.
+        _holdedClient.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+            .Returns("holded-contact-1");
+        _holdedClient.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 });
+
         _sut = new ExpenseReportService(
             _repo,
             _fileStorage,
