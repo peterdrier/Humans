@@ -1,5 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
@@ -32,6 +33,8 @@ public class DriveActivityMonitorArchitectureTests
             because: "the last-run marker in SystemSettings goes through the owned repository (design-rules §3)");
         paramTypes.Should().Contain(typeof(ITeamResourceService),
             because: "the list of monitored resources comes from the team-resource section service, not a cross-section DB read");
+        paramTypes.Should().Contain(typeof(IAuditLogService),
+            because: "anomaly audit entries are emitted through IAuditLogService (design-rules §2c / AuditLog write boundary)");
     }
 
     [HumansFact]
