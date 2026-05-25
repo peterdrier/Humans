@@ -30,6 +30,31 @@
 
 ---
 
+## Database changes vs. in-memory-only (read this first)
+
+This feature touches the **Postgres schema in exactly one migration** (Task 5). Everything else is in-memory C# types (API DTOs, result records, view models) that never hit the DB.
+
+**Schema changes (persisted — `HoldedCreditor` migration, Task 5):**
+| Change | Table | Source |
+|---|---|---|
+| **New column** `holded_contact_id` (varchar 64, null) | `expense_reports` | `ExpenseReport.HoldedContactId` (Task 3) |
+| **New column** `holded_supplier_account_num` (int, null) | `expense_reports` | `ExpenseReport.HoldedSupplierAccountNum` (Task 3) |
+| **New index** on `holded_contact_id` | `expense_reports` | Task 3 config |
+| **New table** `holded_creditor_balances` (+ unique idx on `supplier_account_num`) | — | `HoldedCreditorBalance` entity (Task 4) |
+| **New table** `holded_payments` (+ unique idx `holded_payment_id`, idx `holded_contact_id`) | — | `HoldedPayment` entity (Task 4) |
+
+No other tables/columns change. No seed data (the `holded_sync_states` singleton was seeded in Feature 1; nothing new to seed). The two new tables are **caches** — populated nightly from Holded, never user-edited.
+
+**In-memory-only types (NO migration, NO DB):**
+- API transfer DTOs (Task 1): `HoldedContactInput`, `HoldedContactDto`, `HoldedChartAccountDto`, `HoldedPaymentDto`, and the new `ContactId` field on `HoldedPurchaseDocumentInput`.
+- Result record (Task 8): `HoldedCreditorStatus`.
+- DTO projection (Task 7): `ExpenseReportDto.HoldedContactId` / `.HoldedSupplierAccountNum` — these just **read** the Task 3 columns through the mapper; they add no schema.
+- View types (Tasks 12–13): `ExpenseHoldedTimeline`, the extended `ExpenseDetailViewData`, `ExpenseDetailViewModel.HoldedTimeline`.
+
+**Rule for the executor:** only Tasks 3, 4, and 5 alter EF entities/configs/`DbContext`/migrations. If any other task tempts you to add a `DbSet`, an `IEntityTypeConfiguration`, or an entity property, **stop** — it belongs in the in-memory layer.
+
+---
+
 ## Conventions for this plan
 
 - **"Mirror `<file>`"** = copy that file's structure/style and adapt the named bits; read the named file first. Used for mechanical boilerplate.
@@ -69,7 +94,7 @@
 
 ---
 
-## Task 1: Holded contact / chart / payment DTOs
+## Task 1: Holded contact / chart / payment DTOs — **[in-memory only, NO DB]**
 
 **Files:**
 - Create: `src/Humans.Application/Interfaces/Holded/HoldedContactDtos.cs`
@@ -152,7 +177,7 @@ git commit -m "feat(holded): contact/chart/payment DTOs + ContactId on purchase-
 
 ---
 
-## Task 2: Extend IHoldedClient with contact / chart / payment methods
+## Task 2: Extend IHoldedClient with contact / chart / payment methods — **[in-memory only, NO DB]**
 
 **Files:**
 - Modify: `src/Humans.Application/Interfaces/Holded/IHoldedClient.cs`, `src/Humans.Infrastructure/Services/Holded/HoldedClient.cs`
@@ -423,7 +448,7 @@ git commit -m "feat(holded): contact upsert/get + chartofaccounts + payments cli
 
 ---
 
-## Task 3: ExpenseReport entity fields
+## Task 3: ExpenseReport entity fields — **[DB SCHEMA: 2 new columns + index on `expense_reports`]** (migration generated in Task 5)
 
 **Files:**
 - Modify: `src/Humans.Domain/Entities/ExpenseReport.cs`
@@ -459,7 +484,7 @@ git commit -m "feat(expenses): HoldedContactId + HoldedSupplierAccountNum on Exp
 
 ---
 
-## Task 4: Finance creditor-balance + payment entities, EF configs, DbSets
+## Task 4: Finance creditor-balance + payment entities, EF configs, DbSets — **[DB SCHEMA: 2 new tables]** (migration generated in Task 5)
 
 **Files:**
 - Create: `src/Humans.Domain/Entities/HoldedCreditorBalance.cs`, `HoldedPayment.cs`
@@ -569,7 +594,7 @@ git commit -m "feat(finance): HoldedCreditorBalance + HoldedPayment cache tables
 
 ---
 
-## Task 5: EF migration
+## Task 5: EF migration — **[DB SCHEMA: the single migration for Tasks 3 + 4]**
 
 **Files:**
 - Create (generated): `src/Humans.Infrastructure/Migrations/*_HoldedCreditor.cs` (+ Designer + snapshot update)
@@ -591,7 +616,7 @@ git commit -m "feat(finance): migration for creditor/payment cache + ER contact 
 
 ---
 
-## Task 6: IHoldedRepository creditor-balance + payment methods
+## Task 6: IHoldedRepository creditor-balance + payment methods — **[reads/writes existing tables, NO schema change]**
 
 **Files:**
 - Modify: `src/Humans.Application/Interfaces/Repositories/IHoldedRepository.cs`, `src/Humans.Infrastructure/Repositories/Finance/HoldedRepository.cs`
@@ -698,7 +723,7 @@ git commit -m "feat(finance): repository upsert/read for creditor balances + pay
 
 ---
 
-## Task 7: ExpenseReport contact-link persistence + DTO surfacing
+## Task 7: ExpenseReport contact-link persistence + DTO surfacing — **[writes existing columns + in-memory DTO, NO schema change]**
 
 **Files:**
 - Modify: `src/Humans.Application/Interfaces/Repositories/IExpenseRepository.cs`, `src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs`
@@ -760,7 +785,7 @@ git commit -m "feat(expenses): persist + expose Holded contact link on ExpenseRe
 
 ---
 
-## Task 8: HoldedFinanceService — creditor sync + status read
+## Task 8: HoldedFinanceService — creditor sync + status read — **[in-memory logic + existing tables, NO schema change]**
 
 **Files:**
 - Create: `src/Humans.Application/Services/Finance/Dtos/HoldedCreditorStatus.cs`
@@ -953,7 +978,7 @@ git commit -m "feat(finance): creditor-balance + payment sync and GetCreditorSta
 
 ---
 
-## Task 9: Nightly job also syncs creditor data
+## Task 9: Nightly job also syncs creditor data — **[no schema change]**
 
 **Files:**
 - Modify: `src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs`
@@ -985,7 +1010,7 @@ git commit -m "feat(finance): nightly job also caches creditor balances + paymen
 
 ---
 
-## Task 10: Contact enrichment on push
+## Task 10: Contact enrichment on push — **[no schema change]**
 
 **Files:**
 - Modify: `src/Humans.Application/Services/Expenses/ExpenseReportService.cs`
@@ -1168,7 +1193,7 @@ git commit -m "feat(expenses): enrich Holded contact (legal name/burner/customId
 
 ---
 
-## Task 11: Paid-signal fix (creditor balance, not per-doc)
+## Task 11: Paid-signal fix (creditor balance, not per-doc) — **[no schema change]**
 
 **Files:**
 - Modify: `src/Humans.Application/Services/Expenses/ExpenseReportService.cs`
@@ -1330,7 +1355,7 @@ git commit -m "fix(expenses): mark Paid from creditor balance, not per-doc Payme
 
 ---
 
-## Task 12: Submitter timeline (service + view model)
+## Task 12: Submitter timeline (service + view model) — **[in-memory view types, no schema change]**
 
 **Files:**
 - Modify: `src/Humans.Application/Services/Expenses/ExpenseReportService.cs` (inject `IHoldedFinanceService`; build timeline in `GetDetailViewDataAsync`)
@@ -1489,7 +1514,7 @@ git commit -m "feat(expenses): submitter Holded round-trip timeline from credito
 
 ---
 
-## Task 13: Detail.cshtml timeline UI
+## Task 13: Detail.cshtml timeline UI — **[no schema change]**
 
 **Files:**
 - Modify: `src/Humans.Web/Views/Expenses/Detail.cshtml`
@@ -1553,7 +1578,7 @@ git commit -m "feat(expenses): payment-status timeline on the expense detail vie
 
 ---
 
-## Task 14: Architecture tests + docs
+## Task 14: Architecture tests + docs — **[no schema change]**
 
 **Files:**
 - Modify: `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
