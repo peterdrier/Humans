@@ -1,4 +1,5 @@
 using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -17,7 +18,7 @@ public sealed class VolunteerTrackingExportService(
     IVolunteerTrackingRepository repository,
     IShiftManagementService shiftManagementService,
     IUserServiceRead userService)
-    : IVolunteerTrackingExportService
+    : IVolunteerTrackingExportService, IEarlyEntryProvider
 {
     private readonly IVolunteerTrackingRepository _repository = repository;
     private readonly IShiftManagementService _shiftManagementService = shiftManagementService;
@@ -259,6 +260,25 @@ public sealed class VolunteerTrackingExportService(
             }
         }
         return sb.ToString();
+    }
+
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var es = await _shiftManagementService.GetActiveAsync();
+        if (es is null) return [];
+
+        var start = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
+        var end = es.GateOpeningDate.PlusDays(-1);
+        var rows = await _repository.GetConfirmedShiftsInRangeAsync(es.Id, start, end, departmentId: null, ct);
+        if (rows.Count == 0) return [];
+
+        var depts = await _shiftManagementService.GetDepartmentsWithRotasAsync(es.Id);
+        var teamNames = depts
+            .GroupBy(d => d.TeamId)
+            .ToDictionary(g => g.Key, g => g.First().TeamName);
+
+        var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+        return ShiftEarlyEntryProjection.Project(rows, zone, teamNames);
     }
 
     private static VolunteerExportModel BuildEmptyModel(VolunteerExportRequest request, IReadOnlyList<LocalDate> days, string? filteredTeamName)

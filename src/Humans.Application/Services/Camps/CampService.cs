@@ -5,6 +5,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
@@ -19,7 +20,7 @@ using NodaTime;
 namespace Humans.Application.Services.Camps;
 
 /// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
-public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
+public sealed class CampService : ICampService, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private readonly ICampRepository _repo;
     private readonly ICampRoleRepository _roleRepo;
@@ -1876,5 +1877,19 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
 
         return SetEarlyEntryOutcome.Success;
+    }
+
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var settings = await _repo.GetSettingsReadOnlyAsync(ct);
+        if (settings?.EeStartDate is not { } eeStartDate)
+            return [];
+
+        var year = settings.PublicYear;
+        var membersBySeason = await _repo.GetMembersForYearAsync(year, ct);
+        var seasonDisplay = await _repo.GetSeasonDisplayDataForYearAsync(year, ct);
+        var seasonNames = seasonDisplay.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name);
+
+        return CampEarlyEntryProjection.Project(eeStartDate, membersBySeason, seasonNames);
     }
 }
