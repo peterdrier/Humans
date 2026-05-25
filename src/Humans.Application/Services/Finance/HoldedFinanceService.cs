@@ -17,6 +17,8 @@ namespace Humans.Application.Services.Finance;
 public sealed class HoldedFinanceService(
     IHoldedRepository repo,
     IHoldedClient client,
+    // Cross-section read via full IBudgetService matches existing FinanceController usage.
+    // Future: narrow to an IBudgetServiceRead via the section read/write split.
     IBudgetService budget,
     IClock clock,
     ILogger<HoldedFinanceService> logger) : IHoldedFinanceService
@@ -209,7 +211,8 @@ public sealed class HoldedFinanceService(
             state.SyncStatus = HoldedSyncStatus.Error;
             state.LastError = ex.Message;
             state.StatusChangedAt = now;
-            await repo.SaveSyncStateAsync(state, ct);
+            try { await repo.SaveSyncStateAsync(state, CancellationToken.None); }
+            catch (Exception saveEx) { logger.LogError(saveEx, "Failed to persist error sync state"); }
             throw;
         }
     }
