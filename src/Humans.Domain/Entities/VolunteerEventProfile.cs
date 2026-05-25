@@ -3,8 +3,9 @@ using NodaTime;
 namespace Humans.Domain.Entities;
 
 /// <summary>
-/// User-scoped volunteer shift profile with skills, dietary info, and medical data.
-/// One-to-one with User.
+/// User-scoped volunteer shift profile: skills, quirks, and languages used for
+/// shift-matching. One-to-one with User. (Dietary + medical moved to Profile —
+/// see docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md.)
 /// </summary>
 public class VolunteerEventProfile
 {
@@ -34,36 +35,6 @@ public class VolunteerEventProfile
     /// Languages spoken.
     /// </summary>
     public List<string> Languages { get; set; } = [];
-
-    /// <summary>
-    /// Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").
-    /// </summary>
-    public string? DietaryPreference { get; set; }
-
-    /// <summary>
-    /// Food allergies.
-    /// </summary>
-    public List<string> Allergies { get; set; } = [];
-
-    /// <summary>
-    /// Food intolerances.
-    /// </summary>
-    public List<string> Intolerances { get; set; } = [];
-
-    /// <summary>
-    /// Free text specifying "Other" allergy when "Other" is selected.
-    /// </summary>
-    public string? AllergyOtherText { get; set; }
-
-    /// <summary>
-    /// Free text specifying "Other" intolerance when "Other" is selected.
-    /// </summary>
-    public string? IntoleranceOtherText { get; set; }
-
-    /// <summary>
-    /// Medical conditions (restricted visibility — owner/NoInfoAdmin/Admin only).
-    /// </summary>
-    public string? MedicalConditions { get; set; }
 
     /// <summary>
     /// When this profile was created.

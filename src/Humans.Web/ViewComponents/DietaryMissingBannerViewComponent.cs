@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
@@ -12,13 +13,16 @@ namespace Humans.Web.ViewComponents;
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IUserServiceRead _userRead;
     private readonly ILogger<DietaryMissingBannerViewComponent> _logger;
 
     public DietaryMissingBannerViewComponent(
         IShiftManagementService shiftMgmt,
+        IUserServiceRead userRead,
         ILogger<DietaryMissingBannerViewComponent> logger)
     {
         _shiftMgmt = shiftMgmt;
+        _userRead = userRead;
         _logger = logger;
     }
 
@@ -29,7 +33,7 @@ public sealed class DietaryMissingBannerViewComponent : ViewComponent
             var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
             if (!hasQualifyingSignup) return Content(string.Empty);
 
-            var profile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+            var profile = (await _userRead.GetUserInfoAsync(userId))?.Profile;
             if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return Content(string.Empty);
 
             return View();

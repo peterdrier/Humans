@@ -57,6 +57,38 @@ public class Profile
     [PersonalData]
     public string? EmergencyContactRelationship { get; set; }
 
+    // Dietary + medical — person-level attributes (moved off VolunteerEventProfile;
+    // see docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md).
+
+    /// <summary>Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").</summary>
+    [PersonalData]
+    public string? DietaryPreference { get; set; }
+
+    /// <summary>Food allergies.</summary>
+    [PersonalData]
+    public List<string> Allergies { get; set; } = [];
+
+    /// <summary>Food intolerances.</summary>
+    [PersonalData]
+    public List<string> Intolerances { get; set; } = [];
+
+    /// <summary>Free text specifying "Other" allergy when "Other" is selected.</summary>
+    [PersonalData]
+    public string? AllergyOtherText { get; set; }
+
+    /// <summary>Free text specifying "Other" intolerance when "Other" is selected.</summary>
+    [PersonalData]
+    public string? IntoleranceOtherText { get; set; }
+
+    /// <summary>
+    /// Medical conditions — GDPR Art. 9 health data. Restricted visibility
+    /// (owner / NoInfoAdmin / Admin only). Present on the cached UserInfo, so
+    /// every render/serialize surface MUST gate it behind the MedicalDataViewer
+    /// policy — never surface it without that check.
+    /// </summary>
+    [PersonalData]
+    public string? MedicalConditions { get; set; }
+
     /// <summary>Obsolete — pictures live on the file share. DB column retained for prod-soak drop. See #702.</summary>
     [PersonalData]
     [Obsolete("Pictures live on the file share; this column is unused. The DB column stays until a follow-up PR after prod soak per memory/architecture/no-drops-until-prod-verified.md.", DiagnosticId = "HUM_PROFILE_PICTUREDATA", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/702")]

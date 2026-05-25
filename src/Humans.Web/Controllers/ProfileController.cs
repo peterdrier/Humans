@@ -228,14 +228,12 @@ public class ProfileController(
             preview,
             p => Url.Action(nameof(Picture), new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
 
-        // Meal preference + allergies live on the shift profile (VolunteerEventProfile),
-        // not the main Profile. Surfaced on Edit as a second entry point alongside the
-        // dedicated DietaryMedical page. includeMedical:false — medical conditions stay
-        // owned by DietaryMedical (GDPR Art. 9 health data with restricted visibility).
-        var shiftProfile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
-        viewModel.DietaryPreference = shiftProfile?.DietaryPreference ?? string.Empty;
-        viewModel.Allergies = shiftProfile is null ? [] : [.. shiftProfile.Allergies];
-        viewModel.AllergyOtherText = shiftProfile?.AllergyOtherText;
+        // Meal preference + allergies are Profile fields, surfaced on Edit as a
+        // second entry point alongside the dedicated DietaryMedical page (which owns
+        // intolerances + medical). Read straight off the UserInfo we already loaded.
+        viewModel.DietaryPreference = info.Profile?.DietaryPreference ?? string.Empty;
+        viewModel.Allergies = info.Profile is null ? [] : [.. info.Profile.Allergies];
+        viewModel.AllergyOtherText = info.Profile?.AllergyOtherText;
 
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
@@ -377,7 +375,11 @@ public class ProfileController(
             NoPriorBurnExperience: model.NoPriorBurnExperience,
             ProfilePictureData: pictureUpload.Data,
             ProfilePictureContentType: pictureUpload.ContentType,
-            RemoveProfilePicture: model.RemoveProfilePicture);
+            RemoveProfilePicture: model.RemoveProfilePicture,
+            // Meal pref + allergies (the DietaryMedical page owns intolerances + medical).
+            DietaryPreference: string.IsNullOrWhiteSpace(model.DietaryPreference) ? null : model.DietaryPreference,
+            Allergies: [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))],
+            AllergyOtherText: model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null);
 
         var profileId = await profileEditorService.SaveProfileAsync(
             user.Id, model.BurnerName, saveRequest);
@@ -478,16 +480,9 @@ public class ProfileController(
 
         await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
-        // Persist meal preference + allergies onto the shift profile. Load the
-        // existing profile and set ONLY these three fields so Intolerances,
-        // IntoleranceOtherText, and MedicalConditions (owned by the DietaryMedical
-        // page) are preserved — we deliberately do not use
-        // DietaryMedicalViewModel.ApplyTo, which would null those out.
-        var sp = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
-        sp.DietaryPreference = string.IsNullOrWhiteSpace(model.DietaryPreference) ? null : model.DietaryPreference;
-        sp.Allergies = [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))];
-        sp.AllergyOtherText = model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null;
-        await shiftMgmt.UpdateShiftProfileAsync(sp);
+        // Meal pref + allergies were persisted as part of the ProfileSaveRequest
+        // above (Profile now owns dietary). Intolerances + medical are untouched —
+        // they're owned by the DietaryMedical page.
 
         SetSuccess(localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
@@ -1538,7 +1533,8 @@ public class ProfileController(
         {
             var user = await GetCurrentUserInfoAsync();
             if (user is null)
-                return NotFound(); var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+                return NotFound();
+            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id);
             return View(ShiftInfoViewModel.FromProfile(profile));
         }
         catch (Exception ex)
@@ -1595,11 +1591,11 @@ public class ProfileController(
             if (user is null)
                 return NotFound();
 
-            // includeMedical: true — the form must pre-populate the user's own medical info.
-            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: true);
-            var vm = profile is null
+            // Dietary + medical are Profile fields now. The owner sees their own
+            // medical here (allowed); the data comes from the cached UserInfo.
+            var vm = user.Profile is null
                 ? new DietaryMedicalViewModel()
-                : DietaryMedicalViewModel.FromProfile(profile);
+                : DietaryMedicalViewModel.FromProfile(user.Profile);
 
             // Carryover from the dietary-gate redirect (ShiftsController.SignUp/SignUpRange).
             // The POST handler reads these to replay the original signup after a successful save.
@@ -1645,9 +1641,9 @@ public class ProfileController(
             if (user is null)
                 return NotFound();
 
-            var profile = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
-            model.ApplyTo(profile);
-            await shiftMgmt.UpdateShiftProfileAsync(profile);
+            // Owner editing their own dietary + medical — write the six Profile
+            // columns (the editor leaves all other profile fields untouched).
+            await profileEditorService.SaveDietaryMedicalAsync(user.Id, model.ToCommand());
 
             // Signup-replay branches — the user was bounced here from
             // ShiftsController.SignUp/SignUpRange by the dietary gate. After a
