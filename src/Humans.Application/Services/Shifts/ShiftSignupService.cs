@@ -367,7 +367,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         var rota = await _repo.GetRotaWithShiftsAsync(rotaId);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
-        // Find all-day shifts in the range
+        // Find all-day shifts in the range.
+        // TODO(#279): lift filter into PeekRangeShiftsAsync once the helper takes a
+        // pre-loaded Rota (or this method is restructured to avoid the extra
+        // GetRotaWithShiftsAsync round-trip a delegated call would introduce).
+        // Keep in lock-step with PeekRangeShiftsAsync manually until then.
         var shiftsInRange = rota.Shifts
             .Where(s => s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset)
             .OrderBy(s => s.DayOffset)
@@ -541,6 +545,22 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         return SignupResult.Ok(signup);
     }
 
+    public async Task<IReadOnlyList<Shift>> PeekRangeShiftsAsync(
+        Guid rotaId,
+        int startDayOffset,
+        int endDayOffset,
+        CancellationToken ct = default)
+    {
+        var rota = await _repo.GetRotaWithShiftsAsync(rotaId, ct);
+        if (rota is null) return Array.Empty<Shift>();
+
+        return rota.Shifts
+            .Where(s => s.IsAllDay
+                        && s.DayOffset >= startDayOffset
+                        && s.DayOffset <= endDayOffset)
+            .ToList();
+    }
+
     public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false)
     {
         var rota = await _repo.GetRotaWithShiftsAsync(rotaId);
@@ -558,7 +578,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         if (rota.Period == RotaPeriod.Build && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
             return SignupResult.Fail("Early entry signups are closed.");
 
-        // Find all-day shifts in the range
+        // Find all-day shifts in the range.
+        // TODO(#279): lift filter into PeekRangeShiftsAsync once the helper takes a
+        // pre-loaded Rota (or this method is restructured to avoid the extra
+        // GetRotaWithShiftsAsync round-trip a delegated call would introduce).
+        // Keep in lock-step with PeekRangeShiftsAsync manually until then.
         var shiftsInRange = rota.Shifts
             .Where(s => s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset)
             .OrderBy(s => s.DayOffset)
