@@ -58,6 +58,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly ProfileController _controller;
@@ -86,7 +87,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             _userService,
             _userManager,
             Substitute.For<IProfilePictureService>(),
-            Substitute.For<IProfileEditorService>(),
+            _profileEditor,
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
             Substitute.For<IUserEmailService>(),
@@ -181,7 +182,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Any<VolunteerEventProfile>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.Received(1)
             .SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -204,7 +205,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Any<VolunteerEventProfile>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.Received(1)
             .SignUpRangeAsync(_userId, rotaId, 0, 2, Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<bool>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -220,7 +221,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Any<VolunteerEventProfile>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.DidNotReceiveWithAnyArgs()
             .SignUpAsync(default, default, default, default);
         await _signupService.DidNotReceiveWithAnyArgs()
@@ -238,7 +239,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Any<VolunteerEventProfile>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.DidNotReceiveWithAnyArgs()
             .SignUpAsync(default, default, default, default);
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -260,8 +261,8 @@ public class ProfileControllerDietaryMedicalReplayTests
         var result = await _controller.DietaryMedical(model);
 
         result.Should().BeOfType<ViewResult>();
-        await _shiftMgmt.DidNotReceiveWithAnyArgs()
-            .UpdateShiftProfileAsync(default!);
+        await _profileEditor.DidNotReceiveWithAnyArgs()
+            .SaveDietaryMedicalAsync(default, default!, default);
         await _signupService.DidNotReceiveWithAnyArgs()
             .SignUpAsync(default, default, default, default);
     }
@@ -282,7 +283,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Any<VolunteerEventProfile>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.Received(1)
             .SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;

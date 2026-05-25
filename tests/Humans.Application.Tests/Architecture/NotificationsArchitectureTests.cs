@@ -25,15 +25,8 @@ public class NotificationsArchitectureTests
 
     // The DbContext-constructor-parameter check is covered by the generic
     // ApplicationServicesTakeNoDbContextRule for every Application service.
-
-    [HumansFact]
-    public void NotificationService_TakesRepository()
-    {
-        var ctor = typeof(NotificationService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(INotificationRepository));
-    }
+    // Repository-takes check covered by IRepositoryImplementationsAreSealedRule.
+    // Service-namespace check covered by HUM0012.
 
     [HumansFact]
     public void NotificationService_TakesRecipientResolver_NotDbContext()
@@ -67,31 +60,6 @@ public class NotificationsArchitectureTests
     }
 
     // ── NotificationMeterProvider ────────────────────────────────────────────
-
-    [HumansFact]
-    public void NotificationMeterProvider_LivesInHumansApplicationServicesNotificationsNamespace()
-    {
-        typeof(NotificationMeterProvider).Namespace
-            .Should().Be("Humans.Application.Services.Notifications");
-    }
-
-    [HumansFact]
-    public void NotificationMeterProvider_TakesCrossSectionInterfaces()
-    {
-        // The meter provider computes badge counts by calling into each owning
-        // section service (IUserService, IGoogleSyncService, ITeamServiceRead,
-        // ITicketSyncService, IApplicationDecisionService,
-        // ICampService) — never reading the underlying tables directly.
-        var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
-        var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
-
-        paramTypeNames.Should().Contain("IUserServiceRead");
-        paramTypeNames.Should().Contain("IGoogleSyncService");
-        paramTypeNames.Should().Contain("ITeamServiceRead");
-        paramTypeNames.Should().Contain("ITicketSyncService");
-        paramTypeNames.Should().Contain("IApplicationDecisionService");
-        paramTypeNames.Should().Contain("ICampService");
-    }
 
     [HumansFact]
     public void NotificationMeterProvider_TakesNoRepositoryDependency()

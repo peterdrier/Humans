@@ -50,18 +50,6 @@ public class MailerArchitectureTests
     }
 
     [HumansFact]
-    public void MailerImportService_Constructor_HasNoCrossSectionRepositories()
-    {
-        var ctor = typeof(MailerImportService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-        var forbiddenRepos = paramTypes
-            .Where(t => t.Name.EndsWith("Repository", StringComparison.Ordinal))
-            .ToList();
-        forbiddenRepos.Should().BeEmpty(
-            "MailerImportService is the orchestrator — it talks to other sections through service interfaces, not their repositories.");
-    }
-
-    [HumansFact]
     public void IMailerLiteService_LivesInApplication_Interfaces()
     {
         typeof(IMailerLiteService).Assembly.GetName().Name

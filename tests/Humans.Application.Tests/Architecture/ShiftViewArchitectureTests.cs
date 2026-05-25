@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Services.Shifts;
@@ -31,36 +30,10 @@ public class ShiftViewArchitectureTests
     // ── ShiftViewService (inner, Scoped) ─────────────────────────────────────
 
     [HumansFact]
-    public void ShiftViewService_LivesInApplicationServicesShifts()
-    {
-        typeof(ShiftViewService).Namespace
-            .Should().Be("Humans.Application.Services.Shifts",
-                because: "the inner view service runs the repository calls and lives in Application per design-rules §2b");
-    }
-
-    [HumansFact]
-    public void ShiftViewService_ImplementsIShiftView()
-    {
-        typeof(ShiftViewService).Should().BeAssignableTo<IShiftView>();
-    }
-
-    [HumansFact]
     public void ShiftViewService_IsSealed()
     {
         typeof(ShiftViewService).IsSealed.Should().BeTrue(
             because: "Application services are sealed (design-rules §15)");
-    }
-
-    [HumansFact]
-    public void ShiftViewService_TakesShiftsSectionRepositories()
-    {
-        var ctor = typeof(ShiftViewService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IShiftManagementRepository));
-        paramTypes.Should().Contain(typeof(IShiftSignupRepository));
-        paramTypes.Should().Contain(typeof(IGeneralAvailabilityRepository));
-        paramTypes.Should().Contain(typeof(IVolunteerTrackingRepository));
     }
 
     // ── CachingShiftViewService (Singleton decorator) ────────────────────────

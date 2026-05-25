@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Shifts;
@@ -47,10 +48,6 @@ public class ThingsToDoViewComponentDietaryGateTests
                 PendingConsentCount: 0,
                 MissingConsentVersionIds: Array.Empty<Guid>()));
 
-        // These tests run with isVolunteerMember: true, so the component never
-        // dereferences the UserInfo.Profile (the consent-check branch is skipped).
-        // GetUserInfoAsync left at its NSubstitute default (null) is sufficient.
-
         _sut = new ThingsToDoViewComponent(
             _userService,
             _shiftMgmt,
@@ -76,8 +73,7 @@ public class ThingsToDoViewComponentDietaryGateTests
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(false);
-        _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { DietaryPreference = null });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
 
         var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: false, profileCompletionPercent: 100);
 
@@ -92,8 +88,7 @@ public class ThingsToDoViewComponentDietaryGateTests
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(true);
-        _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { DietaryPreference = null });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
 
         var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: true, profileCompletionPercent: 100);
 
@@ -107,8 +102,7 @@ public class ThingsToDoViewComponentDietaryGateTests
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(false);
-        _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { DietaryPreference = "Vegetarian" });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, "Vegetarian"));
 
         var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: false, profileCompletionPercent: 100);
 
@@ -119,4 +113,15 @@ public class ThingsToDoViewComponentDietaryGateTests
         }
         // ContentResult (empty) is also valid — means the card hid entirely because all items are Done.
     }
+
+    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfo.Create(
+        user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: new Profile { UserId = userId, BurnerName = "Test", DietaryPreference = dietary },
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 }

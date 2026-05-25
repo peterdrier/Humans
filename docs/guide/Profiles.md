@@ -88,13 +88,9 @@ On another human's profile, use Send Message (`/Profile/{id}/SendMessage`). The 
 
 Go to `/Profile/Search` and type a name. Results respect your access level and exclude suspended humans.
 
-### Export your data
+### Export your data or delete your account
 
-Go to `/Profile/Me/Privacy` and choose Download My Data (the underlying URL is `/Profile/Me/DownloadData`). You get a JSON file containing every section of personal data the system holds about you — account, emails, profile, contact fields, volunteer history, languages, communication preferences, team memberships and join requests, role assignments, applications, consents, shift signups and availability, ticket orders and attendee matches, campaign grants, camp lead assignments, feedback reports, in-app notifications, account-merge requests, and audit-log entries you appear in.
-
-### Request account deletion
-
-Also on `/Profile/Me/Privacy`. Requesting deletion revokes your team memberships and role assignments immediately and starts a 30-day grace period during which you can still log in and cancel. After 30 days your personal data is anonymised automatically in the background. Google permissions are removed through the normal sync cycle once your team memberships end.
+Both live on `/Profile/Me/Privacy`. **Download My Data** gives you a JSON file with every section of personal data the system holds about you. **Account deletion** revokes your team memberships and roles immediately, then gives you a 30-day grace period (you can still log in and cancel) before your personal data is anonymised automatically. The plain-language walkthrough — including who can see your details and how to control which emails you get — is in [Your data & privacy](YourData.md).
 
 ## As a Board member / Admin (Human Admin)
 

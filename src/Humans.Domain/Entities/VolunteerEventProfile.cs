@@ -3,8 +3,9 @@ using NodaTime;
 namespace Humans.Domain.Entities;
 
 /// <summary>
-/// User-scoped volunteer shift profile with skills, dietary info, and medical data.
-/// One-to-one with User.
+/// User-scoped volunteer shift profile: skills, quirks, and languages used for
+/// shift-matching. One-to-one with User. (Dietary + medical moved to Profile —
+/// see docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md.)
 /// </summary>
 public class VolunteerEventProfile
 {
@@ -35,34 +36,28 @@ public class VolunteerEventProfile
     /// </summary>
     public List<string> Languages { get; set; } = [];
 
-    /// <summary>
-    /// Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").
-    /// </summary>
+    // Dietary + medical MOVED to Profile (see the dietary-medical-to-profile
+    // migration). These columns are RETAINED but unused — the data was backfilled
+    // to Profile and all code now reads/writes Profile. Per
+    // memory/architecture/no-drops-until-prod-verified.md they are dropped in a
+    // follow-up PR after prod soak. Do NOT read or write these.
+
+    /// <summary>RETAINED for prod-soak drop. Use Profile.DietaryPreference.</summary>
     public string? DietaryPreference { get; set; }
 
-    /// <summary>
-    /// Food allergies.
-    /// </summary>
+    /// <summary>RETAINED for prod-soak drop. Use Profile.Allergies.</summary>
     public List<string> Allergies { get; set; } = [];
 
-    /// <summary>
-    /// Food intolerances.
-    /// </summary>
+    /// <summary>RETAINED for prod-soak drop. Use Profile.Intolerances.</summary>
     public List<string> Intolerances { get; set; } = [];
 
-    /// <summary>
-    /// Free text specifying "Other" allergy when "Other" is selected.
-    /// </summary>
+    /// <summary>RETAINED for prod-soak drop. Use Profile.AllergyOtherText.</summary>
     public string? AllergyOtherText { get; set; }
 
-    /// <summary>
-    /// Free text specifying "Other" intolerance when "Other" is selected.
-    /// </summary>
+    /// <summary>RETAINED for prod-soak drop. Use Profile.IntoleranceOtherText.</summary>
     public string? IntoleranceOtherText { get; set; }
 
-    /// <summary>
-    /// Medical conditions (restricted visibility — owner/NoInfoAdmin/Admin only).
-    /// </summary>
+    /// <summary>RETAINED for prod-soak drop. Use Profile.MedicalConditions.</summary>
     public string? MedicalConditions { get; set; }
 
     /// <summary>

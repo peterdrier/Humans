@@ -53,6 +53,7 @@ public static class AuthorizationPolicyExtensions
                     RoleNames.FeedbackAdmin,
                     RoleNames.FinanceAdmin,
                     RoleNames.StoreAdmin,
+                    RoleNames.CantinaAdmin,
                     RoleNames.NoInfoAdmin,
                     RoleNames.VolunteerCoordinator,
                     RoleNames.ConsentCoordinator));
@@ -89,6 +90,9 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.EventsAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.EventsAdmin, RoleNames.Admin));
+
+            options.AddPolicy(PolicyNames.CantinaAdminOrAdmin, policy =>
+                policy.RequireRole(RoleNames.CantinaAdmin, RoleNames.Admin));
 
             options.AddPolicy(PolicyNames.StoreCatalogAdmin, policy =>
                 policy.RequireRole(RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin));

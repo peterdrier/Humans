@@ -9,7 +9,7 @@ Go to `/Account/Login`. You have two ways in:
 - **Sign in with Google.** Your display name and picture come across automatically. If your email was already imported from a mailing list, Google sign-in claims that existing record rather than creating a duplicate.
 - **Email me a login link.** Type your address and the system mails you a one-time magic link that expires in 15 minutes. If you do not have an account yet, the same flow creates one and asks you to pick a display name.
 
-If you land on `/GuestDashboard`, that means you are signed in but have no profile yet — step 2 is next. The full signup pipeline is documented in [Onboarding](Onboarding.md).
+If you land on `/GuestDashboard`, that means you are signed in but have no profile yet — step 2 is next. The full signup pipeline is documented in [Onboarding](Onboarding.md). Can't get in, or stuck on the login link? See [Signing in & getting unstuck](SigningIn.md).
 
 ## 2. Complete your profile
 
@@ -35,9 +35,9 @@ Once every required document is signed, your safety check automatically flips to
 
 A Consent Coordinator reviews your profile and either **clears** it or **flags** it. Clearing is the common path — flagging pauses onboarding until a Board member or Admin resolves the note the coordinator left.
 
-When your profile is cleared **and** every required document is signed, the app does the rest automatically: you are added to the Volunteers system team, the rest of the app unlocks, and a welcome email goes out. No manual Board step is needed.
+When your profile is cleared **and** every required document is signed, the app does the rest automatically: you are added to the Volunteers system team, the rest of the app unlocks, and a welcome notification appears in the app. No manual Board step is needed.
 
-If an Admin has provisioned a `@nobodies.team` Google Workspace account for you, you also get a credentials email at your personal address with a temporary password and a 2FA setup prompt. That address then becomes your Google service email for every team you join. Teams with linked Google Groups or [Shared Drive](Glossary.md#shared-drive) folders grant you access on the next sync. See [Email](Email.md) for how the mailbox works and how to use your team's group address; [Google Integration](GoogleIntegration.md) covers the sync mechanics underneath.
+If an Admin has provisioned a `@nobodies.team` Google Workspace account for you, you also get a credentials email at your personal address with a temporary password and a 2FA setup prompt. That address then becomes your Google service email for every team you join. Teams with linked Google Groups or [Shared Drive](Glossary.md#shared-drive) folders grant you access on the next sync. See [Your `@nobodies.team` email](EmailAccount.md) for how the mailbox works and how to use your team's group address, and [Two-step verification (2FA)](TwoStepVerification.md) for that required sign-in step. [Email](Email.md) and [Google Integration](GoogleIntegration.md) cover the fuller reference and the sync mechanics underneath.
 
 ![TODO: screenshot — profile page right after auto-approval to Volunteer, with the Volunteers system team visible on the profile card and the Home dashboard checklist fully ticked]
 

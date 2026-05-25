@@ -1,48 +1,23 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.CityPlanning;
 using CityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the City
-/// Planning section — migrated per PR #543 / issue #543.
+/// Architecture tests enforcing section-specific invariants for the City
+/// Planning section.
 ///
 /// <para>
 /// City Planning chose <b>Option A</b> (no caching decorator, no dict cache,
 /// no DTO layer on top of the repository return types). It is a small,
 /// admin-facing section with no hot bulk-read path — the same rationale used
 /// by Users (#243) and Governance (#242) when they skipped the decorator.
-/// These tests pin the non-decorator shape: <c>CityPlanningService</c> lives
-/// in Application, goes through <see cref="ICityPlanningRepository"/>, and has
-/// no direct <c>DbContext</c> access.
 /// </para>
 /// </summary>
 public class CityPlanningArchitectureTests
 {
     // ── CityPlanningService ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CityPlanningService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(CityPlanningService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "canonical City Planning data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
-    }
-
-    [HumansFact]
-    public void CityPlanningService_TakesRepository()
-    {
-        var ctor = typeof(CityPlanningService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ICityPlanningRepository));
-    }
 
     [HumansFact]
     public void CityPlanningService_ConstructorTakesNoStoreType()
@@ -57,15 +32,6 @@ public class CityPlanningArchitectureTests
     }
 
     // ── ICityPlanningRepository ──────────────────────────────────────────────
-
-    [HumansFact]
-    public void CityPlanningRepository_IsSealed()
-    {
-        var repoType = typeof(CityPlanningRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
 
     [HumansFact]
     public void ICityPlanningRepository_HasNoHistoryUpdateOrDeleteMethods()

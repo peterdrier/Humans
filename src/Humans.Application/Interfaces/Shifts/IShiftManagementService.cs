@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -355,9 +356,10 @@ public interface IShiftManagementService : IApplicationService
     Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
 
     /// <summary>
-    /// Gets a user's shift profile. Medical data included only when includeMedical=true.
+    /// Gets a user's shift profile (Skills / Quirks / Languages). Dietary and
+    /// medical data moved to Profile — read those via <c>IUserServiceRead</c>.
     /// </summary>
-    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
+    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId);
 
     /// <summary>
     /// True when the user has at least one Pending or Confirmed signup on a
@@ -367,6 +369,16 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct user ids of volunteers on-site for the given event
+    /// day — those with a Pending/Confirmed signup on a <see cref="Shift"/> whose
+    /// <see cref="Shift.DayOffset"/> matches. Service-layer read for the Cantina
+    /// roster (feature #36) so it never reaches into the Shifts repository.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset,
         CancellationToken ct = default);
 
     /// <summary>

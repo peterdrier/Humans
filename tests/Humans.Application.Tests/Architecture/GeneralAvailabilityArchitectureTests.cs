@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.Shifts;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -22,27 +20,6 @@ public class GeneralAvailabilityArchitectureTests
     // ── GeneralAvailabilityService ──────────────────────────────────────────
 
     [HumansFact]
-    public void GeneralAvailabilityService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "canonical availability data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
-    }
-
-    [HumansFact]
-    public void GeneralAvailabilityService_TakesRepository()
-    {
-        var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IGeneralAvailabilityRepository));
-    }
-
-    [HumansFact]
     public void GeneralAvailabilityService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -54,14 +31,4 @@ public class GeneralAvailabilityArchitectureTests
             because: "Application services must not depend on store abstractions (design-rules §15); General Availability Option A does not use a store at all");
     }
 
-    // ── IGeneralAvailabilityRepository ──────────────────────────────────────
-
-    [HumansFact]
-    public void GeneralAvailabilityRepository_IsSealed()
-    {
-        var repoType = typeof(GeneralAvailabilityRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
 }

@@ -10,8 +10,6 @@ namespace Humans.Application.Tests.Architecture;
 /// section. Mirrors <see cref="TeamsArchitectureTests"/> /
 /// <see cref="ShiftManagementArchitectureTests"/>:
 /// <list type="bullet">
-///   <item><description><c>StoreService</c> lives in <c>Humans.Application.Services.Store</c>.</description></item>
-///   <item><description><c>StoreService</c> goes through <see cref="IStoreRepository"/> — no <c>DbContext</c> ctor parameter.</description></item>
 ///   <item><description><c>StoreService</c> is in <c>Humans.Application</c>, which structurally cannot import EF Core (project-graph enforced).</description></item>
 ///   <item><description><see cref="IStoreRepository"/> has a sealed EF-backed implementation in <c>Humans.Infrastructure.Repositories.Store</c>.</description></item>
 /// </list>
@@ -20,31 +18,9 @@ public class StoreArchitectureTests
 {
     // ── StoreService ─────────────────────────────────────────────────────────
 
-    [HumansFact]
-    public void StoreService_TakesRepository()
-    {
-        var ctor = typeof(StoreService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IStoreRepository),
-            because: "§15 requires every section service to go through its owning repository interface");
-    }
-
-    [HumansFact]
-    public void StoreService_LivesInApplicationServicesStoreNamespace()
-    {
-        typeof(StoreService).Namespace
-            .Should().Be("Humans.Application.Services.Store",
-                because: "section services live under Humans.Application.Services.<Section> per design-rules §15");
-    }
-
-    [HumansFact]
-    public void StoreService_AssemblyIsHumansApplication()
-    {
-        typeof(StoreService).Assembly.GetName().Name
-            .Should().Be("Humans.Application",
-                because: "the Application-layer project graph structurally forbids EF Core references, so services in this assembly cannot import EF even if a future typo tries");
-    }
+    // TakesRepository check covered by pattern G (positive wiring noise).
+    // Service-namespace check covered by HUM0012.
+    // AssemblyIsHumansApplication check covered by HUM0012.
 
     [HumansFact]
     public void StoreService_DoesNotReferenceEntityFrameworkCore()
@@ -60,25 +36,13 @@ public class StoreArchitectureTests
 
     // ── IStoreRepository + StoreRepository ───────────────────────────────────
 
-    [HumansFact]
-    public void StoreRepository_IsSealed()
-    {
-        typeof(StoreRepository).IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
+    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
+    // Infrastructure-namespace check covered by RepositoryImplementationsLiveInInfrastructureRule.
 
     [HumansFact]
     public void StoreRepository_ImplementsIStoreRepository()
     {
         typeof(IStoreRepository).IsAssignableFrom(typeof(StoreRepository))
             .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void StoreRepository_LivesInInfrastructureRepositoriesStoreNamespace()
-    {
-        typeof(StoreRepository).Namespace
-            .Should().Be("Humans.Infrastructure.Repositories.Store",
-                because: "EF-backed repository implementations live in Humans.Infrastructure.Repositories.<Section> per design-rules §15b");
     }
 }

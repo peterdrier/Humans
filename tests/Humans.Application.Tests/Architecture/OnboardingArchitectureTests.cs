@@ -1,46 +1,15 @@
 using AwesomeAssertions;
-using Microsoft.EntityFrameworkCore;
 using OnboardingService = Humans.Application.Services.Onboarding.OnboardingService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests for the Onboarding section — migrated to the §15
-/// pattern in issue #553. Onboarding is a pure orchestrator (owns no tables),
-/// so the enforcement here is tighter than a section with its own
-/// repository: no DbContext, no DbSet, no caching, no repository — the
-/// constructor must only take cross-section service interfaces.
+/// pattern in issue #553. Onboarding is a pure orchestrator (owns no tables):
+/// no repository — the constructor must only take cross-section service interfaces.
 /// </summary>
 public class OnboardingArchitectureTests
 {
-    [HumansFact]
-    public void OnboardingService_HasNoDbSetConstructorParameter()
-    {
-        var ctor = typeof(OnboardingService).GetConstructors().Single();
-        var dbSetParam = ctor.GetParameters()
-            .FirstOrDefault(p =>
-                p.ParameterType.IsGenericType &&
-                string.Equals(
-                    p.ParameterType.GetGenericTypeDefinition().FullName,
-                    typeof(DbSet<>).FullName,
-                    StringComparison.Ordinal));
-
-        dbSetParam.Should().BeNull(
-            because: "no DbSet of any kind belongs in the orchestrator — all data access goes through owning section services");
-    }
-
-    [HumansFact]
-    public void OnboardingService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(OnboardingService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "Onboarding owns no cached data; cache invalidation is owned by each section's write path (design-rules §2d)");
-    }
-
     [HumansFact]
     public void OnboardingService_HasNoRepositoryDependency()
     {

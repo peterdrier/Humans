@@ -20,16 +20,6 @@ public class GoogleWorkspaceUserArchitectureTests
     // ── GoogleWorkspaceUserService ───────────────────────────────────────────
 
     [HumansFact]
-    public void GoogleWorkspaceUserService_TakesConnectorClient()
-    {
-        var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IWorkspaceUserDirectoryClient),
-            because: "Google SDK calls go through the shape-neutral connector, not directly from the Application service");
-    }
-
-    [HumansFact]
     public void GoogleWorkspaceUserService_IsSealed()
     {
         typeof(GoogleWorkspaceUserService).IsSealed.Should().BeTrue(

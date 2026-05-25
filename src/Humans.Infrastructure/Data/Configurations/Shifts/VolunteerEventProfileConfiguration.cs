@@ -29,12 +29,14 @@ public class VolunteerEventProfileConfiguration : IEntityTypeConfiguration<Volun
         ConfigureJsonbList(builder, v => v.Skills, listComparer);
         ConfigureJsonbList(builder, v => v.Quirks, listComparer);
         ConfigureJsonbList(builder, v => v.Languages, listComparer);
+
+        // RETAINED dietary/medical columns — moved to Profile, kept for prod-soak
+        // drop (memory/architecture/no-drops-until-prod-verified.md). Mapping stays
+        // so EF keeps the columns; no code reads them.
         ConfigureJsonbList(builder, v => v.Allergies, listComparer);
         ConfigureJsonbList(builder, v => v.Intolerances, listComparer);
-
         builder.Property(v => v.AllergyOtherText).HasMaxLength(500);
         builder.Property(v => v.IntoleranceOtherText).HasMaxLength(500);
-
         builder.Property(v => v.DietaryPreference).HasMaxLength(200);
         builder.Property(v => v.MedicalConditions).HasMaxLength(4000);
 

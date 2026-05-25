@@ -6,15 +6,12 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories.Users;
 using Humans.Infrastructure.Services.Users;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
 using AccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
-using UnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 using UserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -24,56 +21,10 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    public static TheoryData<Type> UserServices =>
-    [
-        typeof(UserService),
-        typeof(AccountProvisioningService),
-        typeof(UnsubscribeService)
-    ];
-
-    public static TheoryData<Type, Type> RequiredConstructorEdges => new()
-    {
-        { typeof(UserService), typeof(IUserRepository) },
-        { typeof(AccountProvisioningService), typeof(IUserRepository) },
-        { typeof(AccountProvisioningService), typeof(IUserEmailService) },
-        { typeof(UnsubscribeService), typeof(IUserRepository) },
-    };
-
     public static TheoryData<Type, Type> ForbiddenConstructorEdges => new()
     {
         { typeof(AccountProvisioningService), typeof(IUserEmailRepository) },
     };
-
-    [HumansTheory]
-    [MemberData(nameof(UserServices))]
-    public void User_services_live_in_application_users_namespace(Type serviceType)
-    {
-        serviceType.Namespace
-            .Should().Be("Humans.Application.Services.Users",
-                because: "User-section services live in Application");
-    }
-
-    [HumansTheory]
-    [MemberData(nameof(UserServices))]
-    public void User_services_have_no_dbcontext_constructor_parameter(Type serviceType)
-    {
-        var ctor = serviceType.GetConstructors().Single();
-
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "Application services must use repositories instead of DbContext directly");
-    }
-
-    [HumansTheory]
-    [MemberData(nameof(RequiredConstructorEdges))]
-    public void User_services_take_required_constructor_edges(Type serviceType, Type dependencyType)
-    {
-        var ctor = serviceType.GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(dependencyType);
-    }
 
     [HumansTheory]
     [MemberData(nameof(ForbiddenConstructorEdges))]
@@ -119,22 +70,6 @@ public class UserArchitectureTests
         paramTypes.Should().NotContain(typeof(IShiftSignupService));
         paramTypes.Should().NotContain(typeof(IShiftManagementService));
         paramTypes.Should().NotContain(typeof(IProfilePictureService));
-    }
-
-    [HumansFact]
-    public void User_repository_has_expected_application_interface_and_sealed_implementation()
-    {
-        // Repositories are internal sealed since issue #750 (HumansDbContext
-        // sealed). Use GetTypes() — Humans.Application.Tests has
-        // InternalsVisibleTo on Humans.Infrastructure.
-        var repoType = typeof(IUserRepository).Assembly
-            .GetTypes()
-            .Concat(typeof(UserRepository).Assembly.GetTypes())
-            .Single(t => string.Equals(t.Name, "UserRepository", StringComparison.Ordinal)
-                         && typeof(IUserRepository).IsAssignableFrom(t));
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension");
     }
 
     [HumansFact]

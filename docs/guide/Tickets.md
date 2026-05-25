@@ -19,11 +19,11 @@
 
 The Tickets section tracks event ticket sales. Tickets are sold through an external vendor, not through this app — this section mirrors the vendor's data (orders, attendees, redeemed codes) and matches it against humans so the ticketing team can report on sales and see who has not bought yet.
 
-Ticket data syncs automatically. Attendees are auto-matched to humans by email, so if the email on the issued ticket matches an email on your profile (OAuth, verified, or even unverified), your ticket shows up on your Dashboard on its own.
+Ticket data syncs automatically. Attendees are auto-matched to humans by email, so if the email on the issued ticket matches a **verified** email on your profile, your ticket shows up on your home dashboard on its own.
 
 ## Key pages at a glance
 
-- **Your Ticket card** — card on your Dashboard (`/Dashboard`) showing your ticket status
+- **Your Ticket card** — card on your home dashboard (`/`) showing your ticket status
 - **Tickets dashboard** (`/Tickets`) — summary cards, Volunteer Ticket Coverage, participation breakdown, daily sales chart, problems list, recent orders
 - **Orders** (`/Tickets/Orders`) — paginated orders with donation/VAT columns
 - **Attendees** (`/Tickets/Attendees`) — paginated attendees with VIP badges and taxable/donation split
@@ -36,15 +36,19 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 
 ### See whether you have a ticket
 
-Your Dashboard (`/Dashboard`) shows a Ticket Status card. If at least one valid attendee record is matched to you, it confirms you have a ticket and shows the count when you have more than one. If nothing is matched, it shows a button linking out to the vendor's purchase page (and a "Different email?" link to your profile emails). If ticketing is not configured at all, you see a warning instead.
+Your home dashboard (`/`) shows a Ticket Status card. If at least one valid attendee record is matched to you, it confirms you have a ticket and shows the count when you have more than one. If nothing is matched, it shows a button linking out to the vendor's purchase page (and a "Different email?" link to your profile emails). If ticketing is not configured at all, you see a warning instead.
 
-Matching is by **attendee email**, not buyer email. The sync compares each attendee email against every email on every user (OAuth, verified, and unverified), normalized so gmail/googlemail aliases collide. If you bought tickets for other people but not one for yourself, you do not count as having a ticket — buyer-only matches don't earn coverage.
+Matching is by **attendee email**, not buyer email. The sync compares each attendee email against every **verified** email on every user, normalized so gmail/googlemail aliases collide. If you bought tickets for other people but not one for yourself, you do not count as having a ticket — buyer-only matches don't earn coverage.
 
 ![TODO: screenshot — Dashboard Ticket Status card in the "has ticket" state]
 
 ### Get your ticket matched
 
 If you have paid but your card still says you do not have a ticket, the attendee email on the order probably is not on your profile. Go to `/Profile/Me/Emails`, add the email you used at checkout, verify it, and the next sync picks it up. You buy tickets on the vendor's site — the Dashboard ticket card links out when you do not already have one matched.
+
+### Pass your ticket to someone else
+
+Can't make it, or bought a ticket under your name for a friend? You can transfer a ticket you hold to another person from **Tickets → Transfers** (`/Tickets/Transfers`). You start the request, the ticketing team completes the swap with the vendor, and you both get an email. Full walkthrough: [Transferring your ticket](TicketTransfers.md).
 
 ## As a Board member / Admin (Ticket Admin)
 
@@ -66,7 +70,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 ### Codes and sales reports
 
-`/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Campaign/Detail/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
+`/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Admin/Campaigns/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
 
 `/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items.
 
@@ -77,6 +81,14 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 ### Backfilling participation
 
 When you import historical attendance from outside the vendor (e.g. from a previous year's spreadsheet), Admins can paste a CSV of `UserId,Status` rows at `/Tickets/Participation/Backfill`. The page is scoped to the active event year and writes through `IUserService.BackfillParticipationsAsync`. Ticket Admin and Board do not have access to this page.
+
+### Process ticket transfers
+
+When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then approve or reject. **Approving records the decision and emails both people — you still do the actual void-and-reissue with the vendor by hand**, and the next sync reconciles the local attendee rows. Rejecting requires a reason, which is emailed to the sender and recipient. Ticket Admin and Admin can decide; Board can view.
+
+### Import attendee contacts
+
+`/Tickets/Admin/Contacts` lets you provision Humans accounts for ticket attendees who aren't matched to a human yet — useful for getting buyers into the system. Preview the import first, then apply it.
 
 ### Sync configuration
 

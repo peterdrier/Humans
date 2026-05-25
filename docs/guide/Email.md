@@ -27,7 +27,8 @@ so it's worth keeping them straight:
    with its own inbox, archive, and password. One per [human](Glossary.md#human).
 2. **Group emails** — `teamname@nobodies.team`. A shared address that fans
    out to every member of a [team](Glossary.md#team). Not an inbox you log
-   into by default (a shared-inbox option is being rolled out).
+   into by default; some teams may also have a single shared inbox they all
+   sign into — ask your Coordinator whether yours does.
 
 This guide covers both from the human side: how you get a mailbox, how to
 sign in, how group emails work, and how to send "as" your team. The Drive,
@@ -39,102 +40,21 @@ Group, and sync mechanics underneath sit in
 - **Profile → Emails** (`/Profile/Me/Emails`) — your verified addresses, your
   notification target, your Google service email.
 - **Team page** (`/Teams/{slug}`) — your team's group address is shown here.
-- **Provision Email** (Admin only, on `/Human/{id}/Admin`) — creates a new
+- **Provision Email** (Admin only, on `/Profile/{id}/Admin`) — creates a new
   `@nobodies.team` mailbox for a human.
 - **mail.google.com** — sign in here with your `@nobodies.team` address to
   reach your inbox.
 
 ## As a [Volunteer](Glossary.md#volunteer)
 
-### Why you have a `@nobodies.team` address
+The day-to-day, plain-language how-to for your own mailbox lives in the Common
+questions pages — why you have a `@nobodies.team` address and how to get one,
+signing in the first time, using your team's shared (group) address, and making
+a reply reach the whole team:
 
-Everyone volunteering with Elsewhere gets a personal `@nobodies.team`
-mailbox. It's a real Google Workspace account — full inbox, full archive,
-yours for as long as you're an active human. It's the official contact
-point for anything role-related: emails to other teams, vendors, or the
-wider community on behalf of the work you do.
-
-You can keep using your personal Gmail for personal things. Use
-`@nobodies.team` for org things so the right people are reachable and the
-history lives in one place.
-
-### How you got it (or how to get it if you don't yet)
-
-If you sign up to Humans now, the onboarding flow asks you for the address
-you'd like — `firstname@nobodies.team`, `firstname.last@nobodies.team`, or
-similar — and provisions it automatically.
-
-If you signed up before that flow existed and don't have one yet, your
-[Coordinator](Glossary.md#coordinator) can assign one to you from the
-Humans app. Ask in your team chat, or use the feedback button (three dots
-in a speech bubble, bottom right of the app), or email
-[humans@nobodies.team](mailto:humans@nobodies.team).
-
-### First sign-in
-
-1. Go to [mail.google.com](https://mail.google.com).
-2. Sign in with your `@nobodies.team` address and the temporary password
-   that was sent to your personal email.
-3. Set up two-factor authentication when prompted — this is **required**.
-4. Optional: add the account to your phone's mail app (Gmail, Apple Mail,
-   Outlook) the same way you'd add any Google account.
-
-### Your team's group address
-
-Every team has a shared address — `volunteers@nobodies.team`,
-`barrios@nobodies.team`, `production@nobodies.team`, and so on. When
-someone emails the group, every member of the team receives it in their
-own personal inbox.
-
-| Situation | What happens |
-|---|---|
-| Someone emails your team's address | You get it in your `@nobodies.team` inbox along with the rest of the team |
-| You reply | By default the reply goes from your personal address — see "Sending from your team's address" below to send as the team instead |
-| You want to email the whole team | Send to the group address; everyone receives it |
-| You're in a sub-team | You receive emails sent to the sub-team. To also receive the parent department's emails you have to be on the parent team in Humans too |
-
-Find your team's group address on the team's page in Humans, or ask your
-Coordinator.
-
-### Sending from your team's group address
-
-If you want a reply to land in everyone's inbox (instead of just yours),
-send "as" the group address. There are two ways:
-
-**Option A — Add it as a Gmail send-from alias** (available now):
-
-1. Open your `@nobodies.team` inbox at [mail.google.com](https://mail.google.com).
-2. Settings (gear icon) → **See all settings** → **Accounts** tab.
-3. Under **Send mail as**, click **Add another email address**.
-4. Enter the group address (e.g. `production@nobodies.team`). Leave
-   **Treat as an alias** ticked. Click **Next Step**.
-5. Click **Send Verification**. A confirmation email arrives in your
-   `@nobodies.team` inbox.
-6. Open it, click the link, then click **Confirm** on the page that opens.
-7. The group address now appears in your **From** dropdown when composing.
-
-**Tip:** in Settings → Accounts, set **When replying to a message** to
-**Reply from the same address the message was sent to**. Then if someone
-emails `production@nobodies.team` and you reply, the reply goes out from
-that address automatically.
-
-**Option B — Sign in directly to the shared group inbox** (rolling out):
-
-A shared-inbox setup is being activated where the whole team can sign in
-to the group address itself and respond from a shared view of the inbox.
-Ask your Coordinator whether this is live for your team yet.
-
-### Common questions
-
-| Question | Answer |
-|---|---|
-| I haven't received my `@nobodies.team` details | Ask your Coordinator (they can assign one via Humans), or use the feedback button in the app, or email [humans@nobodies.team](mailto:humans@nobodies.team) |
-| I forgot my password | [accounts.google.com](https://accounts.google.com) → forgot password, with your `@nobodies.team` address |
-| Can I use my personal Gmail instead? | For personal stuff, yes. For role-related emails (vendors, other teams, the community) please use your `@nobodies.team` address |
-| What's my team's group address? | Check your team page in Humans, or ask your Coordinator |
-| Can I send from the group address? | Yes — add it as a Gmail alias following the steps above; or use the shared-inbox option if it's live for your team |
-| I'm not getting team emails | Check with your Coordinator that you're on the team in Humans. If you are and still not getting them, use the feedback button in the app or email [humans@nobodies.team](mailto:humans@nobodies.team) |
-| I don't have a Google account | You don't need one to sign up for Humans — any email works. You'll still get a `@nobodies.team` address as part of the process |
+- **[Your `@nobodies.team` email](EmailAccount.md)** — the everyday guide.
+- **[Two-step verification (2FA)](TwoStepVerification.md)** — the required extra
+  sign-in step on your Google account.
 
 ## As a Coordinator
 
@@ -182,7 +102,7 @@ them on Discord or email them directly.
 
 ### Provision a `@nobodies.team` mailbox
 
-From a human's profile admin page (`/Human/{id}/Admin`), use **Provision
+From a human's profile admin page (`/Profile/{id}/Admin`), use **Provision
 Email**. The app:
 
 1. Creates the Google Workspace account.

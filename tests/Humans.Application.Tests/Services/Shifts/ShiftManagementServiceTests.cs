@@ -1108,57 +1108,10 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             .WithMessage("*one*active*");
     }
 
-    // ============================================================
-    // Medical data gating — Shifts.md invariant line 231
-    // ============================================================
-
-    [HumansFact]
-    public async Task GetShiftProfileAsync_IncludeMedicalFalse_StripsMedicalConditions()
-    {
-        // Arrange: profile with MedicalConditions populated
-        var userId = Guid.NewGuid();
-        var profile = new VolunteerEventProfile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MedicalConditions = "Asthma; severe nut allergy",
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        Db.VolunteerEventProfiles.Add(profile);
-        await Db.SaveChangesAsync();
-
-        // Act
-        var result = await _service.GetShiftProfileAsync(userId, includeMedical: false);
-
-        // Assert: MedicalConditions stripped
-        result.Should().NotBeNull();
-        result.MedicalConditions.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetShiftProfileAsync_IncludeMedicalTrue_PreservesMedicalConditions()
-    {
-        // Arrange: same profile as above
-        var userId = Guid.NewGuid();
-        var profile = new VolunteerEventProfile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MedicalConditions = "Asthma; severe nut allergy",
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        Db.VolunteerEventProfiles.Add(profile);
-        await Db.SaveChangesAsync();
-
-        // Act
-        var result = await _service.GetShiftProfileAsync(userId, includeMedical: true);
-
-        // Assert: MedicalConditions intact
-        result.Should().NotBeNull();
-        result.MedicalConditions.Should().Be("Asthma; severe nut allergy");
-    }
+    // Medical-data gating moved off GetShiftProfileAsync: MedicalConditions is now
+    // a Profile field on the cached UserInfo, gated per render/serialize surface by
+    // the MedicalDataViewer policy (see the dietary-medical-to-profile migration).
+    // The old includeMedical strip tests were removed with that parameter.
 
     // ============================================================
     // Rota delete — Shifts.md trigger line 262

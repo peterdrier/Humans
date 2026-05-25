@@ -123,7 +123,7 @@ public sealed class WidgetGalleryController(
     {
         try
         {
-            return await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+            return await shiftMgmt.GetShiftProfileAsync(userId);
         }
         catch (Exception ex)
         {

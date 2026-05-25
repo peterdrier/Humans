@@ -82,7 +82,7 @@ public class ShiftsController(
         // Dietary-prompt tightening (#279): lock the rota Sign-Up buttons + show the banner
         // when this human has a qualifying signup but no dietary preference on file.
         model.UserId = user.Id;
-        model.SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user.Id, HttpContext.RequestAborted);
+        model.SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted);
 
         return View(model);
     }
@@ -135,11 +135,10 @@ public class ShiftsController(
     // VM (Index/Mine); the views propagate it to each rota-partial. Mirrors
     // the banner's own self-check and the SignUp gate's condition. Medical
     // conditions are intentionally excluded (only DietaryPreference blocks).
-    private async Task<bool> ComputeSignupsBlockedByMissingDietaryAsync(Guid userId, CancellationToken ct = default)
+    private async Task<bool> ComputeSignupsBlockedByMissingDietaryAsync(UserInfo user, CancellationToken ct = default)
     {
-        if (!await shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct)) return false;
-        var profile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
-        return string.IsNullOrEmpty(profile?.DietaryPreference);
+        if (!await shiftMgmt.HasQualifyingCantinaSignupAsync(user.Id, ct)) return false;
+        return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
 
     // Dietary gate: if the shift qualifies for a cantina meal (all-day or ≥6h)
@@ -152,8 +151,7 @@ public class ShiftsController(
         var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
         if (shift is null || !shift.QualifiesForCantinaMeal()) return null;
 
-        var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
-        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return null;
+        if (!string.IsNullOrEmpty(user.Profile?.DietaryPreference)) return null;
 
         SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
         return RedirectToAction(
@@ -174,8 +172,7 @@ public class ShiftsController(
         var rangeShifts = await signupService.PeekRangeShiftsAsync(rotaId, startDayOffset, endDayOffset, HttpContext.RequestAborted);
         if (rangeShifts.Count == 0) return null;
 
-        var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
-        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return null;
+        if (!string.IsNullOrEmpty(user.Profile?.DietaryPreference)) return null;
 
         SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
         return RedirectToAction(
@@ -319,7 +316,7 @@ public class ShiftsController(
         {
             EventSettings = es,
             UserId = user.Id,
-            SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user.Id, HttpContext.RequestAborted),
+            SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted),
         };
 
         var mineTeamNames = await LoadTeamNamesForSignupsAsync(signups);

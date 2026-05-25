@@ -1,13 +1,13 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Admin/**
-  src/Humans.Web/Views/Board/**
+  src/Humans.Web/Views/Shared/_AdminLayout.cshtml
+  src/Humans.Web/ViewComponents/AdminNavTree.cs
   src/Humans.Web/Views/Profile/AdminList.cshtml
   src/Humans.Web/Views/Profile/AdminDetail.cshtml
   src/Humans.Web/Views/AdminDuplicateAccounts/**
   src/Humans.Web/Views/AdminMerge/**
   src/Humans.Web/Views/Notifications/**
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Controllers/BoardController.cs
   src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
   src/Humans.Web/Controllers/AdminMergeController.cs
   src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
@@ -36,8 +36,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 
 ## Key pages at a glance
 
-- `/Admin` — Admin Tools menu with System Operations and Quick Links columns.
-- `/Board` — dashboard with cards for Total Humans, Active, Pending Approval, Missing Consents, Suspended, and Pending Deletion, plus a recent-activity feed and links to pending volunteers, pending applications, and the audit log. Visible to Board and Admin.
+- `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Operations, Members, Money, Governance, Integrations, Agent, People data, Diagnostics). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
 - `/Profile/Admin` — humans list; `?filter=pending` scopes to pending approvals.
 - `/Profile/{id}/Admin` — per-human detail, with suspend, unsuspend, approve, reject, add role, end role.
 - `/Profile/{id}/Admin/Outbox` — per-human email outbox.
@@ -62,7 +61,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Board` for the dashboard. The cards at the top — Total Humans, Active, Pending Approval, Missing Consents, Suspended, Pending Deletion — double as entry points, and a Pending Volunteers / Pending Applications action panel sits below. The recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing. `/Admin` is a separate Admin Tools menu of system operations and quick links rather than a dashboard.
+Open `/Admin` for the dashboard. The summary tiles — humans in review, open feedback, pending shifts, and recent audit activity — give you a fast read on what needs attention, and the recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing. The left sidebar groups every admin tool you have access to. What you see is scoped to your roles: an Admin sees everything; a Board member sees the Members and Governance tools; a domain admin sees just their own area.
 
 ### Manage humans
 
