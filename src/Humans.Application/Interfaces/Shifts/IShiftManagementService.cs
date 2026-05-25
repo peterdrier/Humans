@@ -356,9 +356,10 @@ public interface IShiftManagementService : IApplicationService
     Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
 
     /// <summary>
-    /// Gets a user's shift profile. Medical data included only when includeMedical=true.
+    /// Gets a user's shift profile (Skills / Quirks / Languages). Dietary and
+    /// medical data moved to Profile — read those via <c>IUserServiceRead</c>.
     /// </summary>
-    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
+    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId);
 
     /// <summary>
     /// True when the user has at least one Pending or Confirmed signup on a

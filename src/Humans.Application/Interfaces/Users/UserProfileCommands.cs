@@ -45,7 +45,26 @@ public sealed record UserProfileSaveCommand(
     string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,
     UserProfilePictureMutation PictureMutation,
-    string? ProfilePictureContentType);
+    string? ProfilePictureContentType,
+    // Edit-page-owned dietary fields (meal pref + allergies). Intolerances +
+    // medical are written separately via UserProfileDietaryMedicalCommand.
+    string? DietaryPreference = null,
+    List<string>? Allergies = null,
+    string? AllergyOtherText = null);
+
+/// <summary>
+/// Focused write for the full dietary + medical set (the DietaryMedical page).
+/// Updates only these six Profile columns; leaves all other profile fields untouched.
+/// MedicalConditions is GDPR Art. 9 — callers must already have verified the
+/// editor is the owner (or an authorized admin).
+/// </summary>
+public sealed record UserProfileDietaryMedicalCommand(
+    string? DietaryPreference,
+    List<string> Allergies,
+    string? AllergyOtherText,
+    List<string> Intolerances,
+    string? IntoleranceOtherText,
+    string? MedicalConditions);
 
 public enum UserProfilePictureMutation
 {

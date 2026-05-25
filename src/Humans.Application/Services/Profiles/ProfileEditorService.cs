@@ -82,8 +82,17 @@ public sealed class ProfileEditorService(
             EmergencyContactRelationship: request.EmergencyContactRelationship,
             NoPriorBurnExperience: request.NoPriorBurnExperience,
             PictureMutation: pictureMutation,
-            ProfilePictureContentType: request.ProfilePictureContentType);
+            ProfilePictureContentType: request.ProfilePictureContentType,
+            DietaryPreference: request.DietaryPreference,
+            Allergies: request.Allergies,
+            AllergyOtherText: request.AllergyOtherText);
     }
+
+    public Task SaveDietaryMedicalAsync(
+        Guid userId,
+        UserProfileDietaryMedicalCommand command,
+        CancellationToken ct = default) =>
+        userService.SaveDietaryMedicalAsync(userId, command, ct);
 
     private async Task ApplyProfilePictureFileMutationAsync(
         UserProfileSaveResult storageResult,

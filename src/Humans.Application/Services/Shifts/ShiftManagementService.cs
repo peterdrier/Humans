@@ -1805,17 +1805,8 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateUser(profile.UserId);
     }
 
-    public async Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical)
-    {
-        var profile = await repo.GetVolunteerEventProfileAsync(userId);
-
-        if (profile is not null && !includeMedical)
-        {
-            profile.MedicalConditions = null;
-        }
-
-        return profile;
-    }
+    public Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId) =>
+        repo.GetVolunteerEventProfileAsync(userId);
 
     public async Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,

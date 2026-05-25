@@ -1,27 +1,27 @@
-@model (VolunteerEventProfile? Profile, bool ShowMedical)
+@model Humans.Web.Models.VolunteerBadgesViewModel
 
-@if (Model.Profile != null)
+@if (Model != null)
 {
     <span class="volunteer-badges">
-        @foreach (var skill in Model.Profile.Skills)
+        @foreach (var skill in Model.Skills)
         {
             <span class="badge bg-info me-1">@skill</span>
         }
-        @foreach (var quirk in Model.Profile.Quirks)
+        @foreach (var quirk in Model.Quirks)
         {
             <span class="badge bg-secondary me-1">@quirk</span>
         }
-        @if (!string.IsNullOrEmpty(Model.Profile.DietaryPreference))
+        @if (!string.IsNullOrEmpty(Model.DietaryPreference))
         {
-            <span class="badge bg-success me-1">@Model.Profile.DietaryPreference</span>
+            <span class="badge bg-success me-1">@Model.DietaryPreference</span>
         }
-        @foreach (var lang in Model.Profile.Languages)
+        @foreach (var lang in Model.Languages)
         {
             <span class="badge bg-primary me-1">@lang</span>
         }
-        @if (Model.ShowMedical && !string.IsNullOrEmpty(Model.Profile.MedicalConditions))
+        @if (Model.ShowMedical && !string.IsNullOrEmpty(Model.MedicalConditions))
         {
-            <span class="badge bg-danger" title="@Model.Profile.MedicalConditions">@Localizer["Medical_Badge"]</span>
+            <span class="badge bg-danger" title="@Model.MedicalConditions">@Localizer["Medical_Badge"]</span>
         }
     </span>
 }

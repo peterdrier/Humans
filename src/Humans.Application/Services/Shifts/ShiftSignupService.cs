@@ -1096,17 +1096,13 @@ public sealed class ShiftSignupService(
             ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
         }).ToList());
 
+        // Dietary + medical moved to Profile — they are exported by the Profiles
+        // data contributor now. The Shifts VEP slice carries only shift-matching data.
         var vepSlice = new UserDataSlice(GdprExportSections.VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
         {
             vep.Skills,
             vep.Quirks,
             vep.Languages,
-            vep.DietaryPreference,
-            vep.Allergies,
-            vep.Intolerances,
-            vep.AllergyOtherText,
-            vep.IntoleranceOtherText,
-            vep.MedicalConditions,
             CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
             UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
         }).ToList());

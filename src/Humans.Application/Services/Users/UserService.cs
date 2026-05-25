@@ -400,6 +400,17 @@ public sealed class UserService(
             profile.EmergencyContactPhone = command.EmergencyContactPhone;
             profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
             profile.NoPriorBurnExperience = command.NoPriorBurnExperience;
+
+            // Edit page owns meal preference + allergies (not intolerances/medical —
+            // those are written via SaveDietaryMedicalAsync). Only touch these when
+            // the command carries them, so a non-dietary save path can't clobber.
+            if (command.DietaryPreference is not null || command.Allergies is not null || command.AllergyOtherText is not null)
+            {
+                profile.DietaryPreference = string.IsNullOrWhiteSpace(command.DietaryPreference) ? null : command.DietaryPreference;
+                profile.Allergies = command.Allergies ?? [];
+                profile.AllergyOtherText = command.AllergyOtherText;
+            }
+
             profile.UpdatedAt = now;
 
             // LocalDate year=4 lets Feb 29 validate.
@@ -439,6 +450,46 @@ public sealed class UserService(
                 profile.Id,
                 previousPictureContentType,
                 profile.ProfilePictureContentType);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async Task SaveDietaryMedicalAsync(
+        Guid userId,
+        UserProfileDietaryMedicalCommand command,
+        CancellationToken ct = default)
+    {
+        var gate = ProfileStubLockFor(userId);
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var now = clock.GetCurrentInstant();
+            var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+            if (profile is null)
+            {
+                profile = new Profile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    State = ProfileState.Stub,
+                };
+                await profileRepo.AddAsync(profile, ct);
+            }
+
+            profile.DietaryPreference = command.DietaryPreference;
+            profile.Allergies = command.Allergies;
+            profile.AllergyOtherText = command.AllergyOtherText;
+            profile.Intolerances = command.Intolerances;
+            profile.IntoleranceOtherText = command.IntoleranceOtherText;
+            profile.MedicalConditions = command.MedicalConditions;
+            profile.UpdatedAt = now;
+
+            await profileRepo.UpdateAsync(profile, ct);
         }
         finally
         {
@@ -894,6 +945,14 @@ public sealed class UserService(
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
+                // Dietary + medical (moved here from VolunteerEventProfile). Included in
+                // the data-subject export — this is the owner's own export of their data.
+                profile.DietaryPreference,
+                profile.Allergies,
+                profile.AllergyOtherText,
+                profile.Intolerances,
+                profile.IntoleranceOtherText,
+                profile.MedicalConditions,
                 profile.HasCustomProfilePicture,
                 CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
                 UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()

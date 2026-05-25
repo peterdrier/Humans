@@ -84,6 +84,9 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | EmergencyContactName | string? (256) | null | Private — self + Board. |
 | EmergencyContactPhone | string? (50) | null | Private — self + Board. |
 | EmergencyContactRelationship | string? (100) | null | Private — self + Board. |
+| DietaryPreference | string? (200) | null | Meal preference. Moved here from VolunteerEventProfile. Edited on `/Profile/Me/Edit` + `/Profile/Me/DietaryMedical`. Surfaced on `UserInfo`. |
+| Allergies / Intolerances | List&lt;string&gt; (jsonb) | [] | Food allergies / intolerances (+ `AllergyOtherText` / `IntoleranceOtherText` for free-text "Other"). Moved here from VolunteerEventProfile. |
+| MedicalConditions | string? (4000) | null | **GDPR Art. 9** health data. On the cached `UserInfo` but gated at every render/serialize surface by the `MedicalDataViewer` policy (Admin / NoInfoAdmin). Owner edits their own on `/Profile/Me/DietaryMedical`. |
 | ProfilePictureData | byte[]? | null | Custom uploaded picture, resized to long-side 1000px JPEG by `ProfilePictureProcessor`. |
 | ProfilePictureContentType | string? (100) | null | MIME type of the stored picture. |
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
