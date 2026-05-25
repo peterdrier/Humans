@@ -23,12 +23,6 @@ public class BaselineSeeder
 
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
 
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoCrossSectionEfJoins.baseline.txt",
-            NoCrossSectionEfJoinsRule.ScanConfigurations(repoRoot),
-            "no-cross-section EF joins (memory/architecture/no-cross-section-ef-joins.md)");
-
         var migrationsDir = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Migrations");
         WriteBaseline(
             repoRoot,
