@@ -7,11 +7,6 @@
 # When the test reports new violations, fix the code — do not add lines to silence it.
 
 src/Humans.Infrastructure/Repositories/Auth/RoleAssignmentRepository.cs:ThenByDescending#1
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:OrderBy#3
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:OrderBy#4
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:OrderBy#5
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#2
