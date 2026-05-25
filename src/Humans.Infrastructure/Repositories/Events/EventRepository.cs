@@ -46,7 +46,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
         return await ctx.EventCategories
             .AsNoTracking()
             .Where(c => c.IsActive)
-            .OrderBy(c => c.DisplayOrder)
             .ToListAsync(ct);
     }
 
@@ -56,8 +55,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
         return await ctx.EventCategories
             .AsNoTracking()
             .Include(c => c.Events)
-            .OrderBy(c => c.DisplayOrder)
-            .ThenBy(c => c.Name)
             .ToListAsync(ct);
     }
 
@@ -134,7 +131,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
         return await ctx.EventVenues
             .AsNoTracking()
             .Where(v => v.IsActive)
-            .OrderBy(v => v.DisplayOrder)
             .ToListAsync(ct);
     }
 
@@ -144,8 +140,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
         return await ctx.EventVenues
             .AsNoTracking()
             .Include(v => v.Events)
-            .OrderBy(v => v.DisplayOrder)
-            .ThenBy(v => v.Name)
             .ToListAsync(ct);
     }
 
@@ -216,7 +210,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             .Include(e => e.Category)
             .Include(e => e.EventVenue)
             .Where(e => e.CampId == null && e.SubmitterUserId == userId)
-            .OrderByDescending(e => e.SubmittedAt)
             .ToListAsync(ct);
     }
 
@@ -234,7 +227,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             .AsNoTracking()
             .Include(e => e.Category)
             .Where(e => e.CampId == campId)
-            .OrderByDescending(e => e.SubmittedAt)
             .ToListAsync(ct);
     }
 
@@ -285,7 +277,7 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             query = query.Where(e => EF.Functions.ILike(e.Title, $"%{q}%") ||
                                      EF.Functions.ILike(e.Description, $"%{q}%"));
 
-        return await query.OrderBy(e => e.StartAt).ToListAsync(ct);
+        return await query.ToListAsync(ct);
     }
 
     public async Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
@@ -341,10 +333,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             .Include(e => e.EventModerationActions)
             .Where(e => e.Status == status);
 
-        query = status == EventStatus.Pending
-            ? query.OrderBy(e => e.SubmittedAt)
-            : query.OrderByDescending(e => e.SubmittedAt);
-
         return await query.ToListAsync(ct);
     }
 
@@ -398,7 +386,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             .Include(f => f.Event).ThenInclude(e => e.Category)
             .Include(f => f.Event).ThenInclude(e => e.EventVenue)
             .Where(f => f.UserId == userId && f.Event.Status == EventStatus.Approved)
-            .OrderBy(f => f.Event.StartAt)
             .ToListAsync(ct);
     }
 

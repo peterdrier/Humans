@@ -17,13 +17,33 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
 {
     // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
 
-    public Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
-        => repo.GetGuideSettingsAsync(ct);
+    public async Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default)
+    {
+        var settings = await repo.GetGuideSettingsAsync(ct);
+        return settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
+    }
 
     public async Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
         return settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
+    }
+
+    private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
+    {
+        // TimeZoneId is stitched in from the Shifts-owned event_settings row via
+        // IBurnSettingsService (cross-section supplier API, §2c / #719).
+        var burn = await burnSettings.GetByIdAsync(settings.EventSettingsId, ct);
+        return new EventGuideSettingsView(
+            Id: settings.Id,
+            EventSettingsId: settings.EventSettingsId,
+            SubmissionOpenAt: settings.SubmissionOpenAt,
+            SubmissionCloseAt: settings.SubmissionCloseAt,
+            GuidePublishAt: settings.GuidePublishAt,
+            MaxPrintSlots: settings.MaxPrintSlots,
+            TimeZoneId: burn?.TimeZoneId,
+            CreatedAt: settings.CreatedAt,
+            UpdatedAt: settings.UpdatedAt);
     }
 
     public async Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
@@ -62,14 +82,24 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         await repo.UpsertGuideSettingsAsync(settings, ct);
     }
 
-    public Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default)
-        => repo.GetActiveCategoriesAsync(ct);
+    public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
+    {
+        var categories = await repo.GetActiveCategoriesAsync(ct);
+        return categories.Select(ToCategoryView).ToList();
+    }
 
-    public Task<IReadOnlyList<EventCategory>> GetAllCategoriesAsync(CancellationToken ct = default)
-        => repo.GetAllCategoriesAsync(ct);
+    public async Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default)
+    {
+        var categories = await repo.GetAllCategoriesAsync(ct);
+        return categories.Select(c => new EventCategoryManageInfo(
+            c.Id, c.Name, c.Slug, c.IsSensitive, c.DisplayOrder, c.IsActive, c.Events.Count)).ToList();
+    }
 
-    public Task<EventCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default)
-        => repo.GetCategoryAsync(id, ct);
+    public async Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default)
+    {
+        var category = await repo.GetCategoryAsync(id, ct);
+        return category is null ? null : ToCategoryView(category);
+    }
 
     public Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId = null, CancellationToken ct = default)
         => repo.CategorySlugExistsAsync(slug, excludeId, ct);
@@ -89,14 +119,24 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default)
         => repo.SwapCategoryOrderAsync(id, direction, ct);
 
-    public Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
-        => repo.GetActiveVenuesAsync(ct);
+    public async Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default)
+    {
+        var venues = await repo.GetActiveVenuesAsync(ct);
+        return venues.Select(ToVenueView).ToList();
+    }
 
-    public Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default)
-        => repo.GetAllVenuesAsync(ct);
+    public async Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default)
+    {
+        var venues = await repo.GetAllVenuesAsync(ct);
+        return venues.Select(v => new EventVenueManageInfo(
+            v.Id, v.Name, v.Description, v.LocationDescription, v.DisplayOrder, v.IsActive, v.Events.Count)).ToList();
+    }
 
-    public Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
-        => repo.GetVenueAsync(id, ct);
+    public async Task<EventVenueView?> GetVenueAsync(Guid id, CancellationToken ct = default)
+    {
+        var venue = await repo.GetVenueAsync(id, ct);
+        return venue is null ? null : ToVenueView(venue);
+    }
 
     public async Task<int> GetNextVenueOrderAsync(CancellationToken ct = default)
         => await repo.GetMaxVenueOrderAsync(ct) + 1;
@@ -113,14 +153,20 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default)
         => repo.SwapVenueOrderAsync(id, direction, ct);
 
-    public Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
-        => repo.GetUserSubmissionsAsync(userId, ct);
+    public async Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
+    {
+        var events = await repo.GetUserSubmissionsAsync(userId, ct);
+        return events.Select(ToEventInfo).ToList();
+    }
 
     public Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
         => repo.GetUserEventAsync(eventId, userId, ct);
 
-    public Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
-        => repo.GetCampSubmissionsAsync(campId, ct);
+    public async Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
+    {
+        var events = await repo.GetCampSubmissionsAsync(campId, ct);
+        return events.Select(ToEventInfo).ToList();
+    }
 
     public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
         => repo.GetCampEventAsync(eventId, campId, ct);
@@ -304,19 +350,29 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         return errors;
     }
 
-    public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
+    public async Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
-        => repo.GetApprovedEventsAsync(campId, venueId, categoryId, q, excludedSlugs, ct);
+    {
+        var events = await repo.GetApprovedEventsAsync(campId, venueId, categoryId, q, excludedSlugs, ct);
+        return events.Select(ToApprovedEventView).ToList();
+    }
 
-    public Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
-        => repo.GetApprovedEventByIdAsync(id, ct);
+    public async Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var ev = await repo.GetApprovedEventByIdAsync(id, ct);
+        return ev is null ? null : ToApprovedEventView(ev);
+    }
 
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
         => repo.GetFavouriteEventIdsAsync(userId, ct);
 
-    public Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
-        => repo.GetFavouritesWithEventsAsync(userId, ct);
+    public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
+    {
+        var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
+        return favourites.Select(f => new EventFavouriteInfo(
+            f.Id, f.UserId, f.GuideEventId, f.CreatedAt, ToEventInfo(f.Event))).ToList();
+    }
 
     public Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
         => repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId), ct);
@@ -334,8 +390,11 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         return JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [];
     }
 
-    public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
-        => repo.GetPreferenceAsync(userId, ct);
+    public async Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
+    {
+        var pref = await repo.GetPreferenceAsync(userId, ct);
+        return pref is null ? null : new EventPreferenceInfo(pref.UserId, pref.ExcludedCategorySlugs, pref.UpdatedAt);
+    }
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
         => repo.UpsertPreferenceAsync(userId, JsonSerializer.Serialize(slugs), clock.GetCurrentInstant(), ct);
@@ -343,8 +402,11 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => repo.GetModerationStatusCountsAsync(ct);
 
-    public Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
-        => repo.GetEventsByStatusAsync(status, ct);
+    public async Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
+    {
+        var events = await repo.GetEventsByStatusAsync(status, ct);
+        return events.Select(ToEventInfo).ToList();
+    }
 
     public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
         => repo.GetEventForModerationAsync(eventId, ct);
@@ -373,15 +435,85 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
-        => repo.GetAllEventsForDashboardAsync(ct);
+    public async Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
+    {
+        var events = await repo.GetAllEventsForDashboardAsync(ct);
+        return events.Select(ToEventInfo).ToList();
+    }
 
-    public async Task<(IReadOnlyList<Event> Events, EventGuideSettings? Settings)> GetApprovedEventsForExportAsync(CancellationToken ct = default)
+    public async Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
         var events = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        return (events, settings);
+        var settingsView = settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
+        return new ApprovedEventsExportInfo(events.Select(ToEventInfo).ToList(), settingsView);
     }
+
+    private static EventCategoryView ToCategoryView(EventCategory c) => new(
+        Id: c.Id,
+        Name: c.Name,
+        Slug: c.Slug,
+        IsSensitive: c.IsSensitive,
+        DisplayOrder: c.DisplayOrder,
+        IsActive: c.IsActive);
+
+    private static EventVenueView ToVenueView(EventVenue v) => new(
+        Id: v.Id,
+        Name: v.Name,
+        Description: v.Description,
+        LocationDescription: v.LocationDescription,
+        DisplayOrder: v.DisplayOrder,
+        IsActive: v.IsActive);
+
+    private static ApprovedEventView ToApprovedEventView(Event e) => new(
+        Id: e.Id,
+        CampId: e.CampId,
+        GuideSharedVenueId: e.GuideSharedVenueId,
+        SubmitterUserId: e.SubmitterUserId,
+        CategoryId: e.CategoryId,
+        CategorySlug: e.Category.Slug,
+        CategoryName: e.Category.Name,
+        CategoryIsSensitive: e.Category.IsSensitive,
+        VenueName: e.EventVenue?.Name,
+        Title: e.Title,
+        Description: e.Description,
+        LocationNote: e.LocationNote,
+        Host: e.Host,
+        StartAt: e.StartAt,
+        DurationMinutes: e.DurationMinutes,
+        IsRecurring: e.IsRecurring,
+        RecurrenceDays: e.RecurrenceDays,
+        PriorityRank: e.PriorityRank,
+        SubmittedAt: e.SubmittedAt,
+        LastUpdatedAt: e.LastUpdatedAt);
+
+    // Tolerates a null Category nav (the dashboard query includes Category, but
+    // project defensively) and an unloaded EventVenue / moderation-history nav.
+    private static EventInfo ToEventInfo(Event e) => new(
+        Id: e.Id,
+        CampId: e.CampId,
+        GuideSharedVenueId: e.GuideSharedVenueId,
+        SubmitterUserId: e.SubmitterUserId,
+        CategoryId: e.CategoryId,
+        CategoryName: e.Category?.Name ?? string.Empty,
+        CategorySlug: e.Category?.Slug ?? string.Empty,
+        CategoryIsSensitive: e.Category?.IsSensitive ?? false,
+        VenueName: e.EventVenue?.Name,
+        Title: e.Title,
+        Description: e.Description,
+        LocationNote: e.LocationNote,
+        Host: e.Host,
+        StartAt: e.StartAt,
+        DurationMinutes: e.DurationMinutes,
+        IsRecurring: e.IsRecurring,
+        RecurrenceDays: e.RecurrenceDays,
+        PriorityRank: e.PriorityRank,
+        Status: e.Status,
+        SubmittedAt: e.SubmittedAt,
+        LastUpdatedAt: e.LastUpdatedAt,
+        ModerationHistory: e.EventModerationActions
+            .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
+            .ToList());
 
     private EventFavourite BuildFavourite(Guid userId, Guid eventId) => new()
     {

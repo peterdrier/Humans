@@ -46,12 +46,14 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // No cross-domain Includes — views read team data via TeamId lookups.
+        // Display sort (SortOrder on groups/categories/line items) is applied by
+        // the Budget/Finance controllers + views, not here.
         return await ctx.BudgetYears
             .AsNoTracking()
             // arch:db-sort-ok budget tree persisted SortOrder
             .Include(y => y.Groups.OrderBy(g => g.SortOrder))
-                .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
-                    .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
+                .ThenInclude(g => g.Categories)
+                    .ThenInclude(c => c.LineItems)
             .Include(y => y.Groups)
                 .ThenInclude(g => g.TicketingProjection)
             .FirstOrDefaultAsync(y => y.Id == id, ct);
@@ -72,12 +74,14 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         if (activeId is null)
             return null;
 
+        // Display sort (SortOrder on groups/categories/line items) is applied by
+        // the Budget/Finance controllers + views, not here.
         return await ctx.BudgetYears
             .AsNoTracking()
             // arch:db-sort-ok budget tree persisted SortOrder
             .Include(y => y.Groups.OrderBy(g => g.SortOrder))
-                .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
-                    .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
+                .ThenInclude(g => g.Categories)
+                    .ThenInclude(c => c.LineItems)
             .Include(y => y.Groups)
                 .ThenInclude(g => g.TicketingProjection)
             .FirstOrDefaultAsync(y => y.Id == activeId.Value, ct);
@@ -589,11 +593,12 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         // No cross-domain Includes — the team navs on BudgetCategory and
         // BudgetLineItem are obsolete cross-section navs. Callers resolve
         // team names via ITeamService keyed off TeamId / ResponsibleTeamId.
+        // Line-item display sort (SortOrder) is applied by the CategoryDetail views.
         return await ctx.BudgetCategories
             .AsNoTracking()
             .Include(c => c.BudgetGroup)
                 .ThenInclude(g => g!.BudgetYear)
-            .Include(c => c.LineItems.OrderBy(li => li.SortOrder))
+            .Include(c => c.LineItems)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 

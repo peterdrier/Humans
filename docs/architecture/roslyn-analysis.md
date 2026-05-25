@@ -83,9 +83,10 @@ assertion families that are plausible analyzer candidates:
 - Application service read methods should not expose domain/EF entities.
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.
-- Cross-section EF join rules are high value but need a semantic section
-  ownership map before analyzer promotion. The current folder ratchet should
-  stay until that framework exists.
+- Cross-section EF nav configuration is error-enforced by `HUM0024`, with
+  existing violators carrying `[Grandfathered("HUM0024", ...)]` to downgrade
+  to warning. Those warnings represent debt to migrate to bare FK columns and
+  service-level stitching; delete the attribute once the join is gone.
 
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 
@@ -220,12 +221,9 @@ have the supporting machinery. Each notes the missing piece.
   (`IInvocationOperation` on `EntityFrameworkQueryableExtensions.Include`),
   but the rule is "no `.Include()` whose target navigation crosses a section
   boundary" — requires a section-ownership map for entity types, which
-  currently lives only in the EF-config folder layout used by
-  `NoCrossSectionEfJoinsRule`. **Needs:** an attribute-or-table-driven
-  section-ownership map readable by the analyzer (e.g., a
-  `[SectionOwner("Profiles")]` attribute on each entity, or a generated
-  resource file). Until then, the ratchet test's folder-based detection is
-  the right tool.
+  currently comes from the EF-config namespace layout used by `HUM0024`.
+  Include enforcement should either reuse that helper or move the ownership
+  data behind a shared analyzer helper first.
 
 - **`Display sort in repositories/services`** (HARD-ish rule, see
   [`memory/architecture/display-sort-in-controllers.md`](../../memory/architecture/display-sort-in-controllers.md)).
@@ -269,7 +267,7 @@ shaped for ratchet / marker / filesystem-aware enforcement, not for an
 analyzer.
 
 - `NoConcurrencyTokensRule` — replaced by semantic analyzer `HUM0007`.
-- `NoCrossSectionEfJoinsRule` (`tests/.../Rules/NoCrossSectionEfJoinsRule.cs`) — section ownership is encoded in the `Configurations/<Section>/` folder layout; filesystem-aware. Stay as ratchet.
+- `NoCrossSectionEfJoinsRule` — replaced by analyzer `HUM0024`.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.
 - `NoBusinessLogicInControllersRule` (`tests/.../Rules/NoBusinessLogicInControllersRule.cs`) — heuristic (action methods > 50 lines or cyclomatic ≥ 6); baseline-ratcheted. Stay as ratchet.
 - `NoObsoleteNavReadsRule` — replaced by semantic analyzer `HUM0021`.

@@ -20,14 +20,9 @@ Humans.Application.Interfaces.Events.IEventService.GetApprovedEventsAsync:Humans
 Humans.Application.Interfaces.Events.IEventService.GetApprovedEventsForExportAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Events.IEventService.GetApprovedEventsForExportAsync:Humans.Domain.Entities.EventGuideSettings
 Humans.Application.Interfaces.Events.IEventService.GetCampEventAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetCampSubmissionsAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetCategoryAsync:Humans.Domain.Entities.EventCategory
 Humans.Application.Interfaces.Events.IEventService.GetEventForModerationAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetEventsByStatusAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetFavouritesWithEventsAsync:Humans.Domain.Entities.EventFavourite
-Humans.Application.Interfaces.Events.IEventService.GetGuideSettingsAsync:Humans.Domain.Entities.EventGuideSettings
-Humans.Application.Interfaces.Events.IEventService.GetPreferenceAsync:Humans.Domain.Entities.EventPreference
 Humans.Application.Interfaces.Events.IEventService.GetUserEventAsync:Humans.Domain.Entities.Event
+Humans.Application.Interfaces.Issues.IIssuesService.GetIssueByIdAsync:Humans.Domain.Entities.Issue
 Humans.Application.Interfaces.Events.IEventService.GetUserSubmissionsAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Events.IEventService.GetVenueAsync:Humans.Domain.Entities.EventVenue
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings

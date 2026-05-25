@@ -146,7 +146,7 @@ public sealed class SearchService(
                 return new GlobalSearchResult(
                     Type: SearchResultType.Event,
                     Title: e.Title,
-                    Subtitle: e.Category?.Name ?? string.Empty,
+                    Subtitle: e.CategoryName,
                     Url: $"/Events/Browse?q={Uri.EscapeDataString(e.Title)}",
                     Score: titleScore > 0 ? titleScore : ScoreContainsName);
             })
