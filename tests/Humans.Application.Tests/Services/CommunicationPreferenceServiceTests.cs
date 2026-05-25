@@ -1,10 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
+using NSubstitute;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.AspNetCore.DataProtection;
@@ -12,10 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
-using NSubstitute;
-using Xunit;
-using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
+using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -35,68 +34,47 @@ file sealed class StubAuditLogService : IAuditLogService
         string? errorMessage = null,
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
-    public Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+    public Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult<(IReadOnlyList<AuditLogEntry>, int, int)>((Array.Empty<AuditLogEntry>(), 0, 0));
+        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>(([], 0, 0));
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
         IReadOnlyList<AuditAction>? actions = null,
         int limit = 20,
         CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
-
-    public Task<AuditLogPageResult> GetAuditLogPageAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult(new AuditLogPageResult(
-            Array.Empty<AuditLogEntry>(), 0, 0,
-            new Dictionary<Guid, string>(),
-            new Dictionary<Guid, (string Name, string Slug)>()));
-
-    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
-        Task.FromResult(new Dictionary<Guid, string>());
-
-    public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
-        Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart, NodaTime.Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
-        Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
+        Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlyList<Guid>)[]);
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 
-public class CommunicationPreferenceServiceTests : IDisposable
+public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CommunicationPreferenceService _service;
 
     public CommunicationPreferenceServiceTests()
+        : base(Instant.FromUtc(2026, 4, 1, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
-
         var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
 
         var emailSettings = Options.Create(new EmailSettings
@@ -104,26 +82,53 @@ public class CommunicationPreferenceServiceTests : IDisposable
             BaseUrl = "https://test.example.com"
         });
 
-        var repository = new CommunicationPreferenceRepository(
-            new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options));
+        var repository = new CommunicationPreferenceRepository(DbFactory);
 
         var tokenProvider = new UnsubscribeTokenProvider(
             dataProtectionProvider, emailSettings,
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
+        // The service now reads preferences through IUserService.GetUserInfoAsync (the cache layer).
+        // For these tests, project the in-memory db state into UserInfo on each read so the
+        // write-then-read semantics that this suite verifies still hold end-to-end.
+        var userService = Substitute.For<IUserService>();
+        userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var prefs = Db.CommunicationPreferences
+                    .Where(cp => cp.UserId == userId)
+                    .ToList();
+                return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, prefs));
+            });
+
         _service = new CommunicationPreferenceService(
             repository,
+            userService,
             tokenProvider,
-            _clock,
+            Clock,
             new StubAuditLogService(),
             NullLogger<CommunicationPreferenceService>.Instance);
     }
 
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
-    }
+    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreference> prefs) =>
+        UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.MinValue,
+                GoogleEmailStatus = default,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: prefs);
 
     [HumansFact]
     public async Task GetPreferencesAsync_CreatesDefaultsForActiveCategories()
@@ -140,7 +145,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         prefs.Should().NotContain(p => p.Category == MessageCategory.CommunityUpdates);
 
         // Rows should be persisted in the database
-        var dbCount = await _dbContext.CommunicationPreferences
+        var dbCount = await Db.CommunicationPreferences
             .Where(cp => cp.UserId == userId)
             .CountAsync();
         dbCount.Should().Be(8);
@@ -167,9 +172,9 @@ public class CommunicationPreferenceServiceTests : IDisposable
         await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true, source: "Test");
 
         // No rows should have been created (update was silently rejected)
-        var systemPref = await _dbContext.CommunicationPreferences
+        var systemPref = await Db.CommunicationPreferences
             .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.System);
-        var campaignPref = await _dbContext.CommunicationPreferences
+        var campaignPref = await Db.CommunicationPreferences
             .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.CampaignCodes);
 
         systemPref.Should().BeNull();

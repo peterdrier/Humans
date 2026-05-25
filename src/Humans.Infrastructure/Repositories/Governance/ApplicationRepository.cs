@@ -14,35 +14,31 @@ namespace Humans.Infrastructure.Repositories.Governance;
 /// <c>DbContext.BoardVotes</c>, or <c>DbContext.ApplicationStateHistories</c>
 /// after the Governance migration lands.
 /// </summary>
-public sealed class ApplicationRepository : IApplicationRepository
+internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> factory) : IApplicationRepository
 {
-    private readonly HumansDbContext _dbContext;
-
-    public ApplicationRepository(HumansDbContext dbContext)
+    public async Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default)
     {
-        _dbContext = dbContext;
-    }
-
-    public Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default) =>
-        _dbContext.Applications
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Applications
             .Include(a => a.BoardVotes)
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId, ct);
+    }
 
     public async Task<IReadOnlyList<MemberApplication>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .Include(a => a.StateHistory)
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.SubmittedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
-    public Task<bool> AnySubmittedForUserAsync(Guid userId, CancellationToken ct = default) =>
-        _dbContext.Applications.AnyAsync(
+    public async Task<bool> AnySubmittedForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await WithContextAsync(ctx => ctx.Applications.AnyAsync(
             a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
-            ct);
+            ct), ct);
 
-    public Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default) =>
-        _dbContext.Applications.CountAsync(a => a.Status == status, ct);
+    public async Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default) =>
+        await WithContextAsync(ctx => ctx.Applications.CountAsync(a => a.Status == status, ct), ct);
 
     public async Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
@@ -51,7 +47,8 @@ public sealed class ApplicationRepository : IApplicationRepository
         int pageSize,
         CancellationToken ct = default)
     {
-        var query = _dbContext.Applications.AsNoTracking().AsQueryable();
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var query = ctx.Applications.AsNoTracking().AsQueryable();
 
         query = status is null
             ? query.Where(a => a.Status == ApplicationStatus.Submitted)
@@ -75,22 +72,25 @@ public sealed class ApplicationRepository : IApplicationRepository
 
     public async Task AddAsync(MemberApplication application, CancellationToken ct = default)
     {
-        _dbContext.Applications.Add(application);
-        await _dbContext.SaveChangesAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.Applications.Add(application);
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateAsync(MemberApplication application, CancellationToken ct = default)
     {
-        _dbContext.Applications.Update(application);
-        await _dbContext.SaveChangesAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.Applications.Update(application);
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task FinalizeAsync(MemberApplication application, CancellationToken ct = default)
     {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Attach-or-update the mutated application. The caller has already
         // fired app.Approve()/app.Reject() which appended a StateHistory row
         // through the aggregate-local collection — EF will cascade-insert it.
-        _dbContext.Applications.Update(application);
+        ctx.Applications.Update(application);
 
         // Remove BoardVotes for this application through the change tracker
         // so they commit in the same SaveChangesAsync transaction as the
@@ -98,21 +98,21 @@ public sealed class ApplicationRepository : IApplicationRepository
         // carry every vote when called directly with a loose entity), then
         // RemoveRange. ExecuteDeleteAsync would be cheaper at scale but is
         // not supported by the EF InMemory provider used in unit tests.
-        var votes = await _dbContext.BoardVotes
+        var votes = await ctx.BoardVotes
             .Where(bv => bv.ApplicationId == application.Id)
             .ToListAsync(ct);
-        _dbContext.BoardVotes.RemoveRange(votes);
+        ctx.BoardVotes.RemoveRange(votes);
 
-        await _dbContext.SaveChangesAsync(ct);
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default) =>
-        await _dbContext.BoardVotes
+        await WithContextAsync(async ctx => await ctx.BoardVotes
             .AsNoTracking()
             .Where(bv => bv.ApplicationId == applicationId)
             .Select(bv => bv.BoardMemberUserId)
             .Distinct()
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -120,7 +120,8 @@ public sealed class ApplicationRepository : IApplicationRepository
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        var matched = await _dbContext.Applications
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var matched = await ctx.Applications
             .AsNoTracking()
             .Where(a => userIds.Contains(a.UserId) && a.Status == ApplicationStatus.Submitted)
             .Select(a => a.UserId)
@@ -130,43 +131,43 @@ public sealed class ApplicationRepository : IApplicationRepository
         return matched.ToHashSet();
     }
 
-    public Task<MemberApplication?> GetSubmittedForUserAsync(
+    public async Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default) =>
-        _dbContext.Applications
+        await WithContextAsync(ctx => ctx.Applications
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
-                ct);
+                ct), ct);
 
     public async Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
         Guid userId, CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
             .Where(a => a.UserId == userId && a.Status == ApplicationStatus.Approved)
             .Select(a => a.MembershipTier)
             .Distinct()
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<MemberApplication>> GetAllSubmittedWithVotesAsync(
         CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
             .Include(a => a.BoardVotes)
             .Where(a => a.Status == ApplicationStatus.Submitted)
             .OrderBy(a => a.MembershipTier)
             .ThenBy(a => a.SubmittedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
-    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
-        _dbContext.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct);
+    public async Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
+        await WithContextAsync(ctx => ctx.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct), ct);
 
-    public Task<BoardVote?> GetBoardVoteAsync(
+    public async Task<BoardVote?> GetBoardVoteAsync(
         Guid applicationId, Guid boardMemberUserId, CancellationToken ct = default) =>
-        _dbContext.BoardVotes
+        await WithContextAsync(ctx => ctx.BoardVotes
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 v => v.ApplicationId == applicationId && v.BoardMemberUserId == boardMemberUserId,
-                ct);
+                ct), ct);
 
     public async Task UpsertBoardVoteAsync(
         Guid applicationId,
@@ -176,7 +177,8 @@ public sealed class ApplicationRepository : IApplicationRepository
         Instant now,
         CancellationToken ct = default)
     {
-        var existing = await _dbContext.BoardVotes
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.BoardVotes
             .FirstOrDefaultAsync(
                 v => v.ApplicationId == applicationId && v.BoardMemberUserId == boardMemberUserId,
                 ct);
@@ -189,7 +191,7 @@ public sealed class ApplicationRepository : IApplicationRepository
         }
         else
         {
-            _dbContext.BoardVotes.Add(new BoardVote
+            ctx.BoardVotes.Add(new BoardVote
             {
                 Id = Guid.NewGuid(),
                 ApplicationId = applicationId,
@@ -200,19 +202,20 @@ public sealed class ApplicationRepository : IApplicationRepository
             });
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await ctx.SaveChangesAsync(ct);
     }
 
-    public Task<int> GetUnvotedCountForBoardMemberAsync(
+    public async Task<int> GetUnvotedCountForBoardMemberAsync(
         Guid boardMemberUserId, CancellationToken ct = default) =>
-        _dbContext.Applications.CountAsync(
+        await WithContextAsync(ctx => ctx.Applications.CountAsync(
             a => a.Status == ApplicationStatus.Submitted &&
                  !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
-            ct);
+            ct), ct);
 
     public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
     {
-        var stats = await _dbContext.Applications
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var stats = await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status != ApplicationStatus.Withdrawn)
             .GroupBy(_ => 1)
@@ -234,7 +237,7 @@ public sealed class ApplicationRepository : IApplicationRepository
 
     public async Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
             .Where(a =>
                 a.Status == ApplicationStatus.Approved &&
@@ -242,12 +245,13 @@ public sealed class ApplicationRepository : IApplicationRepository
                 a.TermExpiresAt <= reminderThreshold &&
                 a.TermExpiresAt >= today &&
                 a.RenewalReminderSentAt == null)
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default)
     {
-        var pairs = await _dbContext.Applications
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var pairs = await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Submitted)
             .Select(a => new { a.UserId, a.MembershipTier })
@@ -260,7 +264,7 @@ public sealed class ApplicationRepository : IApplicationRepository
 
     public async Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
         Instant windowStart, Instant windowEnd, CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Approved
                 && a.ResolvedAt != null
@@ -268,15 +272,15 @@ public sealed class ApplicationRepository : IApplicationRepository
                 && a.ResolvedAt.Value < windowEnd)
             .OrderBy(a => a.MembershipTier)
             .ThenBy(a => a.ResolvedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
         CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Submitted)
             .Select(a => a.Id)
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
     public async Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
         Guid boardMemberUserId,
@@ -286,7 +290,8 @@ public sealed class ApplicationRepository : IApplicationRepository
         if (applicationIds.Count == 0)
             return 0;
 
-        var votedCount = await _dbContext.BoardVotes
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var votedCount = await ctx.BoardVotes
             .AsNoTracking()
             .CountAsync(v => v.BoardMemberUserId == boardMemberUserId
                 && applicationIds.Contains(v.ApplicationId), ct);
@@ -297,40 +302,42 @@ public sealed class ApplicationRepository : IApplicationRepository
     public async Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default)
     {
-        var app = await _dbContext.Applications.FindAsync([applicationId], ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var app = await ctx.Applications.FindAsync([applicationId], ct);
         if (app is null)
             return;
 
         app.RenewalReminderSentAt = sentAt;
-        await _dbContext.SaveChangesAsync(ct);
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        await _dbContext.Applications
+        await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Approved
                 && a.MembershipTier == tier
                 && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
             .Select(a => a.UserId)
             .Distinct()
-            .ToListAsync(ct);
+            .ToListAsync(ct), ct);
 
-    public Task<bool> HasActiveApprovedTierAsync(
+    public async Task<bool> HasActiveApprovedTierAsync(
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        _dbContext.Applications
+        await WithContextAsync(ctx => ctx.Applications
             .AsNoTracking()
             .AnyAsync(a =>
                 a.UserId == userId &&
                 a.Status == ApplicationStatus.Approved &&
                 a.MembershipTier == tier &&
                 (a.TermExpiresAt == null || a.TermExpiresAt >= today),
-                ct);
+                ct), ct);
 
     public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default)
     {
-        var rows = await _dbContext.Applications
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Approved
                 && a.MembershipTier != excludeTier
@@ -356,19 +363,28 @@ public sealed class ApplicationRepository : IApplicationRepository
         // Asociado tier applications over multiple years). Both source and
         // target may have applied independently; every row is preserved.
         // No conflict rule, no dedup. UpdatedAt stamped on every moved row.
-        var sourceRows = await _dbContext.Applications
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var sourceRows = await ctx.Applications
             .Where(a => a.UserId == sourceUserId)
             .ToListAsync(ct);
 
         foreach (var src in sourceRows)
         {
-            _dbContext.Entry(src).Property(nameof(MemberApplication.UserId)).CurrentValue = targetUserId;
+            ctx.Entry(src).Property(nameof(MemberApplication.UserId)).CurrentValue = targetUserId;
             src.UpdatedAt = updatedAt;
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await ctx.SaveChangesAsync(ct);
 
-        return await _dbContext.Applications
+        return await ctx.Applications
             .CountAsync(a => a.UserId == targetUserId, ct);
+    }
+
+    private async Task<T> WithContextAsync<T>(
+        Func<HumansDbContext, Task<T>> action,
+        CancellationToken ct)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await action(ctx);
     }
 }

@@ -4,176 +4,127 @@
   src/Humans.Application/Interfaces/Repositories/ITicketTransferRepository.cs
   src/Humans.Domain/Entities/TicketTransferRequest.cs
   src/Humans.Domain/Enums/TicketTransferStatus.cs
-  src/Humans.Domain/Enums/TicketTransferVendorResult.cs
   src/Humans.Infrastructure/Repositories/Tickets/TicketTransferRepository.cs
-  src/Humans.Infrastructure/Services/TicketTailorService.cs
-  src/Humans.Infrastructure/Services/StubTicketVendorService.cs
   src/Humans.Web/Controllers/TicketTransferController.cs
+  src/Humans.Web/Controllers/TicketTransferAdminController.cs
   src/Humans.Web/Views/TicketTransfer/
+  src/Humans.Web/Views/TicketTransferAdmin/
+  src/Humans.Web/ViewComponents/TicketStubViewComponent.cs
 -->
 <!-- freshness:flag-on-change
-  Vendor writeback state machine (Succeeded / VoidSucceededIssueFailed / Failed), receiver lookup contract, audit-log emission points, dashboard nav badge wiring — review when transfer lifecycle, vendor integration, or admin queue surface changes.
+  Manual-processing model (no vendor writeback), lifecycle states, email notification points,
+  the AllowEmail recipient lookup, and the reusable ticket-stub — review when transfer lifecycle,
+  the wizard, or notifications change.
 -->
 
 # Ticket Transfer
 
 ## Business Context
 
-Tickets to the annual gathering sell out, and reality changes between purchase and the event: a buyer's life intervenes (going abroad, an emergency, a long-planned vacation collides with the dates), and they want a known person to take their place rather than waste the seat. Without a sanctioned transfer path, the only options are (a) eat the cost, (b) DIY a vendor-side reissue manually with admin help every time, or (c) hand the ticket QR code to a friend and hope nobody notices the name mismatch. Option (c) is the most common in practice and is exactly what we want to disincentivize — it bypasses verified-member checks, the audit trail, and the receiver's consent to legal docs.
+Tickets to the annual gathering sell out, and reality changes between purchase and the event: a buyer's
+life intervenes and they want a known person to take their place rather than waste the seat. Without a
+sanctioned path the common workaround is handing over the QR code and hoping nobody notices the name
+mismatch — which bypasses verified-member checks, the audit trail, and the receiver's consent to legal
+docs.
 
-This feature lets the original ticket holder (the **Sender**) initiate a transfer to another verified Humans member (the **Receiver**), with a Ticket Admin reviewing each request before the vendor (TicketTailor) is called to void the original and reissue under the Receiver's name.
+This feature lets the original holder (the **Sender**) request a transfer to another verified Humans
+member (the **Receiver**). **For this year the ticket team performs the actual void+reissue manually in
+the TicketTailor dashboard** — Humans does not call the vendor. A request notifies the team; once they
+process it they mark it successful (or cancel it with a reason), and the next ticket sync reconciles the
+local attendee rows automatically.
 
-Tracked in: peterdrier/Humans#382.
+Tracked in: peterdrier/Humans#382. The earlier automated void+reissue engine (Option B / Option C /
+retry-issue / vendor-step timeline) was removed when transfers moved to manual processing.
 
 ## User Stories
 
-### US-42.1: Sender requests a transfer
-**As a** Sender (the buyer of an order with at least one Valid attendee)
-**I want to** send the ticket to a specific other Humans member
+### US-42.1: Sender requests a transfer (one-page wizard)
+**As a** Sender (current holder of a `Valid` ticket)
+**I want to** request sending the ticket to a specific other Humans member
 **So that** the seat goes to someone I trust rather than being wasted
 
 **Acceptance Criteria:**
-- Dashboard shows each of the Sender's attendee rows with a "Send" button when the attendee is `Valid`, the user is the order's `MatchedUserId`, and no transfer is already pending for that attendee
-- Receiver lookup accepts a full email address (case-insensitive, exact match) or a burner name (case-insensitive substring). Email queries return at most one candidate (no fuzzy leak); name queries return up to 10 candidates so the Sender picks the right one from a list when more than one matches
-- A baseball-card preview of the Receiver (display name, picture, burner name, optional preferred email) renders inline before submission so the Sender confirms identity before committing
-- Submit attaches a free-text reason (≤1000 chars) visible to admin
-- A validation failure on submit returns the same form with the picked Receiver and the typed reason intact (no re-typing)
-- Successful submit shows the row with a "Pending review" badge and a Cancel button on the dashboard
-- Receivers may already hold other tickets — multiple tickets per user is allowed
+- The wizard lives at `/Tickets/Transfers` (no `/Send`, no `attendeeId` query param). The homepage and
+  `/Profile/Me` link to it; the homepage shows the held tickets as physical admission stubs.
+- **Step A:** the Sender's transferable tickets render as admission stubs (`<vc:ticket-stub>`); pick one.
+- **Step B:** the recipient is chosen with the standard `<vc:human-search>` component (`scope=Name`,
+  `allow-email=true`) — search by burner name, or paste an exact email to resolve a single match.
+- **Step C:** a server-side confirm step resolves the Receiver's legal name + primary email (the search
+  API omits legal name) and shows: *"This will request transferring ticket X to <legal name> — <email>.
+  Our ticketing team will process this and let you know shortly."* plus an optional reason (≤1000 chars).
+- On submit a `Pending` request is created; the Sender sees a pending stamp on the ticket and a Cancel
+  control on the homepage.
 
 ### US-42.2: Sender cancels a pending transfer
-**As a** Sender who realizes they typed the wrong Receiver or changed their mind
-**I want to** cancel a pending transfer without admin intervention
-**So that** I can re-send without a back-channel ping to admin
+- A Cancel control appears on the Sender's pending-transfer ticket on the homepage.
+- Cancel transitions the request to `Cancelled` (audit-logged) and re-enables transferring the ticket.
+- Cancel is only permitted for `Pending` requests where the caller is the Sender.
 
-**Acceptance Criteria:**
-- Cancel button appears on the dashboard's pending-transfer row
-- Cancel transitions the request to `Cancelled` (audit-logged), removes the badge, and re-enables the Send button on the original attendee row
-- Cancel is only permitted for `Pending` requests where the caller is the Sender
+### US-42.3: Request notifications
+- On request, an email goes to the **Sender** (confirmation) and to **tickets@nobodies.team** (action
+  needed, linking to the admin detail page).
 
-### US-42.3: Ticket Admin reviews and decides
+### US-42.4: Ticket team processes and decides
 **As a** Ticket Admin
-**I want to** see a queue of pending transfer requests with the Sender's reason and Receiver identity
-**So that** I can approve legitimate transfers and reject suspicious ones
+**I want to** process the transfer manually in TicketTailor and then record the outcome
+**So that** the request queue reflects reality and the parties are notified
 
 **Acceptance Criteria:**
-- `Tickets/Admin/Transfers` index lists all `Pending` rows with Sender / Receiver display + reason, FIFO by `RequestedAt`
-- Detail page surfaces baseball cards for both Sender and Receiver + an Admin Notes textarea
-- Approve and Reject actions are policy-gated to `TicketAdminOrAdmin`
-- Decision (with notes) is captured on the `TicketTransferRequest` row and audit-logged
-- Admin nav tree shows a count badge of pending requests for at-a-glance triage
+- `/Tickets/Admin/Transfers` lists `Pending` rows (FIFO) plus an "All" tab; an order-drift table flags
+  paid orders whose valid-ticket count dropped below what was issued (manual-reconciliation aid).
+- The Detail page shows the ticket/order context, both parties, the reason, a "View order in
+  TicketTailor" link, and manual-processing instructions.
+- **Mark transfer successful** sets the request `Approved`; **Cancel transfer** requires a reason and
+  sets it `Rejected`. Both are policy-gated to `TicketAdminOrAdmin` and audit-logged.
+- Neither action calls the vendor or mutates attendee rows — the next ticket sync picks up the team's
+  TicketTailor-side void/reissue.
 
-### US-42.4: Vendor writeback (TicketTailor void+reissue, Option B)
-**As a** Ticket Admin approving a transfer
-**I want** the system to void the original ticket and reissue under the Receiver's name at the vendor
-**So that** the at-event scanner sees the Receiver's QR, not the Sender's
-
-**Acceptance Criteria:**
-- On approval the service calls `TicketTailorService.VoidIssuedTicketAsync(voidToHold: true)` then `IssueTicketAsync` against the returned hold, with `FullName = Receiver legal name` and `Email = Receiver primary email` (both snapshotted at request time)
-- All four `TicketTransferVendorResult` outcomes are recorded:
-  - `NotAttempted` — the request is still `Pending` or was `Rejected` / `Cancelled`
-  - `Succeeded` — both legs OK; original `TicketAttendee` flips to `Void` locally, new attendee row materializes, Receiver sees the ticket on their dashboard
-  - `VoidSucceededIssueFailed` — original is voided at the vendor and locally; admin can retry just the issue half. Hold ID is preserved in `VendorMessage`
-  - `Failed` — neither leg succeeded; no local attendee changes; transfer is recorded as `Approved` with vendor failure visible to admin (Option-C fallback)
-- Vendor errors are wrapped in `TicketVendorWriteException` with a `Kind` enum (`Validation` / `AuthFailed` / `NotFound` / `RateLimited` / `Transient`) for structured logging
-
-### US-42.5: Option-C admin fallback
-**As a** Ticket Admin facing a vendor outage during transfer approval
-**I want to** complete the transfer in the Humans record and finish the vendor side manually later
-**So that** the Receiver still sees their ticket on the dashboard and the team has an audit trail of what was decided
-
-**Acceptance Criteria:**
-- On `VendorResult = Failed` or `VoidSucceededIssueFailed`, the request still ends in `Approved` state for admin follow-up
-- `VendorMessage` records the raw error so admin can decide whether to retry the vendor call later or edit the TT dashboard manually
-- Audit-log message distinguishes the three vendor outcomes so log readers can spot Option-C cases at a glance
-
-### US-42.6: Sync resilience for null vendor order id
-**As a** Ticket Admin watching the periodic Ticket Tailor sync
-**I want** the sync to handle TT responses that omit `order_id` without crashing or duplicating attendees
-**So that** legitimate vendor weirdness (orphan tickets, hold-only issues) doesn't poison the local mirror
-
-**Acceptance Criteria:**
-- TT issued tickets with null `order_id` are looked up by `VendorTicketId` against existing local rows; if found, the existing `TicketOrderId` is reused
-- If no local row exists, the attendee is logged and skipped rather than inserted with a missing parent FK
-- New attendees pre-populated by `TicketTransferService.WriteToVendorAsync` are not double-counted on the next sync run
+### US-42.5: Decision notifications
+- On a decision, an email goes to **both the Sender and the Receiver**: completed, or cancelled with the
+  reason.
 
 ## State Machine
 
 ```
-Submitted (status=Pending, vendor=NotAttempted)
-   │
-   ├── Cancel  → status=Cancelled, vendor=NotAttempted   (terminal)
-   ├── Reject  → status=Rejected, vendor=NotAttempted    (terminal)
-   └── Approve → status=Approved
-                   │
-                   ├── vendor=Succeeded                       (happy path)
-                   ├── vendor=VoidSucceededIssueFailed       (admin retry the issue half)
-                   └── vendor=Failed                          (Option-C fallback)
+Submitted (Pending)
+   ├── Cancel (Sender)              → Cancelled    (terminal)
+   ├── Cancel transfer (admin)      → Rejected     (reason required, terminal)
+   └── Mark successful (admin)      → Approved      (terminal; no vendor call)
 ```
 
-Triggers: `Submit` (Sender), `Cancel` (Sender, only on Pending owned), `Reject` (admin), `Approve` (admin).
+Triggers: `Submit` (Sender), `Cancel` (Sender, only on own Pending), `Reject`/`Approve` (admin).
 
-## Receiver Lookup Contract
+## Recipient Lookup
 
-`ITicketTransferService.LookupReceiversAsync` is **case-insensitive** and **exact-match-on-email** (no fuzzy / partial / wildcard semantics) to avoid accidental cross-matches between similar email addresses. Email queries return zero or one candidate (the verified-email row, if any). Burner-name queries use case-insensitive `Contains` matching against the consolidated `PersonSearchFields.Name` bucket (covers `BurnerName` + the underlying `User.DisplayName`) and return up to 10 candidates ordered by display name — the Sender flow surfaces the list and lets the user pick. The picker resolves a chosen `UserId` back to a single baseball card via `GetReceiverCardAsync`. Suspended or unapproved profiles are filtered out at the search layer (security-adjacent — no sending to suspended users).
-
-The four Receiver fields surfaced in the baseball card (display name, picture, burner name, optional preferred email) are fixed by spec; the Sender flow does not re-invoke `ProfileCardViewComponent` because that would leak unrelated profile fields (teams, CV, bio) into the transfer surface.
+Recipients are found with the canonical `<vc:human-search>` inline picker (no bespoke lookup). Burner
+name is a case-insensitive search; with `allow-email=true` an `@`-containing query is an exact,
+case-insensitive verified-email match returning at most one person (no enumeration leak). See
+[`memory/architecture/person-search.md`](../../../memory/architecture/person-search.md).
 
 ## Audit Log
-
-Every state transition writes an `AuditLog` row via `IAuditLogService.LogAsync`:
 
 | Action | Trigger | Description shape |
 |--------|---------|---------------------|
 | `TicketTransferRequested` | Sender submits | `"Transfer requested: ticket <vendorTicketId> → <Receiver legal name>"` |
 | `TicketTransferCancelled` | Sender cancels | `"Transfer cancelled by Sender"` |
-| `TicketTransferRejected` | Admin rejects | `"Transfer rejected" [: <admin notes>]` |
-| `TicketTransferApproved` | Admin approves | Vendor-result-aware (`Succeeded` / `VoidSucceededIssueFailed` / `Failed`) — see `TicketTransferService.ApproveAsync` |
+| `TicketTransferApproved` | Admin marks successful | `"Transfer marked successful (processed manually in TicketTailor)"` |
+| `TicketTransferRejected` | Admin cancels | `"Transfer cancelled: <reason>"` |
 
-A partial-state path also exists: if the vendor write succeeds but the local `UpdateAsync` of the request row fails, an explicit `PARTIAL STATE` audit row is emitted before the exception is rethrown so admin can reconcile manually.
+## Reusable Ticket Stub
 
-## Workflows
+`<vc:ticket-stub>` renders one held ticket as a physical admission stub (event label, attendee name +
+email, serial). A pending outgoing transfer shows a "transfer pending" stamp; voided tickets render
+muted. Used by the wizard (step A), the `/Profile/Me` ticket card (`<vc:ticket-holdings>`), and the
+homepage "You're in" ticket card.
 
-```
-Sender dashboard (Home/Index → Dashboard.cshtml)
-  ├─ Send button → TicketTransferController.Send (GET)
-  │     → Send.cshtml (lookup form)
-  │        → Lookup (POST) → 0 results: same form with "no match" hint
-  │                          1 result : Send.cshtml with baseball-card + reason form
-  │                          >1 result: Send.cshtml with picker list,
-  │                                     pick-one (POST Lookup with selectedUserId)
-  │                                       → Send.cshtml with baseball-card
-  │           → Submit (POST)
-  │              → TicketTransferService.CreateRequestAsync
-  │              → on success: audit log, redirect to Home/Index with SetSuccess
-  │              → on InvalidOperationException: re-render Send.cshtml with
-  │                pre-filled reason and Receiver card so the Sender doesn't
-  │                lose their typing
-  └─ Cancel button on Pending row → TicketTransferController.Cancel (POST)
-        → TicketTransferService.CancelAsync
-        → audit log, redirect to Home/Index with SetSuccess
+## Dormant Storage
 
-Admin queue (TicketAdminOrAdmin)
-  ├─ AdminNavTree "Transfer requests" badge (count from CountPendingAsync)
-  │     → TicketTransferAdminController.Index
-  │        → TicketTransferService.GetByStatusAsync(Pending) → Index.cshtml
-  └─ Detail link
-        → TicketTransferAdminController.Detail
-           → Detail.cshtml (admin notes + Approve/Reject)
-              → Decide (POST)
-                 → ApproveAsync / RejectAsync
-                    → ApproveAsync: WriteToVendorAsync (TT void+reissue) → UpdateAsync → audit log
-                    → RejectAsync: UpdateAsync → audit log
-                 → redirect to Index with SetSuccess/SetError
-```
+The removed vendor engine's columns (`VendorResult`, `VendorMessage`, `NewVendorTicketId`,
+`VendorStepsJson`) remain on `ticket_transfer_requests` as **dormant, unread** columns. Per
+[`memory/architecture/no-drops-until-prod-verified.md`](../../../memory/architecture/no-drops-until-prod-verified.md)
+a follow-up PR drops them after prod soak.
 
-## Related Features
+## Related
 
-- [`docs/features/budget/budget.md`](../budget/budget.md) — `TicketingBudgetService` consumes the same `ticket_attendees` table for projections
-- [`docs/sections/Tickets.md`](../../sections/Tickets.md) — section invariants, cross-section dependencies, table ownership (base ticket model, sync architecture, attendee linkage)
-
-## Open Follow-ups
-
-- **Pricing parity on reissue.** `TicketTransferService.WriteToVendorAsync` snapshots the original attendee's `Price` onto the new local row, but TicketTailor may rebill the Receiver at a current ticket-type price. Reconciling the two is on the backlog (probe `Open Questions` in the design doc).
-- **Surfacing decided transfers.** The admin queue only shows `Pending` rows. A history view of decided transfers (filtered by date / status / vendor result) would help with the Option-C reconciliation workflow.
-- **Receiver consent before reissue.** Currently the Receiver sees the ticket appear post-approval without an explicit accept step. A future iteration could prompt the Receiver to acknowledge before the vendor reissue runs, gated on a feature flag.
+- [`docs/sections/Tickets.md`](../../sections/Tickets.md) — section invariants, sync, attendee model.
+- [`docs/features/budget/budget.md`](../budget/budget.md) — `TicketingBudgetService` shares the attendee table.

@@ -22,15 +22,13 @@
                 </div>
             }
 
-            @* === Section ordering: Private first when fields are empty (new user) === *@
+            @* Private first when fields empty (new user) *@
             @if (Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
             }
 
-            @* ====================== *@
-            @* Section 1: General     *@
-            @* ====================== *@
+            @* --- Section 1: General --- *@
             <div class="card mb-4">
                 <div class="card-body">
                     <h3>@Localizer["ProfileEdit_SectionGeneral"]</h3>
@@ -54,21 +52,6 @@
                             </div>
                         }
                     </div>
-                    @if (Model.CanImportGooglePicture)
-                    {
-                        @* Submits to the sibling import form declared at the bottom of the
-                           view, using the HTML5 form attribute so we don't nest forms. *@
-                        <div class="mb-3">
-                            <button type="submit"
-                                    form="importGooglePhotoForm"
-                                    class="btn btn-outline-secondary btn-sm">
-                                <i class="fa-brands fa-google me-1"></i>
-                                @Localizer["ProfileEdit_ImportGooglePhoto"]
-                            </button>
-                            <div class="form-text">@Localizer["ProfileEdit_ImportGooglePhotoHelp"]</div>
-                        </div>
-                    }
-
                     <hr />
 
                     <div class="mb-3">
@@ -273,7 +256,7 @@
                                             <label class="form-label small" for="EditableLanguages_@(i)__LanguageCode">Language</label>
                                             <select name="EditableLanguages[@i].LanguageCode" id="EditableLanguages_@(i)__LanguageCode" class="form-select form-select-sm language-code-select" required>
                                                 <option value="">— Select language —</option>
-                                                @foreach (var lang in Humans.Web.Helpers.LanguageCatalog.Languages)
+                                                @foreach (var lang in LanguageCatalog.Languages)
                                                 {
                                                     <option value="@lang.Key" selected="@(Model.EditableLanguages[i].LanguageCode == lang.Key ? "selected" : null)">@lang.Value (@lang.Key)</option>
                                                 }
@@ -370,9 +353,7 @@
                 </div>
             </div>
 
-            @* ========================== *@
-            @* Section 2: Contributor     *@
-            @* ========================== *@
+            @* --- Section 2: Contributor --- *@
             <div class="card mb-4">
                 <div class="card-body">
                     <h3>@Localizer["ProfileEdit_SectionContributor"]</h3>
@@ -459,9 +440,7 @@
                 </div>
             </div>
 
-            @* ========================== *@
-            @* Section 3: Application     *@
-            @* ========================== *@
+            @* --- Section 3: Application --- *@
             @if (Model.IsInitialSetup)
             {
                 <div class="card mb-4">
@@ -567,9 +546,7 @@
                 </div>
             }
 
-            @* ========================== *@
-            @* Section 4: Private         *@
-            @* ========================== *@
+            @* --- Section 4: Private --- *@
             @if (!Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
@@ -587,14 +564,6 @@
                 <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
             </div>
         </form>
-
-        @* Sibling form targeted via the HTML5 form attribute on the Import button. Keeping
-           it out of the Edit form avoids form nesting and lets the import POST independently
-           (no profile fields shipped with the import click). *@
-        @if (Model.CanImportGooglePicture)
-        {
-            <form id="importGooglePhotoForm" asp-action="ImportGooglePhoto" method="post"></form>
-        }
     </div>
 </div>
 
@@ -934,7 +903,7 @@
             const addButton = document.getElementById('addLanguage');
             if (!container || !addButton) return;
 
-            const languageOptions = `@Html.Raw(string.Join("", Humans.Web.Helpers.LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
+            const languageOptions = `@Html.Raw(string.Join("", LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
 
             function getNextIndex() {
                 const rows = container.querySelectorAll('.language-row');

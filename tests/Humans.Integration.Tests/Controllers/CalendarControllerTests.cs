@@ -1,14 +1,11 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class CalendarControllerTests : IntegrationTestBase
+public class CalendarControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public CalendarControllerTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact]
     public async Task Anonymous_GET_Calendar_redirects_to_login()
     {

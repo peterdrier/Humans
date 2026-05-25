@@ -8,19 +8,12 @@ namespace Humans.Web.Controllers;
 
 [Route("Legal")]
 [AllowAnonymous]
-public class LegalController : Controller
+public class LegalController(ILegalDocumentService legalDocService) : Controller
 {
-    private readonly ILegalDocumentService _legalDocService;
-
-    public LegalController(ILegalDocumentService legalDocService)
-    {
-        _legalDocService = legalDocService;
-    }
-
     [HttpGet("{slug?}")]
     public async Task<IActionResult> Index(string? slug)
     {
-        var documents = _legalDocService.GetAvailableDocuments();
+        var documents = legalDocService.GetAvailableDocuments();
         if (documents.Count == 0)
             return NotFound();
 
@@ -31,7 +24,7 @@ public class LegalController : Controller
         if (currentDoc is null)
             return NotFound();
 
-        var content = await _legalDocService.GetDocumentContentAsync(currentDoc.Slug);
+        var content = await legalDocService.GetDocumentContentAsync(currentDoc.Slug);
         var orderedContent = content.OrderByDisplayLanguage(canonicalFirst: true).ToList();
         var defaultLang = content.GetDefaultDocumentLanguage();
 

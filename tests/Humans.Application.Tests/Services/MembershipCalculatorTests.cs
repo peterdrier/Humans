@@ -3,15 +3,14 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Services.Governance;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Xunit;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 
@@ -19,10 +18,9 @@ public class MembershipCalculatorTests
 {
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
+    private readonly IConsentServiceRead _consentService = Substitute.For<IConsentServiceRead>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
 
     // Seed backing state — section service substitutes read from these maps.
@@ -36,11 +34,11 @@ public class MembershipCalculatorTests
     {
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 16, 0));
 
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_consentService)
+            .Build();
 
         _service = new MembershipCalculator(
-            _profileService,
             _membershipQuery,
             _userService,
             _legalDocumentSyncService,
@@ -48,25 +46,32 @@ public class MembershipCalculatorTests
             _clock);
 
         // Wire substitutes to the seed maps so tests can just mutate state.
-        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Task.FromResult(_profilesByUserId.GetValueOrDefault(ci.Arg<Guid>())));
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var profile = _profilesByUserId.GetValueOrDefault(userId);
+                return profile is null ? null : WrapInUserInfo(profile);
+            });
 
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 var map = ids
                     .Where(_profilesByUserId.ContainsKey)
-                    .ToDictionary(id => id, id => _profilesByUserId[id]);
-                return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(map);
+                    .ToDictionary(id => id, id => WrapInUserInfo(_profilesByUserId[id]));
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map);
             });
 
         _membershipQuery.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var userId = ci.Arg<Guid>();
-                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? new();
-                return Task.FromResult<IReadOnlyList<TeamMember>>(memberships);
+                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? [];
+                return Task.FromResult<IReadOnlyList<MembershipTeamSnapshot>>(memberships
+                    .Select(m => new MembershipTeamSnapshot(m.TeamId, m.Role, m.Team.SystemTeamType))
+                    .ToList());
             });
 
         _membershipQuery.IsUserMemberOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -74,7 +79,7 @@ public class MembershipCalculatorTests
             {
                 var teamId = ci.ArgAt<Guid>(0);
                 var userId = ci.ArgAt<Guid>(1);
-                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? new();
+                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? [];
                 return Task.FromResult(memberships.Any(m => m.TeamId == teamId && m.LeftAt == null));
             });
 
@@ -89,15 +94,16 @@ public class MembershipCalculatorTests
             .Returns(ci =>
             {
                 var teamId = ci.Arg<Guid>();
-                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? new();
-                return Task.FromResult<IReadOnlyList<DocumentVersion>>(versions);
+                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? [];
+                return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(
+                    versions.Select(ToRequiredVersionSnapshot).ToList());
             });
 
         _consentService.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var userId = ci.Arg<Guid>();
-                var set = _consentedVersionsByUser.GetValueOrDefault(userId) ?? new();
+                var set = _consentedVersionsByUser.GetValueOrDefault(userId) ?? [];
                 return Task.FromResult<IReadOnlySet<Guid>>(set);
             });
 
@@ -108,10 +114,21 @@ public class MembershipCalculatorTests
                 var userIds = ci.Arg<IReadOnlyList<Guid>>();
                 var result = userIds.ToDictionary(
                     id => id,
-                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? new HashSet<Guid>()));
+                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? []));
                 return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
             });
     }
+
+    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(DocumentVersion version) =>
+        new(
+            version.Id,
+            version.LegalDocumentId,
+            version.LegalDocument?.Name ?? string.Empty,
+            version.LegalDocument?.GracePeriodDays ?? 7,
+            version.VersionNumber,
+            version.EffectiveFrom,
+            version.RequiresReConsent,
+            version.ChangesSummary);
 
     [HumansFact]
     public async Task ComputeStatusAsync_NotApprovedProfile_ReturnsPending()
@@ -641,7 +658,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId);
         SeedConsent(userId, versionId);
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId]);
 
         result.Should().Contain(userId);
     }
@@ -652,7 +669,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid()); // unsigned
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId]);
 
         result.Should().NotContain(userId);
     }
@@ -662,7 +679,7 @@ public class MembershipCalculatorTests
     {
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid());
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync(Array.Empty<Guid>());
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([]);
 
         result.Should().BeEmpty();
     }
@@ -676,7 +693,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId]);
 
         result.Should().Contain(userId);
     }
@@ -689,7 +706,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId]);
 
         result.Should().BeEmpty();
     }
@@ -700,7 +717,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync(Array.Empty<Guid>());
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([]);
 
         result.Should().BeEmpty();
     }
@@ -740,7 +757,7 @@ public class MembershipCalculatorTests
         };
         if (!_teamMembershipsByUserId.TryGetValue(userId, out var list))
         {
-            list = new List<TeamMember>();
+            list = [];
             _teamMembershipsByUserId[userId] = list;
         }
         list.Add(tm);
@@ -766,6 +783,7 @@ public class MembershipCalculatorTests
             LastName = "User",
             IsApproved = isApproved,
             IsSuspended = isSuspended,
+            State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
@@ -777,7 +795,7 @@ public class MembershipCalculatorTests
             .Returns(Task.FromResult(true));
     }
 
-    private readonly List<Guid> _activeRoleUserIds = new();
+    private readonly List<Guid> _activeRoleUserIds = [];
 
     private void SeedActiveRoleInList(Guid userId)
     {
@@ -790,7 +808,7 @@ public class MembershipCalculatorTests
     {
         if (!_consentedVersionsByUser.TryGetValue(userId, out var set))
         {
-            set = new HashSet<Guid>();
+            set = [];
             _consentedVersionsByUser[userId] = set;
         }
         set.Add(versionId);
@@ -825,9 +843,27 @@ public class MembershipCalculatorTests
         };
         if (!_requiredVersionsByTeam.TryGetValue(teamId, out var list))
         {
-            list = new List<DocumentVersion>();
+            list = [];
             _requiredVersionsByTeam[teamId] = list;
         }
         list.Add(version);
     }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName,
+            PreferredLanguage = "en",
+            CreatedAt = profile.CreatedAt,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: profile,
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 }

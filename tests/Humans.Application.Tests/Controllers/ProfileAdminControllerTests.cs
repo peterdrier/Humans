@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.DTOs.EmailProblems;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -8,7 +9,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Humans.Web.Models.EmailProblems;
@@ -17,7 +17,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,41 +31,38 @@ public class ProfileAdminControllerTests
     private readonly IAccountMergeService _accountMerge = Substitute.For<IAccountMergeService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly UserManager<User> _userManager;
     private readonly Guid _adminUserId = Guid.NewGuid();
-    private readonly User _adminUser;
 
     public ProfileAdminControllerTests()
     {
-        _adminUser = new User { Id = _adminUserId };
+        var adminUser = new User { Id = _adminUserId };
         var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
+        var userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(_adminUser);
+        userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(adminUser);
+        _users.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(adminUser.ToUserInfo()));
     }
 
     private ProfileAdminController BuildController()
     {
         var c = new ProfileAdminController(
-            _userManager,
+            _users,
             _emailProblems,
             _accountMerge,
             _userEmails,
             _users,
             _audit,
             NullLogger<ProfileAdminController>.Instance,
-            _profileService,
             _teamService,
             _roleAssignmentService);
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
         var services = new ServiceCollection();
@@ -103,11 +99,11 @@ public class ProfileAdminControllerTests
     {
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>())
             .Returns(new EmailProblemsReport(NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                Array.Empty<EmailProblem>()));
+                []));
         _users.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
 
-        var result = await BuildController().EmailProblems(default);
+        var result = await BuildController().EmailProblems(CancellationToken.None);
 
         result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<EmailProblemsListViewModel>();
@@ -121,7 +117,7 @@ public class ProfileAdminControllerTests
         var u2 = Guid.NewGuid();
         _emailProblems.UsersShareAnyEmailAsync(u1, u2, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: default);
+        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: CancellationToken.None);
 
         await _accountMerge.Received(1).AdminMergeAsync(u2, u1, _adminUserId, null, Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
@@ -135,7 +131,7 @@ public class ProfileAdminControllerTests
         var u2 = Guid.NewGuid();
         var stranger = Guid.NewGuid();
 
-        var result = await BuildController().Merge(u1, u2, targetUserId: stranger, notes: null, ct: default);
+        var result = await BuildController().Merge(u1, u2, targetUserId: stranger, notes: null, ct: CancellationToken.None);
 
         await _accountMerge.DidNotReceive().AdminMergeAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -150,7 +146,7 @@ public class ProfileAdminControllerTests
         var u2 = Guid.NewGuid();
         _emailProblems.UsersShareAnyEmailAsync(u1, u2, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: default);
+        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: CancellationToken.None);
 
         await _accountMerge.DidNotReceive().AdminMergeAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -164,7 +160,7 @@ public class ProfileAdminControllerTests
         var emailId = Guid.NewGuid();
         _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await BuildController().DeleteOrphanEmail(emailId, default);
+        var result = await BuildController().DeleteOrphanEmail(emailId, CancellationToken.None);
 
         await _audit.Received(1).LogAsync(
             AuditAction.OrphanUserEmailDeleted,
@@ -180,7 +176,7 @@ public class ProfileAdminControllerTests
         var emailId = Guid.NewGuid();
         _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await BuildController().DeleteOrphanEmail(emailId, default);
+        var result = await BuildController().DeleteOrphanEmail(emailId, CancellationToken.None);
 
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -196,7 +192,7 @@ public class ProfileAdminControllerTests
         _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)> { (u1, "a@x.com"), (u2, "b@x.com") });
 
-        var result = await BuildController().BackfillLegacyEmails(default);
+        var result = await BuildController().BackfillLegacyEmails(CancellationToken.None);
 
         await _audit.Received(1).LogAsync(
             AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u1,
@@ -216,7 +212,7 @@ public class ProfileAdminControllerTests
         _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)>());
 
-        var result = await BuildController().BackfillLegacyEmails(default);
+        var result = await BuildController().BackfillLegacyEmails(CancellationToken.None);
 
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),

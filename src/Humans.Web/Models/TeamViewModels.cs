@@ -4,6 +4,7 @@
 // is cleared when view models are built exclusively from service-layer DTOs.
 #pragma warning disable CS0618
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -54,8 +55,8 @@ public class TeamDetailViewModel
     public SystemTeamType? SystemTeamType { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public Team? ParentTeam { get; init; }
-    public IReadOnlyList<Team> ChildTeams { get; init; } = [];
+    public TeamPageTeamLink? ParentTeam { get; init; }
+    public IReadOnlyList<TeamPageTeamLink> ChildTeams { get; init; } = [];
 
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public List<TeamResourceLinkViewModel> Resources { get; set; } = [];
@@ -99,28 +100,16 @@ public class TeamDetailViewModel
 public class ChildTeamMemberViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public bool HasCustomProfilePicture { get; set; }
-    public string? CustomProfilePictureUrl { get; set; }
     public string ChildTeamName { get; set; } = string.Empty;
     public string ChildTeamSlug { get; set; } = string.Empty;
     public bool IsCoordinator { get; set; }
     public string? RoleTitle { get; set; }
-
-    public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
-        ? CustomProfilePictureUrl
-        : ProfilePictureUrl;
 }
 
 public class TeamMemberViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public bool HasCustomProfilePicture { get; set; }
-    public string? CustomProfilePictureUrl { get; set; }
     public TeamMemberRole Role { get; set; }
     public DateTime JoinedAt { get; set; }
     public bool IsCoordinator { get; set; }
@@ -129,13 +118,6 @@ public class TeamMemberViewModel
     /// The @nobodies.team email address if provisioned, or null.
     /// </summary>
     public string? NobodiesTeamEmail { get; set; }
-
-    /// <summary>
-    /// The effective profile picture URL (custom upload takes priority over Google avatar).
-    /// </summary>
-    public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
-        ? CustomProfilePictureUrl
-        : ProfilePictureUrl;
 }
 
 public class MyTeamsViewModel
@@ -185,9 +167,7 @@ public class TeamJoinRequestViewModel
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public Guid UserId { get; set; }
-    public string UserDisplayName { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
-    public string? UserProfilePictureUrl { get; set; }
     public TeamJoinRequestStatus Status { get; set; }
     public string? Message { get; set; }
     public DateTime RequestedAt { get; set; }
@@ -198,10 +178,6 @@ public class TeamJoinRequestViewModel
 
 public class PendingRequestsViewModel : PagedListViewModel
 {
-    public PendingRequestsViewModel() : base()
-    {
-    }
-
     public List<TeamJoinRequestViewModel> Requests { get; set; } = [];
     public Guid? TeamIdFilter { get; set; }
     public string? TeamNameFilter { get; set; }
@@ -262,10 +238,6 @@ public class CallToActionViewModel
 public class TeamMembersViewModel
     : PagedListViewModel
 {
-    public TeamMembersViewModel() : base()
-    {
-    }
-
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
@@ -333,8 +305,6 @@ public class BirthdayCalendarViewModel
 public class BirthdayEntryViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? EffectiveProfilePictureUrl { get; set; }
     public int DayOfMonth { get; set; }
     public int Month { get; set; }
     public string MonthName { get; set; } = string.Empty;
@@ -374,6 +344,7 @@ public class TeamRoleDefinitionViewModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int SlotCount { get; set; }
+    public int? EstimatedHours { get; set; }
     public List<TeamRoleSlotViewModel> Slots { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
@@ -407,7 +378,6 @@ public class TeamRoleDefinitionViewModel
                 },
                 IsFilled = assignment is not null,
                 AssignedUserId = assignment?.TeamMember?.UserId,
-                AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
                 TeamMemberId = assignment?.TeamMemberId
             });
 
@@ -421,6 +391,56 @@ public class TeamRoleDefinitionViewModel
             Name = d.Name,
             Description = d.Description,
             SlotCount = d.SlotCount,
+            EstimatedHours = d.EstimatedHours,
+            Slots = slots,
+            SortOrder = d.SortOrder,
+            IsPublic = d.IsPublic,
+            IsManagement = d.IsManagement,
+            Period = d.Period,
+            AssignedUserIds = assignedUserIds
+        };
+    }
+
+    public static TeamRoleDefinitionViewModel FromSnapshot(
+        TeamRoleDefinitionSnapshot d,
+        IReadOnlyCollection<TeamMemberViewModel> teamMembers)
+    {
+        var slots = new List<TeamRoleSlotViewModel>();
+        var assignedUserIds = new HashSet<Guid>();
+
+        for (var i = 0; i < d.SlotCount; i++)
+        {
+            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
+            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
+            if (assignment?.AssignedUserId is Guid assignedUserId)
+            {
+                assignedUserIds.Add(assignedUserId);
+            }
+
+            slots.Add(new TeamRoleSlotViewModel
+            {
+                SlotIndex = i,
+                Priority = priority,
+                PriorityBadgeClass = priority switch
+                {
+                    SlotPriority.Critical => "bg-danger",
+                    SlotPriority.Important => "bg-warning text-dark",
+                    SlotPriority.NiceToHave => "bg-secondary",
+                    _ => "bg-light text-dark"
+                },
+                IsFilled = assignment is not null,
+                AssignedUserId = assignment?.AssignedUserId,
+                TeamMemberId = assignment?.TeamMemberId
+            });
+        }
+
+        return new TeamRoleDefinitionViewModel
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Description = d.Description,
+            SlotCount = d.SlotCount,
+            EstimatedHours = d.EstimatedHours,
             Slots = slots,
             SortOrder = d.SortOrder,
             IsPublic = d.IsPublic,
@@ -438,8 +458,6 @@ public class TeamRoleSlotViewModel
     public string PriorityBadgeClass { get; set; } = string.Empty;
     public bool IsFilled { get; set; }
     public Guid? AssignedUserId { get; set; }
-    public string? AssignedUserName { get; set; }
-    public string? AssignedUserProfilePictureUrl { get; set; }
     public Guid? TeamMemberId { get; set; }
 }
 
@@ -454,6 +472,20 @@ public class RoleManagementViewModel
     public bool CanToggleManagement { get; set; }
     public List<TeamRoleDefinitionViewModel> RoleDefinitions { get; set; } = [];
     public List<TeamMemberViewModel> TeamMembers { get; set; } = [];
+
+    /// <summary>
+    /// Compact (userId, BurnerName) tuples for the role-assignment <option> dropdown.
+    /// Resolved at controller-build time via <c>IUserService.GetUserInfoAsync</c>
+    /// (carve-out from the "no copied display-name" rule — option text can't host
+    /// a view component).
+    /// </summary>
+    public List<TeamMemberDropdownItem> MemberOptions { get; set; } = [];
+}
+
+public class TeamMemberDropdownItem
+{
+    public Guid UserId { get; set; }
+    public string BurnerName { get; set; } = string.Empty;
 }
 
 public class CreateRoleDefinitionModel
@@ -463,6 +495,7 @@ public class CreateRoleDefinitionModel
     [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; } = 1;
+    public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
@@ -476,6 +509,7 @@ public class EditRoleDefinitionModel
     [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; }
+    public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
@@ -532,7 +566,6 @@ public class HumanSearchResultViewModel
     /// </summary>
     public string? MatchedEmail { get; set; }
 
-    // ── Optional admin-list metadata ────────────────────────────────────────
     // Set by the AdminList controller to surface partition status, primary
     // email, and admin-detail deep-link in the canonical _HumanSearchResults
     // partial. Always null on the public Profile/Search page.

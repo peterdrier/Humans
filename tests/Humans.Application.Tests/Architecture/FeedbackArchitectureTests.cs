@@ -5,8 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Feedback;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -22,24 +20,6 @@ namespace Humans.Application.Tests.Architecture;
 public class FeedbackArchitectureTests
 {
     // ── FeedbackService ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void FeedbackService_LivesInHumansApplicationServicesFeedbackNamespace()
-    {
-        typeof(FeedbackService).Namespace
-            .Should().Be("Humans.Application.Services.Feedback",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void FeedbackService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IFeedbackRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void FeedbackService_HasNoIMemoryCacheConstructorParameter()
@@ -79,13 +59,11 @@ public class FeedbackArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IUserService),
-            because: "Feedback resolves reporter / assignee / resolver display names via IUserService instead of cross-domain .Include() chains");
-        paramTypes.Should().Contain(typeof(IProfileService),
-            because: "Feedback resolves BurnerName-first display names via IProfileService.GetByUserIdsAsync per memory/architecture/burnername-is-the-display-name.md");
+            because: "Feedback resolves reporter / assignee / resolver display names via IUserService.GetUserInfosAsync — UserInfo.BurnerName implements the BurnerName-first fallback per memory/architecture/burnername-is-the-display-name.md");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
-        paramTypes.Should().Contain(typeof(ITeamService),
-            because: "Feedback resolves assigned-team names via ITeamService.GetTeamNamesByIdsAsync — no FeedbackReport.AssignedToTeam navigation at query time");
+        paramTypes.Should().Contain(typeof(ITeamServiceRead),
+            because: "Feedback resolves assigned-team names via the cross-section ITeamServiceRead surface — no FeedbackReport.AssignedToTeam navigation at query time");
     }
 
     [HumansFact]
@@ -101,14 +79,6 @@ public class FeedbackArchitectureTests
     }
 
     // ── IFeedbackRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void IFeedbackRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IFeedbackRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void FeedbackRepository_IsSealed()

@@ -4,7 +4,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Integration.Tests.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
@@ -22,17 +21,13 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 /// repository tests; we use the factory directly per the
 /// <c>CalendarServiceTests</c> pattern.
 /// </summary>
-public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicationFactory>
+public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factory)
+    : IClassFixture<HumansWebApplicationFactory>
 {
-    private readonly HumansWebApplicationFactory _factory;
-
-    public VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factory) =>
-        _factory = factory;
-
     [HumansFact]
     public async Task GetAsync_returns_null_when_no_row_exists()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var sut = new VolunteerTrackingRepository(db);
 
@@ -44,7 +39,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact]
     public async Task UpsertCampSetupAsync_inserts_when_no_row_exists()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -70,7 +65,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact]
     public async Task GetByEventAsync_returns_only_rows_for_requested_event()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es1 = await SeedActiveEventAsync(db);
         var es2 = await SeedActiveEventAsync(db);
@@ -88,20 +83,20 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         var rows = await sut.GetByEventAsync(es1.Id);
 
         rows.Should().HaveCount(2);
-        rows.Select(r => r.UserId).Should().BeEquivalentTo(new[] { u1, u2 });
+        rows.Select(r => r.UserId).Should().BeEquivalentTo([u1, u2]);
         rows.Should().OnlyContain(r => r.EventSettingsId == es1.Id);
     }
 
     [HumansFact]
     public async Task GetEligibleBuildSignupsAsync_returns_only_build_period_active_signups_in_event()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);   // BuildStartOffset = -10
         var sut = new VolunteerTrackingRepository(db);
 
-        var teamId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var teamId = (await SeedTeamAsync(db)).Id;
+        var userId = (await SeedUserAsync(db)).Id;
 
         // Build-period rota with a shift at -7 — shift exists but no signup,
         // so this should NOT appear in the result.
@@ -143,7 +138,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_inserts_first_entry_and_creates_row_if_absent()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -167,7 +162,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_replaces_entry_for_same_day_offset()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -194,7 +189,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_appends_entries_for_distinct_days_sorted_by_offset()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -215,7 +210,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact(Timeout = 30000)]
     public async Task RemoveDayOffAsync_drops_only_the_specified_day()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -238,7 +233,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact(Timeout = 30000)]
     public async Task RemoveDayOffAsync_returns_false_when_entry_absent()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -257,7 +252,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
     [HumansFact(Timeout = 30000)]
     public async Task UpsertCampSetupAsync_does_not_disturb_existing_DayOffs()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -280,7 +275,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
             setAt: t,
             setupOffsetThreshold: -4);
 
-        trimmed.Should().Equal(new[] { -3 });
+        trimmed.Should().Equal(-3);
         var fetched = await sut.GetAsync(userId, es.Id);
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
@@ -311,6 +306,39 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         db.EventSettings.Add(es);
         await db.SaveChangesAsync();
         return es;
+    }
+
+    private static async Task<Team> SeedTeamAsync(HumansDbContext db)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = $"VTrack Team {Guid.NewGuid():N}",
+            Slug = $"vtrack-{Guid.NewGuid():N}",
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Teams.Add(team);
+        await db.SaveChangesAsync();
+        return team;
+    }
+
+    private static async Task<User> SeedUserAsync(HumansDbContext db)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"vtrack-{Guid.NewGuid():N}@example.test",
+            NormalizedUserName = $"VTRACK-{Guid.NewGuid():N}@EXAMPLE.TEST",
+            DisplayName = "Volunteer Tracking Test User",
+            CreatedAt = now,
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return user;
     }
 
     private static Rota SeedRota(

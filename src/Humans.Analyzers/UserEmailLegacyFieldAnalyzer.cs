@@ -33,8 +33,7 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
             "UserEmail.DisplayOrder, User.GoogleEmail, and User.GetGoogleServiceEmail(). " +
             "This analyzer is the build-time tombstone preventing accidental re-introduction.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> UserEmailForbiddenMembers =
         ImmutableHashSet.Create(System.StringComparer.Ordinal,

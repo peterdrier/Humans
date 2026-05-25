@@ -14,15 +14,11 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// service account. This is the only file that imports <c>Google.Apis.*</c> for
 /// user-account management; the Application-layer service never sees SDK types.
 /// </summary>
-public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
+public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSettings> settings)
+    : IWorkspaceUserDirectoryClient
 {
-    private readonly GoogleWorkspaceSettings _settings;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
     private DirectoryService? _directoryService;
-
-    public WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSettings> settings)
-    {
-        _settings = settings.Value;
-    }
 
     private async Task<DirectoryService> GetDirectoryServiceAsync()
     {

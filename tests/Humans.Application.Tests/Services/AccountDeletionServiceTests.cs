@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -16,7 +17,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -35,12 +35,14 @@ public class AccountDeletionServiceTests
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
+    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
         Substitute.For<IShiftAuthorizationInvalidator>();
+    private readonly IShiftViewInvalidator _shiftViewInvalidator =
+        Substitute.For<IShiftViewInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -48,6 +50,11 @@ public class AccountDeletionServiceTests
 
     public AccountDeletionServiceTests()
     {
+        _userService.AnonymizeProfileForDeletionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserProfileAnonymizeResult(false, null, null));
+        _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+
         _service = new AccountDeletionService(
             _userService,
             _userEmailService,
@@ -55,10 +62,11 @@ public class AccountDeletionServiceTests
             _roleAssignmentService,
             _shiftSignupService,
             _shiftManagementService,
-            _profileService,
+            _fileStorage,
             _ticketQueryService,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
+            _shiftViewInvalidator,
             _auditLogService,
             _emailService,
             _clock,
@@ -73,21 +81,21 @@ public class AccountDeletionServiceTests
     public async Task RequestDeletionAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.RequestDeletionAsync(userId);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _teamService.DidNotReceiveWithAnyArgs()
-            .RevokeAllMembershipsAsync(default, default);
+            .RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
     public async Task RequestDeletionAsync_AlreadyPending_ReturnsAlreadyPending()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, deletionPending: true));
 
         var result = await _service.RequestDeletionAsync(userId);
@@ -95,7 +103,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
         await _teamService.DidNotReceiveWithAnyArgs()
-            .RevokeAllMembershipsAsync(default, default);
+            .RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -103,7 +111,7 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
         _userEmailService.GetNotificationTargetEmailsAsync(
@@ -130,7 +138,7 @@ public class AccountDeletionServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
         await _emailService.Received(1).SendAccountDeletionRequestedAsync(
-            user.Email!, user.DisplayName,
+            user.Email!, user.BurnerName,
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
 
         // Shift-authorization cache must drop in-orchestrator (parity with
@@ -144,7 +152,7 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "primary@example.com");
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -153,7 +161,7 @@ public class AccountDeletionServiceTests
         await _service.RequestDeletionAsync(userId);
 
         await _emailService.Received(1).SendAccountDeletionRequestedAsync(
-            "notif@example.com", user.DisplayName,
+            "notif@example.com", user.BurnerName,
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
     }
 
@@ -167,9 +175,13 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
         var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(60));
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        _ticketQueryService.HasCurrentEventTicketAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
-        _ticketQueryService.GetPostEventHoldDateAsync(Arg.Any<CancellationToken>()).Returns(holdDate);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(
+                1,
+                [],
+                HasCurrentEventTicket: true,
+                PostEventHoldDate: holdDate));
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
@@ -196,7 +208,7 @@ public class AccountDeletionServiceTests
     public async Task CancelDeletionAsync_PendingDeletion_ClearsViaUserService()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, deletionPending: true));
 
         var result = await _service.CancelDeletionAsync(userId);
@@ -209,27 +221,27 @@ public class AccountDeletionServiceTests
     public async Task CancelDeletionAsync_NoPendingDeletion_ReturnsNoDeletionPending()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId));
 
         var result = await _service.CancelDeletionAsync(userId);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NoDeletionPending");
-        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
     public async Task CancelDeletionAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.CancelDeletionAsync(userId);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
-        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, CancellationToken.None);
     }
 
     // ==========================================================================
@@ -247,6 +259,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
+        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -259,6 +272,7 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>());
+        await _userService.Received(1).DeleteAllExternalLoginsForUserAsync(userId, Arg.Any<CancellationToken>());
         _teamService.Received(1).InvalidateActiveTeamsCache();
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
         // off identity must also drop on admin purge.
@@ -291,12 +305,12 @@ public class AccountDeletionServiceTests
     public async Task AnonymizeExpiredAccountAsync_UnknownUser_ReturnsNull()
     {
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().BeNull();
-        await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(default, default);
+        await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -306,11 +320,14 @@ public class AccountDeletionServiceTests
         var user = MakeUser(userId, email: "expired@example.com");
         var signupId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
 
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserProfileAnonymizeResult(true, profileId, "image/png"));
         _shiftSignupService.CancelActiveSignupsForUserAsync(
             userId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { (signupId, shiftId) });
+            .Returns([(signupId, shiftId)]);
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ExpiredDeletionAnonymizationResult(
                 OriginalEmail: "expired@example.com",
@@ -320,7 +337,7 @@ public class AccountDeletionServiceTests
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
-        result!.OriginalEmail.Should().Be("expired@example.com");
+        result.OriginalEmail.Should().Be("expired@example.com");
         result.OriginalDisplayName.Should().Be("Expired Human");
         result.PreferredLanguage.Should().Be("es");
         result.CancelledSignupIds.Should().ContainSingle()
@@ -328,7 +345,10 @@ public class AccountDeletionServiceTests
 
         await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
         await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
-        await _profileService.Received(1).AnonymizeExpiredProfileAsync(userId, Arg.Any<CancellationToken>());
+        await _userService.Received(1).AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>());
+        await _fileStorage.Received(1).DeleteAsync(
+            $"uploads/profile-pictures/{profileId}.png",
+            Arg.Any<CancellationToken>());
         await _shiftSignupService.Received(1).CancelActiveSignupsForUserAsync(
             userId, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _shiftManagementService.Received(1).DeleteShiftProfilesForUserAsync(userId, Arg.Any<CancellationToken>());
@@ -344,14 +364,14 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "gone@example.com", displayName: "Gone");
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns((ExpiredDeletionAnonymizationResult?)null);
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
-        result!.OriginalEmail.Should().Be("gone@example.com");
+        result.OriginalEmail.Should().Be("gone@example.com");
         result.OriginalDisplayName.Should().Be("Gone");
         // Steps 1–5 already invalidated their own section caches; the
         // step-7 cross-section invalidations key off the identity write
@@ -370,7 +390,7 @@ public class AccountDeletionServiceTests
         // observing that ApplyExpiredDeletionAnonymizationAsync is never called
         // when an earlier cascade step fails.
         var userId = Guid.NewGuid();
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
             .Returns<int>(_ => throw new InvalidOperationException("boom"));
 
@@ -385,7 +405,7 @@ public class AccountDeletionServiceTests
     // Helpers
     // ==========================================================================
 
-    private static User MakeUser(
+    private static UserInfo MakeUser(
         Guid userId,
         string? email = "test@example.com",
         string displayName = "Test Human",
@@ -406,6 +426,7 @@ public class AccountDeletionServiceTests
             user.DeletionRequestedAt = now;
             user.DeletionScheduledFor = now.Plus(Duration.FromDays(30));
         }
-        return user;
+        return UserInfo.Create(user, [], [], [], null, [], [], [], []);
     }
+
 }

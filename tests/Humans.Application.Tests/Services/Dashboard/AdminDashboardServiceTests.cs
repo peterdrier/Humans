@@ -1,13 +1,15 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Dashboard;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Dashboard;
 
@@ -20,12 +22,28 @@ namespace Humans.Application.Tests.Services.Dashboard;
 public class AdminDashboardServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+
+    public AdminDashboardServiceTests()
+    {
+        // Default stubs: no active event, empty shift view. Per-test overrides allowed.
+        _shiftManagement.GetActiveAsync().Returns((EventSettings?)null);
+        _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = (IEnumerable<Guid>)ci[0];
+                IReadOnlyDictionary<Guid, ShiftUserView> dict =
+                    ids.ToDictionary(id => id, id => ShiftUserView.Empty(id));
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(dict);
+            });
+    }
 
     private AdminDashboardService BuildSut() =>
-        new(_userService, _profileService, _membershipCalculator, _applicationDecisionService);
+        new(_userService, _membershipCalculator, _applicationDecisionService,
+            _shiftManagement, _shiftView);
 
     [HumansFact]
     public async Task GetAdminDashboardAsync_AggregatesPartitionAppStatsAndLanguageDistribution()
@@ -33,23 +51,28 @@ public class AdminDashboardServiceTests
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
         var u3 = Guid.NewGuid();
-        var users = new List<User>
+        var u4Suspended = Guid.NewGuid();
+        var snapshot = new List<UserInfo>
         {
-            new() { Id = u1 },
-            new() { Id = u2 },
-            new() { Id = u3 },
+            MakeUserInfo(u1, "en"),
+            MakeUserInfo(u2, "en"),
+            MakeUserInfo(u3, "es"),
+            // Suspended user must NOT be counted in the language tally — verifies
+            // the in-memory filter respects the Active+MissingConsents union.
+            MakeUserInfo(u4Suspended, "fr"),
         };
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>()).Returns(users);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(snapshot));
 
         var partition = new MembershipPartition(
             IncompleteSignup: [],
             PendingApproval: [],
             Active: [u1, u2],
             MissingConsents: [u3],
-            Suspended: [],
+            Suspended: [u4Suspended],
             PendingDeletion: []);
         _membershipCalculator.PartitionUsersAsync(
-                Arg.Is<IEnumerable<Guid>>(ids => ids.Count() == 3),
+                Arg.Is<IEnumerable<Guid>>(ids => ids.Count() == 4),
                 Arg.Any<CancellationToken>())
             .Returns(partition);
 
@@ -60,21 +83,14 @@ public class AdminDashboardServiceTests
                 Total: 50, Approved: 40, Rejected: 10,
                 ColaboradorApplied: 30, AsociadoApplied: 20));
 
-        // Language distribution: pass exactly the Active+MissingConsents union
-        var unionExpectation = (IReadOnlyCollection<Guid>)((IEnumerable<Guid>)[u1, u2, u3]).ToList();
-        _userService.GetLanguageDistributionForUserIdsAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 3),
-                Arg.Any<CancellationToken>())
-            .Returns([("en", 2), ("es", 1)]);
-
         var sut = BuildSut();
 
         var result = await sut.GetAdminDashboardAsync();
 
-        result.TotalMembers.Should().Be(3);
+        result.TotalMembers.Should().Be(4);
         result.ActiveMembers.Should().Be(2);
         result.MissingConsents.Should().Be(1);
-        result.Suspended.Should().Be(0);
+        result.Suspended.Should().Be(1);
         result.PendingApplications.Should().Be(7);
         result.TotalApplications.Should().Be(50);
         result.ApprovedApplications.Should().Be(40);
@@ -84,18 +100,79 @@ public class AdminDashboardServiceTests
         result.LanguageDistribution.Should().HaveCount(2);
         result.LanguageDistribution.Should().Contain(l => l.Language == "en" && l.Count == 2);
         result.LanguageDistribution.Should().Contain(l => l.Language == "es" && l.Count == 1);
+        // Suspended user's "fr" must NOT appear.
+        result.LanguageDistribution.Should().NotContain(l => l.Language == "fr");
     }
 
+    private static UserInfo MakeUserInfo(Guid id, string preferredLanguage) => UserInfo.Create(
+        user: new User
+        {
+            Id = id,
+            DisplayName = "U",
+            PreferredLanguage = preferredLanguage,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: null,
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
+
     [HumansFact]
-    public async Task GetPendingReviewCountAsync_DelegatesToProfileService()
+    public async Task GetPendingReviewCountAsync_CountsUnapprovedNonRejectedProfilesFromSnapshot()
     {
-        _profileService.GetPendingReviewCountAsync(Arg.Any<CancellationToken>()).Returns(42);
+        var pending1 = MakeUserInfoWithProfile(approved: false, rejected: false);
+        var pending2 = MakeUserInfoWithProfile(approved: false, rejected: false);
+        var rejected = MakeUserInfoWithProfile(approved: false, rejected: true);
+        var approved = MakeUserInfoWithProfile(approved: true, rejected: false);
+        var profileless = MakeUserInfo(Guid.NewGuid(), "en");
+
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([pending1, pending2, rejected, approved, profileless]));
 
         var sut = BuildSut();
 
         var result = await sut.GetPendingReviewCountAsync();
 
-        result.Should().Be(42);
-        await _profileService.Received(1).GetPendingReviewCountAsync(Arg.Any<CancellationToken>());
+        result.Should().Be(2);
+    }
+
+    private static UserInfo MakeUserInfoWithProfile(bool approved, bool rejected)
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FirstName = "F",
+            LastName = "L",
+            BurnerName = "B",
+            IsApproved = approved,
+            RejectedAt = rejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = ProfileState.Active,
+        };
+        return UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "U",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 }

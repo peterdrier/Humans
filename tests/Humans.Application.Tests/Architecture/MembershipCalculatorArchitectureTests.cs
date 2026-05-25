@@ -1,12 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Governance;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -27,35 +24,6 @@ namespace Humans.Application.Tests.Architecture;
 public class MembershipCalculatorArchitectureTests
 {
     [HumansFact]
-    public void MembershipCalculator_LivesInHumansApplicationServicesGovernanceNamespace()
-    {
-        typeof(MembershipCalculator).Namespace
-            .Should().Be("Humans.Application.Services.Governance",
-                because: "orchestrators with business logic live in Humans.Application per design-rules §2b, organized by section — MembershipCalculator reads belong under Governance alongside ApplicationDecisionService");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — cross-section reads go through owning service interfaces per design-rules §9");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_HasNoDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => (p.ParameterType.FullName ?? string.Empty)
-                    .StartsWith("Microsoft.EntityFrameworkCore.IDbContextFactory", StringComparison.Ordinal),
-                because: "MembershipCalculator is a pure orchestrator — it owns no tables and must not hold an IDbContextFactory");
-    }
-
-    [HumansFact]
     public void MembershipCalculator_HasNoRepositoryConstructorParameter()
     {
         // The orchestrator owns no tables; it must not inject any
@@ -67,15 +35,6 @@ public class MembershipCalculatorArchitectureTests
                 p => (p.ParameterType.Namespace ?? string.Empty)
                     .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal),
                 because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_TakesProfileService()
-    {
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IProfileService),
-                because: "profile reads go through IProfileService per design-rules §9");
     }
 
     [HumansFact]
@@ -110,8 +69,8 @@ public class MembershipCalculatorArchitectureTests
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
         ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IUserService),
-                because: "user reads (for DeletionRequestedAt in PartitionUsersAsync) go through IUserService per design-rules §9");
+            .Should().Contain(typeof(IUserServiceRead),
+                because: "user reads (for DeletionRequestedAt in PartitionUsersAsync) go through IUserServiceRead per design-rules §9");
     }
 
     [HumansFact]

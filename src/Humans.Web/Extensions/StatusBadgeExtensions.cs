@@ -40,10 +40,10 @@ public static class StatusBadgeExtensions
         {
             MembershipStatusLabels.Active => "bg-success",
             MembershipStatusLabels.PendingApproval => "bg-warning text-dark",
-            MembershipStatusLabels.MissingConsents => "bg-info text-dark",
-            MembershipStatusLabels.IncompleteSignup => "bg-secondary",
             MembershipStatusLabels.Suspended => "bg-danger",
             MembershipStatusLabels.PendingDeletion => "bg-dark",
+            MembershipStatusLabels.Merged => "bg-secondary",
+            MembershipStatusLabels.Deleted => "bg-secondary",
             _ => "bg-secondary"
         };
     }

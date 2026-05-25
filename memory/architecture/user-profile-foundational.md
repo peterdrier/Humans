@@ -3,6 +3,8 @@ name: User and Profile are foundational — no outbound calls to higher-level se
 description: UserService and ProfileService sit at the bottom of the dependency stack. They must not call out to Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance. Crosscuts (Audit, Email, Notification, Metrics) are the only OK exceptions.
 ---
 
+> Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): **foundational** is a *descriptor* (a Section with outbound-width-into-sections = 0), not a separate tier; the "universal crosscuts" below are **Crosscuts** (Audit/Email/Notification/Metrics).
+
 User and Profile sit at the bottom of the service dependency hierarchy. Higher-level sections (Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance) can freely call into User/Profile. **The reverse is wrong direction and must be avoided.**
 
 The only outbound calls User/Profile may make are to universal crosscuts: `IAuditLogService`, `IEmailService`, `INotificationService`, `IHumansMetrics`. Even those should be minimised.
@@ -20,4 +22,4 @@ Before adding a dependency on `UserService` or `ProfileService` from a higher-le
 
 If a dependency seems unavoidable, the feature is probably in the wrong service — check whether it belongs on a higher-level orchestrator instead.
 
-Interface narrowing (e.g., Profile injecting `IOnboardingEligibilityQuery` instead of `IOnboardingService`) is acceptable but doesn't fix the direction — only a loose-coupling mitigation. Prefer true inversion where practical.
+Interface narrowing (e.g., Profile injecting a narrow query interface instead of a full service) is acceptable but doesn't fix the direction — only a loose-coupling mitigation. Prefer true inversion: relocate the predicate/write to the leaf that owns the field. See `memory/architecture/no-leaf-to-director-callbacks.md`.

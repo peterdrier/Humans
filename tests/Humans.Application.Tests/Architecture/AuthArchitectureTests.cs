@@ -1,9 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Auth;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -17,22 +13,11 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class AuthArchitectureTests
 {
-    public static TheoryData<Type> AuthServices => new()
-    {
+    public static TheoryData<Type> AuthServices =>
+    [
         typeof(RoleAssignmentService),
-        typeof(MagicLinkService),
-    };
-
-    public static TheoryData<Type, Type> RequiredConstructorEdges => new()
-    {
-        { typeof(RoleAssignmentService), typeof(IRoleAssignmentRepository) },
-        { typeof(RoleAssignmentService), typeof(IUserService) },
-        { typeof(RoleAssignmentService), typeof(IRoleAssignmentClaimsCacheInvalidator) },
-        { typeof(RoleAssignmentService), typeof(INavBadgeCacheInvalidator) },
-        { typeof(MagicLinkService), typeof(IMagicLinkUrlBuilder) },
-        { typeof(MagicLinkService), typeof(IMagicLinkRateLimiter) },
-        { typeof(MagicLinkService), typeof(IUserEmailService) },
-    };
+        typeof(MagicLinkService)
+    ];
 
     [HumansTheory]
     [MemberData(nameof(AuthServices))]
@@ -68,16 +53,6 @@ public class AuthArchitectureTests
             because: "Auth cache invalidation routes through explicit invalidator abstractions");
     }
 
-    [HumansTheory]
-    [MemberData(nameof(RequiredConstructorEdges))]
-    public void Auth_services_take_required_collaborators(Type serviceType, Type dependencyType)
-    {
-        var ctor = serviceType.GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(dependencyType);
-    }
-
     [HumansFact]
     public void RoleAssignmentService_constructor_takes_no_store_type()
     {
@@ -93,8 +68,6 @@ public class AuthArchitectureTests
     [HumansFact]
     public void RoleAssignment_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(IRoleAssignmentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
         typeof(RoleAssignmentRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension");
     }

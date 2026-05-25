@@ -24,7 +24,9 @@ Then `dotnet ef migrations remove` removes `DropStoreOrderCampSeasonFK` (the lat
 
 **Even removing just your own latest migration is broken** because the previous-by-timestamp Designer (one of main's, e.g. `AddAgentSection.Designer.cs`) was generated on a branch that didn't have your tables. Its embedded snapshot has no record of them. `migrations remove` reverts the live snapshot to that pre-your-tables state. Subsequent `migrations add` then sees "model has my tables, snapshot doesn't" and generates a giant "create everything" migration. Empirically observed: 3784-line `CreateTable` mega-migration when this happened on PR 373.
 
-**The hard rule:** in this situation, **stop and ask Peter**. Do not improvise. Specifically forbidden "creative solutions":
+**The hard rule:** in this situation, **stop and ask Peter**. The canonical recovery — once Peter has confirmed — is the `/ef-regen` skill at `.claude/skills/ef-regen/SKILL.md`, which deletes the in-flight migrations, restores the snapshot from `origin/main`, and lets `dotnet ef migrations add` produce one consolidated migration with a fresh end-of-chain timestamp. That skill is the *only* sanctioned use of `git checkout origin/main -- HumansDbContextModelSnapshot.cs`; outside the skill's workflow that command is still forbidden.
+
+Do not improvise outside `/ef-regen`. Specifically forbidden "creative solutions":
 
 1. **Hand-editing the snapshot** to remove the relationships you want EF to "regen." This violates [`no-hand-edited-migrations`](no-hand-edited-migrations.md). The end state may look correct but the migration history is structurally janky and lives forever in archaeology.
 2. **Renaming migration timestamps** to force your migration to end-of-chain. Same rule — that's still a hand-edit.

@@ -10,44 +10,15 @@ using Stripe;
 namespace Humans.Infrastructure.Services;
 
 /// <summary>
-/// Auto-registers the Store Stripe webhook endpoint with Stripe at boot for
-/// short-lived environments (PR previews, ephemeral QA) where setting up a
-/// webhook in the Stripe dashboard per env is impractical.
+/// Auto-registers the Store Stripe webhook at boot for ephemeral envs (PR previews, QA).
+/// Self-gated on STRIPE_STORE_WEBHOOK_REGISTRAR_KEY; prod uses a dashboard-configured webhook.
+/// Also sweeps stale endpoints for closed PRs. Failures log warnings and don't block boot.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Self-gated: runs IFF <c>STRIPE_STORE_WEBHOOK_REGISTRAR_KEY</c> is set. That
-/// dedicated key carries <c>webhook_endpoint:read/write</c> scope and lives
-/// only in ephemeral envs. Production deliberately does not set it and uses a
-/// dashboard-configured webhook with a stable signing secret instead. Keeping
-/// the registrar key separate from <see cref="StripeSettings.StoreKey"/>
-/// preserves PR-preview testing fidelity: the Pay-button checkout path runs
-/// against a key with the production-narrow scope.
-/// </para>
-/// <para>
-/// At boot: lists existing webhooks pointing at this env's URL, deletes them,
-/// creates a fresh one, and stamps the returned signing secret onto
-/// <see cref="StripeSettings.StoreWebhookSecret"/> so the webhook controller can
-/// verify subsequent deliveries. The signing secret is in-memory only — a
-/// process restart re-registers and gets a new one. Stripe only returns the
-/// secret at creation time; there is no fetch path.
-/// </para>
-/// <para>
-/// Same boot also runs a cross-PR sweep (<see cref="SweepStaleEndpointsAsync"/>):
-/// lists every <c>n.burn.camp</c> endpoint on the account, parses the leading
-/// PR-id off the host, queries GitHub for currently-open PRs on the configured
-/// fork, and deletes endpoints whose PR is no longer open. Self-gated on
-/// <see cref="StripeSettings.IsWebhookCleanupConfigured"/> + a GitHub access
-/// token; no separate GH Action is involved. See <c>docs/sections/Store.md</c>
-/// "Stripe Configuration" for the env-var contract.
-/// </para>
-/// <para>
-/// Failures are logged as warnings and do not block boot. If registration
-/// fails, the controller returns 503 on subsequent webhook deliveries —
-/// behavior identical to "no webhook secret configured."
-/// </para>
-/// </remarks>
-public class StoreWebhookRegistrationService : IHostedService
+public class StoreWebhookRegistrationService(
+    IOptions<StripeSettings> settings,
+    IOptions<GitHubSettings> githubSettings,
+    IConfiguration configuration,
+    ILogger<StoreWebhookRegistrationService> logger) : IHostedService
 {
     private static readonly TimeSpan RegistrationTimeout = TimeSpan.FromSeconds(15);
     private const string EventCheckoutSessionCompleted = "checkout.session.completed";
@@ -55,10 +26,7 @@ public class StoreWebhookRegistrationService : IHostedService
     private const string EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
     private const string EventCheckoutSessionExpired = "checkout.session.expired";
 
-    // PR-preview subscribes to the same 4 events QA/prod register manually so async-payment
-    // behavior is observable end-to-end. Today the controller only acts on `completed`; the
-    // other three log at Warning until the async-payment state machine ships
-    // (nobodies-collective/Humans#638).
+    // Matches QA/prod registration. Async-payment events log at Warning until #638 ships.
     private static readonly IReadOnlyList<string> SubscribedEvents =
     [
         EventCheckoutSessionCompleted,
@@ -75,23 +43,6 @@ public class StoreWebhookRegistrationService : IHostedService
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 
-    private readonly IOptions<StripeSettings> _settings;
-    private readonly IOptions<GitHubSettings> _githubSettings;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<StoreWebhookRegistrationService> _logger;
-
-    public StoreWebhookRegistrationService(
-        IOptions<StripeSettings> settings,
-        IOptions<GitHubSettings> githubSettings,
-        IConfiguration configuration,
-        ILogger<StoreWebhookRegistrationService> logger)
-    {
-        _settings = settings;
-        _githubSettings = githubSettings;
-        _configuration = configuration;
-        _logger = logger;
-    }
-
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Background fire-and-forget — never block boot on a Stripe API call.
@@ -103,8 +54,8 @@ public class StoreWebhookRegistrationService : IHostedService
 
     private async Task RegisterAsync(CancellationToken ct)
     {
-        var settings = _settings.Value;
-        if (!settings.IsWebhookRegistrarConfigured)
+        var settings1 = settings.Value;
+        if (!settings1.IsWebhookRegistrarConfigured)
         {
             // Quiet — production and QA deliberately don't set the registrar key.
             return;
@@ -113,7 +64,7 @@ public class StoreWebhookRegistrationService : IHostedService
         var baseUrl = ResolveBaseUrl();
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Store webhook auto-registration skipped: no Email:BaseUrl configured to derive the webhook URL.");
             return;
         }
@@ -126,7 +77,7 @@ public class StoreWebhookRegistrationService : IHostedService
         if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
             !webhookUri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Store webhook auto-registration skipped: {Url} is not a recognized PR-preview host (must end in {Suffix}).",
                 webhookUrl, OwnedHostSuffix);
             return;
@@ -135,14 +86,14 @@ public class StoreWebhookRegistrationService : IHostedService
         // Warning level — this is a rare, boot-time-only event in PR-preview environments
         // and the success line is the only on-host confirmation that the in-memory
         // STRIPE_STORE_WEBHOOK_SECRET was stamped. Information would be filtered out in prod.
-        _logger.LogWarning("Auto-registering Stripe webhook for PR-preview env at {Url}…", webhookUrl);
+        logger.LogWarning("Auto-registering Stripe webhook for PR-preview env at {Url}…", webhookUrl);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(RegistrationTimeout);
 
         try
         {
-            var client = new StripeClient(settings.WebhookRegistrarKey);
+            var client = new StripeClient(settings1.WebhookRegistrarKey);
             var service = new WebhookEndpointService(client);
 
             await SweepStaleEndpointsAsync(service, webhookUrl, cts.Token);
@@ -157,37 +108,37 @@ public class StoreWebhookRegistrationService : IHostedService
 
             if (string.IsNullOrEmpty(created.Secret))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Stripe returned a webhook endpoint with no signing secret for {Url}; webhook will reject deliveries.",
                     webhookUrl);
                 return;
             }
 
-            settings.StoreWebhookSecret = created.Secret;
-            _logger.LogWarning(
+            settings1.StoreWebhookSecret = created.Secret;
+            logger.LogWarning(
                 "Auto-registered Stripe webhook {EndpointId} at {Url} (events: {Events}); STRIPE_STORE_WEBHOOK_SECRET stamped in-memory.",
                 created.Id, webhookUrl, string.Join(", ", SubscribedEvents));
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Store key is missing webhook_endpoint:read/write scope — webhook auto-registration not possible. {Message}",
                 ex.Message);
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Stripe webhook auto-registration failed. Code: {Code}",
                 ex.StripeError?.Code);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe webhook auto-registration timed out after {Timeout}.", RegistrationTimeout);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Stripe webhook auto-registration failed unexpectedly.");
+            logger.LogWarning(ex, "Stripe webhook auto-registration failed unexpectedly.");
         }
     }
 
@@ -201,7 +152,7 @@ public class StoreWebhookRegistrationService : IHostedService
         foreach (var stale in matches)
         {
             await service.DeleteAsync(stale.Id, cancellationToken: ct);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Deleted Stripe webhook {EndpointId} pointing at {Url} (current-PR cleanup).",
                 stale.Id, webhookUrl);
         }
@@ -216,12 +167,12 @@ public class StoreWebhookRegistrationService : IHostedService
     private async Task SweepStaleEndpointsAsync(
         WebhookEndpointService service, string ownWebhookUrl, CancellationToken ct)
     {
-        var settings = _settings.Value;
-        var github = _githubSettings.Value;
+        var settings1 = settings.Value;
+        var github = githubSettings.Value;
 
-        if (!settings.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
+        if (!settings1.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Cross-PR webhook sweep skipped: missing Stripe:WebhookCleanupOwner/Repository or GitHub:AccessToken.");
             return;
         }
@@ -230,16 +181,16 @@ public class StoreWebhookRegistrationService : IHostedService
         try
         {
             openPrs = await ListOpenPullRequestsAsync(
-                settings.WebhookCleanupGitHubOwner,
-                settings.WebhookCleanupGitHubRepository,
+                settings1.WebhookCleanupGitHubOwner,
+                settings1.WebhookCleanupGitHubRepository,
                 github.AccessToken,
                 ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}.",
-                settings.WebhookCleanupGitHubOwner, settings.WebhookCleanupGitHubRepository);
+                settings1.WebhookCleanupGitHubOwner, settings1.WebhookCleanupGitHubRepository);
             return;
         }
 
@@ -266,14 +217,14 @@ public class StoreWebhookRegistrationService : IHostedService
             try
             {
                 await service.DeleteAsync(endpoint.Id, cancellationToken: ct);
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Deleted Stripe webhook {EndpointId} for closed PR #{PrId} ({Url}).",
                     endpoint.Id, prId, endpoint.Url);
             }
             catch (StripeException ex)
             {
                 // Idempotent — another PR's registrar may have raced ahead. 404s are fine.
-                _logger.LogDebug(ex,
+                logger.LogDebug(ex,
                     "Could not delete webhook {EndpointId} during sweep — likely already gone.",
                     endpoint.Id);
             }
@@ -298,5 +249,5 @@ public class StoreWebhookRegistrationService : IHostedService
     /// Public hostname this app is reachable at. Reuses Email:BaseUrl, which Coolify
     /// already sets per environment for transactional email links.
     /// </summary>
-    private string? ResolveBaseUrl() => _configuration["Email:BaseUrl"];
+    private string? ResolveBaseUrl() => configuration["Email:BaseUrl"];
 }

@@ -60,7 +60,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 | Actor | Capability |
 |---|---|
 | Authenticated human | Send messages, read own history at `/Agent/Conversations`, drill into a single transcript at `/Agent/Conversation/{id}` (issue #632 — own conversations only; cross-user → 404) |
-| Admin | Configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
+| Admin | View operational status at `/Agent/Admin/Status` (usage / spend / refusals / top docs / top users / retention job / Anthropic balance), configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
 | Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
 ## Invariants
@@ -105,7 +105,7 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 - **Issues** — agent handoff produces a client-side issue proposal (title/category/description) that pre-fills `/Issues/Submit`. The agent does not write Issue rows itself.
 - **Feedback** — `IFeedbackService.GetOpenFeedbackIdsForUserAsync` is called live by `AgentUserSnapshotProvider` to surface a user's open feedback items in the per-turn context. Additionally, historical `FeedbackReport.Source = AgentUnresolved` rows (from the original server-side handoff flow) remain readable via the Feedback admin queue; Agent no longer creates new `FeedbackReport` rows.
 - **Legal** — `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer. No `IConsentService` involvement.
-- **Profiles / Users / Auth / Teams / Consent / Tickets / Shifts** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamMembershipsForUserAsync`, `IConsentService.GetPendingDocumentNamesAsync` (surfaces pending docs in snapshot — not a gate), `ITicketQueryService.GetOpenTicketIdsForUserAsync`, `IShiftSignupService.GetByUserAsync`, and `IShiftManagementService.GetActiveAsync`. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` is also called — see Feedback bullet above.
+- **Profiles / Users / Auth / Teams / Consent / Tickets / Shifts** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamMembershipsForUserAsync`, `IConsentService.GetPendingDocumentNamesAsync` (surfaces pending docs in snapshot — not a gate), `ITicketServiceRead.GetUserTicketHoldingsAsync` (`OpenTicketOrderIds`), `IShiftSignupService.GetByUserAsync`, and `IShiftManagementService.GetActiveAsync`. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` is also called — see Feedback bullet above.
 - **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. User deletion does not cascade into Agent; orphan rows expire via the retention job.
 
 ## Architecture

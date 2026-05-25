@@ -124,10 +124,6 @@ else
                         }
                         else if (row.Kind == EmailProblemKind.GhostExternalLogins)
                         {
-                            @* Issue nobodies-collective/Humans#697: ghost-logins remediation moved *@
-                            @* into the per-user admin emails diagnostic, where the AspNetUserLogins *@
-                            @* table and disagreement flags are visible side-by-side with the user's *@
-                            @* UserEmail rows. No inline action button. *@
                             <a class="btn btn-sm btn-outline-secondary"
                                asp-controller="Profile"
                                asp-action="AdminEmails"

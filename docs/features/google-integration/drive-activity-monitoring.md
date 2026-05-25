@@ -1,10 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/GoogleIntegration/DriveActivityMonitorService.cs
   src/Humans.Infrastructure/Jobs/DriveActivityMonitorJob.cs
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Controllers/BoardController.cs
-  src/Humans.Web/Views/Board/AuditLog.cshtml
-  src/Humans.Web/Views/Shared/AuditLog.cshtml
+  src/Humans.Web/Controllers/AuditLogController.cs
+  src/Humans.Web/Views/AuditLog/Index.cshtml
   src/Humans.Domain/Entities/AuditLogEntry.cs
 -->
 <!-- freshness:flag-on-change
@@ -37,10 +35,10 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 **So that** I can verify the current state on demand
 
 **Acceptance Criteria:**
-- "Check Drive Activity Now" button on the Audit Log page (`/Board/AuditLog`)
+- "Check Drive Activity Now" button on the Audit Log page (`/AuditLog`)
 - Shows result count after completion
 - Redirects to filtered audit log view showing anomalous permission entries
-- Trigger endpoint: `POST /Google/AuditLog/CheckDriveActivity` (on `GoogleController`)
+- Trigger endpoint: `POST /AuditLog/CheckDriveActivity` (on `AuditLogController`)
 
 ### US-13.3: Audit Log View with Anomaly Alerts
 **As a** Board member or Admin
@@ -48,7 +46,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 **So that** I can review system activity and investigate anomalies
 
 **Acceptance Criteria:**
-- Global audit log page at `/Board/AuditLog` (on `BoardController`, not `AdminController`)
+- Global audit log page at `/AuditLog` (on `AuditLogController`)
 - Filter by action type (All, Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles)
 - Anomalous entries highlighted with warning styling
 - Alert banner showing total anomaly count
@@ -71,9 +69,9 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - `DriveActivityMonitorJob` - Hangfire background job wrapper
 
 **Web:**
-- `BoardController.AuditLog` action (`/Board/AuditLog`) - paginated audit log with filtering
-- `GoogleController.CheckDriveActivity` action (`POST /Google/AuditLog/CheckDriveActivity`) - manual trigger
-- `Views/Shared/AuditLog.cshtml` shared view
+- `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering
+- `AuditLogController.CheckDriveActivity` action (`POST /AuditLog/CheckDriveActivity`) - manual trigger
+- `Views/AuditLog/Index.cshtml` view
 
 ### Service Registration
 

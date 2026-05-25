@@ -1,51 +1,11 @@
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
 
 namespace Humans.Web.Models;
 
-public class BoardDashboardViewModel
-{
-    public int TotalMembers { get; set; }
-    public int IncompleteSignup { get; set; }
-    public int PendingApproval { get; set; }
-    public int ActiveMembers { get; set; }
-    public int MissingConsents { get; set; }
-    public int Suspended { get; set; }
-    public int PendingDeletion { get; set; }
-    public int PendingApplications { get; set; }
-    public List<RecentActivityViewModel> RecentActivity { get; set; } = [];
-
-    // Application statistics
-    public int TotalApplications { get; set; }
-    public int ApprovedApplications { get; set; }
-    public int RejectedApplications { get; set; }
-    public int ColaboradorApplied { get; set; }
-    public int AsociadoApplied { get; set; }
-
-    // Language distribution
-    public List<LanguageCountViewModel> LanguageDistribution { get; set; } = [];
-}
-
-public class LanguageCountViewModel
-{
-    public string Language { get; set; } = string.Empty;
-    public int Count { get; set; }
-}
-
-public class RecentActivityViewModel
-{
-    public string Description { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public AuditAction Type { get; set; }
-}
-
 public class AdminHumanListViewModel : PagedListViewModel
 {
-    public AdminHumanListViewModel() : base()
-    {
-    }
-
     /// <summary>
     /// Page of admin humans to render via the canonical
     /// <c>_HumanSearchResults</c> partial. Admin-specific fields
@@ -70,7 +30,6 @@ public class AdminHumanDetailViewModel
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
-    // Profile
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? City { get; set; }
@@ -86,29 +45,26 @@ public class AdminHumanDetailViewModel
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
 
-    // Rejection
     public bool IsRejected { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? RejectedByName { get; set; }
 
-    // Workspace email
     public string? NobodiesTeamEmail { get; set; }
 
-    // Email diagnostics (read-only card)
     public string? OAuthEmail { get; set; }
     public string? GoogleServiceEmail { get; set; }
     public GoogleEmailStatus GoogleEmailStatus { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
-    // Stats
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
+    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
+    public int OutboxCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
-    // Payment details
     public string? MaskedIban { get; set; }
     /// <summary>
     /// Set by the RevealIban action via TempData. Survives exactly one page load after reveal.
@@ -134,10 +90,6 @@ public class AdminHumanApplicationViewModel
 
 public class AdminApplicationListViewModel : PagedListViewModel
 {
-    public AdminApplicationListViewModel() : base()
-    {
-    }
-
     public List<AdminApplicationViewModel> Applications { get; set; } = [];
     public string? StatusFilter { get; set; }
     public string? TierFilter { get; set; }
@@ -148,7 +100,6 @@ public class AdminApplicationViewModel
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
-    public string UserDisplayName { get; set; } = string.Empty;
     public ApplicationStatus Status { get; set; }
     public string StatusBadgeClass { get; set; } = "bg-secondary";
     public DateTime SubmittedAt { get; set; }
@@ -160,8 +111,6 @@ public class AdminApplicationDetailViewModel : ApplicationDetailViewModelBase
 {
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
-    public string UserDisplayName { get; set; } = string.Empty;
-    public string? UserProfilePictureUrl { get; set; }
     public string? Language { get; set; }
     public bool CanApproveReject { get; set; }
 }
@@ -173,12 +122,8 @@ public class AdminApplicationActionModel
     public string? Notes { get; set; }
 }
 
-public class AdminRoleAssignmentListViewModel : PagedListViewModel
+public class AdminRoleAssignmentListViewModel() : PagedListViewModel(50)
 {
-    public AdminRoleAssignmentListViewModel() : base(50)
-    {
-    }
-
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public string? RoleFilter { get; set; }
     public bool ShowInactive { get; set; }
@@ -189,7 +134,6 @@ public class AdminRoleAssignmentViewModel
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
-    public string UserDisplayName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public DateTime ValidFrom { get; set; }
     public DateTime? ValidTo { get; set; }
@@ -202,7 +146,6 @@ public class AdminRoleAssignmentViewModel
 public class CreateRoleAssignmentViewModel
 {
     public Guid UserId { get; set; }
-    public string UserDisplayName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public List<string> AvailableRoles { get; set; } = [];
@@ -211,43 +154,9 @@ public class CreateRoleAssignmentViewModel
 public class EndRoleAssignmentViewModel
 {
     public Guid Id { get; set; }
-    public string UserDisplayName { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
     public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
-}
-
-public class AuditLogListViewModel : PagedListViewModel
-{
-    public AuditLogListViewModel() : base(50)
-    {
-    }
-
-    public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } = [];
-    public string? ActionFilter { get; set; }
-    public int AnomalyCount { get; set; }
-}
-
-public class GoogleSyncAuditEntryViewModel
-{
-    public AuditAction Action { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public string? UserEmail { get; set; }
-    public string? Role { get; set; }
-    public GoogleSyncSource? SyncSource { get; set; }
-    public DateTime OccurredAt { get; set; }
-    public bool? Success { get; set; }
-    public string? ErrorMessage { get; set; }
-    public string? ResourceName { get; set; }
-    public Guid? ResourceId { get; set; }
-    public Guid? RelatedEntityId { get; set; }
-}
-
-public class GoogleSyncAuditListViewModel
-{
-    public List<GoogleSyncAuditEntryViewModel> Entries { get; set; } = [];
-    public string Title { get; set; } = string.Empty;
-    public string? BackUrl { get; set; }
-    public string? BackLabel { get; set; }
 }
 
 public class ConfigurationItemViewModel
@@ -289,10 +198,8 @@ public class AccountMergeRequestViewModel
 {
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;
-    public string PrimaryUserDisplayName { get; set; } = string.Empty;
     public string? PrimaryUserEmail { get; set; }
     public Guid PrimaryUserId { get; set; }
-    public string DuplicateUserDisplayName { get; set; } = string.Empty;
     public string? DuplicateUserEmail { get; set; }
     public Guid DuplicateUserId { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -329,6 +236,15 @@ public class ProfileSummaryViewModel
     public string? CountryCode { get; set; }
     public bool IsSuspended { get; set; }
     public List<string> Teams { get; set; } = [];
+
+    /// <summary>
+    /// Teams the subject belongs to that are flagged <c>IsHidden</c>. Only populated
+    /// in the popover render path when the viewer is TeamsAdmin/Board/Admin — kept
+    /// separate from <see cref="Teams"/> so the popover can render an admin-only
+    /// section below a separator.
+    /// </summary>
+    public List<string> HiddenTeams { get; set; } = [];
+
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     /// <summary>
@@ -376,6 +292,13 @@ public class CacheStatsViewModel
         : 0;
 
     public List<CacheStatEntryViewModel> Entries { get; set; } = [];
+
+    /// <summary>
+    /// Stats for the in-memory caching decorators (Profile / User / Team /
+    /// ShiftView), rendered in a separate table below the IMemoryCache stats.
+    /// These caches have no TTL and track invalidation count instead.
+    /// </summary>
+    public List<DecoratorCacheStatEntryViewModel> DecoratorEntries { get; set; } = [];
 }
 
 public class CacheStatEntryViewModel
@@ -387,6 +310,18 @@ public class CacheStatEntryViewModel
     public int ActiveEntries { get; set; }
     public string Ttl { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
+}
+
+public class DecoratorCacheStatEntryViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public int Entries { get; set; }
+    public long Hits { get; set; }
+    public long Misses { get; set; }
+    public long KeyRemovals { get; set; }
+    public long BulkInvalidations { get; set; }
+    public double HitRatePercent { get; set; }
+    public bool IsWarmedUp { get; set; }
 }
 
 public class DuplicateAccountListViewModel
@@ -423,8 +358,28 @@ public class DuplicateAccountDetailViewModel
     public string SharedEmail { get; set; } = string.Empty;
     public ProfileSummaryViewModel Account1 { get; set; } = new();
     public ProfileSummaryViewModel Account2 { get; set; } = new();
-    public List<string> Account1EmailSources { get; set; } = [];
-    public List<string> Account2EmailSources { get; set; } = [];
+
+    /// <summary>Raw <c>User.Email</c> Identity column for account A (null when unset).</summary>
+    public string? Account1IdentityEmail { get; set; }
+
+    /// <summary>Raw <c>User.Email</c> Identity column for account B (null when unset).</summary>
+    public string? Account2IdentityEmail { get; set; }
+
+    /// <summary>All <c>UserEmails</c> rows for account A (full list, not just the conflicting overlap).</summary>
+    public List<DuplicateAccountEmailRowViewModel> Account1Emails { get; set; } = [];
+
+    /// <summary>All <c>UserEmails</c> rows for account B (full list, not just the conflicting overlap).</summary>
+    public List<DuplicateAccountEmailRowViewModel> Account2Emails { get; set; } = [];
+}
+
+/// <summary>One <c>UserEmail</c> row rendered on the duplicate-account detail page.</summary>
+public class DuplicateAccountEmailRowViewModel
+{
+    public string Email { get; set; } = string.Empty;
+    public bool IsPrimary { get; set; }
+    public bool IsVerified { get; set; }
+    public bool IsGoogle { get; set; }
+    public string? Provider { get; set; }
 }
 
 /// <summary>

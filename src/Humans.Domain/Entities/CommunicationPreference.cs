@@ -40,4 +40,14 @@ public class CommunicationPreference
     /// </summary>
     public string UpdateSource { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Earliest opt-in instant we know about for this category. Stamped on the
+    /// first opt-in transition (OptedOut: true → false) or on the first import
+    /// from an external source that carries a real subscribe date. Preserved
+    /// across opt-out / re-opt cycles — represents "first ever subscribed",
+    /// not "currently subscribed since". Null for pre-existing rows that
+    /// pre-date the column or for rows that were lazy-seeded as default-opted-out.
+    /// </summary>
+    public Instant? SubscribedAt { get; set; }
+
 }

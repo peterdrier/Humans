@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Domain.ValueObjects;
@@ -9,8 +7,9 @@ using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
@@ -20,52 +19,31 @@ namespace Humans.Web.Controllers;
 
 [Route("Barrios")]
 [Route("Camps")]
-public class CampController : HumansCampControllerBase
+public class CampController(
+    ICampService campService,
+    ICampContactService campContactService,
+    ICampRoleService campRoleService,
+    ICityPlanningService cityPlanningService,
+    INotificationService notificationService,
+    IUserServiceRead userService,
+    IAuthorizationService authorizationService,
+    IClock clock,
+    ILogger<CampController> logger,
+    IStringLocalizer<SharedResource> localizer)
+    : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly ICampService _campService;
-    private readonly ICampContactService _campContactService;
-    private readonly ICampRoleService _campRoleService;
-    private readonly ICityPlanningService _cityPlanningService;
-    private readonly INotificationService _notificationService;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly ILogger<CampController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly ICampService _campService = campService;
+    private readonly INotificationService _notificationService = notificationService;
+    private readonly IUserServiceRead _userService = userService;
+    private readonly IClock _clock = clock;
 
-    public CampController(
-        ICampService campService,
-        ICampContactService campContactService,
-        ICampRoleService campRoleService,
-        ICityPlanningService cityPlanningService,
-        INotificationService notificationService,
-        IUserService userService,
-        UserManager<User> userManager,
-        IAuthorizationService authorizationService,
-        IClock clock,
-        ILogger<CampController> logger,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userManager, campService, authorizationService)
-    {
-        _campService = campService;
-        _campContactService = campContactService;
-        _campRoleService = campRoleService;
-        _cityPlanningService = cityPlanningService;
-        _notificationService = notificationService;
-        _userService = userService;
-        _clock = clock;
-        _logger = logger;
-        _localizer = localizer;
-    }
-
-    // ======================================================================
-    // Public routes
-    // ======================================================================
+    // --- Public routes ---
 
     [AllowAnonymous]
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         var directory = await _campService.GetCampDirectoryAsync(
             user?.Id,
             filters is null
@@ -113,46 +91,50 @@ public class CampController : HumansCampControllerBase
 
     private async Task PopulateRegistrationInfoAsync()
     {
-        ViewData["RegistrationInfo"] = await _cityPlanningService.GetRegistrationInfoAsync();
+        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync();
     }
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
-    public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
+    public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
-        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: cancellationToken);
+        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: ct);
         if (campDetail is null)
             return NotFound();
 
-        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserAsync() : null;
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
+        var currentUser = await GetCurrentUserInfoAsync(ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
-        await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
+        await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
-        return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+        var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
+        await PopulateDetailCardsAsync(vm, campDetail, currentUser, isCampAdmin, ct);
+        return View(vm);
     }
 
     [AllowAnonymous]
     [HttpGet("{slug}/Season/{year:int}")]
-    public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken cancellationToken)
+    public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken ct)
     {
         var campDetail = await _campService.BuildCampDetailDataBySlugAsync(
             slug,
             preferredYear: year,
             fallbackToLatestSeason: false,
-            cancellationToken: cancellationToken);
+            cancellationToken: ct);
         if (campDetail is null)
             return NotFound();
 
-        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserAsync() : null;
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
+        var currentUser = await GetCurrentUserInfoAsync(ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
-        await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
+        await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
-        return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+        var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
+        await PopulateDetailCardsAsync(vm, campDetail, currentUser, isCampAdmin, ct);
+        return View(nameof(Details), vm);
     }
 
-    private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId, User? currentUser)
+    private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId, UserInfo? currentUser)
     {
         if (currentUser is null)
         {
@@ -175,9 +157,7 @@ public class CampController : HumansCampControllerBase
         };
     }
 
-    // ======================================================================
-    // Facilitated Contact
-    // ======================================================================
+    // --- Facilitated Contact ---
 
     [Authorize]
     [HttpGet("{slug}/Contact")]
@@ -203,7 +183,7 @@ public class CampController : HumansCampControllerBase
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         if (!ModelState.IsValid)
@@ -214,68 +194,49 @@ public class CampController : HumansCampControllerBase
             return View(model);
         }
 
-        var campDisplayName = camp.Seasons
+        var latestSeason = camp.Seasons
             .OrderByDescending(s => s.Year)
-            .FirstOrDefault()?.Name ?? slug;
+            .FirstOrDefault();
+        var campDisplayName = latestSeason?.Name ?? slug;
         var senderEmail = currentUser.Email!;
+
+        // Recipients are sourced from the role system (Camp Lead special role on the
+        // latest season), not the legacy camp_leads table.
+        var leadUserIds = latestSeason is null
+            ? []
+            : await campRoleService.GetSeasonLeadUserIdsAsync(latestSeason.Id);
 
         try
         {
-            var result = await _campContactService.SendFacilitatedMessageAsync(
+            var result = await campContactService.SendFacilitatedMessageAsync(
                 camp.Id,
                 camp.ContactEmail,
                 campDisplayName,
                 currentUser.Id,
-                currentUser.DisplayName,
+                currentUser.BurnerName,
                 senderEmail,
                 model.Message,
-                model.IncludeContactInfo);
+                model.IncludeContactInfo,
+                leadUserIds,
+                $"/Barrios/{slug}");
 
             if (result.RateLimited)
             {
-                SetError(_localizer["Camp_Contact_RateLimited"].Value);
+                SetError(localizer["Camp_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-
-            // In-app notification to camp leads (best-effort)
-            try
-            {
-                var leadUserIds = camp.Leads
-                    .Select(l => l.UserId)
-                    .Distinct()
-                    .ToList();
-
-                if (leadUserIds.Count > 0)
-                {
-                    await _notificationService.SendAsync(
-                        NotificationSource.FacilitatedMessageReceived,
-                        NotificationClass.Informational,
-                        NotificationPriority.Normal,
-                        $"New message for {campDisplayName} — check your email",
-                        leadUserIds,
-                        actionUrl: $"/Barrios/{slug}",
-                        actionLabel: "View camp");
-                }
-            }
-            catch (Exception notifEx)
-            {
-                _logger.LogError(notifEx, "Failed to dispatch FacilitatedMessageReceived notification for camp {Slug}", slug);
-            }
-
-            SetSuccess(string.Format(_localizer["Camp_Contact_Success"].Value, campDisplayName));
+            SetSuccess(string.Format(localizer["Camp_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
+            SetError(localizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
 
-    // ======================================================================
-    // Registration
-    // ======================================================================
+    // --- Registration ---
 
     [Authorize]
     [HttpGet("Register")]
@@ -335,7 +296,7 @@ public class CampController : HumansCampControllerBase
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
-                null, // WebOrSocialUrl legacy — new registrations/edits use Links
+                null, // WebOrSocialUrl legacy � new registrations/edits use Links
                 campLinks,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
@@ -348,7 +309,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
+            logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, ex.Message);
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
@@ -356,11 +317,8 @@ public class CampController : HumansCampControllerBase
         }
         catch (DbUpdateException ex)
         {
-            // Belt-and-suspenders for any future race in downstream sync side effects
-            // (e.g. duplicate system-team memberships). The primary fix lives in the
-            // owning service; this ensures the user always sees a friendly error
-            // instead of a 500.
-            _logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
+            // Belt-and-suspenders: friendly error if downstream sync races (primary fix lives in owning service).
+            logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, "We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.");
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
@@ -368,9 +326,7 @@ public class CampController : HumansCampControllerBase
         }
     }
 
-    // ======================================================================
-    // Edit
-    // ======================================================================
+    // --- Edit ---
 
     [Authorize]
     [HttpGet("{slug}/Edit")]
@@ -425,22 +381,22 @@ public class CampController : HumansCampControllerBase
     private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(
         string campSlug, Guid campSeasonId, bool canManage, CancellationToken ct)
     {
-        var panelData = await _campRoleService.BuildPanelAsync(campSeasonId, ct);
+        var panelData = await campRoleService.BuildPanelAsync(campSeasonId, ct);
         var members = await _campService.GetSeasonMembersAsync(campSeasonId, ct);
         var activeMemberUserIds = members
             .Where(m => m.Status == CampMemberStatus.Active)
             .Select(m => m.UserId)
             .ToList();
-        IReadOnlyDictionary<Guid, User> users = activeMemberUserIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(activeMemberUserIds, ct);
+        IReadOnlyDictionary<Guid, UserInfo> users = activeMemberUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(activeMemberUserIds, ct);
 
         var activeMembers = members
             .Where(m => m.Status == CampMemberStatus.Active)
             .Select(m => new CampMemberPickerOption(
                 m.Id,
                 m.UserId,
-                users.TryGetValue(m.UserId, out var u) ? u.DisplayName ?? "(unknown)" : "(unknown)"))
+                users.TryGetValue(m.UserId, out var u) ? u.BurnerName : "(unknown)"))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -457,6 +413,7 @@ public class CampController : HumansCampControllerBase
             EmptySlotCount = r.EmptySlotCount,
             OverCapacity = r.OverCapacity,
             CurrentCount = r.CurrentCount,
+            IsLeadRole = r.Definition.SpecialRole == CampSpecialRole.Lead,
         }).ToList();
 
         return new CampRolesPanelViewModel
@@ -482,11 +439,10 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead,
-                HasEarlyEntry = m.HasEarlyEntry
+                HasEarlyEntry = m.HasEarlyEntry,
+                Status = m.Status
             })
             .ToList();
         viewModel.ActiveMembers = members.Active
@@ -494,11 +450,10 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead,
-                HasEarlyEntry = m.HasEarlyEntry
+                HasEarlyEntry = m.HasEarlyEntry,
+                Status = m.Status
             })
             .ToList();
         viewModel.EeSlotCount = members.EeSlotCount;
@@ -524,49 +479,31 @@ public class CampController : HumansCampControllerBase
             return View(model);
         }
 
-        try
+        var result = await _campService.UpdateCampAsync(new CampUpdateInput(
+            camp.Id,
+            model.ContactEmail,
+            model.ContactPhone,
+            null, // WebOrSocialUrl legacy - new registrations/edits use Links
+            ParseCampLinks(model.Links),
+            model.IsSwissCamp,
+            model.TimesAtNowhere,
+            model.HideHistoricalNames,
+            model.SeasonId,
+            model.Name,
+            MapToSeasonData(model)));
+
+        if (!result.Succeeded)
         {
-            var updateLinks = ParseCampLinks(model.Links);
-
-            await _campService.UpdateCampAsync(
-                camp.Id,
-                model.ContactEmail,
-                model.ContactPhone,
-                null, // WebOrSocialUrl legacy — new registrations/edits use Links
-                updateLinks,
-                model.IsSwissCamp,
-                model.TimesAtNowhere,
-                model.HideHistoricalNames);
-
-            await _campService.UpdateSeasonAsync(model.SeasonId, MapToSeasonData(model));
-
-            // Handle name change if not locked
-            var currentSeason = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
-            if (currentSeason is not null && !string.Equals(currentSeason.Name, model.Name, StringComparison.Ordinal))
-            {
-                var today = _clock.GetCurrentInstant().InUtc().Date;
-                var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
-                if (!nameLocked)
-                {
-                    await _campService.ChangeSeasonNameAsync(currentSeason.Id, model.Name);
-                }
-            }
-
-            SetSuccess("Camp updated successfully.");
-            return RedirectToAction(nameof(Edit), new { slug });
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Camp update failed for camp {CampId} and slug {Slug}", camp.Id, slug);
-            ModelState.AddModelError(string.Empty, ex.Message);
+            ModelState.AddModelError(string.Empty, result.ErrorMessage ?? "Camp update failed.");
             await PopulateEditReadOnlyFieldsAsync(model);
             return View(model);
         }
+
+        SetSuccess("Camp updated successfully.");
+        return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // ======================================================================
-    // Season opt-in
-    // ======================================================================
+    // --- Season opt-in ---
 
     [Authorize]
     [HttpPost("{slug}/OptIn/{year:int}")]
@@ -586,7 +523,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
+            logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
             SetError(ex.Message);
         }
 
@@ -611,7 +548,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
+            logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
@@ -636,77 +573,22 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
+            logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
     }
 
-    // ======================================================================
-    // Lead management
-    // ======================================================================
-
-    [Authorize]
-    [HttpPost("{slug}/Leads/Add")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddLead(string slug, Guid userId)
-    {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        if (userId == Guid.Empty)
-        {
-            SetError("Please search and select a human first.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
-        try
-        {
-            await _campService.AddLeadAsync(camp.Id, userId);
-            SetSuccess("Co-lead added.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Adding lead {LeadUserId} failed for camp {CampId} and slug {Slug}", userId, camp.Id, slug);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Members), new { slug });
-    }
-
-    [Authorize]
-    [HttpPost("{slug}/Leads/Remove/{leadId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RemoveLead(string slug, Guid leadId)
-    {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        try
-        {
-            await _campService.RemoveLeadAsync(leadId);
-            SetSuccess("Lead removed.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Removing lead {LeadId} failed for camp {CampId} and slug {Slug}", leadId, camp.Id, slug);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Members), new { slug });
-    }
+    // --- Lead management ---
+    //
+    // The legacy AddLead / RemoveLead actions were retired in
+    // issue nobodies-collective/Humans#753 (Camp Lead retired into the
+    // CampRoleAssignment system role). Lead assignment is now performed via
+    // the Camp Lead row in the unified Roles panel on the Members page.
 
 
-    // ======================================================================
-    // Historical name management
-    // ======================================================================
+    // --- Historical name management ---
 
     [Authorize]
     [HttpPost("{slug}/HistoricalNames/Add")]
@@ -730,7 +612,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Adding historical name failed for camp {CampId}", camp.Id);
+            logger.LogWarning(ex, "Adding historical name failed for camp {CampId}", camp.Id);
             SetError(ex.Message);
         }
 
@@ -753,21 +635,19 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
+            logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
             SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // ======================================================================
-    // Image management
-    // ======================================================================
+    // --- Image management ---
 
     [Authorize]
     [HttpPost("{slug}/Images/Upload")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UploadImage(string slug, IFormFile file)
+    public async Task<IActionResult> UploadImage(string slug, IFormFile? file)
     {
         var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
@@ -781,20 +661,20 @@ public class CampController : HumansCampControllerBase
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
-        try
+        var result = await _campService.UploadImageAsync(
+            camp.Id,
+            file.OpenReadStream(),
+            file.FileName,
+            file.ContentType,
+            file.Length);
+
+        if (result.Succeeded)
         {
-            await _campService.UploadImageAsync(
-                camp.Id,
-                file.OpenReadStream(),
-                file.FileName,
-                file.ContentType,
-                file.Length);
             SetSuccess("Image uploaded.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            _logger.LogWarning(ex, "Image upload failed for camp {CampId} and slug {Slug}", camp.Id, slug);
-            SetError(ex.Message);
+            SetError(result.ErrorMessage ?? "Image upload failed.");
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -818,7 +698,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
+            logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -843,16 +723,14 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Reordering images failed for camp {CampId} and slug {Slug}", camp.Id, slug);
+            logger.LogWarning(ex, "Reordering images failed for camp {CampId} and slug {Slug}", camp.Id, slug);
             SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // ======================================================================
-    // Camp membership per season (issue nobodies-collective#488)
-    // ======================================================================
+    // --- Camp membership per season (see nobodies-collective/Humans#488) ---
 
     [Authorize]
     [HttpPost("{slug}/Members/Request")]
@@ -865,32 +743,27 @@ public class CampController : HumansCampControllerBase
         var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null) return currentUserError;
 
-        try
-        {
-            var result = await _campService.RequestCampMembershipAsync(camp.Id, user.Id);
-            switch (result.Outcome)
-            {
-                case CampMemberRequestOutcome.Created:
-                    SetSuccess("Your request to join has been sent to the camp leads.");
-                    break;
-                case CampMemberRequestOutcome.AlreadyPending:
-                    SetInfo("You already have a pending request for this camp.");
-                    break;
-                case CampMemberRequestOutcome.AlreadyActive:
-                    SetInfo("You are already an active member of this camp.");
-                    break;
-                case CampMemberRequestOutcome.NoOpenSeason:
-                    SetError(result.Message ?? "Camp is not open for membership this year.");
-                    break;
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Camp membership request failed for camp {CampId} and user {UserId}", camp.Id, user.Id);
-            SetError(ex.Message);
-        }
+        var result = await _campService.RequestCampMembershipAsync(camp.Id, user.Id);
+        SetCampMemberRequestNotice(result);
 
         return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    private void SetCampMemberRequestNotice(CampMemberRequestResult result)
+    {
+        if (result.NoticeLevel == CampMemberRequestNoticeLevel.Success)
+        {
+            SetSuccess(result.Message);
+            return;
+        }
+
+        if (result.NoticeLevel == CampMemberRequestNoticeLevel.Info)
+        {
+            SetInfo(result.Message);
+            return;
+        }
+
+        SetError(result.Message);
     }
 
     [Authorize]
@@ -911,7 +784,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
+            logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
             SetError(ex.Message);
         }
 
@@ -929,15 +802,14 @@ public class CampController : HumansCampControllerBase
         var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null) return currentUserError;
 
-        try
+        var result = await _campService.LeaveCampAsync(campMemberId, user.Id);
+        if (result.Succeeded)
         {
-            await _campService.LeaveCampAsync(campMemberId, user.Id);
             SetSuccess("You have left this camp for this season.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            _logger.LogWarning(ex, "Leave camp failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
-            SetError(ex.Message);
+            SetError(result.ErrorMessage ?? "Could not leave this camp.");
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -953,13 +825,13 @@ public class CampController : HumansCampControllerBase
 
         try
         {
-            // Scope by the authorized camp.Id — service rejects cross-camp member ids.
+            // C2: cross-camp check — service rejects cross-camp member ids.
             await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
             SetSuccess("Membership approved.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -981,7 +853,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -1003,7 +875,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
             SetError(ex.Message);
         }
 
@@ -1035,7 +907,7 @@ public class CampController : HumansCampControllerBase
             SetError("Cannot grant Early Entry: slot cap reached for this camp.");
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
             SetError("Only Active camp members can hold Early Entry.");
-        // NoChange: silent — UI already reflected the state.
+        // NoChange: silent � UI already reflected the state.
     }
 
     [Authorize]
@@ -1046,36 +918,26 @@ public class CampController : HumansCampControllerBase
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        if (userId == Guid.Empty)
-        {
-            SetError("Please search and select a human first.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
-        if (openSeason is null)
-        {
-            SetError("No active season for this camp.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
         try
         {
-            await _campService.AddCampMemberAsLeadAsync(openSeason.Id, userId, user.Id, ct);
-            SetSuccess("Human added to camp.");
+            var result = await _campService.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, userId, user.Id, ct);
+            if (result.Outcome == AddCampMemberAsLeadOutcome.InvalidUser)
+                SetError("Please search and select a human first.");
+            else if (result.Outcome == AddCampMemberAsLeadOutcome.NoActiveSeason)
+                SetError("No active season for this camp.");
+            else
+                SetSuccess("Human added to camp.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError("Failed to add human to camp.");
         }
 
         return RedirectToAction(nameof(Members), new { slug });
     }
 
-    // ======================================================================
-    // Per-camp role assignments (issue nobodies-collective#489)
-    // ======================================================================
+    // --- Per-camp role assignments (see nobodies-collective/Humans#489) ---
 
     [Authorize]
     [HttpPost("{slug}/Roles/Assign")]
@@ -1086,45 +948,16 @@ public class CampController : HumansCampControllerBase
         if (errorResult is not null) return errorResult;
 
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
-        if (openSeason is null)
-        {
-            SetError("No active season for this camp.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
+        var outcome = openSeason is null
+            ? AssignCampRoleOutcome.SeasonNotFound
+            : await campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
 
-        var outcome = await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
-        var message = outcome switch
-        {
-            AssignCampRoleOutcome.Assigned => "Role assigned.",
-            AssignCampRoleOutcome.RoleNotFound => "Role definition not found.",
-            AssignCampRoleOutcome.RoleDeactivated => "That role is deactivated.",
-            AssignCampRoleOutcome.MemberNotFound => "Camp member not found.",
-            AssignCampRoleOutcome.MemberNotActive => "Only active camp members can hold roles.",
-            AssignCampRoleOutcome.MemberSeasonMismatch => "Member is not in this season.",
-            AssignCampRoleOutcome.SlotCapReached => "All slots for this role are filled.",
-            AssignCampRoleOutcome.AlreadyHoldsRole => "That human already holds this role.",
-            AssignCampRoleOutcome.SeasonNotFound => "Season not found.",
-            _ => "Unknown error.",
-        };
-
-        if (outcome == AssignCampRoleOutcome.Assigned)
-        {
-            SetSuccess(message);
-        }
-        else
-        {
-            SetError(message);
-        }
+        ApplyAssignRoleOutcomeFlash(outcome);
 
         return RedirectToAction(nameof(Members), new { slug });
     }
 
-    /// <summary>
-    /// Search-driven assign: takes a userId from the human-search typeahead. If the
-    /// human isn't yet a camp member, they're added as Active first (idempotent), then
-    /// the role is assigned. One UI action covers both "assign existing member" and
-    /// "add this human and assign them" — see issue request from Frank, May 2026.
-    /// </summary>
+    /// <summary>Search-driven assign: adds the human as Active if needed (idempotent), then assigns the role.</summary>
     [Authorize]
     [HttpPost("{slug}/Roles/AssignByUser")]
     [ValidateAntiForgeryToken]
@@ -1139,26 +972,26 @@ public class CampController : HumansCampControllerBase
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
-        if (openSeason is null)
-        {
-            SetError("No active season for this camp.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
         AssignCampRoleOutcome outcome;
         try
         {
-            outcome = await _campService.AddMemberAndAssignRoleAsync(
-                openSeason.Id, roleDefinitionId, userId, user.Id, ct);
+            outcome = await _campService.AddMemberAndAssignRoleInActiveSeasonAsync(
+                camp.Id, roleDefinitionId, userId, user.Id, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError("Failed to assign role.");
             return RedirectToAction(nameof(Members), new { slug });
         }
 
+        ApplyAssignRoleOutcomeFlash(outcome);
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    private void ApplyAssignRoleOutcomeFlash(AssignCampRoleOutcome outcome)
+    {
         var message = outcome switch
         {
             AssignCampRoleOutcome.Assigned => "Role assigned.",
@@ -1174,15 +1007,9 @@ public class CampController : HumansCampControllerBase
         };
 
         if (outcome == AssignCampRoleOutcome.Assigned)
-        {
             SetSuccess(message);
-        }
         else
-        {
             SetError(message);
-        }
-
-        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -1194,17 +1021,17 @@ public class CampController : HumansCampControllerBase
         if (errorResult is not null) return errorResult;
 
         // C2: verify the assignment belongs to a season of THIS camp before delegating to the service.
-        var assignment = await _campRoleService.GetAssignmentByIdAsync(assignmentId, ct);
+        var assignment = await campRoleService.GetAssignmentByIdAsync(assignmentId, ct);
         var seasonIds = camp.Seasons.Select(s => s.Id).ToHashSet();
         if (assignment is null || !seasonIds.Contains(assignment.CampSeasonId))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Cross-camp UnassignRole blocked: actor {ActorId} attempted assignment {AssignmentId} from camp {CampSlug}.",
                 user.Id, assignmentId, slug);
             return Forbid();
         }
 
-        var ok = await _campRoleService.UnassignAsync(assignmentId, user.Id, ct);
+        var ok = await campRoleService.UnassignAsync(assignmentId, user.Id, ct);
         if (ok)
         {
             SetSuccess("Role unassigned.");
@@ -1217,11 +1044,9 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Members), new { slug });
     }
 
-    // ======================================================================
-    // Helper methods
-    // ======================================================================
+    // --- Helper methods ---
 
-    private async Task PopulateCityPlanningViewBagAsync(User? currentUser, CancellationToken cancellationToken)
+    private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)
     {
         if (currentUser is null)
         {
@@ -1229,9 +1054,9 @@ public class CampController : HumansCampControllerBase
         }
 
         ViewBag.IsCityPlanningTeamMember =
-            await _cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
+            await cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
 
-        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         ViewBag.PlacementIsOpen = settings.IsPlacementOpen;
         ViewBag.PlacementOpensAt = settings.PlacementOpensAt;
         ViewBag.PlacementClosesAt = settings.PlacementClosesAt;
@@ -1254,8 +1079,6 @@ public class CampController : HumansCampControllerBase
             MemberCount: model.MemberCount,
             SpaceRequirement: model.SpaceRequirement,
             SoundZone: model.SoundZone,
-            ContainerCount: model.ContainerCount,
-            ContainerNotes: model.ContainerNotes,
             ElectricalGrid: model.ElectricalGrid);
     }
 
@@ -1264,19 +1087,10 @@ public class CampController : HumansCampControllerBase
         var editData = await _campService.GetCampEditDataAsync(model.CampId, model.Year);
         if (editData is null)
         {
-            model.Leads = [];
             model.Images = [];
             return;
         }
 
-        model.Leads = editData.Leads
-            .Select(lead => new CampLeadViewModel
-            {
-                LeadId = lead.LeadId,
-                UserId = lead.UserId,
-                DisplayName = lead.DisplayName
-            })
-            .ToList();
         model.Images = editData.Images
             .Select(image => new CampImageViewModel
             {
@@ -1317,16 +1131,7 @@ public class CampController : HumansCampControllerBase
             MemberCount = editData.MemberCount,
             SpaceRequirement = editData.SpaceRequirement,
             SoundZone = editData.SoundZone,
-            ContainerCount = editData.ContainerCount,
-            ContainerNotes = editData.ContainerNotes,
             ElectricalGrid = editData.ElectricalGrid,
-            Leads = editData.Leads
-                .Select(lead => new CampLeadViewModel
-                {
-                    LeadId = lead.LeadId,
-                    UserId = lead.UserId,
-                    DisplayName = lead.DisplayName
-                }).ToList(),
             Images = editData.Images
                 .Select(image => new CampImageViewModel
                 {
@@ -1359,13 +1164,6 @@ public class CampController : HumansCampControllerBase
             TimesAtNowhere = campDetail.TimesAtNowhere,
             HistoricalNames = [.. campDetail.HistoricalNames],
             ImageUrls = [.. campDetail.ImageUrls],
-            Leads = campDetail.Leads
-            .Select(lead => new CampLeadViewModel
-            {
-                LeadId = lead.LeadId,
-                UserId = lead.UserId,
-                DisplayName = lead.DisplayName
-            }).ToList(),
             CurrentSeason = campDetail.CurrentSeason is null
             ? null
             : new CampSeasonDetailViewModel
@@ -1388,8 +1186,6 @@ public class CampController : HumansCampControllerBase
                 MemberCount = campDetail.CurrentSeason.MemberCount,
                 SpaceRequirement = campDetail.CurrentSeason.SpaceRequirement,
                 SoundZone = campDetail.CurrentSeason.SoundZone,
-                ContainerCount = campDetail.CurrentSeason.ContainerCount,
-                ContainerNotes = campDetail.CurrentSeason.ContainerNotes,
                 ElectricalGrid = campDetail.CurrentSeason.ElectricalGrid,
                 IsNameLocked = campDetail.CurrentSeason.IsNameLocked
             },
@@ -1398,12 +1194,53 @@ public class CampController : HumansCampControllerBase
             Membership = membership
         };
 
+    /// <summary>
+    /// Fills the read-only Roles panel and (for full-camp viewers) the Roster on the
+    /// detail VM. Sourced from CampRoleAssignment — the same data as /Edit/Members —
+    /// so the detail page never disagrees with the roles panel. No-op for anonymous
+    /// viewers or seasonless camps.
+    /// </summary>
+    private async Task PopulateDetailCardsAsync(
+        CampDetailViewModel vm, CampDetailData campDetail, UserInfo? currentUser, bool isCampAdmin,
+        CancellationToken ct)
+    {
+        if (currentUser is null || campDetail.CurrentSeason is null)
+        {
+            return; // anonymous / no season → no cards
+        }
+
+        // Read-only roles panel (same source as /Edit/Members).
+        vm.RolesPanel = await BuildRolesPanelAsync(
+            campDetail.Slug, campDetail.CurrentSeason.Id, canManage: false, ct);
+
+        // Full-camp access is decided by membership in the *displayed* season, not the
+        // open-season membership VM — that VM is NoOpenSeason for Pending/closed seasons,
+        // which would wrongly hide the roster from real members (e.g. the camp creator).
+        var members = await _campService.GetCampMembersAsync(campDetail.CurrentSeason.Id);
+        vm.CanSeeFullCamp = isCampAdmin || members.Active.Any(m => m.UserId == currentUser.Id);
+
+        if (vm.CanSeeFullCamp)
+        {
+            vm.Roster = members.Active
+                .Select(m => new CampMemberRowViewModel
+                {
+                    CampMemberId = m.CampMemberId,
+                    UserId = m.UserId,
+                    RequestedAt = m.RequestedAt,
+                    ConfirmedAt = m.ConfirmedAt,
+                    HasEarlyEntry = m.HasEarlyEntry,
+                    Status = m.Status,
+                })
+                .ToList();
+        }
+    }
+
     private void ValidatePhoneE164(string? phone, string fieldName)
     {
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                _localizer["Validation_PhoneE164", "Contact Phone"].Value);
+                localizer["Validation_PhoneE164", "Contact Phone"].Value);
         }
     }
 
@@ -1430,3 +1267,4 @@ public class CampController : HumansCampControllerBase
                 || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal));
     }
 }
+

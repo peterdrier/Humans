@@ -1,7 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -15,6 +15,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
 /// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
+[Section("Humans")]
 public interface IProfileRepository : IRepository
 {
     /// <summary>
@@ -32,13 +33,6 @@ public interface IProfileRepository : IRepository
     Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batched profile fetch keyed by user id. Missing users are absent from
-    /// the returned dictionary. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Loads every profile with aggregate-local <c>VolunteerHistory</c> and
     /// <c>Languages</c> collections. Used by the startup warmup hosted service
     /// to populate the profile cache. Trivial at ~500-user scale.
@@ -54,56 +48,25 @@ public interface IProfileRepository : IRepository
     Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns just the profile picture data and content type.
-    /// Read-only (AsNoTracking).
-    /// </summary>
-    Task<(byte[]? Data, string? ContentType)> GetProfilePictureDataAsync(
-        Guid profileId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns just the <c>ProfilePictureContentType</c> column for a profile —
-    /// scalar projection that avoids loading the bytea picture data. Returns
-    /// <c>null</c> if the profile does not exist or has no picture (including
-    /// when the picture was cleared by an anonymization run). Used by
-    /// <c>ProfileService.GetProfilePictureAsync</c> as a lightweight gate
-    /// before consulting the filesystem store, so an anonymized profile cannot
-    /// be served a stale on-disk file. Read-only (AsNoTracking).
+    /// Returns the <c>ProfilePictureContentType</c> column for a profile —
+    /// the GDPR gate consulted by <c>ProfileService.GetProfilePictureAsync</c>
+    /// before serving the on-disk file, and the source of the file extension.
+    /// Returns <c>null</c> if the profile does not exist or has no picture
+    /// (including when the picture was cleared by an anonymization run), so
+    /// an anonymized profile cannot be served a stale on-disk file. Read-only
+    /// (AsNoTracking).
     /// </summary>
     Task<string?> GetProfilePictureContentTypeAsync(
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batch query returning (ProfileId, UserId, UpdatedAtTicks) for users
-    /// that have a custom profile picture. Read-only.
+    /// Issue nobodies-collective/Humans#702: returns every profile whose
+    /// <c>ProfilePictureContentType</c> is non-null — the population the
+    /// DB→FS migration verification page operates on. Projects only the
+    /// scalar columns needed (no bytea load). Read-only (AsNoTracking).
     /// </summary>
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
-        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of non-suspended Colaborador and Asociado members.
-    /// </summary>
-    Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the user ids of all profiles that are approved and not
-    /// suspended. Read-only (AsNoTracking). Used by notification fan-out
-    /// that previously read <c>_dbContext.Profiles</c> directly from
-    /// cross-section services (e.g. Legal document sync).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns profiles that are in the onboarding review queue: not approved
-    /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
-    /// Used by the onboarding review queue.
-    /// </summary>
-    Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of profiles in the review queue (not approved, not
-    /// rejected). Used by the nav-badge count for Consent Coordinators.
-    /// </summary>
-    Task<int> GetReviewableCountAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+        GetCustomPictureRowsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the user ids of every approved, non-suspended profile. Used
@@ -111,17 +74,6 @@ public interface IProfileRepository : IRepository
     /// loading the full Profile graph.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
-    /// or Flagged and whose <c>RejectedAt</c> is null.
-    /// </summary>
-    Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of profiles that are neither approved nor suspended.
-    /// </summary>
-    Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending

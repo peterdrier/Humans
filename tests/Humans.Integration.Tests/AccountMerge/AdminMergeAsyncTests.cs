@@ -18,12 +18,8 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// seeds a full two-user fixture, invokes the admin-initiated fold, and
 /// asserts all six post-conditions from the EmailProblems spec (case 5).
 /// </summary>
-public class AdminMergeAsyncTests : IClassFixture<HumansWebApplicationFactory>
+public class AdminMergeAsyncTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
 {
-    private readonly HumansWebApplicationFactory _factory;
-
-    public AdminMergeAsyncTests(HumansWebApplicationFactory factory) => _factory = factory;
-
     [HumansFact(Timeout = 60_000)]
     public async Task AdminMergeAsync_FullFixture_AllPostConditionsHold()
     {
@@ -37,7 +33,7 @@ public class AdminMergeAsyncTests : IClassFixture<HumansWebApplicationFactory>
 
         // Stage 1 — seed source/target user pair with their primary verified
         // emails, a login, and a role assignment.
-        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
         {
             // Source: primary verified email.
             b.WithSourceEmail(sourceEmail, verified: true, isPrimary: true);
@@ -54,7 +50,7 @@ public class AdminMergeAsyncTests : IClassFixture<HumansWebApplicationFactory>
         });
 
         // Stage 2 — seed a source-only team membership (requires ad-hoc Team row).
-        await using (var seedScope = _factory.Services.CreateAsyncScope())
+        await using (var seedScope = factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(seedScope, sourceId, targetId);
             sourceOnlyTeamId = builder.SeedTeamNow($"SrcOnly-{runTag}".Substring(0, 12));
@@ -64,14 +60,14 @@ public class AdminMergeAsyncTests : IClassFixture<HumansWebApplicationFactory>
 
         // Act — admin-initiated merge (no AccountMergeRequest).
         var adminId = await SeedAdminUserAsync();
-        await using (var actScope = _factory.Services.CreateAsyncScope())
+        await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
             await mergeService.AdminMergeAsync(sourceId, targetId, adminId);
         }
 
         // Assert — all six post-conditions from the EmailProblems spec case 5.
-        await using var assertScope = _factory.Services.CreateAsyncScope();
+        await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // ----------------------------------------------------------------
@@ -158,7 +154,7 @@ public class AdminMergeAsyncTests : IClassFixture<HumansWebApplicationFactory>
 
     private async Task<Guid> SeedAdminUserAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();

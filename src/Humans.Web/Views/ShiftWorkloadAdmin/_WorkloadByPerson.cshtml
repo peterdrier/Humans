@@ -1,0 +1,44 @@
+@using Humans.Application.DTOs.Shifts.Workload
+@model IReadOnlyList<WorkloadByPersonRow>
+
+@{
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No humans have signed up for shifts yet.</div>
+    return;
+}
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped table-hover workload-table">
+        <thead>
+            <tr>
+                <th data-sort>Human</th>
+                <th data-sort class="text-end">Confirmed signups</th>
+                <th data-sort class="text-end">Pending signups</th>
+                <th data-sort class="text-end" title="Role hours — coming soon (#734)">Role</th>
+                <th data-sort class="text-end">Build</th>
+                <th data-sort class="text-end">Event</th>
+                <th data-sort class="text-end">Strike</th>
+                <th data-sort class="text-end">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td data-value="@row.DisplayName"><vc:human user-id="@row.UserId" layout="Text" link="Admin" /></td>
+                    <td class="text-end" data-value="@row.ConfirmedSignupCount">@row.ConfirmedSignupCount</td>
+                    <td class="text-end" data-value="@row.PendingSignupCount">@row.PendingSignupCount</td>
+                    <td class="text-end text-muted" data-value="0" title="Role hours — coming soon (#734)">—</td>
+                    <td class="text-end" data-value="@row.BuildHours.ToString("0.##", inv)">@row.BuildHours.ToString("0.##")</td>
+                    <td class="text-end" data-value="@row.EventHours.ToString("0.##", inv)">@row.EventHours.ToString("0.##")</td>
+                    <td class="text-end" data-value="@row.StrikeHours.ToString("0.##", inv)">@row.StrikeHours.ToString("0.##")</td>
+                    <td class="text-end fw-semibold" data-value="@row.TotalHours.ToString("0.##", inv)">@row.TotalHours.ToString("0.##")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

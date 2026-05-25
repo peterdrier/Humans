@@ -4,62 +4,46 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
-public class FinanceController : HumansControllerBase
+public class FinanceController(
+    IBudgetService budgetService,
+    ITeamServiceRead teamService,
+    ITicketingBudgetService ticketingBudgetService,
+    ITicketServiceRead ticketQueryService,
+    IClock clock,
+    IUserServiceRead userService,
+    ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
-    private readonly IBudgetService _budgetService;
-    private readonly ITeamService _teamService;
-    private readonly ITicketingBudgetService _ticketingBudgetService;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IClock _clock;
-    private readonly ILogger<FinanceController> _logger;
-
-    public FinanceController(
-        IBudgetService budgetService,
-        ITeamService teamService,
-        ITicketingBudgetService ticketingBudgetService,
-        ITicketQueryService ticketQueryService,
-        IClock clock,
-        UserManager<User> userManager,
-        ILogger<FinanceController> logger)
-        : base(userManager)
-    {
-        _budgetService = budgetService;
-        _teamService = teamService;
-        _ticketingBudgetService = ticketingBudgetService;
-        _ticketQueryService = ticketQueryService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         try
         {
-            var activeYear = await _budgetService.GetActiveYearAsync();
+            var activeYear = await budgetService.GetActiveYearAsync();
             if (activeYear is null)
             {
-                ViewBag.Years = await _budgetService.GetAllYearsAsync();
+                ViewBag.Years = await budgetService.GetAllYearsAsync();
                 return View("NoActiveYear");
             }
 
-            var allYears = await _budgetService.GetAllYearsAsync();
+            var allYears = await budgetService.GetAllYearsAsync();
             var model = await BuildFinanceOverviewAsync(activeYear, allYears);
             return View("YearDetail", model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading finance index");
+            logger.LogError(ex, "Error loading finance index");
             SetError("Failed to load budget data.");
             return View("NoActiveYear");
         }
@@ -70,16 +54,16 @@ public class FinanceController : HumansControllerBase
     {
         try
         {
-            var year = await _budgetService.GetYearByIdAsync(id);
+            var year = await budgetService.GetYearByIdAsync(id);
             if (year is null) return NotFound();
 
-            var allYears = await _budgetService.GetAllYearsAsync();
+            var allYears = await budgetService.GetAllYearsAsync();
             var model = await BuildFinanceOverviewAsync(year, allYears);
             return View(model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading budget year {YearId}", id);
+            logger.LogError(ex, "Error loading budget year {YearId}", id);
             SetError("Failed to load budget year.");
             return RedirectToAction(nameof(Index));
         }
@@ -90,16 +74,19 @@ public class FinanceController : HumansControllerBase
     {
         try
         {
-            var category = await _budgetService.GetCategoryByIdAsync(id);
+            var category = await budgetService.GetCategoryByIdAsync(id);
             if (category is null) return NotFound();
 
-            ViewBag.Teams = await _teamService.GetActiveTeamOptionsAsync();
+            ViewBag.Teams = (await teamService.GetTeamsAsync()).Values
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
 
             return View(category);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading budget category {CategoryId}", id);
+            logger.LogError(ex, "Error loading budget category {CategoryId}", id);
             SetError("Failed to load category.");
             return RedirectToAction(nameof(Index));
         }
@@ -112,18 +99,18 @@ public class FinanceController : HumansControllerBase
         {
             if (!yearId.HasValue)
             {
-                var active = await _budgetService.GetActiveYearAsync();
+                var active = await budgetService.GetActiveYearAsync();
                 yearId = active?.Id;
             }
 
-            var entries = await _budgetService.GetAuditLogAsync(yearId);
+            var entries = await budgetService.GetAuditLogAsync(yearId);
             ViewBag.YearId = yearId;
-            ViewBag.Years = await _budgetService.GetAllYearsAsync(includeArchived: true);
+            ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true);
             return View(entries);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading budget audit log");
+            logger.LogError(ex, "Error loading budget audit log");
             SetError("Failed to load audit log.");
             return RedirectToAction(nameof(Index));
         }
@@ -134,20 +121,22 @@ public class FinanceController : HumansControllerBase
     {
         try
         {
-            var activeYear = await _budgetService.GetActiveYearAsync();
+            var activeYear = await budgetService.GetActiveYearAsync();
             if (activeYear is null)
             {
                 SetInfo("No active budget year.");
                 return RedirectToAction(nameof(Index));
             }
 
-            var grossTicketRevenue = await _ticketQueryService.GetGrossTicketRevenueAsync();
+            var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                .Sum(o => o.TotalAmount);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading cash flow view");
+            logger.LogError(ex, "Error loading cash flow view");
             SetError("Failed to load cash flow data.");
             return RedirectToAction(nameof(Index));
         }
@@ -158,18 +147,16 @@ public class FinanceController : HumansControllerBase
     {
         try
         {
-            var years = await _budgetService.GetAllYearsAsync(includeArchived: true);
+            var years = await budgetService.GetAllYearsAsync(includeArchived: true);
             return View(years);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading finance admin");
+            logger.LogError(ex, "Error loading finance admin");
             SetError("Failed to load finance admin.");
             return RedirectToAction(nameof(Index));
         }
     }
-
-    // --- POST Actions ---
 
     [HttpPost("Years/{id:guid}/SyncDepartments")]
     [ValidateAntiForgeryToken]
@@ -180,7 +167,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            var count = await _budgetService.SyncDepartmentsAsync(id, user.Id);
+            var count = await budgetService.SyncDepartmentsAsync(id, user.Id);
             if (count > 0)
                 SetSuccess($"Synced {count} new department(s) into budget.");
             else
@@ -189,7 +176,7 @@ public class FinanceController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing departments for year {YearId}", id);
+            logger.LogError(ex, "Error syncing departments for year {YearId}", id);
             SetError($"Failed to sync departments: {ex.Message}");
             return RedirectToAction(nameof(YearDetail), new { id });
         }
@@ -210,13 +197,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateYearAsync(year, name, user.Id);
+            await budgetService.CreateYearAsync(year, name, user.Id);
             SetSuccess($"Budget year '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating budget year {Year}", year);
+            logger.LogError(ex, "Error creating budget year {Year}", year);
             SetError($"Failed to create budget year: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -231,13 +218,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateYearStatusAsync(id, status, user.Id);
+            await budgetService.UpdateYearStatusAsync(id, status, user.Id);
             SetSuccess($"Budget year status updated to {status}.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating budget year {YearId} status to {Status}", id, status);
+            logger.LogError(ex, "Error updating budget year {YearId} status to {Status}", id, status);
             SetError($"Failed to update status: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -252,13 +239,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateYearAsync(id, year, name, user.Id);
+            await budgetService.UpdateYearAsync(id, year, name, user.Id);
             SetSuccess("Budget year updated.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating budget year {YearId}", id);
+            logger.LogError(ex, "Error updating budget year {YearId}", id);
             SetError($"Failed to update budget year: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -273,13 +260,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteYearAsync(id, user.Id);
+            await budgetService.DeleteYearAsync(id, user.Id);
             SetSuccess("Budget year deleted.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting budget year {YearId}", id);
+            logger.LogError(ex, "Error deleting budget year {YearId}", id);
             SetError($"Failed to delete budget year: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -294,13 +281,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            await budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
             SetSuccess($"Group '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating budget group in year {YearId}", budgetYearId);
+            logger.LogError(ex, "Error creating budget group in year {YearId}", budgetYearId);
             SetError($"Failed to create group: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -315,13 +302,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            await budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
             SetSuccess($"Group '{name}' updated.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating budget group {GroupId}", id);
+            logger.LogError(ex, "Error updating budget group {GroupId}", id);
             SetError($"Failed to update group: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -336,13 +323,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteGroupAsync(id, user.Id);
+            await budgetService.DeleteGroupAsync(id, user.Id);
             SetSuccess("Group deleted.");
             return RedirectToAction(nameof(Admin));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting budget group {GroupId}", id);
+            logger.LogError(ex, "Error deleting budget group {GroupId}", id);
             SetError($"Failed to delete group: {ex.Message}");
             return RedirectToAction(nameof(Admin));
         }
@@ -358,13 +345,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
+            await budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
             SetSuccess($"Category '{name}' created.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating budget category in group {GroupId}", budgetGroupId);
+            logger.LogError(ex, "Error creating budget category in group {GroupId}", budgetGroupId);
             SetError($"Failed to create category: {ex.Message}");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -380,13 +367,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
+            await budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
             SetSuccess($"Category '{name}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating budget category {CategoryId}", id);
+            logger.LogError(ex, "Error updating budget category {CategoryId}", id);
             SetError($"Failed to update category: {ex.Message}");
             return RedirectToAction(nameof(CategoryDetail), new { id });
         }
@@ -401,13 +388,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteCategoryAsync(id, user.Id);
+            await budgetService.DeleteCategoryAsync(id, user.Id);
             SetSuccess("Category deleted.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting budget category {CategoryId}", id);
+            logger.LogError(ex, "Error deleting budget category {CategoryId}", id);
             SetError($"Failed to delete category: {ex.Message}");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -425,13 +412,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            await budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' created.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
+            logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
             SetError($"Failed to create line item: {ex.Message}");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -449,13 +436,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            await budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating line item {LineItemId}", id);
+            logger.LogError(ex, "Error updating line item {LineItemId}", id);
             SetError($"Failed to update line item: {ex.Message}");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -470,13 +457,13 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteLineItemAsync(id, user.Id);
+            await budgetService.DeleteLineItemAsync(id, user.Id);
             SetSuccess("Line item deleted.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting line item {LineItemId}", id);
+            logger.LogError(ex, "Error deleting line item {LineItemId}", id);
             SetError($"Failed to delete line item: {ex.Message}");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -491,15 +478,15 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            var added = await _budgetService.EnsureTicketingGroupAsync(id, user.Id);
-            if (added)
-                SetSuccess("Ticketing group added to this budget year.");
+            var result = await budgetService.EnsureTicketingGroupAsync(id, user.Id);
+            if (result.Created)
+                SetSuccess(result.Message);
             else
-                SetInfo("Ticketing group already exists for this budget year.");
+                SetInfo(result.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error ensuring ticketing group for year {YearId}", id);
+            logger.LogError(ex, "Error ensuring ticketing group for year {YearId}", id);
             SetError($"Failed to add ticketing group: {ex.Message}");
         }
 
@@ -508,42 +495,44 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("TicketingProjection/{groupId:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, DateTime? startDate, DateTime? eventDate,
-        int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
-        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid budgetYearId)
+    public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, TicketingProjectionUpdateForm form)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var nodaStart = startDate.HasValue ? LocalDate.FromDateTime(startDate.Value) : (LocalDate?)null;
-        var nodaEvent = eventDate.HasValue ? LocalDate.FromDateTime(eventDate.Value) : (LocalDate?)null;
-
         try
         {
-            await _budgetService.UpdateTicketingProjectionAsync(groupId, nodaStart, nodaEvent,
-                initialSalesCount, dailySalesRate, averageTicketPrice, vatRate,
-                stripeFeePercent, stripeFeeFixed, ticketTailorFeePercent, user.Id);
-
-            // Refresh projections after saving parameters (no actuals sync needed)
-            var count = await _ticketingBudgetService.RefreshProjectionsAsync(budgetYearId);
-            SetSuccess($"Ticketing projection saved — {count} projected line item(s) generated.");
+            var count = await ticketingBudgetService.UpdateProjectionAndRefreshAsync(
+                new TicketingProjectionUpdateCommand(
+                    groupId,
+                    form.BudgetYearId,
+                    form.StartDate.HasValue ? LocalDate.FromDateTime(form.StartDate.Value) : null,
+                    form.EventDate.HasValue ? LocalDate.FromDateTime(form.EventDate.Value) : null,
+                    form.InitialSalesCount,
+                    form.DailySalesRate,
+                    form.AverageTicketPrice,
+                    form.VatRate,
+                    form.StripeFeePercent,
+                    form.StripeFeeFixed,
+                    form.TicketTailorFeePercent),
+                user.Id);
+            SetSuccess($"Ticketing projection saved - {count} projected line item(s) generated.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating ticketing projection for group {GroupId}", groupId);
+            logger.LogError(ex, "Error updating ticketing projection for group {GroupId}", groupId);
             SetError($"Failed to update projection: {ex.Message}");
         }
 
-        return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+        return RedirectToAction(nameof(YearDetail), new { id = form.BudgetYearId });
     }
-
     [HttpPost("TicketingBudget/{yearId:guid}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncTicketingBudget(Guid yearId)
     {
         try
         {
-            var count = await _ticketingBudgetService.SyncActualsAsync(yearId);
+            var count = await ticketingBudgetService.SyncActualsAsync(yearId);
             if (count > 0)
                 SetSuccess($"Synced {count} ticketing line item(s) from ticket sales data.");
             else
@@ -551,36 +540,29 @@ public class FinanceController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing ticketing budget for year {YearId}", yearId);
+            logger.LogError(ex, "Error syncing ticketing budget for year {YearId}", yearId);
             SetError($"Failed to sync ticketing data: {ex.Message}");
         }
 
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
     }
 
-    /// <summary>
-    /// Builds the FinanceOverviewViewModel using the shared summary computation
-    /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
-    /// Also computes actual tickets sold for ticketing groups and stores in ViewBag.
-    /// </summary>
-    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
+    /// <summary>FinanceOverviewViewModel via shared summary + actual tickets in ViewBag.</summary>
+    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
     {
-        // All groups (including restricted) for FinanceAdmin summary, with buffer slices
-        var summary = _budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
+        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
 
-        // Compute actual tickets sold and projection breakdown for ticketing group
         var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
         if (ticketingGroup is not null)
         {
-            var actualSold = _ticketingBudgetService.GetActualTicketsSold(ticketingGroup);
+            var actualSold = ticketingBudgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
-            // Use the projection engine to compute remaining tickets consistently
-            var projections = await _ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
+            var projections = await ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
             if (projections.Count > 0)
             {
                 var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
-                var today = _clock.GetCurrentInstant().InUtc().Date;
+                var today = clock.GetCurrentInstant().InUtc().Date;
                 var proj = ticketingGroup.TicketingProjection!;
                 var daysToEvent = Period.Between(today, proj.EventDate!.Value, PeriodUnits.Days).Days;
 
@@ -602,37 +584,27 @@ public class FinanceController : HumansControllerBase
         };
     }
 
-    /// <summary>
-    /// Builds the CashFlowViewModel by aggregating line items by time period.
-    /// Includes IsCashflowOnly items (relevant to actual cash movement).
-    /// Generates synthetic VAT settlement entries at their settlement dates.
-    /// Restricted groups are included (FinanceAdmin-only page).
-    /// </summary>
+    /// <summary>CashFlow VM: aggregate by period; synthesize VAT settlements; FinanceAdmin-only.</summary>
     private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period, decimal grossTicketRevenue)
     {
-        // Normalize period parameter
         if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(period, "monthly", StringComparison.OrdinalIgnoreCase))
         {
             period = "monthly";
         }
 
-        // Collect real line items as cash flow entries
         var allEntries = year.Groups
             .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
             .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowEntry(
                 ctx.GroupName, ctx.CategoryName, li.Amount, li.ExpectedDate)))
             .ToList();
 
-        // Add synthetic VAT settlement entries from the service
-        var vatEntries = _budgetService.ComputeVatCashFlowEntries(year.Groups);
+        var vatEntries = budgetService.ComputeVatCashFlowEntries(year.Groups);
         allEntries.AddRange(vatEntries.Select(v => new CashFlowEntry("VAT", v.CategoryName, v.Amount, v.SettlementDate)));
 
-        // Split into scheduled (has date) and unscheduled
         var scheduled = allEntries.Where(x => x.Date.HasValue).ToList();
         var unscheduled = allEntries.Where(x => !x.Date.HasValue).ToList();
 
-        // Group scheduled items into time periods
         var periodRows = new List<CashFlowPeriodRow>();
 
         if (scheduled.Count > 0)
@@ -641,8 +613,7 @@ public class FinanceController : HumansControllerBase
             var grouped = isWeekly ? GroupByWeek(scheduled) : GroupByMonth(scheduled);
 
             decimal runningNet = 0;
-            // Expense-only runway: start from gross ticket revenue, subtract only expenses.
-            // Income line items do NOT extend the runway — they're budgeted, not realized.
+            // Expense-only runway: gross ticket revenue minus expenses; income lines don't extend it.
             decimal runningExpenseBalance = grossTicketRevenue;
             var fundsExhausted = false;
             foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
@@ -652,7 +623,6 @@ public class FinanceController : HumansControllerBase
                 var periodNet = periodIncome + periodExpense;
                 runningNet += periodNet;
 
-                // Subtract expenses (periodExpense is negative, so add it to subtract)
                 runningExpenseBalance += periodExpense;
                 var isExhausted = !fundsExhausted && runningExpenseBalance <= 0;
                 if (isExhausted)
@@ -677,7 +647,6 @@ public class FinanceController : HumansControllerBase
             }
         }
 
-        // Unscheduled summary
         var unscheduledIncome = unscheduled.Where(x => x.Amount > 0).Sum(x => x.Amount);
         var unscheduledExpense = unscheduled.Where(x => x.Amount < 0).Sum(x => x.Amount);
         var unscheduledCategories = BuildCategoryRows(unscheduled);
@@ -718,7 +687,6 @@ public class FinanceController : HumansControllerBase
             .GroupBy(x =>
             {
                 var date = x.Date!.Value;
-                // ISO week: Monday-based. Find the Monday of the week.
                 var dayOfWeek = date.DayOfWeek;
                 var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
                 return monday;
@@ -728,7 +696,7 @@ public class FinanceController : HumansControllerBase
                 var monday = g.Key;
                 var sunday = monday.PlusDays(6);
                 return new CashFlowPeriodGroup(
-                    $"{monday.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture)} - {sunday.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+                    $"{monday.ToDateTimeUnspecified().ToDisplayDayMonth()} - {sunday.ToDisplayDate()}",
                     monday,
                     sunday,
                     g.ToList());
@@ -749,7 +717,7 @@ public class FinanceController : HumansControllerBase
                 var firstDay = new LocalDate(g.Key.Year, g.Key.Month, 1);
                 var lastDay = firstDay.PlusDays(firstDay.Calendar.GetDaysInMonth(g.Key.Year, g.Key.Month) - 1);
                 return new CashFlowPeriodGroup(
-                    firstDay.ToString("MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                    firstDay.ToDateTimeUnspecified().ToDisplayMonthYear(),
                     firstDay,
                     lastDay,
                     g.ToList());
@@ -757,9 +725,7 @@ public class FinanceController : HumansControllerBase
             .ToList();
     }
 
-    /// <summary>
-    /// A cash flow entry — either a real line item or a synthetic VAT settlement.
-    /// </summary>
+    /// <summary>Cash flow entry — real line item or synthetic VAT settlement.</summary>
     private sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
 
     private sealed record CashFlowPeriodGroup(

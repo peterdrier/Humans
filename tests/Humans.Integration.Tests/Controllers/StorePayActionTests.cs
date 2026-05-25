@@ -1,8 +1,6 @@
 using System.Net;
-using System.Net.Http;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
@@ -10,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -18,10 +15,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// Integration tests for POST /Store/Order/{id}/Pay. Stripe's HTTP layer is replaced
 /// by the factory's <c>StripeServiceStub</c> — no real network calls.
 /// </summary>
-public class StorePayActionTests : IntegrationTestBase
+public class StorePayActionTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public StorePayActionTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 30000)]
     public async Task Pay_with_valid_amount_redirects_to_Stripe_session_url()
     {
@@ -123,7 +118,7 @@ public class StorePayActionTests : IntegrationTestBase
         {
             Id = orderId,
             CampSeasonId = seasonId,
-            State = Humans.Domain.Enums.StoreOrderState.Open,
+            State = Domain.Enums.StoreOrderState.Open,
             Lines = new List<StoreOrderLine>
             {
                 new()

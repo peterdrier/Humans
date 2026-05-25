@@ -14,49 +14,23 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services.Agent;
 
-public sealed class AgentToolDispatcher : IAgentToolDispatcher
+public sealed class AgentToolDispatcher(
+    AgentSectionDocReader sections,
+    AgentFeatureSpecReader features,
+    IAuditViewerService auditViewer,
+    IShiftView shiftView,
+    IShiftManagementService shiftManagement,
+    ILogger<AgentToolDispatcher> logger) : IAgentToolDispatcher
 {
-    /// <summary>
-    /// Default number of audit-history lines surfaced when the agent calls
-    /// <see cref="AgentToolNames.GetAuditHistory"/> without a <c>limit</c>.
-    /// </summary>
     internal const int DefaultAuditHistoryLimit = 20;
-
-    /// <summary>
-    /// Hard cap on audit-history lines per call. Prevents the agent from
-    /// pulling unbounded history in one tool turn.
-    /// </summary>
     internal const int MaxAuditHistoryLimit = 50;
-
-    private readonly AgentSectionDocReader _sections;
-    private readonly AgentFeatureSpecReader _features;
-    private readonly IAuditViewerService _auditViewer;
-    private readonly IShiftSignupService _shiftSignups;
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly ILogger<AgentToolDispatcher> _logger;
-
-    public AgentToolDispatcher(
-        AgentSectionDocReader sections,
-        AgentFeatureSpecReader features,
-        IAuditViewerService auditViewer,
-        IShiftSignupService shiftSignups,
-        IShiftManagementService shiftManagement,
-        ILogger<AgentToolDispatcher> logger)
-    {
-        _sections = sections;
-        _features = features;
-        _auditViewer = auditViewer;
-        _shiftSignups = shiftSignups;
-        _shiftManagement = shiftManagement;
-        _logger = logger;
-    }
 
     public async Task<AnthropicToolResult> DispatchAsync(
         AnthropicToolCall call, Guid userId, Guid conversationId, CancellationToken cancellationToken)
     {
         if (!AgentToolNames.All.Contains(call.Name))
         {
-            _logger.LogWarning("Agent requested unknown tool {ToolName}", call.Name);
+            logger.LogWarning("Agent requested unknown tool {ToolName}", call.Name);
             return new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown tool: {call.Name}"), IsError: true);
         }
 
@@ -70,7 +44,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
                 case AgentToolNames.FetchFeatureSpec:
                     {
                         var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-                        var body = await _features.ReadAsync(name, cancellationToken);
+                        var body = await features.ReadAsync(name, cancellationToken);
                         return body is null
                             ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Feature spec not found: {name}"), IsError: true)
                             : new AnthropicToolResult(call.Id, body, IsError: false);
@@ -78,7 +52,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
                 case AgentToolNames.FetchSectionGuide:
                     {
                         var key = args.TryGetProperty("section", out var s) ? s.GetString() ?? "" : "";
-                        var body = await _sections.ReadAsync(key, cancellationToken);
+                        var body = await sections.ReadAsync(key, cancellationToken);
                         return body is null
                             ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}"), IsError: true)
                             : new AnthropicToolResult(call.Id, body, IsError: false);
@@ -111,7 +85,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Agent sent malformed JSON arguments for tool {ToolName}", call.Name);
+            logger.LogWarning(ex, "Agent sent malformed JSON arguments for tool {ToolName}", call.Name);
             return new AnthropicToolResult(call.Id, "Malformed tool arguments (expected JSON object).", IsError: true);
         }
     }
@@ -119,7 +93,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
     private async Task<AnthropicToolResult> DispatchGetAuditHistoryAsync(
         string callId, Guid userId, int limit, CancellationToken ct)
     {
-        var events = await _auditViewer.GetForUserAsync(userId, limit, ct);
+        var events = await auditViewer.GetForUserAsync(userId, limit, ct);
 
         // Render each event as a single line, substituting the viewer's GUID
         // with "You" and skipping events whose action has no verb mapping
@@ -137,22 +111,19 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         return new AnthropicToolResult(callId, content, IsError: false);
     }
 
-    /// <summary>
-    /// Resolves the agent's <c>get_shift_details</c> argument — which is either
-    /// a <see cref="ShiftSignup.SignupBlockId"/> (block) or a single
-    /// <see cref="ShiftSignup.Id"/> — and returns a textualized summary of the
-    /// matching signup(s). Only signups belonging to the calling user are
-    /// reachable; anything else returns "Shift not found" (no information leak
-    /// about other users' shifts).
-    /// </summary>
+    /// <summary>Resolves a SignupBlockId or Signup.Id (must belong to caller) and returns a textual summary.</summary>
     private async Task<AnthropicToolResult> DispatchGetShiftDetailsAsync(
         string callId, Guid userId, Guid shiftKey, CancellationToken ct)
     {
-        var activeEvent = await _shiftManagement.GetActiveAsync();
+        var activeEvent = await shiftManagement.GetActiveAsync();
         if (activeEvent is null)
             return new AnthropicToolResult(callId, "No active event configured.", IsError: true);
 
-        var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
+        // T-09 (issue #720): read signups from the cached ShiftUserView
+        // rather than IShiftSignupService.GetByUserAsync. The view already
+        // filters Signups to the active event (see ShiftViewService).
+        var userView = await shiftView.GetUserAsync(userId, ct);
+        var signups = userView.Signups;
 
         // Try block first. Filter to active states so RenderShiftDetails
         // reports a status consistent with the snapshot tail (which also
@@ -171,17 +142,12 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         var singleton = signups.FirstOrDefault(s => s.Id == shiftKey);
         if (singleton is not null)
             return new AnthropicToolResult(callId,
-                RenderShiftDetails(new[] { singleton }, activeEvent), IsError: false);
+                RenderShiftDetails([singleton], activeEvent), IsError: false);
 
         return new AnthropicToolResult(callId, "Shift not found.", IsError: true);
     }
 
-    /// <summary>
-    /// Builds the textual blob returned for <c>get_shift_details</c>. Renders
-    /// the rota name, date span, status, day count, hours window, optional
-    /// shift description, and Rota.PracticalInfo (where to show up). All
-    /// signups passed in must belong to the calling user.
-    /// </summary>
+    /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
     private static string RenderShiftDetails(IReadOnlyList<ShiftSignup> signups, EventSettings ev)
     {
         // Order chronologically so first/last reflect actual span.

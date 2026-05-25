@@ -32,11 +32,11 @@ public class TeamRoleDefinitionConfiguration : IEntityTypeConfiguration<TeamRole
                 v => string.IsNullOrEmpty(v)
                     ? new List<SlotPriority>()
                     : v.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(s => Enum.Parse<SlotPriority>(s))
+                        .Select(Enum.Parse<SlotPriority>)
                         .ToList(),
                 new ValueComparer<List<SlotPriority>>(
                     (a, b) => a != null && b != null && a.SequenceEqual(b),
-                    v => v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+                    v => v.Aggregate(0, HashCode.Combine),
                     v => v.ToList()))
             .HasDefaultValueSql("''");
 

@@ -4,13 +4,11 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Web.Models;
 using Humans.Web.Models.OnboardingWidget;
 using Humans.Web.Services.Onboarding;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 
@@ -22,40 +20,25 @@ namespace Humans.Web.Controllers;
 /// layout banner all link here without needing to know which step a user is on.
 /// </summary>
 [Authorize]
-public class OnboardingWidgetController : HumansControllerBase
+public class OnboardingWidgetController(
+    IUserServiceRead userService,
+    IOnboardingWidgetState state,
+    IProfileEditorService profileEditorService,
+    IShiftSignupService signupService,
+    IShiftManagementService shiftMgmt,
+    IConsentService consents,
+    IOnboardingService onboardingService,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IOnboardingWidgetState _state;
-    private readonly IProfileService _profileService;
-    private readonly IShiftSignupService _signupService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IConsentService _consents;
-    private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IUserServiceRead _userService = userService;
 
-    public OnboardingWidgetController(
-        UserManager<User> userManager,
-        IOnboardingWidgetState state,
-        IProfileService profileService,
-        IShiftSignupService signupService,
-        IShiftManagementService shiftMgmt,
-        IConsentService consents,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
-    {
-        _state = state;
-        _profileService = profileService;
-        _signupService = signupService;
-        _shiftMgmt = shiftMgmt;
-        _consents = consents;
-        _localizer = localizer;
-    }
-
-    // [Authorize] guarantees the NameIdentifier claim is present.
+    // [Authorize] guarantees NameIdentifier is present.
     private Guid CurrentUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var step = await _state.GetCurrentStepAsync(CurrentUserId(), ct);
+        var step = await state.GetCurrentStepAsync(CurrentUserId(), ct);
         return step switch
         {
             OnboardingWidgetStep.Names => RedirectToAction(nameof(Names)),
@@ -69,13 +52,8 @@ public class OnboardingWidgetController : HumansControllerBase
     [HttpGet]
     public IActionResult Names()
     {
-        // Pre-fill from OAuth claims when present.
-        var vm = new NamesViewModel
-        {
-            FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
-            LastName = User.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
-        };
-        return View(vm);
+        // Force explicit entry — OAuth-supplied names are unverified.
+        return View(new NamesViewModel());
     }
 
     [HttpPost]
@@ -87,16 +65,10 @@ public class OnboardingWidgetController : HumansControllerBase
 
         var userId = CurrentUserId();
 
-        // Guard: this endpoint is reachable directly. ProfileService.SaveProfileAsync
-        // does a full-field overwrite, and the request below leaves most fields null.
-        // Past Names step → dispatch onward instead of wiping already-populated data.
-        var currentStep = await _state.GetCurrentStepAsync(userId, ct);
+        // SaveProfileAsync does a full-field overwrite — bail if past Names step or we'd wipe data.
+        var currentStep = await state.GetCurrentStepAsync(userId, ct);
         if (currentStep != OnboardingWidgetStep.Names)
             return RedirectToAction(nameof(Index));
-
-        var acceptLang = HttpContext.Request.Headers["Accept-Language"].ToString()
-            .Split(',', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        var language = string.IsNullOrEmpty(acceptLang) ? "en" : acceptLang;
 
         var request = new ProfileSaveRequest(
             BurnerName: vm.BurnerName,
@@ -109,7 +81,8 @@ public class OnboardingWidgetController : HumansControllerBase
             NoPriorBurnExperience: false,
             ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
-        await _profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
+        await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
+        await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));
     }
@@ -117,17 +90,15 @@ public class OnboardingWidgetController : HumansControllerBase
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await _shiftMgmt.GetActiveAsync();
+        var es = await shiftMgmt.GetActiveAsync();
         if (es is null)
             return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 
-        // Stats line ("X% of critical filled, Y important open") needs the full
-        // event-wide set, so we fetch with priorityOnly: false and let the
-        // builder filter for display.
-        var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
+        // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
+        var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(
             es.Id, includeAdminOnly: false, includeSignups: true,
             includeHidden: false, priorityOnly: false);
-        var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
+        var (shiftIds, statuses) = await signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
         var vm = OnboardingShiftsBrowseModelBuilder.Build(
             es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
         return View(vm);
@@ -138,7 +109,7 @@ public class OnboardingWidgetController : HumansControllerBase
     public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
     {
         var userId = CurrentUserId();
-        var result = await _signupService.SignUpAsync(userId, shiftId, userId, false);
+        var result = await signupService.SignUpAsync(userId, shiftId, userId, false);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up.");
@@ -151,11 +122,8 @@ public class OnboardingWidgetController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
     {
-        // Multi-day signup for Build/Strike rotas. Mirrors ShiftsController's
-        // SignUpRange but routes back through the widget dispatcher so the
-        // user lands on Consents (or Home, if all consents are signed)
-        // instead of /Shifts/Index.
-        var result = await _signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset, isPrivileged: false);
+        // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
+        var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset, isPrivileged: false);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up for date range.");
@@ -176,14 +144,19 @@ public class OnboardingWidgetController : HumansControllerBase
     public async Task<IActionResult> Consents(CancellationToken ct)
     {
         var userId = CurrentUserId();
-        var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
+
+        // Stub profile can't sign — ConsentService would refuse. Bounce to Names.
+        if (await IsNameMissingAsync(userId, ct))
+            return RedirectToNamesForStub();
+
+        var rows = await consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
         var unsigned = rows.Where(r => !r.Signed).ToList();
         if (unsigned.Count == 0)
             return RedirectToAction(nameof(Index));
 
         var next = unsigned[0];
-        var (version, _, _) = await _consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
-        if (version is null)
+        var detail = await consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
+        if (detail is null)
             return RedirectToAction(nameof(Index));
 
         var totalRequired = rows.Count;
@@ -191,11 +164,11 @@ public class OnboardingWidgetController : HumansControllerBase
 
         var vm = new ConsentsStepViewModel
         {
-            DocumentVersionId = version.Id,
-            DocumentName = version.LegalDocument.Name,
-            VersionNumber = version.VersionNumber,
-            Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
-            ChangesSummary = version.ChangesSummary,
+            DocumentVersionId = detail.DocumentVersionId,
+            DocumentName = detail.DocumentName,
+            VersionNumber = detail.VersionNumber,
+            Content = new Dictionary<string, string>(detail.Content, StringComparer.Ordinal),
+            ChangesSummary = detail.ChangesSummary,
             CurrentIndex = currentIndex,
             TotalRequired = totalRequired,
         };
@@ -208,22 +181,51 @@ public class OnboardingWidgetController : HumansControllerBase
     {
         if (!explicitConsent)
         {
-            SetError(_localizer["Consent_MustCheck"].Value);
+            SetError(localizer["Consent_MustCheck"].Value);
             return RedirectToAction(nameof(Consents));
         }
+
+        var userId = CurrentUserId();
+
+        // Mirror GET gate against stale-page / back-button POST.
+        if (await IsNameMissingAsync(userId, ct))
+            return RedirectToNamesForStub();
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 
-        var result = await _consents.SubmitConsentAsync(
-            CurrentUserId(), documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
+        var result = await consents.SubmitConsentAsync(
+            userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
 
-        if (!result.Success && !string.IsNullOrEmpty(result.ErrorKey))
-            SetError(result.ErrorKey);
+        if (result.Success)
+            await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
-        // Always go through the dispatcher: routes Home once the final required
-        // consent is signed instead of stranding the user on the signed-documents
-        // view. Failure path also dispatches; TempData carries the error.
+        if (!result.Success)
+        {
+            switch (result.ErrorKey)
+            {
+                case "StubProfile":
+                    return RedirectToNamesForStub();
+                case "AlreadyConsented":
+                    SetInfo(localizer["Consent_AlreadyConsented"].Value);
+                    break;
+            }
+        }
+
+        // Always dispatch — routes Home after final consent instead of stranding on signed-docs view.
         return RedirectToAction(nameof(Index));
+    }
+
+    // Gated on HasRequiredNameFields, not State==Stub — catches Active profiles with blank names.
+    private async Task<bool> IsNameMissingAsync(Guid userId, CancellationToken ct)
+    {
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        return info is null || !info.HasRequiredNameFields;
+    }
+
+    private IActionResult RedirectToNamesForStub()
+    {
+        SetInfo(localizer["Consent_StubProfile_AddName"].Value);
+        return RedirectToAction(nameof(Names));
     }
 }

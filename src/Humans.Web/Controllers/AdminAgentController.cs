@@ -1,38 +1,37 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Agent;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Agent/Admin")]
-public class AdminAgentController : HumansControllerBase
+public class AdminAgentController(
+    IAgentSettingsService settings,
+    IAgentService agent,
+    IAgentAdminStatusService status,
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    private readonly IAgentSettingsService _settings;
-    private readonly IAgentService _agent;
-    private readonly IUserService _users;
+    /// <summary>Index lands on Status — the operational view is the default
+    /// destination for an admin clicking through the nav.</summary>
+    [HttpGet("")]
+    public IActionResult Index() => RedirectToAction(nameof(Status));
 
-    public AdminAgentController(
-        IAgentSettingsService settings,
-        IAgentService agent,
-        IUserService users,
-        UserManager<User> userManager)
-        : base(userManager)
+    [HttpGet("Status")]
+    public async Task<IActionResult> Status(CancellationToken ct)
     {
-        _settings = settings;
-        _agent = agent;
-        _users = users;
+        var report = await status.GetStatusAsync(ct);
+        var vm = new AdminAgentStatusViewModel(report, settings.Current);
+        return View("~/Views/Admin/Agent/Status.cshtml", vm);
     }
 
     [HttpGet("Settings")]
     public IActionResult Settings()
     {
-        var s = _settings.Current;
+        var s = settings.Current;
         return View("~/Views/Admin/Agent/Settings.cshtml", new AdminAgentSettingsViewModel
         {
             Enabled = s.Enabled,
@@ -54,7 +53,7 @@ public class AdminAgentController : HumansControllerBase
             return View("~/Views/Admin/Agent/Settings.cshtml", vm);
         }
 
-        await _settings.UpdateAsync(s =>
+        await settings.UpdateAsync(s =>
         {
             s.Enabled = vm.Enabled;
             s.Model = vm.Model;
@@ -71,7 +70,7 @@ public class AdminAgentController : HumansControllerBase
     [HttpGet("Conversations/{id:guid}/Prompt")]
     public async Task<IActionResult> ConversationPrompt(Guid id, CancellationToken ct)
     {
-        var preview = await _agent.GetPromptPreviewForAdminAsync(id, ct);
+        var preview = await agent.GetPromptPreviewForAdminAsync(id, ct);
         if (preview is null) return NotFound();
         return View("~/Views/Admin/Agent/ConversationPrompt.cshtml", preview);
     }

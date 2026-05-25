@@ -1,5 +1,4 @@
 @model Humans.Web.Models.TeamMembersViewModel
-@using Humans.Web.Controllers
 @{
     ViewData["Title"] = string.Format(Localizer["TeamAdminMembers_Title"].Value, Model.TeamName);
 }
@@ -163,7 +162,9 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <p>@string.Format(Localizer["TeamAdmin_RejectingFrom"].Value, request.UserDisplayName)</p>
+                            <p>
+                                Rejecting request from <vc:human user-id="@request.UserId" />
+                            </p>
                             <div class="mb-3">
                                 <label for="notes-@request.Id" class="form-label">@Localizer["TeamAdmin_RejectionReason"]</label>
                                 <textarea name="Notes" id="notes-@request.Id" class="form-control" rows="3" required></textarea>
@@ -182,12 +183,7 @@
 
 @if (Model.CanManageRoles)
 {
-    @*
-        Canonical inline picker — _HumanSearchInput posts the chosen UserId
-        into a hidden input the parent form submits to AddMember. Replaces
-        the bespoke _MemberSearchScript that had its own JSON+form hybrid.
-        Scope=name keeps the picker tight (no bio / city / interests).
-    *@
+    @* Inline picker — <vc:human-search> posts UserId into a hidden input for AddMember. *@
     <div class="card mb-4 position-relative" style="z-index: 2;">
         <div class="card-header">@Localizer["TeamAdmin_AddMember"]</div>
         <div class="card-body">
@@ -195,14 +191,11 @@
                 @Html.AntiForgeryToken()
                 <div class="col-md-8">
                     <label class="form-label">@Localizer["TeamAdmin_SearchHumans"]</label>
-                    @await Html.PartialAsync("_HumanSearchInput", (object?)null, new ViewDataDictionary(ViewData)
-                    {
-                        ["FieldName"] = "UserId",
-                        ["InstanceKey"] = "team-add-member",
-                        ["Placeholder"] = Localizer["TeamAdmin_SearchPlaceholder"].Value,
-                        ["Scope"] = "name",
-                        ["ExcludeUserIds"] = Model.AllMemberUserIds,
-                    })
+                    <vc:human-search field-name="UserId"
+                                     instance-key="team-add-member"
+                                     placeholder="@Localizer["TeamAdmin_SearchPlaceholder"].Value"
+                                     scope="Name"
+                                     exclude-user-ids="@Model.AllMemberUserIds" />
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-success">@Localizer["TeamAdmin_Add"]</button>
@@ -245,7 +238,7 @@
                             @if (Model.CanProvisionEmails)
                             {
                                 <td>
-                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, displayName = member.DisplayName })
+                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug })
                                 </td>
                             }
                             <td>@member.JoinedAt.ToDisplayCompactDate()</td>
@@ -274,19 +267,8 @@ else
     </div>
 }
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Members" asp-route-slug="@Model.TeamSlug" asp-route-page="@i">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Members") { NavCssClass = "mt-4" }; }
+<partial name="_Pager" model="pagerModel" />
 
 <div class="mt-4">
     <vc:audit-log entity-type="Team" entity-id="@Model.TeamId"

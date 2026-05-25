@@ -1,45 +1,26 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Calendar;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Calendar;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
+using Humans.Infrastructure.Services.Calendar;
 using CalendarService = Humans.Application.Services.Calendar.CalendarService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the Calendar
-/// section — migrated per issue #569. Pins the invariants:
-/// <c>CalendarService</c> lives in Application, goes through
-/// <see cref="ICalendarRepository"/>, never injects <c>DbContext</c>, and
-/// resolves owning-team display names via <see cref="ITeamService"/> rather
-/// than the <c>CalendarEvent.OwningTeam</c> cross-domain nav. Calendar did
-/// not get a caching decorator — short-TTL <c>IMemoryCache</c> stays
-/// in-service per design-rules §15f.
+/// section — migrated per issue #569, with the caching decorator added in
+/// cache-migration plan task T-08. Pins the invariants: <c>CalendarService</c>
+/// lives in Application, goes through <see cref="ICalendarRepository"/>,
+/// never injects <c>DbContext</c>, and resolves owning-team display names via
+/// <see cref="ITeamServiceRead"/> rather than the <c>CalendarEvent.OwningTeam</c>
+/// cross-domain nav. The read surface is DTO-only and cache-backed.
 /// </summary>
 public class CalendarArchitectureTests
 {
     // ── CalendarService ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CalendarService_LivesInHumansApplicationServicesCalendarNamespace()
-    {
-        typeof(CalendarService).Namespace
-            .Should().Be("Humans.Application.Services.Calendar",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void CalendarService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(CalendarService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ICalendarRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void CalendarService_DoesNotImportMicrosoftEntityFrameworkCore()
@@ -65,13 +46,13 @@ public class CalendarArchitectureTests
     }
 
     [HumansFact]
-    public void CalendarService_TakesTeamService()
+    public void CalendarService_TakesTeamServiceRead()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(ITeamService),
-            because: "owning-team display names are resolved via ITeamService cross-section (design-rules §6b, §9); CalendarEvent.OwningTeam nav is [Obsolete]");
+        paramTypes.Should().Contain(typeof(ITeamServiceRead),
+            because: "owning-team display names are resolved via the cross-section ITeamServiceRead surface (design-rules §6b, §9); CalendarEvent.OwningTeam nav is [Obsolete]");
     }
 
     [HumansFact]
@@ -83,18 +64,70 @@ public class CalendarArchitectureTests
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
 
         storeParam.Should().BeNull(
-            because: "Calendar §15 migration does not use a store — short-TTL IMemoryCache in-service is sufficient (§15f)");
+            because: "Calendar §15 migration goes through ICalendarRepository, not a Store");
+    }
+
+    [HumansFact]
+    public void CalendarService_DoesNotInjectIMemoryCache()
+    {
+        var ctor = typeof(CalendarService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType.FullName ?? string.Empty).ToList();
+
+        paramTypes.Should().NotContain(
+            n => n.Contains("Microsoft.Extensions.Caching.Memory.IMemoryCache", StringComparison.Ordinal),
+            because: "CalendarService is cache-free; decorators own any infrastructure cache concerns.");
+    }
+
+    // ── ICalendarServiceRead / CachingCalendarService ────────────────────────
+
+    [HumansFact]
+    public void CalendarServiceRead_ReturnsNoEntityTypes()
+    {
+        var methods = typeof(ICalendarServiceRead).GetMethods();
+        methods.Any(m => ContainsCalendarEntity(m.ReturnType)).Should().BeFalse(
+            because: "ICalendarServiceRead is the DTO-only read surface; EF entities stay off the cached read contract");
+
+        static bool ContainsCalendarEntity(Type type)
+        {
+            if (type == typeof(Humans.Domain.Entities.CalendarEvent) ||
+                type == typeof(Humans.Domain.Entities.CalendarEventException))
+            {
+                return true;
+            }
+
+            return type.IsGenericType && type.GetGenericArguments().Any(ContainsCalendarEntity);
+        }
+    }
+
+    [HumansFact]
+    public void CachingCalendarService_ImplementsReadAndWriteSurfaces()
+    {
+        typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarServiceRead>(
+            because: "unkeyed ICalendarServiceRead resolves to the cache-backed read service");
+        typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarService>(
+            because: "write calls still pass through the decorator so the read cache refreshes after mutations");
+    }
+
+    [HumansFact]
+    public void CachingCalendarService_IsTrackedCache()
+    {
+        typeof(CachingCalendarService).Should().BeAssignableTo<ICacheStats>(
+            because: "the calendar read cache is surfaced on /Admin/CacheStats");
+    }
+
+    // ── CalendarEventInfo projection ─────────────────────────────────────────
+
+    [HumansFact]
+    public void CalendarEventInfo_IsImmutableRecord()
+    {
+        var t = typeof(CalendarEventInfo);
+        t.IsSealed.Should().BeTrue(because: "projection records are sealed");
+        // Records expose the synthesized EqualityContract property.
+        t.GetMethod("get_EqualityContract", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .Should().NotBeNull(because: "CalendarEventInfo must be a record");
     }
 
     // ── ICalendarRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ICalendarRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICalendarRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void CalendarRepository_IsSealed()
@@ -116,7 +149,7 @@ public class CalendarArchitectureTests
         navProperty.Should().NotBeNull(
             because: "EF configuration still needs the nav reference to declare FK + cascade behavior");
 
-        navProperty!.GetCustomAttributes(typeof(ObsoleteAttribute), inherit: false)
+        navProperty.GetCustomAttributes(typeof(ObsoleteAttribute), inherit: false)
             .Should().NotBeEmpty(
                 because: "CalendarEvent.OwningTeam is a cross-domain nav into the Teams section; resolve via ITeamService instead (design-rules §6c)");
     }

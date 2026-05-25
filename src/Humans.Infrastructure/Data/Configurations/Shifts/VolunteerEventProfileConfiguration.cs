@@ -17,7 +17,7 @@ public class VolunteerEventProfileConfiguration : IEntityTypeConfiguration<Volun
 
         var listComparer = new ValueComparer<List<string>>(
             (a, b) => a != null && b != null && a.SequenceEqual(b),
-            v => v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+            v => v.Aggregate(0, HashCode.Combine),
             v => v.ToList());
 
         ConfigureJsonbList(builder, v => v.Skills, listComparer);

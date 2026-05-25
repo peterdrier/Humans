@@ -80,7 +80,7 @@ When you import historical attendance from outside the vendor (e.g. from a previ
 
 ### Sync configuration
 
-Vendor `EventId`, sync interval, and break-even target live in `appsettings`'s `TicketVendor` section; the API key comes from the `TICKET_VENDOR_API_KEY` environment variable. None of these are editable from inside the app — they're set at deploy time. Stripe enrichment requires `STRIPE_API_KEY` to be set; if it's missing, fee columns stay empty but everything else still syncs.
+Vendor `EventId`, sync interval, and break-even target live in `appsettings`'s `TicketVendor` section; the API key comes from the `TICKET_VENDOR_API_KEY` environment variable. None of these are editable from inside the app — they're set at deploy time. Stripe enrichment requires `STRIPE_TICKETS_KEY` to be set; if it's missing, fee columns stay empty but everything else still syncs.
 
 ## Related sections
 

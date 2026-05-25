@@ -1,7 +1,4 @@
-using System.Linq;
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 
 namespace Humans.Analyzers.Tests;
 
@@ -26,7 +23,7 @@ public class UserEmailLegacyFieldAnalyzerTests
         """;
 
     private static bool IsHum0001(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, UserEmailLegacyFieldAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, UserEmailLegacyFieldAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_on_UserEmail_IsOAuth_read_in_Application_assembly()
@@ -165,7 +162,7 @@ public class UserEmailLegacyFieldAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0001(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0001).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -187,6 +184,6 @@ public class UserEmailLegacyFieldAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0001(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0001).Should().BeEmpty();
     }
 }

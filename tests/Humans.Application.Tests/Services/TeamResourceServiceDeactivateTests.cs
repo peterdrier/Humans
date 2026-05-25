@@ -1,20 +1,16 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Services.Teams;
+using Humans.Application.Services.GoogleIntegration;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -26,41 +22,28 @@ namespace Humans.Application.Tests.Services;
 /// <see cref="IDbContextFactory{HumansDbContext}"/>-backed repository and a
 /// stubbed <see cref="ITeamResourceGoogleClient"/>.
 /// </summary>
-public class TeamResourceServiceDeactivateTests : IDisposable
+public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
-    private readonly IAuditLogService _auditLogService;
+    private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly TeamResourceService _service;
 
     public TeamResourceServiceDeactivateTests()
+        : base(Instant.FromUtc(2026, 4, 15, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 15, 12, 0));
-        _auditLogService = Substitute.For<IAuditLogService>();
+        _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
 
-        var factory = new SingleContextFactory(options);
-        IGoogleResourceRepository repository = new GoogleResourceRepository(factory);
+        IGoogleResourceRepository repository = new GoogleResourceRepository(DbFactory);
 
         _service = new TeamResourceService(
             repository,
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
-            googleSyncService: Substitute.For<IGoogleSyncService>(),
+            drivePermissions: _drivePermissions,
             teamService: Substitute.For<ITeamService>(),
-            roleAssignmentService: Substitute.For<IRoleAssignmentService>(),
-            auditLogService: _auditLogService,
+            serviceProvider: new ServiceLocatorBuilder().Build(),
+            auditLogService: AuditLog,
             resourceOptions: new TeamResourceManagementOptions(),
-            clock: _clock,
+            clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -76,23 +59,23 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         SeedResource(otherTeamId, "Safe Drive", GoogleResourceType.DriveFolder);
         // Already-inactive row on target team should not generate a duplicate audit.
         SeedResource(teamId, "Already inactive", GoogleResourceType.DriveFolder, isActive: false);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.DeactivateResourcesForTeamAsync(teamId);
 
-        var doomedRows = await _dbContext.GoogleResources
+        var doomedRows = await Db.GoogleResources
             .AsNoTracking()
             .Where(r => r.TeamId == teamId)
             .ToListAsync();
         doomedRows.Should().OnlyContain(r => !r.IsActive);
 
-        var safeRow = await _dbContext.GoogleResources
+        var safeRow = await Db.GoogleResources
             .AsNoTracking()
             .SingleAsync(r => r.TeamId == otherTeamId);
         safeRow.IsActive.Should().BeTrue();
 
         // Exactly two audit entries (for the two previously-active doomed resources).
-        await _auditLogService.Received(2).LogAsync(
+        await AuditLog.Received(2).LogAsync(
             AuditAction.GoogleResourceDeactivated,
             nameof(GoogleResource),
             Arg.Any<Guid>(),
@@ -113,11 +96,11 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         SeedTeam(teamId, "Doomed");
         SeedResource(teamId, "Doomed Drive", GoogleResourceType.DriveFolder);
         SeedResource(teamId, "Doomed Group", GoogleResourceType.Group);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.DeactivateResourcesForTeamAsync(teamId, GoogleResourceType.DriveFolder);
 
-        var rows = await _dbContext.GoogleResources
+        var rows = await Db.GoogleResources
             .AsNoTracking()
             .Where(r => r.TeamId == teamId)
             .ToListAsync();
@@ -128,15 +111,87 @@ public class TeamResourceServiceDeactivateTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SetRestrictInheritedAccessWithResultAsync_ReturnsSuccessAndUpdatesFolder()
+    {
+        var teamId = Guid.NewGuid();
+        SeedTeam(teamId, "Access");
+        var resourceId = SeedResource(teamId, "Folder", GoogleResourceType.DriveFolder);
+        await Db.SaveChangesAsync();
+        _drivePermissions.SetInheritedPermissionsDisabledAsync(
+                Arg.Any<string>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        var result = await _service.SetRestrictInheritedAccessWithResultAsync(resourceId, restrict: true);
+
+        result.Succeeded.Should().BeTrue();
+
+        var stored = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId);
+        stored.RestrictInheritedAccess.Should().BeTrue();
+    }
+
+    // ==========================================================================
+    // GetResourceNamesByIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetResourceNamesByIdsAsync_EmptyInput_ReturnsEmptyDict()
+    {
+        var result = await _service.GetResourceNamesByIdsAsync([]);
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetResourceNamesByIdsAsync_MixedKnownAndUnknownIds_ReturnsOnlyKnown()
+    {
+        var teamId = Guid.NewGuid();
+        SeedTeam(teamId, "Alpha");
+
+        var knownId1 = Guid.NewGuid();
+        var knownId2 = Guid.NewGuid();
+        var unknownId = Guid.NewGuid();
+
+        Db.GoogleResources.Add(new GoogleResource
+        {
+            Id = knownId1,
+            TeamId = teamId,
+            Name = "Folder One",
+            GoogleId = "google-1",
+            ResourceType = GoogleResourceType.DriveFolder,
+            IsActive = true,
+            ProvisionedAt = Clock.GetCurrentInstant()
+        });
+        Db.GoogleResources.Add(new GoogleResource
+        {
+            Id = knownId2,
+            TeamId = teamId,
+            Name = "Group Two",
+            GoogleId = "google-2",
+            ResourceType = GoogleResourceType.Group,
+            IsActive = true,
+            ProvisionedAt = Clock.GetCurrentInstant()
+        });
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetResourceNamesByIdsAsync([knownId1, knownId2, unknownId]);
+
+        result.Should().HaveCount(2);
+        result[knownId1].Should().Be("Folder One");
+        result[knownId2].Should().Be("Group Two");
+        result.ContainsKey(unknownId).Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task DeactivateResourcesForTeamAsync_NoActiveResources_IsNoOp()
     {
         var teamId = Guid.NewGuid();
         SeedTeam(teamId, "Empty");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.DeactivateResourcesForTeamAsync(teamId);
 
-        await _auditLogService.DidNotReceive().LogAsync(
+        await AuditLog.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(),
             Arg.Any<string>(),
             Arg.Any<Guid>(),
@@ -146,50 +201,20 @@ public class TeamResourceServiceDeactivateTests : IDisposable
             Arg.Any<string?>());
     }
 
-    private void SeedTeam(Guid id, string name)
+    private Guid SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true)
     {
-        _dbContext.Teams.Add(new Team
+        var id = Guid.NewGuid();
+        Db.GoogleResources.Add(new GoogleResource
         {
             Id = id,
-            Name = name,
-            Slug = name.ToLowerInvariant(),
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-    }
-
-    private void SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true)
-    {
-        _dbContext.GoogleResources.Add(new GoogleResource
-        {
-            Id = Guid.NewGuid(),
             TeamId = teamId,
             Name = name,
             GoogleId = Guid.NewGuid().ToString(),
             Url = $"https://example.com/{name}",
             ResourceType = type,
             IsActive = isActive,
-            ProvisionedAt = _clock.GetCurrentInstant()
+            ProvisionedAt = Clock.GetCurrentInstant()
         });
-    }
-
-    /// <summary>
-    /// Minimal <see cref="IDbContextFactory{HumansDbContext}"/> that reuses a
-    /// single in-memory DB across contexts. Each <c>CreateDbContextAsync</c>
-    /// returns a fresh <see cref="HumansDbContext"/> over the same
-    /// <see cref="DbContextOptions"/>, matching the production behavior where
-    /// the repository tears its context down per call.
-    /// </summary>
-    private sealed class SingleContextFactory : IDbContextFactory<HumansDbContext>
-    {
-        private readonly DbContextOptions<HumansDbContext> _options;
-
-        public SingleContextFactory(DbContextOptions<HumansDbContext> options) => _options = options;
-
-        public HumansDbContext CreateDbContext() => new(_options);
-
-        public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(_options));
+        return id;
     }
 }

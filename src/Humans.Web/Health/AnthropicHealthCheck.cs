@@ -7,17 +7,13 @@ namespace Humans.Web.Health;
 /// Health check that probes DNS reachability for the Anthropic API.
 /// Skipped (returns Healthy) when the agent feature is disabled.
 /// </summary>
-public sealed class AnthropicHealthCheck : IHealthCheck
+public sealed class AnthropicHealthCheck(IAgentSettingsStore store) : IHealthCheck
 {
-    private readonly IAgentSettingsStore _store;
-
-    public AnthropicHealthCheck(IAgentSettingsStore store) => _store = store;
-
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        if (!_store.Current.Enabled)
+        if (!store.Current.Enabled)
             return HealthCheckResult.Healthy("agent disabled");
 
         try

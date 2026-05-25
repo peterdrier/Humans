@@ -5,19 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
 
-public class AuditLogViewComponent : ViewComponent
+public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<AuditLogViewComponent> logger)
+    : ViewComponent
 {
-    private readonly IAuditViewerService _auditViewer;
-    private readonly ILogger<AuditLogViewComponent> _logger;
-
-    public AuditLogViewComponent(
-        IAuditViewerService auditViewer,
-        ILogger<AuditLogViewComponent> logger)
-    {
-        _auditViewer = auditViewer;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(
         string? entityType = null,
         Guid? entityId = null,
@@ -46,12 +36,12 @@ public class AuditLogViewComponent : ViewComponent
 
         try
         {
-            model.Events = await _auditViewer.GetFilteredAsync(
+            model.Events = await auditViewer.GetFilteredAsync(
                 entityType, entityId, userId, actionList, limit);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading audit log entries for EntityType={EntityType}, EntityId={EntityId}, UserId={UserId}",
+            logger.LogError(ex, "Error loading audit log entries for EntityType={EntityType}, EntityId={EntityId}, UserId={UserId}",
                 entityType, entityId, userId);
         }
 

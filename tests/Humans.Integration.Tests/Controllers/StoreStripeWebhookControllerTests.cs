@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
@@ -11,14 +10,11 @@ using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class StoreStripeWebhookControllerTests : IntegrationTestBase
+public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public StoreStripeWebhookControllerTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 30000)]
     public async Task Webhook_with_invalid_signature_returns_400()
     {

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -101,12 +100,12 @@ public interface IShiftSignupService : IApplicationService
     /// <summary>
     /// Gets a signup by primary key with Shift.Rota included.
     /// </summary>
-    Task<ShiftSignup?> GetByIdAsync(Guid signupId);
+    Task<ShiftSignupTeamProbe?> GetByIdAsync(Guid signupId);
 
     /// <summary>
     /// Gets the first signup in a block with Shift.Rota included (for team ownership checks).
     /// </summary>
-    Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId);
+    Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId);
 
     /// <summary>
     /// Gets all signups for a shift.
@@ -116,7 +115,7 @@ public interface IShiftSignupService : IApplicationService
     /// <summary>
     /// Gets all no-show signups for a user, with shift/team context and reviewer info.
     /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId);
+    Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId);
 
     /// <summary>
     /// Gets active signup statuses (Confirmed or Pending) for a user in a specific event.
@@ -138,23 +137,19 @@ public interface IShiftSignupService : IApplicationService
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every shift signup owned by the supplied users. Requires the
+    /// current authenticated user to hold the full Admin role.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every <see cref="ShiftSignup"/> in the system, with
     /// <c>Shift.Rota.EventSettings</c> included, for use by the
     /// orphan-signup reconciliation screen. Admin-only diagnostic.
     /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// After Volunteers admission lands for a user, promotes their
-    /// current-event Pending signups: Public-rota signups whose shift still
-    /// has capacity flip to Confirmed; RequireApproval-rota signups stay
-    /// Pending awaiting coordinator review. Range blocks promote together
-    /// (every signup sharing the same <c>SignupBlockId</c>). Capacity is
-    /// re-checked at promotion time — Public signups whose shift has filled
-    /// since creation stay Pending. No-op when the user has no current-event
-    /// Pending signups.
-    /// </summary>
-    Task PromoteWidgetPendingSignupsAfterAdmissionAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Filters a coordinator-side list of signups to only those whose users are
@@ -165,7 +160,39 @@ public interface IShiftSignupService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
         IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user-ids with at least one ShiftSignup for the given event whose
+    /// Status is Pending or Confirmed. Used by audience computations to identify
+    /// "users who have a shift". Refused/Bailed/Cancelled/NoShow signups do not count.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
 }
+
+public sealed record ShiftSignupTeamProbe(
+    Guid Id,
+    Guid ShiftId,
+    Guid TeamId);
+
+public sealed record OrphanSignupSnapshot(
+    Guid Id,
+    Guid UserId,
+    string RotaName,
+    LocalDate ShiftDate,
+    SignupStatus Status,
+    Instant CreatedAt,
+    Guid? ReviewedByUserId,
+    Guid? EnrolledByUserId,
+    Guid? SignupBlockId);
+
+public record NoShowHistoryEntry(
+    string ShiftLabel,
+    Guid TeamId,
+    Instant ShiftStart,
+    string TimeZoneId,
+    Guid? ReviewedByUserId,
+    Instant? ReviewedAt);
 
 /// <summary>
 /// Helper for resolving active signup statuses from an already-loaded list of signups.

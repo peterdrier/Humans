@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Budget;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
@@ -17,19 +16,13 @@ namespace Humans.Web.Authorization.Requirements;
 ///
 /// Also denies edits on restricted groups and deleted budget years for non-admin users.
 /// </summary>
-public class BudgetAuthorizationHandler : AuthorizationHandler<BudgetOperationRequirement, BudgetCategory>
+public class BudgetAuthorizationHandler(IBudgetService budgetService)
+    : AuthorizationHandler<BudgetOperationRequirement, BudgetCategorySnapshot>
 {
-    private readonly IBudgetService _budgetService;
-
-    public BudgetAuthorizationHandler(IBudgetService budgetService)
-    {
-        _budgetService = budgetService;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         BudgetOperationRequirement requirement,
-        BudgetCategory resource)
+        BudgetCategorySnapshot resource)
     {
         // Admin and FinanceAdmin can edit any budget category
         if (RoleChecks.IsFinanceAdmin(context.User))
@@ -55,7 +48,7 @@ public class BudgetAuthorizationHandler : AuthorizationHandler<BudgetOperationRe
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId);
         if (coordinatorTeamIds.Contains(resource.TeamId.Value))
         {
             context.Succeed(requirement);

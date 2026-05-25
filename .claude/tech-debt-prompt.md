@@ -2,11 +2,11 @@
 
 ## Mission
 
-You are autonomously improving a ~70k-line ASP.NET Core 10 Clean Architecture codebase (membership management for a Spanish nonprofit). It grew quickly and patterns have diverged. Your job is to **find and fix the most impactful tech debt** — duplicated logic, inconsistent patterns, misplaced responsibilities, and unnecessary complexity.
+You are autonomously improving a ~70k-line ASP.NET Core 10 Clean Architecture codebase (membership management for a Spanish nonprofit). It grew quickly and patterns have diverged. Your job is to **find and fix the most impactful tech debt** — duplicated logic, inconsistent patterns, misplaced responsibilities, unnecessary complexity, and unnecessary durable surface.
 
-**You decide what to work on.** Scan the codebase, identify the highest-value improvements, fix them, verify the build passes, commit, and move on. Use your judgement about what matters most.
+**You decide what to work on.** Scan the codebase, identify the highest-value improvements, fix them, verify the build passes, commit, and move on. Use your judgement about what matters most. Prefer work that deletes, consolidates, or ratchets existing behavior over work that adds new abstractions.
 
-**Work autonomously.** Do not stop for milestone reports. Find the next opportunity, fix it, verify the build passes, commit, push the branch to `origin`, and move to the next one.
+**Work autonomously.** Do not stop for milestone reports. Find the next opportunity, fix it, verify the build passes, commit, push the branch to `origin`, and move to the next one. If a cleanup/refactor would add more durable surface than it removes, stop unless the value is concrete and documented in the commit/PR.
 
 ---
 
@@ -102,7 +102,8 @@ dotnet build Humans.slnx -v q && dotnet test Humans.slnx -v q --filter "FullyQua
 - **Controllers are thin.** A controller action should: validate input, call a service, map the result, return a view. Business logic (LINQ transforms, multi-step mutations, domain decisions) belongs in services.
 - **Services own their domain.** A TeamService should only contain team logic. If it has methods that query role assignments, budget data, or shift schedules, those methods belong elsewhere.
 - **Large files are fine if cohesive.** A 2000-line service is not a problem if every method relates to the same domain. Do NOT split files just to reduce line count.
-- **Shared patterns use shared code.** If the same 5-line pattern appears in 10 controllers, extract it. If a ViewComponent exists but views use inline HTML instead, fix the views.
+- **Shared patterns use shared code carefully.** Extract only when there are multiple live call sites, one obvious owner, and the extraction makes the net system simpler. If a ViewComponent exists but views use inline HTML instead, fix the views.
+- **Reuse beats surface growth.** Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner/surface first. Follow `memory/process/reuse-first-change-discipline.md`.
 - **Constants over magic strings.** Role names, cache keys, action names — all should reference constants or use `nameof()`.
 
 ## What to look for
@@ -118,13 +119,13 @@ When the same thing is done multiple ways across the codebase. Examples: caching
 Methods or logic in the wrong layer or the wrong service. A controller doing business logic. A service containing methods that belong to a different domain. Code that queries across domain boundaries when it should delegate.
 
 ### Duplicated logic
-The same LINQ query, the same validation check, the same mapping logic appearing in multiple places. Extract to a shared method in the appropriate service or helper.
+The same LINQ query, validation check, or mapping logic appearing in multiple places. Extract only when there are multiple live call sites, a clear owner, and the extraction is simpler than local composition. Do not add a one-off helper or interface method just to make a single call site look cleaner.
 
 ### Inconsistent conventions
 Naming (`GetXAsync` vs `FetchXAsync` vs `LoadXAsync`), method signatures, parameter ordering, return types. When you find inconsistency, standardize on the dominant convention.
 
 ### Unused abstraction or missing abstraction
-A ViewComponent that exists but isn't used (views use inline HTML instead). A pattern that's repeated 10 times but has no shared helper. An interface with a single implementation that adds no value.
+A ViewComponent that exists but isn't used (views use inline HTML instead). A repeated pattern with no clear shared owner. An interface with a single implementation that adds no value. When in doubt, remove or reuse existing surface before adding another abstraction.
 
 ---
 
@@ -136,9 +137,10 @@ Before every change, verify:
 2. **Am I renaming a property on a class that might be serialized to JSON?** → STOP, skip this change.
 3. **Am I removing a property that looks unused?** → STOP, it's likely used via reflection.
 4. **Am I changing a method signature on an interface in `Application/`?** → Check all implementations AND all callers.
-5. **Am I changing authorization?** → Verify the attribute/policy matches the original access level exactly.
-6. **Am I removing a lazy `IServiceProvider` resolution?** → Check for a comment explaining why. If it exists to break a ctor cycle (common in §15 migrations), leave it alone.
-7. **Am I splitting a large "god class" service?** → STOP. Large cohesive services are preferred over fragmented ones here; splitting breaks caching and cross-method state. Do NOT split services to reduce line count.
-8. **Am I about to half-migrate a §15 section?** → STOP. If you extract a repository you must also move the service to `Humans.Application.Services.X`, stitch cross-section reads through owning-service interfaces, and commit everything together.
-9. **Does `dotnet build Humans.slnx` still pass?** → Must pass after every change.
-10. **Does `dotnet test Humans.slnx` still pass?** → Must pass after every change.
+5. **Am I adding durable surface?** → Audit the existing owner/surface first. Public/interface surface requires Peter approval.
+6. **Am I changing authorization?** → Verify the attribute/policy matches the original access level exactly.
+7. **Am I removing a lazy `IServiceProvider` resolution?** → Check for a comment explaining why. If it exists to break a ctor cycle (common in §15 migrations), leave it alone.
+8. **Am I splitting a large "god class" service?** → STOP. Large cohesive services are preferred over fragmented ones here; splitting breaks caching and cross-method state. Do NOT split services to reduce line count.
+9. **Am I about to half-migrate a §15 section?** → STOP. If you extract a repository you must also move the service to `Humans.Application.Services.X`, stitch cross-section reads through owning-service interfaces, and commit everything together.
+10. **Does `dotnet build Humans.slnx` still pass?** → Must pass after every change.
+11. **Does `dotnet test Humans.slnx` still pass?** → Must pass after every change.

@@ -1,65 +1,41 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Dashboard;
 
-/// <summary>
-/// Admin dashboard aggregator — partitions every user by membership state,
-/// joins in tier-application stats, and computes a language distribution
-/// across approved-not-suspended users for the dashboard's chart. Owns no
-/// tables; all reads route through the owning section services
-/// (<see cref="IUserService"/>, <see cref="IProfileService"/>,
-/// <see cref="IMembershipCalculator"/>, <see cref="IApplicationDecisionService"/>).
-/// </summary>
-public sealed class AdminDashboardService : IAdminDashboardService
+/// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership. Owns no tables.</summary>
+public sealed class AdminDashboardService(
+    IUserServiceRead userService,
+    IMembershipCalculator membershipCalculator,
+    IApplicationDecisionService applicationDecisionService,
+    IShiftManagementService shiftManagement,
+    IShiftView shiftView) : IAdminDashboardService
 {
-    private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-
-    public AdminDashboardService(
-        IUserService userService,
-        IProfileService profileService,
-        IMembershipCalculator membershipCalculator,
-        IApplicationDecisionService applicationDecisionService)
-    {
-        _userService = userService;
-        _profileService = profileService;
-        _membershipCalculator = membershipCalculator;
-        _applicationDecisionService = applicationDecisionService;
-    }
-
     public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var allUsers = await _userService.GetAllUsersAsync(ct);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
+        var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allUserIds = snapshot.Select(u => u.Id).ToList();
         var totalMembers = allUserIds.Count;
-        var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
+        var partition = await membershipCalculator.PartitionUsersAsync(allUserIds, ct);
 
         var pendingApplications =
-            await _applicationDecisionService.GetPendingApplicationCountAsync(ct);
-        var appStats = await _applicationDecisionService.GetAdminStatsAsync(ct);
+            await applicationDecisionService.GetPendingApplicationCountAsync(ct);
+        var appStats = await applicationDecisionService.GetAdminStatsAsync(ct);
 
-        // Language distribution for the admin dashboard chart — approved,
-        // non-suspended humans, grouped by PreferredLanguage. Union
-        // Active + MissingConsents; pending-deletion users are not counted
-        // (bucket is split off earlier by PartitionUsersAsync). This is a
-        // visualization, not an audit count, so sub-user-count drift from
-        // the pre-partition predicate is acceptable. Pass to the User
-        // section, which owns preferred language — no cross-domain join
-        // (design-rules §6).
-        var approvedNotSuspended = partition.Active
-            .Concat(partition.MissingConsents)
+        // Language distribution chart: Active ∪ MissingConsents (pending-deletion split off earlier).
+        var approvedNotSuspended = new HashSet<Guid>(
+            partition.Active.Concat(partition.MissingConsents));
+        var languageDistribution = snapshot
+            .Where(u => approvedNotSuspended.Contains(u.Id))
+            .GroupBy(u => u.PreferredLanguage, StringComparer.Ordinal)
+            .Select(g => new LanguageCount(g.Key, g.Count()))
+            .OrderByDescending(l => l.Count)
             .ToList();
-        var rawLanguageDistribution = await _userService.GetLanguageDistributionForUserIdsAsync(
-            approvedNotSuspended, ct);
-        var languageDistribution = rawLanguageDistribution
-            .Select(x => new LanguageCount(x.Language, x.Count))
-            .ToList();
+
+        var setMembership = await BuildSetMembershipAsync(snapshot, ct);
 
         return new AdminDashboardData(
             totalMembers,
@@ -75,9 +51,37 @@ public sealed class AdminDashboardService : IAdminDashboardService
             appStats.Rejected,
             appStats.ColaboradorApplied,
             appStats.AsociadoApplied,
-            languageDistribution);
+            languageDistribution,
+            setMembership);
     }
 
-    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
-        _profileService.GetPendingReviewCountAsync(ct);
+    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
+    {
+        var count = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);
+        return count;
+    }
+
+    private async Task<UserSetMembership> BuildSetMembershipAsync(
+        IReadOnlyCollection<UserInfo> snapshot,
+        CancellationToken ct)
+    {
+        var activeEvent = await shiftManagement.GetActiveAsync();
+        var activeYear = activeEvent?.Year ?? 0;
+        var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
+
+        var counts = new Dictionary<int, int>(capacity: 16);
+        foreach (var u in snapshot)
+        {
+            var mask = 0;
+            if (u.HasRequiredNameFields) mask |= UserSetMembership.ProfileBit;
+            if (activeYear > 0 && u.HasTicketForYear(activeYear)) mask |= UserSetMembership.TicketBit;
+            if (shiftViews[u.Id].HasShift) mask |= UserSetMembership.ShiftBit;
+            // Explicit opt-in only: tri-state MarketingOptedOut == false (not null, not true).
+            if (u.MarketingOptedOut == false) mask |= UserSetMembership.MarketingBit;
+
+            counts[mask] = counts.GetValueOrDefault(mask) + 1;
+        }
+
+        return new UserSetMembership(counts);
+    }
 }

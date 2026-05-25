@@ -1,13 +1,12 @@
-using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
 using Humans.Web.Models.Calendar;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -17,17 +16,20 @@ namespace Humans.Web.Controllers;
 [Route("Calendar")]
 public class CalendarController : HumansControllerBase
 {
+    private readonly ICalendarServiceRead _calendarRead;
     private readonly ICalendarService _calendar;
-    private readonly ITeamService _teams;
+    private readonly ITeamServiceRead _teams;
     private readonly IClock _clock;
 
     public CalendarController(
-        UserManager<User> userManager,
+        IUserServiceRead userService,
+        ICalendarServiceRead calendarRead,
         ICalendarService calendar,
-        ITeamService teams,
+        ITeamServiceRead teams,
         IClock clock)
-        : base(userManager)
+        : base(userService)
     {
+        _calendarRead = calendarRead;
         _calendar = calendar;
         _teams = teams;
         _clock = clock;
@@ -50,8 +52,10 @@ public class CalendarController : HumansControllerBase
         var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
                      .Plus(Duration.FromDays(1));
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetAllTeamsAsync(ct))
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var teams = (await _teams.GetTeamsAsync(ct))
+            .Values
+            .Where(t => t.IsActive)
             .Select(t => new TeamOption(t.Id, t.Name))
             .ToList();
 
@@ -80,8 +84,10 @@ public class CalendarController : HumansControllerBase
         var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
                      .Plus(Duration.FromDays(1));
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetAllTeamsAsync(ct))
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var teams = (await _teams.GetTeamsAsync(ct))
+            .Values
+            .Where(t => t.IsActive)
             .Select(t => new TeamOption(t.Id, t.Name))
             .ToList();
 
@@ -108,7 +114,7 @@ public class CalendarController : HumansControllerBase
         var fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
         var toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
     }
 
@@ -119,7 +125,7 @@ public class CalendarController : HumansControllerBase
         [FromQuery] int? month,
         CancellationToken ct)
     {
-        var team = await _teams.GetTeamByIdAsync(teamId, ct);
+        var team = await _teams.GetTeamAsync(teamId, ct);
         if (team is null) return NotFound();
 
         var zone = GetViewerZone();
@@ -131,41 +137,35 @@ public class CalendarController : HumansControllerBase
         var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
 
         ViewData["TeamName"] = team.Name;
         return View(new CalendarMonthViewModel(
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
-            TeamOptions: Array.Empty<TeamOption>(),
+            TeamOptions: [],
             ViewerTimezoneLabel: zone.Id));
     }
 
     [HttpGet("Event/{id:guid}")]
     public async Task<IActionResult> Event(Guid id, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         var zone = GetViewerZone();
         var now = _clock.GetCurrentInstant();
         var horizon = now.Plus(Duration.FromDays(180));
-        var upcoming = (await _calendar.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
+        var upcoming = (await _calendarRead.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
             .Where(o => o.EventId == id)
             .Take(5)
             .ToList();
 
-        // Owning-team name resolved via ITeamService per design-rules §6b —
-        // CalendarEvent.OwningTeam nav is [Obsolete] and no longer .Include()d.
-        // Use the lightweight name-only lookup so we don't hydrate the entire
-        // team aggregate (members + users) just to render a display string.
-        var teamNames = await _teams.GetTeamNamesByIdsAsync([ev.OwningTeamId], ct);
-        var owningTeamName = teamNames.TryGetValue(ev.OwningTeamId, out var name)
-            ? name
-            : string.Empty;
+        // §6b: owning-team name via ITeamService lookup (OwningTeam nav is [Obsolete]).
+        var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
+        var owningTeamName = owningTeam?.Name ?? string.Empty;
 
-        // Any authenticated human can edit; changes are audited.
         return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));
     }
 
@@ -190,7 +190,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CalendarEventFormViewModel form, CancellationToken ct)
     {
-        var team = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
+        var team = await _teams.GetTeamAsync(form.OwningTeamId, ct);
         if (team is null) return NotFound();
 
         TryResolveStartEnd(form, out var start, out var end);
@@ -200,39 +200,35 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        try
-        {
-            var ev = await _calendar.CreateEventAsync(new CreateCalendarEventDto(
-                form.Title, form.Description, form.Location, form.LocationUrl,
-                form.OwningTeamId, start, end, form.IsAllDay,
-                form.IsRecurring ? form.RecurrenceRule : null,
-                form.IsRecurring ? form.RecurrenceTimezone : null),
-                createdByUserId: GetCurrentUserId(), ct);
+        var result = await _calendar.CreateEventWithResultAsync(new CreateCalendarEventDto(
+            form.Title, form.Description, form.Location, form.LocationUrl,
+            form.OwningTeamId, start, end, form.IsAllDay,
+            form.IsRecurring ? form.RecurrenceRule : null,
+            form.IsRecurring ? form.RecurrenceTimezone : null),
+            createdByUserId: RequireCurrentUserId(), ct);
 
-            return RedirectToAction(nameof(Event), new { id = ev.Id });
-        }
-        catch (ValidationException ex)
+        if (result.Succeeded && result.Event is not null)
         {
-            ModelState.AddModelError(nameof(form.RecurrenceRule), ex.Message);
-            form.TeamOptions = await GetSelectableTeamsAsync(ct);
-            return View(form);
+            return RedirectToAction(nameof(Event), new { id = result.Event.Id });
         }
+
+        AddCalendarEventMutationError(form, result);
+        form.TeamOptions = await GetSelectableTeamsAsync(ct);
+        return View(form);
     }
 
     [HttpGet("Event/{id:guid}/Edit")]
     public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        // Fall back to Europe/Madrid if a persisted tz is unknown — lets the form render
-        // so the admin can correct it, instead of 500'ing on display.
+        // Fall back to Europe/Madrid for unknown tz so the form renders (admin can correct).
         var tzId = ev.RecurrenceTimezone ?? "Europe/Madrid";
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tzId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var startDate = ev.StartUtc.InZone(zone).Date;
-        // Stored end is half-open exclusive midnight; subtract a tick to recover the
-        // inclusive end date that the user originally entered.
+        // Stored end is half-open exclusive midnight; subtract a tick for inclusive display.
         var endDateInclusive = ev.EndUtc is { } endUtc
             ? endUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date
             : startDate;
@@ -260,7 +256,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, CalendarEventFormViewModel form, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         TryResolveStartEnd(form, out var start, out var end);
@@ -270,34 +266,28 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        try
-        {
-            await _calendar.UpdateEventAsync(id, new UpdateCalendarEventDto(
-                form.Title, form.Description, form.Location, form.LocationUrl,
-                form.OwningTeamId, start, end, form.IsAllDay,
-                form.IsRecurring ? form.RecurrenceRule : null,
-                form.IsRecurring ? form.RecurrenceTimezone : null),
-                updatedByUserId: GetCurrentUserId(), ct);
+        var result = await _calendar.UpdateEventWithResultAsync(id, new UpdateCalendarEventDto(
+            form.Title, form.Description, form.Location, form.LocationUrl,
+            form.OwningTeamId, start, end, form.IsAllDay,
+            form.IsRecurring ? form.RecurrenceRule : null,
+            form.IsRecurring ? form.RecurrenceTimezone : null),
+            updatedByUserId: RequireCurrentUserId(), ct);
 
-            return RedirectToAction(nameof(Event), new { id });
-        }
-        catch (ValidationException ex)
-        {
-            ModelState.AddModelError(nameof(form.RecurrenceRule), ex.Message);
-            form.TeamOptions = await GetSelectableTeamsAsync(ct);
-            return View(form);
-        }
+        if (result.NotFound) return NotFound();
+        if (result.Succeeded) return RedirectToAction(nameof(Event), new { id });
+
+        AddCalendarEventMutationError(form, result);
+        form.TeamOptions = await GetSelectableTeamsAsync(ct);
+        return View(form);
     }
 
-    // All-day events store half-open [Start 00:00, EndDate+1 00:00) so the display
-    // helper recovers the inclusive end date with a one-tick subtraction. Adds
-    // ModelState errors instead of throwing on bad input (e.g. unknown timezone).
+    // All-day stored as half-open [Start 00:00, EndDate+1 00:00). Bad input → ModelState (no throw).
     private void TryResolveStartEnd(CalendarEventFormViewModel form, out Instant start, out Instant? end)
     {
         start = default;
         end = null;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone ?? string.Empty);
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
         if (zone is null)
         {
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown IANA timezone.");
@@ -342,10 +332,10 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        await _calendar.DeleteEventAsync(id, deletedByUserId: GetCurrentUserId(), ct);
+        await _calendar.DeleteEventAsync(id, deletedByUserId: RequireCurrentUserId(), ct);
         return RedirectToAction(nameof(Index));
     }
 
@@ -353,18 +343,18 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
-        await _calendar.CancelOccurrenceAsync(id, original, GetCurrentUserId(), ct);
+        await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct);
         return RedirectToAction(nameof(Event), new { id });
     }
 
     [HttpGet("Event/{id:guid}/Occurrence/{originalStartUtc}/Edit")]
     public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         return View("OccurrenceEdit", new OccurrenceOverrideFormViewModel
@@ -379,7 +369,7 @@ public class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, OccurrenceOverrideFormViewModel form, CancellationToken ct)
     {
-        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
@@ -401,30 +391,38 @@ public class CalendarController : HumansControllerBase
             new OverrideOccurrenceDto(overrideStart, overrideEnd,
                 form.OverrideTitle, form.OverrideDescription,
                 form.OverrideLocation, form.OverrideLocationUrl),
-            GetCurrentUserId(), ct);
+            RequireCurrentUserId(), ct);
 
         return RedirectToAction(nameof(Event), new { id });
     }
 
     private async Task<IReadOnlyList<TeamOption>> GetSelectableTeamsAsync(CancellationToken ct)
     {
-        return (await _teams.GetAllTeamsAsync(ct))
+        return (await _teams.GetTeamsAsync(ct))
+            .Values
             .Where(t => t.IsActive && !t.IsHidden)
             .Select(t => new TeamOption(t.Id, t.Name))
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
             .ToList();
     }
 
-    private Guid GetCurrentUserId()
+    private Guid RequireCurrentUserId() =>
+        GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
+
+    private void AddCalendarEventMutationError(
+        CalendarEventFormViewModel form,
+        CalendarEventMutationResult result)
     {
-        var id = UserManager.GetUserId(User);
-        if (!Guid.TryParse(id, out var userId))
-            throw new InvalidOperationException("Current user has no valid ID claim.");
-        return userId;
+        var memberName = string.Equals(
+                result.ValidationMemberName,
+                nameof(CreateCalendarEventDto.RecurrenceTimezone),
+                StringComparison.Ordinal)
+            ? nameof(form.RecurrenceTimezone)
+            : nameof(form.RecurrenceRule);
+        ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
     }
 
-    // Org default for v1. Every volunteer is in Spain; showing server-UTC ("Etc/UTC") is unhelpful.
-    // Follow-up: derive from browser (Intl API) or user profile preference.
+    // Org default for v1 (all volunteers in Spain). TODO: derive from browser/profile.
     private static DateTimeZone GetViewerZone() =>
         DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }

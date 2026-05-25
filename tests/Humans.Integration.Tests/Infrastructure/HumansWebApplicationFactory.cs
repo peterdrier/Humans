@@ -1,7 +1,7 @@
 using System.Net;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using Hangfire;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ClearExtensions;
 using Testcontainers.PostgreSql;
 using Xunit;
 using Humans.Application.Interfaces;
@@ -31,6 +32,14 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
     /// <summary>Stub IStripeService for integration tests (replaces real Stripe network calls).</summary>
     public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
+
+    /// <summary>
+    /// Stub IBackgroundJobClient for integration tests. Program.cs skips
+    /// AddHangfire entirely in Testing (see comment there), so anything in
+    /// src/ that injects IBackgroundJobClient gets this no-op substitute.
+    /// Tests can assert against ReceivedCalls() to verify enqueue behavior.
+    /// </summary>
+    public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
@@ -91,26 +100,61 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
             // Replace IStripeService with a stub so integration tests don't hit
             // api.stripe.com. Per-test setup configures behavior on StripeServiceStub.
-            // Webhook parsing is pure CPU (HMAC-SHA256 + JSON) — no network — so we
-            // delegate ParseStoreCheckoutEvent and the IsStoreWebhookConfigured flag
-            // to a real StripeService instance built with the test secret. This lets
-            // the webhook integration tests exercise real signature verification while
-            // the network-touching methods stay stubbed.
-            var realStripeForWebhookParse = new StripeService(
-                Options.Create(new StripeSettings { StoreWebhookSecret = TestStripeWebhookSecret }),
-                NullLogger<StripeService>.Instance);
-            StripeServiceStub.IsStoreWebhookConfigured.Returns(true);
-            StripeServiceStub.ParseStoreCheckoutEvent(Arg.Any<string>(), Arg.Any<string>())
-                .Returns(call => realStripeForWebhookParse.ParseStoreCheckoutEvent(
-                    (string)call[0], (string)call[1]));
+            // Baseline defaults (webhook parsing + IsStoreWebhookConfigured) are seeded
+            // here and re-seeded per test by ResetSharedSubstitutes.
+            ConfigureStripeStubDefaults();
 
             var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
             if (stripeDescriptor != null) services.Remove(stripeDescriptor);
             services.AddScoped(_ => StripeServiceStub);
 
+            // Bind IBackgroundJobClient — Hangfire's own registration is skipped in
+            // Testing (Program.cs), so injecting consumers like
+            // HangfireImmediateOutboxProcessor need this stub or DI graph build fails.
+            services.AddSingleton(BackgroundJobClientStub);
+
             RegisteredServices = services.ToList();
 
         });
+    }
+
+    /// <summary>
+    /// Resets the shared single-instance NSubstitute stubs so no state leaks between
+    /// tests. <see cref="StripeServiceStub"/> and <see cref="BackgroundJobClientStub"/>
+    /// are singletons reused across every test in a class; xUnit runs tests within a
+    /// class sequentially so within-class is safe today, but the contract is fragile —
+    /// any future move to method-level parallelism would silently corrupt assertions.
+    /// Called per test from <see cref="IntegrationTestBase"/>'s constructor.
+    /// </summary>
+    public void ResetSharedSubstitutes()
+    {
+        // ClearSubstitute(ClearOptions.All) drops received calls, configured return
+        // values, and call actions — returning the substitute to a pristine state.
+        StripeServiceStub.ClearSubstitute(ClearOptions.All);
+        BackgroundJobClientStub.ClearSubstitute(ClearOptions.All);
+
+        // Re-seed the Stripe baseline defaults that the host build configured, since
+        // ClearSubstitute wiped them. Per-test setup layers its own returns on top.
+        ConfigureStripeStubDefaults();
+    }
+
+    /// <summary>
+    /// Seeds the baseline behavior every test relies on for <see cref="StripeServiceStub"/>:
+    /// webhook parsing is pure CPU (HMAC-SHA256 + JSON) — no network — so we delegate
+    /// <c>ParseStoreCheckoutEvent</c> and the <c>IsStoreWebhookConfigured</c> flag to a
+    /// real <see cref="StripeService"/> built with the test secret. This lets the webhook
+    /// integration tests exercise real signature verification while the network-touching
+    /// methods stay stubbed.
+    /// </summary>
+    private void ConfigureStripeStubDefaults()
+    {
+        var realStripeForWebhookParse = new StripeService(
+            Options.Create(new StripeSettings { StoreWebhookSecret = TestStripeWebhookSecret }),
+            NullLogger<StripeService>.Instance);
+        StripeServiceStub.IsStoreWebhookConfigured.Returns(true);
+        StripeServiceStub.ParseStoreCheckoutEvent(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(call => realStripeForWebhookParse.ParseStoreCheckoutEvent(
+                (string)call[0], (string)call[1]));
     }
 
     // xUnit v3 IAsyncLifetime: InitializeAsync returns ValueTask.

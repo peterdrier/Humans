@@ -3,17 +3,15 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profile;
+using Humans.Application.Services.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using NSubstitute.ReceivedExtensions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -30,9 +28,8 @@ public class UserEmailServiceReconcileOAuthTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
-    private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
+    private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
     private const string Provider = "Google";
@@ -43,17 +40,44 @@ public class UserEmailServiceReconcileOAuthTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider.GetService(typeof(IAccountMergeService)).Returns(_mergeService);
+        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).Build();
 
         _service = new UserEmailService(
             _repository,
             _userService,
             _userManager,
             _clock,
-            _fullProfileInvalidator,
             _auditLogService,
             _serviceProvider,
             NullLogger<UserEmailService>.Instance);
+
+        _userService.ApplyUserEmailReconcilePlanAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UserEmailReconcilePlanCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => ApplyReconcilePlanThroughRepositoryAsync(
+                call.ArgAt<Guid>(0),
+                call.ArgAt<UserEmailReconcilePlanCommand>(1),
+                call.ArgAt<CancellationToken>(2)));
+    }
+
+    private async Task<UserEmailReconcilePlanResult> ApplyReconcilePlanThroughRepositoryAsync(
+        Guid userId,
+        UserEmailReconcilePlanCommand command,
+        CancellationToken ct)
+    {
+        await _repository.ApplyReconcilePlanAsync(
+            command.DisplacedRowToDelete,
+            command.RowToDelete,
+            command.RowToUpdate,
+            command.RowToInsert,
+            ct);
+
+        var mutatedUserIds = new HashSet<Guid> { userId };
+        if (command.DisplacedRowToDelete is not null)
+            mutatedUserIds.Add(command.DisplacedRowToDelete.UserId);
+
+        return new UserEmailReconcilePlanResult(mutatedUserIds);
     }
 
     // ─── NoChange ────────────────────────────────────────────────────────────
@@ -127,10 +151,6 @@ public class UserEmailServiceReconcileOAuthTests
             rowToUpdate: Arg.Is<UserEmail?>(r => r != null && r.Id == rowId),
             rowToInsert: Arg.Is<UserEmail?>(r => r == null),
             Arg.Any<CancellationToken>());
-        await _fullProfileInvalidator
-            .Received(Quantity.AtLeastOne())
-            .InvalidateAsync(userId, Arg.Any<CancellationToken>(),
-                Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.GoogleEmailRenamed,
             Arg.Any<string>(), userId,
@@ -280,10 +300,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), userId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _fullProfileInvalidator
-            .Received(Quantity.AtLeastOne())
-            .InvalidateAsync(userId, Arg.Any<CancellationToken>(),
-                Arg.Any<string>(), Arg.Any<string>());
     }
 
     // ─── CrossUserDisplaced ──────────────────────────────────────────────────
@@ -351,15 +367,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), displacedUserId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        // Both affected users get their cache invalidated.
-        await _fullProfileInvalidator
-            .Received(Quantity.AtLeastOne())
-            .InvalidateAsync(signingUserId, Arg.Any<CancellationToken>(),
-                Arg.Any<string>(), Arg.Any<string>());
-        await _fullProfileInvalidator
-            .Received(Quantity.AtLeastOne())
-            .InvalidateAsync(displacedUserId, Arg.Any<CancellationToken>(),
-                Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]

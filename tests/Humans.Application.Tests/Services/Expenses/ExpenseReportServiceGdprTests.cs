@@ -2,10 +2,8 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -17,7 +15,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Expenses;
 
@@ -28,7 +25,6 @@ public class ExpenseReportServiceGdprTests
 
     private readonly IExpenseRepository _repo;
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly IUserDataContributor _sut;
 
@@ -36,7 +32,6 @@ public class ExpenseReportServiceGdprTests
     {
         _repo = Substitute.For<IExpenseRepository>();
         _userService = Substitute.For<IUserService>();
-        _profileService = Substitute.For<IProfileService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
         // No merge tombstones by default
@@ -58,12 +53,29 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IBudgetService>(),
             Substitute.For<ITeamService>(),
             _userService,
-            _profileService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance);
     }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName,
+            PreferredLanguage = "en",
+            CreatedAt = FakeNow,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: profile,
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
@@ -103,8 +115,8 @@ public class ExpenseReportServiceGdprTests
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([report]);
 
-        _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), Iban = "ES1234567890123456789012" });
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = UserId, Iban = "ES1234567890123456789012" }));
 
         var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
 
@@ -124,8 +136,8 @@ public class ExpenseReportServiceGdprTests
         var report = MakeReport(UserId);
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([report]);
-        _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
         var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
 
@@ -141,8 +153,8 @@ public class ExpenseReportServiceGdprTests
     {
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([]);
-        _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
         var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
 
@@ -155,18 +167,25 @@ public class ExpenseReportServiceGdprTests
     {
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([]);
-        _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
-        var entry = new AuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            Action = AuditAction.ExpenseSubmit,
-            EntityType = "ExpenseReport",
-            EntityId = Guid.NewGuid(),
-            Description = "Submitted",
-            OccurredAt = FakeNow,
-        };
+        var entry = new AuditLogEntrySnapshot(
+            Guid.NewGuid(),
+            AuditAction.ExpenseSubmit,
+            "ExpenseReport",
+            Guid.NewGuid(),
+            "Submitted",
+            FakeNow,
+            ActorUserId: null,
+            RelatedEntityId: null,
+            RelatedEntityType: null,
+            ResourceId: null,
+            Success: null,
+            ErrorMessage: null,
+            Role: null,
+            SyncSource: null,
+            UserEmail: null);
 
         _auditLogService.GetFilteredEntriesAsync(
                 entityType: Arg.Any<string>(),
@@ -198,8 +217,8 @@ public class ExpenseReportServiceGdprTests
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([ownReport]);
 
-        _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
         var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
 

@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -25,6 +26,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>IBudgetService</c> — unchanged by this migration.
 /// </para>
 /// </remarks>
+[Section("Tickets")]
 public interface ITicketingBudgetRepository : IRepository
 {
     /// <summary>

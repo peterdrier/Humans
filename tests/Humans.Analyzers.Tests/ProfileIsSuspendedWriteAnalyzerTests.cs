@@ -1,6 +1,4 @@
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 
 namespace Humans.Analyzers.Tests;
 
@@ -18,7 +16,7 @@ public class ProfileIsSuspendedWriteAnalyzerTests
         """;
 
     private static bool IsHum0004(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, ProfileIsSuspendedWriteAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, ProfileIsSuspendedWriteAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_on_write_from_arbitrary_application_type()
@@ -47,9 +45,31 @@ public class ProfileIsSuspendedWriteAnalyzerTests
     {
         var source = DomainStub + """
 
-            namespace Humans.Application.Services.Profile
+            namespace Humans.Application.Services.Profiles
             {
                 public class ProfileService
+                {
+                    public void Suspend(Humans.Domain.Entities.Profile p) => p.IsSuspended = true;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ProfileIsSuspendedWriteAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_in_allowlisted_UserService()
+    {
+        var source = DomainStub + """
+
+            namespace Humans.Application.Services.Users
+            {
+                public class UserService
                 {
                     public void Suspend(Humans.Domain.Entities.Profile p) => p.IsSuspended = true;
                 }

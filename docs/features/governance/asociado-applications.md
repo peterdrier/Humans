@@ -1,9 +1,9 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Governance/**
-  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
+  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
   src/Humans.Web/Controllers/GovernanceController.cs
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
-  src/Humans.Web/Views/Application/**
+  src/Humans.Web/Views/Governance/Applications/**
   src/Humans.Web/Views/Governance/**
   src/Humans.Domain/Entities/Application.cs
   src/Humans.Domain/Entities/ApplicationStateHistory.cs
@@ -23,7 +23,7 @@
 
 The Application entity serves all tier-based membership applications: **Colaborador** (active contributor) and **Asociado** (voting member). Each Application has a `MembershipTier` field indicating which tier is being applied for. There is a specific application form for each tier — during initial signup it is embedded inline alongside profile setup for a streamlined experience, but it remains a distinct Application entity in the system.
 
-After initial onboarding, existing volunteers apply for Colaborador or Asociado through the dedicated Application route. The inline embedding is a one-shot convenience for new signups only.
+After initial onboarding, existing volunteers apply for Colaborador or Asociado through the dedicated Governance Applications route. The inline embedding is a one-shot convenience for new signups only.
 
 Applications go through a review workflow: after the Consent Coordinator clears the human's consent check (granting Volunteer access), the Application enters the Board's voting queue. The Board votes individually, then finalizes the decision. Approved applications set the human's tier and enroll them in the appropriate system team with a synchronized 2-year term.
 
@@ -232,7 +232,7 @@ Both proceed through pipelines:
 
 ### After Onboarding (Dedicated Route)
 ```
-Active Volunteer/Colaborador → /Application/Create → Fill form → Submit
+Active Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
     │
     ▼
 Application created → Board Voting → Approve/Reject

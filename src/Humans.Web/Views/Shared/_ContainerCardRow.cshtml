@@ -1,0 +1,60 @@
+@model Humans.Web.Models.ContainerCardModel
+@{
+    var c = Model.Container;
+}
+<li class="list-group-item d-flex align-items-center gap-3 py-2">
+    <div style="width:48px;height:48px;flex-shrink:0;" class="d-flex align-items-center justify-content-center">
+        @if (c.ImageUrl is not null)
+        {
+            <img src="@c.ImageUrl" alt="@c.Name"
+                 style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;"
+                 data-bs-toggle="modal" data-bs-target="#lightboxModal-@c.Id" />
+        }
+        else
+        {
+            <i class="fa-solid fa-box text-muted fa-lg"></i>
+        }
+    </div>
+    <div class="flex-grow-1 min-width-0">
+        <div class="fw-semibold d-flex align-items-center gap-2">
+            @c.Name
+            @if (Model.IsPlaced)
+            {
+                <span class="badge bg-success fw-normal" style="font-size:10px;">@Localizer["ContainerMap_Placed"]</span>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(c.Description))
+        {
+            <div class="text-muted small">@c.Description</div>
+        }
+    </div>
+    <div class="d-flex gap-1 flex-shrink-0">
+        @if (Model.HasPlacementInfo)
+        {
+            <button type="button" class="btn btn-outline-info btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#placementInfoModal-@c.Id"
+                >
+                <i class="fa-solid fa-circle-info"></i>
+                @Localizer["Container_PlacementNotes_ButtonLabel"]
+            </button>
+        }
+        @if (Model.CanManage)
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#editModal-@c.Id"
+                    title="@Localizer["Common_Edit"]">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+            <form asp-controller="@Model.FormController" asp-action="@Model.DeleteAction"
+                  asp-all-route-data="@Model.ExtraRouteValues" asp-route-id="@c.Id"
+                  method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger btn-sm"
+                        data-confirm="@string.Format(Localizer["Container_DeleteConfirm"], c.Name)"
+                        title="@Localizer["Common_Delete"]">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </form>
+        }
+    </div>
+</li>

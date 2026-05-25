@@ -179,7 +179,7 @@ Profile picture, burner name, pronouns, location (Google Places), birthday, cont
 Burner CV entries with "No prior burn experience" checkbox, contribution interests. Includes a note that this info may be considered for tier applications.
 
 ### Section 3: Application (initial setup only)
-Membership tier selection, motivation, additional info, Asociado-specific questions. Only shown when `IsInitialSetup` is true. After onboarding, users apply via `/Application/Create`.
+Membership tier selection, motivation, additional info, Asociado-specific questions. Only shown when `IsInitialSetup` is true. After onboarding, users apply via `/Governance/Applications/Create`.
 
 ### Section 4: Private Information (always visible)
 Legal first name(s), last name, emergency contact, board notes. Prefixed with lock icon and "only visible to you and the board" note.

@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -27,6 +28,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// both commit inside the same <c>SaveChanges</c>.
 /// </para>
 /// </remarks>
+[Section("Budget")]
 public interface IBudgetRepository : IRepository
 {
     // ==========================================================================

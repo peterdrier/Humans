@@ -1,51 +1,38 @@
-using Humans.Application.DTOs;
+using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
+using Humans.Web.Models.VolunteerTracking;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using NodaTime;
 using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
 
 /// <summary>
-/// Coordinator-facing tracking page: the main "fell off" cohort heatmap and
-/// the declared-but-unbooked cohort heatmap, plus mutating actions for
-/// camp-setup and per-day blocks. Class-level
-/// <c>[Authorize(Policy = ShiftDashboardAccess)]</c> gates read; mutating
-/// actions add <c>[Authorize(Policy = VolunteerTrackingWrite)]</c>. Display
-/// sorting happens here (per
-/// <c>memory/architecture/display-sort-in-controllers.md</c>) — the service
-/// returns unsorted cohorts.
+/// Coordinator tracking heatmap + camp-setup/day-block mutations.
+/// Reads gated by ShiftDashboardAccess; writes add VolunteerTrackingWrite.
 /// </summary>
-[Route("ShiftDashboard/[controller]")]
+[Route("Shifts/Dashboard/VolunteerTracking")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
-public sealed class VolunteerTrackingController : HumansControllerBase
+public sealed class VolunteerTrackingController(
+    IVolunteerTrackingService service,
+    IShiftManagementService shiftManagementService,
+    IVolunteerTrackingExportService exportService,
+    VolunteerTrackingXlsxBuilder xlsxBuilder,
+    IUserServiceRead userService,
+    IAuditLogService auditLogService,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IVolunteerTrackingService _service;
-    private readonly IProfileService _profileService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public VolunteerTrackingController(
-        IVolunteerTrackingService service,
-        IProfileService profileService,
-        IAuditLogService auditLogService,
-        UserManager<User> userManager,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
-    {
-        _service = service;
-        _profileService = profileService;
-        _auditLogService = auditLogService;
-        _localizer = localizer;
-    }
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -54,17 +41,13 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         bool hideUnbookedSection = false,
         CancellationToken ct = default)
     {
-        var data = await _service.GetTrackingDataAsync(ct);
+        var data = await service.GetTrackingDataAsync(ct);
         if (!data.HasActiveEvent)
         {
             return View(VolunteerTrackingPageViewModel.Empty);
         }
 
-        // Resolve BurnerName-aware display names for the sort key. Per
-        // memory/architecture/burnername-is-the-display-name.md, never read
-        // user.DisplayName for rendering when a Profile exists. The cell-
-        // rendering path uses <vc:human> which fetches its own FullProfile;
-        // here we only need a stable string per user-id for the row sort.
+        // BurnerName lookup for sort key + partial tooltips (cell render uses <vc:human>).
         var displayUserIds = data.MainCohort.Select(r => r.UserId)
             .Concat(data.UnbookedCohort.Select(r => r.UserId))
             .Distinct()
@@ -72,11 +55,10 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         var nameByUserId = new Dictionary<Guid, string>(displayUserIds.Length);
         foreach (var uid in displayUserIds)
         {
-            var fp = await _profileService.GetFullProfileAsync(uid, ct);
-            nameByUserId[uid] = fp?.DisplayName ?? "";
+            var info = await _userService.GetUserInfoAsync(uid, ct);
+            nameByUserId[uid] = info?.BurnerName ?? "";
         }
 
-        // Display sort in the controller (presentation concern).
         var mainSorted = data.MainCohort
             .Where(r => !hideNoGaps || r.GapCount > 0)
             .Where(r => !hideCampSetup || r.BarrioSetupStartDate is null)
@@ -86,12 +68,22 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             .ToList();
 
         var unbookedSorted = hideUnbookedSection
-            ? new List<VolunteerCohortRow>()
+            ? []
             : data.UnbookedCohort
                 .OrderByDescending(r => r.UnbookedCount)
                 .ThenBy(r => r.FirstAvailableDay)
                 .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+        // Export card form state — driven by the active event's departments.
+        // GetActiveAsync is the same lookup the Index page is gated on (we
+        // already know HasActiveEvent is true here), so the result is non-null
+        // in practice; defensive fall-back keeps the page renderable if a race
+        // empties EventSettings between the two calls.
+        var activeEvent = await shiftManagementService.GetActiveAsync();
+        var departments = activeEvent is null
+            ? []
+            : await shiftManagementService.GetDepartmentsWithRotasAsync(activeEvent.Id);
 
         var model = new VolunteerTrackingPageViewModel(
             data.BuildStartOffset,
@@ -99,11 +91,98 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             data.Today,
             mainSorted,
             unbookedSorted,
+            nameByUserId,
             hideNoGaps,
             hideCampSetup,
-            hideUnbookedSection);
+            hideUnbookedSection)
+        {
+            ExportForm = new VolunteerTrackingExportFormViewModel
+            {
+                Departments = departments,
+                SelectedDepartmentId = null,
+                SelectedPeriod = ShiftPeriod.Event,
+                StartDate = null,
+                EndDate = null,
+            },
+        };
 
         return View(model);
+    }
+
+    [HttpGet("ExportXlsx")]
+    public async Task<IActionResult> ExportXlsx(
+        Guid? departmentId,
+        string? startDate,
+        string? endDate,
+        ShiftPeriod? period,
+        BuildSubPeriod? subPeriod = null,
+        CancellationToken ct = default)
+    {
+        var eventSettings = await shiftManagementService.GetActiveAsync();
+        if (eventSettings is null)
+        {
+            SetError(localizer["VolTrack_NoActiveEvent"]);
+            return RedirectToAction(nameof(Index));
+        }
+
+        var parsedStart = TryParseLocalDate(startDate);
+        var parsedEnd = TryParseLocalDate(endDate);
+        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(period, parsedStart, parsedEnd);
+
+        // Resolve range:
+        //   period=Build + subPeriod set → narrow to that sub-period's day-offset window
+        //   period set → period's window (Build/Event/Strike each have distinct windows)
+        //   period null + explicit dates → those dates
+        //   period null + no dates → whole event (Build → Strike inclusive)
+        LocalDate rangeStart, rangeEnd;
+        if (period == ShiftPeriod.Build && subPeriod.HasValue)
+        {
+            var (startOffset, endExclusive) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, eventSettings);
+            rangeStart = eventSettings.GateOpeningDate.PlusDays(startOffset);
+            rangeEnd = eventSettings.GateOpeningDate.PlusDays(endExclusive - 1);
+        }
+        else if (period.HasValue)
+        {
+            (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(period.Value, eventSettings);
+        }
+        else if (activeStart.HasValue && activeEnd.HasValue)
+        {
+            (rangeStart, rangeEnd) = (activeStart.Value, activeEnd.Value);
+        }
+        else
+        {
+            rangeStart = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
+            rangeEnd = eventSettings.GateOpeningDate.PlusDays(eventSettings.StrikeEndOffset);
+        }
+        // Guard against a hand-crafted URL with endDate before startDate (the form's HTML5
+        // validation would block this, but the action is reachable directly).
+        if (rangeEnd < rangeStart)
+        {
+            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+        }
+
+        var actorInfo = await GetCurrentUserInfoAsync(ct);
+        var actor = actorInfo?.BurnerName ?? localizer["VolTrack_UnknownUser"].Value;
+
+        var request = new VolunteerExportRequest(
+            EventSettingsId: eventSettings.Id,
+            DepartmentId: departmentId,
+            StartDate: rangeStart,
+            EndDate: rangeEnd,
+            Period: period,
+            ActorPlayaName: actor,
+            GeneratedAtUtc: SystemClock.Instance.GetCurrentInstant());
+
+        var model = await exportService.BuildAsync(request, ct);
+        var result = xlsxBuilder.Build(model);
+        return File(result.Content, result.ContentType, result.FileName);
+    }
+
+    private static LocalDate? TryParseLocalDate(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var parsed = LocalDatePattern.Iso.Parse(input);
+        return parsed.Success ? parsed.Value : null;
     }
 
     [HttpPost("SetCampSetup")]
@@ -113,31 +192,31 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
         var parseResult = LocalDatePattern.Iso.Parse(form.Date);
         if (!parseResult.Success)
         {
-            SetError(_localizer["VolTrack_Err_BadDate"]);
+            SetError(localizer["VolTrack_Err_BadDate"]);
             return RedirectToAction(nameof(Index));
         }
         var parsed = parseResult.Value;
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await _service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
+        var result = await service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
         if (!result.Ok)
         {
-            SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
             return RedirectToAction(nameof(Index));
         }
 
         await EmitCampSetupAuditAsync(form, current.Id, result.AutoClearedDayOffs);
 
-        SetSuccess(_localizer["VolTrack_Msg_CampSetupSaved"]);
+        SetSuccess(localizer["VolTrack_Msg_CampSetupSaved"]);
         return RedirectToAction(nameof(Index));
     }
 
@@ -145,7 +224,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         SetCampSetupForm form, Guid actorUserId,
         IReadOnlyList<int>? autoClearedDayOffs)
     {
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupSet,
             nameof(VolunteerBuildStatus),
             form.UserId,
@@ -154,10 +233,9 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 
         if (autoClearedDayOffs is null || autoClearedDayOffs.Count == 0) return;
 
-        // IAuditLogRepository creates a fresh DbContext per call, so the
-        // fan-out can run concurrently without sharing change-tracker state.
+        // Fresh DbContext per call → safe to fan out concurrently.
         await Task.WhenAll(autoClearedDayOffs.Select(dayOffset =>
-            _auditLogService.LogAsync(
+            auditLogService.LogAsync(
                 AuditAction.VolunteerDayOffCleared,
                 nameof(VolunteerBuildStatus),
                 form.UserId,
@@ -172,23 +250,23 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (userId == Guid.Empty)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        await _service.ClearCampSetupAsync(userId, current.Id, ct);
+        await service.ClearCampSetupAsync(userId, current.Id, ct);
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupCleared,
             nameof(VolunteerBuildStatus),
             userId,
             "BarrioSetupStartDate cleared",
             current.Id);
 
-        SetSuccess(_localizer["VolTrack_Msg_CampSetupCleared"]);
+        SetSuccess(localizer["VolTrack_Msg_CampSetupCleared"]);
         return RedirectToAction(nameof(Index));
     }
 
@@ -199,28 +277,28 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await _service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
+        var result = await service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
         if (!result.Ok)
         {
-            SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
             return RedirectToAction(nameof(Index));
         }
 
-        await _auditLogService.LogAsync(
+        await auditLogService.LogAsync(
             AuditAction.VolunteerDayOffMarked,
             nameof(VolunteerBuildStatus),
             form.UserId,
             $"DayOffset={form.DayOffset}; reason={(string.IsNullOrWhiteSpace(form.Reason) ? "—" : form.Reason)}",
             current.Id);
 
-        SetSuccess(_localizer["VolTrack_Msg_DayOffMarked"]);
+        SetSuccess(localizer["VolTrack_Msg_DayOffMarked"]);
         return RedirectToAction(nameof(Index));
     }
 
@@ -231,23 +309,23 @@ public sealed class VolunteerTrackingController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["VolTrack_Err_BadRequest"]);
             return RedirectToAction(nameof(Index));
         }
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await _service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);
+        var result = await service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);
         if (result.Removed)
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.VolunteerDayOffCleared,
                 nameof(VolunteerBuildStatus),
                 form.UserId,
                 $"DayOffset={form.DayOffset}; cleared by coordinator",
                 current.Id);
-            SetSuccess(_localizer["VolTrack_Msg_DayOffCleared"]);
+            SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
         }
 
         return RedirectToAction(nameof(Index));

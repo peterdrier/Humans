@@ -1,7 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -9,6 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>user_emails</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
+[Section("Humans")]
 public interface IUserEmailRepository : IRepository
 {
     /// <summary>
@@ -63,13 +64,6 @@ public interface IUserEmailRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all verified @nobodies.team emails across all users.
-    /// Used as a bulk load to support in-memory filtering by callers.
-    /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Bulk-moves <c>user_emails</c> rows from <paramref name="sourceUserId"/>
     /// to <paramref name="targetUserId"/> for the account-merge fold flow.
     /// Conflict rule per the fold spec: when source and target both have a
@@ -117,7 +111,7 @@ public interface IUserEmailRepository : IRepository
     /// Used by <c>AccountMergeService.AcceptAsync</c> to complete a merge.
     /// </summary>
     Task<bool> MarkVerifiedAsync(
-        Guid emailId, NodaTime.Instant now, CancellationToken ct = default);
+        Guid emailId, Instant now, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a single email by id. Returns false if the email does not
@@ -194,6 +188,15 @@ public interface IUserEmailRepository : IRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
+    /// and ends with <paramref name="suffix"/>.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all distinct <c>UserId</c> values whose verified email rows
     /// contain an address that matches <paramref name="email"/> exactly
     /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
@@ -204,6 +207,17 @@ public interface IUserEmailRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
         string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct UserIds whose verified UserEmail matches the given
+    /// normalized address (or its gmail/googlemail alternate). Same matching
+    /// semantics as <see cref="FindVerifiedWithUserAsync"/>, but returns the
+    /// full set rather than picking one arbitrary owner — so classifiers can
+    /// detect service-level uniqueness drift instead of silently attaching to
+    /// the wrong account.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,

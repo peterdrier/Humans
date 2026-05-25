@@ -2,11 +2,10 @@ using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.CitiPlanning;
+using Humans.Infrastructure.Repositories.CityPlanning;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -29,7 +28,6 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================

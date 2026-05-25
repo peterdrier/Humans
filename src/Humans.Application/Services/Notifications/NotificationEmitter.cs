@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -13,40 +12,19 @@ using Humans.Application.Interfaces.Profiles;
 namespace Humans.Application.Services.Notifications;
 
 /// <summary>
-/// Minimal <see cref="INotificationEmitter"/> implementation that persists a
-/// notification to a pre-resolved list of recipient user IDs. Has no
+/// Persists a notification to a pre-resolved list of recipient user IDs. Has no
 /// dependency on <see cref="INotificationRecipientResolver"/>, so
-/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> can
-/// safely inject this interface without closing a DI cycle back through
-/// <see cref="INotificationService"/>.
+/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> can inject
+/// this without closing a DI cycle through <see cref="INotificationService"/>.
+/// <see cref="NotificationService"/> delegates here so dispatch logic lives in one place.
 /// </summary>
-/// <remarks>
-/// <see cref="NotificationService"/> delegates its own
-/// <see cref="INotificationEmitter.SendAsync"/> implementation to this type,
-/// so there is only one copy of the dispatch logic.
-/// </remarks>
-public sealed class NotificationEmitter : INotificationEmitter
+public sealed class NotificationEmitter(
+    INotificationRepository repo,
+    ICommunicationPreferenceService preferenceService,
+    IClock clock,
+    IMemoryCache cache,
+    ILogger<NotificationEmitter> logger) : INotificationEmitter
 {
-    private readonly INotificationRepository _repo;
-    private readonly ICommunicationPreferenceService _preferenceService;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<NotificationEmitter> _logger;
-
-    public NotificationEmitter(
-        INotificationRepository repo,
-        ICommunicationPreferenceService preferenceService,
-        IClock clock,
-        IMemoryCache cache,
-        ILogger<NotificationEmitter> logger)
-    {
-        _repo = repo;
-        _preferenceService = preferenceService;
-        _clock = clock;
-        _cache = cache;
-        _logger = logger;
-    }
-
     public async Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,
@@ -61,15 +39,15 @@ public sealed class NotificationEmitter : INotificationEmitter
     {
         if (recipientUserIds.Count == 0)
         {
-            _logger.LogWarning("SendAsync called with empty recipient list for source {Source}, title '{Title}'",
+            logger.LogWarning("SendAsync called with empty recipient list for source {Source}, title '{Title}'",
                 source, title);
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var category = source.ToMessageCategory();
 
-        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+        var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
             recipientUserIds, category, cancellationToken);
 
         var notifications = new List<Notification>(recipientUserIds.Count);
@@ -77,7 +55,7 @@ public sealed class NotificationEmitter : INotificationEmitter
         {
             if (notificationClass == NotificationClass.Informational && inboxDisabled.Contains(userId))
             {
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Skipping informational notification for user {UserId} — InboxEnabled=false for {Category}",
                     userId, category);
                 continue;
@@ -108,19 +86,19 @@ public sealed class NotificationEmitter : INotificationEmitter
 
         if (notifications.Count == 0)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "SendAsync: all {Count} recipient(s) suppressed notification for source {Source}",
                 recipientUserIds.Count, source);
             return;
         }
 
-        await _repo.AddRangeAsync(notifications, cancellationToken);
+        await repo.AddRangeAsync(notifications, cancellationToken);
         foreach (var n in notifications)
         {
-            _cache.Remove(CacheKeys.NotificationBadgeCounts(n.Recipients.Single().UserId));
+            cache.Remove(CacheKeys.NotificationBadgeCounts(n.Recipients.Single().UserId));
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to {Count} individual recipient(s)",
             source, title, notifications.Count);
     }

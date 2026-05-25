@@ -15,6 +15,11 @@ public static class RecurringJobExtensions
         var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
         var ticketSyncInterval = app.Configuration.GetSettingValue(
             registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
+        // MailerLite:AudienceSyncCron is opt-in. When empty/unset, the recurring
+        // job is not registered — admins still trigger syncs on demand via the
+        // /Mailer/Admin "Push Now" button. Set to e.g. "0 6 * * *" to enable.
+        var mailerAudienceCron = app.Configuration.GetValue<string>("MailerLite:AudienceSyncCron")
+            ?? string.Empty;
 
         var jobs = new (string Id, Action Register)[]
         {
@@ -50,14 +55,6 @@ public static class RecurringJobExtensions
             ("term-renewal-reminder", () => RecurringJob.AddOrUpdate<TermRenewalReminderJob>(
                 "term-renewal-reminder", job => job.ExecuteAsync(CancellationToken.None), "0 5 * * 1")),
 
-            // Send Board digest of new approvals — every other day (odd days of month) at 02:00 UTC.
-            ("send-board-daily-digest", () => RecurringJob.AddOrUpdate<SendBoardDailyDigestJob>(
-                "send-board-daily-digest", job => job.ExecuteAsync(CancellationToken.None), "0 2 1-31/2 * *")),
-
-            // Send Admin daily digest of system health and pending actions at 02:30 UTC.
-            ("send-admin-daily-digest", () => RecurringJob.AddOrUpdate<SendAdminDailyDigestJob>(
-                "send-admin-daily-digest", job => job.ExecuteAsync(CancellationToken.None), "30 2 * * *")),
-
             ("process-email-outbox", () => RecurringJob.AddOrUpdate<ProcessEmailOutboxJob>(
                 "process-email-outbox", job => job.ExecuteAsync(CancellationToken.None), "*/1 * * * *")),
 
@@ -84,14 +81,42 @@ public static class RecurringJobExtensions
             ("holded-expense-outbox", () => RecurringJob.AddOrUpdate<HoldedExpenseOutboxJob>(
                 "holded-expense-outbox", job => job.ExecuteAsync(CancellationToken.None), "*/1 * * * *")),
 
-            // Poll Holded for payment confirmation on SepaSent reports — every 15 minutes.
+            // Poll Holded for payment confirmation on SepaSent reports — every 6 hours.
             ("expense-paid-polling", () => RecurringJob.AddOrUpdate<ExpensePaidPollingJob>(
-                "expense-paid-polling", job => job.ExecuteAsync(CancellationToken.None), "*/15 * * * *")),
+                "expense-paid-polling", job => job.ExecuteAsync(CancellationToken.None), "0 */6 * * *")),
 
             // Purge old agent conversations — daily at 03:15 UTC.
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
                 "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),
+
         };
+
+        if (!string.IsNullOrWhiteSpace(mailerAudienceCron))
+        {
+            jobs = jobs.Append(("mailer-audience-sync", () => RecurringJob.AddOrUpdate<MailerAudienceSyncJob>(
+                "mailer-audience-sync", job => job.ExecuteAsync(CancellationToken.None), mailerAudienceCron))).ToArray();
+        }
+        else
+        {
+            // Best-effort cleanup so a previously-registered job doesn't stick around
+            // after operators disable the schedule by clearing the config value.
+            try { RecurringJob.RemoveIfExists("mailer-audience-sync"); }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to remove mailer-audience-sync recurring job entry");
+            }
+        }
+
+        // Retired job entries — best-effort cleanup so old Hangfire records
+        // referencing deleted job types don't try to instantiate them.
+        foreach (var retired in new[] { "send-board-daily-digest", "send-admin-daily-digest" })
+        {
+            try { RecurringJob.RemoveIfExists(retired); }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to remove retired recurring job '{JobId}'", retired);
+            }
+        }
 
         foreach (var (id, register) in jobs)
         {

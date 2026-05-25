@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -14,7 +13,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Email;
 using Humans.Infrastructure.Services;
-using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
 
@@ -36,9 +34,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<CleanupEmailOutboxJob>>();
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });
         var repo = new EmailOutboxRepository(new TestDbContextFactory(options));

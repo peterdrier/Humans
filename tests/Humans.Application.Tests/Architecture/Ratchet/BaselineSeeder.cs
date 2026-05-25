@@ -1,5 +1,4 @@
 using Humans.Application.Tests.Architecture.Rules;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture.Ratchet;
 
@@ -36,12 +35,6 @@ public class BaselineSeeder
             "tests/Humans.Application.Tests/Architecture/Baselines/NoDestructiveMigrationOps.baseline.txt",
             NoDestructiveMigrationOpsRule.ScanMigrations(repoRoot, migrationsDir),
             "no destructive migration ops in Up() (memory/architecture/no-drops-until-prod-verified.md)");
-
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoServiceInjectsDbContext.baseline.txt",
-            NoServiceInjectsDbContextRule.Scan(repoRoot),
-            "no Application service injects HumansDbContext (memory/architecture/repository-required-for-db-access.md)");
 
         WriteBaseline(
             repoRoot,

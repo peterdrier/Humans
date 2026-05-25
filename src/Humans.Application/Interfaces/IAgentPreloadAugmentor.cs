@@ -8,4 +8,5 @@ public interface IAgentPreloadAugmentor
     string BuildAccessMatrixMarkdown();
     string BuildGlossariesMarkdown();
     string BuildRouteMapMarkdown();
+    string BuildFaqMarkdown();
 }

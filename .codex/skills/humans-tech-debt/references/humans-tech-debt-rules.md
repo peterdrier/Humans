@@ -120,6 +120,25 @@ Fixing strategy:
 
 Do not collapse methods that represent real domain concepts, authorization boundaries, operational queue semantics, expensive server-side queries that cannot safely materialize, or intentionally bounded search/tool APIs.
 
+## Section Read-Service Rules
+
+When a section exposes both a full service interface and a `*ServiceRead` interface, code outside the owning section should depend on the read interface unless it truly writes, invalidates caches, performs an owning-section workflow, or needs an entity-only method that has no read-model equivalent yet.
+
+Read interfaces are the preferred cross-section boundary:
+
+- `ITeamServiceRead` returns `TeamInfo` / `TeamSearchHit` projections for external Teams reads; only Teams-owned write flows and entity-specific operations should inject `ITeamService`.
+- `IUserServiceRead` returns `UserInfo`, `HumanSearchResult`, `OnsiteUserRow`, and merge-chain read projections for external Users reads; write flows, identity mutations, account deletion, merge, and entity-only operations may keep `IUserService`.
+- `IConsentServiceRead` is the external Consent read surface; consent submission and consent-owned writes keep `IConsentService`.
+- When adding the same split to another section, first define a narrow `ISectionServiceRead` around the canonical cached projection, make the full service inherit it, register both interfaces to the same caching decorator, and migrate external read-only callers to the read interface.
+
+Migration strategy:
+
+- Search production code for full-service injections such as `IUserService`, `ITeamService`, `IConsentService`, and future `I*Service` interfaces that also have a `*ServiceRead`.
+- Ignore implementations, caching decorators, DI registrations, tests that intentionally exercise full-service behavior, and same-section write/orchestration flows.
+- For each external caller, inspect every method used. If all calls are available on the read interface, change the constructor/field/base class/helper parameter and update tests to substitute the read interface.
+- If a caller uses an entity-returning legacy method only to render display data, migrate the caller to the read projection (`UserInfo`, `TeamInfo`, `CampInfo`, etc.) instead of keeping the full interface.
+- Leave TODO-free notes only when a full-service dependency is intentionally retained because it writes or still needs an unmigrated entity-only operation.
+
 ## Safety Checks
 
 - Verify every change preserves behavior except for the intended simplification.

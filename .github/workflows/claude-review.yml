@@ -31,6 +31,18 @@ name: claude-review
 #     Checkout: base ref (default), per the action's docs/security.md —
 #               do NOT check out the PR head into the workspace root.
 #
+# Run cadence:
+#   Auto: on PR open (non-draft) and draft → ready_for_review. 'synchronize'
+#         (every push) is intentionally OFF — review-every-push burns budget
+#         and re-flags suppressed findings churns reviewer attention. Enable
+#         by adding 'synchronize' to both trigger 'types' if quota allows.
+#   On-demand: any OWNER/MEMBER/COLLABORATOR posting a comment starting with
+#              `/review` on the PR triggers a fresh run. The docs-only skip
+#              does NOT apply to comment-triggered runs (explicit ask wins).
+#
+# Concurrency: per-PR group with cancel-in-progress. A new push or `/review`
+# during an in-flight review cancels the stale run instead of stacking.
+#
 # Why pull_request_target stays safe: the pwn-request hole only opens if
 # you `actions/checkout` the PR head and execute code from it (build,
 # test, install). This workflow checks out the BASE ref (default for
@@ -46,9 +58,11 @@ name: claude-review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, ready_for_review]
   pull_request_target:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, ready_for_review]
+  issue_comment:
+    types: [created]
   # Note: do NOT use trigger-level paths-ignore here. For pull_request /
   # pull_request_target, GitHub evaluates path filters against the PR's
   # cumulative diff vs base, not the push delta — so once any code is in
@@ -56,10 +70,28 @@ on:
   # docs-only-push skip is enforced by the `skip-if-docs-only` step
   # below, which checks the actual push delta via the compare API.
 
+concurrency:
+  # Include event_name so pull_request, pull_request_target, and issue_comment
+  # events get separate slots per PR. Workflow-level concurrency is evaluated
+  # BEFORE job-level `if:`, so without this split, every PR comment (which
+  # queues an issue_comment run that then skips) would cancel an in-flight
+  # review via cancel-in-progress. Trade-off: a `/review` comment posted
+  # while a pull_request review is still running won't cancel that review —
+  # both run to completion. Cancel-in-progress still consolidates repeats
+  # within the same event type.
+  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   review:
     if: |
-      github.event.pull_request.draft == false && (
+      (github.event_name == 'issue_comment'
+        && github.event.issue.pull_request != null
+        && startsWith(github.event.comment.body, '/review')
+        && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                    github.event.comment.author_association))
+      ||
+      (github.event.pull_request.draft == false && (
         (github.event_name == 'pull_request'
           && github.repository == 'peterdrier/Humans'
           && github.event.pull_request.head.repo.full_name == github.repository)
@@ -73,7 +105,7 @@ jobs:
         (github.event_name == 'pull_request_target'
           && github.repository == 'nobodies-collective/Humans'
           && github.event.pull_request.head.repo.full_name == 'peterdrier/Humans')
-      )
+      ))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -93,6 +125,7 @@ jobs:
       # Fails open: if the compare endpoint errors, run the review.
       - name: skip-if-docs-only
         id: guard
+        if: github.event_name != 'issue_comment'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -195,9 +228,9 @@ jobs:
             been resolved via the GitHub UI:
 
               gh api graphql \
-                -F owner='${{ github.event.pull_request.base.repo.owner.login }}' \
-                -F repo='${{ github.event.pull_request.base.repo.name }}' \
-                -F pr=${{ github.event.pull_request.number }} \
+                -F owner='${{ github.event.repository.owner.login }}' \
+                -F repo='${{ github.event.repository.name }}' \
+                -F pr=${{ github.event.pull_request.number || github.event.issue.number }} \
                 -f query='
                   query($owner: String!, $repo: String!, $pr: Int!) {
                     repository(owner: $owner, name: $repo) {

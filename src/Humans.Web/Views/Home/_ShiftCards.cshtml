@@ -14,7 +14,7 @@
                 @foreach (var item in Model.NextShifts)
                 {
                     <li class="mb-2">
-                        <strong>@(item?.Signup?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                        <strong>@(item?.RotaName ?? item?.Signup?.Shift?.Rota?.Name ?? "Unknown")</strong>
                         <br /><small class="text-muted">@(item?.DepartmentName ?? "")</small>
                     </li>
                 }
@@ -36,7 +36,7 @@
                 @foreach (var item in Model.UrgentShifts)
                 {
                     <li class="mb-2">
-                        <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                        <strong>@(item?.RotaName ?? item?.Shift?.Rota?.Name ?? "Unknown")</strong>
                         <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots</span>
                         <br /><small class="text-muted">@(item?.DepartmentName ?? "")</small>
                     </li>

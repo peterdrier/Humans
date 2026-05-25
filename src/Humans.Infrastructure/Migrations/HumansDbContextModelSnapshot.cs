@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1149,8 +1149,20 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<int>("SlotCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SpecialRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValueSql("'None'");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1194,13 +1206,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("ContainerCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ContainerNotes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1452,6 +1457,15 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Instant?>("ContainerPlacementClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("ContainerPlacementOpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsContainerPlacementOpen")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsPlacementOpen")
                         .HasColumnType("boolean");
 
@@ -1505,6 +1519,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<bool>("OptedOut")
                         .HasColumnType("boolean");
+
+                    b.Property<Instant?>("SubscribedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("SubscribedAt");
 
                     b.Property<string>("UpdateSource")
                         .IsRequired()
@@ -1620,6 +1638,89 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("ProfileId", "Visibility");
 
                     b.ToTable("contact_fields", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.Container", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ImageContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ImageFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ImageStoragePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.ToTable("containers", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ContainerPlacement", b =>
+                {
+                    b.Property<Guid>("ContainerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocationGeoJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlacementImageContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlacementImageFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PlacementImageStoragePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("PlacementNotes")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ContainerId", "Year");
+
+                    b.HasIndex("Year");
+
+                    b.ToTable("container_placements", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>
@@ -1758,11 +1859,296 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("email_outbox_messages", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.Event", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("GuideSharedVenueId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Host")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocationNote")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("PriorityRank")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecurrenceDays")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Instant>("StartAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Instant>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubmitterUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("GuideSharedVenueId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmitterUserId");
+
+                    b.ToTable("events", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSensitive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("event_categories", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000001"),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Workshop",
+                            Slug = "workshop"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000002"),
+                            DisplayOrder = 2,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Party",
+                            Slug = "party"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000003"),
+                            DisplayOrder = 3,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Food and drink",
+                            Slug = "food-and-drink"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000004"),
+                            DisplayOrder = 4,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Chillout",
+                            Slug = "chillout"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000005"),
+                            DisplayOrder = 5,
+                            IsActive = true,
+                            IsSensitive = true,
+                            Name = "Spiritual / Healing",
+                            Slug = "spiritual-healing"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000007"),
+                            DisplayOrder = 6,
+                            IsActive = true,
+                            IsSensitive = true,
+                            Name = "Adults",
+                            Slug = "adults"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000008"),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Kids",
+                            Slug = "kids"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000006"),
+                            DisplayOrder = 8,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Other",
+                            Slug = "other"
+                        });
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventFavourite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GuideEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuideEventId");
+
+                    b.HasIndex("UserId", "GuideEventId")
+                        .IsUnique();
+
+                    b.ToTable("event_favourites", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventGuideSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EventSettingsId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("GuidePublishAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxPrintSlots")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("SubmissionCloseAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("SubmissionOpenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId")
+                        .IsUnique();
+
+                    b.ToTable("event_guide_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventModerationAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GuideEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuideEventId");
+
+                    b.ToTable("event_moderation_actions", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<Instant?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("DeclaredAt")
                         .HasColumnType("timestamp with time zone");
@@ -1789,6 +2175,31 @@ namespace Humans.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("event_participations", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExcludedCategorySlugs")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("event_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
@@ -1875,6 +2286,38 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("IsActive");
 
                     b.ToTable("event_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventVenue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LocationDescription")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("event_venues", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ExpenseAttachment", b =>
@@ -3778,6 +4221,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<int?>("EstimatedHours")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsManagement")
                         .HasColumnType("boolean");
 
@@ -4094,6 +4540,12 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("VendorStepsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]");
 
                     b.HasKey("Id");
 
@@ -5148,6 +5600,46 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ShiftSignup");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.Event", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.EventCategory", "Category")
+                        .WithMany("Events")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.EventVenue", "EventVenue")
+                        .WithMany("Events")
+                        .HasForeignKey("GuideSharedVenueId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("EventVenue");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventFavourite", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Event", "Event")
+                        .WithMany("EventFavourites")
+                        .HasForeignKey("GuideEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventModerationAction", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Event", "Event")
+                        .WithMany("EventModerationActions")
+                        .HasForeignKey("GuideEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "User")
@@ -5862,9 +6354,26 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ConsentRecords");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.Event", b =>
+                {
+                    b.Navigation("EventFavourites");
+
+                    b.Navigation("EventModerationActions");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventCategory", b =>
+                {
+                    b.Navigation("Events");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
                 {
                     b.Navigation("Rotas");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.EventVenue", b =>
+                {
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ExpenseReport", b =>

@@ -1,5 +1,6 @@
-# Build results
-[Dd]ebug/
+# Build results. NOTE: we intentionally do NOT ignore directories merely named
+# "Debug" — build output lands under bin/ and obj/ (ignored below), and /Debug is a
+# real source section (src/Humans.Web/Views/Debug, docs/features/debug).
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
@@ -45,6 +46,7 @@ packages/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+.artifacts/
 
 # Test Results
 [Tt]est[Rr]esult*/
@@ -132,9 +134,14 @@ service-account-key.json
 local/
 src/Humans.Web/bin/
 src/**/bin\\Debug/
+src/**/bin\\Release/
 .reforge-port
 todos.md
 /.claude/scheduled_tasks.lock
+
+# JetBrains InspectCode output (jb inspectcode --output=insp.json)
+insp*.json
+insp*.xml
 
 # Skills installed via `npx skills add` (per-machine; symlinks tie to checkout path).
 # To rehydrate on a fresh clone: `npx skills add -y https://docs.stripe.com`.

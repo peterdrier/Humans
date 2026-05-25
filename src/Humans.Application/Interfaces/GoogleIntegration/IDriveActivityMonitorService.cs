@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>

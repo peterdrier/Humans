@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -5,13 +6,21 @@ namespace Humans.Web.Models;
 
 public sealed record AdminDashboardViewModel(
     string GreetingFirstName,
-    int ActiveHumans,
+    int TotalUsers,
+    int ActiveProfileUsers,
+    int TicketHolders,
     int ShiftCoveragePercent,
     int? ShiftFilledOf,
     int? ShiftTotalOf,
     int OpenFeedback,
+    int OnlineNow,
+    int OnlineLastHour,
+    int OnlineLast24h,
     IReadOnlyList<DepartmentCoverage> StaffingByDepartment,
-    IReadOnlyList<DashboardActivityRow> RecentActivity);
+    IReadOnlyList<DashboardActivityRow> RecentActivity,
+    DashboardApplicationStats AppStats,
+    IReadOnlyList<DashboardLanguageCount> LanguageDistribution,
+    UserSetMembership SetMembership);
 
 public sealed record DepartmentCoverage(string Name, int Filled, int Total)
 {
@@ -20,3 +29,16 @@ public sealed record DepartmentCoverage(string Name, int Filled, int Total)
 }
 
 public sealed record DashboardActivityRow(AuditAction Action, string Description, Instant OccurredAt);
+
+public sealed record DashboardApplicationStats(
+    int Total,
+    int Approved,
+    int Rejected,
+    int Colaborador,
+    int Asociado)
+{
+    public int Pending => Total - Approved - Rejected;
+    public bool HasAny => Total > 0;
+}
+
+public sealed record DashboardLanguageCount(string Language, int Count);

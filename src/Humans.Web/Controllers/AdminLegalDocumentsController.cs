@@ -1,44 +1,29 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Legal;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-[Route("Admin")]
-public class AdminLegalDocumentsController : HumansControllerBase
+[Route("Legal/Admin")]
+public class AdminLegalDocumentsController(
+    IUserServiceRead userService,
+    IAdminLegalDocumentService adminLegalDocumentService,
+    ITeamServiceRead teamService,
+    IClock clock,
+    ILogger<AdminLegalDocumentsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IAdminLegalDocumentService _adminLegalDocumentService;
-    private readonly ITeamService _teamService;
-    private readonly IClock _clock;
-    private readonly ILogger<AdminLegalDocumentsController> _logger;
-
-    public AdminLegalDocumentsController(
-        UserManager<User> userManager,
-        IAdminLegalDocumentService adminLegalDocumentService,
-        ITeamService teamService,
-        IClock clock,
-        ILogger<AdminLegalDocumentsController> logger)
-        : base(userManager)
-    {
-        _adminLegalDocumentService = adminLegalDocumentService;
-        _teamService = teamService;
-        _clock = clock;
-        _logger = logger;
-    }
-
-    [HttpGet("LegalDocuments")]
+    [HttpGet("Documents")]
     public async Task<IActionResult> LegalDocuments(Guid? teamId)
     {
-        var documents = await _adminLegalDocumentService.GetLegalDocumentsAsync(teamId);
+        var documents = await adminLegalDocumentService.GetLegalDocumentsAsync(teamId);
 
         var viewModel = new LegalDocumentListViewModel
         {
@@ -59,10 +44,10 @@ public class AdminLegalDocumentsController : HumansControllerBase
             }).ToList()
         };
 
-        return View("~/Views/Admin/LegalDocuments.cshtml", viewModel);
+        return View("~/Views/AdminLegalDocuments/LegalDocuments.cshtml", viewModel);
     }
 
-    [HttpGet("LegalDocuments/Create")]
+    [HttpGet("Documents/Create")]
     public async Task<IActionResult> CreateLegalDocument(Guid? teamId)
     {
         var viewModel = new LegalDocumentEditViewModel
@@ -71,10 +56,10 @@ public class AdminLegalDocumentsController : HumansControllerBase
             Teams = await GetTeamSelectItems()
         };
 
-        return View("~/Views/Admin/CreateLegalDocument.cshtml", viewModel);
+        return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", viewModel);
     }
 
-    [HttpPost("LegalDocuments/Create")]
+    [HttpPost("Documents/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateLegalDocument(LegalDocumentEditViewModel model)
     {
@@ -83,31 +68,31 @@ public class AdminLegalDocumentsController : HumansControllerBase
         if (!ModelState.IsValid)
         {
             model.Teams = await GetTeamSelectItems();
-            return View("~/Views/Admin/CreateLegalDocument.cshtml", model);
+            return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", model);
         }
 
-        var document = await _adminLegalDocumentService.CreateLegalDocumentAsync(ToUpsertRequest(model, folderPath));
+        var result = await adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
+            ToUpsertRequest(model, folderPath));
+        var document = result.Document;
 
-        var currentUser = await GetCurrentUserAsync();
-        _logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
+        var currentUser = await GetCurrentUserInfoAsync();
+        logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
             currentUser?.Id, document.Id, document.Name);
 
-        // Attempt initial sync immediately.
-        if (!string.IsNullOrEmpty(document.GitHubFolderPath))
+        if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.Synced)
         {
-            try
-            {
-                var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(document.Id);
-                SetSuccess(result is not null
-                    ? $"Legal document '{document.Name}' created. {result}"
-                    : $"Legal document '{document.Name}' created. GitHub content is already up to date.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Initial sync failed for new document {DocumentId}", document.Id);
-                SetSuccess($"Legal document '{document.Name}' created.");
-                SetError($"Initial sync failed: {ex.Message}");
-            }
+            SetSuccess($"Legal document '{document.Name}' created. {result.SyncMessage}");
+        }
+        else if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.AlreadyCurrent)
+        {
+            SetSuccess($"Legal document '{document.Name}' created. GitHub content is already up to date.");
+        }
+        else if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.Failed)
+        {
+            logger.LogWarning("Initial sync failed for new document {DocumentId}: {SyncError}",
+                document.Id, result.SyncError);
+            SetSuccess($"Legal document '{document.Name}' created.");
+            SetError($"Initial sync failed: {result.SyncError}");
         }
         else
         {
@@ -117,17 +102,17 @@ public class AdminLegalDocumentsController : HumansControllerBase
         return RedirectToAction(nameof(LegalDocuments));
     }
 
-    [HttpGet("LegalDocuments/{id}/Edit")]
+    [HttpGet("Documents/{id}/Edit")]
     public async Task<IActionResult> EditLegalDocument(Guid id)
     {
-        var document = await _adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id);
+        var document = await adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id);
 
         if (document is null)
         {
             return NotFound();
         }
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var currentVersion = document.Versions
             .Where(v => v.EffectiveFrom <= now)
             .MaxBy(v => v.EffectiveFrom);
@@ -156,16 +141,16 @@ public class AdminLegalDocumentsController : HumansControllerBase
                     CreatedAt = v.CreatedAt.ToDateTimeUtc(),
                     ChangesSummary = v.ChangesSummary,
                     RequiresReConsent = v.RequiresReConsent,
-                    LanguageCount = v.Content.Count,
-                    Languages = v.Content.Keys.Order(StringComparer.Ordinal).ToList()
+                    LanguageCount = v.LanguageCount,
+                    Languages = v.Languages.ToList()
                 })
                 .ToList()
         };
 
-        return View("~/Views/Admin/EditLegalDocument.cshtml", viewModel);
+        return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", viewModel);
     }
 
-    [HttpPost("LegalDocuments/{id}/Edit")]
+    [HttpPost("Documents/{id}/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditLegalDocument(Guid id, LegalDocumentEditViewModel model)
     {
@@ -179,10 +164,10 @@ public class AdminLegalDocumentsController : HumansControllerBase
         if (!ModelState.IsValid)
         {
             model.Teams = await GetTeamSelectItems();
-            return View("~/Views/Admin/EditLegalDocument.cshtml", model);
+            return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", model);
         }
 
-        var document = await _adminLegalDocumentService.UpdateLegalDocumentAsync(
+        var document = await adminLegalDocumentService.UpdateLegalDocumentAsync(
             id,
             ToUpsertRequest(model, folderPath));
 
@@ -191,56 +176,56 @@ public class AdminLegalDocumentsController : HumansControllerBase
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
-        _logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", currentUser?.Id, id);
+        var currentUser = await GetCurrentUserInfoAsync();
+        logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", currentUser?.Id, id);
 
         SetSuccess($"Legal document '{document.Name}' updated successfully.");
         return RedirectToAction(nameof(LegalDocuments));
     }
 
-    [HttpPost("LegalDocuments/{id}/Archive")]
+    [HttpPost("Documents/{id}/Archive")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ArchiveLegalDocument(Guid id)
     {
-        var document = await _adminLegalDocumentService.ArchiveLegalDocumentAsync(id);
+        var document = await adminLegalDocumentService.ArchiveLegalDocumentAsync(id);
         if (document is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
-        _logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", currentUser?.Id, id);
+        var currentUser = await GetCurrentUserInfoAsync();
+        logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", currentUser?.Id, id);
 
         SetSuccess($"Legal document '{document.Name}' archived.");
         return RedirectToAction(nameof(LegalDocuments));
     }
 
-    [HttpPost("LegalDocuments/{id}/Sync")]
+    [HttpPost("Documents/{id}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncLegalDocument(Guid id)
     {
         try
         {
-            var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(id);
-            var currentUser = await GetCurrentUserAsync();
-            _logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", currentUser?.Id, id);
+            var result = await adminLegalDocumentService.SyncLegalDocumentAsync(id);
+            var currentUser = await GetCurrentUserInfoAsync();
+            logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", currentUser?.Id, id);
 
             SetSuccess(result ?? "Document is already up to date.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing legal document {DocumentId}", id);
+            logger.LogError(ex, "Error syncing legal document {DocumentId}", id);
             SetError($"Sync failed: {ex.Message}");
         }
 
         return RedirectToAction(nameof(EditLegalDocument), new { id });
     }
 
-    [HttpPost("LegalDocuments/{id}/Versions/{versionId}/Summary")]
+    [HttpPost("Documents/{id}/Versions/{versionId}/Summary")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string changesSummary)
     {
-        var updated = await _adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary);
+        var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary);
         if (!updated)
         {
             return NotFound();
@@ -252,13 +237,15 @@ public class AdminLegalDocumentsController : HumansControllerBase
 
     private async Task<List<TeamSelectItem>> GetTeamSelectItems()
     {
-        var teams = await _teamService.GetActiveTeamOptionsAsync();
+        var teams = (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         return teams.Select(t => new TeamSelectItem { Id = t.Id, Name = t.Name }).ToList();
     }
 
     private string? NormalizeGitHubFolderPath(string? input)
     {
-        var result = _adminLegalDocumentService.NormalizeGitHubFolderPath(input);
+        var result = adminLegalDocumentService.NormalizeGitHubFolderPath(input);
         if (!result.IsValid && !string.IsNullOrWhiteSpace(result.ErrorMessage))
         {
             ModelState.AddModelError(nameof(LegalDocumentEditViewModel.GitHubFolderPath), result.ErrorMessage);

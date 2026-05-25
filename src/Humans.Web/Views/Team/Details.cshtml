@@ -170,14 +170,11 @@
                                     }
                                     else
                                     {
-                                        <div class="text-center">
-                                            <vc:human user-id="@member.UserId"
-                                                      layout="Avatar"
-                                                      size="128"
-                                                      css-class="mb-2 mx-auto border border-primary border-3"
-                                                      bg-color="bg-primary" />
-                                            <div class="fw-semibold small">@member.DisplayName</div>
-                                        </div>
+                                        <vc:human user-id="@member.UserId"
+                                                  layout="Card" size="128"
+                                                  link="None"
+                                                  css-class="border border-primary border-3"
+                                                  bg-color="bg-primary" />
                                     }
                                 </div>
                             }
@@ -216,7 +213,7 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @foreach (var lead in Model.SubteamLeads.OrderBy(l => l.DisplayName, StringComparer.OrdinalIgnoreCase))
+                    @foreach (var lead in Model.SubteamLeads)
                     {
                         <div class="col-6 col-sm-4 col-md-3">
                             <vc:human user-id="@lead.UserId"
@@ -242,7 +239,7 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @foreach (var member in Model.ChildTeamMembers.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase))
+                    @foreach (var member in Model.ChildTeamMembers)
                     {
                         <div class="col-6 col-sm-4 col-md-3">
                             <vc:human user-id="@member.UserId" layout="Card" size="102" />

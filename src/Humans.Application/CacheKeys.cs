@@ -7,16 +7,10 @@ public static class CacheKeys
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string NotificationMeters = "NotificationMeters";
     public const string ActiveTeams = "ActiveTeams";
-    public const string CampSettings = "CampSettings";
 
     public static string TicketEventSummary(string eventId) => $"TicketEventSummary:{eventId}";
 
-    public static string CampSeasonsByYear(int year) => $"camps_year_{year}";
-
-    public static string UserTicketCount(Guid userId) => $"UserTicketCount:{userId:N}";
     public const string TicketDashboardStats = "TicketDashboardStats";
-    public const string UserIdsWithTickets = "UserIdsWithTickets";
-    public const string ValidAttendeeEmails = "ValidAttendeeEmails";
 
     public static string CampContactRateLimit(Guid userId, Guid campId) =>
         $"CampContactRateLimit:{userId:N}:{campId:N}";
@@ -32,15 +26,12 @@ public static class CacheKeys
     public static string IssuesBadge(Guid userId) => $"NavBadge:Issues:{userId:N}";
 
     public static string LegalDocument(string slug) => $"Legal:{slug}";
-    public const string NobodiesTeamEmails = "NobodiesTeamEmails_All";
 
     // Magic link sentinel keys (rate limiting and replay prevention)
     public static string MagicLinkUsed(string tokenPrefix) => $"magic_link_used:{tokenPrefix}";
     public static string MagicLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
 
-    /// <summary>
-    /// Cache key type classification for the Admin Cache Stats page.
-    /// </summary>
+    /// <summary>Classification for the Admin Cache Stats page.</summary>
     public enum CacheKeyType
     {
         Static,
@@ -49,14 +40,10 @@ public static class CacheKeys
         RateLimit
     }
 
-    /// <summary>
-    /// Metadata for a cache key prefix: configured TTL and key type.
-    /// </summary>
+    /// <summary>TTL + type for a cache key prefix.</summary>
     public record CacheKeyMeta(string Ttl, CacheKeyType Type);
 
-    /// <summary>
-    /// Static lookup of known cache key prefixes to their TTL and type classification.
-    /// </summary>
+    /// <summary>Known cache key prefixes → TTL + type.</summary>
     public static readonly IReadOnlyDictionary<string, CacheKeyMeta> Metadata =
         new Dictionary<string, CacheKeyMeta>(StringComparer.Ordinal)
         {
@@ -64,13 +51,8 @@ public static class CacheKeys
             ["NotificationBadge"] = new("2 min", CacheKeyType.PerUser),
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
             ["ActiveTeams"] = new("10 min", CacheKeyType.Static),
-            ["CampSettings"] = new("5 min", CacheKeyType.Static),
             ["TicketEventSummary"] = new("15 min", CacheKeyType.PerEntity),
-            ["camps_year"] = new("5 min", CacheKeyType.PerEntity),
-            ["UserTicketCount"] = new("5 min", CacheKeyType.PerUser),
             ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),
-            ["UserIdsWithTickets"] = new("5 min", CacheKeyType.Static),
-            ["ValidAttendeeEmails"] = new("5 min", CacheKeyType.Static),
             ["CampContactRateLimit"] = new("10 min", CacheKeyType.RateLimit),
             ["claims"] = new("60 sec", CacheKeyType.PerUser),
             ["shift-auth"] = new("60 sec", CacheKeyType.PerUser),
@@ -78,6 +60,5 @@ public static class CacheKeys
             ["Legal"] = new("1 hour", CacheKeyType.PerEntity),
             ["magic_link_used"] = new("15 min", CacheKeyType.RateLimit),
             ["magic_link_signup"] = new("60 sec", CacheKeyType.RateLimit),
-            [NobodiesTeamEmails] = new("2 min", CacheKeyType.Static),
         };
 }

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Stores;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 

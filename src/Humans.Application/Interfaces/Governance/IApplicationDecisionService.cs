@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
 using Humans.Domain.Enums;
@@ -40,7 +39,7 @@ public interface IApplicationDecisionService : IApplicationService
     /// Callers only read scalar fields (Status, MembershipTier, SubmittedAt,
     /// ResolvedAt) so the entity shape is preserved.
     /// </summary>
-    Task<IReadOnlyList<MemberApplication>> GetUserApplicationsAsync(
+    Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -102,7 +101,7 @@ public interface IApplicationDecisionService : IApplicationService
     /// Returns the single Submitted application for the given user, or null
     /// if none. Used by the onboarding review detail view.
     /// </summary>
-    Task<MemberApplication?> GetSubmittedApplicationForUserAsync(
+    Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -174,7 +173,7 @@ public interface IApplicationDecisionService : IApplicationService
     /// renewal reminder job so it can enumerate candidates without reading
     /// <c>applications</c> directly (design-rules §2c).
     /// </summary>
-    Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+    Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
 
     /// <summary>
@@ -200,7 +199,7 @@ public interface IApplicationDecisionService : IApplicationService
     /// resolved within the half-open window
     /// <c>[windowStart, windowEnd)</c>. Used by the Board daily digest.
     /// </summary>
-    Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+    Task<IReadOnlyList<ApprovedApplicationDigestEntry>> GetApprovedInWindowAsync(
         Instant windowStart, Instant windowEnd, CancellationToken ct = default);
 
     /// <summary>
@@ -257,3 +256,32 @@ public interface IApplicationDecisionService : IApplicationService
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);
+
+public sealed record UserApplicationSnapshot(
+    Guid Id,
+    Guid UserId,
+    ApplicationStatus Status,
+    MembershipTier MembershipTier,
+    Instant SubmittedAt,
+    Instant? ResolvedAt,
+    LocalDate? TermExpiresAt,
+    string Motivation,
+    string? AdditionalInfo,
+    string? SignificantContribution,
+    string? RoleUnderstanding);
+
+public sealed record ApplicationRenewalReminderCandidate(
+    Guid Id,
+    Guid UserId,
+    MembershipTier MembershipTier,
+    Instant SubmittedAt,
+    LocalDate? TermExpiresAt);
+
+public sealed record ApprovedApplicationDigestEntry(
+    Guid UserId,
+    MembershipTier MembershipTier);
+
+public sealed record SubmittedApplicationSnapshot(
+    Guid Id,
+    MembershipTier MembershipTier,
+    string Motivation);

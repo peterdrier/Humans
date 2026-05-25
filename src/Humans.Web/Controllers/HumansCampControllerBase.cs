@@ -1,35 +1,27 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Camps;
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public abstract class HumansCampControllerBase : HumansControllerBase
+public abstract class HumansCampControllerBase(
+    IUserServiceRead userService,
+    ICampService campService,
+    IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
-    private readonly ICampService _campService;
-    private readonly IAuthorizationService _authorizationService;
+    protected ICampService CampService => campService;
 
-    protected HumansCampControllerBase(
-        UserManager<User> userManager,
-        ICampService campService,
-        IAuthorizationService authorizationService)
-        : base(userManager)
+    protected Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
-        _campService = campService;
-        _authorizationService = authorizationService;
+        return campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, UserInfo? user, CancellationToken cancellationToken = default)
     {
-        return _campService.GetCampBySlugAsync(slug, cancellationToken);
-    }
-
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, User? user, CancellationToken cancellationToken = default)
-    {
-        var canManage = (await _authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
+        var canManage = (await authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
         {
             return (false, false);
@@ -40,13 +32,13 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (false, false);
         }
 
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
+        var isLead = await campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
         var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User, CampLookup Camp)> ResolveCampManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampManagementAsync(string slug)
     {
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)
@@ -60,7 +52,37 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (currentUserError, null!, camp);
         }
 
-        var result = await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage);
+        var result = await authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage);
+        if (result.Succeeded)
+        {
+            return (null, user, camp);
+        }
+
+        return (Forbid(), user, camp);
+    }
+
+    /// <summary>
+    /// Like <see cref="ResolveCampManagementAsync"/> but authorizes via
+    /// <see cref="CampOperationRequirement.SubmitEvent"/> — Lead OR Workshop
+    /// (plus CampAdmin / Admin). Used by <c>EventsController</c> so Workshop
+    /// Leads can submit camp events on behalf of their camp without inheriting
+    /// the broader Camp Lead authority surface.
+    /// </summary>
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampEventManagementAsync(string slug)
+    {
+        var camp = await GetCampBySlugAsync(slug);
+        if (camp is null)
+        {
+            return (NotFound(), null!, null!);
+        }
+
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return (currentUserError, null!, camp);
+        }
+
+        var result = await authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent);
         if (result.Succeeded)
         {
             return (null, user, camp);

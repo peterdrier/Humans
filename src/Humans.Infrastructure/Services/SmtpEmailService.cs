@@ -1,4 +1,4 @@
-using Humans.Application.DTOs;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -17,27 +17,15 @@ namespace Humans.Infrastructure.Services;
 /// Email service implementation using SMTP via MailKit.
 /// Delegates rendering to IEmailRenderer; handles transport only.
 /// </summary>
-public class SmtpEmailService : IEmailService
+public class SmtpEmailService(
+    IOptions<EmailSettings> settings,
+    IHumansMetrics metrics,
+    ILogger<SmtpEmailService> logger,
+    IEmailRenderer renderer,
+    IHostEnvironment hostEnvironment) : IEmailService
 {
-    private readonly EmailSettings _settings;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<SmtpEmailService> _logger;
-    private readonly IEmailRenderer _renderer;
-    private readonly string _environmentName;
-
-    public SmtpEmailService(
-        IOptions<EmailSettings> settings,
-        IHumansMetrics metrics,
-        ILogger<SmtpEmailService> logger,
-        IEmailRenderer renderer,
-        IHostEnvironment hostEnvironment)
-    {
-        _settings = settings.Value;
-        _metrics = metrics;
-        _logger = logger;
-        _renderer = renderer;
-        _environmentName = hostEnvironment.EnvironmentName;
-    }
+    private readonly EmailSettings _settings = settings.Value;
+    private readonly string _environmentName = hostEnvironment.EnvironmentName;
 
     /// <inheritdoc />
     public async Task SendApplicationApprovedAsync(
@@ -47,9 +35,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderApplicationApproved(userName, tier, culture);
+        var content = renderer.RenderApplicationApproved(userName, tier, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("application_approved");
+        metrics.RecordEmailSent("application_approved");
     }
 
     /// <inheritdoc />
@@ -61,9 +49,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderApplicationRejected(userName, tier, reason, culture);
+        var content = renderer.RenderApplicationRejected(userName, tier, reason, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("application_rejected");
+        metrics.RecordEmailSent("application_rejected");
     }
 
     /// <inheritdoc />
@@ -74,7 +62,7 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        await SendReConsentsRequiredAsync(userEmail, userName, new[] { documentName }, culture, cancellationToken);
+        await SendReConsentsRequiredAsync(userEmail, userName, [documentName], culture, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -86,9 +74,9 @@ public class SmtpEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var docs = documentNames.ToList();
-        var content = _renderer.RenderReConsentsRequired(userName, docs, culture);
+        var content = renderer.RenderReConsentsRequired(userName, docs, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("reconsents_required");
+        metrics.RecordEmailSent("reconsents_required");
     }
 
     /// <inheritdoc />
@@ -101,9 +89,9 @@ public class SmtpEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var docs = documentNames.ToList();
-        var content = _renderer.RenderReConsentReminder(userName, docs, daysRemaining, culture);
+        var content = renderer.RenderReConsentReminder(userName, docs, daysRemaining, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("reconsent_reminder");
+        metrics.RecordEmailSent("reconsent_reminder");
     }
 
     /// <inheritdoc />
@@ -113,9 +101,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderWelcome(userName, culture);
+        var content = renderer.RenderWelcome(userName, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("welcome");
+        metrics.RecordEmailSent("welcome");
     }
 
     /// <inheritdoc />
@@ -126,9 +114,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderAccessSuspended(userName, reason, culture);
+        var content = renderer.RenderAccessSuspended(userName, reason, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("access_suspended");
+        metrics.RecordEmailSent("access_suspended");
     }
 
     /// <inheritdoc />
@@ -140,9 +128,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
+        var content = renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("email_verification");
+        metrics.RecordEmailSent("email_verification");
     }
 
     /// <inheritdoc />
@@ -154,9 +142,9 @@ public class SmtpEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var formattedDate = deletionDate.ToInvariantLongDate();
-        var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
+        var content = renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("deletion_requested");
+        metrics.RecordEmailSent("deletion_requested");
     }
 
     /// <inheritdoc />
@@ -166,9 +154,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderAccountDeleted(userName, culture);
+        var content = renderer.RenderAccountDeleted(userName, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("account_deleted");
+        metrics.RecordEmailSent("account_deleted");
     }
 
     /// <inheritdoc />
@@ -182,9 +170,9 @@ public class SmtpEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var resourceList = resources.ToList();
-        var content = _renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
+        var content = renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("added_to_team");
+        metrics.RecordEmailSent("added_to_team");
     }
 
     /// <inheritdoc />
@@ -195,9 +183,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderSignupRejected(userName, reason, culture);
+        var content = renderer.RenderSignupRejected(userName, reason, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("signup_rejected");
+        metrics.RecordEmailSent("signup_rejected");
     }
 
     /// <inheritdoc />
@@ -209,38 +197,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
+        var content = renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("term_renewal_reminder");
-    }
-
-    /// <inheritdoc />
-    public async Task SendBoardDailyDigestAsync(
-        string email,
-        string name,
-        string date,
-        IReadOnlyList<BoardDigestTierGroup> groups,
-        BoardDigestOutstandingCounts? outstandingCounts = null,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderBoardDailyDigest(name, date, groups, outstandingCounts, culture);
-        await SendEmailAsync(email, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("board_daily_digest");
-    }
-
-    /// <inheritdoc />
-    public async Task SendAdminDailyDigestAsync(
-        string email,
-        string name,
-        string date,
-        AdminDigestCounts counts,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
-        await SendEmailAsync(email, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("admin_daily_digest");
+        metrics.RecordEmailSent("term_renewal_reminder");
     }
 
     /// <inheritdoc />
@@ -249,9 +208,9 @@ public class SmtpEmailService : IEmailService
         string responseMessage, string reportLink, string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
+        var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken: cancellationToken);
-        _metrics.RecordEmailSent("feedback_response");
+        metrics.RecordEmailSent("feedback_response");
     }
 
     public async Task SendFacilitatedMessageAsync(
@@ -264,38 +223,50 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderFacilitatedMessage(
+        var content = renderer.RenderFacilitatedMessage(
             recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
         var replyTo = includeContactInfo ? senderEmail : null;
         await SendEmailAsync(recipientEmail, content.Subject, content.HtmlBody, cancellationToken, replyTo);
-        _metrics.RecordEmailSent("facilitated_message");
+        metrics.RecordEmailSent("facilitated_message");
+    }
+
+    public async Task SendCoordinatorRotaMessageAsync(
+        CoordinatorRotaMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var content = renderer.RenderCoordinatorRotaMessage(
+            request.RecipientName, request.SenderName, request.SenderEmail,
+            request.RotaName, request.MessageText, request.ShiftLines, request.Culture);
+        await SendEmailAsync(request.RecipientEmail, content.Subject, content.HtmlBody, cancellationToken, request.SenderEmail);
+        metrics.RecordEmailSent("coordinator_rota_message");
     }
 
     public async Task SendMagicLinkLoginAsync(
         string toEmail, string displayName, string magicLinkUrl,
         string? culture = null, CancellationToken ct = default)
     {
-        var content = _renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
+        var content = renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, ct);
-        _metrics.RecordEmailSent("magic_link_login");
+        metrics.RecordEmailSent("magic_link_login");
     }
 
     public async Task SendMagicLinkSignupAsync(
         string toEmail, string magicLinkUrl,
         string? culture = null, CancellationToken ct = default)
     {
-        var content = _renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
+        var content = renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, ct);
-        _metrics.RecordEmailSent("magic_link_signup");
+        metrics.RecordEmailSent("magic_link_signup");
     }
 
     public async Task SendWorkspaceCredentialsAsync(
         string recoveryEmail, string userName, string workspaceEmail, string tempPassword,
         string? culture = null, CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
+        var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
         await SendEmailAsync(recoveryEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("workspace_credentials");
+        metrics.RecordEmailSent("workspace_credentials");
     }
 
     public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
@@ -316,9 +287,21 @@ public class SmtpEmailService : IEmailService
             .Replace("{{Name}}", request.RecipientName, StringComparison.Ordinal);
 
         await SendEmailAsync(request.RecipientEmail, renderedSubject, renderedBody, cancellationToken, request.ReplyTo);
-        _metrics.RecordEmailSent("campaign_code");
+        metrics.RecordEmailSent("campaign_code");
     }
 
+    /// <inheritdoc />
+    public async Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderEventLifecycle(request);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent(request.TemplateName());
+    }
+
+    /// <inheritdoc />
     public async Task SendIssueCommentAsync(
         string to,
         string displayName,
@@ -328,9 +311,40 @@ public class SmtpEmailService : IEmailService
         string preferredLanguage,
         CancellationToken ct = default)
     {
-        var content = _renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
+        var content = renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
         await SendEmailAsync(to, content.Subject, content.HtmlBody, ct);
-        _metrics.RecordEmailSent("issue_comment");
+        metrics.RecordEmailSent("issue_comment");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferRequestedAsync(
+        string senderEmail, string senderName, string receiverName, string ticketLabel,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferRequested(senderName, receiverName, ticketLabel, culture);
+        await SendEmailAsync(senderEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent("ticket_transfer_requested");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferTeamNotificationAsync(
+        string senderName, string receiverName, string receiverEmail, string ticketLabel,
+        string? reason, string reviewUrl, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferTeamNotification(
+            senderName, receiverName, receiverEmail, ticketLabel, reason, reviewUrl);
+        await SendEmailAsync(TicketConstants.TicketsTeamEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent("ticket_transfer_team");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTicketTransferDecisionAsync(
+        string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = renderer.RenderTicketTransferDecision(toName, successful, ticketLabel, receiverName, reason, culture);
+        await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, cancellationToken);
+        metrics.RecordEmailSent(successful ? "ticket_transfer_completed" : "ticket_transfer_cancelled");
     }
 
     public async Task SendGoogleGroupRemovalLossOfAccessAsync(
@@ -341,9 +355,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
+        var content = renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
         await SendEmailAsync(removedEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("google_group_removal_loss_of_access");
+        metrics.RecordEmailSent("google_group_removal_loss_of_access");
     }
 
     public async Task SendGoogleDriveRemovalLossOfAccessAsync(
@@ -353,9 +367,9 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
+        var content = renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
         await SendEmailAsync(removedEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("google_drive_removal_loss_of_access");
+        metrics.RecordEmailSent("google_drive_removal_loss_of_access");
     }
 
     public async Task SendGoogleAccessRemovalSecondaryCleanupAsync(
@@ -365,10 +379,10 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderGoogleAccessRemovalSecondaryCleanup(
+        var content = renderer.RenderGoogleAccessRemovalSecondaryCleanup(
             userName, removedEmail, currentGoogleEmail, culture);
         await SendEmailAsync(removedEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("google_access_removal_secondary_cleanup");
+        metrics.RecordEmailSent("google_access_removal_secondary_cleanup");
     }
 
     private async Task SendEmailAsync(
@@ -415,11 +429,11 @@ public class SmtpEmailService : IEmailService
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
 
-            _logger.LogInformation("Email sent to {To}: {Subject}", toAddress, subject);
+            logger.LogInformation("Email sent to {To}: {Subject}", toAddress, subject);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To}: {Subject}", toAddress, subject);
+            logger.LogError(ex, "Failed to send email to {To}: {Subject}", toAddress, subject);
             throw;
         }
     }

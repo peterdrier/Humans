@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
@@ -11,56 +12,19 @@ using NodaTime;
 namespace Humans.Application.Services.AuditLog;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IAuditLogService"/>. Goes
-/// through <see cref="IAuditLogRepository"/> for all data access — this type
-/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
+/// <see cref="IAuditLogService"/> impl. Append-only (design-rules §12); best-effort — repo failures logged and swallowed (§7a).
+/// Callers must audit AFTER business save. Also <see cref="IUserDataContributor"/> for GDPR export.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <c>audit_log</c> is append-only per design-rules §12 — this service only
-/// appends entries; there is no update or delete path. Each <c>LogAsync</c>
-/// call persists its entry immediately (auto-saved by the repository). The
-/// prior pattern (adding to the caller's shared Scoped <c>DbContext</c> and
-/// relying on a downstream <c>SaveChanges</c>) is gone; it is replaced by
-/// per-call persistence, which matches how recently-migrated sections
-/// (Profile, User, Governance, Budget, City Planning) write.
-/// </para>
-/// <para>
-/// Audit is <b>best-effort</b> per design-rules §7a: repository save failures
-/// are logged at error level and swallowed so an audit hiccup never breaks
-/// the business operation that invoked it. Callers are still required to
-/// invoke audit <em>after</em> the business save has succeeded so a business
-/// rollback never leaves a ghost audit row.
-/// </para>
-/// <para>
-/// Implements <see cref="IUserDataContributor"/> so the GDPR export
-/// orchestrator can assemble per-user audit slices without crossing the
-/// section boundary.
-/// </para>
-/// </remarks>
-public sealed class AuditLogService : IAuditLogService, IUserDataContributor
+[DontFix(
+    reason: "Audit (crosscut) reads merged-account source IDs via IUserServiceRead so queries follow merged identities. Extracting merge-id resolution to a standalone leaf is deferred and Peter-owned.",
+    since: "2026-05-25")]
+public sealed class AuditLogService(
+    IAuditLogRepository repo,
+    IUserServiceRead userService,
+    IClock clock,
+    ILogger<AuditLogService> logger) : IAuditLogService, IUserDataContributor
 {
-    private readonly IAuditLogRepository _repo;
-    private readonly IUserService _userService;
-    private readonly IClock _clock;
-    private readonly ILogger<AuditLogService> _logger;
-
-    public AuditLogService(
-        IAuditLogRepository repo,
-        IUserService userService,
-        IClock clock,
-        ILogger<AuditLogService> logger)
-    {
-        _repo = repo;
-        _userService = userService;
-        _clock = clock;
-        _logger = logger;
-    }
-
-    // ==========================================================================
-    // Writes — append-only
-    // ==========================================================================
+    // ─── Writes (append-only) ───
 
     /// <inheritdoc />
     public async Task LogAsync(AuditAction action, string entityType, Guid entityId,
@@ -74,7 +38,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             EntityType = entityType,
             EntityId = entityId,
             Description = $"{jobName}: {description}",
-            OccurredAt = _clock.GetCurrentInstant(),
+            OccurredAt = clock.GetCurrentInstant(),
             ActorUserId = null,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType
@@ -82,7 +46,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 
         await PersistAsync(entry);
 
-        _logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
+        logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
             action, entityType, entityId, jobName, description);
     }
 
@@ -98,7 +62,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             EntityType = entityType,
             EntityId = entityId,
             Description = description,
-            OccurredAt = _clock.GetCurrentInstant(),
+            OccurredAt = clock.GetCurrentInstant(),
             ActorUserId = actorUserId,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType
@@ -106,7 +70,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 
         await PersistAsync(entry);
 
-        _logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
+        logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
             action, entityType, entityId, actorUserId, description);
     }
 
@@ -124,7 +88,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             EntityType = "GoogleResource",
             EntityId = resourceId,
             Description = $"{jobName}: {description}",
-            OccurredAt = _clock.GetCurrentInstant(),
+            OccurredAt = clock.GetCurrentInstant(),
             ActorUserId = null,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType,
@@ -138,7 +102,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 
         await PersistAsync(entry);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Audit: {Action} {Role} for {Email} on resource {ResourceId} ({Source}, Success={Success})",
             action, role, userEmail, resourceId, source, success);
     }
@@ -147,47 +111,71 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     {
         try
         {
-            await _repo.AddAsync(entry);
+            await repo.AddAsync(entry);
         }
         catch (Exception ex)
         {
-            // Audit is best-effort. A save failure must not propagate into the
-            // business operation that invoked it — log loudly and move on.
-            _logger.LogError(ex,
+            // Best-effort: log loudly, do not propagate (would break the business op).
+            logger.LogError(ex,
                 "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
                 entry.Id, entry.Action, entry.EntityType, entry.EntityId);
         }
     }
 
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
+    // ─── Reads ───
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId) =>
-        _repo.GetByResourceAsync(resourceId);
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId)
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId)
     {
-        // Chain-follow merge tombstones so a fold-target's Google sync history
-        // transparently surfaces rows still attributed to merged source ids.
-        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId);
+        var entries = await repo.GetByResourceAsync(resourceId);
+        return entries.Select(ToSnapshot).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId)
+    {
+        // Chain-follow merge tombstones for source-id-attributed rows.
+        var sourceIds = await userService.GetMergedSourceIdsAsync(userId);
         if (sourceIds.Count == 0)
-            return await _repo.GetGoogleSyncByUserAsync(userId);
+        {
+            var entries = await repo.GetGoogleSyncByUserAsync(userId);
+            return entries.Select(ToSnapshot).ToList();
+        }
 
         var allIds = new List<Guid>(sourceIds.Count + 1);
         allIds.AddRange(sourceIds);
         allIds.Add(userId);
-        return await _repo.GetGoogleSyncByUserIdsAsync(allIds);
+        var mergedEntries = await repo.GetGoogleSyncByUserIdsAsync(allIds);
+        return mergedEntries.Select(ToSnapshot).ToList();
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        _repo.GetRecentAsync(count, ct);
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default)
+    {
+        var entries = await repo.GetRecentAsync(count, ct);
+        return entries.Select(ToSnapshot).ToList();
+    }
+
+    private static AuditLogEntrySnapshot ToSnapshot(AuditLogEntry entry) =>
+        new(
+            entry.Id,
+            entry.Action,
+            entry.EntityType,
+            entry.EntityId,
+            entry.Description,
+            entry.OccurredAt,
+            entry.ActorUserId,
+            entry.RelatedEntityId,
+            entry.RelatedEntityType,
+            entry.ResourceId,
+            entry.Success,
+            entry.ErrorMessage,
+            entry.Role,
+            entry.SyncSource,
+            entry.UserEmail);
 
     /// <inheritdoc />
-    public Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+    public async Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
         AuditAction? parsed = null;
@@ -197,26 +185,30 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             parsed = action;
         }
 
-        return _repo.GetFilteredAsync(parsed, page, pageSize, ct);
+        var (items, totalCount, anomalyCount) = await repo.GetFilteredAsync(parsed, page, pageSize, ct);
+        return (items.Select(ToSnapshot).ToList(), totalCount, anomalyCount);
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones so a fold-target's audit history
-        // transparently surfaces rows still attributed to merged source ids.
-        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        // Chain-follow merge tombstones for source-id-attributed rows.
+        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
         if (sourceIds.Count == 0)
-            return await _repo.GetByUserAsync(userId, count, ct);
+        {
+            var entries = await repo.GetByUserAsync(userId, count, ct);
+            return entries.Select(ToSnapshot).ToList();
+        }
 
         var allIds = new List<Guid>(sourceIds.Count + 1);
         allIds.AddRange(sourceIds);
         allIds.Add(userId);
-        return await _repo.GetByUserIdsAsync(allIds, count, ct);
+        var mergedEntries = await repo.GetByUserIdsAsync(allIds, count, ct);
+        return mergedEntries.Select(ToSnapshot).ToList();
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
@@ -224,16 +216,14 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         int limit = 20,
         CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones when a userId filter is supplied so a
-        // fold-target's history transparently surfaces rows still attributed
-        // to merged source ids.
+        // Chain-follow merge tombstones when userId is supplied.
         IReadOnlyCollection<Guid>? userIds = null;
         if (userId.HasValue)
         {
-            var sourceIds = await _userService.GetMergedSourceIdsAsync(userId.Value, ct);
+            var sourceIds = await userService.GetMergedSourceIdsAsync(userId.Value, ct);
             if (sourceIds.Count == 0)
             {
-                userIds = new[] { userId.Value };
+                userIds = [userId.Value];
             }
             else
             {
@@ -244,81 +234,30 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             }
         }
 
-        return await _repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
+        var entries = await repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
+        return entries.Select(ToSnapshot).ToList();
     }
 
-    /// <inheritdoc />
-    public async Task<AuditLogPageResult> GetAuditLogPageAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default)
-    {
-        var (items, totalCount, anomalyCount) = await GetFilteredAsync(actionFilter, page, pageSize, ct);
-
-        // Collect all user and team IDs that might appear as actors, subjects, or targets.
-        var userIds = new HashSet<Guid>();
-        var teamIds = new HashSet<Guid>();
-
-        foreach (var e in items)
-        {
-            if (e.ActorUserId.HasValue)
-                userIds.Add(e.ActorUserId.Value);
-
-            // Subject user ID: User/Profile/WorkspaceAccount entity types, or related User.
-            if (e.EntityType is "User" or "Profile" or "WorkspaceAccount")
-                userIds.Add(e.EntityId);
-            else if (string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
-                userIds.Add(e.RelatedEntityId.Value);
-
-            // Target team ID.
-            if (string.Equals(e.EntityType, "Team", StringComparison.Ordinal))
-                teamIds.Add(e.EntityId);
-            else if (string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
-                teamIds.Add(e.RelatedEntityId.Value);
-        }
-
-        var userDisplayNames = await GetUserDisplayNamesAsync(userIds.ToList(), ct);
-        var teamNameLookup = await GetTeamNamesAsync(teamIds.ToList(), ct);
-
-        return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNameLookup);
-    }
-
-    /// <inheritdoc />
-    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetUserDisplayNamesAsync(userIds, ct);
-
-    /// <inheritdoc />
-    public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
-        IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
-        _repo.GetTeamNamesAsync(teamIds, ct);
-
-    // ==========================================================================
-    // IUserDataContributor (GDPR export)
-    // ==========================================================================
+    // ─── IUserDataContributor (GDPR export) ───
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow merge tombstones so a fold-target's GDPR export
-        // transparently includes rows still attributed to merged source ids.
-        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        // Chain-follow merge tombstones for source-id-attributed rows.
+        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
         IReadOnlyList<AuditLogEntry> entries;
         if (sourceIds.Count == 0)
         {
-            entries = await _repo.GetAllForUserContributorAsync(userId, ct);
+            entries = await repo.GetAllForUserContributorAsync(userId, ct);
         }
         else
         {
             var allIds = new List<Guid>(sourceIds.Count + 1);
             allIds.AddRange(sourceIds);
             allIds.Add(userId);
-            entries = await _repo.GetAllForUserIdsContributorAsync(allIds, ct);
+            entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
         }
 
-        // The "Actor" role attribution is preserved against the target id.
-        // Source-tombstone rows where ActorUserId is one of the source ids
-        // are surfaced as Subject rows for the target — which is the correct
-        // export semantic post-merge: the target now owns the source's
-        // history and the per-row actor context is anonymized along with
-        // the source User row by AnonymizeForMergeAsync.
+        // Post-merge: source rows surface as Subject for the target (actor context anonymized via AnonymizeForMergeAsync).
         var shaped = entries.Select(a => new
         {
             a.Action,
@@ -331,15 +270,15 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     }
 
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart,
-        NodaTime.Instant windowEnd,
+        Instant windowStart,
+        Instant windowEnd,
         AuditAction action,
         CancellationToken ct = default) =>
-        _repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
+        repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default) =>
-        _repo.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
+        repo.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
 }

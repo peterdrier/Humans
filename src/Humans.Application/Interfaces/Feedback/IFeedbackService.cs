@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -9,6 +7,11 @@ namespace Humans.Application.Interfaces.Feedback;
 
 public interface IFeedbackService : IApplicationService
 {
+    Task<FeedbackReport> SubmitUserFeedbackAsync(
+        Guid userId, FeedbackCategory category, string description,
+        string pageUrl, string? userAgent, IEnumerable<string> roleNames,
+        IFormFile? screenshot, CancellationToken cancellationToken = default);
+
     Task<FeedbackReport> SubmitFeedbackAsync(
         Guid userId, FeedbackCategory category, string description,
         string pageUrl, string? userAgent, string? additionalContext,
@@ -16,6 +19,9 @@ public interface IFeedbackService : IApplicationService
 
     Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
         Guid id, CancellationToken cancellationToken = default);
+
+    Task<FeedbackReportInfo?> GetFeedbackByIdForViewerAsync(
+        Guid id, Guid viewerUserId, bool isAdmin, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
         FeedbackStatus? status = null, FeedbackCategory? category = null,
@@ -65,6 +71,7 @@ public sealed record FeedbackReportInfo(
     int? GitHubIssueNumber,
     Instant? LastReporterMessageAt,
     Instant? LastAdminMessageAt,
+    bool NeedsReply,
     Instant CreatedAt,
     Instant UpdatedAt,
     Instant? ResolvedAt,

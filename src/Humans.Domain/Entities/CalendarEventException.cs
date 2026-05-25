@@ -34,8 +34,8 @@ public class CalendarEventException
             OverrideLocationUrl is not null;
 
         if (!IsCancelled && !hasOverride)
-            return new[] { "Exception must either cancel the occurrence or override at least one field." };
+            return ["Exception must either cancel the occurrence or override at least one field."];
 
-        return Array.Empty<string>();
+        return [];
     }
 }

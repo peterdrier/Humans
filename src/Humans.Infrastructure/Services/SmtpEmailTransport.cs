@@ -12,16 +12,9 @@ namespace Humans.Infrastructure.Services;
 /// SMTP transport implementation using MailKit.
 /// Handles only connection and send — no rendering, no template wrapping, no metrics.
 /// </summary>
-public class SmtpEmailTransport : IEmailTransport
+public class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogger<SmtpEmailTransport> logger) : IEmailTransport
 {
-    private readonly EmailSettings _settings;
-    private readonly ILogger<SmtpEmailTransport> _logger;
-
-    public SmtpEmailTransport(IOptions<EmailSettings> settings, ILogger<SmtpEmailTransport> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly EmailSettings _settings = settings.Value;
 
     public async Task SendAsync(
         string recipientEmail,
@@ -87,11 +80,11 @@ public class SmtpEmailTransport : IEmailTransport
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
 
-            _logger.LogInformation("Email sent to {Recipient}: {Subject}", recipientEmail, subject);
+            logger.LogInformation("Email sent to {Recipient}: {Subject}", recipientEmail, subject);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {Recipient}: {Subject}", recipientEmail, subject);
+            logger.LogError(ex, "Failed to send email to {Recipient}: {Subject}", recipientEmail, subject);
             throw;
         }
     }

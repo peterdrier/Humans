@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -8,6 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>communication_preferences</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
+[Section("Humans")]
 public interface ICommunicationPreferenceRepository : IRepository
 {
     /// <summary>
@@ -42,10 +44,25 @@ public interface ICommunicationPreferenceRepository : IRepository
         IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all preferences for a user, read-only. Used by GDPR export.
+    /// Returns all preferences for a user, read-only. Used by the
+    /// <see cref="UserInfo"/> cache rebuild path and GDPR export.
     /// </summary>
     Task<IReadOnlyList<CommunicationPreference>> GetByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <c>communication_preferences</c> row, read-only. Used by
+    /// the <see cref="UserInfo"/> cache warm path to bulk-load preferences
+    /// once at startup.
+    /// </summary>
+    Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of preferences matching the given category and opt-out state.
+    /// Used for dashboard metrics.
+    /// </summary>
+    Task<int> GetCountByCategoryAndStateAsync(
+        MessageCategory category, bool optedOut, CancellationToken ct = default);
 
     Task AddAsync(CommunicationPreference preference, CancellationToken ct = default);
     Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences, CancellationToken ct = default);
@@ -63,6 +80,15 @@ public interface ICommunicationPreferenceRepository : IRepository
     /// The caller must have obtained the entity via a tracked query method in the same scope.
     /// </summary>
     Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes the single <c>communication_preferences</c> row for a user+category,
+    /// returning the category to its "no row recorded" (null) state — distinct
+    /// from an explicit opt-out. Returns true if a row was deleted, false if none
+    /// existed. Used by the Mailer import GDPR remediation.
+    /// </summary>
+    Task<bool> DeleteByUserAndCategoryAsync(
+        Guid userId, MessageCategory category, CancellationToken ct = default);
 
     /// <summary>
     /// Bulk-moves <c>communication_preferences</c> rows from

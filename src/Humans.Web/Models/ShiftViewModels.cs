@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -65,13 +67,12 @@ public class EventSettingsViewModel : IValidatableObject
         {
             yield return new ValidationResult(
                 "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.",
-                new[]
-                {
+                [
                     nameof(FirstCrewStartOffset),
                     nameof(SetupWeekStartOffset),
                     nameof(PreEventWeekStartOffset),
-                    nameof(FinishingWeekendStartOffset),
-                });
+                    nameof(FinishingWeekendStartOffset)
+                ]);
         }
     }
 }
@@ -171,7 +172,7 @@ public class TimeSlotEntry
 
 public class ShiftBrowseViewModel
 {
-    public EventSettings EventSettings { get; set; } = null!;
+    public EventSettings? EventSettings { get; set; }
     public List<DepartmentShiftGroup> Departments { get; set; } = [];
     public List<DepartmentOption> AllDepartments { get; set; } = [];
     public Guid? FilterDepartmentId { get; set; }
@@ -198,6 +199,13 @@ public class ShiftBrowseViewModel
     public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>
+    /// Department coverage pies rendered above the page. One row per
+    /// top-level department + each promoted sub-team. Empty when the event
+    /// has no rotas that contribute pie hours.
+    /// </summary>
+    public IReadOnlyList<DepartmentCoveragePie> CoveragePies { get; set; } = [];
+
+    /// <summary>
     /// Current sort mode: "urgency" for most-needed-first, null/empty for default by-department grouping.
     /// </summary>
     public string? Sort { get; set; }
@@ -210,7 +218,7 @@ public class ShiftBrowseViewModel
     /// <summary>
     /// All available tags for the filter UI.
     /// </summary>
-    public List<ShiftTag> AllTags { get; set; } = [];
+    public List<ShiftTagSummary> AllTags { get; set; } = [];
 
     /// <summary>
     /// Currently selected tag IDs for filtering.
@@ -270,7 +278,7 @@ public class RotaShiftGroup
     public int TotalSlots { get; set; }
 }
 
-public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status, string? ProfilePictureUrl);
+public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
 
 public class ShiftDisplayItem
 {
@@ -306,6 +314,7 @@ public class MyShiftsViewModel
 public class MySignupItem
 {
     public ShiftSignup Signup { get; set; } = null!;
+    public string? RotaName { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }
     public Instant AbsoluteEnd { get; set; }
@@ -315,7 +324,7 @@ public class MySignupItem
 
 public class ShiftAdminViewModel
 {
-    public Team Department { get; set; } = null!;
+    public TeamInfo Department { get; set; } = null!;
     public EventSettings EventSettings { get; set; } = null!;
     public List<Rota> Rotas { get; set; } = [];
     public List<ShiftSignup> PendingSignups { get; set; } = [];
@@ -326,12 +335,12 @@ public class ShiftAdminViewModel
     public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
 
     /// <summary>
-    /// User display data (DisplayName, ProfilePictureUrl) keyed by UserId for every signup
+    /// User display data (BurnerName, ProfilePictureUrl) keyed by UserId for every signup
     /// in <see cref="Rotas"/> and <see cref="PendingSignups"/>. Resolved by the controller via
-    /// <c>IUserService.GetByIdsAsync</c>; the view reads from this dictionary instead of
+    /// <c>IUserService.GetUserInfosAsync</c>; the view reads from this dictionary instead of
     /// navigating <c>ShiftSignup.User</c> (cross-domain nav, removed per design-rules §6c).
     /// </summary>
-    public IReadOnlyDictionary<Guid, User> Users { get; set; } = new Dictionary<Guid, User>();
+    public IReadOnlyDictionary<Guid, UserInfo> Users { get; set; } = new Dictionary<Guid, UserInfo>();
 
     public bool CanViewMedical { get; set; }
     public List<DailyStaffingData> StaffingData { get; set; } = [];
@@ -342,7 +351,7 @@ public class ShiftAdminViewModel
     /// <summary>
     /// All available tags for the tag picker UI.
     /// </summary>
-    public List<ShiftTag> AllTags { get; set; } = [];
+    public List<ShiftTagSummary> AllTags { get; set; } = [];
 
     /// <summary>
     /// True when the coordinator has activated the "Incomplete onboarding" filter
@@ -364,6 +373,7 @@ public class ShiftCardsViewModel
 public class UrgentShiftItem
 {
     public Shift Shift { get; set; } = null!;
+    public string? RotaName { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }
     public int RemainingSlots { get; set; }
@@ -437,6 +447,30 @@ public class ShiftInfoViewModel
         ["No Preference"] = "I'll take whatever's needed"
     };
 
+    public static ShiftInfoViewModel FromProfile(VolunteerEventProfile? profile)
+    {
+        var quirks = profile?.Quirks ?? [];
+        var skills = profile?.Skills ?? [];
+        var languages = profile?.Languages ?? [];
+
+        var viewModel = new ShiftInfoViewModel
+        {
+            SelectedSkills = skills.Where(s => !s.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+            SkillOtherText = skills.FirstOrDefault(s => s.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+            SelectedQuirks = ExtractToggleQuirks(quirks),
+            TimePreference = ExtractTimePreference(quirks),
+            SelectedLanguages = languages.Where(l => !l.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+            LanguageOtherText = languages.FirstOrDefault(l => l.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+        };
+
+        if (viewModel.SkillOtherText is not null && !viewModel.SelectedSkills.Contains("Other", StringComparer.Ordinal))
+            viewModel.SelectedSkills.Add("Other");
+        if (viewModel.LanguageOtherText is not null && !viewModel.SelectedLanguages.Contains("Other", StringComparer.Ordinal))
+            viewModel.SelectedLanguages.Add("Other");
+
+        return viewModel;
+    }
+
     /// <summary>Extract the time preference value from a flat quirks array.</summary>
     public static string? ExtractTimePreference(List<string> quirks)
         => quirks.FirstOrDefault(q => TimePreferenceOptions.Contains(q, StringComparer.Ordinal));
@@ -448,7 +482,7 @@ public class ShiftInfoViewModel
     /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
     public static List<string> MergeQuirks(string? timePreference, List<string> toggleQuirks)
     {
-        var result = new List<string>(toggleQuirks ?? []);
+        var result = new List<string>(toggleQuirks);
         if (!string.IsNullOrEmpty(timePreference))
             result.Add(timePreference);
         return result;
@@ -534,11 +568,11 @@ public class ShiftDashboardViewModel
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
 
     public DashboardOverview? Overview { get; set; }
-    public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = Array.Empty<CoordinatorActivityRow>();
-    public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = Array.Empty<DashboardTrendPoint>();
-    public IReadOnlyList<DailyDepartmentStaffing> DailyDepartmentStaffing { get; set; } = Array.Empty<DailyDepartmentStaffing>();
-    public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = Array.Empty<ShiftDurationBreakdownRow>();
-    public CoverageHeatmap CoverageHeatmap { get; set; } = new(Array.Empty<CoverageHeatmapDay>(), Array.Empty<CoverageHeatmapRotaRow>());
+    public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = [];
+    public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = [];
+    public IReadOnlyList<DailyDepartmentStaffing> DailyDepartmentStaffing { get; set; } = [];
+    public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = [];
+    public CoverageHeatmap CoverageHeatmap { get; set; } = new([], []);
     public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
     public bool IsDevelopment { get; set; }
     public BuildDayCountdown Countdown { get; set; } = new(0, LocalDate.MinIsoValue, 0, 0);

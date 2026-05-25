@@ -1,5 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Web.Models;
 
@@ -75,6 +78,15 @@ public class EmailsViewModel
     public string? LegacyIdentityEmailColumn { get; set; }
 
     /// <summary>
+    /// Admin-only diagnostic: the cached <c>UserInfo</c> for the target user.
+    /// The view reads <c>Email</c>/<c>PrimaryEmail</c>/<c>GoogleEmail</c>
+    /// directly — these are what the rest of the app actually consumes
+    /// (outbound mail, Google identity, the legacy <c>User.Email</c>
+    /// override). Null in self contexts and for non-Admin actors.
+    /// </summary>
+    public UserInfo? TargetUserInfo { get; init; }
+
+    /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace
     /// canonical identity (Provider=Google + email on the configured Workspace
     /// domain). While set, the view locks Primary and Google radios across the
@@ -89,15 +101,76 @@ public class EmailsViewModel
     /// snapshot shown alongside the `UserEmail` grid. Empty in self contexts.
     /// </summary>
     public IReadOnlyList<ExternalLoginRowViewModel> ExternalLogins { get; init; } =
-        Array.Empty<ExternalLoginRowViewModel>();
+        [];
 
     /// <summary>
-    /// Admin-only raw <see cref="Humans.Domain.Entities.UserEmail"/> entities for
-    /// the target user — every column, no formatting. Diagnostic surface for
-    /// reading the on-disk shape directly. Empty in self contexts.
+    /// Admin-only raw UserEmail row snapshots for the target user — every
+    /// exposed metadata column, no formatting. Diagnostic surface for reading
+    /// the stored row shape directly. Empty in self contexts.
     /// </summary>
-    public IReadOnlyList<Humans.Domain.Entities.UserEmail> RawUserEmails { get; init; } =
-        Array.Empty<Humans.Domain.Entities.UserEmail>();
+    public IReadOnlyList<UserEmailRowSnapshot> RawUserEmails { get; init; } =
+        [];
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#731: user-facing dashboard of OAuth
+    /// providers linked to the current user, keyed off
+    /// <c>AspNetUserLogins</c>. Populated only in self contexts; empty in
+    /// admin contexts (admins use the diagnostic
+    /// <see cref="ExternalLogins"/> table instead).
+    /// </summary>
+    public IReadOnlyList<LinkedOAuthAccountViewModel> LinkedAccounts { get; init; } =
+        [];
+}
+
+/// <summary>
+/// One linked OAuth provider on the user-facing Linked Accounts dashboard
+/// (issue nobodies-collective/Humans#731). Keyed off the authoritative
+/// <c>AspNetUserLogins</c> store; the matching <c>UserEmail</c> row (when
+/// present) supplies the linked-on timestamp and the row id used by the
+/// unlink endpoint.
+/// </summary>
+public class LinkedOAuthAccountViewModel
+{
+    public string Provider { get; init; } = string.Empty;
+    public string ProviderKey { get; init; } = string.Empty;
+    public string? ProviderDisplayName { get; init; }
+
+    /// <summary>
+    /// First 8 hex chars of SHA-256(ProviderKey). Shown rather than the raw
+    /// OIDC <c>sub</c> so the page can be screenshotted without leaking the
+    /// stable provider identifier.
+    /// </summary>
+    public string ProviderKeyHash { get; init; } = string.Empty;
+
+    /// <summary>
+    /// When non-null, the <c>UserEmail</c> row tagged with this
+    /// <c>(Provider, ProviderKey)</c> pair. Null when the AspNetUserLogins
+    /// row is orphan (no matching UserEmail tag — admin-diagnostic edge
+    /// case). The row id is needed to route the unlink action through
+    /// <c>UserEmailService.UnlinkAsync</c>, which keeps the two stores in
+    /// sync.
+    /// </summary>
+    public Guid? MatchingUserEmailId { get; init; }
+
+    /// <summary>
+    /// The email address on the matching <c>UserEmail</c> row, when present.
+    /// </summary>
+    public string? Email { get; init; }
+
+    /// <summary>
+    /// CreatedAt of the matching <c>UserEmail</c> row, when present.
+    /// Approximates the linked-on timestamp (AspNetUserLogins itself has no
+    /// timestamp column).
+    /// </summary>
+    public Instant? LinkedAt { get; init; }
+
+    /// <summary>
+    /// False when unlinking this provider would leave the user with no way
+    /// to sign in — i.e. no remaining verified email row (which magic-link
+    /// would otherwise grant). UI hides the Unlink button when false; the
+    /// controller re-validates the invariant server-side.
+    /// </summary>
+    public bool CanUnlink { get; init; }
 }
 
 /// <summary>
@@ -136,6 +209,14 @@ public class EmailRowViewModel
     public bool IsPendingVerification { get; set; }
     public bool IsMergePending { get; set; }
     public bool IsNobodiesTeamDomain { get; set; }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#758: true when this address is linked to
+    /// the user's event ticket (order buyer or matched attendee). The grid hides
+    /// the Delete action for such rows and shows a note; the service re-validates
+    /// the guard server-side.
+    /// </summary>
+    public bool IsTicketLinked { get; set; }
 
     /// <summary>
     /// Sign-in provider attached to this email row, e.g. "Google". Null when

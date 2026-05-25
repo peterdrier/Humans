@@ -1,36 +1,22 @@
-using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Web.ViewComponents;
 
-public class MyGoogleResourcesViewComponent : ViewComponent
+public class MyGoogleResourcesViewComponent(
+    ITeamResourceService teamResourceService,
+    ILogger<MyGoogleResourcesViewComponent> logger) : ViewComponent
 {
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<MyGoogleResourcesViewComponent> _logger;
-
-    public MyGoogleResourcesViewComponent(
-        ITeamResourceService teamResourceService,
-        UserManager<User> userManager,
-        ILogger<MyGoogleResourcesViewComponent> logger)
-    {
-        _teamResourceService = teamResourceService;
-        _userManager = userManager;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync()
     {
         try
         {
-            var user = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (user is null)
+            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var resources = await _teamResourceService.GetUserTeamResourcesAsync(user.Id);
+            var resources = await teamResourceService.GetUserTeamResourcesAsync(userId);
 
             if (resources.Count == 0)
                 return Content(string.Empty);
@@ -54,7 +40,7 @@ public class MyGoogleResourcesViewComponent : ViewComponent
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load Google resources for current user");
+            logger.LogError(ex, "Failed to load Google resources for current user");
             return Content(string.Empty);
         }
     }

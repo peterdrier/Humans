@@ -1,18 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Email;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Infrastructure.Data;
-using Xunit;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Repositories.Email;
@@ -29,10 +22,8 @@ namespace Humans.Application.Tests.Services;
 /// <see cref="IImmediateOutboxProcessor"/>) are NSubstitute fakes so the Application
 /// service stays free of Infrastructure dependencies.
 /// </summary>
-public sealed class OutboxEmailServiceTests : IDisposable
+public sealed class OutboxEmailServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly OutboxEmailService _service;
     private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -43,19 +34,11 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
     public OutboxEmailServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-
         // Default composer stub: returns the input HTML plus a stub plain text.
         _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>())
             .Returns(ci => ((string)ci[0], "plain-text-stub"));
 
-        var factory = new TestDbContextFactory(options);
-        var repo = new EmailOutboxRepository(factory);
+        var repo = new EmailOutboxRepository(DbFactory);
 
         _service = new OutboxEmailService(
             repo,
@@ -64,15 +47,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
             _bodyComposer,
             _immediate,
             _metrics,
-            _clock,
+            Clock,
             _commPrefService,
             NullLogger<OutboxEmailService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -83,7 +60,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1);
 
         var msg = messages[0];
@@ -94,7 +71,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.PlainTextBody.Should().Be("plain-text-stub");
         msg.TemplateName.Should().Be("welcome");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
-        msg.CreatedAt.Should().Be(_clock.GetCurrentInstant());
+        msg.CreatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -116,7 +93,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         await _service.SendEmailVerificationAsync("bob@example.com", "Bob", "https://verify", culture: "en");
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1);
 
         var msg = messages[0];
@@ -137,7 +114,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             "charlie@example.com", "Charlie", "Dave", "Hey!",
             includeContactInfo: true, senderEmail: "dave@example.com", culture: "en");
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1);
         messages[0].ReplyTo.Should().Be("dave@example.com");
     }
@@ -152,7 +129,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             "charlie@example.com", "Charlie", "Dave", "Hey!",
             includeContactInfo: false, senderEmail: null, culture: "en");
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1);
         messages[0].ReplyTo.Should().BeNull();
     }
@@ -166,7 +143,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendApplicationApprovedAsync(
             "eve@example.com", "Eve", MembershipTier.Colaborador, "en");
 
-        var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
         msg.TemplateName.Should().Be("application_approved");
         msg.RecipientEmail.Should().Be("eve@example.com");
         _metrics.Received(1).RecordEmailQueued("application_approved");
@@ -199,14 +176,14 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns("https://example.com/unsubscribe/token");
 
         _renderer.RenderAddedToTeam(
-                "Charlie", "Alpha Team", "alpha", Arg.Any<System.Collections.Generic.List<(string Name, string? Url)>>(), null)
+                "Charlie", "Alpha Team", "alpha", Arg.Any<List<(string Name, string? Url)>>(), null)
             .Returns(new EmailContent("Added to Alpha Team", "<p>You joined Alpha Team</p>"));
 
         await _service.SendAddedToTeamAsync(
             "charlie@example.com", "Charlie", "Alpha Team", "alpha",
-            Array.Empty<(string Name, string? Url)>());
+            []);
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().BeEmpty("the email should have been suppressed because the user opted out of TeamUpdates");
     }
 
@@ -225,14 +202,14 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns("https://example.com/unsubscribe/token");
 
         _renderer.RenderAddedToTeam(
-                "Dana", "Beta Team", "beta", Arg.Any<System.Collections.Generic.List<(string Name, string? Url)>>(), null)
+                "Dana", "Beta Team", "beta", Arg.Any<List<(string Name, string? Url)>>(), null)
             .Returns(new EmailContent("Added to Beta Team", "<p>You joined Beta Team</p>"));
 
         await _service.SendAddedToTeamAsync(
             "dana@example.com", "Dana", "Beta Team", "beta",
-            Array.Empty<(string Name, string? Url)>());
+            []);
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1, "opted-in user should receive the email");
         messages[0].RecipientEmail.Should().Be("dana@example.com");
         messages[0].TemplateName.Should().Be("added_to_team");
@@ -254,7 +231,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendApplicationApprovedAsync(
             "eve@example.com", "Eve", MembershipTier.Colaborador, "en");
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().BeEmpty(
             "ApplicationApproved is now Governance-categorized and must be suppressed when opted out.");
     }
@@ -274,30 +251,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendApplicationRejectedAsync(
             "frank@example.com", "Frank", MembershipTier.Asociado, "Insufficient tenure", "en");
 
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().BeEmpty(
             "ApplicationRejected is now Governance-categorized and must be suppressed when opted out.");
-    }
-
-    [HumansFact]
-    public async Task SendAdminDailyDigestAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
-    {
-        var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("admin@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
-        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        var counts = new AdminDigestCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, false, null);
-        _renderer.RenderAdminDailyDigest("Admin", "2026-05-01", counts, "en")
-            .Returns(new EmailContent("Admin Digest", "<p>Today</p>"));
-
-        await _service.SendAdminDailyDigestAsync(
-            "admin@example.com", "Admin", "2026-05-01", counts, "en");
-
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
-        messages.Should().BeEmpty(
-            "AdminDailyDigest is now Governance-categorized and must be suppressed when opted out.");
     }
 
     [HumansFact]
@@ -322,7 +278,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendApplicationApprovedAsync(
             "grace@example.com", "Grace", MembershipTier.Colaborador, "en");
 
-        var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
         msg.UserId.Should().Be(userId);
         msg.ExtraHeaders.Should().NotBeNull("List-Unsubscribe headers must be stamped for Governance emails.");
         _bodyComposer.Received().Compose(Arg.Any<string>(), "https://example.com/Unsubscribe/abc");
@@ -352,7 +308,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             Code: "ABC123",
             ReplyTo: "reply@example.com"));
 
-        var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
         msg.RecipientEmail.Should().Be("zoe@example.com");
         msg.Subject.Should().Be("Subject Zoe");
         msg.HtmlBody.Should().Contain("Hello Zoe! Your code is ABC123.");
@@ -362,5 +318,31 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
         _metrics.Received(1).RecordEmailQueued("campaign_code");
+    }
+
+    [HumansFact]
+    public async Task SendEventLifecycleNotificationAsync_CreatesOutboxRowAndTriggersImmediate()
+    {
+        var request = new EventLifecycleNotification(
+            NewStatus: EventStatus.Pending,
+            UserName: "Alice",
+            EventTitle: "Sunrise Parade",
+            ActionUrl: "https://humans.example/Events/MySubmissions",
+            Culture: "en");
+        _renderer.RenderEventLifecycle(request, null)
+            .Returns(new EmailContent("Event received", "<p>Thanks for your submission</p>"));
+
+        await _service.SendEventLifecycleNotificationAsync(request, "alice@example.com");
+
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        msg.RecipientEmail.Should().Be("alice@example.com");
+        msg.RecipientName.Should().Be("Alice");
+        msg.TemplateName.Should().Be("event_submitted");
+        msg.Subject.Should().Be("Event received");
+        msg.HtmlBody.Should().Contain("Thanks for your submission");
+        msg.Status.Should().Be(EmailOutboxStatus.Queued);
+
+        _metrics.Received(1).RecordEmailQueued("event_submitted");
+        _immediate.Received(1).TriggerImmediate();
     }
 }

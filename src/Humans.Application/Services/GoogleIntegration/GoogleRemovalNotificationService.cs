@@ -2,58 +2,21 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
-/// Application-layer implementation of
-/// <see cref="IGoogleRemovalNotificationService"/>. Resolves the affected
-/// user from the removed address, decides Variant 1 (loss of access) vs
-/// Variant 2 (secondary-email cleanup), and routes through
-/// <see cref="IEmailService"/> with <see cref="MessageCategory.System"/>
-/// (no unsubscribe footer).
+/// Decides Variant 1 (loss of access) vs Variant 2 (secondary cleanup) and sends as MessageCategory.System.
+/// Suppresses orphan addresses (#639). EmailRotation is plumbed for telemetry but doesn't suppress.
 /// </summary>
-/// <remarks>
-/// Suppression cases honored here (issue peterdrier/Humans#639):
-/// <list type="bullet">
-///   <item><description><b>Orphan address</b> — no <c>UserEmail</c> row
-///   matches the removed address; happens when the user was deleted /
-///   anonymized (their <c>user_emails</c> rows were removed) or when an
-///   OAuth-rename flow rewrote the address in place.</description></item>
-///   <item><description><b>User unlinked their own email via Profile UI</b>
-///   — same as orphan: the <c>UserEmail</c> row was deleted by the unlink
-///   flow before sync removed the Google permission.</description></item>
-/// </list>
-/// <para>
-/// <see cref="SyncRemovalReason.EmailRotation"/> is plumbed through for
-/// audit/telemetry but does NOT suppress here — when a Workspace identity
-/// rotates from address A to B, the user gets a Variant 2 ("secondary
-/// cleanup") email at A confirming the rotation. The OAuth-rename-in-place
-/// case is captured by orphan suppression.
-/// </para>
-/// </remarks>
-public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificationService
+public sealed class GoogleRemovalNotificationService(
+    IUserEmailService userEmailService,
+    IUserServiceRead userService,
+    IEmailService emailService,
+    ILogger<GoogleRemovalNotificationService> logger) : IGoogleRemovalNotificationService
 {
-    private readonly IUserEmailService _userEmailService;
-    private readonly IUserService _userService;
-    private readonly IEmailService _emailService;
-    private readonly ILogger<GoogleRemovalNotificationService> _logger;
-
-    public GoogleRemovalNotificationService(
-        IUserEmailService userEmailService,
-        IUserService userService,
-        IEmailService emailService,
-        ILogger<GoogleRemovalNotificationService> logger)
-    {
-        _userEmailService = userEmailService;
-        _userService = userService;
-        _emailService = emailService;
-        _logger = logger;
-    }
-
     /// <inheritdoc />
     public async Task NotifyRemovalAsync(
         string removedEmail,
@@ -71,31 +34,31 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
         // Resolve recipient from the removed address. Orphan = no UserEmail
         // row; this captures user-deleted/anonymized and self-unlink cases
         // (the UserEmail row is gone before reconciliation runs).
-        var userId = await _userEmailService.GetUserIdByVerifiedEmailAsync(removedEmail, cancellationToken);
+        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(removedEmail, cancellationToken);
         if (userId is null)
         {
             // Expected condition (deleted user, anonymized human, self-unlink,
             // OAuth-rename-in-place) but visible-in-prod-log per
             // memory/code/always-log-problems.md — incident investigation
             // needs to see suppressed notifications.
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Suppressing Google removal notification for {Email} — no UserEmail row matches " +
                 "(orphan, deleted user, or self-unlink)", removedEmail);
             return;
         }
 
         // Load the user with all UserEmails so we can run the variant selector.
-        var usersById = await _userService.GetByIdsWithEmailsAsync([userId.Value], cancellationToken);
+        var usersById = await userService.GetUserInfosAsync([userId.Value], cancellationToken);
         if (!usersById.TryGetValue(userId.Value, out var user))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Google removal notification: UserEmail mapped {Email} to user {UserId} but " +
                 "the user could not be loaded — skipping", removedEmail, userId.Value);
             return;
         }
 
-        var userName = !string.IsNullOrWhiteSpace(user.DisplayName)
-            ? user.DisplayName
+        var userName = !string.IsNullOrWhiteSpace(user.BurnerName)
+            ? user.BurnerName
             : removedEmail;
         var culture = string.IsNullOrWhiteSpace(user.PreferredLanguage) ? "en" : user.PreferredLanguage;
 
@@ -106,13 +69,13 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
 
         if (otherGoogleEmail is not null)
         {
-            await _emailService.SendGoogleAccessRemovalSecondaryCleanupAsync(
+            await emailService.SendGoogleAccessRemovalSecondaryCleanupAsync(
                 removedEmail,
                 userName,
                 otherGoogleEmail,
                 culture,
                 cancellationToken);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Sent Google removal Variant 2 (secondary cleanup) to {Email} for user {UserId}; " +
                 "primary remains {Primary}",
                 removedEmail, user.Id, otherGoogleEmail);
@@ -134,26 +97,26 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
             var groupEmail = !string.IsNullOrWhiteSpace(resourceIdentifier)
                 ? resourceIdentifier
                 : displayName;
-            await _emailService.SendGoogleGroupRemovalLossOfAccessAsync(
+            await emailService.SendGoogleGroupRemovalLossOfAccessAsync(
                 removedEmail,
                 userName,
                 displayName,
                 groupEmail,
                 culture,
                 cancellationToken);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Sent Google removal Variant 1 (group loss-of-access) to {Email} for user {UserId} group {Group}",
                 removedEmail, user.Id, displayName);
         }
         else
         {
-            await _emailService.SendGoogleDriveRemovalLossOfAccessAsync(
+            await emailService.SendGoogleDriveRemovalLossOfAccessAsync(
                 removedEmail,
                 userName,
                 displayName,
                 culture,
                 cancellationToken);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Sent Google removal Variant 1 (drive loss-of-access) to {Email} for user {UserId} folder {Folder}",
                 removedEmail, user.Id, displayName);
         }
@@ -164,7 +127,7 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
     /// is NOT <paramref name="removedEmail"/>, or <c>null</c> when no such
     /// row exists. Drives the Variant 1 / Variant 2 split.
     /// </summary>
-    private static string? FindOtherVerifiedGoogleEmail(User user, string removedEmail)
+    private static string? FindOtherVerifiedGoogleEmail(UserInfo user, string removedEmail)
     {
         foreach (var ue in user.UserEmails)
         {

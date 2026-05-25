@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Issues;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
@@ -12,7 +13,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 #pragma warning disable CS0618 // Cross-domain navs are intentional in test fixtures.
 
@@ -26,11 +26,12 @@ namespace Humans.Application.Tests.Controllers;
 public class IssuesApiControllerTests
 {
     private readonly IIssuesService _issues = Substitute.For<IIssuesService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IssuesApiController _sut;
 
     public IssuesApiControllerTests()
     {
-        _sut = new IssuesApiController(_issues, NullLogger<IssuesApiController>.Instance);
+        _sut = new IssuesApiController(_issues, _users, NullLogger<IssuesApiController>.Instance);
     }
 
     private static Issue MakeIssue(
@@ -68,6 +69,30 @@ public class IssuesApiControllerTests
         };
     }
 
+    private static IssueListSnapshot MakeIssueSnapshot(Issue issue) => new(
+        issue.Id,
+        issue.Status,
+        issue.Category,
+        issue.Section,
+        issue.Title,
+        issue.Description,
+        issue.PageUrl,
+        issue.UserAgent,
+        issue.AdditionalContext,
+        issue.ReporterUserId,
+        issue.Reporter?.DisplayName,
+        issue.Reporter?.Email,
+        issue.Reporter?.PreferredLanguage,
+        issue.CreatedAt,
+        issue.UpdatedAt,
+        issue.ResolvedAt,
+        issue.DueDate,
+        issue.ScreenshotStoragePath,
+        issue.Comments.Count,
+        issue.AssigneeUserId,
+        issue.Assignee?.DisplayName,
+        issue.GitHubIssueNumber);
+
     // ==========================================================================
     // List
     // ==========================================================================
@@ -75,11 +100,13 @@ public class IssuesApiControllerTests
     [HumansFact]
     public async Task List_returns_all_issues()
     {
-        var issues = new[] { MakeIssue(), MakeIssue(), MakeIssue() };
+        var issues = new[] { MakeIssue(), MakeIssue(), MakeIssue() }
+            .Select(MakeIssueSnapshot)
+            .ToArray();
         _issues
             .GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<Guid>(),
                 Arg.Any<IReadOnlyList<string>>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(issues));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(issues));
 
         var result = await _sut.List(status: null, category: null, section: null, assignee: null);
 
@@ -97,12 +124,12 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(status: IssueStatus.Open, category: null, section: null, assignee: null);
 
         captured.Should().NotBeNull();
-        captured!.Statuses.Should().BeEquivalentTo(new[] { IssueStatus.Open });
+        captured!.Statuses.Should().BeEquivalentTo([IssueStatus.Open]);
     }
 
     [HumansFact]
@@ -114,12 +141,12 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(status: null, category: null, section: "Tickets", assignee: null);
 
         captured.Should().NotBeNull();
-        captured!.Sections.Should().BeEquivalentTo(new string?[] { "Tickets" });
+        captured!.Sections.Should().BeEquivalentTo("Tickets");
     }
 
     [HumansFact]
@@ -131,7 +158,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         var reporterId = Guid.NewGuid();
         await _sut.List(
@@ -151,7 +178,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(
             status: null, category: null, section: null, assignee: null,
@@ -170,7 +197,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(
             status: null, category: null, section: null, assignee: null,
@@ -228,7 +255,7 @@ public class IssuesApiControllerTests
         var detail = ok.Value!;
         var threadProp = detail.GetType().GetProperty("thread")!.GetValue(detail);
         threadProp.Should().BeAssignableTo<IEnumerable<object>>();
-        var threadList = ((IEnumerable<object>)threadProp!).ToList();
+        var threadList = ((IEnumerable<object>)threadProp).ToList();
         threadList.Should().HaveCount(2);
 
         var first = threadList[0];
@@ -239,6 +266,61 @@ public class IssuesApiControllerTests
         var second = threadList[1];
         second.GetType().GetProperty("type")!.GetValue(second).Should().Be("audit");
         second.GetType().GetProperty("action")!.GetValue(second).Should().Be("IssueStatusChanged");
+    }
+
+    [HumansFact]
+    public async Task Get_emits_ReporterEmail_resolved_via_IUserService()
+    {
+        // Regression for PR 618 review: detail endpoint shape must include
+        // ReporterEmail (sourced from UserInfo.Email via IUserService) to
+        // stay consistent with the list endpoint, without reading User.Email.
+        var issue = MakeIssue();
+        _issues.GetIssueByIdAsync(issue.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Issue?>(issue));
+        _issues.GetThreadAsync(issue.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<IssueThreadEvent>>([]));
+
+        var reporterInfo = UserInfo.Create(
+            user: new User
+            {
+                Id = issue.ReporterUserId,
+                DisplayName = "Reporter",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+                Email = "reporter@example.com",
+            },
+            userEmails:
+            [
+                new UserEmail
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = issue.ReporterUserId,
+                    Email = "reporter@example.com",
+                    IsVerified = true,
+                    IsPrimary = true,
+                }
+            ],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+        _users.GetUserInfosAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(issue.ReporterUserId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [issue.ReporterUserId] = reporterInfo }));
+
+        var result = await _sut.Get(issue.Id);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var detail = ok.Value!;
+        var issueProp = detail.GetType().GetProperty("issue")!.GetValue(detail)!;
+        var reporterEmail = issueProp.GetType().GetProperty("ReporterEmail")!.GetValue(issueProp);
+        reporterEmail.Should().Be("reporter@example.com");
     }
 
     // ==========================================================================

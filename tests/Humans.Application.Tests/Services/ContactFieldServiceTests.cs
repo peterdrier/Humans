@@ -1,55 +1,74 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Xunit;
-using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
+using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Application.Tests.Services;
 
-public class ContactFieldServiceTests : IDisposable
+public sealed class ContactFieldServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly ITeamService _teamService;
+    private readonly ITeamServiceRead _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IProfileRepository _profileRepository;
-    private readonly FakeClock _clock;
+    private readonly IUserService _userService;
     private readonly ContactFieldService _service;
 
     public ContactFieldServiceTests()
+        : base(Instant.FromUtc(2024, 1, 15, 12, 0, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _teamService = Substitute.For<ITeamService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-        _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
+        _userService = Substitute.For<IUserService>();
 
-        var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
-        var repository = new ContactFieldRepository(factory);
-        _profileRepository = new ProfileRepository(factory, _clock);
+        var repository = new ContactFieldRepository(DbFactory);
+        _profileRepository = new ProfileRepository(DbFactory, Clock);
 
         _service = new ContactFieldService(
-            repository, _profileRepository, _teamService, _roleAssignmentService,
-            _clock);
+            repository, _profileRepository, _userService, _teamService, _roleAssignmentService,
+            Substitute.For<IUserInfoInvalidator>(),
+            Clock, NullLogger<ContactFieldService>.Instance);
     }
 
-    public void Dispose()
+    // Sets up GetTeamsAsync to return a dict containing one TeamInfo per member spec.
+    // Each spec is (userId, role, teamId, systemTeamType). Users on the same teamId share that team entry.
+    private void SetupTeams(params (Guid UserId, TeamMemberRole Role, Guid TeamId, SystemTeamType SystemTeamType)[] memberSpecs)
     {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        var grouped = memberSpecs.GroupBy(s => s.TeamId);
+        var dict = new Dictionary<Guid, TeamInfo>();
+        foreach (var group in grouped)
+        {
+            var members = group
+                .Select(s => new TeamMemberInfo(Guid.NewGuid(), s.UserId, "T", null, null, s.Role, Clock.GetCurrentInstant()))
+                .ToList();
+            var teamId = group.Key;
+            var systemTeamType = group.First().SystemTeamType;
+            dict[teamId] = new TeamInfo(
+                Id: teamId, Name: "Test Team", Description: null, Slug: $"team-{teamId:N}",
+                IsActive: true, IsSystemTeam: systemTeamType != SystemTeamType.None,
+                SystemTeamType: systemTeamType, RequiresApproval: false,
+                IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: Clock.GetCurrentInstant(), Members: members);
+        }
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(dict));
+    }
+
+    private void SetupEmptyTeams()
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                new Dictionary<Guid, TeamInfo>()));
     }
 
     #region GetViewerAccessLevelAsync Tests
@@ -84,13 +103,7 @@ public class ContactFieldServiceTests : IDisposable
         var viewerId = Guid.NewGuid();
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Coordinator)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>());
+        SetupTeams((viewerId, TeamMemberRole.Coordinator, Guid.NewGuid(), SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -106,16 +119,9 @@ public class ContactFieldServiceTests : IDisposable
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, sharedTeamId)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, sharedTeamId)
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None),
+            (ownerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -130,16 +136,9 @@ public class ContactFieldServiceTests : IDisposable
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, Guid.NewGuid())
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, Guid.NewGuid())
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None),
+            (ownerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -156,16 +155,9 @@ public class ContactFieldServiceTests : IDisposable
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers)
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+            (ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -184,18 +176,11 @@ public class ContactFieldServiceTests : IDisposable
 
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
-                CreateTeamMember(viewerId, TeamMemberRole.Member, sharedTeamId)
-            });
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>
-            {
-                CreateTeamMember(ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
-                CreateTeamMember(ownerId, TeamMemberRole.Member, sharedTeamId)
-            });
+        SetupTeams(
+            (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+            (viewerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None),
+            (ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+            (ownerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None));
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
@@ -221,17 +206,15 @@ public class ContactFieldServiceTests : IDisposable
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
         var profile = await CreateProfileWithFields(ownerId);
+        StubUserInfo(ownerId, profile);
 
         // Viewer is just a regular member (no shared teams)
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
-        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>());
-        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMember>());
+        SetupEmptyTeams();
 
         // Act
-        var result = await _service.GetVisibleContactFieldsAsync(profile.Id, viewerId);
+        var result = await _service.GetVisibleContactFieldsAsync(ownerId, viewerId);
 
         // Assert - should only see AllActiveProfiles field
         result.Should().HaveCount(1);
@@ -244,9 +227,10 @@ public class ContactFieldServiceTests : IDisposable
         // Arrange
         var ownerId = Guid.NewGuid();
         var profile = await CreateProfileWithFields(ownerId);
+        StubUserInfo(ownerId, profile);
 
         // Act
-        var result = await _service.GetVisibleContactFieldsAsync(profile.Id, ownerId);
+        var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId);
 
         // Assert - should see all 4 fields
         result.Should().HaveCount(4);
@@ -271,7 +255,7 @@ public class ContactFieldServiceTests : IDisposable
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
         // Assert
-        var savedFields = await _dbContext.ContactFields
+        var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync();
         savedFields.Should().HaveCount(2);
@@ -290,11 +274,11 @@ public class ContactFieldServiceTests : IDisposable
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
             DisplayOrder = 0,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.ContactFields.Add(existingField);
-        await _dbContext.SaveChangesAsync();
+        Db.ContactFields.Add(existingField);
+        await Db.SaveChangesAsync();
 
         var fields = new List<ContactFieldEditDto>
         {
@@ -305,7 +289,7 @@ public class ContactFieldServiceTests : IDisposable
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
         // Assert
-        var savedField = await _dbContext.ContactFields.AsNoTracking()
+        var savedField = await Db.ContactFields.AsNoTracking()
             .FirstOrDefaultAsync(cf => cf.Id == existingField.Id);
         savedField!.Value.Should().Be("+34 698765432");
         savedField.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
@@ -324,17 +308,17 @@ public class ContactFieldServiceTests : IDisposable
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
             DisplayOrder = 0,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.ContactFields.Add(existingField);
-        await _dbContext.SaveChangesAsync();
+        Db.ContactFields.Add(existingField);
+        await Db.SaveChangesAsync();
 
         // Save empty list (delete all)
         await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>());
 
         // Assert
-        var remainingFields = await _dbContext.ContactFields
+        var remainingFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync();
         remainingFields.Should().BeEmpty();
@@ -352,7 +336,7 @@ public class ContactFieldServiceTests : IDisposable
 
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
-        var savedFields = await _dbContext.ContactFields
+        var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync();
         savedFields.Should().HaveCount(1);
@@ -362,26 +346,31 @@ public class ContactFieldServiceTests : IDisposable
 
     #region Helper Methods
 
-    private TeamMember CreateTeamMember(Guid userId, TeamMemberRole role, Guid? teamId = null, SystemTeamType systemTeamType = SystemTeamType.None)
+    // Stub IUserService.GetUserInfoAsync to return a UserInfo carrying the profile's ContactFields.
+    private void StubUserInfo(Guid userId, Profile profile)
     {
-        var actualTeamId = teamId ?? Guid.NewGuid();
-        return new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = actualTeamId,
-            UserId = userId,
-            Role = role,
-            JoinedAt = _clock.GetCurrentInstant(),
-            Team = new Team
+        var fields = Db.ContactFields
+            .Where(cf => cf.ProfileId == profile.Id)
+            .OrderBy(cf => cf.DisplayOrder)
+            .ToList();
+        var info = UserInfo.Create(
+            user: new User
             {
-                Id = actualTeamId,
-                Name = "Test Team",
-                Slug = "test-team",
-                SystemTeamType = systemTeamType,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            }
-        };
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = profile.CreatedAt,
+                GoogleEmailStatus = default,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            contactFields: fields,
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 
     private async Task<Profile> CreateProfile(Guid userId)
@@ -392,11 +381,11 @@ public class ContactFieldServiceTests : IDisposable
             UserId = userId,
             FirstName = "Test",
             LastName = "User",
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        Db.Profiles.Add(profile);
+        await Db.SaveChangesAsync();
 
         // No store to populate — GetVisibleContactFieldsAsync now resolves profileId → userId
         // via IProfileRepository.GetOwnerUserIdAsync (scalar DB query).
@@ -407,7 +396,7 @@ public class ContactFieldServiceTests : IDisposable
     private async Task<Profile> CreateProfileWithFields(Guid userId)
     {
         var profile = await CreateProfile(userId);
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
 
         var fields = new List<ContactField>
         {
@@ -457,8 +446,8 @@ public class ContactFieldServiceTests : IDisposable
             }
         };
 
-        _dbContext.ContactFields.AddRange(fields);
-        await _dbContext.SaveChangesAsync();
+        Db.ContactFields.AddRange(fields);
+        await Db.SaveChangesAsync();
 
         return profile;
     }

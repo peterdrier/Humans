@@ -41,8 +41,7 @@ public sealed class StubTicketVendorService : ITicketVendorService
     // Pre-built sample data, generated once and cached for the process lifetime.
     private static readonly Lazy<SampleData> Sample = new(BuildSampleData);
 
-    // Instance-level mutable ticket list so VoidIssuedTicketAsync / IssueTicketAsync
-    // mutations persist across calls on the same (singleton) service instance.
+    // Instance-level ticket list for the deterministic dev/preview fixture.
     private readonly List<VendorTicketDto> _tickets = [.. Sample.Value.Tickets];
 
     public Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
@@ -172,6 +171,20 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 // Every 5th ticket is checked in for realistic event summary stats
                 var status = (orderIndex * 10 + t) % 5 == 0 ? "checked_in" : "valid";
 
+                // Stub a gate-arrival time for checked-in tickets so dev /
+                // preview environments can exercise the "Who's onsite" view
+                // (#736). Spreads arrivals across the gate-day window.
+                Instant? checkedInAt = null;
+                if (string.Equals(status, "checked_in", StringComparison.Ordinal))
+                {
+                    var gateDay = new LocalDate(2026, 7, 8);
+                    var hour = 9 + ((orderIndex * 10 + t) % 12); // 09:00–20:00
+                    checkedInAt = gateDay
+                        .At(new LocalTime(hour, (orderIndex * 7 + t * 13) % 60))
+                        .InUtc()
+                        .ToInstant();
+                }
+
                 var ticketDto = new VendorTicketDto(
                     VendorTicketId: vendorTicketId,
                     VendorOrderId: vendorOrderId,
@@ -179,7 +192,8 @@ public sealed class StubTicketVendorService : ITicketVendorService
                     AttendeeEmail: attendee.Email,
                     TicketTypeName: ticket.Type,
                     Price: ticket.Price,
-                    Status: status);
+                    Status: status,
+                    CheckedInAt: checkedInAt);
 
                 vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
@@ -282,38 +296,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
         foreach (var c in value)
             hash = (hash * 31) + c;
         return hash;
-    }
-
-    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
-        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
-    {
-        var index = _tickets.FindIndex(t =>
-            string.Equals(t.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
-
-        if (index < 0)
-            throw new TicketVendorWriteException(
-                $"Stub: ticket '{vendorTicketId}' not found.", TicketVendorFailureKind.NotFound);
-
-        _tickets[index] = _tickets[index] with { Status = "voided" };
-
-        var holdId = voidToHold ? $"hold_stub_{Guid.NewGuid().ToString("N")[..8]}" : null;
-        return Task.FromResult(new VoidIssuedTicketResult(vendorTicketId, holdId));
-    }
-
-    public Task<VendorTicketDto> IssueTicketAsync(
-        IssueTicketRequest request, CancellationToken ct = default)
-    {
-        var issued = new VendorTicketDto(
-            VendorTicketId: $"tt_stub_{Guid.NewGuid().ToString("N")[..8]}",
-            VendorOrderId: null,
-            AttendeeName: request.FullName,
-            AttendeeEmail: request.Email,
-            TicketTypeName: "Stub Reissued Ticket",
-            Price: 0m,
-            Status: "valid");
-
-        _tickets.Add(issued);
-        return Task.FromResult(issued);
     }
 
     private sealed record SampleData(

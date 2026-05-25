@@ -1,20 +1,15 @@
 using System.Net;
-using System.Net.Http;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class StoreAdminControllerTests : IntegrationTestBase
+public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public StoreAdminControllerTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 60000)]
     public async Task Volunteer_GET_admin_catalog_returns_403_or_redirect()
     {

@@ -14,6 +14,16 @@
     if (Model.TotalPages > 1) { pages.Add(Model.TotalPages); }
 
     var baseRoute = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var pair in Context.GetRouteData().Values)
+    {
+        if (string.Equals(pair.Key, "controller", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(pair.Key, "action", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(pair.Key, "page", StringComparison.OrdinalIgnoreCase))
+        { continue; }
+        baseRoute[pair.Key] = pair.Value?.ToString();
+    }
+
     foreach (var pair in Context.Request.Query)
     {
         if (string.Equals(pair.Key, "page", StringComparison.OrdinalIgnoreCase)) { continue; }
@@ -30,8 +40,8 @@
     }
 }
 
-<nav aria-label="Pagination">
-    <ul class="pagination">
+<nav aria-label="Pagination" class="@Model.NavCssClass">
+    <ul class="pagination @Model.PaginationCssClass">
         <li class="page-item @(current <= 1 ? "disabled" : "")">
             <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current - 1)">Previous</a>
         </li>

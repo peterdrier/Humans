@@ -20,15 +20,8 @@ namespace Humans.Web.Authorization.Requirements;
 ///   state gate — payments continue after invoice issuance.
 /// - Everyone else: deny.
 /// </summary>
-public class StoreOrderAuthorizationHandler : IAuthorizationHandler
+public class StoreOrderAuthorizationHandler(ICampService campService) : IAuthorizationHandler
 {
-    private readonly ICampService _campService;
-
-    public StoreOrderAuthorizationHandler(ICampService campService)
-    {
-        _campService = campService;
-    }
-
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
         var pending = context.PendingRequirements
@@ -36,13 +29,21 @@ public class StoreOrderAuthorizationHandler : IAuthorizationHandler
             .ToList();
         if (pending.Count == 0) return;
 
-        var (campSeasonId, orderState) = context.Resource switch
+        Guid campSeasonId;
+        StoreOrderState? orderState;
+        switch (context.Resource)
         {
-            OrderDto order => (order.CampSeasonId, (StoreOrderState?)order.State),
-            StoreOrderCreateContext create => (create.CampSeasonId, (StoreOrderState?)null),
-            _ => ((Guid?)null, (StoreOrderState?)null)
-        };
-        if (campSeasonId is null) return;
+            case OrderDto order:
+                campSeasonId = order.CampSeasonId;
+                orderState = order.State;
+                break;
+            case StoreOrderCreateContext create:
+                campSeasonId = create.CampSeasonId;
+                orderState = null;
+                break;
+            default:
+                return;
+        }
 
         if (RoleChecks.CanAdministerStore(context.User))
         {
@@ -54,10 +55,10 @@ public class StoreOrderAuthorizationHandler : IAuthorizationHandler
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId.Value);
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId);
         if (season is null) return;
 
-        if (!await _campService.IsUserCampLeadAsync(userId, season.CampId))
+        if (!await campService.IsUserCampLeadAsync(userId, season.CampId))
             return;
 
         foreach (var req in pending)

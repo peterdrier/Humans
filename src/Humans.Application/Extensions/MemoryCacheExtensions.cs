@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Application.Extensions;
@@ -63,39 +62,17 @@ public static class MemoryCacheExtensions
         cache.Remove(CacheKeys.ActiveTeams);
     }
 
-    public static void InvalidateCampSeasonsByYear(this IMemoryCache cache, int year) =>
-        cache.Remove(CacheKeys.CampSeasonsByYear(year));
-
-    public static void InvalidateCampSettings(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.CampSettings);
-
-    public static void InvalidateUserTicketCount(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.UserTicketCount(userId));
-
-    public static void InvalidateTicketDashboardStats(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.TicketDashboardStats);
-
-    public static void InvalidateUserIdsWithTickets(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.UserIdsWithTickets);
-
-    public static void InvalidateValidAttendeeEmails(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.ValidAttendeeEmails);
-
-    /// <summary>
-    /// Invalidate all ticket-related caches after a sync or data change.
-    /// Per-user UserTicketCount entries are NOT invalidated here because they use
-    /// per-user keys that can't be enumerated for bulk invalidation. They expire
-    /// naturally via their 5-minute TTL, which is acceptable at ~500-user scale.
-    /// </summary>
-    public static void InvalidateTicketCaches(this IMemoryCache cache)
-    {
-        cache.InvalidateTicketDashboardStats();
-        cache.InvalidateUserIdsWithTickets();
-        cache.InvalidateValidAttendeeEmails();
-    }
-
-    public static void InvalidateNobodiesTeamEmails(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.NobodiesTeamEmails);
+    // Camp-cache invalidation extensions were retired in T-06 — eviction
+    // is now owned by CachingCampService (Infrastructure decorator) and
+    // reached through ICampInfoInvalidator. The CampSeasonsByYear /
+    // CampSettings keys are gone from CacheKeys as well (snapshot lives on
+    // the decorator).
+    //
+    // Ticket-cache invalidation extensions were retired in T-07. Eviction is
+    // now owned by CachingTicketQueryService (Infrastructure decorator) and
+    // reached through ITicketCacheInvalidator. Per-user holdings live in that
+    // decorator's TrackedCache; the only remaining IMemoryCache ticket key the
+    // decorator removes directly is TicketEventSummary.
 
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));

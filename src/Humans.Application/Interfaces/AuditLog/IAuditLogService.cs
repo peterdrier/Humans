@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.AuditLog;
 
@@ -42,57 +42,40 @@ public interface IAuditLogService : IApplicationService
     /// <summary>
     /// Gets audit entries for a specific Google resource.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId);
 
     /// <summary>
     /// Gets Google sync audit entries for a specific user.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId);
 
     /// <summary>
     /// Gets the most recent audit log entries.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default);
 
     /// <summary>
     /// Gets filtered audit log entries with pagination.
     /// </summary>
-    Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+    Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
     /// Gets audit entries where the user is either the primary or related entity.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
 
     /// <summary>
     /// Gets audit entries matching flexible filter criteria.
     /// Used by the shared AuditLog ViewComponent for rendering audit history on any page.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
         IReadOnlyList<AuditAction>? actions = null,
         int limit = 20,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets a full audit log page with display name lookups for users and teams.
-    /// Used by Board/Admin audit log views to avoid direct DbContext access in controllers.
-    /// </summary>
-    Task<AuditLogPageResult> GetAuditLogPageAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default);
-
-    /// <summary>
-    /// Batch-loads user display names for a set of user IDs.
-    /// </summary>
-    Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Batch-loads team names and slugs for a set of team IDs.
-    /// </summary>
-    Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the distinct entity ids for audit entries whose
@@ -103,8 +86,8 @@ public interface IAuditLogService : IApplicationService
     /// <c>audit_log_entries</c> directly (design-rules §2c).
     /// </summary>
     Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart,
-        NodaTime.Instant windowEnd,
+        Instant windowStart,
+        Instant windowEnd,
         AuditAction action,
         CancellationToken ct = default);
 
@@ -123,12 +106,19 @@ public interface IAuditLogService : IApplicationService
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Full audit log page with display name dictionaries for rendering.
-/// </summary>
-public record AuditLogPageResult(
-    IReadOnlyList<AuditLogEntry> Items,
-    int TotalCount,
-    int AnomalyCount,
-    Dictionary<Guid, string> UserDisplayNames,
-    Dictionary<Guid, (string Name, string Slug)> TeamNames);
+public sealed record AuditLogEntrySnapshot(
+    Guid Id,
+    AuditAction Action,
+    string EntityType,
+    Guid EntityId,
+    string Description,
+    Instant OccurredAt,
+    Guid? ActorUserId,
+    Guid? RelatedEntityId,
+    string? RelatedEntityType,
+    Guid? ResourceId,
+    bool? Success,
+    string? ErrorMessage,
+    string? Role,
+    GoogleSyncSource? SyncSource,
+    string? UserEmail);

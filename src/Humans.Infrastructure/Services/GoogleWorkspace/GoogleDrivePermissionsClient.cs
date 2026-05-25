@@ -23,7 +23,9 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// <c>permissionDetails</c> so callers can distinguish inherited from
 /// direct permissions.
 /// </remarks>
-public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
+public sealed class GoogleDrivePermissionsClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleDrivePermissionsClient> logger) : IGoogleDrivePermissionsClient
 {
     private const string FolderMimeType = "application/vnd.google-apps.folder";
     private const string PermissionListFields =
@@ -31,18 +33,9 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
     private const string FileFields = "id, name, parents, driveId, inheritedPermissionsDisabled";
     private const string CreateFolderFields = "id, name, webViewLink";
 
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleDrivePermissionsClient> _logger;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private DriveService? _driveService;
-
-    public GoogleDrivePermissionsClient(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleDrivePermissionsClient> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
 
     public async Task<DriveFolderCreateResult> CreateFolderAsync(
         string folderName,
@@ -74,7 +67,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error creating folder '{Name}' under parent {ParentId}: Code={Code} Message={Message}",
                 folderName, parentFolderId ?? "(none)", ex.Error?.Code, ex.Error?.Message);
             return new DriveFolderCreateResult(
@@ -120,7 +113,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error listing permissions for {FileId}: Code={Code} Message={Message}",
                 fileId, ex.Error?.Code, ex.Error?.Message);
             return new DrivePermissionListResult(
@@ -167,7 +160,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error granting {Role} to {Email} on {FileId}: Code={Code} Message={Message}",
                 role, userEmail, fileId, ex.Error?.Code, ex.Error?.Message);
             return new DrivePermissionMutationResult(
@@ -191,7 +184,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error deleting permission {PermissionId} on {FileId}: Code={Code} Message={Message}",
                 permissionId, fileId, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
@@ -220,7 +213,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogDebug(ex,
+            logger.LogDebug(ex,
                 "Google API error reading file {FileId}: Code={Code} Message={Message}",
                 fileId, ex.Error?.Code, ex.Error?.Message);
             return new DriveFileMetadataResult(
@@ -249,7 +242,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Google API error setting inheritedPermissionsDisabled={Disabled} on {FileId}: Code={Code} Message={Message}",
                 disabled, fileId, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
@@ -270,7 +263,7 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogDebug(ex,
+            logger.LogDebug(ex,
                 "Google API error reading Shared Drive {DriveId}: Code={Code} Message={Message}",
                 driveId, ex.Error?.Code, ex.Error?.Message);
             return new SharedDriveMetadataResult(

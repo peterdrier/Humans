@@ -34,7 +34,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAuthSection();
         services.AddTeamsSection();
         services.AddGovernanceSection();
+        services.AddOnboardingSection();
         services.AddCampsSection();
+        services.AddContainersSection();
+        services.AddEventsSection();
         services.AddCityPlanningSection(configuration);
         services.AddBudgetSection();
         services.AddStoreSection();
@@ -49,10 +52,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAuditLogSection();
         services.AddGdprSection();
         services.AddAdminSection();
+        services.AddGoogleIntegrationSection();
         services.AddGuideSection(configuration);
         services.AddAgentSection(configuration);
         services.AddSearchSection();
         services.AddHoldedSection(configuration);
+        services.AddMailerSection(configuration);
         services.AddExpensesSection(configuration);
 
         return services;

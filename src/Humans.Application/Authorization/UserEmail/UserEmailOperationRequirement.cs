@@ -8,12 +8,7 @@ namespace Humans.Application.Authorization.UserEmail;
 /// where the resource is the target user's <see cref="Guid"/> id.
 /// Self-or-admin gate: actor == target, or actor is in the Admin role.
 /// </summary>
-public sealed class UserEmailOperationRequirement : IAuthorizationRequirement
+public sealed class UserEmailOperationRequirement(string name) : IAuthorizationRequirement
 {
-    public string Name { get; }
-
-    public UserEmailOperationRequirement(string name)
-    {
-        Name = name;
-    }
+    public string Name { get; } = name;
 }

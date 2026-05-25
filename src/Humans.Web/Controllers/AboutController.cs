@@ -1,42 +1,23 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Domain.Entities;
-using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
-// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
-// RoleAssignmentService stitches them in memory from IUserService so controllers can
-// continue to read them for view-model shaping. Nav-strip follow-up tracked in
-// design-rules §15i.
+// Obsolete RoleAssignment nav props (User, CreatedByUser) stitched in-memory by RoleAssignmentService; see design-rules §15i.
 #pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
 
 [Route("[controller]")]
-public class AboutController : HumansControllerBase
+public class AboutController(
+    IUserServiceRead userService,
+    IRoleAssignmentService roleAssignmentService,
+    IClock clock,
+    ILogger<AboutController> logger) : HumansControllerBase(userService)
 {
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IProfileService _profileService;
-    private readonly IClock _clock;
-    private readonly ILogger<AboutController> _logger;
-
-    public AboutController(
-        UserManager<User> userManager,
-        IRoleAssignmentService roleAssignmentService,
-        IProfileService profileService,
-        IClock clock,
-        ILogger<AboutController> logger)
-        : base(userManager)
-    {
-        _roleAssignmentService = roleAssignmentService;
-        _profileService = profileService;
-        _clock = clock;
-        _logger = logger;
-    }
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public IActionResult Index()
@@ -50,18 +31,15 @@ public class AboutController : HumansControllerBase
     {
         try
         {
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
 
             // Load all active role assignments with user data — ~500 users, fits in memory
-            var (assignments, _) = await _roleAssignmentService.GetFilteredAsync(
+            var (assignments, _) = await roleAssignmentService.GetFilteredAsync(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
 
-            // Resolve effective profile picture URLs (custom uploads only — see issue #532).
-            var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-                _profileService, Url,
-                assignments.Select(ra => ra.UserId));
+            var assigneeInfos = await _userService.GetUserInfosAsync(
+                assignments.Select(ra => ra.UserId).Distinct().ToList());
 
-            // Define role display order and metadata
             var roleDefinitions = StaffViewModel.GetRoleDefinitions();
 
             var roleSections = new List<StaffRoleSectionViewModel>();
@@ -70,13 +48,13 @@ public class AboutController : HumansControllerBase
             {
                 var holders = assignments
                     .Where(ra => string.Equals(ra.RoleName, roleDef.RoleName, StringComparison.Ordinal))
-                    .Select(ra => new StaffRoleHolderViewModel
+                    .Select(ra => new
                     {
-                        UserId = ra.UserId,
-                        DisplayName = ra.User.DisplayName,
-                        ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
+                        Holder = new StaffRoleHolderViewModel { UserId = ra.UserId },
+                        SortKey = assigneeInfos.GetValueOrDefault(ra.UserId)?.BurnerName ?? string.Empty
                     })
-                    .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(h => h.SortKey, StringComparer.OrdinalIgnoreCase)
+                    .Select(h => h.Holder)
                     .ToList();
 
                 if (holders.Count > 0)
@@ -101,7 +79,7 @@ public class AboutController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load staff page");
+            logger.LogError(ex, "Failed to load staff page");
             return View(new StaffViewModel { RoleSections = [] });
         }
     }

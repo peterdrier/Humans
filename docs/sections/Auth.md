@@ -90,7 +90,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 
 - **Phase 1 — coarse policies** (`Humans.Web/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Domain.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
 - **Phase 2 — resource-based authorization (first vertical slices):** shipped. Production handlers in place: `TeamAuthorizationHandler` (resource: `Team`), `CampAuthorizationHandler` (resource: `Camp`), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; lives in `Humans.Application.Authorization` because it has no scoped dependencies), `UserEmailAuthorizationHandler` (resource: `UserEmail`), `IssuesAuthorizationHandler` (resource: `Issue`), `StoreOrderAuthorizationHandler` (resource: store order). Composite custom handlers (`IsActiveMemberHandler`, `ActiveMemberOrShiftAccessHandler`, `HumanAdminOnlyHandler`, `IsAnyTeamManagerOrCoordinatorHandler`, `AgentRateLimitHandler`) are also registered.
-- **Phase 3 — service-layer authorization enforcement:** **cancelled / tombstoned.** Superseded by `docs/architecture/design-rules.md §11`: services are auth-free; controllers call `IAuthorizationService.AuthorizeAsync` and pass an `isPrivileged` boolean (or equivalent) into the service.
+- **Phase 3 — broad service-layer authorization enforcement:** **cancelled / tombstoned.** Superseded by `docs/architecture/design-rules.md §11`: services are auth-free by default; controllers call `IAuthorizationService.AuthorizeAsync` and do not pass `isPrivileged` booleans. The sole exception is the documented full-Admin destructive-delete/reset guard via `IAdminAuthorizationService`.
 
 ### Magic-link state
 
@@ -133,6 +133,17 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 - **Governance:** Tier applications and board voting flows are a separate concern. Governance concerns association-level affairs; Auth concerns who-has-what-role within the running system. `role_assignments` is owned by Auth, not Governance.
 - **Notifications:** `INotificationEmitter` (the narrow per-user dispatch surface — `INotificationService` extends it but Auth only needs the emitter) — best-effort in-app notifications on role changes.
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IRoleAssignmentService.ReassignToUserAsync` re-FKs `role_assignments` from source to target during account merge fold.
+
+## Access Matrix UI (per-section)
+
+<!-- wheat: docs/specs/2026-03-18-access-matrix-card-design.md §Overview, §Sections & Matrices, §Maintenance -->
+
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+
+- **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
+- **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.
+- **Admin-only sections have no matrix.** Sections gated entirely to Admin would have no non-Admin columns to show, so they don't render the component.
+- **Maintenance hazard — the matrix can drift from the code.** The dictionary is hand-maintained and is not derived from `[Authorize]` attributes or `PolicyNames`. When you change a policy, update the matrix in the same commit.
 
 ## Architecture
 

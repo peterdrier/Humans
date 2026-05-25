@@ -1,15 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -18,56 +17,38 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.Controllers;
 
 [Route("Admin")]
-public class AdminController : HumansControllerBase
+public class AdminController(
+    IUserServiceRead userService,
+    ILogger<AdminController> logger,
+    IWebHostEnvironment environment,
+    IAccountDeletionService accountDeletionService,
+    ConfigurationRegistry configRegistry,
+    QueryStatistics queryStatistics,
+    ICacheStatsProvider cacheStatsProvider,
+    IEnumerable<ICacheStats> decoratorCacheStats,
+    IUserEmailProviderBackfillService userEmailProviderBackfillService,
+    IAdminDatabaseDiagnosticsService databaseDiagnostics) : HumansControllerBase(userService)
 {
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<AdminController> _logger;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IAccountDeletionService _accountDeletionService;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly QueryStatistics _queryStatistics;
-    private readonly ICacheStatsProvider _cacheStatsProvider;
-    private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
-    private readonly IAdminDatabaseDiagnosticsService _databaseDiagnostics;
-
-    public AdminController(
-        UserManager<User> userManager,
-        ILogger<AdminController> logger,
-        IWebHostEnvironment environment,
-        IAccountDeletionService accountDeletionService,
-        ConfigurationRegistry configRegistry,
-        QueryStatistics queryStatistics,
-        ICacheStatsProvider cacheStatsProvider,
-        IUserEmailProviderBackfillService userEmailProviderBackfillService,
-        IAdminDatabaseDiagnosticsService databaseDiagnostics)
-        : base(userManager)
-    {
-        _userManager = userManager;
-        _logger = logger;
-        _environment = environment;
-        _accountDeletionService = accountDeletionService;
-        _configRegistry = configRegistry;
-        _queryStatistics = queryStatistics;
-        _cacheStatsProvider = cacheStatsProvider;
-        _userEmailProviderBackfillService = userEmailProviderBackfillService;
-        _databaseDiagnostics = databaseDiagnostics;
-    }
-
-    // Dashboard is reachable by any admin-shaped role (FinanceAdmin etc.) so the
-    // top-nav "Admin" link doesn't dead-end at 403. Sidebar items inside still
-    // filter per-item, and all dashboard tiles are aggregate counts that are
-    // safe across roles. Other AdminController actions remain AdminOnly.
+    // AnyAdminRole so top-nav doesn't 403 for FinanceAdmin etc.; tiles are aggregate counts safe across roles. Other actions stay AdminOnly.
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
     public async Task<IActionResult> Index(
-        [FromServices] IProfileService profileService,
         [FromServices] IShiftManagementService shifts,
         [FromServices] IFeedbackService feedback,
         [FromServices] IAuditViewerService auditViewer,
+        [FromServices] IAdminDashboardService adminDashboardService,
+        [FromServices] IUserServiceRead userService,
+        [FromServices] IUserActivityTracker activityTracker,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
-        var activeHumans = (await profileService.GetActiveApprovedUserIdsAsync(ct)).Count;
+        var snapshot = await userService.GetAllUserInfosAsync(ct);
+        var totalUsers = snapshot.Count;
+        var activeProfileUsers = snapshot.Count(u => u.IsActive);
+        var activeEvent = await shifts.GetActiveAsync();
+        var ticketHolders = activeEvent is { Year: > 0 }
+            ? snapshot.Count(u => u.HasTicketForYear(activeEvent.Year))
+            : 0;
         var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
         var openFeedback = await feedback.GetActionableCountAsync(ct);
         var recent = (await auditViewer.GetRecentAsync(8, ct))
@@ -75,15 +56,34 @@ public class AdminController : HumansControllerBase
             .ToArray();
         var staffing = Array.Empty<DepartmentCoverage>();
 
+        var dashboardData = await adminDashboardService.GetAdminDashboardAsync(ct);
+        var appStats = new DashboardApplicationStats(
+            Total: dashboardData.TotalApplications,
+            Approved: dashboardData.ApprovedApplications,
+            Rejected: dashboardData.RejectedApplications,
+            Colaborador: dashboardData.ColaboradorApplied,
+            Asociado: dashboardData.AsociadoApplied);
+        var languages = dashboardData.LanguageDistribution
+            .Select(l => new DashboardLanguageCount(l.Language, l.Count))
+            .ToArray();
+
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
-            ActiveHumans: activeHumans,
+            TotalUsers: totalUsers,
+            ActiveProfileUsers: activeProfileUsers,
+            TicketHolders: ticketHolders,
             ShiftCoveragePercent: total > 0 ? (int)Math.Round(ratio * 100) : 0,
             ShiftFilledOf: total > 0 ? filled : null,
             ShiftTotalOf: total > 0 ? total : null,
             OpenFeedback: openFeedback,
+            OnlineNow: activityTracker.CountActiveWithin(Duration.FromMinutes(5)),
+            OnlineLastHour: activityTracker.CountActiveWithin(Duration.FromHours(1)),
+            OnlineLast24h: activityTracker.CountActiveWithin(Duration.FromHours(24)),
             StaffingByDepartment: staffing,
-            RecentActivity: recent);
+            RecentActivity: recent,
+            AppStats: appStats,
+            LanguageDistribution: languages,
+            SetMembership: dashboardData.SetMembership);
         return View(vm);
     }
 
@@ -92,18 +92,18 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
-        if (_environment.IsProduction())
+        if (environment.IsProduction())
         {
             return NotFound();
         }
 
-        var user = await FindUserByIdAsync(id);
+        var user = await FindUserInfoByIdAsync(id);
         if (user is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
 
         if (user.Id == currentUser?.Id)
         {
@@ -111,20 +111,13 @@ public class AdminController : HumansControllerBase
             return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
-        var displayName = user.DisplayName;
+        var displayName = user.BurnerName;
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
-            currentUser?.Id, id, displayName, _environment.EnvironmentName);
+            currentUser?.Id, id, displayName, environment.EnvironmentName);
 
-        // Sever OAuth link so next Google login creates a fresh user
-        var logins = await _userManager.GetLoginsAsync(user);
-        foreach (var login in logins)
-        {
-            await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
-        }
-
-        var result = await _accountDeletionService.PurgeAsync(id, currentUser?.Id);
+        var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);
         if (!result.Success)
         {
             return NotFound();
@@ -142,6 +135,8 @@ public class AdminController : HumansControllerBase
         var sink = Infrastructure.InMemoryLogSink.Instance;
         var events = sink.GetEvents(count);
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
+        ViewBag.SinkStartedAt = sink.StartedAt;
+        ViewBag.TotalEvents = sink.TotalEvents;
         return View(events);
     }
 
@@ -153,7 +148,7 @@ public class AdminController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Configuration()
     {
-        var entries = _configRegistry.GetAll();
+        var entries = configRegistry.GetAll();
 
         var items = entries.Select(e =>
         {
@@ -164,8 +159,7 @@ public class AdminController : HumansControllerBase
             }
             else if (e.IsSensitive)
             {
-                // Show first 4 chars so you can tell which key is in use;
-                // fully mask only very short values (≤4 chars) where the prefix IS the secret
+                // First 4 chars to identify key; fully mask ≤4-char values (prefix would be the secret).
                 displayValue = e.Value switch
                 {
                     { Length: > 4 } v => v[..4] + "••••••",
@@ -197,15 +191,13 @@ public class AdminController : HumansControllerBase
         return View(new AdminConfigurationViewModel { Items = items });
     }
 
-    // Intentionally anonymous: exposes only migration names and counts (no sensitive data).
-    // Used by dev tooling to check which migrations have been applied in QA/prod,
-    // so old migrations can be safely squashed and removed from the repo.
+    // Anonymous on purpose: only migration names + counts (no sensitive data). Dev tooling checks QA/prod state before squashing migrations.
     [HttpGet("DbVersion")]
     [AllowAnonymous]
     [Produces("application/json")]
     public async Task<IActionResult> DbVersion(CancellationToken ct)
     {
-        var status = await _databaseDiagnostics.GetMigrationStatusAsync(ct);
+        var status = await databaseDiagnostics.GetMigrationStatusAsync(ct);
 
         return Ok(new
         {
@@ -221,10 +213,10 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var snapshot = _queryStatistics.GetSnapshot();
+            var snapshot = queryStatistics.GetSnapshot();
             var model = new DbStatsViewModel
             {
-                TotalQueryCount = _queryStatistics.TotalCount,
+                TotalQueryCount = queryStatistics.TotalCount,
                 Entries = snapshot.Select(e => new DbStatEntryViewModel
                 {
                     Operation = e.Operation,
@@ -239,7 +231,7 @@ public class AdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading DB stats");
+            logger.LogError(ex, "Error loading DB stats");
             SetError("Failed to load database statistics.");
             return RedirectToAction(nameof(Index));
         }
@@ -252,13 +244,13 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            _queryStatistics.Reset();
-            _logger.LogInformation("Admin reset DB query statistics");
+            queryStatistics.Reset();
+            logger.LogInformation("Admin reset DB query statistics");
             SetSuccess("Query statistics have been reset.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting DB stats");
+            logger.LogError(ex, "Error resetting DB stats");
             SetError("Failed to reset database statistics.");
         }
 
@@ -270,20 +262,16 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearHangfireLocks(CancellationToken ct)
     {
-        var deleted = await _databaseDiagnostics.ClearHangfireLocksAsync(ct);
+        var deleted = await databaseDiagnostics.ClearHangfireLocksAsync(ct);
 
-        _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
+        logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
         return RedirectToAction(nameof(Maintenance));
     }
 
     /// <summary>
-    /// One-shot backfill of <c>UserEmail.Provider</c> / <c>UserEmail.ProviderKey</c>
-    /// / <c>UserEmail.IsGoogle</c> from existing <c>AspNetUserLogins</c> rows and
-    /// the legacy <c>User.GoogleEmail</c> field. PR 3 of the
-    /// email-identity-decoupling spec. Idempotent — safe to re-run. Operator
-    /// runs once on QA (verifies the result counters), once on production
-    /// (verifies again), then PR 7 ships the legacy column drops.
+    /// One-shot, idempotent backfill of UserEmail.Provider/ProviderKey/IsGoogle from AspNetUserLogins and legacy User.GoogleEmail.
+    /// PR 3 of email-identity-decoupling spec; legacy columns dropped in PR 7.
     /// </summary>
     [HttpGet("BackfillUserEmailProviders")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -295,7 +283,7 @@ public class AdminController : HumansControllerBase
             ProviderRowsUpdated: 0,
             IsGoogleRowsUpdated: 0,
             AmbiguousMatchesWarned: 0,
-            Warnings: Array.Empty<string>()));
+            Warnings: []));
     }
 
     [HttpPost("BackfillUserEmailProviders")]
@@ -303,12 +291,12 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BackfillUserEmailProvidersRun(CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserAsync();
-        _logger.LogInformation(
+        var currentUser = await GetCurrentUserInfoAsync();
+        logger.LogInformation(
             "Admin {AdminId} running UserEmail Provider/IsGoogle backfill",
             currentUser?.Id);
 
-        var result = await _userEmailProviderBackfillService.RunAsync(ct);
+        var result = await userEmailProviderBackfillService.RunAsync(ct);
 
         var msg =
             $"Provider/IsGoogle backfill complete. Users processed: {result.UsersProcessed}. " +
@@ -333,16 +321,16 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var snapshot = _cacheStatsProvider.GetSnapshot();
-            var entryCounts = (_cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
+            var snapshot = cacheStatsProvider.GetSnapshot();
+            var entryCounts = (cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
                 ?.GetActiveEntryCounts()
                 ?? new Dictionary<string, int>(StringComparer.Ordinal);
 
             var model = new CacheStatsViewModel
             {
-                TotalHits = _cacheStatsProvider.TotalHits,
-                TotalMisses = _cacheStatsProvider.TotalMisses,
-                TotalActiveEntries = _cacheStatsProvider.TotalActiveEntries,
+                TotalHits = cacheStatsProvider.TotalHits,
+                TotalMisses = cacheStatsProvider.TotalMisses,
+                TotalActiveEntries = cacheStatsProvider.TotalActiveEntries,
                 Entries = snapshot.Select(e =>
                 {
                     entryCounts.TryGetValue(e.KeyType, out var activeCount);
@@ -357,13 +345,27 @@ public class AdminController : HumansControllerBase
                         Ttl = meta?.Ttl ?? "—",
                         Type = meta?.Type.ToString() ?? "—"
                     };
-                }).ToList()
+                }).ToList(),
+                DecoratorEntries = decoratorCacheStats
+                    .OrderBy(s => s.Name, StringComparer.Ordinal)
+                    .Select(s => new DecoratorCacheStatEntryViewModel
+                    {
+                        Name = s.Name,
+                        Entries = s.Entries,
+                        Hits = s.Hits,
+                        Misses = s.Misses,
+                        KeyRemovals = s.KeyRemovals,
+                        BulkInvalidations = s.BulkInvalidations,
+                        HitRatePercent = s.HitRatePercent,
+                        IsWarmedUp = s.IsWarmedUp,
+                    })
+                    .ToList()
             };
             return View(model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading cache stats");
+            logger.LogError(ex, "Error loading cache stats");
             SetError("Failed to load cache statistics.");
             return RedirectToAction(nameof(Index));
         }
@@ -376,13 +378,15 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            _cacheStatsProvider.Reset();
-            _logger.LogInformation("Admin reset cache statistics");
+            cacheStatsProvider.Reset();
+            foreach (var s in decoratorCacheStats)
+                s.ResetCounters();
+            logger.LogInformation("Admin reset cache statistics");
             SetSuccess("Cache statistics have been reset.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting cache stats");
+            logger.LogError(ex, "Error resetting cache stats");
             SetError("Failed to reset cache statistics.");
         }
 
@@ -395,7 +399,7 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var segmentation = await _databaseDiagnostics.GetAudienceSegmentationAsync(year);
+            var segmentation = await databaseDiagnostics.GetAudienceSegmentationAsync(year);
 
             var model = new AudienceSegmentationViewModel
             {
@@ -412,7 +416,7 @@ public class AdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading audience segmentation data");
+            logger.LogError(ex, "Error loading audience segmentation data");
             SetError("Failed to load audience segmentation data.");
             return RedirectToAction(nameof(Index));
         }

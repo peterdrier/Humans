@@ -2,11 +2,10 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Application;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Xunit;
 using Humans.Infrastructure.Repositories.Profiles;
 
 namespace Humans.Application.Tests.Repositories;
@@ -30,7 +29,6 @@ public sealed class ProfileRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -75,7 +73,7 @@ public sealed class ProfileRepositoryTests : IDisposable
             new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
             new(Guid.Empty, new LocalDate(2024, 5, 1), "Add me", null),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, newEntries, default);
+        await _repo.ReconcileCVEntriesAsync(profileId, newEntries, CancellationToken.None);
 
         // Assert: exactly two rows remain. Use AsNoTracking so the query hits the in-memory
         // store directly rather than returning stale entities from _dbContext's identity map.
@@ -128,7 +126,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         {
             new(entryId, new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, entries, default);
+        await _repo.ReconcileCVEntriesAsync(profileId, entries, CancellationToken.None);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
@@ -167,7 +165,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         {
             new(entryId, new LocalDate(2024, 6, 15), "Renamed Event", "desc"),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, entries, default);
+        await _repo.ReconcileCVEntriesAsync(profileId, entries, CancellationToken.None);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
@@ -181,5 +179,21 @@ public sealed class ProfileRepositoryTests : IDisposable
         persisted.Date.Should().Be(new LocalDate(2024, 6, 15));
         persisted.EventName.Should().Be("Renamed Event");
         persisted.UpdatedAt.Should().Be(afterAdvance);
+    }
+
+    private Profile NewProfile(string burnerName, string firstName, string lastName, ProfileState state)
+    {
+        var now = _clock.GetCurrentInstant();
+        return new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
+            State = state,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
     }
 }

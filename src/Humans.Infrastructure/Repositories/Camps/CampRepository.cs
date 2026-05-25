@@ -8,17 +8,8 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Camps;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ICampRepository"/>. The only
-/// non-test file that touches the Camp-owned DbSets
-/// (<c>Camps</c>, <c>CampSeasons</c>, <c>CampLeads</c>, <c>CampImages</c>,
-/// <c>CampHistoricalNames</c>, <c>CampSettings</c>) after the Camps migration
-/// lands. Uses <see cref="IDbContextFactory{TContext}"/> so the repository can
-/// be registered as Singleton while <c>HumansDbContext</c> remains Scoped.
-/// Cross-domain navigation (<c>CampLead.User</c>) is never <c>Include</c>-ed;
-/// the service stitches display data via <see cref="Application.Interfaces.Users.IUserService"/>.
-/// </summary>
-public sealed class CampRepository : ICampRepository
+/// <summary>EF-backed <see cref="ICampRepository"/>.</summary>
+internal sealed class CampRepository : ICampRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
 
@@ -27,9 +18,7 @@ public sealed class CampRepository : ICampRepository
         _factory = factory;
     }
 
-    // ==========================================================================
     // Reads — Camp
-    // ==========================================================================
 
     public async Task<Camp?> GetBySlugAsync(string slug, CancellationToken ct = default)
     {
@@ -38,7 +27,6 @@ public sealed class CampRepository : ICampRepository
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons)
-            .Include(b => b.Leads.Where(l => l.LeftAt == null))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(b => b.Slug == normalizedSlug, ct);
@@ -46,11 +34,13 @@ public sealed class CampRepository : ICampRepository
 
     public async Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default)
     {
+        // Active Seasons.Members included so RefreshEntryAsync sees the same shape
+        // as the warmup path — otherwise EeGrantedCount projects as 0 on each invalidation.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons)
-            .Include(b => b.Leads.Where(l => l.LeftAt == null))
+                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(b => b.Id == campId, ct);
@@ -79,7 +69,6 @@ public sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
                 .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
-            .Include(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
         if (statusFilter is { Count: > 0 })
@@ -89,19 +78,6 @@ public sealed class CampRepository : ICampRepository
 
         return await query
             .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Camp>> GetCampsByLeadUserIdAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Camps
-            .AsNoTracking()
-            .Include(b => b.Seasons)
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
-            .Include(b => b.Leads)
-            .Where(b => b.Leads.Any(l => l.UserId == userId && l.LeftAt == null))
             .ToListAsync(ct);
     }
 
@@ -119,7 +95,6 @@ public sealed class CampRepository : ICampRepository
         return await ctx.CampSeasons
             .AsNoTracking()
             .Include(s => s.Camp)
-            .ThenInclude(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(s => s.Status == CampSeasonStatus.Pending)
             .OrderBy(s => s.CreatedAt)
             .ToListAsync(ct);
@@ -131,19 +106,16 @@ public sealed class CampRepository : ICampRepository
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
 
-    // Public camp-directory statuses, applied as a Contains() filter so EF
-    // translates to an IN clause. CampSeasonStatus is stored via
-    // HasConversion<string>(), so ||-chained == comparisons would violate
-    // memory/code/no-enum-compare-in-ef.md.
-    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
-        { CampSeasonStatus.Active, CampSeasonStatus.Full };
+    // Contains() → IN clause (enum stored as string; see no-enum-compare-in-ef).
+    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses = [CampSeasonStatus.Active, CampSeasonStatus.Full
+    ];
 
     public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
         string query, int year, bool onlyPublicStatus, int max,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
-            return Array.Empty<Camp>();
+            return [];
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 
@@ -152,12 +124,8 @@ public sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year));
 
-        // Name-match and public-status gate must bind to the SAME season
-        // row — splitting them across two .Where(c => c.Seasons.Any(...))
-        // calls would emit independent correlated subqueries and let two
-        // different seasons satisfy each predicate. Public-status mirrors
-        // Camp.HasPublicSeasonForYear, the same gate the public camp
-        // directory uses.
+        // Name-match and public-status MUST bind to the same season row —
+        // splitting across two .Where(.Any(...)) lets different seasons satisfy each.
         IQueryable<Camp> q = onlyPublicStatus
             ? baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
                 && EF.Functions.ILike(s.Name, pattern, "\\")
@@ -166,8 +134,7 @@ public sealed class CampRepository : ICampRepository
                 && EF.Functions.ILike(s.Name, pattern, "\\")));
 
         return await q
-            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
-            .OrderBy(c => c.Slug) // arch:db-sort-ok
+            .OrderBy(c => c.Slug) // arch:db-sort-ok — orchestrator re-ranks by score
             .Take(max)
             .ToListAsync(ct);
     }
@@ -178,21 +145,24 @@ public sealed class CampRepository : ICampRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
-    // ==========================================================================
     // Writes — Camp (aggregate)
-    // ==========================================================================
 
     public async Task CreateCampAsync(
         Camp camp,
         CampSeason initialSeason,
-        CampLead creatorLead,
+        CampMember creatorMember,
+        CampRoleAssignment? creatorLeadAssignment,
         IReadOnlyList<CampHistoricalName>? historicalNames,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Camps.Add(camp);
         ctx.CampSeasons.Add(initialSeason);
-        ctx.CampLeads.Add(creatorLead);
+        ctx.CampMembers.Add(creatorMember);
+        if (creatorLeadAssignment is not null)
+        {
+            ctx.CampRoleAssignments.Add(creatorLeadAssignment);
+        }
         if (historicalNames is { Count: > 0 })
         {
             foreach (var name in historicalNames)
@@ -273,9 +243,7 @@ public sealed class CampRepository : ICampRepository
         return images;
     }
 
-    // ==========================================================================
     // Writes — Season
-    // ==========================================================================
 
     public async Task<bool> UpdateSeasonAsync(
         Guid seasonId,
@@ -392,9 +360,7 @@ public sealed class CampRepository : ICampRepository
         return rows.ToDictionary(r => r.Year, r => r.LockDate);
     }
 
-    // ==========================================================================
     // Cross-service queries
-    // ==========================================================================
 
     public async Task<CampSeason?> GetSeasonByIdAsync(
         Guid campSeasonId, CancellationToken ct = default)
@@ -402,10 +368,11 @@ public sealed class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampSeasons
             .AsNoTracking()
+            .Include(s => s.Camp)
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement)>>
+    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
         GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -413,12 +380,12 @@ public sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(s => s.Camp)
             .Where(s => s.Year == year)
-            .Select(s => new { s.Id, s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement })
+            .Select(s => new { s.Id, s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement, s.CampId })
             .ToListAsync(ct);
 
         return rows.ToDictionary(
             r => r.Id,
-            r => (r.Name, r.Slug, r.SoundZone, r.SpaceRequirement));
+            r => (r.Name, r.Slug, r.SoundZone, r.SpaceRequirement, r.CampId));
     }
 
     public async Task<IReadOnlyList<(Guid Id, string Name, string CampSlug, SpaceSize? SpaceRequirement)>>
@@ -435,106 +402,94 @@ public sealed class CampRepository : ICampRepository
         return rows.Select(r => (r.Id, r.Name, r.CampSlug, r.SpaceRequirement)).ToList();
     }
 
-    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .Where(l => l.UserId == userId && l.LeftAt == null)
-            .Join(ctx.CampSeasons,
-                l => l.CampId,
-                s => s.CampId,
-                (l, s) => s)
-            .Where(s => s.Year == year)
-            .Select(s => (Guid?)s.Id)
-            .FirstOrDefaultAsync(ct);
-    }
-
-    // ==========================================================================
-    // Leads
-    // ==========================================================================
-
-    public async Task<bool> IsUserActiveLeadAsync(
-        Guid userId, Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .AnyAsync(l => l.CampId == campId && l.UserId == userId && l.LeftAt == null, ct);
-    }
-
-    public async Task<int> CountActiveLeadsAsync(Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .CountAsync(l => l.CampId == campId && l.LeftAt == null, ct);
-    }
-
-    public async Task AddLeadAsync(CampLead lead, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.CampLeads.Add(lead);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<CampLead?> GetLeadForMutationAsync(
-        Guid leadId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var lead = await ctx.CampLeads.FindAsync([leadId], ct);
-        if (lead is null)
-        {
-            return null;
-        }
-
-        ctx.Entry(lead).State = EntityState.Detached;
-        return lead;
-    }
-
-    public async Task UpdateLeadAsync(CampLead lead, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.CampLeads.Update(lead);
-        await ctx.SaveChangesAsync(ct);
-    }
+    // Leads (legacy camp_leads — only the seed-migration snapshot + role-backed
+    // team-sync reads remain; mutation/query methods retired with the Camp Lead
+    // role move. Entity/table kept until nobodies-collective/Humans#774.)
 
     public async Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(
         CancellationToken ct = default)
     {
+        // Post-Camp-Lead-retirement source of truth (issue
+        // nobodies-collective/Humans#753): CampRoleAssignment against the
+        // Camp Lead special role. Existing semantic preserved — no year filter
+        // (Barrio Leads team is year-agnostic). Note: cross-aggregate read of
+        // camp_role_definitions/camp_role_assignments; both tables live in the
+        // Camps section so this stays within the section boundary.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
+        return await ctx.CampRoleAssignments
             .AsNoTracking()
-            .Where(l => l.LeftAt == null)
-            .Select(l => l.UserId)
+            .Where(a => a.Definition.SpecialRole == CampSpecialRole.Lead
+                && a.Definition.DeactivatedAt == null)
+            .Select(a => a.CampMember.UserId)
             .Distinct()
             .ToListAsync(ct);
     }
 
     public async Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default)
     {
+        // Same post-retirement repoint as GetActiveLeadUserIdsAsync — see comment there.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
+        return await ctx.CampRoleAssignments
             .AsNoTracking()
-            .AnyAsync(l => l.UserId == userId && l.LeftAt == null, ct);
+            .AnyAsync(a => a.CampMember.UserId == userId
+                && a.Definition.SpecialRole == CampSpecialRole.Lead
+                && a.Definition.DeactivatedAt == null, ct);
     }
 
     public async Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
+        // GDPR export of legacy camp_leads rows until #774 drops the table.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampLeads
             .AsNoTracking()
             .Include(cl => cl.Camp)
             .Where(cl => cl.UserId == userId)
-            .OrderByDescending(cl => cl.JoinedAt)
+            .OrderByDescending(cl => cl.JoinedAt) // arch:db-sort-ok — GDPR export ordering
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
+    public async Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampLeads
+            .AsNoTracking()
+            .Where(l => l.LeftAt == null)
+            .Select(l => new { l.Id, l.CampId, l.UserId, CampSlug = l.Camp.Slug })
+            .ToListAsync(ct);
+        return rows
+            .Select(r => new LeadMigrationSnapshot(r.Id, r.CampId, r.UserId, r.CampSlug))
+            .ToList();
+    }
+
+    public async Task<Guid?> GetCampSeasonForLeadMigrationAsync(
+        Guid campId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Prefer the open (Pending/Active/Full) season with the latest year;
+        // fall back to the most-recent season of any status. Returns null when
+        // the camp has no seasons at all.
+        var openLatest = await ctx.CampSeasons
+            .AsNoTracking()
+            .Where(s => s.CampId == campId
+                && (s.Status == CampSeasonStatus.Pending
+                    || s.Status == CampSeasonStatus.Active
+                    || s.Status == CampSeasonStatus.Full))
+            .OrderByDescending(s => s.Year) // arch:db-sort-ok — picking single most-relevant season for one-shot lead migration
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+        if (openLatest is not null) return openLatest;
+
+        return await ctx.CampSeasons
+            .AsNoTracking()
+            .Where(s => s.CampId == campId)
+            .OrderByDescending(s => s.Year) // arch:db-sort-ok — picking single most-relevant season for one-shot lead migration
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+    }
+
     // Historical names
-    // ==========================================================================
 
     public async Task AddHistoricalNameAsync(
         CampHistoricalName historicalName, CancellationToken ct = default)
@@ -559,9 +514,7 @@ public sealed class CampRepository : ICampRepository
         return true;
     }
 
-    // ==========================================================================
     // Images
-    // ==========================================================================
 
     public async Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default)
     {
@@ -630,9 +583,7 @@ public sealed class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
     // Settings
-    // ==========================================================================
 
     public async Task<CampSettings?> GetSettingsReadOnlyAsync(CancellationToken ct = default)
     {
@@ -687,9 +638,7 @@ public sealed class CampRepository : ICampRepository
         return true;
     }
 
-    // ==========================================================================
     // Membership (camp_members)
-    // ==========================================================================
 
     public async Task<CampMemberInsertResult> RequestMembershipAsync(
         Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default)
@@ -748,11 +697,8 @@ public sealed class CampRepository : ICampRepository
         Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Only consider non-Removed rows. The partial unique index
-        // IX_camp_members_active_unique permits multiple Removed rows alongside
-        // at most one non-Removed row per (season, user) — so a user who was
-        // removed in the past and re-requested can have both. Promoting an
-        // older Removed row would collide with the live Pending row on save.
+        // Only consider non-Removed rows — the partial unique index permits
+        // multiple Removed rows alongside one non-Removed row per (season, user).
         var existing = await ctx.CampMembers.FirstOrDefaultAsync(
             m => m.CampSeasonId == campSeasonId
                  && m.UserId == userId
@@ -764,7 +710,6 @@ public sealed class CampRepository : ICampRepository
             if (existing.Status == CampMemberStatus.Active)
                 return new CampMemberInsertResult(existing.Id, CampMemberInsertOutcome.AlreadyActive);
 
-            // promote pending → active
             existing.Status = CampMemberStatus.Active;
             existing.ConfirmedAt = now;
             existing.ConfirmedByUserId = confirmedByUserId;
@@ -822,7 +767,7 @@ public sealed class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampMembers.Attach(member);
         ctx.Entry(member).State = EntityState.Modified;
-        // Do not overwrite immutable init-only fields via EF.
+        // Protect immutable init-only fields.
         ctx.Entry(member).Property(m => m.CampSeasonId).IsModified = false;
         ctx.Entry(member).Property(m => m.UserId).IsModified = false;
         ctx.Entry(member).Property(m => m.RequestedAt).IsModified = false;
@@ -853,6 +798,21 @@ public sealed class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampMember>>> GetMembersForYearAsync(
+        int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.CampSeason.Year == year && m.Status != CampMemberStatus.Removed)
+            .ToListAsync(ct);
+        return rows
+            .GroupBy(m => m.CampSeasonId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<CampMember>)g.ToList());
+    }
+
     public async Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -878,27 +838,6 @@ public sealed class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<int> CountPendingMembershipsForLeadAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var leadCampIds = ctx.CampLeads
-            .AsNoTracking()
-            .Where(l => l.UserId == userId && l.LeftAt == null)
-            .Select(l => l.CampId);
-
-        // Only count requests for seasons that are actually open (Active or Full).
-        // If a season is rejected/withdrawn, the requesters have already been
-        // notified; the row stays for audit but shouldn't nag the lead.
-        return await ctx.CampMembers
-            .AsNoTracking()
-            .Where(m => m.Status == CampMemberStatus.Pending
-                && leadCampIds.Contains(m.CampSeason.CampId)
-                && (m.CampSeason.Status == CampSeasonStatus.Active
-                    || m.CampSeason.Status == CampSeasonStatus.Full))
-            .CountAsync(ct);
-    }
-
     public async Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default)
     {
@@ -910,57 +849,7 @@ public sealed class CampRepository : ICampRepository
         return row is null ? null : (row.CampSeasonId, row.UserId, row.Status);
     }
 
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
-
-    public async Task<int> ReassignLeadsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        // CampLead canonical uniqueness is the partial index
-        // (CampId, UserId) WHERE LeftAt IS NULL — i.e. one active lead per
-        // (camp, user). Closed (LeftAt != null) rows can coexist freely, so
-        // they always re-FK without collision; only active source rows
-        // collide with active target rows in the same camp.
-        var sourceRows = await ctx.CampLeads
-            .Where(l => l.UserId == sourceUserId)
-            .ToListAsync(ct);
-
-        var targetActiveCampIds = await ctx.CampLeads
-            .Where(l => l.UserId == targetUserId && l.LeftAt == null)
-            .Select(l => l.CampId)
-            .ToListAsync(ct);
-        var targetActiveCampIdSet = new HashSet<Guid>(targetActiveCampIds);
-
-        foreach (var src in sourceRows)
-        {
-            if (src.LeftAt == null && targetActiveCampIdSet.Contains(src.CampId))
-            {
-                // Target already has an active lead row for this camp —
-                // target wins, drop source's active row. Closed source
-                // rows for the same camp still re-FK below (history).
-                ctx.CampLeads.Remove(src);
-            }
-            else
-            {
-                // CampLead.UserId is init-only on the entity; mutate via
-                // the EF change-tracker so the column updates.
-                ctx.Entry(src).Property(nameof(CampLead.UserId)).CurrentValue = targetUserId;
-            }
-        }
-
-        await ctx.SaveChangesAsync(ct);
-
-        return await ctx.CampLeads
-            .CountAsync(l => l.UserId == targetUserId, ct);
-    }
-
-    // ==========================================================================
     // Early Entry
-    // ==========================================================================
 
     public async Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)

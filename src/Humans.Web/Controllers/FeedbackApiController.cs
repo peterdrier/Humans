@@ -9,26 +9,16 @@ namespace Humans.Web.Controllers;
 [ApiController]
 [Route("api/feedback")]
 [ServiceFilter(typeof(ApiKeyAuthFilter))]
-public class FeedbackApiController : ControllerBase
+public class FeedbackApiController(IFeedbackService feedbackService, ILogger<FeedbackApiController> logger)
+    : ControllerBase
 {
-    private readonly IFeedbackService _feedbackService;
-    private readonly ILogger<FeedbackApiController> _logger;
-
-    public FeedbackApiController(
-        IFeedbackService feedbackService,
-        ILogger<FeedbackApiController> logger)
-    {
-        _feedbackService = feedbackService;
-        _logger = logger;
-    }
-
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] FeedbackStatus? status,
         [FromQuery] FeedbackCategory? category,
         [FromQuery] int limit = 50)
     {
-        var reports = await _feedbackService.GetFeedbackListAsync(status, category, limit: limit);
+        var reports = await feedbackService.GetFeedbackListAsync(status, category, limit: limit);
 
         var result = reports.Select(r => new
         {
@@ -64,7 +54,7 @@ public class FeedbackApiController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var r = await _feedbackService.GetFeedbackByIdAsync(id);
+        var r = await feedbackService.GetFeedbackByIdAsync(id);
         if (r is null) return NotFound();
 
         return Ok(new
@@ -107,7 +97,7 @@ public class FeedbackApiController : ControllerBase
     [HttpGet("{id}/messages")]
     public async Task<IActionResult> GetMessages(Guid id)
     {
-        var report = await _feedbackService.GetFeedbackByIdAsync(id);
+        var report = await feedbackService.GetFeedbackByIdAsync(id);
         if (report is null) return NotFound();
 
         return Ok(report.Messages.Select(m => new
@@ -129,7 +119,7 @@ public class FeedbackApiController : ControllerBase
 
         try
         {
-            var message = await _feedbackService.PostMessageAsync(id, null, model.Content, isAdmin: true);
+            var message = await feedbackService.PostMessageAsync(id, null, model.Content, isAdmin: true);
             return Ok(new
             {
                 message.Id,
@@ -143,7 +133,7 @@ public class FeedbackApiController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
+            logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
             return StatusCode(500, new { error = "Failed to post message" });
         }
     }
@@ -153,7 +143,7 @@ public class FeedbackApiController : ControllerBase
     {
         try
         {
-            await _feedbackService.UpdateStatusAsync(id, model.Status, null);
+            await feedbackService.UpdateStatusAsync(id, model.Status, null);
             return Ok(new { success = true });
         }
         catch (InvalidOperationException)
@@ -162,7 +152,7 @@ public class FeedbackApiController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
+            logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
             return StatusCode(500, new { error = "Failed to update status" });
         }
     }
@@ -172,7 +162,7 @@ public class FeedbackApiController : ControllerBase
     {
         try
         {
-            await _feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, null);
+            await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, null);
             return Ok(new { success = true });
         }
         catch (InvalidOperationException)
@@ -181,7 +171,7 @@ public class FeedbackApiController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
+            logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
             return StatusCode(500, new { error = "Failed to update assignment" });
         }
     }
@@ -191,7 +181,7 @@ public class FeedbackApiController : ControllerBase
     {
         try
         {
-            await _feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
+            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
             return Ok(new { success = true });
         }
         catch (InvalidOperationException)
@@ -200,7 +190,7 @@ public class FeedbackApiController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
+            logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
             return StatusCode(500, new { error = "Failed to set GitHub issue" });
         }
     }

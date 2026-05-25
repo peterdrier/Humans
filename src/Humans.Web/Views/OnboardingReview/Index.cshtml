@@ -40,27 +40,21 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.DisplayName" />
+                                           value="@item.UserId" aria-label="Select @item.LegalName" />
                                 }
                                 else
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <vc:human user-id="@item.UserId" layout="Avatar" size="40" popover="false" />
-                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
-                                   class="ms-2 text-decoration-none text-reset"
-                                   data-human-popover="true"
-                                   data-user-id="@item.UserId">
-                                    <span class="fw-semibold">@item.DisplayName</span>
-                                    @if (hasLegalName)
-                                    {
-                                        <span class="fw-normal text-muted"> - @item.LegalName</span>
-                                    }
-                                    else if (!string.IsNullOrWhiteSpace(item.Email))
-                                    {
-                                        <small class="text-muted"> @item.Email</small>
-                                    }
-                                </a>
+                                <vc:human user-id="@item.UserId" layout="AvatarName" link="Public" size="40" />
+                                @if (hasLegalName)
+                                {
+                                    <span class="ms-2 text-muted"> - @item.LegalName</span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.Email))
+                                {
+                                    <small class="ms-2 text-muted">@item.Email</small>
+                                }
                             </div>
                             <div class="text-end">
                                 @if (item.MembershipTier != MembershipTier.Volunteer)
@@ -103,27 +97,21 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.DisplayName" />
+                                           value="@item.UserId" aria-label="Select @item.LegalName" />
                                 }
                                 else
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <vc:human user-id="@item.UserId" layout="Avatar" size="40" popover="false" />
-                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
-                                   class="ms-2 text-decoration-none text-reset"
-                                   data-human-popover="true"
-                                   data-user-id="@item.UserId">
-                                    <span class="fw-semibold">@item.DisplayName</span>
-                                    @if (hasLegalName)
-                                    {
-                                        <span class="fw-normal text-muted"> - @item.LegalName</span>
-                                    }
-                                    else if (!string.IsNullOrWhiteSpace(item.Email))
-                                    {
-                                        <small class="text-muted"> @item.Email</small>
-                                    }
-                                </a>
+                                <vc:human user-id="@item.UserId" layout="AvatarName" link="Public" size="40" />
+                                @if (hasLegalName)
+                                {
+                                    <span class="ms-2 text-muted"> - @item.LegalName</span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.Email))
+                                {
+                                    <small class="ms-2 text-muted">@item.Email</small>
+                                }
                             </div>
                             <div class="text-end">
                                 @if (item.MembershipTier != MembershipTier.Volunteer)

@@ -10,18 +10,9 @@ namespace Humans.Web.Health;
 /// Health check that validates SMTP connectivity and authentication.
 /// Connects and authenticates without sending any email.
 /// </summary>
-public class SmtpHealthCheck : IHealthCheck
+public class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<SmtpHealthCheck> logger) : IHealthCheck
 {
-    private readonly EmailSettings _settings;
-    private readonly ILogger<SmtpHealthCheck> _logger;
-
-    public SmtpHealthCheck(
-        IOptions<EmailSettings> settings,
-        ILogger<SmtpHealthCheck> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly EmailSettings _settings = settings.Value;
 
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -60,14 +51,14 @@ public class SmtpHealthCheck : IHealthCheck
         }
         catch (AuthenticationException ex)
         {
-            _logger.LogWarning(ex, "SMTP authentication failed");
+            logger.LogWarning(ex, "SMTP authentication failed");
             return HealthCheckResult.Unhealthy(
                 "SMTP authentication failed - check credentials",
                 ex);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "SMTP health check failed");
+            logger.LogWarning(ex, "SMTP health check failed");
             return HealthCheckResult.Unhealthy(
                 $"SMTP connection failed: {ex.Message}",
                 ex);

@@ -23,7 +23,7 @@
             <ol class="breadcrumb">
                 @if (Model.IsAdminContext)
                 {
-                    <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId">@(Model.TargetDisplayName ?? Localizer["Emails_AdminUnknownTarget"].Value)</a></li>
+                    <li class="breadcrumb-item"><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></li>
                 }
                 else
                 {
@@ -83,6 +83,18 @@
                 <i class="fa-solid fa-envelope-circle-check me-2 fs-4"></i>
                 <div>
                     <strong>@Localizer["EmailGrid_VerificationPendingTitle"]</strong> — @Localizer["EmailGrid_VerificationPendingBody"]
+                </div>
+            </div>
+        }
+
+        @* see nobodies-collective/Humans#677 — Google sync rejection banner *@
+        @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        {
+            <div class="alert alert-danger d-flex align-items-start mb-3">
+                <i class="fa-solid fa-triangle-exclamation me-2 fs-4 mt-1"></i>
+                <div>
+                    <strong>@Localizer["EmailGrid_GoogleSyncRejectedTitle"]</strong>
+                    @Localizer["EmailGrid_GoogleSyncRejectedBody"]
                 </div>
             </div>
         }
@@ -157,9 +169,7 @@
                                         var primaryChecked = isLockedRow ? true : row.IsPrimary;
                                         var primaryDisabled = workspaceLocked || !row.IsVerified;
                                     }
-                                    @* Button-based set/clear (issue 650): radios in independent forms *@
-                                    @* are not a real radio group, so a checked one cannot be unselected *@
-                                    @* — admins could not recover from the duplicate-IsPrimary state.   *@
+                                    @* Buttons not radios (see #650): independent forms can't form a real radio group; admin needs unselect path *@
                                     @{
                                         var showClearPrimary = !isLockedRow && row.IsPrimary
                                             && hasMultiplePrimary;
@@ -198,8 +208,7 @@
                                     }
                                     else if (workspaceLocked && row.IsVerified)
                                     {
-                                        @* Verified, but another row holds the Workspace lock — *@
-                                        @* don't claim "verify first", which is a lie.          *@
+                                        @* Verified but Workspace lock held elsewhere — don't claim "verify first" *@
                                         <span class="text-muted small" title="Locked by the Workspace email row">—</span>
                                     }
                                     else
@@ -293,9 +302,7 @@
                                             </button>
                                         </form>
                                     }
-                                    @* Never offer a destructive action on the only remaining email — *@
-                                    @* removing the last row would leave the user with no email at all, *@
-                                    @* regardless of whether the row is provider-linked. *@
+                                    @* No destructive action on the last remaining email row *@
                                     @if (Model.Emails.Count > 1)
                                     {
                                         @if (!string.IsNullOrEmpty(row.Provider))
@@ -326,6 +333,22 @@
                                                 </form>
                                             }
                                         }
+                                        @* see nobodies-collective/Humans#758 — never offer delete for the
+                                           primary email (promote another first) or a ticket-linked email
+                                           (removing it could disconnect the user's event ticket). Admins
+                                           use the AdminDelete path which re-validates server-side. *@
+                                        else if (row.IsPrimary)
+                                        {
+                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeletePrimaryBlocked"].Value">
+                                                <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_DeletePrimaryBlocked"]
+                                            </span>
+                                        }
+                                        else if (row.IsTicketLinked)
+                                        {
+                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeleteTicketLinkedBlocked"].Value">
+                                                <i class="fa-solid fa-ticket me-1"></i>@Localizer["EmailGrid_DeleteTicketLinkedBlocked"]
+                                            </span>
+                                        }
                                         else
                                         {
                                             <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
@@ -349,12 +372,62 @@
             </div>
         </div>
 
-        @* Issue nobodies-collective/Humans#697: admin-only AspNetUserLogins   *@
-        @* snapshot so admins can see the Identity-owned OAuth identity store *@
-        @* alongside the UserEmail tag rows. Per-row disagreement flags surface *@
-        @* the "tagged but no login" and "login but no tag" states. The store *@
-        @* is authoritative for `(Provider, ProviderKey) -> UserId`; mismatches *@
-        @* self-heal on next OAuth sign-in via ReconcileOAuthIdentityAsync.   *@
+        @* Admin UserInfo derived-email diagnostic — what callers across the app actually see *@
+        @if (Model.IsAdminContext && Model.TargetUserInfo is not null)
+        {
+            <div class="card mb-4 border-danger" id="userinfo-emails">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i><code>UserInfo</code> derived emails <small class="ms-2 opacity-75">(Admin only)</small></h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                            <tr>
+                                <th style="width: 16rem;"><code>UserInfo.Email</code></th>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.Email))
+                                    {
+                                        <code>@Model.TargetUserInfo.Email</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(null)</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><code>UserInfo.PrimaryEmail</code></th>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.PrimaryEmail))
+                                    {
+                                        <code>@Model.TargetUserInfo.PrimaryEmail</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(null)</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><code>UserInfo.GoogleEmail</code></th>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.GoogleEmail))
+                                    {
+                                        <code>@Model.TargetUserInfo.GoogleEmail</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(null)</span>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @* see nobodies-collective/Humans#697 — admin AspNetUserLogins snapshot + disagreement flags *@
         @if (Model.IsAdminContext)
         {
             <div class="card mb-4 border-danger" id="external-logins">
@@ -407,8 +480,7 @@
                 </div>
             </div>
 
-            @* Admin-only raw UserEmail dump — every column verbatim. *@
-            @* Diagnostic surface; no formatting, no actions. *@
+            @* Admin raw UserEmail dump — diagnostic, no formatting *@
             <div class="card mb-4 border-danger" id="raw-user-emails">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Raw <code>user_emails</code> rows <small class="ms-2 opacity-75">(Admin only)</small></h5>
@@ -464,11 +536,7 @@
                 </div>
             </div>
 
-            @* Admin-only recovery: insert an already-verified UserEmail row    *@
-            @* directly, no verification email. Use when a row was deleted in   *@
-            @* error and the address is already known-good. Bypasses the legacy *@
-            @* "this is already your sign-in email" check that blocks the       *@
-            @* normal Add flow when User.Email still holds the address.         *@
+            @* Admin recovery: insert verified UserEmail without verification email *@
             <div class="card mb-4 border-danger" id="admin-add-verified">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Add verified email directly <small class="ms-2 opacity-75">(Admin only)</small></h5>
@@ -549,6 +617,99 @@
 
         @if (!Model.IsAdminContext)
         {
+            @* see nobodies-collective/Humans#731 — Linked Accounts dashboard (server-validates CanUnlink) *@
+            <div class="card mb-4" id="linked-accounts">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-link me-2"></i>@Localizer["LinkedAccounts_Title"]</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="px-3 pt-3">
+                        <small class="text-muted">@Localizer["LinkedAccounts_Description"]</small>
+                    </div>
+                    @if (!Model.LinkedAccounts.Any())
+                    {
+                        <div class="p-3 text-muted">@Localizer["LinkedAccounts_Empty"]</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["LinkedAccounts_Provider"]</th>
+                                        <th>@Localizer["LinkedAccounts_Account"]</th>
+                                        <th>@Localizer["LinkedAccounts_LinkedOn"]</th>
+                                        <th class="text-end">@Localizer["LinkedAccounts_Actions"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var acct in Model.LinkedAccounts)
+                                {
+                                    <tr>
+                                        <td>
+                                            @if (string.Equals(acct.Provider, "Google", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <i class="fa-brands fa-google me-1"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-solid fa-key me-1"></i>
+                                            }
+                                            @acct.Provider
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(acct.Email))
+                                            {
+                                                <code>@acct.Email</code>
+                                            }
+                                            else if (!string.IsNullOrEmpty(acct.ProviderDisplayName))
+                                            {
+                                                @acct.ProviderDisplayName
+                                            }
+                                            else
+                                            {
+                                                <code class="text-muted">@acct.ProviderKeyHash</code>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (acct.LinkedAt.HasValue)
+                                            {
+                                                @acct.LinkedAt.ToDisplayDate()
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (acct.CanUnlink)
+                                            {
+                                                <form asp-action="UnlinkLinkedAccount" method="post" class="d-inline"
+                                                      data-confirm="@Localizer["LinkedAccounts_ConfirmUnlink"].Value">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="provider" value="@acct.Provider" />
+                                                    <input type="hidden" name="providerKey" value="@acct.ProviderKey" />
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small" title="@Localizer["LinkedAccounts_LastSignInMethod"].Value">
+                                                    <i class="fa-solid fa-lock me-1"></i>@Localizer["LinkedAccounts_LastSignInMethod"]
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["EmailGrid_LinkGoogleAccount"]</h5>
@@ -588,7 +749,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    @* site.js has a global form[data-confirm] submit handler and a global *@
-    @* js-auto-submit change handler that already cover these forms. No    *@
-    @* local listeners — duplicating the handler causes double-submit.     *@
+    @* No local listeners — site.js global handlers cover these forms (duplicates double-submit) *@
 }

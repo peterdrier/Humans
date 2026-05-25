@@ -18,18 +18,12 @@ namespace Humans.Infrastructure.Services;
 /// that the scopes the integration uses ARE present — it cannot prove that no extra scopes are
 /// granted. Refunds/payouts/chargebacks remain dashboard-manual regardless.
 /// </remarks>
-public class StripeStartupSmokeService : IHostedService
+public class StripeStartupSmokeService(IOptions<StripeSettings> settings, ILogger<StripeStartupSmokeService> logger)
+    : IHostedService
 {
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(5);
 
-    private readonly StripeSettings _settings;
-    private readonly ILogger<StripeStartupSmokeService> _logger;
-
-    public StripeStartupSmokeService(IOptions<StripeSettings> settings, ILogger<StripeStartupSmokeService> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly StripeSettings _settings = settings.Value;
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -49,15 +43,15 @@ public class StripeStartupSmokeService : IHostedService
         if (_settings.IsConfigured)
             probes.Add(ProbeTicketsKeyAsync(cts.Token));
         else
-            _logger.LogWarning("Stripe Tickets key not set — fee enrichment disabled.");
+            logger.LogWarning("Stripe Tickets key not set — fee enrichment disabled.");
 
         if (_settings.IsStoreCheckoutConfigured)
             probes.Add(ProbeStoreKeyAsync(cts.Token));
         else
-            _logger.LogWarning("Stripe Store key not set — Store Checkout disabled.");
+            logger.LogWarning("Stripe Store key not set — Store Checkout disabled.");
 
         if (!_settings.IsStoreWebhookConfigured)
-            _logger.LogWarning("Stripe Store webhook secret not set — Store webhook will reject all requests.");
+            logger.LogWarning("Stripe Store webhook secret not set — Store webhook will reject all requests.");
 
         // Each probe catches comprehensively (StripeException, OperationCanceledException,
         // Exception) and logs its own outcome, so WhenAll cannot observe an unhandled fault.
@@ -71,27 +65,27 @@ public class StripeStartupSmokeService : IHostedService
             var client = new StripeClient(_settings.TicketsKey);
             var service = new PaymentIntentService(client);
             await service.ListAsync(new PaymentIntentListOptions { Limit = 1 }, cancellationToken: ct);
-            _logger.LogInformation("Stripe Tickets key probe succeeded (PaymentIntent read).");
+            logger.LogInformation("Stripe Tickets key probe succeeded (PaymentIntent read).");
         }
         catch (StripeException ex) when (IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Tickets key is missing PaymentIntent read scope. Fee enrichment will fail at runtime. Stripe error: {Code} {Message}",
                 ex.StripeError?.Code, ex.Message);
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Stripe Tickets key probe failed. Stripe error: {Code} {Type}",
                 ex.StripeError?.Code, ex.StripeError?.Type);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Stripe Tickets key probe timed out after {Timeout}.", ProbeTimeout);
+            logger.LogWarning("Stripe Tickets key probe timed out after {Timeout}.", ProbeTimeout);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Stripe Tickets key probe failed unexpectedly.");
+            logger.LogWarning(ex, "Stripe Tickets key probe failed unexpectedly.");
         }
     }
 
@@ -102,27 +96,27 @@ public class StripeStartupSmokeService : IHostedService
             var client = new StripeClient(_settings.StoreKey);
             var service = new SessionService(client);
             await service.ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct);
-            _logger.LogInformation("Stripe Store key probe succeeded (Checkout Session list).");
+            logger.LogInformation("Stripe Store key probe succeeded (Checkout Session list).");
         }
         catch (StripeException ex) when (IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe Store key is missing Checkout Session scope. Pay button will fail at runtime. Stripe error: {Code} {Message}",
                 ex.StripeError?.Code, ex.Message);
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Stripe Store key probe failed. Stripe error: {Code} {Type}",
                 ex.StripeError?.Code, ex.StripeError?.Type);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Stripe Store key probe timed out after {Timeout}.", ProbeTimeout);
+            logger.LogWarning("Stripe Store key probe timed out after {Timeout}.", ProbeTimeout);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Stripe Store key probe failed unexpectedly.");
+            logger.LogWarning(ex, "Stripe Store key probe failed unexpectedly.");
         }
     }
 

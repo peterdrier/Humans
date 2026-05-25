@@ -35,12 +35,9 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// per-rule tests when the fixture builder grows support.
 /// </para>
 /// </summary>
-public class AcceptAsyncFullFixtureTest : IClassFixture<HumansWebApplicationFactory>
+public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
+    : IClassFixture<HumansWebApplicationFactory>
 {
-    private readonly HumansWebApplicationFactory _factory;
-
-    public AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory) => _factory = factory;
-
     [HumansFact(Timeout = 60_000)]
     public async Task AcceptAsync_FullFixture_FoldsAllSectionsAndTombstonesSource()
     {
@@ -71,7 +68,7 @@ public class AcceptAsyncFullFixtureTest : IClassFixture<HumansWebApplicationFact
         // that does NOT need an ad-hoc parent (UserEmails, ContactFields,
         // VolunteerHistory, ProfileLanguages, CommPrefs, IdentityUserLogins,
         // EventParticipations, Applications, AuditLogEntries, RoleAssignments).
-        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
         {
             // UserEmail — shared (collapse) + source-only (re-FK).
             b.WithSourceEmail(sharedEmail, verified: true);
@@ -115,7 +112,7 @@ public class AcceptAsyncFullFixtureTest : IClassFixture<HumansWebApplicationFact
         // (Teams, Notifications, Campaigns, FeedbackMessages, BudgetAuditLog,
         // ConsentRecord). Mirrors the patterns in AcceptAsyncFoldTests for
         // each section.
-        await using (var seedScope = _factory.Services.CreateAsyncScope())
+        await using (var seedScope = factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(seedScope, sourceId, targetId);
 
@@ -161,18 +158,18 @@ public class AcceptAsyncFullFixtureTest : IClassFixture<HumansWebApplicationFact
             await builder.SaveAllAsync();
         }
 
-        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
 
         // Act — accept the merge.
         var adminId = await SeedAdminUserAsync();
-        await using (var actScope = _factory.Services.CreateAsyncScope())
+        await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
             await mergeService.AcceptAsync(requestId, adminId);
         }
 
         // Assert — comprehensive post-merge state.
-        await using var assertScope = _factory.Services.CreateAsyncScope();
+        await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // ----------------------------------------------------------------
@@ -365,7 +362,7 @@ public class AcceptAsyncFullFixtureTest : IClassFixture<HumansWebApplicationFact
 
     private async Task<Guid> SeedAdminUserAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();

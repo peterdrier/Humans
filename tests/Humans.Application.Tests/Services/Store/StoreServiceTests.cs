@@ -1,11 +1,15 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -17,7 +21,9 @@ public class StoreServiceTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IStripeService _stripeService = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly StoreService _service;
 
@@ -28,7 +34,7 @@ public class StoreServiceTests
             Year = 2026,
             TimeZoneId = "Europe/Madrid"
         });
-        _service = new StoreService(_repo, _audit, _clock, _shifts);
+        _service = new StoreService(_repo, _audit, _campService, _clock, _shifts, _stripeService, NullLogger<StoreService>.Instance);
     }
 
     // ==========================================================================
@@ -36,10 +42,67 @@ public class StoreServiceTests
     // ==========================================================================
 
     [HumansFact]
+    public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()
+    {
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([
+                MakeProduct(name: "Tent"),
+                MakeProduct(name: "Blanket")
+            ]);
+
+        var result = await _service.GetIndexDataAsync(Guid.NewGuid(), isPrivilegedReader: false);
+
+        result.Year.Should().Be(2026);
+        result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
+        result.CampSeasons.Should().BeEmpty();
+        result.ShowNoCampOrdersMessage.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetOrderPageDataAsync_loads_edit_catalog_and_computes_payment_state()
+    {
+        var order = new OrderDto(
+            Id: Guid.NewGuid(),
+            CampSeasonId: Guid.NewGuid(),
+            Label: "Kitchen",
+            State: StoreOrderState.Open,
+            CounterpartyName: null,
+            CounterpartyVatId: null,
+            CounterpartyAddress: null,
+            CounterpartyCountryCode: null,
+            CounterpartyEmail: null,
+            IssuedInvoiceId: null,
+            Lines: [],
+            LinesSubtotalEur: 25m,
+            VatTotalEur: 0m,
+            DepositTotalEur: 0m,
+            PaymentsTotalEur: 0m,
+            BalanceEur: 25m);
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([
+                MakeProduct(name: "Tent"),
+                MakeProduct(name: "Blanket")
+            ]);
+        _campService.GetCampSeasonByIdAsync(order.CampSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(order.CampSeasonId, Guid.NewGuid(), string.Empty, 2026, null,
+                "Camp Test", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true);
+
+        result.CampName.Should().Be("Camp Test");
+        result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
+        result.CanEdit.Should().BeTrue();
+        result.CanPay.Should().BeTrue();
+        result.IsStripeConfigured.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task GetActiveCatalogAsync_returns_empty_for_empty_catalog()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<StoreProduct>());
+            .Returns([]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -51,7 +114,7 @@ public class StoreServiceTests
     {
         var p = MakeProduct(name: "Tent", price: 50m, vat: 21m, deposit: 100m);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[] { p });
+            .Returns([p]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -66,12 +129,11 @@ public class StoreServiceTests
     public async Task GetActiveCatalogAsync_preserves_repository_order()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 MakeProduct(name: "Tent"),
                 MakeProduct(name: "Cup"),
                 MakeProduct(name: "Blanket")
-            });
+            ]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -89,7 +151,7 @@ public class StoreServiceTests
         activeCup.IsActive = true;
 
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[] { activeTent, inactiveBag, activeCup });
+            .Returns([activeTent, inactiveBag, activeCup]);
 
         var result = await _service.GetAllProductsForYearAsync(2026);
 
@@ -114,7 +176,7 @@ public class StoreServiceTests
             }
         };
         _repo.GetOrdersForCampSeasonAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new[] { order });
+            .Returns([order]);
         _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
 
@@ -161,7 +223,7 @@ public class StoreServiceTests
         var result = await _service.GetOrderAsync(orderId);
 
         result.Should().NotBeNull();
-        result!.BalanceEur.Should().Be(60.50m);
+        result.BalanceEur.Should().Be(60.50m);
         result.Lines[0].ProductName.Should().Be("Tent");
     }
 
@@ -262,6 +324,35 @@ public class StoreServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineWithResultAsync_returns_failure_for_expected_validation()
+    {
+        var result = await _service.AddLineWithResultAsync(
+            Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Qty must be positive");
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_returns_success_when_line_is_added()
+    {
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var product = MakeProduct(orderableUntil: new LocalDate(2026, 12, 31));
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+
+        var result = await _service.AddLineWithResultAsync(orderId, product.Id, 2, actor);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        await _repo.Received(1).AddLineAsync(
+            Arg.Is<StoreOrderLine>(l => l.OrderId == orderId && l.ProductId == product.Id && l.Qty == 2),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task RemoveLineAsync_rejects_when_line_not_in_order()
     {
         var lineId = Guid.NewGuid();
@@ -326,6 +417,38 @@ public class StoreServiceTests
     }
 
     [HumansFact]
+    public async Task RemoveLineWithResultAsync_returns_failure_for_expected_rejection()
+    {
+        var lineId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns((StoreLineContext?)null);
+
+        var result = await _service.RemoveLineWithResultAsync(orderId, lineId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+    }
+
+    [HumansFact]
+    public async Task RemoveLineWithResultAsync_returns_success_when_line_is_removed()
+    {
+        var lineId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns(new StoreLineContext(
+                lineId, orderId, Guid.NewGuid(),
+                StoreOrderState.Open, new LocalDate(2026, 12, 31)));
+
+        var result = await _service.RemoveLineWithResultAsync(orderId, lineId, actor);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task UpdateCounterpartyAsync_updates_even_when_order_issued()
     {
         // Per Store invariant: counterparty edits while issued are gated by the
@@ -370,6 +493,41 @@ public class StoreServiceTests
             AuditAction.StoreCounterpartyEdited, nameof(StoreOrder), orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateCounterpartyWithResultAsync_returns_failure_for_expected_rejection()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns((StoreOrder?)null);
+
+        var result = await _service.UpdateCounterpartyWithResultAsync(
+            orderId,
+            new OrderCounterpartyInput("Acme", null, null, null, null),
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+    }
+
+    [HumansFact]
+    public async Task UpdateCounterpartyWithResultAsync_returns_success_when_updated()
+    {
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var order = new StoreOrder { Id = orderId, State = StoreOrderState.Open };
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _service.UpdateCounterpartyWithResultAsync(
+            orderId,
+            new OrderCounterpartyInput("Acme", null, null, null, null),
+            actor);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        order.CounterpartyName.Should().Be("Acme");
+        await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -526,6 +684,54 @@ public class StoreServiceTests
     }
 
     [HumansFact]
+    public async Task SaveProductWithResultAsync_creates_product_from_form_request()
+    {
+        var actor = Guid.NewGuid();
+        StoreProduct? captured = null;
+        await _repo.AddProductAsync(Arg.Do<StoreProduct>(p => captured = p), Arg.Any<CancellationToken>());
+
+        var result = await _service.SaveProductWithResultAsync(
+            new StoreProductSaveRequest(
+                Id: null,
+                Year: 2026,
+                Name: "Tent",
+                Description: "Big tent",
+                UnitPriceEur: 50m,
+                VatRatePercent: 21m,
+                DepositAmountEur: 100m,
+                OrderableUntil: "2026-08-01",
+                IsActive: true),
+            actor);
+
+        result.Succeeded.Should().BeTrue();
+        result.Created.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.OrderableUntil.Should().Be(new LocalDate(2026, 8, 1));
+    }
+
+    [HumansFact]
+    public async Task SaveProductWithResultAsync_returns_field_error_for_invalid_date()
+    {
+        var result = await _service.SaveProductWithResultAsync(
+            new StoreProductSaveRequest(
+                Id: null,
+                Year: 2026,
+                Name: "Tent",
+                Description: null,
+                UnitPriceEur: 50m,
+                VatRatePercent: 21m,
+                DepositAmountEur: null,
+                OrderableUntil: "not-a-date",
+                IsActive: true),
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorField.Should().Be(nameof(StoreProductSaveRequest.OrderableUntil));
+        result.ErrorMessage.Should().Contain("Invalid date");
+        await _repo.DidNotReceive().AddProductAsync(Arg.Any<StoreProduct>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task DeactivateProductAsync_marks_inactive_and_audits()
     {
         var existing = MakeProduct(name: "Tent");
@@ -565,7 +771,7 @@ public class StoreServiceTests
         // Verify the service relays that contract: a deactivated product is not in the
         // collection returned from the repo.
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<StoreProduct>());
+            .Returns([]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -575,6 +781,61 @@ public class StoreServiceTests
     // ==========================================================================
     // RecordStripePaymentAsync (Phase 6.2 — Stripe webhook ingestion)
     // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateStripeCheckoutSessionAsync_builds_checkout_session_from_order()
+    {
+        var order = MakeOrderDto(balanceEur: 50m, counterpartyName: "Camp Alpha", label: "Build meals", email: "camp@example.test");
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        _stripeService.CreateCheckoutSessionAsync(
+                order.Id,
+                42.50m,
+                "https://humans.test/Store/Order/1",
+                "https://humans.test/Store/Order/1",
+                "camp@example.test",
+                "Nobodies Collective - Camp Alpha (Build meals)",
+                Arg.Any<CancellationToken>())
+            .Returns("https://stripe.test/session");
+
+        var url = await _service.CreateStripeCheckoutSessionAsync(
+            order,
+            42.50m,
+            "https://humans.test/Store/Order/1");
+
+        url.Should().Be("https://stripe.test/session");
+    }
+
+    [HumansFact]
+    public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance()
+    {
+        var order = MakeOrderDto(balanceEur: 10m);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 10.01m, "https://humans.test/order");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Payment amount cannot exceed the outstanding balance*");
+        await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<decimal>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateStripeCheckoutSessionAsync_rejects_when_stripe_is_unconfigured()
+    {
+        var order = MakeOrderDto(balanceEur: 10m);
+        _stripeService.IsStoreCheckoutConfigured.Returns(false);
+
+        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 5m, "https://humans.test/order");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Stripe is not configured*");
+    }
 
     [HumansFact]
     public async Task RecordStripePaymentAsync_inserts_payment_when_payment_intent_id_is_new()
@@ -643,6 +904,37 @@ public class StoreServiceTests
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
     }
 
+    [HumansFact]
+    public async Task HandleStripeCheckoutWebhookEventAsync_records_completed_checkout_payment()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.StripePaymentIntentExistsAsync("pi_checkout", Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_checkout",
+            StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_checkout", orderId, "pi_checkout", 42.50m)));
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<StorePayment>(p =>
+                p.OrderId == orderId &&
+                p.StripePaymentIntentId == "pi_checkout" &&
+                p.AmountEur == 42.50m),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task HandleStripeCheckoutWebhookEventAsync_skips_completed_checkout_when_session_is_incomplete()
+    {
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_checkout",
+            StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_checkout", null, "pi_checkout", 42.50m)));
+
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<StorePayment>(), Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================
@@ -669,5 +961,30 @@ public class StoreServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         };
+    }
+
+    private static OrderDto MakeOrderDto(
+        decimal balanceEur,
+        string? counterpartyName = null,
+        string? label = null,
+        string? email = null)
+    {
+        return new OrderDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            label,
+            StoreOrderState.Open,
+            counterpartyName,
+            CounterpartyVatId: null,
+            CounterpartyAddress: null,
+            CounterpartyCountryCode: null,
+            email,
+            IssuedInvoiceId: null,
+            Lines: [],
+            LinesSubtotalEur: balanceEur,
+            VatTotalEur: 0m,
+            DepositTotalEur: 0m,
+            PaymentsTotalEur: 0m,
+            BalanceEur: balanceEur);
     }
 }

@@ -5,8 +5,13 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Users;
+using Humans.Infrastructure.Services.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using Xunit;
 using AccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
@@ -19,12 +24,12 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    public static TheoryData<Type> UserServices => new()
-    {
+    public static TheoryData<Type> UserServices =>
+    [
         typeof(UserService),
         typeof(AccountProvisioningService),
-        typeof(UnsubscribeService),
-    };
+        typeof(UnsubscribeService)
+    ];
 
     public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {
@@ -92,8 +97,8 @@ public class UserArchitectureTests
 
         cachingParam.Should().BeNull(
             because: "canonical User data is not IMemoryCache-backed");
-        paramTypes.Should().Contain(typeof(IFullProfileInvalidator),
-            because: "User writes that change FullProfile-visible fields must invalidate the Profile cache");
+        paramTypes.Should().NotContain(typeof(IUserInfoInvalidator),
+            because: "cache repair belongs to the CachingUserService decorator, not the storage service");
     }
 
     [HumansFact]
@@ -113,18 +118,18 @@ public class UserArchitectureTests
         paramTypes.Should().NotContain(typeof(IRoleAssignmentService));
         paramTypes.Should().NotContain(typeof(IShiftSignupService));
         paramTypes.Should().NotContain(typeof(IShiftManagementService));
-        paramTypes.Should().NotContain(typeof(IProfileService));
+        paramTypes.Should().NotContain(typeof(IProfilePictureService));
     }
 
     [HumansFact]
     public void User_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(IUserRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
-
+        // Repositories are internal sealed since issue #750 (HumansDbContext
+        // sealed). Use GetTypes() — Humans.Application.Tests has
+        // InternalsVisibleTo on Humans.Infrastructure.
         var repoType = typeof(IUserRepository).Assembly
-            .GetExportedTypes()
-            .Concat(typeof(UserRepository).Assembly.GetExportedTypes())
+            .GetTypes()
+            .Concat(typeof(UserRepository).Assembly.GetTypes())
             .Single(t => string.Equals(t.Name, "UserRepository", StringComparison.Ordinal)
                          && typeof(IUserRepository).IsAssignableFrom(t));
 
@@ -176,6 +181,52 @@ public class UserArchitectureTests
         offenders.Should().BeEmpty(
             because: "provider-specific operations are parameterized via a Provider arg. Offenders: {0}",
             string.Join("; ", offenders));
+    }
+
+    // ── IUserServiceRead split (memory/architecture/section-read-write-split.md) ──
+
+    [HumansFact]
+    public void IUserService_InheritsIUserServiceRead()
+    {
+        typeof(IUserServiceRead).IsAssignableFrom(typeof(IUserService))
+            .Should().BeTrue(
+                because: "IUserService is the full Users surface; external sections inject the narrow IUserServiceRead. " +
+                         "See memory/architecture/section-read-write-split.md.");
+    }
+
+    [HumansFact]
+    public void CachingUserService_ImplementsIUserServiceRead()
+    {
+        typeof(IUserServiceRead).IsAssignableFrom(typeof(CachingUserService))
+            .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IUserService_And_IUserServiceRead_ResolveToSameSingleton()
+    {
+        // Mirrors the Users-section DI shape: the same CachingUserService
+        // singleton is exposed under both interface keys.
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IUserRepository>());
+        services.AddSingleton(Substitute.For<IUserEmailRepository>());
+        services.AddSingleton(Substitute.For<IProfileRepository>());
+        services.AddSingleton(Substitute.For<IContactFieldRepository>());
+        services.AddSingleton(Substitute.For<ICommunicationPreferenceRepository>());
+        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
+        services.AddSingleton(Substitute.For<ILogger<CachingUserService>>());
+
+        services.AddSingleton<CachingUserService>();
+        services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
+        services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromFull = provider.GetRequiredService<IUserService>();
+        var fromRead = provider.GetRequiredService<IUserServiceRead>();
+        var concrete = provider.GetRequiredService<CachingUserService>();
+
+        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromRead, concrete).Should().BeTrue();
     }
 
     [HumansFact]

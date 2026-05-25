@@ -34,4 +34,8 @@ description: HARD RULE. DB columns/tables/indexes/constraints, persistent filesy
 
 If a plan or spec appears to violate this rule, **STOP and ask Peter.** Do not rationalize "this case is small" or "the replacement is obviously equivalent."
 
+**Authorized exceptions (Peter, per-incident):**
+
+- **Containers redesign (PR #389, 2026-05-11)** — `DropColumn ContainerCount` and `DropColumn ContainerNotes` on `camp_seasons` are authorized to ship in the same migration (`20260511114347_AddContainers`) that introduces the replacement `containers` + `container_placements` tables. This is a one-shot redesign, not a decoupling — the old columns have zero remaining readers and the new schema is structurally different (per-container records vs. per-season count/notes). Do not flag again.
+
 **Related:** [`no-column-drops-for-decoupling`](no-column-drops-for-decoupling.md) — DB-column-specific instance.

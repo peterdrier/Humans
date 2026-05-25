@@ -2,9 +2,9 @@
   src/Humans.Web/Views/Consent/**
   src/Humans.Web/Views/Legal/**
   src/Humans.Web/Views/Profile/Privacy.cshtml
-  src/Humans.Web/Views/Admin/LegalDocuments.cshtml
-  src/Humans.Web/Views/Admin/CreateLegalDocument.cshtml
-  src/Humans.Web/Views/Admin/EditLegalDocument.cshtml
+  src/Humans.Web/Views/AdminLegalDocuments/LegalDocuments.cshtml
+  src/Humans.Web/Views/AdminLegalDocuments/CreateLegalDocument.cshtml
+  src/Humans.Web/Views/AdminLegalDocuments/EditLegalDocument.cshtml
   src/Humans.Web/Controllers/ConsentController.cs
   src/Humans.Web/Controllers/LegalController.cs
   src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
@@ -36,7 +36,7 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 - **My Data** (`/Profile/Me/Privacy`) — Download my Data (Article 15) and Account Deletion (Article 17).
 - **Statutes** (`/Legal`) — anyone, including signed-out visitors, reads the association's current statutes (pulled directly from GitHub).
 - **Onboarding review queue** (`/OnboardingReview`) — [Consent Coordinator](Glossary.md#consent-coordinator), [Volunteer Coordinator](Glossary.md#volunteer-coordinator), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) view humans awaiting activation; only Consent Coordinator, Board, and Admin can clear, flag, or reject.
-- **Manage documents** (`/Admin/LegalDocuments`) — Board and Admin create, edit, archive, and publish legal documents.
+- **Manage documents** (`/Legal/Admin/Documents`) — Board and Admin create, edit, archive, and publish legal documents.
 
 ## As a [Volunteer](Glossary.md#volunteer)
 
@@ -65,7 +65,7 @@ Coordinators cannot edit legal documents or publish new versions — that's an A
 
 ## As a Board member / Admin
 
-**Managing documents.** `/Admin/LegalDocuments` lists every legal document. Each belongs to a team (Volunteers = applies to everyone), has a configurable grace period (default 7 days), and can be linked to a GitHub folder for version-controlled editing. You can create, edit, archive, and trigger manual syncs. The only field you can change on a past version is its changes summary.
+**Managing documents.** `/Legal/Admin/Documents` lists every legal document. Each belongs to a team (Volunteers = applies to everyone), has a configurable grace period (default 7 days), and can be linked to a GitHub folder for version-controlled editing. You can create, edit, archive, and trigger manual syncs. The only field you can change on a past version is its changes summary.
 
 **Publishing a new version.** When the canonical Spanish file's commit SHA changes in GitHub, the next sync job (or a manual sync from the document's edit page) creates a new version automatically. Every non-initial version is flagged as requiring re-consent — humans on the affected team are notified and their consent status returns to "action required" until they sign. Old consent entries stay in the audit trail forever.
 

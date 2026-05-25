@@ -1,14 +1,13 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Models;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class GuideRoleResolver : IGuideRoleResolver
+public sealed class GuideRoleResolver(ITeamServiceRead teamService) : IGuideRoleResolver
 {
     private static readonly IReadOnlyList<string> KnownRoles =
     [
@@ -24,13 +23,6 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
-
-    private readonly HumansDbContext _db;
-
-    public GuideRoleResolver(HumansDbContext db)
-    {
-        _db = db;
-    }
 
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
@@ -54,13 +46,13 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         var isCoordinator = false;
         if (Guid.TryParse(userIdClaim, out var userId))
         {
-            isCoordinator = await _db.TeamMembers
-                .AsNoTracking()
-                .AnyAsync(
-                    tm => tm.UserId == userId
-                          && tm.Role == TeamMemberRole.Coordinator
-                          && tm.LeftAt == null,
-                    cancellationToken);
+            // Answered from the cached TeamInfo snapshot: TeamInfo.Members only
+            // contains active (LeftAt is null) memberships, so we just look for
+            // any team where the user holds the Coordinator role. Mirrors the
+            // SQL filter UserId == userId && Role == Coordinator && LeftAt == null.
+            var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+            isCoordinator = teamsById.Values.Any(t =>
+                t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
         }
 
         return new GuideRoleContext(

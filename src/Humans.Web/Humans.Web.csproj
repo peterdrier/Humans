@@ -3,6 +3,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -10,10 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" />
     <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
     <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -11,7 +10,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -33,10 +31,8 @@ namespace Humans.Integration.Tests.Controllers;
 ///   behavior, not service behavior. Antiforgery is satisfied by harvesting
 ///   the token + cookie pair from the rendered self-Emails page.
 /// </summary>
-public class EmailGridFlowTests : IntegrationTestBase
+public class EmailGridFlowTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public EmailGridFlowTests(HumansWebApplicationFactory factory) : base(factory) { }
-
     [HumansFact(Timeout = 30_000)]
     public async Task SelfAddEmail_AlreadyVerifiedOnAnotherUser_CreatesAccountMergeRequest_AndShowsMergePendingPill()
     {

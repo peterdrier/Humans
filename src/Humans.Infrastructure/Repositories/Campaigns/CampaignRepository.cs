@@ -16,15 +16,8 @@ namespace Humans.Infrastructure.Repositories.Campaigns;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class CampaignRepository : ICampaignRepository
+internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> factory) : ICampaignRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public CampaignRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Campaigns
     // ==========================================================================
@@ -34,7 +27,7 @@ public sealed class CampaignRepository : ICampaignRepository
         // Grants' User navigation is cross-domain and tagged obsolete in the
         // entity; we don't include it here. Consumers that need display names
         // for recipients resolve via IUserService keyed off CampaignGrant.UserId.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .Include(c => c.Codes)
             .Include(c => c.Grants).ThenInclude(g => g.Code)
@@ -44,7 +37,7 @@ public sealed class CampaignRepository : ICampaignRepository
 
     public async Task<Campaign?> FindForMutationAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, ct);
@@ -52,7 +45,7 @@ public sealed class CampaignRepository : ICampaignRepository
 
     public async Task<Campaign?> FindForMutationWithCodesAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .AsNoTracking()
             .Include(c => c.Codes)
@@ -61,7 +54,7 @@ public sealed class CampaignRepository : ICampaignRepository
 
     public async Task<List<Campaign>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .Include(c => c.Codes)
             .Include(c => c.Grants)
@@ -73,7 +66,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<IReadOnlyList<CampaignCodeTrackingSummaryRow>> GetCodeTrackingSummariesAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .AsNoTracking()
             .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Completed)
@@ -87,7 +80,7 @@ public sealed class CampaignRepository : ICampaignRepository
     {
         // Projected flat rows — no cross-domain .Include on CampaignGrant.User;
         // recipient display names are resolved by the service via IUserService.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(g => g.Campaign.Status == CampaignStatus.Active
@@ -97,7 +90,7 @@ public sealed class CampaignRepository : ICampaignRepository
                 g.Campaign.Title,
                 g.Id,
                 g.UserId,
-                g.Code != null ? g.Code.Code : null,
+                g.Code.Code,
                 g.RedeemedAt,
                 g.LatestEmailStatus))
             .ToListAsync(ct);
@@ -105,14 +98,14 @@ public sealed class CampaignRepository : ICampaignRepository
 
     public async Task AddCampaignAsync(Campaign campaign, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Campaigns.Add(campaign);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateCampaignAsync(Campaign campaign, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(campaign);
         ctx.Entry(campaign).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -127,7 +120,7 @@ public sealed class CampaignRepository : ICampaignRepository
         if (codes.Count == 0)
             return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CampaignCodes.AddRange(codes);
         await ctx.SaveChangesAsync(ct);
     }
@@ -135,7 +128,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<IReadOnlyList<CampaignCode>> GetAvailableCodesAsync(
         Guid campaignId, int limit, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignCodes
             .Where(c => c.CampaignId == campaignId
                 && !ctx.CampaignGrants.Any(g => g.CampaignCodeId == c.Id))
@@ -146,7 +139,7 @@ public sealed class CampaignRepository : ICampaignRepository
 
     public async Task<int> CountAvailableCodesAsync(Guid campaignId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignCodes
             .Where(c => c.CampaignId == campaignId
                 && !ctx.CampaignGrants.Any(g => g.CampaignCodeId == c.Id))
@@ -160,7 +153,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Include(g => g.Campaign)
@@ -174,7 +167,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<IReadOnlyList<CampaignGrant>> GetAllGrantsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Include(g => g.Campaign)
@@ -187,7 +180,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<GrantWithSendContext?> GetGrantForResendAsync(
         Guid grantId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(g => g.Id == grantId)
@@ -206,7 +199,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<IReadOnlyList<GrantWithSendContext>> GetFailedGrantsForRetryAsync(
         Guid campaignId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(g => g.CampaignId == campaignId
@@ -226,7 +219,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<Guid?> GetCampaignIdForGrantAsync(
         Guid grantId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(g => g.Id == grantId)
@@ -237,7 +230,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<HashSet<Guid>> GetAlreadyGrantedUserIdsAsync(
         Guid campaignId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var list = await ctx.CampaignGrants
             .AsNoTracking()
             .Where(g => g.CampaignId == campaignId)
@@ -249,7 +242,7 @@ public sealed class CampaignRepository : ICampaignRepository
 
     public async Task AddGrantAndSaveAsync(CampaignGrant grant, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CampaignGrants.Add(grant);
         await ctx.SaveChangesAsync(ct);
     }
@@ -260,7 +253,7 @@ public sealed class CampaignRepository : ICampaignRepository
         Instant latestEmailAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var grant = await ctx.CampaignGrants.FirstOrDefaultAsync(g => g.Id == grantId, ct);
         if (grant is null)
             return false;
@@ -286,18 +279,17 @@ public sealed class CampaignRepository : ICampaignRepository
         if (codeStrings.Count == 0)
             return 0;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Load unredeemed grants on active/completed campaigns. Filter by code
         // in memory so the DB query stays simple and collation-independent.
         var unredeemed = (await ctx.CampaignGrants
             .Include(g => g.Code)
             .Include(g => g.Campaign)
-            .Where(g => g.Code != null
-                && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
+            .Where(g => (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
                 && g.RedeemedAt == null)
             .ToListAsync(ct))
-            .Where(g => g.Code != null && codeStrings.Contains(g.Code.Code))
+            .Where(g => codeStrings.Contains(g.Code.Code))
             .ToList();
 
         // Iterate redemptions in input order, matching one grant per redemption
@@ -332,7 +324,7 @@ public sealed class CampaignRepository : ICampaignRepository
     public async Task<IReadOnlyList<GrantExportRow>> GetGrantsForUserExportAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(cg => cg.UserId == userId)
@@ -356,7 +348,7 @@ public sealed class CampaignRepository : ICampaignRepository
     {
         _ = updatedAt; // CampaignGrant has no UpdatedAt; arg kept for signature parity.
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var sourceRows = await ctx.CampaignGrants
             .Where(g => g.UserId == sourceUserId)

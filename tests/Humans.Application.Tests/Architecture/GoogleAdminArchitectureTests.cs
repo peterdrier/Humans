@@ -3,8 +3,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -23,37 +21,6 @@ namespace Humans.Application.Tests.Architecture;
 public class GoogleAdminArchitectureTests
 {
     // ── GoogleAdminService ───────────────────────────────────────────────────
-
-    [HumansFact]
-    public void GoogleAdminService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleAdminService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void GoogleAdminService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(GoogleAdminService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext (design-rules §3) — the Google Integration service routes through owning service interfaces");
-    }
-
-    [HumansFact]
-    public void GoogleAdminService_HasNoDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(GoogleAdminService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p =>
-                p.ParameterType.IsGenericType &&
-                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
-
-        factoryParam.Should().BeNull(
-            because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
-    }
 
     [HumansFact]
     public void GoogleAdminService_RoutesCrossSectionDataThroughOwningServices()
@@ -80,17 +47,4 @@ public class GoogleAdminArchitectureTests
             because: "service implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [HumansFact]
-    public void GoogleAdminService_DoesNotReferenceGoogleSdkTypes()
-    {
-        // Paranoid guard: the service's assembly must not pull Google.Apis.*
-        // references indirectly. Google SDK calls live behind IGoogleWorkspaceUserService
-        // (which itself delegates to IWorkspaceUserDirectoryClient in Infrastructure).
-        var assembly = typeof(GoogleAdminService).Assembly;
-        var referenced = assembly.GetReferencedAssemblies();
-        referenced
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references");
-    }
 }

@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -27,6 +28,7 @@ public record StoreLineContext(
 /// opens its own short-lived <c>DbContext</c>, performs its work, and saves
 /// atomically within that context's lifetime.
 /// </remarks>
+[Section("Store")]
 public interface IStoreRepository : IRepository
 {
     // Products
@@ -51,6 +53,14 @@ public interface IStoreRepository : IRepository
     Task<StoreOrder?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<StoreOrder?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
     Task<IReadOnlyList<StoreOrder>> GetAllOrdersAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Returns every <see cref="StoreOrder"/> whose <c>CampSeasonId</c> is in
+    /// <paramref name="campSeasonIds"/>, with <c>Lines</c> and <c>Payments</c>
+    /// eager-loaded. Empty input returns an empty list without a round-trip.
+    /// </summary>
+    Task<IReadOnlyList<StoreOrder>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        IReadOnlyCollection<Guid> campSeasonIds,
+        CancellationToken ct = default);
     Task AddOrderAsync(StoreOrder order, CancellationToken ct = default);
     Task UpdateOrderAsync(StoreOrder order, CancellationToken ct = default);
 

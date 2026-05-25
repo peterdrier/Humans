@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -14,10 +13,8 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Xunit;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Metering;
 using Humans.Infrastructure.Repositories.Email;
 using Humans.Infrastructure.Services.Metering;
 
@@ -46,9 +43,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _transport = Substitute.For<IEmailTransport>();
         _campaignService = Substitute.For<ICampaignService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _metrics = TestMetrics.Create();
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();

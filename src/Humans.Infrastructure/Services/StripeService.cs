@@ -11,7 +11,7 @@ public class StripeSettings
     // Convention: one key per Stripe account. Production keys must be Restricted API Keys (rk_*) with
     // the minimum scopes the integration uses; refunds/payouts/chargebacks stay 100% dashboard-manual.
 
-    /// <summary>Tickets-account key. Populated from STRIPE_TICKETS_KEY (with STRIPE_API_KEY as a deprecated fallback). Scopes used: PaymentIntent + BalanceTransaction reads for fee enrichment.</summary>
+    /// <summary>Tickets-account key. Populated from STRIPE_TICKETS_KEY. Scopes used: PaymentIntent + BalanceTransaction reads for fee enrichment.</summary>
     public string TicketsKey { get; set; } = string.Empty;
 
     /// <summary>Store-account key. Populated from STRIPE_STORE_KEY. Scopes used: checkout_session:write (and incidental reads needed by Stripe.NET).</summary>
@@ -45,29 +45,11 @@ public class StripeSettings
     public bool IsWebhookCleanupConfigured =>
         !string.IsNullOrEmpty(WebhookCleanupGitHubOwner) && !string.IsNullOrEmpty(WebhookCleanupGitHubRepository);
 
-    /// <summary>True when TicketsKey was loaded from the deprecated STRIPE_API_KEY fallback rather than STRIPE_TICKETS_KEY. Triggers a one-shot startup warning.</summary>
-    public bool TicketsKeyFromDeprecatedFallback { get; set; }
 }
 
-public class StripeService : IStripeService
+public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger) : IStripeService
 {
-    private static int _deprecationWarningEmitted;
-
-    private readonly StripeSettings _settings;
-    private readonly ILogger<StripeService> _logger;
-
-    public StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-
-        if (_settings.TicketsKeyFromDeprecatedFallback &&
-            Interlocked.Exchange(ref _deprecationWarningEmitted, 1) == 0)
-        {
-            _logger.LogWarning(
-                "STRIPE_API_KEY is deprecated — rename the environment variable to STRIPE_TICKETS_KEY. The fallback will be removed in a future release.");
-        }
-    }
+    private readonly StripeSettings _settings = settings.Value;
 
     public bool IsConfigured => _settings.IsConfigured;
 
@@ -136,7 +118,7 @@ public class StripeService : IStripeService
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe permission_error creating Checkout Session for order {OrderId}: the Store key is missing checkout_session:write scope. {Message}",
                 storeOrderId, ex.Message);
             throw;
@@ -159,7 +141,7 @@ public class StripeService : IStripeService
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Stripe permission_error fetching PaymentIntent {Id}: the Tickets key is missing required scope. {Message}",
                 paymentIntentId, ex.Message);
             return null;
@@ -168,7 +150,7 @@ public class StripeService : IStripeService
         var charge = pi.LatestCharge;
         if (charge is null)
         {
-            _logger.LogDebug("PaymentIntent {Id} has no charge", paymentIntentId);
+            logger.LogDebug("PaymentIntent {Id} has no charge", paymentIntentId);
             return null;
         }
 
@@ -205,7 +187,7 @@ public class StripeService : IStripeService
     {
         if (!_settings.IsStoreWebhookConfigured)
         {
-            _logger.LogWarning("Store webhook parse attempted while STRIPE_STORE_WEBHOOK_SECRET is unset.");
+            logger.LogWarning("Store webhook parse attempted while STRIPE_STORE_WEBHOOK_SECRET is unset.");
             return null;
         }
 
@@ -220,7 +202,7 @@ public class StripeService : IStripeService
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
+            logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
             return null;
         }
 

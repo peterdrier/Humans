@@ -1,10 +1,8 @@
-using Humans.Domain.Entities;
-
 namespace Humans.Application.DTOs;
 
 public record ReviewQueueData(
-    List<Profile> Pending,
-    List<Profile> Flagged,
+    List<UserInfo> Pending,
+    List<UserInfo> Flagged,
     HashSet<Guid> PendingAppUserIds,
     Dictionary<Guid, ConsentProgressInfo> ConsentProgress);
 

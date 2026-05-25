@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Services.AuditLog;
 
 namespace Humans.Application.Interfaces.AuditLog;
@@ -44,9 +43,9 @@ public interface IAuditViewerService : IApplicationService
 
     /// <summary>
     /// Returns a paged slice of audit events plus aggregate counts (total,
-    /// anomalies). Filter is the same string the existing
-    /// <see cref="IAuditLogService.GetAuditLogPageAsync"/> takes — case-
-    /// insensitive <see cref="Domain.Enums.AuditAction"/> name match.
+    /// anomalies). Filter is the same string
+    /// <see cref="IAuditLogService.GetFilteredAsync"/> takes — case-insensitive
+    /// <see cref="Domain.Enums.AuditAction"/> name match.
     /// </summary>
     Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 

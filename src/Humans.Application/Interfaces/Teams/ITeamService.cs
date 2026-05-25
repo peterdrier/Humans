@@ -1,6 +1,5 @@
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
-using Humans.Application.DTOs;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -8,15 +7,54 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
+/// <summary>
+/// Cached team read-model used by <c>CachingTeamService</c> to project
+/// every Teams-section read entirely from memory.
+/// </summary>
+/// <remarks>
+/// <para>Cache size estimate (T-01, 500-user scale):</para>
+/// <list type="bullet">
+/// <item><description>~50 teams × ~30 fields ≈ ~3 KB per record, plus ~10 members × ~250 B ≈ ~2.5 KB.</description></item>
+/// <item><description><c>RoleDefinitions</c> adds ~5 defs × ~200 B + their assignments (~5 × ~80 B) ≈ ~1.4 KB per team.</description></item>
+/// <item><description><c>PageContent</c> is the largest variable field — markdown, capped in practice at a few KB; budget ~5 KB per team.</description></item>
+/// <item><description>Full population footprint: ~50 teams × ~12 KB ≈ ~0.6 MB. Well under the 50 MB per-projection budget.</description></item>
+/// </list>
+/// </remarks>
 public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
     bool IsActive, bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
     bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<TeamMemberInfo> Members,
-    Guid? ParentTeamId = null);
+    Guid? ParentTeamId = null,
+    string? GoogleGroupPrefix = null,
+    bool HasBudget = false,
+    bool IsSensitive = false,
+    Instant? UpdatedAt = null,
+    string? CustomSlug = null,
+    IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null,
+    IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null,
+    IReadOnlyList<Guid>? ChildTeamIds = null,
+    bool ShowCoordinatorsOnPublicPage = true,
+    string? PageContent = null,
+    IReadOnlyList<CallToAction>? CallsToAction = null,
+    Instant? PageContentUpdatedAt = null,
+    Guid? PageContentUpdatedByUserId = null,
+    int PendingRequestCount = 0)
+{
+    /// <summary>
+    /// Full Google Group email address, or null if no prefix is set. Mirrors
+    /// the canonical formula on <see cref="Team.GoogleGroupEmail"/> so callers
+    /// stitching via the cache get the same value without touching the entity.
+    /// </summary>
+    public string? GoogleGroupEmail =>
+        GoogleGroupPrefix is null
+            ? null
+            : $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}";
+}
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt,
+    GoogleEmailStatus GoogleEmailStatus = GoogleEmailStatus.Unknown);
 
 public record TeamDirectorySummary(
     Guid Id,
@@ -53,10 +91,10 @@ public record TeamDetailMemberSummary(
     Instant JoinedAt);
 
 public record TeamDetailResult(
-    Team Team,
+    TeamPageTeamSummary Team,
     IReadOnlyList<TeamDetailMemberSummary> Members,
-    IReadOnlyList<Team> ChildTeams,
-    IReadOnlyList<TeamRoleDefinition> RoleDefinitions,
+    IReadOnlyList<TeamPageTeamLink> ChildTeams,
+    IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
     bool IsAuthenticated,
     bool IsCurrentUserMember,
     bool IsCurrentUserCoordinator,
@@ -66,6 +104,15 @@ public record TeamDetailResult(
     bool CanCurrentUserEditTeam,
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount);
+
+public sealed record TeamPageCallToActionInput(string? Text, string? Url, CallToActionStyle Style);
+
+public sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage)
+{
+    public static TeamPageUpdateResult Success() => new(true, null);
+
+    public static TeamPageUpdateResult Failed(string message) => new(false, message);
+}
 
 public record MyTeamMembershipSummary(
     Guid TeamId,
@@ -90,8 +137,6 @@ public record TeamRosterSlotSummary(
     bool IsFilled,
     Guid? AssignedUserId,
     string? AssignedUserName);
-
-public record TeamOptionDto(Guid Id, string Name);
 
 public record AdminTeamSummary(
     Guid Id,
@@ -124,22 +169,52 @@ public record AdminTeamListResult(
 /// </summary>
 public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 
+public record TeamRoleReconciliationMembership(
+    Guid TeamMemberId,
+    Guid UserId,
+    Guid TeamId,
+    string TeamName,
+    TeamMemberRole Role,
+    SystemTeamType SystemTeamType,
+    bool HasManagementRoleAssignment);
+
+public record TeamJoinRequestSnapshot(
+    Guid Id,
+    Guid TeamId,
+    string? TeamName,
+    Guid UserId,
+    string? UserDisplayName,
+    string? UserEmail,
+    string? UserProfilePictureUrl,
+    TeamJoinRequestStatus Status,
+    string? Message,
+    Instant RequestedAt,
+    Instant? ResolvedAt,
+    string? ReviewNotes);
+
+public record SystemTeamMembershipSnapshot(
+    Guid Id,
+    string Name,
+    string Slug,
+    bool IsHidden,
+    SystemTeamType SystemTeamType,
+    IReadOnlyList<Guid> ActiveMemberUserIds);
+
+public record TeamActiveMemberSnapshot(
+    Guid TeamId,
+    Guid TeamMemberId,
+    Guid UserId,
+    string DisplayName,
+    string? Email,
+    string? ProfilePictureUrl,
+    GoogleEmailStatus GoogleEmailStatus,
+    TeamMemberRole Role,
+    Instant JoinedAt);
+
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
-/// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
-///   <item>73→71 — tech-debt query consolidation: removed GetTeamMembersAsync and GetActiveMemberUserIdsAsync; callers project members/user IDs from GetTeamAsync/GetTeamsAsync read models.</item>
-///   <item>71→73 — team-cache decorator groundwork: added canonical GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should consolidate member/name/option getters down onto those methods.</item>
-///   <item>70→71 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against teams must live in the owning section per design-rules §6; the ratchet's "remove one to add one" rule doesn't apply when the addition is a moved-in query rather than a new feature surface.</item>
-///   <item>70→70 — issue-634: added GetActiveTeamMembershipsForUserAsync (name + role-in-team for the agent snapshot) and removed GetActiveTeamNamesForUserAsync, since the new method is strictly more capable; the one production caller (ProfileController popover) projects to names via .Select(m =&gt; m.TeamName).</item>
-///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(71)]
-public interface ITeamService : IApplicationService
+public interface ITeamService : ITeamServiceRead, IApplicationService
 {
     /// <summary>
     /// Creates a new team.
@@ -154,9 +229,11 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets a team by its slug.
+    /// Gets a team entity by its slug (Teams-internal use; external sections
+    /// should use <see cref="ITeamServiceRead.GetTeamBySlugAsync"/> for the
+    /// <see cref="TeamInfo"/> projection).
     /// </summary>
-    Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default);
+    Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a team by its ID.
@@ -164,53 +241,9 @@ public interface ITeamService : IApplicationService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the team read model by ID, including active members.
-    /// </summary>
-    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets team read models keyed by ID, including active members.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches
-    /// <paramref name="googleGroupPrefix"/> (case-insensitive), or null if no team
-    /// uses that prefix. Used by @nobodies.team provisioning to block personal
-    /// prefixes that would collide with a team group on the same domain.
-    /// </summary>
-    Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
-        string googleGroupPrefix,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Resolves a set of team IDs to their display names WITHOUT filtering by
-    /// <see cref="Team.IsActive"/>. Used by the GDPR export, where historical
-    /// records (shift signups, audit entries) may reference teams that have
-    /// since been deactivated — those users still deserve a name in their
-    /// downloaded data, not <c>null</c>. The returned dictionary contains one
-    /// entry per input ID that resolves; unknown IDs are simply absent.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Active, non-hidden teams whose <c>Name</c> contains
-    /// <paramref name="query"/> (case-insensitive). Capped at
-    /// <paramref name="max"/>; returned in unspecified order — the global
-    /// search orchestrator scores and ranks. Used by the global /Search
-    /// page (<c>SearchService</c>); every caller sees the public surface
-    /// regardless of role.
-    /// </summary>
-    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
-        string query, int max,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.
@@ -310,39 +343,16 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all pending join requests for teams the user can approve.
-    /// </summary>
-    Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForApproverAsync(
-        Guid approverUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets pending join requests for a specific team.
     /// </summary>
-    Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForTeamAsync(
+    Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a user's pending request for a team, if any.
     /// </summary>
-    Task<TeamJoinRequest?> GetUserPendingRequestAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user can approve requests for a team.
-    /// </summary>
-    Task<bool> CanUserApproveRequestsForTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user is a member of a team.
-    /// </summary>
-    Task<bool> IsUserMemberOfTeamAsync(
+    Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default);
@@ -365,16 +375,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets pending request counts for multiple teams in a single query.
-    /// </summary>
-    /// <param name="teamIds">The team IDs to check.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Dictionary mapping team ID to pending request count.</returns>
-    Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets the management role definition name for each team that has one.
     /// </summary>
     /// <param name="teamIds">The team IDs to check.</param>
@@ -382,19 +382,6 @@ public interface ITeamService : IApplicationService
     Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets non-system team names for users, grouped by user ID.
-    /// Used for birthday display.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets active teams as lightweight Id+Name options for dropdown lists.
-    /// </summary>
-    Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets <c>Team.GoogleGroupPrefix</c> to <paramref name="prefix"/> (may be
@@ -406,12 +393,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all teams for admin list with active member counts and pending request counts.
-    /// </summary>
-    Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
-        int page, int pageSize, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets ordered admin-team summaries ready for controller/view projection.
@@ -460,10 +441,10 @@ public interface ITeamService : IApplicationService
     /// <summary>
     /// Updates a team's public page content, CTAs, and visibility.
     /// </summary>
-    Task UpdateTeamPageContentAsync(
+    Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
         Guid teamId,
         string? pageContent,
-        List<CallToAction> callsToAction,
+        IReadOnlyList<TeamPageCallToActionInput> callsToAction,
         bool isPublicPage,
         bool showCoordinatorsOnPublicPage,
         Guid updatedByUserId,
@@ -480,6 +461,7 @@ public interface ITeamService : IApplicationService
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -489,6 +471,8 @@ public interface ITeamService : IApplicationService
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
+        bool canToggleManagement = true,
+        int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -499,24 +483,18 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets or clears the IsManagement flag on a role definition.
-    /// Cannot be changed while members are assigned to the role.
+    /// Toggles the IsManagement flag on a role definition.
+    /// Cannot be enabled while members are assigned to the role.
     /// </summary>
-    Task SetRoleIsManagementAsync(
-        Guid roleDefinitionId, bool isManagement, Guid actorUserId,
+    Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+        Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all role definitions for a team, with assignments and member details.
     /// </summary>
-    Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
+    Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all role definitions across active non-system teams.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Team Role Assignments
@@ -549,20 +527,12 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the user IDs of all active coordinators for a team (Coordinator member role).
-    /// Used by shift services for notification dispatch.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns the active (non-Volunteers) teams the user belongs to with the
     /// user's role on each team. Callers that only need names project via
     /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
     /// responsibility (rendering layer).
     /// </summary>
-    Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+    Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -586,28 +556,9 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns one row per active (<see cref="TeamMember.LeftAt"/> is null) coordinator
-    /// across the requested teams. Used by the shift coordinator dashboard to look up
-    /// coordinators for teams with pending signups without reading the TeamMembers table.
-    /// </summary>
-    Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the active non-system team names for each of the given user ids.
-    /// Entries are absent for users with no active memberships.
-    /// Used by the Tickets admin "who hasn't bought" view and similar
-    /// cross-section admin lists.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
     /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
-    /// a narrow seed/migration-only path; production membership changes must go through
+    /// a restricted seed/migration-only path; production membership changes must go through
     /// <see cref="AddMemberToTeamAsync"/>, <see cref="ApproveJoinRequestAsync"/>, or the role
     /// assignment APIs. Throws if the user is already an active member of the team.
     /// </summary>
@@ -619,29 +570,19 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Hard-deletes every team whose <see cref="Team.Name"/> ends with
-    /// <paramref name="nameSuffix"/>, along with its <see cref="TeamMember"/> rows and
-    /// <see cref="TeamJoinRequest"/> rows. Narrow seed/test-only cleanup path that
-    /// bypasses <see cref="DeleteTeamAsync"/>'s soft-delete semantics so a subsequent
-    /// reseed can reuse the same slugs without collisions. Returns the number of teams
-    /// deleted.
+    /// Permanently deletes a team and its Teams-owned child rows. Requires the
+    /// current authenticated user to hold the full Admin role. The team must
+    /// have no linked Google resources — <c>GoogleResource → Team</c> is
+    /// configured with <c>OnDelete(Restrict)</c>, so the caller must unlink
+    /// resources via <see cref="ITeamResourceService"/> first.
     /// </summary>
-    Task<int> HardDeleteSeededTeamsAsync(
-        string nameSuffix,
+    Task<bool> PermanentlyDeleteTeamAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Budget Integration
     // ==========================================================================
-
-    /// <summary>
-    /// Returns active teams flagged with <c>HasBudget</c>, ordered by name.
-    /// Used by the Budget section to seed department categories when a budget
-    /// year is created or synced. Returns just <see cref="TeamOptionDto"/> so
-    /// the Budget section does not navigate the Teams graph.
-    /// </summary>
-    Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the department-scoped team IDs a user can coordinate for budget
@@ -686,42 +627,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the distinct user ids of every active
-    /// (<see cref="TeamMember.LeftAt"/> is null)
-    /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team.
-    /// Used by the Admin daily digest to compute pending-consent counts
-    /// for team coordinators without reading
-    /// <c>team_members</c> directly (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
-    /// across the given team ids, with <see cref="TeamMember.Team"/> hydrated and
-    /// the cross-domain <see cref="TeamMember.User"/> nav stitched in-memory via
-    /// <see cref="Users.IUserService.GetByIdsAsync"/>. Used by the Google
-    /// Workspace reconciliation flow to resolve the expected membership of every
-    /// Google Drive / Group resource without touching <c>team_members</c>
-    /// directly (design-rules §2c, §6b).
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
-    /// whose team has a parent team id in <paramref name="parentTeamIds"/>.
-    /// The child team is hydrated on <see cref="TeamMember.Team"/>; the
-    /// <see cref="TeamMember.User"/> nav is stitched in-memory. Used by the
-    /// subteam rollup path in Google Workspace reconciliation — department
-    /// resources must grant access to every member of every child team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds,
-        CancellationToken cancellationToken = default);
-
     // ==========================================================================
     // System team sync support (issue #570 — §15 Google-writing jobs)
     //
@@ -732,19 +637,11 @@ public interface ITeamService : IApplicationService
     // ==========================================================================
 
     /// <summary>
-    /// Loads the system team whose <see cref="Team.SystemTeamType"/> equals
-    /// <paramref name="type"/>, with active members hydrated. Returns null
-    /// when no team is configured for that system type.
-    /// </summary>
-    Task<Team?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Loads every active membership with enough role-assignment / role-
     /// definition / team context to decide coordinator promotion and
     /// demotion in-memory. Used by <c>SystemTeamSyncJob.ReconcileCoordinatorRolesAsync</c>.
     /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
+    Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -756,21 +653,6 @@ public interface ITeamService : IApplicationService
     Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the distinct user ids of every active coordinator on a
-    /// non-system department team (<c>ParentTeamId</c> is null). Sub-team
-    /// managers are excluded.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Is the user a coordinator on any active department team
-    /// (<c>ParentTeamId</c> is null)?
-    /// </summary>
-    Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Applies a system-team membership reconciliation in a single save:
@@ -794,3 +676,29 @@ public interface ITeamService : IApplicationService
         Instant now,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record TeamRoleDefinitionSnapshot(
+    Guid Id,
+    Guid TeamId,
+    string TeamName,
+    string TeamSlug,
+    string Name,
+    string? Description,
+    int SlotCount,
+    int? EstimatedHours,
+    IReadOnlyList<SlotPriority> Priorities,
+    int SortOrder,
+    bool IsManagement,
+    RolePeriod Period,
+    bool IsPublic,
+    IReadOnlyList<TeamRoleAssignmentSnapshot> Assignments);
+
+public sealed record TeamRoleManagementToggleResult(
+    string RoleName,
+    bool IsManagement);
+
+public sealed record TeamRoleAssignmentSnapshot(
+    Guid Id,
+    Guid TeamMemberId,
+    int SlotIndex,
+    Guid? AssignedUserId);

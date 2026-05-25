@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
@@ -20,7 +19,9 @@ public interface ICampContactService : IApplicationService
         string senderDisplayName,
         string senderEmail,
         string message,
-        bool includeContactInfo);
+        bool includeContactInfo,
+        IReadOnlyList<Guid> leadUserIds,
+        string campDetailsUrl);
 }
 
 /// <summary>Result of a facilitated contact attempt.</summary>

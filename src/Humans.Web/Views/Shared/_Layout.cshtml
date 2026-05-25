@@ -1,4 +1,5 @@
 @inject Humans.Application.Interfaces.Cantina.ICantinaAccessService CantinaAccess
+@inject IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -36,6 +37,7 @@
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.CampAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.FeedbackAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.FinanceAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin))
@@ -78,16 +80,13 @@
                             Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
                     }
                     <ul class="navbar-nav flex-grow-1">
-                        @if (isAuthenticated && !hasProfile)
+                        @if (isAuthenticated)
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Guest" asp-action="Index">@Localizer["Nav_Home"]</a>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">@Localizer["Nav_Home"]</a>
+                                <a class="nav-link" asp-controller="Search" asp-action="Index"
+                                   aria-label="Search" title="Search">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </a>
                             </li>
                         }
                         <li class="nav-item">
@@ -102,6 +101,33 @@
                         <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
                         </li>
+                        @if (Configuration.GetValue<bool>("Features:Events"))
+                        {
+                            <li class="nav-item dropdown" authorize-policy="IsActiveMember">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Events</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="MySubmissions">My Submissions</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Schedule">My Schedule</a></li>
+                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
+                                         || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsDashboard" asp-action="Index">Guide Dashboard</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsModeration" asp-action="Index">Moderate Events</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsExport" asp-action="Index">Export Guide</a></li>
+                                    }
+                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
+                                         || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Settings">Guide Settings</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Categories">Guide Categories</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Venues">Guide Venues</a></li>
+                                    }
+                                </ul>
+                            </li>
+                        }
                         @if (!isAuthenticated || !hasProfile)
                         {
                             <li class="nav-item">
@@ -114,21 +140,12 @@
                         <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
                         </li>
-                        <li class="nav-item" authorize-policy="IsActiveMember">
-                            <a class="nav-link" asp-area="" asp-controller="Expenses" asp-action="Index">Expenses</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="IsActiveMember">
-                            <a class="nav-link" asp-area="" asp-controller="Expenses" asp-action="Coordinator">Coordinator Queue</a>
-                        </li>
                         @if (await CantinaAccess.CanViewRosterAsync(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Cantina" asp-action="Roster">@Localizer["Nav_Cantina"]</a>
                             </li>
                         }
-                        <li class="nav-item" authorize-policy="FinanceAdminOrAdmin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Expenses" asp-action="Review">Expense Review</a>
-                        </li>
                         <li class="nav-item" authorize-policy="AnyAdminRole">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
@@ -136,10 +153,6 @@
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <a class="nav-link p-1" asp-controller="Search" asp-action="Index"
-                               aria-label="Search" title="Search">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </a>
                             @await Component.InvokeAsync("NotificationBell")
                         }
                         <partial name="_LanguageChooser" />
@@ -186,6 +199,7 @@
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/client-metrics.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
     @await Component.InvokeAsync("HelpWidget")
 </body>

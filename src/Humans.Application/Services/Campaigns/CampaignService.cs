@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -16,87 +17,104 @@ using NodaTime;
 namespace Humans.Application.Services.Campaigns;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ICampaignService"/>. Goes
-/// through <see cref="ICampaignRepository"/> for owned-table access and
-/// through <see cref="ITeamService"/> / <see cref="IUserEmailService"/> for
-/// cross-section reads. Never imports <c>Microsoft.EntityFrameworkCore</c>.
+/// Application-layer implementation of <see cref="ICampaignService"/>.
 /// </summary>
-/// <remarks>
-/// Per-grant commits during <see cref="SendWaveAsync"/> and
-/// <see cref="RetryAllFailedAsync"/> are intentional. A batch flip-to-Queued
-/// followed by a loop would lose grants whose enqueue throws: they would
-/// leave the Failed set without a corresponding outbox row and never be
-/// retriable again.
-/// </remarks>
-public sealed class CampaignService : ICampaignService, IUserDataContributor, IUserMerge
+public sealed class CampaignService(
+    ICampaignRepository repository,
+    ITeamServiceRead teamService,
+    IUserEmailService userEmailService,
+    IUserServiceRead userService,
+    INotificationService notificationService,
+    ICommunicationPreferenceService commPrefService,
+    IEmailService emailService,
+    ITicketVendorService ticketVendorService,
+    IClock clock,
+    ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge
 {
-    private readonly ICampaignRepository _repository;
-    private readonly ITeamService _teamService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IUserService _userService;
-    private readonly INotificationService _notificationService;
-    private readonly ICommunicationPreferenceService _commPrefService;
-    private readonly IEmailService _emailService;
-    private readonly IClock _clock;
-    private readonly ILogger<CampaignService> _logger;
-
-    public CampaignService(
-        ICampaignRepository repository,
-        ITeamService teamService,
-        IUserEmailService userEmailService,
-        IUserService userService,
-        INotificationService notificationService,
-        ICommunicationPreferenceService commPrefService,
-        IEmailService emailService,
-        IClock clock,
-        ILogger<CampaignService> logger)
-    {
-        _repository = repository;
-        _teamService = teamService;
-        _userEmailService = userEmailService;
-        _userService = userService;
-        _notificationService = notificationService;
-        _commPrefService = commPrefService;
-        _emailService = emailService;
-        _clock = clock;
-        _logger = logger;
-    }
-
-    public async Task<Campaign> CreateAsync(string title, string? description,
+    public async Task<CampaignCreateResult> CreateAsync(string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         Guid createdByUserId, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(title))
+            return new CampaignCreateResult(false, ErrorKey: "TitleRequired");
+
+        if (string.IsNullOrWhiteSpace(emailSubject))
+            return new CampaignCreateResult(false, ErrorKey: "EmailSubjectRequired");
+
+        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
+            return new CampaignCreateResult(false, ErrorKey: "EmailBodyTemplateRequired");
+
         var campaign = new Campaign
         {
             Id = Guid.NewGuid(),
-            Title = title,
-            Description = description,
-            EmailSubject = emailSubject,
-            EmailBodyTemplate = emailBodyTemplate,
+            Title = title.Trim(),
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            EmailSubject = emailSubject.Trim(),
+            EmailBodyTemplate = emailBodyTemplate.Trim(),
             ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim(),
             Status = CampaignStatus.Draft,
-            CreatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = clock.GetCurrentInstant(),
             CreatedByUserId = createdByUserId
         };
 
-        await _repository.AddCampaignAsync(campaign, ct);
+        await repository.AddCampaignAsync(campaign, ct);
 
-        _logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
-        return campaign;
+        logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
+        return new CampaignCreateResult(true, campaign);
     }
 
-    public Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repository.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
+    public async Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var grants = await repository.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
+        return grants.Select(ToSummary).ToList();
+    }
 
-    public Task<IReadOnlyList<CampaignGrant>> GetAllGrantsForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repository.GetAllGrantsForUserAsync(userId, ct);
+    public async Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var grants = await repository.GetAllGrantsForUserAsync(userId, ct);
+        return grants.Select(ToSummary).ToList();
+    }
 
-    public Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-        _repository.GetByIdAsync(id, ct);
+    private static CampaignGrantSummary ToSummary(CampaignGrant grant) =>
+        new(
+            grant.Id,
+            grant.CampaignId,
+            grant.Campaign.Title,
+            grant.CampaignCodeId,
+            grant.Code.Code,
+            grant.UserId,
+            grant.AssignedAt,
+            grant.LatestEmailStatus,
+            grant.LatestEmailAt,
+            grant.RedeemedAt);
 
-    public async Task<bool> UpdateAsync(
+    private static CampaignAdminSummary ToAdminSummary(Campaign campaign) =>
+        new(
+            campaign.Id,
+            campaign.Title,
+            campaign.Description,
+            campaign.Status,
+            campaign.Grants.Select(ToSummary).ToList());
+
+    public async Task<CampaignEditSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var campaign = await repository.GetByIdAsync(id, ct);
+        return campaign is null ? null : ToEditSnapshot(campaign);
+    }
+
+    private static CampaignEditSnapshot ToEditSnapshot(Campaign campaign) =>
+        new(
+            campaign.Id,
+            campaign.Title,
+            campaign.Description,
+            campaign.EmailSubject,
+            campaign.EmailBodyTemplate,
+            campaign.ReplyToAddress,
+            campaign.Status);
+
+    public async Task<CampaignUpdateResult> UpdateAsync(
         Guid id,
         string title,
         string? description,
@@ -105,9 +123,18 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         string? replyToAddress,
         CancellationToken ct = default)
     {
-        var campaign = await _repository.FindForMutationAsync(id, ct);
+        if (string.IsNullOrWhiteSpace(title))
+            return new CampaignUpdateResult(false, "TitleRequired");
+
+        if (string.IsNullOrWhiteSpace(emailSubject))
+            return new CampaignUpdateResult(false, "EmailSubjectRequired");
+
+        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
+            return new CampaignUpdateResult(false, "EmailBodyTemplateRequired");
+
+        var campaign = await repository.FindForMutationAsync(id, ct);
         if (campaign is null)
-            return false;
+            return new CampaignUpdateResult(false, "NotFound");
 
         campaign.Title = title.Trim();
         campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
@@ -115,18 +142,35 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
         campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
 
-        await _repository.UpdateCampaignAsync(campaign, ct);
+        await repository.UpdateCampaignAsync(campaign, ct);
 
-        _logger.LogInformation("Campaign {CampaignId} updated", id);
-        return true;
+        logger.LogInformation("Campaign {CampaignId} updated", id);
+        return new CampaignUpdateResult(true);
     }
 
-    public Task<List<Campaign>> GetAllAsync(CancellationToken ct = default) =>
-        _repository.GetAllAsync(ct);
+    public async Task<IReadOnlyList<CampaignListSummary>> GetAllAsync(CancellationToken ct = default)
+    {
+        var campaigns = await repository.GetAllAsync(ct);
+        return campaigns.Select(ToListSummary).ToList();
+    }
+
+    private static CampaignListSummary ToListSummary(Campaign campaign)
+    {
+        var assignedCodes = campaign.Grants.Select(g => g.CampaignCodeId).Distinct().Count();
+        return new CampaignListSummary(
+            campaign.Id,
+            campaign.Title,
+            campaign.Status,
+            campaign.Codes.Count,
+            assignedCodes,
+            campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent),
+            campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed),
+            campaign.CreatedAt);
+    }
 
     public async Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default)
     {
-        var campaign = await GetByIdAsync(id, ct);
+        var campaign = await repository.GetByIdAsync(id, ct);
         if (campaign is null)
             return null;
 
@@ -139,7 +183,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var totalGrants = campaign.Grants.Count;
 
         return new CampaignDetailPageDto(
-            campaign,
+            ToAdminSummary(campaign),
             new CampaignDetailStatsDto(
                 totalCodes,
                 availableCodes,
@@ -154,11 +198,13 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         Guid? teamId,
         CancellationToken ct = default)
     {
-        var campaign = await GetByIdAsync(campaignId, ct);
+        var campaign = await repository.GetByIdAsync(campaignId, ct);
         if (campaign is null)
             return null;
 
-        var teams = await _teamService.GetActiveTeamOptionsAsync(ct);
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         var teamOptions = teams
             .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
             .ToList();
@@ -167,22 +213,22 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             ? await PreviewWaveSendAsync(campaignId, teamId.Value, ct)
             : null;
 
-        return new CampaignSendWavePageDto(campaign, teamOptions, teamId, preview);
+        return new CampaignSendWavePageDto(ToAdminSummary(campaign), teamOptions, teamId, preview);
     }
 
     public Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default) =>
-        _repository.GetCampaignIdForGrantAsync(grantId, ct);
+        repository.GetCampaignIdForGrantAsync(grantId, ct);
 
     public async Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
     {
-        var campaign = await _repository.FindForMutationWithCodesAsync(campaignId, ct)
+        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
         var existingCodes = campaign.Codes
             .Select(c => c.Code)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var imported = 0;
         var skipped = 0;
         var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
@@ -213,20 +259,20 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             imported++;
         }
 
-        await _repository.AddCampaignCodesAsync(newCodes, ct);
+        await repository.AddCampaignCodesAsync(newCodes, ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Campaign {CampaignId}: imported {Imported} codes, skipped {Skipped} duplicates",
             campaignId, imported, skipped);
     }
 
-    public async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,
+    private async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,
         CancellationToken ct = default)
     {
-        var campaign = await _repository.FindForMutationWithCodesAsync(campaignId, ct)
+        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
         var newCodes = new List<CampaignCode>(codes.Count);
 
@@ -243,16 +289,43 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             });
         }
 
-        await _repository.AddCampaignCodesAsync(newCodes, ct);
+        await repository.AddCampaignCodesAsync(newCodes, ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Campaign {CampaignId}: imported {Count} vendor-generated codes",
             campaignId, codes.Count);
     }
 
+    public async Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
+        Guid campaignId,
+        int count,
+        string discountType,
+        decimal discountValue,
+        CancellationToken ct = default)
+    {
+        var campaign = await GetByIdAsync(campaignId, ct);
+        if (campaign is null)
+            return new CampaignGenerateCodesResult(false, "NotFound");
+
+        if (campaign.Status != CampaignStatus.Draft)
+            return new CampaignGenerateCodesResult(false, "NotDraft");
+
+        if (count <= 0)
+            return new CampaignGenerateCodesResult(false, "InvalidCount");
+
+        if (!Enum.TryParse<DiscountType>(discountType, ignoreCase: true, out var parsedType))
+            return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
+
+        var spec = new DiscountCodeSpec(count, parsedType, discountValue, ExpiresAt: null);
+        var codes = await ticketVendorService.GenerateDiscountCodesAsync(spec, ct);
+        await ImportGeneratedCodesAsync(campaignId, codes, ct);
+
+        return new CampaignGenerateCodesResult(true, GeneratedCount: codes.Count);
+    }
+
     public async Task ActivateAsync(Guid campaignId, CancellationToken ct = default)
     {
-        var campaign = await _repository.FindForMutationWithCodesAsync(campaignId, ct)
+        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
         if (campaign.Status != CampaignStatus.Draft)
@@ -264,19 +337,19 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
                 $"Campaign {campaignId} must have at least one code before activation.");
 
         if (!campaign.EmailBodyTemplate.Contains("{{Code}}", StringComparison.Ordinal))
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Campaign {CampaignId} email template does not contain {{Code}} placeholder",
                 campaignId);
 
         campaign.Status = CampaignStatus.Active;
-        await _repository.UpdateCampaignAsync(campaign, ct);
+        await repository.UpdateCampaignAsync(campaign, ct);
 
-        _logger.LogInformation("Campaign {CampaignId} activated", campaignId);
+        logger.LogInformation("Campaign {CampaignId} activated", campaignId);
     }
 
     public async Task CompleteAsync(Guid campaignId, CancellationToken ct = default)
     {
-        var campaign = await _repository.FindForMutationAsync(campaignId, ct)
+        var campaign = await repository.FindForMutationAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
         if (campaign.Status != CampaignStatus.Active)
@@ -284,40 +357,39 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
                 $"Campaign {campaignId} must be in Active status to complete (current: {campaign.Status}).");
 
         campaign.Status = CampaignStatus.Completed;
-        await _repository.UpdateCampaignAsync(campaign, ct);
+        await repository.UpdateCampaignAsync(campaign, ct);
 
-        _logger.LogInformation("Campaign {CampaignId} completed", campaignId);
+        logger.LogInformation("Campaign {CampaignId} completed", campaignId);
     }
 
     public async Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId,
         CancellationToken ct = default)
     {
-        _ = await _repository.FindForMutationAsync(campaignId, ct)
+        _ = await repository.FindForMutationAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
 
-        var alreadyGrantedSet = await _repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
+        var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
 
         var notGranted = activeTeamUserIds
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
-        // CampaignCodes is an always-on category, so IsOptedOutAsync returns false for every user.
-        // Kept as a guard in case the category ever becomes opt-outable.
+        // CampaignCodes is always-on today; guard kept for future opt-outability.
         var optedOutCount = 0;
         foreach (var userId in notGranted)
         {
-            if (await _commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, ct))
+            if (await commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, ct))
                 optedOutCount++;
         }
 
         var eligibleCount = notGranted.Count - optedOutCount;
-        var availableCodes = await _repository.CountAvailableCodesAsync(campaignId, ct);
+        var availableCodes = await repository.CountAvailableCodesAsync(campaignId, ct);
 
         return new WaveSendPreview(
             EligibleCount: eligibleCount,
-            AlreadyGrantedExcluded: activeTeamUserIds.Count(id => alreadyGrantedSet.Contains(id)),
+            AlreadyGrantedExcluded: activeTeamUserIds.Count(alreadyGrantedSet.Contains),
             UnsubscribedExcluded: optedOutCount,
             CodesAvailable: availableCodes,
             CodesRemainingAfterSend: availableCodes - eligibleCount);
@@ -325,51 +397,47 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     public async Task<int> SendWaveAsync(Guid campaignId, Guid teamId, CancellationToken ct = default)
     {
-        var campaign = await _repository.FindForMutationAsync(campaignId, ct)
+        var campaign = await repository.FindForMutationAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
         if (campaign.Status != CampaignStatus.Active)
             throw new InvalidOperationException(
                 $"Campaign {campaignId} must be in Active status to send a wave (current: {campaign.Status}).");
 
-        // Get eligible users (not already granted, not opted out).
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
-        var alreadyGrantedSet = await _repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
+        var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
 
         var candidateUserIds = activeTeamUserIds
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
-        // Filter out users who have opted out of CampaignCodes (always-on today; this is a no-op).
         var eligibleUserIds = new List<Guid>(candidateUserIds.Count);
         foreach (var userId in candidateUserIds)
         {
-            if (!await _commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, ct))
+            if (!await commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, ct))
                 eligibleUserIds.Add(userId);
         }
 
         if (eligibleUserIds.Count == 0)
             return 0;
 
-        // Cross-section fetch: users (for DisplayName) and notification emails.
-        var users = await _userService.GetByIdsAsync(eligibleUserIds, ct);
-        var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
+        var users = await userService.GetUserInfosAsync(eligibleUserIds, ct);
+        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
 
-        // Get available codes ordered by ImportedAt, Id.
-        var availableCodes = await _repository.GetAvailableCodesAsync(
+        var availableCodes = await repository.GetAvailableCodesAsync(
             campaignId, eligibleUserIds.Count, ct);
 
         if (availableCodes.Count < eligibleUserIds.Count)
             throw new InvalidOperationException(
                 $"Not enough codes available. Need {eligibleUserIds.Count}, have {availableCodes.Count}.");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var failedCount = 0;
         var grantedUserIds = new List<Guid>(eligibleUserIds.Count);
 
-        // Persist and enqueue one grant at a time. If an enqueue throws mid-loop,
-        // we flip that single grant to Failed so subsequent grants still get
-        // processed and RetryAllFailedAsync picks the failed ones up next pass.
+        // Per-grant commit: on enqueue throw, flip just that grant to Failed
+        // so subsequent grants still process and RetryAllFailedAsync can pick
+        // it up next pass.
         for (var i = 0; i < eligibleUserIds.Count; i++)
         {
             var userId = eligibleUserIds[i];
@@ -377,7 +445,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
             if (!users.TryGetValue(userId, out var user))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "User {UserId} eligible for campaign {CampaignId} but lookup returned no row; skipping",
                     userId, campaignId);
                 continue;
@@ -385,7 +453,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
             if (!notificationEmails.TryGetValue(userId, out var recipientEmail))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "User {UserId} has no notification email for campaign {CampaignId}; skipping",
                     userId, campaignId);
                 continue;
@@ -401,36 +469,35 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
                 LatestEmailStatus = EmailOutboxStatus.Queued,
                 LatestEmailAt = now
             };
-            await _repository.AddGrantAndSaveAsync(grant, ct);
+            await repository.AddGrantAndSaveAsync(grant, ct);
             grantedUserIds.Add(userId);
 
             try
             {
-                await _emailService.SendCampaignCodeAsync(
+                await emailService.SendCampaignCodeAsync(
                     BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id),
                     ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Failed to enqueue campaign code email for user {UserId} grant {GrantId} in campaign {CampaignId}",
                     userId, grant.Id, campaignId);
-                await _repository.UpdateGrantStatusAsync(grant.Id, EmailOutboxStatus.Failed, now, ct);
+                await repository.UpdateGrantStatusAsync(grant.Id, EmailOutboxStatus.Failed, now, ct);
                 failedCount++;
             }
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Campaign {CampaignId}: sent wave to team {TeamId}, {Count} grants created, {FailedCount} failed to enqueue",
             campaignId, teamId, grantedUserIds.Count, failedCount);
 
         if (grantedUserIds.Count == 0)
             return 0;
 
-        // In-app notification to each recipient who actually received a grant (best-effort).
         try
         {
-            await _notificationService.SendAsync(
+            await notificationService.SendAsync(
                 NotificationSource.CampaignReceived,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
@@ -441,7 +508,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId}", campaignId);
+            logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId}", campaignId);
         }
 
         return grantedUserIds.Count;
@@ -449,21 +516,20 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     public async Task ResendToGrantAsync(Guid grantId, CancellationToken ct = default)
     {
-        var grant = await _repository.GetGrantForResendAsync(grantId, ct)
+        var grant = await repository.GetGrantForResendAsync(grantId, ct)
             ?? throw new InvalidOperationException($"Grant {grantId} not found.");
 
-        var now = _clock.GetCurrentInstant();
-        await _repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct);
+        var now = clock.GetCurrentInstant();
+        await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct);
 
-        // Cross-section user + notification email resolution.
-        var user = await _userService.GetByIdAsync(grant.UserId, ct)
+        var user = await userService.GetUserInfoAsync(grant.UserId, ct)
             ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
-        var emails = await _userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
+        var emails = await userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
         if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
             throw new InvalidOperationException(
                 $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
 
-        await _emailService.SendCampaignCodeAsync(
+        await emailService.SendCampaignCodeAsync(
             BuildCampaignCodeRequest(
                 grant.CampaignTitle,
                 grant.CampaignEmailSubject,
@@ -472,34 +538,31 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
                 user, recipientEmail, grant.CodeString, grant.GrantId),
             ct);
 
-        _logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
+        logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
     }
 
     public Task<int> MarkGrantsRedeemedAsync(
         IReadOnlyCollection<DiscountCodeRedemption> redemptions,
         CancellationToken ct = default)
     {
-        return _repository.MarkGrantsRedeemedAsync(redemptions, ct);
+        return repository.MarkGrantsRedeemedAsync(redemptions, ct);
     }
 
     public async Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default)
     {
-        // Campaigns-owned reads go through the repository; recipient display
-        // names are resolved via IUserService so no cross-domain navigation
-        // happens in this Application-layer service.
-        var summaryRows = await _repository.GetCodeTrackingSummariesAsync(ct);
-        var grantRowsRaw = await _repository.GetCodeTrackingGrantRowsAsync(ct);
+        var summaryRows = await repository.GetCodeTrackingSummariesAsync(ct);
+        var grantRowsRaw = await repository.GetCodeTrackingGrantRowsAsync(ct);
 
         var userIds = grantRowsRaw.Select(r => r.UserId).Distinct().ToList();
         var users = userIds.Count > 0
-            ? await _userService.GetByIdsAsync(userIds, ct)
-            : new Dictionary<Guid, User>();
+            ? await userService.GetUserInfosAsync(userIds, ct)
+            : new Dictionary<Guid, UserInfo>();
 
         var grantRows = new List<CampaignCodeTrackingGrant>(grantRowsRaw.Count);
         foreach (var row in grantRowsRaw)
         {
             var recipientName = users.TryGetValue(row.UserId, out var user)
-                ? user.DisplayName
+                ? user.BurnerName
                 : string.Empty;
 
             grantRows.Add(new CampaignCodeTrackingGrant(
@@ -533,47 +596,46 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     public async Task RetryAllFailedAsync(Guid campaignId, CancellationToken ct = default)
     {
-        var failedGrants = await _repository.GetFailedGrantsForRetryAsync(campaignId, ct);
+        var failedGrants = await repository.GetFailedGrantsForRetryAsync(campaignId, ct);
         if (failedGrants.Count == 0)
             return;
 
         var userIds = failedGrants.Select(g => g.UserId).Distinct().ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
-        var emails = await _userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
+        var emails = await userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var stillFailedCount = 0;
 
-        // Flip-and-enqueue one grant at a time. A batch flip-to-Queued + loop
-        // enqueue would lose grants whose enqueue throws: they would leave the
-        // Failed set without a corresponding outbox row and never be retriable.
+        // Per-grant flip-and-enqueue: a batch flip-to-Queued + loop would lose
+        // grants whose enqueue throws, leaving them un-retriable.
         foreach (var grant in failedGrants)
         {
-            await _repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Queued, now, ct);
+            await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Queued, now, ct);
 
             if (!users.TryGetValue(grant.UserId, out var user))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "User {UserId} missing when retrying grant {GrantId}; marking failed",
                     grant.UserId, grant.GrantId);
-                await _repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
+                await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
                 stillFailedCount++;
                 continue;
             }
 
             if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "No notification email for user {UserId} when retrying grant {GrantId}; marking failed",
                     grant.UserId, grant.GrantId);
-                await _repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
+                await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
                 stillFailedCount++;
                 continue;
             }
 
             try
             {
-                await _emailService.SendCampaignCodeAsync(
+                await emailService.SendCampaignCodeAsync(
                     BuildCampaignCodeRequest(
                         grant.CampaignTitle,
                         grant.CampaignEmailSubject,
@@ -584,39 +646,33 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Retry failed to re-enqueue campaign code email for grant {GrantId} in campaign {CampaignId}",
                     grant.GrantId, campaignId);
-                await _repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
+                await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
                 stillFailedCount++;
             }
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Campaign {CampaignId}: retried {Count} failed grants, {StillFailedCount} still failed",
             campaignId, failedGrants.Count, stillFailedCount);
     }
 
     private async Task<List<Guid>> GetActiveTeamUserIdsAsync(Guid teamId, CancellationToken ct)
     {
-        var team = await _teamService.GetTeamAsync(teamId, ct);
+        var team = await teamService.GetTeamAsync(teamId, ct);
         return team?.Members.Select(tm => tm.UserId).ToList() ?? [];
     }
 
-    /// <summary>
-    /// Build a <see cref="CampaignCodeEmailRequest"/> from a tracked campaign
-    /// and the resolved recipient. The outbox email service performs the
-    /// actual markdown → HTML rendering and template wrapping — keeping
-    /// email_outbox_messages ownership in a single place.
-    /// </summary>
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
-        Campaign campaign, User user, string recipientEmail, string code, Guid grantId)
+        Campaign campaign, UserInfo user, string recipientEmail, string code, Guid grantId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
             RecipientEmail: recipientEmail,
-            RecipientName: user.DisplayName,
+            RecipientName: user.BurnerName,
             Subject: campaign.EmailSubject,
             MarkdownBody: campaign.EmailBodyTemplate,
             Code: code,
@@ -625,14 +681,14 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string campaignTitle, string emailSubject, string emailBody, string? replyToAddress,
-        User user, string recipientEmail, string code, Guid grantId)
+        UserInfo user, string recipientEmail, string code, Guid grantId)
     {
         _ = campaignTitle; // kept for future rendering-context parameters; no-op today.
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
             RecipientEmail: recipientEmail,
-            RecipientName: user.DisplayName,
+            RecipientName: user.BurnerName,
             Subject: emailSubject,
             MarkdownBody: emailBody,
             Code: code,
@@ -641,7 +697,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var grants = await _repository.GetGrantsForUserExportAsync(userId, ct);
+        var grants = await repository.GetGrantsForUserExportAsync(userId, ct);
 
         var shaped = grants.Select(g => new
         {
@@ -660,9 +716,9 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         EmailOutboxStatus status,
         Instant latestEmailAt,
         CancellationToken ct = default) =>
-        _repository.UpdateGrantStatusAsync(grantId, status, latestEmailAt, ct);
+        repository.UpdateGrantStatusAsync(grantId, status, latestEmailAt, ct);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
-        _repository.ReassignGrantsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        repository.ReassignGrantsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }

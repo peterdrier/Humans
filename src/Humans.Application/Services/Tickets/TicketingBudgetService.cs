@@ -9,56 +9,21 @@ using NodaTime;
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ITicketingBudgetService"/>.
-/// Bridges the Tickets section (ticket_orders / ticket_attendees) into the
-/// Budget section (budget_line_items / ticketing_projections). Goes through
-/// <see cref="ITicketingBudgetRepository"/> for ticket reads and delegates all
-/// Budget-owned mutations to <see cref="IBudgetService"/> — this type never
-/// imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
-/// <c>Humans.Application.csproj</c>'s reference graph.
+/// Tickets→Budget bridge: reads paid ticket sales, delegates BudgetLineItem/Projection writes to IBudgetService.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Section ownership.</b> <c>TicketingBudgetService</c> is a co-owner of the
-/// Tickets section, alongside <c>TicketQueryService</c> and
-/// <c>TicketSyncService</c> (both pending their own §15 migrations in
-/// sub-tasks #545a and #545c). It is the Tickets-owned gateway for feeding
-/// completed-week sales into Budget.
-/// </para>
-/// <para>
-/// <b>ticketing_projections ownership.</b> Remains Budget-owned per
-/// design-rules §8. All projection reads/writes route through
-/// <see cref="IBudgetService"/> — this service never touches that table.
-/// </para>
-/// </remarks>
-public sealed class TicketingBudgetService : ITicketingBudgetService
+public sealed class TicketingBudgetService(
+    ITicketingBudgetRepository ticketRepo,
+    IBudgetService budgetService,
+    IClock clock,
+    ILogger<TicketingBudgetService> logger) : ITicketingBudgetService
 {
-    private readonly ITicketingBudgetRepository _ticketRepo;
-    private readonly IBudgetService _budgetService;
-    private readonly IClock _clock;
-    private readonly ILogger<TicketingBudgetService> _logger;
-
-    public TicketingBudgetService(
-        ITicketingBudgetRepository ticketRepo,
-        IBudgetService budgetService,
-        IClock clock,
-        ILogger<TicketingBudgetService> logger)
-    {
-        _ticketRepo = ticketRepo;
-        _budgetService = budgetService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default)
     {
         try
         {
-            // Read paid ticket sales through the narrow Tickets-owned repository.
-            // TicketCount is already pre-computed server-side (valid + checked-in only).
-            var orders = await _ticketRepo.GetPaidOrderSummariesAsync(ct);
+            var orders = await ticketRepo.GetPaidOrderSummariesAsync(ct);
 
-            var today = _clock.GetCurrentInstant().InUtc().Date;
+            var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 
             var weeklyActuals = orders
@@ -80,13 +45,11 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
                 })
                 .ToList();
 
-            // Delegate the BudgetLineItem / TicketingProjection mutations to
-            // BudgetService, which owns those tables.
-            return await _budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
+            return await budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to sync ticketing actuals for budget year {YearId}", budgetYearId);
+            logger.LogError(ex, "Failed to sync ticketing actuals for budget year {YearId}", budgetYearId);
             throw;
         }
     }
@@ -95,23 +58,44 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
     {
         try
         {
-            return await _budgetService.RefreshTicketingProjectionsAsync(budgetYearId, ct);
+            return await budgetService.RefreshTicketingProjectionsAsync(budgetYearId, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh ticketing projections for budget year {YearId}", budgetYearId);
+            logger.LogError(ex, "Failed to refresh ticketing projections for budget year {YearId}", budgetYearId);
             throw;
         }
     }
 
+    public async Task<int> UpdateProjectionAndRefreshAsync(
+        TicketingProjectionUpdateCommand command,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        await budgetService.UpdateTicketingProjectionAsync(
+            command.BudgetGroupId,
+            command.StartDate,
+            command.EventDate,
+            command.InitialSalesCount,
+            command.DailySalesRate,
+            command.AverageTicketPrice,
+            command.VatRate,
+            command.StripeFeePercent,
+            command.StripeFeeFixed,
+            command.TicketTailorFeePercent,
+            actorUserId);
+
+        return await RefreshProjectionsAsync(command.BudgetYearId, ct);
+    }
+
     public Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
     {
-        return _budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);
+        return budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);
     }
 
     public int GetActualTicketsSold(BudgetGroup ticketingGroup)
     {
-        return _budgetService.GetActualTicketsSold(ticketingGroup);
+        return budgetService.GetActualTicketsSold(ticketingGroup);
     }
 
     // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.

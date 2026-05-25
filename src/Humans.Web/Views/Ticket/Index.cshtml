@@ -23,7 +23,6 @@
 
     <vc:temp-data-alerts />
 
-    <!-- Summary Cards -->
     <div class="row row-cols-1 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
         <div class="col">
             <div class="card h-100">
@@ -100,74 +99,6 @@
         </div>
     </div>
 
-    <!-- Volunteer Ticket Coverage -->
-    @if (Model.TotalActiveVolunteers > 0)
-    {
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fa-solid fa-users"></i> Volunteer Ticket Coverage
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span>
-                        <strong>@Model.VolunteersWithTickets</strong> / @Model.TotalActiveVolunteers humans have tickets
-                    </span>
-                    <span class="fs-4 fw-bold @(Model.VolunteerCoveragePercent >= 75 ? "text-success" : Model.VolunteerCoveragePercent >= 50 ? "text-warning" : "text-danger")">
-                        @Model.VolunteerCoveragePercent%
-                    </span>
-                </div>
-                <div class="progress" style="height: 20px;">
-                    <div class="progress-bar @(Model.VolunteerCoveragePercent >= 75 ? "bg-success" : Model.VolunteerCoveragePercent >= 50 ? "bg-warning" : "bg-danger")"
-                         style="width: @(Model.VolunteerCoveragePercent.ToString(System.Globalization.CultureInfo.InvariantCulture))%">
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <a asp-action="WhoHasntBought" class="text-muted"><i class="fa-solid fa-arrow-right"></i> View details</a>
-                </div>
-            </div>
-        </div>
-    }
-
-    <!-- Participation Breakdown -->
-    @{
-        var participationTotal = Model.ParticipationNotAttending + Model.ParticipationNoTicket + Model.ParticipationHasTicket;
-    }
-    @if (participationTotal > 0)
-    {
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fa-solid fa-chart-pie"></i> Participation Breakdown
-            </div>
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <canvas id="participationChart" height="200"></canvas>
-                    </div>
-                    <div class="col-md-6">
-                        <ul class="list-unstyled">
-                            <li class="mb-2">
-                                <span class="badge bg-success">&nbsp;&nbsp;</span>
-                                <strong>Has Ticket:</strong> @Model.ParticipationHasTicket
-                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationHasTicket / participationTotal * 100) : 0)%)
-                            </li>
-                            <li class="mb-2">
-                                <span class="badge bg-warning">&nbsp;&nbsp;</span>
-                                <strong>No Ticket:</strong> @Model.ParticipationNoTicket
-                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationNoTicket / participationTotal * 100) : 0)%)
-                            </li>
-                            <li class="mb-2">
-                                <span class="badge bg-secondary">&nbsp;&nbsp;</span>
-                                <strong>Not Coming:</strong> @Model.ParticipationNotAttending
-                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationNotAttending / participationTotal * 100) : 0)%)
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    <!-- Daily Sales Chart -->
     @if (Model.DailySales.Count > 0)
     {
         <div class="card mb-4">
@@ -175,7 +106,9 @@
                 <i class="fa-solid fa-chart-bar"></i> Daily Ticket Sales
             </div>
             <div class="card-body">
-                <canvas id="dailySalesChart" height="100"></canvas>
+                <div style="position: relative; height: 500px; width: 100%;">
+                    <canvas id="dailySalesChart"></canvas>
+                </div>
             </div>
         </div>
     }
@@ -217,7 +150,6 @@
     }
 
     <div class="row mb-4">
-        <!-- Problems / Attention -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -258,7 +190,6 @@
             </div>
         </div>
 
-        <!-- Recent Orders -->
         <div class="col-md-8">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -321,13 +252,11 @@
         </div>
     </div>
 
-    <!-- Export Links -->
     <div class="row mb-4">
         <div class="col-auto"><a asp-action="ExportAttendees" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export Attendees CSV</a></div>
         <div class="col-auto"><a asp-action="ExportOrders" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export Orders CSV</a></div>
     </div>
 
-    <!-- Sync Status -->
     <div class="card">
         <div class="card-body d-flex justify-content-between align-items-center py-2">
             <span class="text-muted">
@@ -361,78 +290,56 @@
                     <i class="fa-solid fa-arrows-rotate"></i> Full Re-sync <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </button>
             </form>
+            <a asp-controller="TicketsContactsAdmin" asp-action="Index"
+               class="btn btn-sm btn-outline-primary ms-2" authorize-policy="TicketAdminOrAdmin">
+                <i class="fa-solid fa-user-plus"></i> Import Attendee Contacts <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
         </div>
     </div>
 </div>
 
-@if (Model.DailySales.Count > 0 || participationTotal > 0)
+@if (Model.DailySales.Count > 0)
 {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
             integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
             crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            @if (Model.DailySales.Count > 0)
-            {
-                <text>
-                var salesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
-                var salesCtx = document.getElementById('dailySalesChart').getContext('2d');
-                new Chart(salesCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: salesData.map(d => d.date),
-                        datasets: [
-                            {
-                                label: 'Tickets Sold',
-                                data: salesData.map(d => d.ticketsSold),
-                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                                order: 2
-                            },
-                            {
-                                label: '7-day Avg',
-                                data: salesData.map(d => d.rollingAverage),
-                                type: 'line',
-                                borderColor: 'rgba(255, 99, 132, 1)',
-                                borderWidth: 2,
-                                fill: false,
-                                pointRadius: 0,
-                                order: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: { display: true },
-                            y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
+            var salesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var salesCtx = document.getElementById('dailySalesChart').getContext('2d');
+            new Chart(salesCtx, {
+                type: 'bar',
+                data: {
+                    labels: salesData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Tickets Sold',
+                            data: salesData.map(d => d.ticketsSold),
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            order: 2
+                        },
+                        {
+                            label: '7-day Avg',
+                            data: salesData.map(d => d.rollingAverage),
+                            type: 'line',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            order: 1
                         }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: true },
+                        y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
                     }
-                });
-                </text>
-            }
-
-            @if (participationTotal > 0)
-            {
-                <text>
-                var partCtx = document.getElementById('participationChart').getContext('2d');
-                new Chart(partCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Has Ticket', 'No Ticket', 'Not Coming'],
-                        datasets: [{
-                            data: [@Model.ParticipationHasTicket, @Model.ParticipationNoTicket, @Model.ParticipationNotAttending],
-                            backgroundColor: ['#198754', '#ffc107', '#6c757d']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { position: 'bottom' }
-                        }
-                    }
-                });
-                </text>
-            }
+                }
+            });
         });
     </script>
 }
+

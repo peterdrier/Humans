@@ -14,7 +14,6 @@
 
         <vc:temp-data-alerts />
 
-        @* Wizard header *@
         <div class="text-center mb-4">
             <div class="text-muted text-uppercase small" id="stepLabel">@string.Format(Localizer["ShiftInfo_StepOf"].Value, 1, 3)</div>
             <h1 class="h4 mt-1 mb-1" id="stepTitle">@Localizer["ShiftInfo_SkillsTitle"]</h1>
@@ -29,7 +28,7 @@
         <form asp-action="ShiftInfo" method="post" id="wizardForm">
             @Html.AntiForgeryToken()
 
-            @* ===== STEP 0: Skills ===== *@
+            @* Step 0: Skills *@
             <div class="step-pane active" id="step-0">
                 <div class="chip-grid">
                     @foreach (var skill in ShiftInfoViewModel.SkillOptions)
@@ -49,7 +48,7 @@
                 </div>
             </div>
 
-            @* ===== STEP 1: Work Style ===== *@
+            @* Step 1: Work Style *@
             <div class="step-pane" id="step-1">
                 <p class="fw-bold small text-muted mb-2">@Localizer["ShiftInfo_WorkTime"]</p>
                 <div class="radio-card-grid">
@@ -80,7 +79,7 @@
                 }
             </div>
 
-            @* ===== STEP 2: Languages ===== *@
+            @* Step 2: Languages *@
             <div class="step-pane" id="step-2">
                 <div class="chip-grid">
                     @foreach (var lang in ShiftInfoViewModel.LanguageOptions)
@@ -100,7 +99,7 @@
                 </div>
             </div>
 
-            @* ===== Navigation ===== *@
+            @* Navigation *@
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none">
                     &larr; @Localizer["Common_Back"]

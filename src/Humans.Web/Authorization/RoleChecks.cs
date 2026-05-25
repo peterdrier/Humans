@@ -41,6 +41,11 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.CampAdmin);
     }
 
+    public static bool IsEventsAdmin(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) || user.IsInRole(RoleNames.EventsAdmin);
+    }
+
     public static bool CanAccessReviewQueue(ClaimsPrincipal user)
     {
         return IsAdminOrBoard(user) ||
@@ -62,6 +67,7 @@ public static class RoleChecks
     {
         return IsTeamsAdminBoardOrAdmin(user) ||
                IsCampAdmin(user) ||
+               user.IsInRole(RoleNames.EventsAdmin) ||
                IsHumanAdmin(user) ||
                user.IsInRole(RoleNames.TicketAdmin) ||
                user.IsInRole(RoleNames.NoInfoAdmin) ||

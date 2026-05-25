@@ -1,5 +1,4 @@
 using System.Globalization;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Email;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
@@ -13,21 +12,13 @@ namespace Humans.Infrastructure.Services;
 /// Renders email subject + body HTML for all system email types.
 /// Body text is localized via SharedResource resx keys.
 /// </summary>
-public class EmailRenderer : IEmailRenderer
+public class EmailRenderer(
+    IOptions<EmailSettings> settings,
+    IStringLocalizerFactory localizerFactory,
+    ILogger<EmailRenderer> logger) : IEmailRenderer
 {
-    private readonly EmailSettings _settings;
-    private readonly IStringLocalizer _localizer;
-    private readonly ILogger<EmailRenderer> _logger;
-
-    public EmailRenderer(
-        IOptions<EmailSettings> settings,
-        IStringLocalizerFactory localizerFactory,
-        ILogger<EmailRenderer> logger)
-    {
-        _settings = settings.Value;
-        _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
-        _logger = logger;
-    }
+    private readonly EmailSettings _settings = settings.Value;
+    private readonly IStringLocalizer _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
 
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
     {
@@ -137,99 +128,6 @@ public class EmailRenderer : IEmailRenderer
             Lf("Email_TermRenewalReminder_Subject", tierName),
             Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl)));
 
-    public EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var outstandingHtml = BuildOutstandingSection(outstandingCounts);
-
-            var approvalsHtml = tierGroups.Count > 0
-                ? string.Join("\n", tierGroups.Select(g =>
-                    $"<h3>{HtmlEncode(g.TierLabel)}</h3>\n<ul>\n{string.Join("\n", g.DisplayNames.Select(n => $"<li>{HtmlEncode(n)}</li>"))}\n</ul>"))
-                : $"<p>{L("Email_BoardDigest_NoApprovals")}</p>";
-
-            return new EmailContent(
-                Lf("Email_BoardDailyDigest_Subject", date),
-                Lf("Email_BoardDailyDigest_Body", HtmlEncode(boardMemberName), HtmlEncode(date), approvalsHtml, outstandingHtml));
-        });
-
-    private string BuildOutstandingSection(BoardDigestOutstandingCounts? counts)
-    {
-        if (counts is null) return "";
-
-        var hasAny = counts.OnboardingReview > 0 || counts.StillOnboarding > 0
-            || counts.BoardVotingTotal > 0 || counts.TeamJoinRequests > 0
-            || counts.PendingConsents > 0 || counts.PendingDeletions > 0;
-        if (!hasAny) return "";
-
-        var items = new List<string>();
-
-        if (counts.OnboardingReview > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_OnboardingReview", counts.OnboardingReview)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-
-        if (counts.StillOnboarding > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_StillOnboarding", counts.StillOnboarding)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-
-        if (counts.BoardVotingTotal > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_BoardVoting", counts.BoardVotingTotal, counts.BoardVotingYours)} <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
-
-        if (counts.TeamJoinRequests > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_TeamJoinRequests", counts.TeamJoinRequests)} <a href=\"{_settings.BaseUrl}/Teams/Summary\">&rarr;</a></li>");
-
-        if (counts.PendingConsents > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_PendingConsents", counts.PendingConsents)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-
-        if (counts.PendingDeletions > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_PendingDeletions", counts.PendingDeletions)} <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
-
-        var header = L("Email_BoardDigest_OutstandingHeader");
-        return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
-    }
-
-    public EmailContent RenderAdminDailyDigest(string adminName, string date, AdminDigestCounts counts, string? culture = null)
-    {
-        // Admin digest is always English (admin pages aren't localized)
-        var subject = $"Admin Digest: {date}";
-
-        var items = new List<string>();
-
-        if (counts.PendingDeletions > 0)
-            items.Add($"<li><strong>{counts.PendingDeletions}</strong> account deletions pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
-
-        if (counts.PendingConsents > 0)
-            items.Add($"<li><strong>{counts.PendingConsents}</strong> with outstanding consent requirements <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-
-        if (counts.TeamJoinRequests > 0)
-            items.Add($"<li><strong>{counts.TeamJoinRequests}</strong> team join requests pending <a href=\"{_settings.BaseUrl}/Teams/Summary\">&rarr;</a></li>");
-
-        if (counts.OnboardingReview > 0)
-            items.Add($"<li><strong>{counts.OnboardingReview}</strong> awaiting onboarding review <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-
-        if (counts.StillOnboarding > 0)
-            items.Add($"<li><strong>{counts.StillOnboarding}</strong> still completing onboarding <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-
-        if (counts.BoardVotingTotal > 0)
-            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
-
-        if (counts.FailedSyncOutboxEvents > 0)
-            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events (transient, retrying) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
-
-        if (counts.PermanentSyncFailures > 0)
-            items.Add($"<li><strong>{counts.PermanentSyncFailures}</strong> humans with rejected Google email (sync blocked) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
-
-        if (counts.TransientSyncRetries > 0)
-            items.Add($"<li><strong>{counts.TransientSyncRetries}</strong> Google sync events retrying (transient errors) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
-
-        if (counts.TicketSyncError)
-            items.Add($"<li>Ticket sync error: {HtmlEncode(counts.TicketSyncErrorMessage ?? "Unknown")} <a href=\"{_settings.BaseUrl}/Tickets\">&rarr;</a></li>");
-
-        var itemsHtml = items.Count > 0
-            ? $"<ul>\n{string.Join("\n", items)}\n</ul>"
-            : "<p>All clear — no pending items.</p>";
-
-        var body = $"<h2>Admin Digest — {HtmlEncode(date)}</h2>\n<p>Hi {HtmlEncode(adminName)},</p>\n<h3>Pending Actions &amp; System Health</h3>\n{itemsHtml}";
-        return new EmailContent(subject, body);
-    }
-
     public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
         => RenderLocalized(culture, () =>
         {
@@ -271,6 +169,39 @@ public class EmailRenderer : IEmailRenderer
                 Lf("Email_FacilitatedMessage_Body", HtmlEncode(recipientName), HtmlEncode(senderName), sanitizedMessage, contactInfoHtml));
         });
 
+    public EmailContent RenderCoordinatorRotaMessage(
+        string recipientName,
+        string senderName,
+        string? senderEmail,
+        string rotaName,
+        string messageText,
+        IReadOnlyList<string> shiftLines,
+        string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            ArgumentNullException.ThrowIfNull(shiftLines);
+
+            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
+
+            var shiftListHtml = shiftLines.Count == 0
+                ? $"<p><em>{HtmlEncode(L("Email_CoordinatorRotaMessage_NoShifts"))}</em></p>"
+                : "<ul>" + string.Concat(shiftLines.Select(line => $"<li>{HtmlEncode(line)}</li>")) + "</ul>";
+
+            var senderLine = !string.IsNullOrEmpty(senderEmail)
+                ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"
+                : $"<p><strong>{HtmlEncode(senderName)}</strong></p>";
+
+            return new EmailContent(
+                Lf("Email_CoordinatorRotaMessage_Subject", HtmlEncode(rotaName)),
+                Lf("Email_CoordinatorRotaMessage_Body",
+                    HtmlEncode(recipientName),
+                    HtmlEncode(senderName),
+                    HtmlEncode(rotaName),
+                    sanitizedMessage,
+                    shiftListHtml,
+                    senderLine));
+        });
+
     public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(
             L("Email_MagicLinkLogin_Subject"),
@@ -293,7 +224,7 @@ public class EmailRenderer : IEmailRenderer
 
     private CultureScope WithCulture(string? culture)
     {
-        return new CultureScope(culture, _logger);
+        return new CultureScope(culture, logger);
     }
 
     private EmailContent RenderLocalized(string? culture, Func<EmailContent> render)
@@ -390,5 +321,129 @@ public class EmailRenderer : IEmailRenderer
             .Replace("{{Name}}", recipientName, StringComparison.Ordinal);
 
         return new EmailContent(renderedSubject, renderedBody);
+    }
+
+    public EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null)
+    {
+        using (WithCulture(culture ?? request.Culture))
+        {
+            var userName = HtmlEncode(request.UserName);
+            var eventTitle = HtmlEncode(request.EventTitle);
+            var reason = HtmlEncode(request.Reason ?? string.Empty);
+            var actionUrl = HtmlEncode(request.ActionUrl ?? string.Empty);
+
+            return request.NewStatus switch
+            {
+                EventStatus.Pending => new EmailContent(
+                    "Your event submission has been received",
+                    $"""
+                        <p>Hi {userName},</p>
+                        <p>Your event <strong>{eventTitle}</strong> has been received and is now in the moderation queue.
+                        You will be notified once it has been reviewed.</p>
+                        <p><a href="{actionUrl}">View your submissions</a></p>
+                        """),
+                EventStatus.Approved => new EmailContent(
+                    "Your event has been approved",
+                    $"""
+                        <p>Hi {userName},</p>
+                        <p>Your event <strong>{eventTitle}</strong> has been approved and will appear in the event guide.</p>
+                        """),
+                EventStatus.Rejected => new EmailContent(
+                    "Your event submission was not approved",
+                    $"""
+                        <p>Hi {userName},</p>
+                        <p>Your event <strong>{eventTitle}</strong> was not approved for the event guide.</p>
+                        <p><strong>Reason:</strong> {reason}</p>
+                        <p>You can edit and resubmit your event here: <a href="{actionUrl}">Edit event</a></p>
+                        """),
+                EventStatus.ResubmitRequested => new EmailContent(
+                    "Changes requested for your event submission",
+                    $"""
+                        <p>Hi {userName},</p>
+                        <p>The moderation team has requested changes to your event <strong>{eventTitle}</strong> before it can be approved.</p>
+                        <p><strong>Feedback:</strong> {reason}</p>
+                        <p>Please update and resubmit here: <a href="{actionUrl}">Edit event</a></p>
+                        """),
+                _ => throw new ArgumentOutOfRangeException(nameof(request),
+                    $"EventLifecycleNotification does not support status {request.NewStatus}")
+            };
+        }
+    }
+
+    public EmailContent RenderTicketTransferRequested(
+        string senderName, string receiverName, string ticketLabel, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var name = HtmlEncode(senderName);
+            var receiver = HtmlEncode(receiverName);
+            var ticket = HtmlEncode(ticketLabel);
+            return new EmailContent(
+                "Ticket transfer requested",
+                $"""
+                    <p>Hi {name},</p>
+                    <p>We've received your request to transfer ticket <strong>{ticket}</strong> to <strong>{receiver}</strong>.</p>
+                    <p>Our ticketing team will process this and let you know shortly. No further action is needed from you.</p>
+                    """);
+        }
+    }
+
+    public EmailContent RenderTicketTransferTeamNotification(
+        string senderName, string receiverName, string receiverEmail,
+        string ticketLabel, string? reason, string reviewUrl)
+    {
+        var sender = HtmlEncode(senderName);
+        var receiver = HtmlEncode(receiverName);
+        var email = HtmlEncode(receiverEmail);
+        var ticket = HtmlEncode(ticketLabel);
+        var reasonHtml = string.IsNullOrWhiteSpace(reason)
+            ? ""
+            : $"<p><strong>Reason given:</strong> {HtmlEncode(reason)}</p>";
+        var fullUrl = reviewUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? reviewUrl
+            : $"{_settings.BaseUrl.TrimEnd('/')}{(reviewUrl.StartsWith('/') ? "" : "/")}{reviewUrl}";
+        return new EmailContent(
+            "Ticket transfer to process",
+            $"""
+                <p>A new ticket transfer is awaiting manual processing in TicketTailor.</p>
+                <p><strong>From:</strong> {sender}<br>
+                <strong>To:</strong> {receiver} &lt;{email}&gt;<br>
+                <strong>Ticket:</strong> {ticket}</p>
+                {reasonHtml}
+                <p>Void the original and reissue to the recipient in TicketTailor, then mark the request
+                resolved here: <a href="{HtmlEncode(fullUrl)}">Review transfer</a></p>
+                """);
+    }
+
+    public EmailContent RenderTicketTransferDecision(
+        string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var name = HtmlEncode(toName);
+            var receiver = HtmlEncode(receiverName);
+            var ticket = HtmlEncode(ticketLabel);
+            if (successful)
+            {
+                return new EmailContent(
+                    "Ticket transfer complete",
+                    $"""
+                        <p>Hi {name},</p>
+                        <p>The transfer of ticket <strong>{ticket}</strong> to <strong>{receiver}</strong> is complete.</p>
+                        """);
+            }
+            var reasonHtml = string.IsNullOrWhiteSpace(reason)
+                ? ""
+                : $"<p><strong>Reason:</strong> {HtmlEncode(reason)}</p>";
+            return new EmailContent(
+                "Ticket transfer cancelled",
+                $"""
+                    <p>Hi {name},</p>
+                    <p>The requested transfer of ticket <strong>{ticket}</strong> to <strong>{receiver}</strong> was not completed.</p>
+                    {reasonHtml}
+                    <p>If you have questions, reply to this email and our ticketing team will help.</p>
+                    """);
+        }
     }
 }

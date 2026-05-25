@@ -1777,7 +1777,7 @@ if (incompleteOnboardingOnly)
 }
 ```
 
-(Use a batch read if the existing `IMembershipCalculator` exposes one — see existing call site at `docs/superpowers/specs/2026-03-14-membership-status-fix-design.md` line 62 referencing `GetUsersWithAllRequiredConsentsForTeamAsync`. If not, fall back to `HasAllRequiredConsentsForTeamAsync` per-user.)
+(Use a batch read if the existing `IMembershipCalculator` exposes one — `GetUsersWithAllRequiredConsentsForTeamAsync` (historical; current behavior documented in `docs/features/governance/membership-status.md`, Consent Check section). If not, fall back to `HasAllRequiredConsentsForTeamAsync` per-user.)
 
 - [ ] **Step 3: View — add the filter chip**
 

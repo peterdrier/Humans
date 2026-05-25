@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Campaigns;
@@ -18,21 +18,38 @@ public record WaveSendPreview(
 /// </summary>
 public record DiscountCodeRedemption(string Code, Instant RedeemedAt);
 
+public sealed record CampaignGrantSummary(
+    Guid Id,
+    Guid CampaignId,
+    string CampaignTitle,
+    Guid CampaignCodeId,
+    string Code,
+    Guid UserId,
+    Instant AssignedAt,
+    EmailOutboxStatus? LatestEmailStatus,
+    Instant? LatestEmailAt,
+    Instant? RedeemedAt);
+
 public interface ICampaignService : IApplicationService
 {
-    Task<Campaign> CreateAsync(string title, string? description,
+    Task<CampaignCreateResult> CreateAsync(string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         Guid createdByUserId, CancellationToken ct = default);
-    Task<bool> UpdateAsync(Guid id, string title, string? description,
+    Task<CampaignUpdateResult> UpdateAsync(Guid id, string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         CancellationToken ct = default);
-    Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
+    Task<CampaignEditSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<CampaignListSummary>> GetAllAsync(CancellationToken ct = default);
     Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default);
     Task<CampaignSendWavePageDto?> GetSendWavePageAsync(Guid campaignId, Guid? teamId, CancellationToken ct = default);
     Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default);
     Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default);
-    Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes, CancellationToken ct = default);
+    Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
+        Guid campaignId,
+        int count,
+        string discountType,
+        decimal discountValue,
+        CancellationToken ct = default);
     Task ActivateAsync(Guid campaignId, CancellationToken ct = default);
     Task CompleteAsync(Guid campaignId, CancellationToken ct = default);
     Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId, CancellationToken ct = default);
@@ -44,7 +61,7 @@ public interface ICampaignService : IApplicationService
     /// Returns campaign grants for a user where the campaign is Active or Completed,
     /// ordered by AssignedAt descending. Includes Campaign and Code navigations.
     /// </summary>
-    Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
+    Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -52,7 +69,7 @@ public interface ICampaignService : IApplicationService
     /// ordered by AssignedAt descending. Includes Campaign and Code navigations.
     /// Used for admin detail views.
     /// </summary>
-    Task<IReadOnlyList<CampaignGrant>> GetAllGrantsForUserAsync(
+    Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -84,7 +101,21 @@ public interface ICampaignService : IApplicationService
     /// </summary>
     Task<bool> UpdateGrantEmailStatusAsync(
         Guid grantId,
-        Humans.Domain.Enums.EmailOutboxStatus status,
+        EmailOutboxStatus status,
         Instant latestEmailAt,
         CancellationToken ct = default);
 }
+
+public sealed record CampaignGenerateCodesResult(
+    bool Success,
+    string? ErrorKey = null,
+    int GeneratedCount = 0);
+
+public sealed record CampaignCreateResult(
+    bool Success,
+    Campaign? Campaign = null,
+    string? ErrorKey = null);
+
+public sealed record CampaignUpdateResult(
+    bool Success,
+    string? ErrorKey = null);

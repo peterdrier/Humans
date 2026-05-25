@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -9,22 +8,8 @@ public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
 public enum HumanLink { None, Public, Admin }
 
-public class HumanViewComponent : ViewComponent
+public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory urlHelperFactory) : ViewComponent
 {
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IUrlHelperFactory _urlHelperFactory;
-
-    public HumanViewComponent(
-        IProfileService profileService,
-        IUserService userService,
-        IUrlHelperFactory urlHelperFactory)
-    {
-        _profileService = profileService;
-        _userService = userService;
-        _urlHelperFactory = urlHelperFactory;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         HumanLayout layout = HumanLayout.Text,
@@ -39,23 +24,18 @@ public class HumanViewComponent : ViewComponent
 
         if (userId != Guid.Empty)
         {
-            var fullProfile = await _profileService.GetFullProfileAsync(userId);
-            if (fullProfile is not null)
+            var info = await userService.GetUserInfoAsync(userId);
+            if (info is not null)
             {
-                displayName = fullProfile.DisplayName;
-                if (fullProfile.HasCustomPicture && fullProfile.ProfileId != Guid.Empty)
+                displayName = info.BurnerName;
+                if (info.Profile is { HasCustomPicture: true } profile)
                 {
-                    var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+                    var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
                     profilePictureUrl = urlHelper.Action(
                         action: "Picture",
                         controller: "Profile",
-                        values: new { id = fullProfile.ProfileId, v = fullProfile.UpdatedAtTicks });
+                        values: new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() });
                 }
-            }
-            else
-            {
-                var user = await _userService.GetByIdAsync(userId);
-                displayName = user?.DisplayName;
             }
         }
 
@@ -67,7 +47,7 @@ public class HumanViewComponent : ViewComponent
         string? href = null;
         if (link != HumanLink.None && userId != Guid.Empty)
         {
-            var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+            var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
             href = link == HumanLink.Admin
                 ? urlHelper.Action("AdminDetail", "Profile", new { id = userId })
                 : urlHelper.Action("ViewProfile", "Profile", new { id = userId });

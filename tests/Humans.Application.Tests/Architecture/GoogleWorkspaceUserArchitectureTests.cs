@@ -1,8 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -22,37 +20,6 @@ public class GoogleWorkspaceUserArchitectureTests
     // ── GoogleWorkspaceUserService ───────────────────────────────────────────
 
     [HumansFact]
-    public void GoogleWorkspaceUserService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleWorkspaceUserService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void GoogleWorkspaceUserService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext (design-rules §3) — this service has no DB, only a connector");
-    }
-
-    [HumansFact]
-    public void GoogleWorkspaceUserService_HasNoDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p =>
-                p.ParameterType.IsGenericType &&
-                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
-
-        factoryParam.Should().BeNull(
-            because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
-    }
-
-    [HumansFact]
     public void GoogleWorkspaceUserService_TakesConnectorClient()
     {
         var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
@@ -70,20 +37,6 @@ public class GoogleWorkspaceUserArchitectureTests
     }
 
     // ── Application assembly cleanliness ─────────────────────────────────────
-
-    [HumansFact]
-    public void HumansApplicationAssembly_HasNoGoogleApisReferences()
-    {
-        // The Application project must never transitively pull Google.Apis.*.
-        // Scanning referenced assemblies is the compile-time guarantee for this.
-        var applicationAssembly = typeof(IGoogleWorkspaceUserService).Assembly;
-        var referencedNames = applicationAssembly.GetReferencedAssemblies();
-
-        referencedNames
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references; Google API calls live behind IWorkspaceUserDirectoryClient in Humans.Infrastructure");
-    }
 
     [HumansFact]
     public void GoogleWorkspaceUserService_DoesNotReferenceGoogleSdkTypes()

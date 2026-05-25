@@ -18,7 +18,7 @@ public class CampSettingsConfiguration : IEntityTypeConfiguration<CampSettings>
                 v => JsonSerializer.Deserialize<List<int>>(v, (JsonSerializerOptions?)null) ?? new(),
                 new ValueComparer<List<int>>(
                     (a, b) => a != null && b != null && a.SequenceEqual(b),
-                    v => v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+                    v => v.Aggregate(0, HashCode.Combine),
                     v => v.ToList()));
 
         builder.Property(s => s.EeStartDate); // nullable LocalDate; default conversion via Npgsql NodaTime
@@ -28,7 +28,7 @@ public class CampSettingsConfiguration : IEntityTypeConfiguration<CampSettings>
         {
             Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
             PublicYear = 2026,
-            OpenSeasons = new List<int> { 2026 }
+            OpenSeasons = [2026]
         });
     }
 }

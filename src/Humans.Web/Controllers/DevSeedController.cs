@@ -1,42 +1,24 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("dev/seed")]
-public class DevSeedController : HumansControllerBase
+public class DevSeedController(
+    IWebHostEnvironment environment,
+    IConfiguration configuration,
+    ConfigurationRegistry configRegistry,
+    IServiceProvider serviceProvider,
+    IUserServiceRead userService,
+    ILogger<DevSeedController> logger) : HumansControllerBase(userService)
 {
-    private readonly IWebHostEnvironment _environment;
-    private readonly IConfiguration _configuration;
-    private readonly ConfigurationRegistry _configRegistry;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<DevSeedController> _logger;
-
-    public DevSeedController(
-        IWebHostEnvironment environment,
-        IConfiguration configuration,
-        ConfigurationRegistry configRegistry,
-        IServiceProvider serviceProvider,
-        UserManager<User> userManager,
-        ILogger<DevSeedController> logger)
-        : base(userManager)
-    {
-        _environment = environment;
-        _configuration = configuration;
-        _configRegistry = configRegistry;
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
-
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     [HttpPost("budget")]
     [ValidateAntiForgeryToken]
@@ -55,13 +37,13 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
+            var seeder = serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
             var result = await seeder.SeedAsync(user.Id, cancellationToken);
-            SetSuccess($"Budget demo data seeded: {result.TeamsCreated} teams created, {result.TeamsUpdated} updated, {result.CategoriesCreated} categories, {result.LineItemsCreated} line items.");
+            SetSuccess(result.SuccessMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed budget demo data for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to seed budget demo data for user {UserId}", user.Id);
             SetError("Budget seeding failed. Check logs for details.");
         }
 
@@ -84,39 +66,15 @@ public class DevSeedController : HumansControllerBase
             return errorResult;
         }
 
-        var seeds = new CreateCampRoleDefinitionInput[]
-        {
-            new("Consent Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
-            new("LNT",          null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
-            new("Shit Ninja",   null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
-            new("Power",        null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
-            new("Build Lead",   null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
-        };
-
         try
         {
-            var campRoleService = _serviceProvider.GetRequiredService<ICampRoleService>();
-            var existing = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, cancellationToken);
-            var existingNames = existing.Select(d => d.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            int created = 0;
-            int skipped = 0;
-            foreach (var input in seeds)
-            {
-                if (existingNames.Contains(input.Name))
-                {
-                    skipped++;
-                    continue;
-                }
-                await campRoleService.CreateDefinitionAsync(input, user.Id, cancellationToken);
-                created++;
-            }
-
-            SetSuccess($"Camp roles seeded: {created} created, {skipped} already existed.");
+            var seeder = serviceProvider.GetRequiredService<DevelopmentCampRoleSeeder>();
+            var result = await seeder.SeedAsync(user.Id, cancellationToken);
+            SetSuccess(result.SuccessMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed camp roles for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to seed camp roles for user {UserId}", user.Id);
             SetError("Camp role seeding failed. Check logs for details.");
         }
 
@@ -125,23 +83,36 @@ public class DevSeedController : HumansControllerBase
 
     private bool IsDevSeedEnabled()
     {
-        if (_environment.IsProduction())
+        if (environment.IsProduction())
         {
             return false;
         }
 
-        return _configuration.GetSettingValue(
-            _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
+        return configuration.GetSettingValue(
+            configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpPost("dashboard")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SeedDashboard(bool reset, CancellationToken cancellationToken)
+    public async Task<IActionResult> SeedDashboard(CancellationToken cancellationToken)
+    {
+        return await SeedDashboardCoreAsync(reset: false, cancellationToken);
+    }
+
+    [Authorize(Roles = RoleNames.Admin)]
+    [HttpPost("dashboard/reset")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetDashboard(CancellationToken cancellationToken)
+    {
+        return await SeedDashboardCoreAsync(reset: true, cancellationToken);
+    }
+
+    private async Task<IActionResult> SeedDashboardCoreAsync(bool reset, CancellationToken cancellationToken)
     {
         // Stricter than IsDevSeedEnabled: dashboard seed runs only on local Development
         // (ASPNETCORE_ENVIRONMENT=Development), never on QA / preview / prod.
-        if (!_environment.IsDevelopment() || !IsDevSeedEnabled())
+        if (!environment.IsDevelopment() || !IsDevSeedEnabled())
         {
             return NotFound();
         }
@@ -154,7 +125,7 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
+            var seeder = serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
 
             DashboardResetResult? resetResult = null;
             if (reset)
@@ -166,7 +137,7 @@ public class DevSeedController : HumansControllerBase
 
             if (result.AlreadySeeded)
             {
-                SetSuccess("Dashboard demo data already present — no changes. Pass ?reset=true to reseed.");
+                SetSuccess("Dashboard demo data already present — no changes. Use reset to reseed.");
             }
             else
             {
@@ -178,7 +149,7 @@ public class DevSeedController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed dashboard demo data.");
+            logger.LogError(ex, "Failed to seed dashboard demo data.");
             SetError("Dashboard seeding failed. Check logs for details.");
         }
 

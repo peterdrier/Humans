@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Humans.Application.Models;
 
 public sealed record AgentUserSnapshot(

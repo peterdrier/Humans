@@ -1,21 +1,18 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using BudgetService = Humans.Application.Services.Budget.BudgetService;
 using ExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
 using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
-using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
-using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
+using ProfilesAccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
+using EventService = Humans.Application.Services.Events.EventService;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 using IssuesService = Humans.Application.Services.Issues.IssuesService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
@@ -73,7 +70,6 @@ public class GdprExportDependencyInjectionTests
     /// </summary>
     public static readonly Type[] ExpectedContributorTypes =
     [
-        typeof(ProfilesProfileService),
         typeof(UsersUserService),
         typeof(ProfilesAccountMergeService),
         typeof(ApplicationDecisionService),
@@ -87,6 +83,7 @@ public class GdprExportDependencyInjectionTests
         typeof(TicketsTicketQueryService),
         typeof(CampaignService),
         typeof(CampService),
+        typeof(EventService),
         typeof(AuditLogService),
         typeof(BudgetService),
         typeof(Humans.Application.Services.Agent.AgentService),
@@ -135,7 +132,7 @@ public class GdprExportDependencyInjectionTests
         // so the test doesn't need a live DbContext, Postgres, or config.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,
@@ -164,7 +161,7 @@ public class GdprExportDependencyInjectionTests
     public void GdprExportServiceIsRegistered()
     {
         var services = new ServiceCollection();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 BuildMinimalConfiguration(),
@@ -187,7 +184,7 @@ public class GdprExportDependencyInjectionTests
         // `ExpectedContributorTypes`.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,
@@ -220,40 +217,6 @@ public class GdprExportDependencyInjectionTests
         resolvedTypes.Should().BeEquivalentTo(
             ExpectedContributorTypes,
             "every IUserDataContributor forwarding factory must resolve to a distinct expected concrete type — duplicated or mis-forwarded factories would silently drop a section");
-    }
-
-    [HumansFact]
-    public void IFullProfileInvalidator_IsRegisteredAsFactory_NotAFreshInstance()
-    {
-        // Verifies the critical DI invariant at the descriptor level:
-        // IFullProfileInvalidator must be registered as a factory (not as a
-        // direct type mapping to CachingProfileService), so the same decorator
-        // instance that backs IProfileService within a scope also backs
-        // IFullProfileInvalidator. Resolving IProfileService to call BeSameAs is
-        // not feasible here because it requires HumansDbContext — this
-        // descriptor-level check is the best guard available without a full
-        // integration test harness.
-        //
-        // The "same instance" invariant is documented by the CRITICAL comment at
-        // the registration site in InfrastructureServiceCollectionExtensions.cs
-        // and is enforced in unit tests in CachingProfileServiceTests.cs.
-        var services = new ServiceCollection();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
-            .AddHumansInfrastructure(
-                services,
-                BuildMinimalConfiguration(),
-                new StubHostEnvironment());
-
-        var descriptor = services.Single(d => d.ServiceType == typeof(IFullProfileInvalidator));
-
-        descriptor.ImplementationFactory.Should().NotBeNull(
-            "IFullProfileInvalidator must be registered as a factory that delegates to " +
-            "IProfileService — a direct type registration would create a separate " +
-            "CachingProfileService instance with its own ConcurrentDictionary");
-
-        descriptor.ImplementationType.Should().BeNull(
-            "IFullProfileInvalidator must not be registered with a direct type mapping; " +
-            "it must use a factory that shares the IProfileService decorator instance");
     }
 
     private static IConfiguration BuildMinimalConfiguration()

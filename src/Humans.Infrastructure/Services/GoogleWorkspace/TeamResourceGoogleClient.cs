@@ -17,22 +17,15 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// the pre-migration behavior of <c>TeamResourceService</c>'s inline Google
 /// API calls.
 /// </summary>
-public sealed class TeamResourceGoogleClient : ITeamResourceGoogleClient
+public sealed class TeamResourceGoogleClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<TeamResourceGoogleClient> logger) : ITeamResourceGoogleClient
 {
-    private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<TeamResourceGoogleClient> _logger;
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private DriveService? _driveService;
     private CloudIdentityService? _cloudIdentityService;
     private string? _serviceAccountEmail;
-
-    public TeamResourceGoogleClient(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<TeamResourceGoogleClient> logger)
-    {
-        _settings = settings.Value;
-        _logger = logger;
-    }
 
     public async Task<DriveLookupResult> GetDriveItemAsync(
         string itemId,
@@ -62,7 +55,7 @@ public sealed class TeamResourceGoogleClient : ITeamResourceGoogleClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex, "Google API error looking up Drive item {ItemId}: Code={Code} Message={Message}",
+            logger.LogWarning(ex, "Google API error looking up Drive item {ItemId}: Code={Code} Message={Message}",
                 itemId, ex.Error?.Code, ex.Error?.Message);
             return new DriveLookupResult(
                 Item: null,
@@ -94,7 +87,7 @@ public sealed class TeamResourceGoogleClient : ITeamResourceGoogleClient
         }
         catch (Google.GoogleApiException ex)
         {
-            _logger.LogWarning(ex, "Google API error looking up Group {GroupEmail}: Code={Code} Message={Message}",
+            logger.LogWarning(ex, "Google API error looking up Group {GroupEmail}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupLookupResult(
                 Group: null,
@@ -158,7 +151,7 @@ public sealed class TeamResourceGoogleClient : ITeamResourceGoogleClient
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", file.DriveId);
+                logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", file.DriveId);
                 return file.Name;
             }
         }
@@ -183,7 +176,7 @@ public sealed class TeamResourceGoogleClient : ITeamResourceGoogleClient
                 }
                 catch (Google.GoogleApiException ex)
                 {
-                    _logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", driveId);
+                    logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", driveId);
                 }
                 break;
             }
@@ -200,7 +193,7 @@ public sealed class TeamResourceGoogleClient : ITeamResourceGoogleClient
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.LogDebug(ex, "Cannot access parent folder {ParentId} — stopping path walk", parentId);
+                logger.LogDebug(ex, "Cannot access parent folder {ParentId} — stopping path walk", parentId);
                 break;
             }
         }

@@ -1,12 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Services.Camps;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -14,6 +14,7 @@ public class CampContactServiceTests : IDisposable
 {
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationEmitter _notificationEmitter;
     private readonly IMemoryCache _cache;
     private readonly CampContactService _service;
 
@@ -24,10 +25,12 @@ public class CampContactServiceTests : IDisposable
     {
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
+        _notificationEmitter = Substitute.For<INotificationEmitter>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _service = new CampContactService(
             _emailService,
             _auditLogService,
+            _notificationEmitter,
             _cache,
             NullLogger<CampContactService>.Instance);
     }
@@ -49,7 +52,9 @@ public class CampContactServiceTests : IDisposable
             "Alice",
             "alice@example.com",
             "Hello camp!",
-            includeContactInfo: false);
+            includeContactInfo: false,
+            [Guid.NewGuid()],
+            "/Barrios/cool-camp");
 
         result.Success.Should().BeTrue();
         result.RateLimited.Should().BeFalse();
@@ -77,14 +82,14 @@ public class CampContactServiceTests : IDisposable
         // First call succeeds
         var result1 = await _service.SendFacilitatedMessageAsync(
             _campId, "camp@example.com", "Camp", _senderId,
-            "Alice", "alice@example.com", "Hello", false);
+            "Alice", "alice@example.com", "Hello", false, [], "/Barrios/camp");
 
         result1.Success.Should().BeTrue();
 
         // Second call within rate limit window is rejected
         var result2 = await _service.SendFacilitatedMessageAsync(
             _campId, "camp@example.com", "Camp", _senderId,
-            "Alice", "alice@example.com", "Hello again", false);
+            "Alice", "alice@example.com", "Hello again", false, [], "/Barrios/camp");
 
         result2.Success.Should().BeFalse();
         result2.RateLimited.Should().BeTrue();
@@ -102,11 +107,11 @@ public class CampContactServiceTests : IDisposable
 
         var result1 = await _service.SendFacilitatedMessageAsync(
             _campId, "camp1@example.com", "Camp 1", _senderId,
-            "Alice", "alice@example.com", "Hello 1", false);
+            "Alice", "alice@example.com", "Hello 1", false, [], "/Barrios/camp-1");
 
         var result2 = await _service.SendFacilitatedMessageAsync(
             otherCampId, "camp2@example.com", "Camp 2", _senderId,
-            "Alice", "alice@example.com", "Hello 2", false);
+            "Alice", "alice@example.com", "Hello 2", false, [], "/Barrios/camp-2");
 
         result1.Success.Should().BeTrue();
         result2.Success.Should().BeTrue();
@@ -122,7 +127,7 @@ public class CampContactServiceTests : IDisposable
 
         var act = () => _service.SendFacilitatedMessageAsync(
             _campId, "camp@example.com", "Camp", _senderId,
-            "Alice", "alice@example.com", "Hello", false);
+            "Alice", "alice@example.com", "Hello", false, [], "/Barrios/camp");
 
         await act.Should().ThrowAsync<InvalidOperationException>();
 
@@ -134,7 +139,7 @@ public class CampContactServiceTests : IDisposable
 
         var retryResult = await _service.SendFacilitatedMessageAsync(
             _campId, "camp@example.com", "Camp", _senderId,
-            "Alice", "alice@example.com", "Hello", false);
+            "Alice", "alice@example.com", "Hello", false, [], "/Barrios/camp");
 
         retryResult.Success.Should().BeTrue();
     }
@@ -146,7 +151,9 @@ public class CampContactServiceTests : IDisposable
             _campId, "camp@example.com", "Camp", _senderId,
             "Alice", "alice@example.com",
             "Hello <script>alert('xss')</script> world",
-            false);
+            false,
+            [],
+            "/Barrios/camp");
 
         await _emailService.Received(1).SendFacilitatedMessageAsync(
             "camp@example.com",

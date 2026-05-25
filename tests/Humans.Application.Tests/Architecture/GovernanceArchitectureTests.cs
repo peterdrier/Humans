@@ -2,8 +2,9 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Governance;
+using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories.Governance;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -19,24 +20,6 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class GovernanceArchitectureTests
 {
-    [HumansFact]
-    public void ApplicationDecisionService_LivesInHumansApplicationServicesGovernanceNamespace()
-    {
-        typeof(ApplicationDecisionService).Namespace
-            .Should().Be("Humans.Application.Services.Governance",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void ApplicationDecisionService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IApplicationRepository instead (design-rules §3)");
-    }
-
     [HumansFact]
     public void ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter()
     {
@@ -84,10 +67,16 @@ public class GovernanceArchitectureTests
     }
 
     [HumansFact]
-    public void IApplicationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
+    public void ApplicationRepository_IsSealedAndFactoryBased()
     {
-        typeof(IApplicationRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
+        typeof(ApplicationRepository).IsSealed.Should().BeTrue();
+
+        var ctor = typeof(ApplicationRepository).GetConstructors().Single();
+        ctor.GetParameters().Should().ContainSingle(
+            p => p.ParameterType == typeof(IDbContextFactory<HumansDbContext>),
+            because: "Governance repositories use IDbContextFactory so they can be registered as Singleton");
+        ctor.GetParameters().Should().NotContain(
+            p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+            because: "repositories should not capture scoped DbContext instances");
     }
 }

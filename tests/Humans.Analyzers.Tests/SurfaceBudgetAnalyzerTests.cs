@@ -1,7 +1,4 @@
-using System.Linq;
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 
 namespace Humans.Analyzers.Tests;
 
@@ -27,10 +24,10 @@ public class SurfaceBudgetAnalyzerTests
         """;
 
     private static bool IsHum0015(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, SurfaceBudgetAnalyzer.OverBudgetDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, SurfaceBudgetAnalyzer.OverBudgetDiagnosticId, StringComparison.Ordinal);
 
     private static bool IsHum0016(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, SurfaceBudgetAnalyzer.SlackDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, SurfaceBudgetAnalyzer.SlackDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task At_budget_interface_emits_no_diagnostic()
@@ -83,7 +80,7 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0015(d));
-        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0016).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -110,7 +107,7 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0016(d));
-        diagnostics.Where(d => IsHum0015(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0015).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -276,7 +273,7 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0015(d));
-        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0016).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -335,6 +332,6 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0015(d));
-        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0016).Should().BeEmpty();
     }
 }

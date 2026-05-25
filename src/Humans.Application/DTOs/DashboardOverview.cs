@@ -55,7 +55,7 @@ public record CoordinatorActivityRow(
     int AggregatePendingCount,
     IReadOnlyList<CoordinatorActivityRow> Subgroups);
 
-public record CoordinatorLogin(Guid UserId, string DisplayName, Instant? LastLoginAt);
+public record CoordinatorLogin(Guid UserId, Instant? LastLoginAt);
 
 public record DashboardTrendPoint(
     LocalDate Date,

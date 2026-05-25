@@ -260,7 +260,7 @@ while IFS=' ' read -r day commit; do
   app_lines=$((cs_lines + cshtml_lines + resx_lines + js_lines))
   app_bytes=$(( $(echo "$cs_data" | awk '{print $2+0}') + $(echo "$cshtml_data" | awk '{print $2+0}') + $(echo "$resx_data" | awk '{print $2+0}') + $(echo "$js_data" | awk '{print $2+0}') ))
 
-  test_data=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  test_data=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
   test_lines=$(echo "$test_data" | awk '{print $1+0}')
   test_bytes=$(echo "$test_data" | awk '{print $2+0}')
 
@@ -269,7 +269,7 @@ while IFS=' ' read -r day commit; do
   test_kb=$(to_kb "$test_bytes")
 
   app_files=$(( $(find src -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) ! -path '*/Migrations/*' ! -path '*Tests*' 2>/dev/null | wc -l) ))
-  test_files=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
+  test_files=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' 2>/dev/null | wc -l)
   files=$((app_files + test_files))
 
   # Prefer reforge-derived (semantic) counts; fall back to regex if reforge
@@ -310,7 +310,8 @@ while IFS=' ' read -r day commit; do
   # up in a clean checkout, but we exclude it anyway.
   md_data=$(find . -type f -name '*.md' \
     -not -path '*/.git/*' -not -path '*/node_modules/*' \
-    -not -path '*/.worktrees/*' -not -path '*/bin/*' -not -path '*/obj/*' \
+    -not -path '*/.worktrees/*' -not -path '*/.claude/worktrees/*' \
+    -not -path '*/bin/*' -not -path '*/obj/*' \
     -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
   md_lines=$(echo "$md_data" | awk '{print $1+0}')
 

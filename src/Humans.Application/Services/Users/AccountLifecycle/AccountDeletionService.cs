@@ -1,4 +1,3 @@
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -9,6 +8,8 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -16,144 +17,82 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;
 
-/// <summary>
-/// Orchestrates the user/profile deletion cascade. See
-/// <see cref="IAccountDeletionService"/> for the shape and rationale.
-/// </summary>
-/// <remarks>
-/// Foundational services (<see cref="IUserService"/>, <see cref="IProfileService"/>)
-/// must not reach up into higher-level sections — Teams, RoleAssignments,
-/// Shifts, Tickets all sit above them in the section ownership graph (see
-/// <c>memory/architecture/user-profile-foundational.md</c>). Placing the
-/// cascade here keeps User/Profile dependency-free of those sections and
-/// gives the Hangfire deletion job + the user-initiated entry points
-/// (<c>ProfileController.RequestDeletion</c>, <c>GuestController.RequestDeletion</c>)
-/// a single orchestrator. Issue nobodies-collective/Humans#685 dropped the
-/// previous lazy <see cref="IServiceProvider"/> resolve of
-/// <see cref="IProfileService"/>: removing <c>RequestDeletionAsync</c> from
-/// <see cref="IProfileService"/> dissolved the Profile↔AccountDeletion DI
-/// cycle, so this service now eagerly injects <see cref="IProfileService"/>.
-/// </remarks>
-public sealed class AccountDeletionService : IAccountDeletionService
+// Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
+public sealed class AccountDeletionService(
+    IUserService userService,
+    IUserEmailService userEmailService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService,
+    IShiftSignupService shiftSignupService,
+    IShiftManagementService shiftManagementService,
+    IFileStorage fileStorage,
+    ITicketServiceRead ticketQueryService,
+    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
+    IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
+    IShiftViewInvalidator shiftViewInvalidator,
+    IAuditLogService auditLogService,
+    IEmailService emailService,
+    IClock clock,
+    ILogger<AccountDeletionService> logger) : IAccountDeletionService
 {
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IShiftSignupService _shiftSignupService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly IProfileService _profileService;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
-    private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IEmailService _emailService;
-    private readonly IClock _clock;
-    private readonly ILogger<AccountDeletionService> _logger;
-
-    public AccountDeletionService(
-        IUserService userService,
-        IUserEmailService userEmailService,
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
-        IShiftSignupService shiftSignupService,
-        IShiftManagementService shiftManagementService,
-        IProfileService profileService,
-        ITicketQueryService ticketQueryService,
-        IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-        IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
-        IAuditLogService auditLogService,
-        IEmailService emailService,
-        IClock clock,
-        ILogger<AccountDeletionService> logger)
-    {
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-        _shiftSignupService = shiftSignupService;
-        _shiftManagementService = shiftManagementService;
-        _profileService = profileService;
-        _ticketQueryService = ticketQueryService;
-        _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
-        _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
-        _auditLogService = auditLogService;
-        _emailService = emailService;
-        _clock = clock;
-        _logger = logger;
-    }
-
-    // ==========================================================================
-    // User-initiated deletion request (30-day scheduled)
-    // ==========================================================================
+    // --- User-initiated deletion request (30-day scheduled) ---
 
     public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _userService.GetByIdAsync(userId, ct);
+        var user = await userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return new DeletionRequestResult(false, "NotFound");
 
         if (user.IsDeletionPending)
             return new DeletionRequestResult(false, "AlreadyPending");
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var deletionDate = now.Plus(Duration.FromDays(30));
 
-        // Ticket hold: if the user holds a current event ticket, deletion is
-        // held until after the event so the ticket remains usable. Previously
-        // computed in ProfileService.GetEventHoldDateAsync; folded inline so
-        // both deletion-request entry points (profile and profileless) get
-        // the same treatment without a Profile-section round-trip.
+        // Ticket hold: held until after the event so the ticket remains usable.
         Instant? eligibleAfter = null;
-        if (await _ticketQueryService.HasCurrentEventTicketAsync(userId, ct))
+        var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct);
+        if (ticketHoldings.HasCurrentEventTicket)
         {
-            eligibleAfter = await _ticketQueryService.GetPostEventHoldDateAsync(ct);
+            eligibleAfter = ticketHoldings.PostEventHoldDate;
         }
 
-        // 1. Persist deletion-pending fields on User. UserService invalidates
-        //    FullProfile after the write.
-        await _userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
+        // 1. Persist deletion-pending fields on User.
+        await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
 
-        // 2. Revoke team memberships and team role assignments immediately so
-        //    the user loses access during the 30-day grace period.
-        var endedMemberships = await _teamService.RevokeAllMembershipsAsync(userId, ct);
+        // 2. Revoke team memberships immediately — user loses access during grace period.
+        var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
 
-        // 3. Revoke governance role assignments.
-        var endedRoles = await _roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+        // 3. Revoke governance roles.
+        var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        // 4. Audit log.
-        await _auditLogService.LogAsync(
+        // 4. Audit.
+        await auditLogService.LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
             userId);
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
             userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
 
-        // 5. Send deletion confirmation email. Route through IUserEmailService —
-        //    user_emails is a Profiles-section table, so we cross via the
-        //    section's service interface rather than the repository directly.
-        var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
+        // 5. Send deletion confirmation email.
+        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
         var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
         {
-            await _emailService.SendAccountDeletionRequestedAsync(
+            await emailService.SendAccountDeletionRequestedAsync(
                 notificationEmail,
-                user.DisplayName,
+                user.BurnerName,
                 deletionDate.ToDateTimeUtc(),
                 user.PreferredLanguage,
                 ct);
         }
 
-        // 6. Drop the shift-authorization cache so coordinator privilege
-        //    reverts immediately rather than waiting out the 60-second TTL.
-        //    Parity with PurgeAsync / AnonymizeExpiredAccountAsync — keeps the
-        //    invalidation co-located with the orchestrating mutation so direct
-        //    callers of IAccountDeletionService don't depend on routing through
-        //    the Profile caching decorator for correctness.
-        _shiftAuthorizationInvalidator.Invalidate(userId);
+        // 6. Drop shift-authorization cache so coordinator privilege reverts immediately (parity with Purge/AnonymizeExpired).
+        shiftAuthorizationInvalidator.Invalidate(userId);
+        shiftViewInvalidator.InvalidateUser(userId);
 
         return new DeletionRequestResult(
             Success: true,
@@ -163,61 +102,50 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _userService.GetByIdAsync(userId, ct);
+        var user = await userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         if (!user.IsDeletionPending)
             return new OnboardingResult(false, "NoDeletionPending");
 
-        // UserService.ClearDeletionAsync writes the User row and invalidates
-        // FullProfile.
-        await _userService.ClearDeletionAsync(userId, ct);
+        await userService.ClearDeletionAsync(userId, ct);
 
-        _logger.LogInformation("User {UserId} cancelled account deletion request", userId);
+        logger.LogInformation("User {UserId} cancelled account deletion request", userId);
 
         return new OnboardingResult(true);
     }
 
-    // ==========================================================================
-    // Admin-initiated immediate purge
-    // ==========================================================================
+    // --- Admin-initiated immediate purge ---
 
     public async Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default)
     {
-        // Purge is identity-only at the User aggregate — renames + drops
-        // UserEmail rows and locks out the account. Own-data deletion lives
-        // in IUserService.PurgeOwnDataAsync.
-        var displayName = await _userService.PurgeOwnDataAsync(userId, ct);
+        // Identity-only at the User aggregate; own-data delete in IUserService.PurgeOwnDataAsync.
+        var displayName = await userService.PurgeOwnDataAsync(userId, ct);
         if (displayName is null)
             return new OnboardingResult(false, "NotFound");
 
-        // Team summaries cache member DisplayName/ProfilePictureUrl; drop the
-        // ActiveTeams cache so consumers don't keep exposing the pre-purge
-        // identity until the 10-minute TTL expires. Deletion-specific
-        // invalidation — belongs here, not in UserService.
-        _teamService.InvalidateActiveTeamsCache();
+        // Sever external logins so OAuth sign-in creates a fresh user.
+        await userService.DeleteAllExternalLoginsForUserAsync(userId, ct);
 
-        // Match the cache-invalidation surface of AnonymizeExpiredAccountAsync
-        // so the admin purge path doesn't leave stale per-user caches behind:
-        // role-assignment claims (used by authorization handlers) and the
-        // shift-authorization cache (60 s TTL on shift-coordinator privilege).
-        _roleAssignmentClaimsInvalidator.Invalidate(userId);
-        _shiftAuthorizationInvalidator.Invalidate(userId);
+        // Drop ActiveTeams cache so consumers don't expose pre-purge identity until TTL.
+        teamService.InvalidateActiveTeamsCache();
 
-        // GDPR audit trail: admin-initiated purge is irreversible identity
-        // collapse. Record the actor + the pre-purge display name so a
-        // subsequent right-of-access request can answer "when was my data
-        // erased and by whom?". (Right-of-access reads the audit log.)
+        // Match AnonymizeExpiredAccountAsync's invalidation surface.
+        roleAssignmentClaimsInvalidator.Invalidate(userId);
+        shiftAuthorizationInvalidator.Invalidate(userId);
+        shiftViewInvalidator.InvalidateUser(userId);
+
+        // GDPR audit — right-of-access reads from the audit log.
         var description = $"Admin-initiated purge: identity collapsed (was \"{displayName}\")";
         if (actorId is Guid actor)
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.AccountPurged, nameof(User), userId, description, actor);
         }
         else
         {
-            await _auditLogService.LogAsync(
+            await auditLogService.LogAsync(
                 AuditAction.AccountPurged, nameof(User), userId, description,
                 jobName: nameof(AccountDeletionService));
         }
@@ -225,75 +153,68 @@ public sealed class AccountDeletionService : IAccountDeletionService
         return new OnboardingResult(true);
     }
 
-    // ==========================================================================
-    // Expiry-triggered anonymization (scheduled job)
-    // ==========================================================================
+    // --- Expiry-triggered anonymization (scheduled job) ---
 
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Capture the identity slice BEFORE any writes so the caller can send
-        // the confirmation email / emit audit entries even if the User-aggregate
-        // anonymization (the final step) is the place that fails.
-        var user = await _userService.GetByIdAsync(userId, ct);
+        // Capture identity slice BEFORE any writes — caller still needs it if the final step throws.
+        var user = await userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return null;
 
         var originalEmail = user.Email;
-        var originalDisplayName = user.DisplayName;
+        var originalDisplayName = user.BurnerName;
         var preferredLanguage = user.PreferredLanguage;
 
-        // Do every cross-section cleanup FIRST, while the account is still
-        // marked for deletion. If any of these throws, the DeletionScheduledFor /
-        // DeletionEligibleAfter fields are still set, so tomorrow's job run
-        // retries the same user rather than silently leaving them in a
-        // half-anonymized state. Only when every cleanup has committed do we
-        // collapse the User identity (which is the step that clears the
-        // deletion markers).
+        // Cross-section cleanup BEFORE identity collapse — deletion markers stay set so a failure retries tomorrow.
 
-        // 1. End team memberships and team role slot assignments.
-        await _teamService.RevokeAllMembershipsAsync(userId, ct);
+        // 1. End team memberships + role slots.
+        await teamService.RevokeAllMembershipsAsync(userId, ct);
 
-        // 2. End active governance role assignments.
-        await _roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+        // 2. End governance roles.
+        await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        // 3. Anonymize the profile + remove contact fields + volunteer history.
-        await _profileService.AnonymizeExpiredProfileAsync(userId, ct);
+        // 3. Anonymize profile + contact fields + volunteer history, then remove stale profile-picture bytes.
+        var profileAnonymization = await userService.AnonymizeProfileForDeletionAsync(userId, ct);
+        if (profileAnonymization.Anonymized &&
+            profileAnonymization.ProfileId is { } profileId &&
+            profileAnonymization.PreviousProfilePictureContentType is { } contentType)
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(
+                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to delete profile picture during expired account anonymization for user {UserId}", userId);
+            }
+        }
 
-        // 4. Cancel active shift signups (returns ids for per-signup audit log).
-        var cancelledSignupIds = await _shiftSignupService.CancelActiveSignupsForUserAsync(
+        // 4. Cancel active shift signups.
+        var cancelledSignupIds = await shiftSignupService.CancelActiveSignupsForUserAsync(
             userId, "Account deletion", ct);
 
-        // 5. Delete the user's VolunteerEventProfile row(s).
-        await _shiftManagementService.DeleteShiftProfilesForUserAsync(userId, ct);
+        // 5. Delete VolunteerEventProfile rows.
+        await shiftManagementService.DeleteShiftProfilesForUserAsync(userId, ct);
 
-        // 6. Finally, anonymize identity + remove UserEmails on the User
-        //    aggregate. This is the write that clears DeletionScheduledFor /
-        //    DeletionEligibleAfter — once this commits, the user falls off
-        //    tomorrow's candidate list. UserService owns the repo call and
-        //    FullProfile invalidation; cross-section cache invalidation
-        //    (below) stays with the orchestrator.
-        var identity = await _userService.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
+        // 6. Anonymize identity + drop UserEmails — clears deletion markers; user falls off the candidate list.
+        var identity = await userService.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (identity is null)
         {
-            // Can only happen if the user was deleted by another code path
-            // between the GetById above and now. Steps 1–5 already committed
-            // and each owning section invalidated its own caches as part of
-            // those writes; the step-7 cross-section invalidations below key
-            // off the identity write completing, so we skip them here. Still
-            // return the captured pre-write slice so the caller can audit the
-            // cancelled signups / pre-existing identity.
+            // Concurrent deletion — steps 1–5 already invalidated their own caches; skip step-7 and return the captured slice.
             return new AnonymizedAccountSummary(
                 originalEmail, originalDisplayName, preferredLanguage, cancelledSignupIds);
         }
 
-        // 7. Invalidate cross-section caches that key off the user. The
-        //    FullProfile entry was already invalidated by UserService when it
-        //    wrote the User-aggregate anonymization; the ones here belong to
-        //    sections other than Users.
-        _teamService.RemoveMemberFromAllTeamsCache(userId);
-        _roleAssignmentClaimsInvalidator.Invalidate(userId);
-        _shiftAuthorizationInvalidator.Invalidate(userId);
+        // 7. Cross-section cache invalidations (UserInfo already done by UserService).
+        teamService.RemoveMemberFromAllTeamsCache(userId);
+        roleAssignmentClaimsInvalidator.Invalidate(userId);
+        shiftAuthorizationInvalidator.Invalidate(userId);
+        shiftViewInvalidator.InvalidateUser(userId);
 
         return new AnonymizedAccountSummary(
             identity.OriginalEmail,

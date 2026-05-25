@@ -68,7 +68,7 @@
                                     {
                                         var stale = IsStale(c.LastLoginAt);
                                         <li>
-                                            <span class="fw-semibold">@c.DisplayName</span>
+                                            <span class="fw-semibold"><vc:human user-id="@c.UserId" layout="Text" link="Public" /></span>
                                             <span class="text-muted"> · </span>
                                             <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                         </li>
@@ -109,7 +109,7 @@
                                                             {
                                                                 var stale = IsStale(c.LastLoginAt);
                                                                 <li>
-                                                                    <span class="fw-semibold">@c.DisplayName</span>
+                                                                    <span class="fw-semibold"><vc:human user-id="@c.UserId" layout="Text" link="Public" /></span>
                                                                     <span class="text-muted"> · </span>
                                                                     <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                                                 </li>

@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -27,6 +28,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Domain.Entities.LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
+[Section("Legal")]
 public interface ILegalDocumentRepository : IRepository
 {
     // ==========================================================================

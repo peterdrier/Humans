@@ -12,43 +12,34 @@ namespace Humans.Infrastructure.Jobs;
 /// Runs every 15 minutes by default. Can also be triggered manually.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class TicketSyncJob : IRecurringJob
+public class TicketSyncJob(
+    ITicketSyncService syncService,
+    IOptions<TicketVendorSettings> settings,
+    ILogger<TicketSyncJob> logger) : IRecurringJob
 {
-    private readonly ITicketSyncService _syncService;
-    private readonly TicketVendorSettings _settings;
-    private readonly ILogger<TicketSyncJob> _logger;
-
-    public TicketSyncJob(
-        ITicketSyncService syncService,
-        IOptions<TicketVendorSettings> settings,
-        ILogger<TicketSyncJob> logger)
-    {
-        _syncService = syncService;
-        _settings = settings.Value;
-        _logger = logger;
-    }
+    private readonly TicketVendorSettings _settings = settings.Value;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         if (!_settings.IsConfigured)
         {
-            _logger.LogDebug("Ticket vendor not configured, skipping scheduled sync");
+            logger.LogDebug("Ticket vendor not configured, skipping scheduled sync");
             return;
         }
 
-        _logger.LogInformation("Starting ticket sync job");
+        logger.LogInformation("Starting ticket sync job");
 
         try
         {
-            var result = await _syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
+            var result = await syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Ticket sync job completed: {Orders} orders, {Attendees} attendees synced",
                 result.OrdersSynced, result.AttendeesSynced);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ticket sync job failed");
+            logger.LogError(ex, "Ticket sync job failed");
             throw;
         }
     }

@@ -1,15 +1,4 @@
-@*
-    Canonical "page-style search" results partial. Used by:
-
-      - /Profile/Search       (PublicAll bit-flag — bio / city / interests / CV)
-      - /Profile/Admin        (AdminAll bit-flag — adds verified email + non-public ContactFields)
-
-    The model is the rendering view-model — controllers project
-    HumanSearchResult onto HumanSearchResultViewModel so the partial doesn't
-    care whether the search was public or admin. Admin-only fields
-    (AdminEmail, MembershipStatus, CreatedAt, LastLoginAt, AdminDetailUrl)
-    are rendered only when present, keeping the partial dual-purpose.
-*@
+@* Page-style search results partial — /Profile/Search (PublicAll) and /Profile/Admin (AdminAll). Admin-only fields render only when present. *@
 @model IReadOnlyList<Humans.Web.Models.HumanSearchResultViewModel>
 
 @if (Model.Count == 0)
@@ -23,10 +12,10 @@ else
         {
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
-                    <vc:human user-id="@result.UserId" layout="Avatar" size="48" link="@(result.AdminDetailUrl is not null ? Humans.Web.ViewComponents.HumanLink.Admin : Humans.Web.ViewComponents.HumanLink.Public)" />
+                    <vc:human user-id="@result.UserId" layout="Avatar" size="48" link="@(result.AdminDetailUrl is not null ? HumanLink.Admin : HumanLink.Public)" />
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <strong><vc:human user-id="@result.UserId" link="@(result.AdminDetailUrl is not null ? Humans.Web.ViewComponents.HumanLink.Admin : Humans.Web.ViewComponents.HumanLink.Public)" /></strong>
+                            <strong><vc:human user-id="@result.UserId" link="@(result.AdminDetailUrl is not null ? HumanLink.Admin : HumanLink.Public)" /></strong>
                             @if (!string.IsNullOrEmpty(result.AdminEmail))
                             {
                                 <small class="text-muted">@result.AdminEmail</small>

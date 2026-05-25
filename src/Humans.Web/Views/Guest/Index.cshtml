@@ -12,7 +12,6 @@
 
 <vc:temp-data-alerts />
 
-@* ─── Primary CTA: Create Profile ─── *@
 <div class="row justify-content-center mb-5">
     <div class="col-lg-8">
         <div class="card border-0 shadow" style="background: var(--h-aged-ink); color: var(--h-parchment-light);">
@@ -37,7 +36,6 @@
     </div>
 </div>
 
-@* ─── Ticket Status ─── *@
 @if (Model.HasTickets)
 {
     <div class="row justify-content-center mb-5">
@@ -90,7 +88,6 @@
     </div>
 }
 
-@* ─── Explore ─── *@
 <div class="row justify-content-center mb-5">
     <div class="col-lg-8">
         <h5 class="text-muted mb-1">@Localizer["Guest_Explore"]</h5>
@@ -136,7 +133,6 @@
     </div>
 </div>
 
-@* ─── Secondary Actions ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
         <h5 class="text-muted mb-1">@Localizer["Guest_AccountTitle"]</h5>
@@ -195,7 +191,6 @@
     </div>
 </div>
 
-@* ─── Deletion Status (if pending) ─── *@
 @if (Model.IsDeletionPending)
 {
     <div class="row justify-content-center mb-4">

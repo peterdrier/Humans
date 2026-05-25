@@ -1,8 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
+using Humans.Application.DTOs.Calendar;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Calendar;
-using Humans.Testing;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using NodaTime;
+using NodaTime.Testing;
 using NodaTime.TimeZones;
 using Xunit;
 
@@ -100,5 +106,203 @@ public class CalendarServiceValidationTests
         // as a 500 to the user on submit. The fix swaps this for GetZoneOrNull.
         var act = () => DateTimeZoneProviders.Tzdb["Europe/Madird"];
         act.Should().Throw<DateTimeZoneNotFoundException>();
+    }
+
+    [HumansFact]
+    public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var dto = new CreateCalendarEventDto(
+            "Planning",
+            Description: null,
+            Location: null,
+            LocationUrl: null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+            RecurrenceTimezone: "Europe/Madrid");
+
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
+        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
+        await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Domain.Entities.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
+    {
+        var service = BuildService(Substitute.For<ICalendarRepository>());
+        var dto = new UpdateCalendarEventDto(
+            "Planning",
+            Description: null,
+            Location: null,
+            LocationUrl: null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: "FREQ=DAILY",
+            RecurrenceTimezone: "Europe/Madird");
+
+        var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
+        result.ErrorMessage.Should().Contain("Recurrence timezone is unknown");
+    }
+
+    // ==========================================================================
+    // Audit-best-effort invariant
+    // ==========================================================================
+    //
+    // Audit logging is best-effort after the DB write has committed. A
+    // post-write audit failure must not propagate or turn a successful
+    // mutation result into a failed one.
+
+    [HumansFact]
+    public async Task CreateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        audit.LogAsync(
+                Arg.Any<Humans.Domain.Enums.AuditAction>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
+
+        var service = BuildService(repo, audit);
+        var dto = new CreateCalendarEventDto(
+            "Audit-fails-after-create", null, null, null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: null,
+            RecurrenceTimezone: null);
+
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue(
+            because: "the DB write committed; audit failure is best-effort and must not void the result");
+        result.Event.Should().NotBeNull();
+        result.Event!.Title.Should().Be("Audit-fails-after-create");
+        await repo.Received(1).AddAsync(Arg.Any<Humans.Domain.Entities.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var eventId = Guid.NewGuid();
+
+        // Repo.UpdateAsync invokes the apply callback then returns true; the
+        // service captures the mutated event in a closure and returns it.
+        repo.UpdateAsync(eventId, Arg.Any<Action<Humans.Domain.Entities.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var apply = callInfo.ArgAt<Action<Humans.Domain.Entities.CalendarEvent>>(1);
+                apply(new Humans.Domain.Entities.CalendarEvent
+                {
+                    Id = eventId,
+                    Title = "ignored — apply overwrites",
+                    OwningTeamId = Guid.NewGuid(),
+                    StartUtc = Instant.FromUtc(2026, 5, 15, 17, 0),
+                    EndUtc = Instant.FromUtc(2026, 5, 15, 18, 0),
+                    IsAllDay = false,
+                    CreatedByUserId = Guid.NewGuid(),
+                    CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                    UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                });
+                return Task.FromResult(true);
+            });
+
+        var audit = Substitute.For<IAuditLogService>();
+        audit.LogAsync(
+                Arg.Any<Humans.Domain.Enums.AuditAction>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
+
+        var service = BuildService(repo, audit);
+        var dto = new UpdateCalendarEventDto(
+            "Audit-fails-after-update", null, null, null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: null,
+            RecurrenceTimezone: null);
+
+        var result = await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue(
+            because: "the DB write committed; audit failure is best-effort and must not void the result");
+        result.Event.Should().NotBeNull();
+        result.Event!.Title.Should().Be("Audit-fails-after-update");
+    }
+
+    [HumansFact]
+    public async Task DeleteEventAsync_AuditThrowsAfterWrite_DoesNotThrow()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var eventId = Guid.NewGuid();
+        repo.SoftDeleteAsync(eventId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((Guid.NewGuid(), "Deleted event"));
+
+        var audit = Substitute.For<IAuditLogService>();
+        audit.LogAsync(
+                Arg.Any<Humans.Domain.Enums.AuditAction>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
+
+        var service = BuildService(repo, audit);
+
+        // Void overload — re-throwing audit would also skip the decorator's
+        // post-delete invalidation, leaving the soft-deleted event in cache.
+        var act = async () => await service.DeleteEventAsync(eventId, Guid.NewGuid());
+        await act.Should().NotThrowAsync();
+    }
+
+    [HumansFact]
+    public async Task CancelOccurrenceAsync_AuditThrowsAfterWrite_DoesNotThrow()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        audit.LogAsync(
+                Arg.Any<Humans.Domain.Enums.AuditAction>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
+
+        var service = BuildService(repo, audit);
+
+        var act = async () => await service.CancelOccurrenceAsync(
+            Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 10, 0), Guid.NewGuid());
+        await act.Should().NotThrowAsync();
+    }
+
+    private static CalendarService BuildService(ICalendarRepository repo)
+    {
+        return BuildService(repo, Substitute.For<IAuditLogService>());
+    }
+
+    private static CalendarService BuildService(ICalendarRepository repo, IAuditLogService audit)
+    {
+        return new CalendarService(
+            repo,
+            Substitute.For<ITeamService>(),
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            audit,
+            NullLogger<CalendarService>.Instance);
     }
 }

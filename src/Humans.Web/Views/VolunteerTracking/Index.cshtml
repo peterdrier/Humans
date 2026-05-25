@@ -41,7 +41,8 @@
         return;
     }
 
-    @* Counts + filter toggles. *@
+    <partial name="_ExportCard" model="Model.ExportForm" />
+
     <div class="card mb-4">
         <div class="card-body">
             <div class="text-muted small mb-2">
@@ -78,8 +79,7 @@
                            autocomplete="off" />
                 </div>
             </div>
-            @* CSP blocks inline event handlers, so use js-auto-submit (handler
-               in site.js) — auto-submits the parent form on any change inside. *@
+            @* CSP blocks inline handlers; js-auto-submit (site.js) submits parent form on change. *@
             <form method="get" asp-action="Index" class="d-flex flex-wrap gap-3 align-items-center">
                 <div class="form-check">
                     <input class="form-check-input js-auto-submit" type="checkbox" name="hideNoGaps" value="true" id="vt-hide-no-gaps"
@@ -121,7 +121,7 @@
     else
     {
         @await Html.PartialAsync("_VolunteerHeatmap",
-            new HeatmapPartialModel(Model.MainCohort, Model.BuildStartOffset, Model.GateOpeningDate))
+            new HeatmapPartialModel(Model.MainCohort, Model.BuildStartOffset, Model.GateOpeningDate, Model.DisplayNameByUserId))
 
         @if (!Model.HideUnbookedSection)
         {
@@ -130,11 +130,10 @@
             <p class="text-muted small">@Localizer["VolTrack_Unbooked_Subtitle"]</p>
 
             @await Html.PartialAsync("_VolunteerUnbookedHeatmap",
-                new UnbookedHeatmapPartialModel(Model.UnbookedCohort, Model.BuildStartOffset, Model.GateOpeningDate))
+                new UnbookedHeatmapPartialModel(Model.UnbookedCohort, Model.BuildStartOffset, Model.GateOpeningDate, Model.DisplayNameByUserId))
         }
     }
 
-    @* Footer legend explaining all cell colors across both panels. *@
     <div class="card mt-4">
         <div class="card-body">
             <div class="text-muted small text-uppercase mb-2">@Localizer["VolTrack_Legend_Title"]</div>

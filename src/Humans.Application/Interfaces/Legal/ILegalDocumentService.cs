@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.Legal;
 
 public record LegalDocumentDefinition(string Slug, string DisplayName, string RepoFolder, string FilePrefix);

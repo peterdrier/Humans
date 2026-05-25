@@ -1,14 +1,13 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -21,6 +20,7 @@ namespace Humans.Application.Tests.Services;
 public class UnsubscribeServiceTests
 {
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
     private readonly UnsubscribeService _service;
@@ -29,6 +29,7 @@ public class UnsubscribeServiceTests
     {
         _service = new UnsubscribeService(
             _userRepo,
+            _userService,
             _preferenceService,
             _dataProtection,
             NullLogger<UnsubscribeService>.Instance);
@@ -38,7 +39,21 @@ public class UnsubscribeServiceTests
     {
         _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, UserName = $"{userId}@example.com", DisplayName = displayName });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(new User { Id = userId, DisplayName = displayName }));
     }
+
+    private static UserInfo CreateUserInfo(User user) =>
+        UserInfo.Create(
+            user,
+            [],
+            [],
+            [],
+            null,
+            [],
+            [],
+            [],
+            []);
 
     [HumansFact]
     public async Task ValidateTokenAsync_ReturnsValid_ForNewFormatToken()

@@ -1,3 +1,4 @@
+@model (NodaTime.LocalDateTime? OpensAt, NodaTime.LocalDateTime? ClosesAt)
 <div class="modal fade" id="placement-help-modal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -8,8 +9,8 @@
             <div class="modal-body">
                 <h6>@Localizer["CityPlanning_Help_WhenIsIt"]</h6>
                 @{
-                    var placementOpensAt = ViewBag.PlacementOpensAt as NodaTime.LocalDateTime?;
-                    var placementClosesAt = ViewBag.PlacementClosesAt as NodaTime.LocalDateTime?;
+                    var placementOpensAt = Model.OpensAt;
+                    var placementClosesAt = Model.ClosesAt;
                     const string dtFmt = "d MMMM 'at' HH:mm";
                 }
                 @if (placementOpensAt.HasValue || placementClosesAt.HasValue)

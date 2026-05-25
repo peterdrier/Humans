@@ -1,42 +1,28 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Admin/MergeRequests")]
-public class AdminMergeController : HumansControllerBase
+public class AdminMergeController(
+    IUserServiceRead userService,
+    IAccountMergeService mergeService,
+    ITeamServiceRead teamService,
+    ILogger<AdminMergeController> logger) : HumansControllerBase(userService)
 {
-    private readonly IAccountMergeService _mergeService;
-    private readonly IProfileService _profileService;
-    private readonly ITeamService _teamService;
-    private readonly ILogger<AdminMergeController> _logger;
-
-    public AdminMergeController(
-        UserManager<User> userManager,
-        IAccountMergeService mergeService,
-        IProfileService profileService,
-        ITeamService teamService,
-        ILogger<AdminMergeController> logger)
-        : base(userManager)
-    {
-        _mergeService = mergeService;
-        _profileService = profileService;
-        _teamService = teamService;
-        _logger = logger;
-    }
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var requests = await _mergeService.GetPendingRequestsAsync();
+        var requests = await mergeService.GetPendingRequestsAsync();
 
         var viewModel = new AccountMergeListViewModel
         {
@@ -44,12 +30,10 @@ public class AdminMergeController : HumansControllerBase
             {
                 Id = r.Id,
                 Email = r.Email,
-                PrimaryUserDisplayName = r.TargetUser.DisplayName,
                 PrimaryUserEmail = r.TargetUser.Email,
-                PrimaryUserId = r.TargetUserId,
-                DuplicateUserDisplayName = r.SourceUser.DisplayName,
+                PrimaryUserId = r.TargetUser.Id,
                 DuplicateUserEmail = r.SourceUser.Email,
-                DuplicateUserId = r.SourceUserId,
+                DuplicateUserId = r.SourceUser.Id,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc()
             }).ToList()
         };
@@ -60,7 +44,7 @@ public class AdminMergeController : HumansControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var request = await _mergeService.GetByIdAsync(id);
+        var request = await mergeService.GetByIdAsync(id);
         if (request is null)
             return NotFound();
 
@@ -76,20 +60,19 @@ public class AdminMergeController : HumansControllerBase
             Status = request.Status.ToString(),
             CreatedAt = request.CreatedAt.ToDateTimeUtc(),
             ResolvedAt = request.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = request.ResolvedByUser?.DisplayName,
+            ResolvedByName = request.ResolvedByDisplayName,
             AdminNotes = request.AdminNotes
         };
 
         return View(viewModel);
     }
 
-    private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(User user)
+    private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(AccountMergeUserSnapshot user)
     {
-        var profile = await _profileService.GetProfileAsync(user.Id);
-        var teams = await _teamService.GetUserTeamsAsync(user.Id);
-        var activeTeamNames = teams
-            .Where(m => m.LeftAt is null)
-            .Select(m => m.Team?.Name ?? "Unknown")
+        var profile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
+        var activeTeamNames = (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.Members.Any(m => m.UserId == user.Id))
+            .Select(t => t.Name)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -101,7 +84,7 @@ public class AdminMergeController : HumansControllerBase
             ProfilePictureUrl = user.ProfilePictureUrl,
             PreferredLanguage = user.PreferredLanguage,
             MembershipTier = profile?.MembershipTier.ToString(),
-            MembershipStatus = profile?.IsSuspended == true ? "Suspended"
+            MembershipStatus = profile?.State == ProfileState.Suspended ? "Suspended"
                 : profile?.IsApproved == true ? "Active" : "Pending",
             MemberSince = profile?.CreatedAt.ToDateTimeUtc(),
             LastLogin = user.LastLoginAt?.ToDateTimeUtc(),
@@ -120,12 +103,12 @@ public class AdminMergeController : HumansControllerBase
 
         try
         {
-            await _mergeService.AcceptAsync(id, user.Id, notes);
+            await mergeService.AcceptAsync(id, user.Id, notes);
             SetSuccess("Account merge completed. Duplicate account has been archived.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Failed to accept merge request {RequestId}", id);
+            logger.LogError(ex, "Failed to accept merge request {RequestId}", id);
             SetError($"Failed to accept merge: {ex.Message}");
         }
 
@@ -141,12 +124,12 @@ public class AdminMergeController : HumansControllerBase
 
         try
         {
-            await _mergeService.RejectAsync(id, user.Id, notes);
+            await mergeService.RejectAsync(id, user.Id, notes);
             SetSuccess("Merge request rejected. No changes were made.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Failed to reject merge request {RequestId}", id);
+            logger.LogError(ex, "Failed to reject merge request {RequestId}", id);
             SetError($"Failed to reject merge: {ex.Message}");
         }
 

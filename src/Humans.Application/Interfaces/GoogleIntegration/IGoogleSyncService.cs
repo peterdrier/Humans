@@ -1,7 +1,7 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
@@ -23,9 +23,9 @@ public interface IGoogleSyncService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Unified sync entry point. Computes diff for all active resources of the given type,
-    /// then optionally executes adds/removes based on the action.
-    /// Used by preview, manual actions, and scheduled jobs.
+    /// Drive sync entry point. Computes diff for all active Drive resources of the given
+    /// type, then optionally executes adds/removes based on the action. Google Group
+    /// membership is handled by <see cref="IGoogleGroupSync"/>.
     /// </summary>
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
@@ -33,20 +33,13 @@ public interface IGoogleSyncService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sync a single resource. Same logic as SyncResourcesByTypeAsync but for one resource.
+    /// Syncs a single Google resource by ID. Drive resources are reconciled here;
+    /// Google Group resources are routed through <see cref="IGoogleGroupSync"/>.
     /// </summary>
     Task<ResourceSyncDiff> SyncSingleResourceAsync(
         Guid resourceId,
         SyncAction action,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the status of a Google resource.
-    /// </summary>
-    /// <param name="resourceId">The Google resource ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The resource if found.</returns>
-    Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a user to all Google resources associated with a team.
@@ -71,51 +64,6 @@ public interface IGoogleSyncService : IApplicationService
     Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Provisions a new Google Group for a team.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="groupEmail">The group email address (e.g., team-name@nobodies.team).</param>
-    /// <param name="groupName">Display name for the group.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The created Google resource.</returns>
-    Task<GoogleResource> ProvisionTeamGroupAsync(
-        Guid teamId,
-        string groupEmail,
-        string groupName,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Adds a user to a Google Group.
-    /// </summary>
-    /// <param name="groupResourceId">The Google resource ID of the group.</param>
-    /// <param name="userEmail">The user's email address.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Removes a user from a Google Group.
-    /// </summary>
-    /// <param name="groupResourceId">The Google resource ID of the group.</param>
-    /// <param name="userEmail">The user's email address.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Syncs all members of a team to its associated Google Group.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Restores a user to all their team-related Google resources.
-    /// Used when a user returns to Active status (e.g., after signing documents).
-    /// </summary>
-    /// <param name="userId">The user ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Checks all active Google Groups for settings drift against the expected configuration.
     /// Detect-only: does not modify any settings.
     /// </summary>
@@ -127,7 +75,7 @@ public interface IGoogleSyncService : IApplicationService
     /// Applies expected settings to a Google Group, fixing any drift.
     /// Respects SyncSettings mode — returns without action if sync is disabled.
     /// </summary>
-    Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
+    Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lists all Google Groups on the domain and cross-references with the local database.
@@ -173,6 +121,23 @@ public interface IGoogleSyncService : IApplicationService
     /// (design-rules §2a/§2c) so callers do not reach past <see cref="IGoogleSyncService"/>
     /// into the repository directly.
     /// </summary>
-    Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+    Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default);
 }
+
+public sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static GroupSettingsRemediationResult Success() => new(true, null);
+
+    public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
+}
+
+public sealed record GoogleSyncOutboxEventSnapshot(
+    string EventType,
+    Guid TeamId,
+    Guid UserId,
+    Instant OccurredAt,
+    Instant? ProcessedAt,
+    int RetryCount,
+    string? LastError,
+    bool FailedPermanently);

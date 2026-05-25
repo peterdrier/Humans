@@ -1,52 +1,43 @@
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Governance;
 
-/// <summary>
-/// Default <see cref="IMembershipQuery"/> implementation. Sealed
-/// pass-through that delegates to <see cref="ITeamService"/> and
-/// <see cref="IRoleAssignmentService"/>.
-/// </summary>
-/// <remarks>
-/// Holds no state and applies no business logic. Exists solely to keep
-/// <see cref="IMembershipCalculator"/> from depending on the team and
-/// role-assignment services directly — those services pull in
-/// <c>ISystemTeamSync</c>, whose implementation injects the calculator,
-/// closing the DI cycle. See <see cref="IMembershipQuery"/> remarks.
-/// </remarks>
-public sealed class MembershipQuery : IMembershipQuery
+// Pass-through to ITeamServiceRead + IRoleAssignmentService. Exists to break the DI cycle
+// MembershipCalculator → ITeamService → ISystemTeamSync → IMembershipCalculator.
+public sealed class MembershipQuery(ITeamServiceRead teamService, IRoleAssignmentService roleAssignmentService)
+    : IMembershipQuery
 {
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-
-    public MembershipQuery(
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService)
+    public async Task<IReadOnlyList<MembershipTeamSnapshot>> GetUserTeamsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
     {
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
+        return (await teamService.GetTeamsAsync(cancellationToken)).Values
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
+            .Where(x => x.Membership is not null)
+            .Select(x => new MembershipTeamSnapshot(
+                x.TeamInfo.Id,
+                x.Membership!.Role,
+                x.TeamInfo.SystemTeamType))
+            .ToList();
     }
 
-    public Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default) =>
-        _teamService.GetUserTeamsAsync(userId, cancellationToken);
-
-    public Task<bool> IsUserMemberOfTeamAsync(
+    public async Task<bool> IsUserMemberOfTeamAsync(
         Guid teamId,
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var t = await teamService.GetTeamAsync(teamId, cancellationToken);
+        return t is { IsActive: true } && t.Members.Any(m => m.UserId == userId);
+    }
 
     public Task<bool> HasAnyActiveAssignmentAsync(
         Guid userId,
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.HasAnyActiveAssignmentAsync(userId, cancellationToken);
+        roleAssignmentService.HasAnyActiveAssignmentAsync(userId, cancellationToken);
 
     public Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
+        roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 }

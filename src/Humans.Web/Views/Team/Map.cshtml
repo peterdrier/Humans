@@ -45,7 +45,7 @@ else
                 v: "weekly"
             });
         </script>
-        <script src="https://unpkg.com/@@googlemaps/markerclusterer/dist/index.min.js"></script>
+        <script src="https://unpkg.com/&#64;googlemaps/markerclusterer/dist/index.min.js"></script>
         <script>
             const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 

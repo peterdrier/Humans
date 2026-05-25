@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Legal;
+using Humans.Web.Controllers;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using AdminLegalDocumentService = Humans.Application.Services.Legal.AdminLegalDocumentService;
@@ -15,12 +17,12 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class LegalArchitectureTests
 {
-    public static TheoryData<Type> LegalServices => new()
-    {
+    public static TheoryData<Type> LegalServices =>
+    [
         typeof(AdminLegalDocumentService),
         typeof(LegalDocumentSyncService),
-        typeof(LegalDocumentService),
-    };
+        typeof(LegalDocumentService)
+    ];
 
     public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {
@@ -76,8 +78,6 @@ public class LegalArchitectureTests
     [HumansFact]
     public void Legal_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(ILegalDocumentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
         typeof(LegalDocumentRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension");
     }
@@ -91,5 +91,22 @@ public class LegalArchitectureTests
         typeof(Humans.Infrastructure.Services.GitHubLegalDocumentConnector).Assembly.GetName().Name
             .Should().Be("Humans.Infrastructure",
                 because: "connector implementations carry SDK/transport dependencies");
+    }
+
+    [HumansFact]
+    public void AdminLegalDocumentsController_LivesUnderLegalAdminRoute()
+    {
+        RouteFor<AdminLegalDocumentsController>().Should().Be("Legal/Admin",
+            because: "admin legal-document pages live at /Legal/Admin/* per memory/architecture/no-admin-url-section.md");
+    }
+
+    private static string RouteFor<TController>()
+    {
+        var route = typeof(TController)
+            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+            .Cast<RouteAttribute>()
+            .Single();
+
+        return route.Template;
     }
 }

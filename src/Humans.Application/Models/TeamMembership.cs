@@ -10,4 +10,7 @@ namespace Humans.Application.Models;
 /// <see cref="Humans.Domain.Entities.TeamMember"/> graph into the prompt
 /// surface.
 /// </summary>
-public sealed record TeamMembership(string TeamName, TeamMemberRole Role);
+public sealed record TeamMembership(string TeamName, TeamMemberRole Role)
+{
+    public bool IsHidden { get; init; }
+}

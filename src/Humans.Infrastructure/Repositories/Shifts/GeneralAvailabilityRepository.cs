@@ -13,19 +13,13 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityRepository
+internal sealed class GeneralAvailabilityRepository(IDbContextFactory<HumansDbContext> factory)
+    : IGeneralAvailabilityRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public GeneralAvailabilityRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<GeneralAvailability?> GetByUserAndEventAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GeneralAvailability
             .AsNoTracking()
             .FirstOrDefaultAsync(
@@ -36,10 +30,21 @@ public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityReposito
     public async Task<IReadOnlyList<GeneralAvailability>> GetByEventAsync(
         Guid eventSettingsId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GeneralAvailability
             .AsNoTracking()
             .Where(g => g.EventSettingsId == eventSettingsId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GeneralAvailability>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GeneralAvailability
+            .AsNoTracking()
+            .Where(g => g.EventSettingsId == eventSettingsId && userIds.Contains(g.UserId))
             .ToListAsync(ct);
     }
 
@@ -50,7 +55,7 @@ public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityReposito
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var existing = await ctx.GeneralAvailability
             .FirstOrDefaultAsync(
@@ -81,7 +86,7 @@ public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityReposito
     public async Task DeleteAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var existing = await ctx.GeneralAvailability
             .FirstOrDefaultAsync(
@@ -102,7 +107,7 @@ public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityReposito
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var sourceRows = await ctx.GeneralAvailability
             .Where(g => g.UserId == sourceUserId)

@@ -71,10 +71,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
             usage.TokensToday >= settings.DailyTokenCap ||
             usage.MessagesThisHour >= settings.HourlyMessageCap)
         {
-            // Invariant 6 (Agent.md): every refused turn writes an AgentMessage
-            // with RefusalReason != null. The controller-level handler normally
-            // blocks first, but this in-service guard is a second line of
-            // defence and must honour the same invariant.
+            // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
             await PersistRefusal(request, "rate_limited", cancellationToken);
             yield return Finalizer(stopReason: "rate_limited");
             yield break;
@@ -96,10 +93,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         else
         {
             var existing = await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken);
-            // Conversation may have been retention-purged or deleted in another tab
-            // between page load and submit. Start a fresh one rather than 500ing
-            // the SSE stream — the finalizer stamps the new ConversationId so the
-            // client picks it up transparently.
+            // Conversation may have been retention-purged; fall back to a fresh one (finalizer stamps the new id).
             conversation = existing
                 ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
         }
@@ -107,10 +101,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         if (conversation.UserId != request.UserId)
             throw new UnauthorizedAccessException("Conversation does not belong to this user.");
 
-        // Replay prior turns so the model has continuity. Snapshot before appending
-        // the new user message so we don't double-add it to sdkMessages below. Only
-        // user/assistant text turns replay; tool-call internals from prior turns are
-        // dropped (the model re-derives them via fetch_section_guide as needed).
+        // Replay user/assistant text turns only — tool-call internals are dropped (model re-derives via fetch_section_guide).
         var priorTurns = conversation.Messages
             .Where(m => (m.Role == AgentRole.User || m.Role == AgentRole.Assistant)
                         && !string.IsNullOrEmpty(m.Content))
@@ -154,6 +145,8 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         var toolCallCount = 0;
         AgentIssueProposal? issueProposal = null;
         AgentTurnFinalizer? finalFinalizer = null;
+        // Wall-clock turn duration (streaming + tool loop) for the admin status latency panel.
+        var turnStart = _clock.GetCurrentInstant();
 
         while (true)
         {
@@ -202,7 +195,8 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
                 var result = await _tools.DispatchAsync(call, request.UserId, conversation.Id, cancellationToken);
                 results.Add(result);
-                fetchedDocs.Add(call.Name + ":" + call.JsonArguments);
+                // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
+                fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
 
                 if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
                 {
@@ -216,27 +210,28 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                 break;
         }
 
-        // The proposal frame is the user-visible signal that the agent is
-        // handing off into the Issues form. It travels alongside the regular
-        // text/finalizer stream — the client opens the issue submission modal
-        // pre-filled when it sees this.
+        // Proposal frame signals client to open pre-filled Issues modal.
         if (issueProposal is not null)
         {
             yield return new AgentTurnToken(null, null, null, issueProposal);
         }
 
+        var turnEnd = _clock.GetCurrentInstant();
+        var durationMs = (int)Math.Min(
+            int.MaxValue,
+            (turnEnd - turnStart).TotalMilliseconds);
         var message = new AgentMessage
         {
             Id = Guid.NewGuid(),
             ConversationId = conversation.Id,
             Role = AgentRole.Assistant,
             Content = assistantBuffer.ToString(),
-            CreatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = turnEnd,
             PromptTokens = finalFinalizer?.InputTokens ?? 0,
             OutputTokens = finalFinalizer?.OutputTokens ?? 0,
             CachedTokens = finalFinalizer?.CacheReadTokens ?? 0,
             Model = settings.Model,
-            DurationMs = 0,
+            DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
             HandedOffToFeedbackId = null
         };
@@ -250,51 +245,92 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         yield return new AgentTurnToken(null, null, fallbackFinalizer with { ConversationId = conversation.Id });
     }
 
-    /// <summary>How many prior user/assistant turns to replay to the model. Bounded
-    /// so long conversations don't blow the context budget; the daily message cap
-    /// (default 30) keeps most conversations well under this.</summary>
+    /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
     private const int HistoryReplayLimit = 20;
 
-    public Task<IReadOnlyList<AgentConversation>> GetHistoryAsync(Guid userId, int take, CancellationToken ct) =>
-        _repo.ListConversationsForUserAsync(userId, take, ct);
+    public async Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
+        Guid userId, int take, CancellationToken ct)
+    {
+        var conversations = await _repo.ListConversationsForUserAsync(userId, take, ct);
+        return conversations.Select(ToListSnapshot).ToList();
+    }
 
-    public async Task<AgentConversation?> GetConversationForUserAsync(
+    public async Task<AgentConversationTranscriptSnapshot?> GetConversationForUserAsync(
         Guid userId, Guid conversationId, CancellationToken ct)
     {
         var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        return conv is not null && conv.UserId == userId ? conv : null;
+        return conv is not null && conv.UserId == userId ? ToTranscriptSnapshot(conv) : null;
     }
 
     public async Task<AgentMyConversationView?> GetMyConversationAsync(
         Guid userId, Guid conversationId, CancellationToken ct)
     {
         var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        // Mismatched ownership and "doesn't exist" must look the same to the
-        // caller (Agent.md invariant 7) — both return null so the controller
-        // can 404 without leaking existence of someone else's conversation.
+        // Ownership mismatch returns null like "not found" (Agent.md invariant 7) — no existence leak.
         if (conv is null || conv.UserId != userId) return null;
 
-        // Tail is regenerated from the live snapshot. It may differ from what
-        // the model actually saw at the time of any historical turn — the
-        // view surfaces this caveat to the user. Persisting per-turn snapshots
-        // is tracked in Agent.md "Open question".
+        // Tail regenerated from current snapshot; may differ from historical turn view (Agent.md open question).
         var snapshot = await _snapshots.LoadAsync(userId, ct);
         var tail = _assembler.BuildUserContextTail(snapshot);
-        return new AgentMyConversationView(conv, tail);
+        return new AgentMyConversationView(ToTranscriptSnapshot(conv), tail);
     }
 
-    public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
+    public async Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
         bool refusalsOnly, Guid? userId, int take, int skip,
-        CancellationToken ct) =>
-        _repo.ListAllConversationsAsync(refusalsOnly, userId, take, skip, ct);
+        CancellationToken ct)
+    {
+        var conversations = await _repo.ListAllConversationsAsync(refusalsOnly, userId, take, skip, ct);
+        return conversations.Select(ToListSnapshot).ToList();
+    }
 
-    public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminWithMessagesAsync(
+    public async Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
-        CancellationToken ct) =>
-        _repo.ListAllConversationsWithMessagesAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
+        CancellationToken ct)
+    {
+        var conversations = await _repo.ListAllConversationsWithMessagesAsync(
+            refusalsOnly, handoffsOnly, userId, take, skip, ct);
+        return conversations.Select(ToTranscriptSnapshot).ToList();
+    }
 
-    public Task<AgentConversation?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
-        _repo.GetConversationByIdAsync(id, ct);
+    private static AgentConversationTranscriptSnapshot ToTranscriptSnapshot(AgentConversation conversation) =>
+        new(
+            conversation.Id,
+            conversation.UserId,
+            conversation.Locale,
+            conversation.StartedAt,
+            conversation.LastMessageAt,
+            conversation.MessageCount,
+            conversation.Messages
+                .Select(message => new AgentMessageSnapshot(
+                    message.Id,
+                    message.ConversationId,
+                    message.Role,
+                    message.Content,
+                    message.CreatedAt,
+                    message.PromptTokens,
+                    message.OutputTokens,
+                    message.CachedTokens,
+                    message.Model,
+                    message.DurationMs,
+                    message.FetchedDocs,
+                    message.RefusalReason,
+                    message.HandedOffToFeedbackId))
+                .ToList());
+
+    private static AgentConversationListSnapshot ToListSnapshot(AgentConversation conversation) =>
+        new(
+            conversation.Id,
+            conversation.UserId,
+            conversation.Locale,
+            conversation.StartedAt,
+            conversation.LastMessageAt,
+            conversation.MessageCount);
+
+    public async Task<AgentConversationTranscriptSnapshot?> GetConversationForAdminAsync(Guid id, CancellationToken ct)
+    {
+        var conversation = await _repo.GetConversationByIdAsync(id, ct);
+        return conversation is null ? null : ToTranscriptSnapshot(conversation);
+    }
 
     public async Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
         Guid conversationId, CancellationToken ct)
@@ -358,6 +394,43 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
     private AgentTurnToken Finalizer(string stopReason) =>
         new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
+
+    /// <summary>
+    /// Build a stable, low-cardinality slug for the <c>FetchedDocs</c> column
+    /// so the admin status "Top fetched docs" panel groups identical fetches
+    /// together. For doc-style tools (<c>fetch_section_guide</c>,
+    /// <c>fetch_feature_spec</c>) the slug is <c>tool:argument</c>. For
+    /// non-doc tools we drop the JSON args entirely — different shift ids /
+    /// audit limits would otherwise split the bucket per invocation.
+    /// </summary>
+    private static string NormalizeFetchedDocSlug(string toolName, string jsonArguments, ILogger<AgentService> logger)
+    {
+        switch (toolName)
+        {
+            case AgentToolNames.FetchSectionGuide:
+            case AgentToolNames.FetchFeatureSpec:
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(jsonArguments);
+                    var root = doc.RootElement;
+                    string? slug = null;
+                    if (string.Equals(toolName, AgentToolNames.FetchSectionGuide, StringComparison.Ordinal)
+                        && root.TryGetProperty("section", out var s))
+                        slug = s.GetString();
+                    else if (string.Equals(toolName, AgentToolNames.FetchFeatureSpec, StringComparison.Ordinal)
+                        && root.TryGetProperty("name", out var n))
+                        slug = n.GetString();
+                    return string.IsNullOrEmpty(slug) ? toolName : $"{toolName}:{slug}";
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse JSON args for tool {ToolName}; FetchedDocs slug falls back to bare tool name", toolName);
+                    return toolName;
+                }
+            default:
+                return toolName;
+        }
+    }
 
     private AgentIssueProposal? ParseIssueProposalArgs(string jsonArguments, Guid conversationId)
     {

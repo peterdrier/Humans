@@ -1,0 +1,112 @@
+@model Humans.Web.Models.LegalDocumentListViewModel
+@{
+    ViewData["Title"] = "Legal Documents";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Legal Documents</li>
+    </ol>
+</nav>
+
+<h1>Legal Documents</h1>
+
+<vc:temp-data-alerts />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <form method="get" class="d-flex align-items-center gap-2">
+        <label for="teamId" class="form-label mb-0">Team:</label>
+        <select name="teamId" id="teamId" class="form-select form-select-sm" style="width: auto;">
+            <option value="">All teams</option>
+            @foreach (var team in Model.Teams)
+            {
+                <option value="@team.Id" selected="@(Model.FilterTeamId == team.Id ? "selected" : null)">@team.Name</option>
+            }
+        </select>
+    </form>
+    <a asp-controller="AdminLegalDocuments" asp-action="CreateLegalDocument" asp-route-teamId="@Model.FilterTeamId" class="btn btn-primary btn-sm">Create Document</a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Team</th>
+                    <th>Required</th>
+                    <th>Active</th>
+                    <th>Grace Period</th>
+                    <th>Current Version</th>
+                    <th>Last Synced</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Documents.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No legal documents found.</td>
+                    </tr>
+                }
+                @foreach (var doc in Model.Documents)
+                {
+                    <tr class="@(!doc.IsActive ? "table-secondary" : "")">
+                        <td>
+                            <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id">@doc.Name</a>
+                        </td>
+                        <td>@doc.TeamName</td>
+                        <td>
+                            @if (doc.IsRequired)
+                            {
+                                <span class="badge bg-warning">Required</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Optional</span>
+                            }
+                        </td>
+                        <td>
+                            @if (doc.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Archived</span>
+                            }
+                        </td>
+                        <td>@doc.GracePeriodDays days</td>
+                        <td>@(doc.CurrentVersion ?? "No versions")</td>
+                            <td>@(doc.LastSyncedAt?.ToDisplayDateTime() ?? "Never")</td>
+                        <td>
+                            <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id" class="btn btn-outline-primary btn-sm">Edit</a>
+                                @if (doc.IsActive)
+                                {
+                                    <form asp-controller="AdminLegalDocuments" asp-action="ArchiveLegalDocument" asp-route-id="@doc.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this document? It will no longer be required for consent.">Archive</button>
+                                    </form>
+                                }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.getElementById('teamId').addEventListener('change', function () {
+        this.form.submit();
+    });
+
+    document.querySelectorAll('[data-confirm]').forEach(function (button) {
+        button.addEventListener('click', function (e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>

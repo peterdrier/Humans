@@ -5,7 +5,7 @@ namespace Humans.Application.DTOs.Governance;
 
 /// <summary>
 /// Detail projection for the admin application detail view
-/// (<c>ApplicationDetail.cshtml</c>). All user-related fields are stitched
+/// (<c>Views/Governance/Applications/AdminDetail.cshtml</c>). All user-related fields are stitched
 /// from <c>IUserService</c> so the Application entity has no cross-domain
 /// navigation properties.
 /// </summary>

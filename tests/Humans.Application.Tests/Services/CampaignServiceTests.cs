@@ -1,63 +1,49 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.DTOs;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Xunit;
 using CampaignServiceImpl = Humans.Application.Services.Campaigns.CampaignService;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Infrastructure.Repositories.Campaigns;
 
 namespace Humans.Application.Tests.Services;
 
-public class CampaignServiceTests : IDisposable
+public sealed class CampaignServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
+    private readonly ITicketVendorService _ticketVendorService;
 
     public CampaignServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-
-        var repository = new CampaignRepository(new TestDbContextFactory(options));
-        _teamService = Substitute.For<ITeamService>();
-        _userService = Substitute.For<IUserService>();
-        _userEmailService = Substitute.For<IUserEmailService>();
+        var repository = new CampaignRepository(DbFactory);
+        var teamService = Substitute.For<ITeamService>();
+        var userEmailService = Substitute.For<IUserEmailService>();
+        _ticketVendorService = Substitute.For<ITicketVendorService>();
 
         // Default stubs: fetch data from the in-memory DbContext so the existing
         // seed helpers still drive the scenarios end-to-end.
-        _teamService
+        teamService
             .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var teamId = call.ArgAt<Guid>(0);
-                var team = await _dbContext.Teams
+                var team = await Db.Teams
                     .Include(t => t.Members)
                     .FirstOrDefaultAsync(t => t.Id == teamId);
                 if (team is null)
                     return null;
 
                 var userIds = team.Members.Select(m => m.UserId).ToList();
-                var users = await _dbContext.Users
+                var users = await Db.Users
                     .Where(u => userIds.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id);
                 var members = team.Members
@@ -77,43 +63,37 @@ public class CampaignServiceTests : IDisposable
                     team.CreatedAt, members, team.ParentTeamId);
             });
 
-        _teamService
-            .GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())
+        teamService
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
-                var list = await _dbContext.Teams
-                    .Where(t => t.IsActive)
-                    .OrderBy(t => t.Name)
-                    .Select(t => new TeamOptionDto(t.Id, t.Name))
+                var list = await Db.Teams
+                    .Include(t => t.Members)
                     .ToListAsync();
-                return (IReadOnlyList<TeamOptionDto>)list;
+                var dict = list.ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory,
+                        t.CreatedAt,
+                        t.Members
+                            .Where(m => m.LeftAt is null)
+                            .Select(m => new TeamMemberInfo(
+                                m.Id, m.UserId, string.Empty, null, null, m.Role, m.JoinedAt))
+                            .ToList(),
+                        t.ParentTeamId));
+                return (IReadOnlyDictionary<Guid, TeamInfo>)dict;
             });
 
-        _userService
-            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(async call =>
-            {
-                var id = call.ArgAt<Guid>(0);
-                return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
-            });
+        var userService = NewDbBackedUserService();
 
-        _userService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(async call =>
-            {
-                var ids = call.ArgAt<IReadOnlyCollection<Guid>>(0);
-                var list = await _dbContext.Users
-                    .Where(u => ids.Contains(u.Id))
-                    .ToListAsync();
-                return (IReadOnlyDictionary<Guid, User>)list.ToDictionary(u => u.Id);
-            });
-
-        _userEmailService
+        userEmailService
             .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var ids = call.ArgAt<IReadOnlyCollection<Guid>>(0);
-                var users = await _dbContext.Users
+                var users = await Db.Users
                     .Where(u => ids.Contains(u.Id))
                     .ToListAsync();
                 return (IReadOnlyDictionary<Guid, string>)users
@@ -128,20 +108,15 @@ public class CampaignServiceTests : IDisposable
 
         _service = new CampaignServiceImpl(
             repository,
-            _teamService,
-            _userEmailService,
-            _userService,
+            teamService,
+            userEmailService,
+            userService,
             Substitute.For<INotificationService>(),
             commPrefService,
             _emailService,
-            _clock,
+            _ticketVendorService,
+            Clock,
             NullLogger<CampaignServiceImpl>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // ==========================================================================
@@ -153,22 +128,37 @@ public class CampaignServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.CreateAsync(
             "Test Campaign", "A description",
             "Your code: {{Code}}", "<p>Hi {{Name}}, your code is {{Code}}</p>",
             null, userId);
 
-        result.Title.Should().Be("Test Campaign");
-        result.Description.Should().Be("A description");
-        result.Status.Should().Be(CampaignStatus.Draft);
-        result.CreatedAt.Should().Be(_clock.GetCurrentInstant());
-        result.CreatedByUserId.Should().Be(userId);
+        result.Success.Should().BeTrue();
+        result.Campaign.Should().NotBeNull();
+        result.Campaign!.Title.Should().Be("Test Campaign");
+        result.Campaign.Description.Should().Be("A description");
+        result.Campaign.Status.Should().Be(CampaignStatus.Draft);
+        result.Campaign.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        result.Campaign.CreatedByUserId.Should().Be(userId);
 
-        var inDb = await _dbContext.Campaigns.FindAsync(result.Id);
+        var inDb = await Db.Campaigns.FindAsync(result.Campaign.Id);
         inDb.Should().NotBeNull();
-        inDb!.Status.Should().Be(CampaignStatus.Draft);
+        inDb.Status.Should().Be(CampaignStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_BlankTitle_ReturnsValidationError()
+    {
+        var result = await _service.CreateAsync(
+            "  ", "A description",
+            "Subject", "Body",
+            null, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("TitleRequired");
+        (await Db.Campaigns.CountAsync()).Should().Be(0);
     }
 
     // ==========================================================================
@@ -180,13 +170,13 @@ public class CampaignServiceTests : IDisposable
     {
         var campaign = await SeedCampaignAsync();
 
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE1", "CODE2", "CODE1", "CODE3" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"]);
 
-        var codes = await _dbContext.CampaignCodes
+        var codes = await Db.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync();
         codes.Should().HaveCount(3);
-        codes.Select(c => c.Code).Should().BeEquivalentTo(new[] { "CODE1", "CODE2", "CODE3" });
+        codes.Select(c => c.Code).Should().BeEquivalentTo("CODE1", "CODE2", "CODE3");
     }
 
     [HumansFact]
@@ -195,14 +185,54 @@ public class CampaignServiceTests : IDisposable
         var campaign = await SeedCampaignAsync();
 
         // First import
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE1", "CODE2" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2"]);
         // Second import with overlap
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE2", "CODE3" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"]);
 
-        var codes = await _dbContext.CampaignCodes
+        var codes = await Db.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync();
         codes.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task GenerateAndImportDiscountCodesAsync_DraftCampaign_GeneratesAndImportsCodes()
+    {
+        var campaign = await SeedCampaignAsync();
+        _ticketVendorService
+            .GenerateDiscountCodesAsync(Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<string>)["CODE-A", "CODE-B"]);
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            campaign.Id, 2, "Fixed", 10m);
+
+        result.Success.Should().BeTrue();
+        result.GeneratedCount.Should().Be(2);
+        await _ticketVendorService.Received(1).GenerateDiscountCodesAsync(
+            Arg.Is<DiscountCodeSpec>(s =>
+                s.Count == 2 &&
+                s.DiscountType == DiscountType.Fixed &&
+                s.DiscountValue == 10m),
+            Arg.Any<CancellationToken>());
+        var codes = await Db.CampaignCodes
+            .Where(c => c.CampaignId == campaign.Id)
+            .Select(c => c.Code)
+            .ToListAsync();
+        codes.Should().BeEquivalentTo("CODE-A", "CODE-B");
+    }
+
+    [HumansFact]
+    public async Task GenerateAndImportDiscountCodesAsync_NonDraftCampaign_ReturnsNotDraft()
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            campaign.Id, 2, "Fixed", 10m);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotDraft");
+        await _ticketVendorService.DidNotReceive().GenerateDiscountCodesAsync(
+            Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -213,11 +243,11 @@ public class CampaignServiceTests : IDisposable
     public async Task ActivateAsync_DraftWithCodes_TransitionsToActive()
     {
         var campaign = await SeedCampaignAsync();
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE1" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE1"]);
 
         await _service.ActivateAsync(campaign.Id);
 
-        var updated = await _dbContext.Campaigns.FindAsync(campaign.Id);
+        var updated = await Db.Campaigns.FindAsync(campaign.Id);
         updated!.Status.Should().Be(CampaignStatus.Active);
     }
 
@@ -256,11 +286,11 @@ public class CampaignServiceTests : IDisposable
             "  Updated body  ",
             "  reply@example.com  ");
 
-        updated.Should().BeTrue();
+        updated.Success.Should().BeTrue();
 
-        var refreshed = await _dbContext.Campaigns.FindAsync(campaign.Id);
+        var refreshed = await Db.Campaigns.FindAsync(campaign.Id);
         refreshed.Should().NotBeNull();
-        refreshed!.Title.Should().Be("Updated Campaign");
+        refreshed.Title.Should().Be("Updated Campaign");
         refreshed.Description.Should().Be("Updated description");
         refreshed.EmailSubject.Should().Be("Updated subject");
         refreshed.EmailBodyTemplate.Should().Be("Updated body");
@@ -268,29 +298,46 @@ public class CampaignServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task UpdateAsync_BlankEmailSubject_ReturnsValidationError()
+    {
+        var campaign = await SeedCampaignAsync();
+
+        var updated = await _service.UpdateAsync(
+            campaign.Id,
+            "Title",
+            null,
+            " ",
+            "Body",
+            null);
+
+        updated.Success.Should().BeFalse();
+        updated.ErrorKey.Should().Be("EmailSubjectRequired");
+    }
+
+    [HumansFact]
     public async Task GetDetailPageAsync_ReturnsComputedStats()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A", "B", "C" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A", "B", "C"]);
         var user = SeedUser(displayName: "Stats User");
-        var grantedCode = await _dbContext.CampaignCodes
+        var grantedCode = await Db.CampaignCodes
             .FirstAsync(c => c.CampaignId == campaign.Id && c.Code == "A");
 
-        _dbContext.CampaignGrants.Add(new CampaignGrant
+        Db.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
             CampaignCodeId = grantedCode.Id,
             UserId = user.Id,
-            AssignedAt = _clock.GetCurrentInstant(),
-            RedeemedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
+            RedeemedAt = Clock.GetCurrentInstant(),
             LatestEmailStatus = EmailOutboxStatus.Failed
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var page = await _service.GetDetailPageAsync(campaign.Id);
 
         page.Should().NotBeNull();
-        page!.Campaign.Id.Should().Be(campaign.Id);
+        page.Campaign.Id.Should().Be(campaign.Id);
         page.Stats.TotalCodes.Should().Be(3);
         page.Stats.AvailableCodes.Should().Be(2);
         page.Stats.FailedCount.Should().Be(1);
@@ -302,17 +349,17 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task GetSendWavePageAsync_ReturnsTeamsAndSelectedPreview()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A1", "A2" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A1", "A2"]);
         var user = SeedUser(displayName: "Wave User");
         var beta = SeedTeam("Beta Team");
         var alpha = SeedTeam("Alpha Team");
         SeedTeamMember(alpha.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var page = await _service.GetSendWavePageAsync(campaign.Id, alpha.Id);
 
         page.Should().NotBeNull();
-        page!.Campaign.Id.Should().Be(campaign.Id);
+        page.Campaign.Id.Should().Be(campaign.Id);
         page.SelectedTeamId.Should().Be(alpha.Id);
         page.Preview.Should().NotBeNull();
         page.Preview!.EligibleCount.Should().Be(1);
@@ -322,13 +369,13 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task GetCampaignIdForGrantAsync_ReturnsCampaignId()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-CODE"]);
         var user = SeedUser(displayName: "Grant User");
         var team = SeedTeam("Grant Team");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         await _service.SendWaveAsync(campaign.Id, team.Id);
-        var grant = await _dbContext.CampaignGrants.SingleAsync();
+        var grant = await Db.CampaignGrants.SingleAsync();
 
         var campaignId = await _service.GetCampaignIdForGrantAsync(grant.Id);
 
@@ -346,7 +393,7 @@ public class CampaignServiceTests : IDisposable
 
         await _service.CompleteAsync(campaign.Id);
 
-        var updated = await _dbContext.Campaigns.FindAsync(campaign.Id);
+        var updated = await Db.Campaigns.FindAsync(campaign.Id);
         updated!.Status.Should().Be(CampaignStatus.Completed);
     }
 
@@ -368,21 +415,20 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_AssignsCodeToTeamMember_CreatesGrantAndEnqueuesEmail()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(
-            new[] { "CODE-A", "CODE-B" },
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A", "CODE-B"],
             emailSubject: "Hi {{Name}}, here is your code",
             emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
 
         var user = SeedUser(displayName: "Alice");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var count = await _service.SendWaveAsync(campaign.Id, team.Id);
 
         count.Should().Be(1);
 
-        var grants = await _dbContext.CampaignGrants
+        var grants = await Db.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
             .ToListAsync();
         grants.Should().ContainSingle();
@@ -402,15 +448,14 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_PassesTemplateBodyAndSubjectToEmailService()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(
-            new[] { "CODE-1" },
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1"],
             emailSubject: "Hi {{Name}}, your code",
             emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
 
         var user = SeedUser(displayName: "Charlie");
         var team = SeedTeam("Gamma");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
 
@@ -428,14 +473,14 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_DuplicatePrevention_ExcludesAlreadyGranted()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "CODE-1", "CODE-2", "CODE-3" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1", "CODE-2", "CODE-3"]);
 
         var user1 = SeedUser(displayName: "Alice");
         var user2 = SeedUser(displayName: "Bob");
         var team = SeedTeam("Delta");
         SeedTeamMember(team.Id, user1.Id);
         SeedTeamMember(team.Id, user2.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // First wave sends to both
         var count1 = await _service.SendWaveAsync(campaign.Id, team.Id);
@@ -449,14 +494,14 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_InsufficientCodes_Throws()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "ONLY-ONE" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ONLY-ONE"]);
 
         var user1 = SeedUser(displayName: "Alice");
         var user2 = SeedUser(displayName: "Bob");
         var team = SeedTeam("Zeta");
         SeedTeamMember(team.Id, user1.Id);
         SeedTeamMember(team.Id, user2.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var act = () => _service.SendWaveAsync(campaign.Id, team.Id);
 
@@ -470,14 +515,13 @@ public class CampaignServiceTests : IDisposable
         // HTML-encoding of values happens inside OutboxEmailService (owner of the
         // outbox table) — CampaignService must forward raw values to it so that
         // encoding is applied consistently across all email templates.
-        var campaign = await SeedActiveCampaignWithCodesAsync(
-            new[] { "A<B>C" },
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A<B>C"],
             emailBodyTemplate: "<p>Code: {{Code}}, Name: {{Name}}</p>");
 
         var user = SeedUser(displayName: "O'Brien & Co");
         var team = SeedTeam("Eta");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
 
@@ -495,19 +539,19 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task ResendToGrantAsync_EnqueuesNewEmailAndResetsGrantStatus()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-CODE"]);
 
         var user = SeedUser(displayName: "Dave");
         var team = SeedTeam("Theta");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
         _emailService.ClearReceivedCalls();
 
-        var grant = await _dbContext.CampaignGrants.SingleAsync();
+        var grant = await Db.CampaignGrants.SingleAsync();
         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.ResendToGrantAsync(grant.Id);
 
@@ -515,8 +559,8 @@ public class CampaignServiceTests : IDisposable
             Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id),
             Arg.Any<CancellationToken>());
 
-        _dbContext.ChangeTracker.Clear();
-        var updatedGrant = await _dbContext.CampaignGrants.FindAsync(grant.Id);
+        Db.ChangeTracker.Clear();
+        var updatedGrant = await Db.CampaignGrants.FindAsync(grant.Id);
         updatedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
 
@@ -527,22 +571,22 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task RetryAllFailedAsync_EnqueuesEmailsForFailedGrantsOnly()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "FAIL-1", "FAIL-2" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["FAIL-1", "FAIL-2"]);
 
         var user1 = SeedUser(displayName: "FailUser1");
         var user2 = SeedUser(displayName: "FailUser2");
         var team = SeedTeam("Iota");
         SeedTeamMember(team.Id, user1.Id);
         SeedTeamMember(team.Id, user2.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
         _emailService.ClearReceivedCalls();
 
         // Mark one as failed
-        var grants = await _dbContext.CampaignGrants.ToListAsync();
+        var grants = await Db.CampaignGrants.ToListAsync();
         grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.RetryAllFailedAsync(campaign.Id);
 
@@ -551,8 +595,8 @@ public class CampaignServiceTests : IDisposable
             Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id),
             Arg.Any<CancellationToken>());
 
-        _dbContext.ChangeTracker.Clear();
-        var retriedGrant = await _dbContext.CampaignGrants.FindAsync(grants[0].Id);
+        Db.ChangeTracker.Clear();
+        var retriedGrant = await Db.CampaignGrants.FindAsync(grants[0].Id);
         retriedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
 
@@ -563,7 +607,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "P1", "P2", "P3", "P4", "P5" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["P1", "P2", "P3", "P4", "P5"]);
 
         var eligible = SeedUser(displayName: "Eligible");
         var alreadyGranted = SeedUser(displayName: "Granted");
@@ -572,19 +616,19 @@ public class CampaignServiceTests : IDisposable
         SeedTeamMember(team.Id, eligible.Id);
         SeedTeamMember(team.Id, alreadyGranted.Id);
         SeedTeamMember(team.Id, otherUser.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Grant a code to alreadyGranted user manually
-        var code = await _dbContext.CampaignCodes.FirstAsync(c => c.CampaignId == campaign.Id);
-        _dbContext.CampaignGrants.Add(new CampaignGrant
+        var code = await Db.CampaignCodes.FirstAsync(c => c.CampaignId == campaign.Id);
+        Db.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
             CampaignCodeId = code.Id,
             UserId = alreadyGranted.Id,
-            AssignedAt = _clock.GetCurrentInstant()
+            AssignedAt = Clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id);
 
@@ -598,50 +642,6 @@ public class CampaignServiceTests : IDisposable
     // ==========================================================================
     // Helpers
     // ==========================================================================
-
-    private User SeedUser(Guid? id = null, string displayName = "Test User")
-    {
-        var userId = id ?? Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        _dbContext.Users.Add(user);
-        return user;
-    }
-
-    private Team SeedTeam(string name)
-    {
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(" ", "-"),
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Teams.Add(team);
-        return team;
-    }
-
-    private TeamMember SeedTeamMember(Guid teamId, Guid userId)
-    {
-        var member = new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.TeamMembers.Add(member);
-        return member;
-    }
 
     private async Task<Campaign> SeedCampaignAsync(
         CampaignStatus status = CampaignStatus.Draft,
@@ -658,12 +658,12 @@ public class CampaignServiceTests : IDisposable
             EmailSubject = emailSubject,
             EmailBodyTemplate = emailBodyTemplate,
             Status = status,
-            CreatedAt = _clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = creatorId
         };
-        _dbContext.Campaigns.Add(campaign);
-        await _dbContext.SaveChangesAsync();
-        _dbContext.ChangeTracker.Clear();
+        Db.Campaigns.Add(campaign);
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
         return campaign;
     }
 
@@ -677,10 +677,10 @@ public class CampaignServiceTests : IDisposable
             emailSubject,
             emailBodyTemplate);
 
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         foreach (var code in codes)
         {
-            _dbContext.CampaignCodes.Add(new CampaignCode
+            Db.CampaignCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaign.Id,
@@ -688,8 +688,8 @@ public class CampaignServiceTests : IDisposable
                 ImportedAt = now
             });
         }
-        await _dbContext.SaveChangesAsync();
-        _dbContext.ChangeTracker.Clear();
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
         return campaign;
     }
 }

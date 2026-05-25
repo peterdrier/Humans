@@ -1,13 +1,16 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Tickets;
+using Humans.Application.Services.Users;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Tickets;
+using Humans.Infrastructure.Services.Tickets;
+using Humans.Web.Models.Tickets;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
-using Humans.Application.Interfaces.Tickets;
-using Humans.Application.Services.Tickets;
-using Humans.Infrastructure.Repositories.Tickets;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -15,24 +18,37 @@ internal static class TicketsSectionExtensions
 {
     internal static IServiceCollection AddTicketsSection(this IServiceCollection services)
     {
-        // TicketSyncService (§15 Part 1 — Tickets domain-persistence, issue #545c)
-        // Application-layer service goes through ITicketRepository for all DB access
-        // and consumes ITicketVendorService (Infrastructure connector) for vendor API calls.
-        // Repository is Singleton (IDbContextFactory-based) per design-rules §15b.
+        // TicketSync — see #545c.
         services.AddSingleton<ITicketRepository, TicketRepository>();
         services.AddScoped<TicketsTicketSyncService>();
         services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
 
-        // Application-layer TicketQueryService (no caching decorator yet —
-        // reads are not hot-path enough to justify one at our scale).
+        // T-07 keyed-inner + Singleton decorator. IUserDataContributor on the inner — GDPR contributor is one-per-section.
+        services.AddKeyedScoped<ITicketService, TicketsTicketQueryService>(
+            CachingTicketQueryService.InnerServiceKey);
         services.AddScoped<TicketsTicketQueryService>();
-        services.AddScoped<ITicketQueryService>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
 
-        // TicketTransferService + repository (§15b: repo is Singleton; service is Scoped).
+        services.AddSingleton<CachingTicketQueryService>();
+        services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketServiceRead>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddHostedService(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().UserHoldingsCacheStats);
+
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
         services.AddScoped<ITicketTransferService, TicketTransferService>();
+
+        // Orchestrates user provisioning from unmatched ticket attendees.
+        services.AddScoped<IAttendeeContactImportService, AttendeeContactImportService>();
+        services.AddScoped<TicketDashboardPageBuilder>();
+
+        // "Who's onsite" roster orchestrator (#736).
+        services.AddScoped<IOnsiteRosterService, OnsiteRosterService>();
+
+        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
 
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();

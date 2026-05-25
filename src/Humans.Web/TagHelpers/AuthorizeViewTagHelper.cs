@@ -18,22 +18,11 @@ namespace Humans.Web.TagHelpers;
 ///   &lt;div authorize-policy="ReviewQueueAccess"&gt;...&lt;/div&gt;
 /// </summary>
 [HtmlTargetElement("*", Attributes = "authorize-policy")]
-public class AuthorizeViewTagHelper : TagHelper
+public class AuthorizeViewTagHelper(
+    IHttpContextAccessor httpContextAccessor,
+    IAuthorizationService authorizationService,
+    ILogger<AuthorizeViewTagHelper> logger) : TagHelper
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IAuthorizationService _authorizationService;
-    private readonly ILogger<AuthorizeViewTagHelper> _logger;
-
-    public AuthorizeViewTagHelper(
-        IHttpContextAccessor httpContextAccessor,
-        IAuthorizationService authorizationService,
-        ILogger<AuthorizeViewTagHelper> logger)
-    {
-        _httpContextAccessor = httpContextAccessor;
-        _authorizationService = authorizationService;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Named policy to evaluate. Must match a registered ASP.NET Core authorization policy.
     /// </summary>
@@ -47,7 +36,7 @@ public class AuthorizeViewTagHelper : TagHelper
 
     public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
-        var user = _httpContextAccessor.HttpContext?.User;
+        var user = httpContextAccessor.HttpContext?.User;
         if (user is null)
         {
             output.SuppressOutput();
@@ -62,7 +51,7 @@ public class AuthorizeViewTagHelper : TagHelper
 
         try
         {
-            var result = await _authorizationService.AuthorizeAsync(user, Policy);
+            var result = await authorizationService.AuthorizeAsync(user, Policy);
             if (!result.Succeeded)
             {
                 output.SuppressOutput();
@@ -72,7 +61,7 @@ public class AuthorizeViewTagHelper : TagHelper
         catch (InvalidOperationException)
         {
             // Unknown policy name — fail closed (hide the element)
-            _logger.LogWarning("Unknown authorize-policy \"{PolicyName}\" — element suppressed (fail closed)", Policy);
+            logger.LogWarning("Unknown authorize-policy \"{PolicyName}\" — element suppressed (fail closed)", Policy);
             output.SuppressOutput();
             return;
         }

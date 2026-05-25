@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -7,22 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>
-/// Read-only API surface for QA/prod chat-history review (issue #631). Gated by
-/// <see cref="AgentApiKeyAuthFilter"/> so dev tooling and a dev-side Claude can
-/// pull recent agent conversations to look for refusal/handoff patterns and
-/// prompt-tuning opportunities. No mutations live here — deletion and settings
-/// remain on the admin web UI.
-/// </summary>
+/// <summary>Read-only API for QA/prod chat-history review (#631). Mutations stay on the admin web UI.</summary>
 [ApiController]
 [Route("api/agent")]
 [ServiceFilter(typeof(AgentApiKeyAuthFilter))]
 public class AgentApiController : ControllerBase
 {
     private readonly IAgentService _agent;
-    private readonly IUserService _users;
+    private readonly IUserServiceRead _users;
 
-    public AgentApiController(IAgentService agent, IUserService users)
+    public AgentApiController(IAgentService agent, IUserServiceRead users)
     {
         _agent = agent;
         _users = users;
@@ -52,8 +47,8 @@ public class AgentApiController : ControllerBase
         var conv = await _agent.GetConversationForAdminAsync(id, ct);
         if (conv is null) return NotFound();
 
-        var users = await ResolveUsersAsync(new[] { conv.UserId }, ct);
-        var displayName = users.TryGetValue(conv.UserId, out var u) ? u.DisplayName : null;
+        var users = await ResolveUsersAsync([conv.UserId], ct);
+        var displayName = users.TryGetValue(conv.UserId, out var u) ? u.BurnerName : null;
 
         return Ok(new
         {
@@ -79,16 +74,16 @@ public class AgentApiController : ControllerBase
         return Ok(conv.Messages.OrderBy(m => m.CreatedAt).Select(ToMessageDto));
     }
 
-    private async Task<IReadOnlyDictionary<Guid, User>> ResolveUsersAsync(
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveUsersAsync(
         IEnumerable<Guid> ids, CancellationToken ct)
     {
         var distinct = ids.Distinct().ToArray();
         if (distinct.Length == 0)
-            return new Dictionary<Guid, User>();
-        return await _users.GetByIdsAsync(distinct, ct);
+            return new Dictionary<Guid, UserInfo>();
+        return await _users.GetUserInfosAsync(distinct, ct);
     }
 
-    private static object ToSummary(AgentConversation c, IReadOnlyDictionary<Guid, User> users)
+    private static object ToSummary(AgentConversationTranscriptSnapshot c, IReadOnlyDictionary<Guid, UserInfo> users)
     {
         // Most-recent user message preview is useful at-a-glance triage signal —
         // matches the listing UX in the admin web view but stays JSON-clean for
@@ -106,7 +101,7 @@ public class AgentApiController : ControllerBase
         {
             c.Id,
             c.UserId,
-            UserDisplayName = users.TryGetValue(c.UserId, out var u) ? u.DisplayName : null,
+            UserDisplayName = users.TryGetValue(c.UserId, out var u) ? u.BurnerName : null,
             c.Locale,
             StartedAt = c.StartedAt.ToDateTimeUtc(),
             LastMessageAt = c.LastMessageAt.ToDateTimeUtc(),
@@ -118,6 +113,18 @@ public class AgentApiController : ControllerBase
     }
 
     private static object ToMessageDto(AgentMessage m) => new
+    {
+        m.Id,
+        Role = m.Role.ToString(),
+        m.Content,
+        CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+        m.Model,
+        m.RefusalReason,
+        m.HandedOffToFeedbackId,
+        FetchedDocs = m.FetchedDocs
+    };
+
+    private static object ToMessageDto(AgentMessageSnapshot m) => new
     {
         m.Id,
         Role = m.Role.ToString(),

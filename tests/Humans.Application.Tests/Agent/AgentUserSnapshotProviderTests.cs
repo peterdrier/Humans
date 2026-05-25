@@ -1,20 +1,20 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Agent;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 
@@ -55,7 +55,7 @@ public class AgentUserSnapshotProviderTests
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new LocalTime(9, 0), durationHours: 4),
             SignupStatus.Pending);
 
-        var provider = MakeProvider(userId, ev, new[] { signup });
+        var provider = MakeProvider(userId, ev, [signup]);
 
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
 
@@ -75,7 +75,7 @@ public class AgentUserSnapshotProviderTests
         var pastSignup = MakeSignup(userId, signupBlockId: null,
             MakeShift(rota, dayOffset: -100, isAllDay: true), SignupStatus.Confirmed);
 
-        var provider = MakeProvider(userId, ev, new[] { pastSignup });
+        var provider = MakeProvider(userId, ev, [pastSignup]);
 
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
 
@@ -95,18 +95,19 @@ public class AgentUserSnapshotProviderTests
         var bailed = MakeSignup(userId, null, MakeShift(rota, dayOffset: 4, isAllDay: true), SignupStatus.Bailed);
         var cancelled = MakeSignup(userId, null, MakeShift(rota, dayOffset: 5, isAllDay: true), SignupStatus.Cancelled);
 
-        var provider = MakeProvider(userId, ev, new[] { pending, confirmed, refused, bailed, cancelled });
+        var provider = MakeProvider(userId, ev, [pending, confirmed, refused, bailed, cancelled]);
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
 
         snapshot.UpcomingShifts.Should().HaveCount(2);
-        snapshot.UpcomingShifts.Select(e => e.Status).Should().BeEquivalentTo(new[] { SignupStatus.Pending, SignupStatus.Confirmed });
+        snapshot.UpcomingShifts.Select(e => e.Status).Should().BeEquivalentTo([SignupStatus.Pending, SignupStatus.Confirmed
+        ]);
     }
 
     [HumansFact]
     public async Task LoadAsync_returns_empty_when_no_active_event()
     {
         var userId = Guid.NewGuid();
-        var provider = MakeProvider(userId, activeEvent: null, signups: Array.Empty<ShiftSignup>());
+        var provider = MakeProvider(userId, activeEvent: null, signups: []);
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
         snapshot.UpcomingShifts.Should().BeEmpty();
     }
@@ -117,7 +118,7 @@ public class AgentUserSnapshotProviderTests
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
         var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
-        var provider = MakeProvider(userId, ev, Array.Empty<ShiftSignup>(), openTicketIds: ids);
+        var provider = MakeProvider(userId, ev, [], openTicketIds: ids);
 
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
 
@@ -134,7 +135,7 @@ public class AgentUserSnapshotProviderTests
             new TeamMembership("Build", TeamMemberRole.Coordinator),
             new TeamMembership("Cantina", TeamMemberRole.Member)
         };
-        var provider = MakeProvider(userId, ev, Array.Empty<ShiftSignup>(), teamMemberships: memberships);
+        var provider = MakeProvider(userId, ev, [], teamMemberships: memberships);
 
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
 
@@ -148,32 +149,66 @@ public class AgentUserSnapshotProviderTests
         IReadOnlyList<Guid>? openTicketIds = null,
         IReadOnlyList<TeamMembership>? teamMemberships = null)
     {
-        var profiles = Substitute.For<IProfileService>();
         var users = Substitute.For<IUserService>();
-        users.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" });
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" }
+                    .ToUserInfo()));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<RoleAssignment>());
+            .Returns([]);
 
-        var teams = Substitute.For<ITeamService>();
-        teams.GetActiveTeamMembershipsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(teamMemberships ?? Array.Empty<TeamMembership>());
+        var teams = Substitute.For<ITeamServiceRead>();
+        // Build a TeamInfo dict that mirrors the desired memberships so the
+        // reshape idiom (GetTeamsAsync → filter by member) returns the same data.
+        var membershipsToReturn = teamMemberships ?? [];
+        var teamInfos = membershipsToReturn
+            .Select((m, i) => new TeamInfo(
+                Id: Guid.NewGuid(),
+                Name: m.TeamName,
+                Description: null,
+                Slug: $"team-{i}",
+                IsActive: true,
+                IsSystemTeam: false,
+                SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false,
+                IsPublicPage: false,
+                IsHidden: m.IsHidden,
+                IsPromotedToDirectory: false,
+                CreatedAt: NodaTime.Instant.MinValue,
+                Members: [new TeamMemberInfo(Guid.NewGuid(), userId, "T", null, null, m.Role, NodaTime.Instant.MinValue)]))
+            .ToList();
+        var teamDict = teamInfos.ToDictionary(t => t.Id);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teamDict));
 
-        var consents = Substitute.For<IConsentService>();
+        var consents = Substitute.For<IConsentServiceRead>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<string>());
+            .Returns([]);
 
         var feedback = Substitute.For<IFeedbackService>();
         feedback.GetOpenFeedbackIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Guid>());
+            .Returns([]);
 
-        var tickets = Substitute.For<ITicketQueryService>();
-        tickets.GetOpenTicketIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(openTicketIds ?? Array.Empty<Guid>());
+        var tickets = Substitute.For<ITicketServiceRead>();
+        tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, [])
+            {
+                OpenTicketOrderIds = openTicketIds ?? [],
+            });
 
-        var shiftSignups = Substitute.For<IShiftSignupService>();
-        shiftSignups.GetByUserAsync(userId, activeEvent?.Id).Returns(signups);
+        var shiftView = Substitute.For<IShiftView>();
+        // Pre-built view: the inner ShiftViewService filters Signups to the
+        // active event, so tests with no active event still pass an empty view.
+        var view = new ShiftUserView(
+            UserId: userId,
+            Profile: null,
+            Availability: null,
+            BuildStatus: null,
+            TagPreferences: [],
+            Signups: activeEvent is null ? [] : signups);
+        shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(view));
 
         var shiftMgmt = Substitute.For<IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(activeEvent);
@@ -181,8 +216,8 @@ public class AgentUserSnapshotProviderTests
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
         return new AgentUserSnapshotProvider(
-            profiles, users, roles, teams, consents, feedback, tickets,
-            shiftSignups, shiftMgmt, clock);
+            users, roles, teams, consents, feedback, tickets,
+            shiftView, shiftMgmt, clock);
     }
 
     private static EventSettings MakeEventSettings() => new()

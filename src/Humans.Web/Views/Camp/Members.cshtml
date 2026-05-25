@@ -17,9 +17,7 @@
 <vc:temp-data-alerts />
 
 <div class="row">
-    @* Wide column — Roles panel needs the horizontal space. *@
     <div class="col-md-8">
-        @* Per-camp roles panel (issue nobodies-collective#489) *@
         @if (Model.RolesPanel is not null)
         {
             <div class="card mb-4">
@@ -59,7 +57,6 @@
                                     <div class="text-muted small mb-2">@Html.SanitizedMarkdown(role.Description)</div>
                                 }
 
-                                @* Filled slots — render in service-supplied order (AssignedAt) *@
                                 @foreach (var slot in role.FilledSlots)
                                 {
                                     <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
@@ -76,7 +73,6 @@
                                     </div>
                                 }
 
-                                @* Empty slots — search + assign (adds the human to the camp if not already a member). *@
                                 @if (Model.RolesPanel.CanManage)
                                 {
                                     var alreadyInRole = role.FilledSlots.Select(s => s.UserId).ToList();
@@ -85,13 +81,11 @@
                                         <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 mb-1">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
-                                            <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
-                                                { "FieldName", "userId" },
-                                                { "InstanceKey", $"role-{role.DefinitionId:N}-slot-{i}" },
-                                                { "Placeholder", "Search humans…" },
-                                                { "ExcludeUserIds", alreadyInRole },
-                                                { "Scope", "name" }
-                                            })' />
+                                            <vc:human-search field-name="userId"
+                                                             instance-key="@($"role-{role.DefinitionId:N}-slot-{i}")"
+                                                             placeholder="Search humans…"
+                                                             exclude-user-ids="@alreadyInRole"
+                                                             scope="Name" />
                                             <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign — adds to camp if not yet a member">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
@@ -105,7 +99,28 @@
             </div>
         }
 
-        @* Per-season membership (pending requests + active members) *@
+    </div>
+
+    <div class="col-md-4">
+        @if (Model.RolesPanel is not null && Model.RolesPanel.CanManage)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-user-plus me-1"></i> Add active member
+                </div>
+                <div class="card-body">
+                    <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
+                        @Html.AntiForgeryToken()
+                        <vc:human-search field-name="userId" scope="Name" />
+                        <button type="submit" class="btn btn-outline-success" title="Add active member">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+                    </form>
+                    <div class="form-text">Search by name. The human is added to the camp's open season as Active.</div>
+                </div>
+            </div>
+        }
+
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-users-gear me-1"></i> Humans this season (@Model.Year)
@@ -126,18 +141,22 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
                                 <vc:human user-id="@pending.UserId" />
                                 <div class="d-flex gap-2">
-                                    <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
-                                            <i class="fa-solid fa-check"></i>
-                                        </button>
-                                    </form>
-                                    <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
-                                            <i class="fa-solid fa-xmark"></i>
-                                        </button>
-                                    </form>
+                                    @* Defense-in-depth: only render approve/reject for Pending; service-side guard still applies. *@
+                                    @if (pending.Status == CampMemberStatus.Pending)
+                                    {
+                                        <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </div>
                             </li>
                         }
@@ -159,38 +178,30 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-2">
                                     <vc:human user-id="@active.UserId" />
-                                    @if (active.IsLead)
-                                    {
-                                        <span class="badge bg-info text-dark" title="Camp lead">Lead</span>
-                                    }
                                 </div>
                                 <div class="d-flex gap-2 align-items-center">
-                                    @if (active.CampMemberId != Guid.Empty)
-                                    {
+                                    @{
                                         var canGrant = Model.EeGrantedCount < Model.EeSlotCount;
                                         var eeDisabled = !active.HasEarlyEntry && !canGrant;
-                                        <form method="post" asp-action="SetMemberEarlyEntry"
-                                              asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId"
-                                              class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="granted" value="@((!active.HasEarlyEntry).ToString().ToLowerInvariant())" />
-                                            <button type="submit"
-                                                    class="btn btn-sm @(active.HasEarlyEntry ? "btn-success" : "btn-outline-secondary")"
-                                                    title="@(active.HasEarlyEntry ? "Revoke Early Entry" : "Grant Early Entry")"
-                                                    @(eeDisabled ? "disabled" : "")>
-                                                @(active.HasEarlyEntry ? "✓ EE" : "Grant EE")
-                                            </button>
-                                        </form>
                                     }
-                                    @if (!active.IsLead && active.CampMemberId != Guid.Empty)
-                                    {
-                                        <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
-                                                <i class="fa-solid fa-user-minus"></i>
-                                            </button>
-                                        </form>
-                                    }
+                                    <form method="post" asp-action="SetMemberEarlyEntry"
+                                          asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId"
+                                          class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="granted" value="@((!active.HasEarlyEntry).ToString().ToLowerInvariant())" />
+                                        <button type="submit"
+                                                class="btn btn-sm @(active.HasEarlyEntry ? "btn-success" : "btn-outline-secondary")"
+                                                title="@(active.HasEarlyEntry ? "Revoke Early Entry" : "Grant Early Entry")"
+                                                @(eeDisabled ? "disabled" : "")>
+                                            @(active.HasEarlyEntry ? "✓ EE" : "Grant EE")
+                                        </button>
+                                    </form>
+                                    <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
+                                            <i class="fa-solid fa-user-minus"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </li>
                         }
@@ -203,65 +214,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-4">
-        @* Add active member (issue nobodies-collective#489) *@
-        @if (Model.RolesPanel is not null && Model.RolesPanel.CanManage)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fa-solid fa-user-plus me-1"></i> Add active member
-                </div>
-                <div class="card-body">
-                    <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
-                        @Html.AntiForgeryToken()
-                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
-                            { "FieldName", "userId" },
-                            { "Scope", "name" }
-                        })' />
-                        <button type="submit" class="btn btn-outline-success" title="Add active member">
-                            <i class="fa-solid fa-user-plus"></i>
-                        </button>
-                    </form>
-                    <div class="form-text">Search by name. The human is added to the camp's open season as Active.</div>
-                </div>
-            </div>
-        }
-
-        @* Lead Management *@
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fa-solid fa-user-shield me-1"></i> Leads
-            </div>
-            <ul class="list-group list-group-flush">
-                @foreach (var lead in Model.Leads)
-                {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <vc:human user-id="@lead.UserId" />
-                        @if (Model.Leads.Count > 1)
-                        {
-                            <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead"
-                                        data-confirm="Remove @lead.DisplayName as a lead?">
-                                    <i class="fa-solid fa-user-minus"></i>
-                                </button>
-                            </form>
-                        }
-                    </li>
-                }
-            </ul>
-            <div class="card-body">
-                <form asp-action="AddLead" asp-route-slug="@Model.Slug" method="post" class="input-group">
-                    @Html.AntiForgeryToken()
-                    <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "userId" } })' />
-                    <button type="submit" class="btn btn-outline-success" title="Add lead">
-                        <i class="fa-solid fa-user-plus"></i>
-                    </button>
-                </form>
-                <div class="form-text">Search by name to find the new lead.</div>
-            </div>
-        </div>
     </div>
 </div>

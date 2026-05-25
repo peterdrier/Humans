@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -9,10 +10,9 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </summary>
 /// <remarks>
 /// Part 1 of issue #554 (Google Workspace §15 migration) introduced this
-/// repository surface so Notifications (<c>NotificationMeterProvider</c>),
-/// Admin metrics (<c>HumansMetricsService</c>), and the Admin daily digest
-/// (<c>SendAdminDailyDigestJob</c>) could reach the failed / pending /
-/// transient-retry counts without reading the table directly
+/// repository surface so Notifications (<c>NotificationMeterProvider</c>)
+/// and Admin metrics (<c>HumansMetricsService</c>) could reach the failed /
+/// pending / transient-retry counts without reading the table directly
 /// (design-rules §2c).
 ///
 /// Part 2c (issue #576) extended the surface with the admin read for the
@@ -30,6 +30,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Registered as Singleton via <c>IDbContextFactory&lt;HumansDbContext&gt;</c>
 /// per design-rules §15b.
 /// </remarks>
+[Section("GoogleIntegration")]
 public interface IGoogleSyncOutboxRepository : IRepository
 {
     // ==========================================================================

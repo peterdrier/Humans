@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -16,6 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
 /// status/source business rules before persisting.
 /// </remarks>
+[Section("Humans")]
 public interface IUserRepository : IRepository
 {
     // ==========================================================================
@@ -23,25 +25,18 @@ public interface IUserRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Loads a single user by id. Read-only (AsNoTracking). Returns null if
-    /// the user does not exist.
+    /// Loads a single user by id with the <see cref="User.UserEmails"/>
+    /// collection populated. Read-only (AsNoTracking). Returns null if the
+    /// user does not exist.
     /// </summary>
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batched user fetch keyed by id. Missing users are absent from the
-    /// returned dictionary. Read-only (AsNoTracking).
+    /// Batched user fetch keyed by id with each user's
+    /// <see cref="User.UserEmails"/> collection populated. Missing users are
+    /// absent from the returned dictionary. Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="GetByIdsAsync"/> but includes each user's
-    /// <see cref="User.UserEmails"/> collection so callers can resolve
-    /// <see cref="User.GetEffectiveEmail"/> correctly. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
 
@@ -52,16 +47,6 @@ public interface IUserRepository : IRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the language distribution of the given user ids, grouped by
-    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
-    /// render language stats for approved humans after the caller has
-    /// resolved the approved user id set from the Profile section.
-    /// </summary>
-    Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
     /// normalized address (case-insensitive). If <paramref name="alternateEmail"/>
     /// is non-null, also matches users whose email matches the alternate form
@@ -69,14 +54,6 @@ public interface IUserRepository : IRepository
     /// </summary>
     Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login
-    /// falls within the half-open window <c>[fromInclusive, toExclusive)</c>.
-    /// Read-only (AsNoTracking). Used by the shift coordinator dashboard.
-    /// </summary>
-    Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
@@ -104,6 +81,16 @@ public interface IUserRepository : IRepository
     /// Updates <c>User.DisplayName</c>. Returns false if the user does not exist.
     /// </summary>
     Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>User.PreferredLanguage</c>. Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>User.ICalToken</c>. Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
 
     /// <summary>
     /// Sets <c>User.GoogleEmail</c> if and only if it is currently null.
@@ -164,22 +151,20 @@ public interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every user id whose <c>MergedToUserId</c> equals
-    /// <paramref name="targetUserId"/>. Powers
-    /// <c>IUserService.GetMergedSourceIdsAsync</c>, the canonical chain-follow
-    /// primitive for append-only sections (audit log, consent records, budget
-    /// audit log) so per-user reads can also surface rows attributed to merged
-    /// tombstones. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns userIds of users that have at least one row in
     /// <c>AspNetUserLogins</c> but zero rows in <c>user_emails</c>. Used by the
     /// EmailProblems admin scan to surface ghost auth artifacts (case 8).
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Permanently deletes users after the caller has cleared cross-section
+    /// references. Also removes user_emails and AspNetUserLogins rows for
+    /// those users. Returns the number of user rows deleted.
+    /// </summary>
+    Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
@@ -262,12 +247,6 @@ public interface IUserRepository : IRepository
         Guid userId, Instant sentAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of users whose <c>GoogleEmailStatus</c> equals
-    /// <see cref="GoogleEmailStatus.Rejected"/>. Used by the admin digest.
-    /// </summary>
-    Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at
     /// or before <paramref name="now"/> and whose <c>DeletionEligibleAfter</c>
     /// is either null or at or before <paramref name="now"/>. Used by the
@@ -302,18 +281,23 @@ public interface IUserRepository : IRepository
         Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all participation records for a given year. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
-        int year, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns all participation records for a given user (across all years),
     /// ordered by year ascending. Read-only (AsNoTracking). Used by the GDPR
     /// export contributor under <c>GdprExportSections.EventParticipations</c>.
     /// </summary>
     Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk-loads all <c>event_participations</c> rows for the given userIds,
+    /// grouped by <c>UserId</c>. Users with no participations are absent from
+    /// the dictionary. Read-only (AsNoTracking). Used by
+    /// <c>CachingUserService.WarmAllAsync</c> to avoid N+1 per-user fetches
+    /// when populating the UserInfo cache for every user at startup.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
+        GetEventParticipationsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     // ==========================================================================
     // Writes — EventParticipation
@@ -330,6 +314,13 @@ public interface IUserRepository : IRepository
     /// If no record exists, a new one is created with the provided values and
     /// persisted — returns the new row. The returned entity is detached
     /// (AsNoTracking semantics; the owning context is disposed before return).
+    /// <para>
+    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
+    /// instant carried from <see cref="ParticipationSource.TicketSync"/>. Set
+    /// on row creation, and on the no-existing-row → Attended path. NEVER
+    /// overwritten once non-null — Attended-permanence applies to the
+    /// timestamp as well (issue nobodies-collective/Humans#736).
+    /// </para>
     /// </summary>
     Task<EventParticipation?> UpsertParticipationAsync(
         Guid userId,
@@ -337,6 +328,7 @@ public interface IUserRepository : IRepository
         ParticipationStatus status,
         ParticipationSource source,
         Instant? declaredAt,
+        Instant? checkedInAt,
         CancellationToken ct = default);
 
     /// <summary>

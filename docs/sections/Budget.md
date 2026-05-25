@@ -242,7 +242,7 @@ Stored as string via `HasConversion<string>()`.
 - **Decorator decision — no caching decorator.** Budget is admin-only, low-traffic. Same rationale as Governance / User / Feedback.
 - **Cross-domain navs `[Obsolete]`-marked:** `BudgetAuditLog.ActorUser`, `BudgetCategory.Team`. `BudgetLineItem.ResponsibleTeam` is NOT yet `[Obsolete]`-marked — still read by the Finance CategoryDetail view under `#pragma warning disable CS0618`; tracked as a follow-up with the User/Team nav strip.
 - **Cross-section calls** route through `ITeamService` (two narrow methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`), `ITicketingBudgetRepository` (Tickets-owned), and `IUserService.GetByIdsAsync` for actor display names.
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/TicketingBudgetArchitectureTests.cs` pins the §15 pattern for `TicketingBudgetService` / `ITicketingBudgetRepository`. General ratchet tests (`NoCrossSectionEfJoins`, `NoObsoleteNavReads`, `NoServiceInjectsDbContext`) apply to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/TicketingBudgetArchitectureTests.cs` pins the §15 pattern for `TicketingBudgetService` / `ITicketingBudgetRepository`. General architecture coverage (`NoCrossSectionEfJoins`, `NoObsoleteNavReads`, `HUM0009`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
 - **Repository shape** — `budget_audit_logs` is append-only; repository exposes `AddAuditLogAsync` / `GetXxxAuditLogAsync` only (§12).
 
 ### Touch-and-clean guidance

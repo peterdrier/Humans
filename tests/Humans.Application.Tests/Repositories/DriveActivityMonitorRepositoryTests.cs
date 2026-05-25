@@ -7,7 +7,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Xunit;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 
 namespace Humans.Application.Tests.Repositories;
@@ -40,7 +39,6 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
     public void Dispose()
     {
         _seedContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -109,14 +107,14 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
             OccurredAt = marker,
         };
 
-        await _repository.PersistAnomaliesAsync(new[] { entry }, marker);
+        await _repository.PersistAnomaliesAsync([entry], marker);
 
         await using var verify = _factory.CreateDbContext();
         var savedEntry = await verify.AuditLogEntries
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == entry.Id);
         savedEntry.Should().NotBeNull();
-        savedEntry!.Action.Should().Be(AuditAction.AnomalousPermissionDetected);
+        savedEntry.Action.Should().Be(AuditAction.AnomalousPermissionDetected);
 
         var marker2 = await _repository.GetLastRunTimestampAsync();
         marker2.Should().Be(marker);
@@ -143,7 +141,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
             OccurredAt = existingMarker,
         };
 
-        await _repository.PersistAnomaliesAsync(new[] { entry }, newLastRunAt: null);
+        await _repository.PersistAnomaliesAsync([entry], newLastRunAt: null);
 
         await using var verify = _factory.CreateDbContext();
         var entryCount = await verify.AuditLogEntries.CountAsync();
@@ -157,7 +155,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
     public async Task PersistAnomaliesAsync_WithNoAnomaliesAndNullMarker_IsNoOp()
     {
         await _repository.PersistAnomaliesAsync(
-            Array.Empty<AuditLogEntry>(), newLastRunAt: null);
+            [], newLastRunAt: null);
 
         await using var verify = _factory.CreateDbContext();
         (await verify.AuditLogEntries.CountAsync()).Should().Be(0);
@@ -176,7 +174,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         await _seedContext.SaveChangesAsync();
 
         var next = Instant.FromUtc(2026, 4, 22, 10, 0);
-        await _repository.PersistAnomaliesAsync(Array.Empty<AuditLogEntry>(), next);
+        await _repository.PersistAnomaliesAsync([], next);
 
         await using var verify = _factory.CreateDbContext();
         var rows = await verify.SystemSettings

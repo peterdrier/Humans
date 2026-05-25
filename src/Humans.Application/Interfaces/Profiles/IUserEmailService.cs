@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -17,6 +16,13 @@ public interface IUserEmailService : IApplicationService
     Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns whether the verification resend cooldown has elapsed for a
+    /// pending UserEmail row.
+    /// </summary>
+    Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
+        GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets emails visible on a user's profile based on viewer access level.
@@ -98,11 +104,20 @@ public interface IUserEmailService : IApplicationService
     /// <see cref="UnlinkAsync"/>, which removes the AspNetUserLogins row and
     /// the UserEmail row in one step). Blocks the delete (throws
     /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>)
-    /// when removing a verified row would leave the user with zero verified
-    /// UserEmail rows. Unverified rows are always deletable since they can't
-    /// be used for sign-in. See
+    /// when:
+    /// <list type="bullet">
+    /// <item>the row is the primary email (issue nobodies-collective/Humans#758)
+    /// — the user must promote another verified email to primary first; or</item>
+    /// <item>removing a verified row would leave the user with zero verified
+    /// UserEmail rows; or</item>
+    /// <item>the row's address is linked to the user's event ticket
+    /// (issue nobodies-collective/Humans#758) — removing it could disconnect
+    /// the ticket on the next vendor re-sync.</item>
+    /// </list>
+    /// Unverified rows are always deletable since they can't be used for
+    /// sign-in (subject to the primary / ticket-linked guards above). See
     /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>
-    /// PRs 1 and 4 for the design rationale.
+    /// PRs 1 and 4 for the original design rationale.
     /// </summary>
     Task<bool> DeleteEmailAsync(
         Guid userId,
@@ -132,7 +147,7 @@ public interface IUserEmailService : IApplicationService
     /// (<c>AccountProvisioningService</c>): on a freshly created User the row
     /// is added through <see cref="UserEmailService"/> rather than the
     /// repository directly so it goes through the same orchestrator
-    /// (Primary + Google invariants, FullProfile invalidation) as every
+    /// (Primary + Google invariants, UserInfo invalidation) as every
     /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
     /// Skips if the email already exists for this user (idempotent).
     /// </summary>
@@ -154,6 +169,14 @@ public interface IUserEmailService : IApplicationService
     Task<Guid?> FindAnyUserIdByEmailAsync(
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns (userId, userEmailId) for any UserEmail row matching the address,
+    /// or null if no row matches. Used by Mailer import to identify the specific
+    /// unverified row to delete before creating a contact.
+    /// </summary>
+    Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
+        string email, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Legacy backfill that wrote the verified @nobodies.team email into the
@@ -201,6 +224,18 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the distinct UserIds whose verified UserEmail matches the given
+    /// address (including gmail/googlemail alternate). Same matching semantics
+    /// as <see cref="FindVerifiedEmailWithUserAsync"/> but exposes the full
+    /// set. Callers that mutate user state (e.g. the Mailer import classifier)
+    /// must treat count &gt; 1 as ambiguous and skip — service-enforced
+    /// verified-email uniqueness can drift.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets @nobodies.team email status for all users who have one.
     /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
     /// Used for admin listing pages.
@@ -240,6 +275,16 @@ public interface IUserEmailService : IApplicationService
         string email,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns distinct user ids whose email rows match the supplied prefix
+    /// and suffix. Used by Admin-only maintenance flows that resolve marked
+    /// account sets through the Profile-owned email table.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Resolve a user by exact, case-insensitive email match against UserEmails. Returns null if zero or ambiguous matches.</summary>
     Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default);
 
@@ -272,7 +317,7 @@ public interface IUserEmailService : IApplicationService
     /// entity rather than a DTO because the callers genuinely need the
     /// per-row flags — projecting to a DTO would just rename them.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetEntitiesByUserIdAsync(
+    Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
@@ -283,7 +328,7 @@ public interface IUserEmailService : IApplicationService
     /// this once per reconcile). Users with no emails are absent from the
     /// returned dictionary.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>> GetEntitiesByUserIdsAsync(
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
@@ -402,7 +447,7 @@ public interface IUserEmailService : IApplicationService
     /// User (User row absent OR <c>MergedToUserId</c> set). Used by the EmailProblems
     /// admin scan. At ~500 users, full-table scan is trivial.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a single UserEmail row by id. Used by EmailProblems orphan cleanup.
@@ -560,8 +605,6 @@ public record UserEmailMatch(
 /// admin remediation screen.
 /// </summary>
 /// <param name="UserId">The user with the violation.</param>
-/// <param name="DisplayName">Display name (for the admin grid). May be null
-/// if the User row is missing or has no display name.</param>
 /// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
 /// A healthy value is 1 (when verified rows exist); 0 with verified rows is
 /// a violation, as are values &gt; 1.</param>
@@ -577,10 +620,28 @@ public record UserEmailMatch(
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
     Guid UserId,
-    string? DisplayName,
     int IsGoogleCount,
     int VerifiedCount,
     int VerifiedPrimaryCount,
     bool HasMultipleGoogle,
     bool HasZeroGoogle,
     bool HasPrimaryProblem);
+
+public record UserEmailOrphan(
+    Guid UserId,
+    Guid EmailId,
+    string Email);
+
+public sealed record UserEmailRowSnapshot(
+    Guid Id,
+    Guid UserId,
+    string Email,
+    bool IsVerified,
+    string? Provider,
+    string? ProviderKey,
+    bool IsGoogle,
+    bool IsPrimary,
+    ContactFieldVisibility? Visibility,
+    Instant? VerificationSentAt,
+    Instant CreatedAt,
+    Instant UpdatedAt);

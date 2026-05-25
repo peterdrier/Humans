@@ -1,29 +1,23 @@
 using AwesomeAssertions;
+using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Data;
 using Humans.Domain.Entities;
 using Humans.Domain.Constants;
 using NSubstitute;
-using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Repositories.Auth;
 
 namespace Humans.Application.Tests.Services;
 
-public class RoleAssignmentServiceTests : IDisposable
+public sealed class RoleAssignmentServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly IRoleAssignmentRepository _repository;
     private readonly IUserService _userService;
     private readonly INavBadgeCacheInvalidator _navBadge;
@@ -31,28 +25,11 @@ public class RoleAssignmentServiceTests : IDisposable
     private readonly RoleAssignmentService _service;
 
     public RoleAssignmentServiceTests()
+        : base(Instant.FromUtc(2026, 2, 15, 15, 30))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _repository = new RoleAssignmentRepository(DbFactory);
 
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 15, 30));
-
-        _repository = new RoleAssignmentRepository(new TestDbContextFactory(options));
-
-        _userService = Substitute.For<IUserService>();
-        _userService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, User> dict = _dbContext.Users
-                    .AsNoTracking()
-                    .Where(u => ids.Contains(u.Id))
-                    .ToDictionary(u => u.Id);
-                return Task.FromResult(dict);
-            });
+        _userService = NewDbBackedUserService();
 
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _claimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
@@ -60,19 +37,14 @@ public class RoleAssignmentServiceTests : IDisposable
         _service = new RoleAssignmentService(
             _repository,
             _userService,
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             Substitute.For<ISystemTeamSync>(),
             _navBadge,
             _claimsInvalidator,
-            _clock,
+            Substitute.For<IRoleAssignmentCacheInvalidator>(),
+            Clock,
             NullLogger<RoleAssignmentService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -80,7 +52,7 @@ public class RoleAssignmentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", _clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
 
         result.Should().BeFalse();
     }
@@ -92,10 +64,10 @@ public class RoleAssignmentServiceTests : IDisposable
         await AddAssignmentAsync(
             userId,
             "Board",
-            _clock.GetCurrentInstant() - Duration.FromDays(20),
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
+            Clock.GetCurrentInstant() - Duration.FromDays(20),
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", _clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
 
         result.Should().BeFalse();
     }
@@ -107,10 +79,10 @@ public class RoleAssignmentServiceTests : IDisposable
         await AddAssignmentAsync(
             userId,
             "Board",
-            _clock.GetCurrentInstant() - Duration.FromDays(5),
+            Clock.GetCurrentInstant() - Duration.FromDays(5),
             null);
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", _clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
 
         result.Should().BeTrue();
     }
@@ -122,10 +94,10 @@ public class RoleAssignmentServiceTests : IDisposable
         await AddAssignmentAsync(
             userId,
             "Board",
-            _clock.GetCurrentInstant() + Duration.FromDays(10),
+            Clock.GetCurrentInstant() + Duration.FromDays(10),
             null);
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", _clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
 
         result.Should().BeTrue();
     }
@@ -137,10 +109,10 @@ public class RoleAssignmentServiceTests : IDisposable
         await AddAssignmentAsync(
             userId,
             "Lead",
-            _clock.GetCurrentInstant() - Duration.FromDays(5),
+            Clock.GetCurrentInstant() - Duration.FromDays(5),
             null);
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", _clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
 
         result.Should().BeFalse();
     }
@@ -171,7 +143,7 @@ public class RoleAssignmentServiceTests : IDisposable
         var assignment = await AddAssignmentAsync(
             userId,
             RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(1),
+            Clock.GetCurrentInstant() - Duration.FromDays(1),
             null);
 
         var result = await _service.EndRoleAsync(
@@ -183,7 +155,7 @@ public class RoleAssignmentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByUserIdAsync_StitchesUserAndCreatedByUserNavs()
+    public async Task GetByUserIdAsync_ReturnsSummarySnapshots()
     {
         var userId = Guid.NewGuid();
         var creatorId = Guid.NewGuid();
@@ -192,23 +164,21 @@ public class RoleAssignmentServiceTests : IDisposable
         var assignment = await AddAssignmentAsync(
             userId,
             RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(1),
+            Clock.GetCurrentInstant() - Duration.FromDays(1),
             null,
             creatorId);
 
         var result = await _service.GetByUserIdAsync(userId);
 
         result.Should().ContainSingle();
-#pragma warning disable CS0618
-        result[0].User.Should().NotBeNull();
-        result[0].User.DisplayName.Should().Be("Target User");
-        result[0].CreatedByUser.Should().NotBeNull();
-        result[0].CreatedByUser!.DisplayName.Should().Be("Creator User");
-#pragma warning restore CS0618
+        result[0].Id.Should().Be(assignment.Id);
+        result[0].UserId.Should().Be(userId);
+        result[0].RoleName.Should().Be(RoleNames.Board);
+        result[0].CreatedByUserId.Should().Be(creatorId);
     }
 
     [HumansFact]
-    public async Task GetFilteredAsync_StitchesNavsForAllReturnedAssignments()
+    public async Task GetFilteredAsync_ReturnsSummarySnapshotsForAllReturnedAssignments()
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
@@ -216,18 +186,16 @@ public class RoleAssignmentServiceTests : IDisposable
         await SeedUserAsync(user1, "Alice");
         await SeedUserAsync(user2, "Bob");
         await SeedUserAsync(creator, "Creator");
-        await AddAssignmentAsync(user1, RoleNames.Board, _clock.GetCurrentInstant() - Duration.FromDays(1), null, creator);
-        await AddAssignmentAsync(user2, RoleNames.Board, _clock.GetCurrentInstant() - Duration.FromDays(2), null, creator);
+        await AddAssignmentAsync(user1, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null, creator);
+        await AddAssignmentAsync(user2, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(2), null, creator);
 
         var (items, total) = await _service.GetFilteredAsync(
-            roleFilter: RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, _clock.GetCurrentInstant());
+            roleFilter: RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, Clock.GetCurrentInstant());
 
         items.Should().HaveCount(2);
         total.Should().Be(2);
-#pragma warning disable CS0618
-        items.All(ra => ra.User is not null).Should().BeTrue();
-        items.All(ra => ra.CreatedByUser is not null).Should().BeTrue();
-#pragma warning restore CS0618
+        items.Select(ra => ra.UserDisplayName).Should().BeEquivalentTo("Alice", "Bob");
+        items.All(ra => string.Equals(ra.CreatedByDisplayName, "Creator", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -235,13 +203,13 @@ public class RoleAssignmentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");
-        await AddAssignmentAsync(userId, RoleNames.Board, _clock.GetCurrentInstant() - Duration.FromDays(10), null);
-        await AddAssignmentAsync(userId, RoleNames.Admin, _clock.GetCurrentInstant() - Duration.FromDays(5), null);
+        await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(10), null);
+        await AddAssignmentAsync(userId, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(5), null);
 
         var count = await _service.RevokeAllActiveAsync(userId);
 
         count.Should().Be(2);
-        var remaining = await _dbContext.RoleAssignments
+        var remaining = await Db.RoleAssignments
             .AsNoTracking()
             .Where(ra => ra.UserId == userId)
             .ToListAsync();
@@ -256,7 +224,7 @@ public class RoleAssignmentServiceTests : IDisposable
         var assignerId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");
         await SeedUserAsync(assignerId, "Admin");
-        await AddAssignmentAsync(userId, RoleNames.Board, _clock.GetCurrentInstant() - Duration.FromDays(1), null);
+        await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
 
         var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null);
 
@@ -273,18 +241,67 @@ public class RoleAssignmentServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
+    [HumansTheory]
+    [InlineData(null, 0, null, false)]
+    [InlineData(RoleNames.Admin, -10, null, true)]
+    [InlineData(RoleNames.Admin, -30, -1, false)]
+    [InlineData(RoleNames.Admin, 1, null, false)]
+    [InlineData(RoleNames.Board, -10, null, false)]
+    public async Task IsUserAdminAsync_HonorsActiveAdminWindow(
+        string? seededRole, int validFromDays, int? validToDays, bool expected)
+    {
+        var user = SeedUser();
+        if (seededRole is not null)
+        {
+            SeedRoleAssignment(
+                user.Id,
+                seededRole,
+                Clock.GetCurrentInstant() + Duration.FromDays(validFromDays),
+                validToDays.HasValue ? Clock.GetCurrentInstant() + Duration.FromDays(validToDays.Value) : null);
+        }
+        await Db.SaveChangesAsync();
+
+        var result = await _service.IsUserAdminAsync(user.Id);
+
+        result.Should().Be(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(null, 0, null, false)]
+    [InlineData(RoleNames.Board, -10, null, true)]
+    [InlineData(RoleNames.Board, -30, -1, false)]
+    [InlineData(RoleNames.Admin, -10, null, false)]
+    public async Task IsUserBoardMemberAsync_HonorsActiveBoardWindow(
+        string? seededRole, int validFromDays, int? validToDays, bool expected)
+    {
+        var user = SeedUser();
+        if (seededRole is not null)
+        {
+            SeedRoleAssignment(
+                user.Id,
+                seededRole,
+                Clock.GetCurrentInstant() + Duration.FromDays(validFromDays),
+                validToDays.HasValue ? Clock.GetCurrentInstant() + Duration.FromDays(validToDays.Value) : null);
+        }
+        await Db.SaveChangesAsync();
+
+        var result = await _service.IsUserBoardMemberAsync(user.Id);
+
+        result.Should().Be(expected);
+    }
+
     [HumansFact]
     public async Task ContributeForUserAsync_ReturnsRoleAssignmentsSlice()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");
-        await AddAssignmentAsync(userId, RoleNames.Board, _clock.GetCurrentInstant() - Duration.FromDays(1), null);
+        await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
 
         var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(
-            Humans.Application.Interfaces.Gdpr.GdprExportSections.RoleAssignments);
+            Interfaces.Gdpr.GdprExportSections.RoleAssignments);
     }
 
     private async Task<User> SeedUserAsync(Guid userId, string displayName)
@@ -298,8 +315,8 @@ public class RoleAssignmentServiceTests : IDisposable
             PreferredLanguage = "en"
         };
 
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(user);
+        await Db.SaveChangesAsync();
         return user;
     }
 
@@ -317,9 +334,9 @@ public class RoleAssignmentServiceTests : IDisposable
             CreatedByUserId = createdByUserId ?? Guid.NewGuid()
         };
 
-        _dbContext.RoleAssignments.Add(assignment);
+        Db.RoleAssignments.Add(assignment);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
         return assignment;
     }
 }

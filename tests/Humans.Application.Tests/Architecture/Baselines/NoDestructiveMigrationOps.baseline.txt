@@ -26,3 +26,5 @@ src/Humans.Infrastructure/Migrations/20260324014417_FeedbackUpgrade.cs:DropColum
 src/Humans.Infrastructure/Migrations/20260403192839_DropAuditLogActorName.cs:DropColumn(name=ActorName)#1
 src/Humans.Infrastructure/Migrations/20260414215135_RestrictGoogleResourceTeamDelete.cs:DropForeignKey(name=FK_google_resources_teams_TeamId)#1
 src/Humans.Infrastructure/Migrations/20260426185621_DropCampRoleIsRequired.cs:DropColumn(name=IsRequired)#1
+src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(name=ContainerCount)#1
+src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(name=ContainerNotes)#1

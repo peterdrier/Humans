@@ -1,4 +1,5 @@
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Web.Models;
 
@@ -17,6 +18,13 @@ public class CommunicationPreferencesViewModel
     /// "Unsubscribe from <category>" banner and pre-focuses that row in the matrix.
     /// </summary>
     public MessageCategory? HighlightCategory { get; set; }
+
+    /// <summary>
+    /// When true, the panel renders values only (no toggles, no POST forms) and exposes
+    /// <see cref="CategoryPreferenceItem.UpdateSource"/> / <see cref="CategoryPreferenceItem.UpdatedAt"/>
+    /// for admin attribution. False on self-service.
+    /// </summary>
+    public bool ReadOnly { get; set; }
 }
 
 public class CategoryPreferenceItem
@@ -52,4 +60,16 @@ public class CategoryPreferenceItem
     /// Optional note shown below the category (e.g., "Locked — you have a ticket order for 2026").
     /// </summary>
     public string? Note { get; set; }
+
+    /// <summary>
+    /// Who/what last changed this preference (e.g. "Profile", "MailerLiteSync", "MagicLink").
+    /// Surfaced in admin read-only view; null on self-service.
+    /// </summary>
+    public string? UpdateSource { get; set; }
+
+    /// <summary>
+    /// When this preference was last changed. Null if no preference row exists yet
+    /// (i.e. the user has never touched this category and we're showing defaults).
+    /// </summary>
+    public Instant? UpdatedAt { get; set; }
 }

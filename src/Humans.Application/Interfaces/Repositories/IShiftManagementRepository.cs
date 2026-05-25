@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -33,6 +34,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// contexts per call.
 /// </para>
 /// </summary>
+[Section("Shifts")]
 public interface IShiftManagementRepository : IRepository
 {
     // ==========================================================================
@@ -53,6 +55,12 @@ public interface IShiftManagementRepository : IRepository
 
     /// <summary>Updates an existing <see cref="EventSettings"/>.</summary>
     Task UpdateEventSettingsAsync(EventSettings entity, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes an <see cref="EventSettings"/> row and all Shifts-owned rows beneath it.
+    /// Returns the number of event rows deleted.
+    /// </summary>
+    Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     // ==========================================================================
     // Rota
@@ -90,6 +98,13 @@ public interface IShiftManagementRepository : IRepository
     /// <see cref="Rota.Team"/> is NOT populated — callers stitch via <c>ITeamService</c>.
     /// </summary>
     Task<Rota?> GetRotaByIdWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads a rota with its shifts, shift signups, and tags (same-section navs)
+    /// for the <see cref="DTOs.Shifts.ShiftRotaView"/> cache decorator. Read-only.
+    /// Returns null if the rota does not exist. Issue #720.
+    /// </summary>
+    Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
     /// Loads all rotas for a team+event with shifts, shift signups, and tags.
@@ -186,7 +201,7 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         CancellationToken ct = default);
 
     /// <summary>
@@ -203,7 +218,7 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         bool includeAdminOnly,
         bool includeHidden,
         int? fromDayOffset,
@@ -213,11 +228,11 @@ public interface IShiftManagementRepository : IRepository
 
     /// <summary>
     /// Loads shifts (with signups) for urgency scoring. Filters by event,
-    /// optional department, and optional day-offset bounds (inclusive).
+    /// optional department team-id set, and optional day-offset bounds (inclusive).
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
         Guid eventSettingsId,
-        Guid? departmentId,
+        IReadOnlyCollection<Guid>? departmentTeamIds,
         int? minDayOffset,
         int? maxDayOffset,
         CancellationToken ct = default);
@@ -404,6 +419,14 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<VolunteerEventProfile?> GetVolunteerEventProfileAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads <see cref="VolunteerEventProfile"/> rows for the supplied user ids
+    /// in one query (read-only). Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     Task AddVolunteerEventProfileAsync(
         VolunteerEventProfile profile, CancellationToken ct = default);

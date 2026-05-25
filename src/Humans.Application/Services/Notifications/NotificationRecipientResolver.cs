@@ -5,36 +5,20 @@ using Humans.Application.Interfaces.Teams;
 namespace Humans.Application.Services.Notifications;
 
 /// <summary>
-/// Default <see cref="INotificationRecipientResolver"/> implementation that
-/// delegates to <see cref="ITeamService"/> and
-/// <see cref="IRoleAssignmentService"/>.
+/// Pass-through adapter delegating to <see cref="ITeamServiceRead"/> and
+/// <see cref="IRoleAssignmentService"/>. Exists so <see cref="INotificationService"/>
+/// doesn't depend on those services directly (they inject INotificationService,
+/// which would close a DI cycle).
 /// </summary>
-/// <remarks>
-/// Pass-through adapter — holds no state and applies no business logic beyond
-/// projecting team + members into <see cref="TeamNotificationInfo"/>. Exists
-/// solely to keep <see cref="INotificationService"/> from depending on the
-/// team / role-assignment services directly (those services inject
-/// <see cref="INotificationService"/> in the other direction, which would
-/// otherwise close a cycle).
-/// </remarks>
-public sealed class NotificationRecipientResolver : INotificationRecipientResolver
+public sealed class NotificationRecipientResolver(
+    ITeamServiceRead teamService,
+    IRoleAssignmentService roleAssignmentService) : INotificationRecipientResolver
 {
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-
-    public NotificationRecipientResolver(
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService)
-    {
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-    }
-
     public async Task<TeamNotificationInfo?> GetTeamNotificationInfoAsync(
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamAsync(teamId, cancellationToken);
+        var team = await teamService.GetTeamAsync(teamId, cancellationToken);
         if (team is null)
         {
             return null;
@@ -47,5 +31,5 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(
         string roleName,
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
+        roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
 }

@@ -1,13 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Governance;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Users;
@@ -21,43 +16,23 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 [Route("[controller]")]
-public class OnboardingReviewController : HumansControllerBase
+public class OnboardingReviewController(
+    IUserServiceRead userService,
+    IOnboardingService onboardingService,
+    ILogger<OnboardingReviewController> logger,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IOnboardingService _onboardingService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IUserService _userService;
-    private readonly ILogger<OnboardingReviewController> _logger;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-
-    public OnboardingReviewController(
-        UserManager<User> userManager,
-        IOnboardingService onboardingService,
-        IApplicationDecisionService applicationDecisionService,
-        IUserService userService,
-        ILogger<OnboardingReviewController> logger,
-        IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
-    {
-        _onboardingService = onboardingService;
-        _applicationDecisionService = applicationDecisionService;
-        _userService = userService;
-        _logger = logger;
-        _localizer = localizer;
-    }
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var data = await _onboardingService.GetReviewQueueAsync(ct);
-
-        // Batch-load users for all profiles (nav property stripped)
-        var allUserIds = data.Pending.Concat(data.Flagged).Select(p => p.UserId).Distinct().ToList();
-        var usersById = await _userService.GetByIdsAsync(allUserIds, ct);
+        var data = await onboardingService.GetReviewQueueAsync(ct);
 
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = data.Pending.Select(p => MapToItem(p, usersById, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
-            FlaggedReviews = data.Flagged.Select(p => MapToItem(p, usersById, data.PendingAppUserIds, data.ConsentProgress)).ToList()
+            PendingReviews = data.Pending.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
+            FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList()
         };
 
         return View(viewModel);
@@ -66,20 +41,18 @@ public class OnboardingReviewController : HumansControllerBase
     [HttpGet("{userId:guid}")]
     public async Task<IActionResult> Detail(Guid userId, CancellationToken ct)
     {
-        var detail = await _onboardingService.GetReviewDetailAsync(userId, ct);
-        var (profile, consentCount, requiredConsentCount, pendingApp) =
-            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplication);
+        var detail = await onboardingService.GetReviewDetailAsync(userId, ct);
+        var (profile, consentCount, requiredConsentCount, pendingApplicationMotivation) =
+            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplicationMotivation);
 
         if (profile is null)
             return NotFound();
 
-        var detailUser = await _userService.GetByIdAsync(userId, ct);
+        var detailUser = await _userService.GetUserInfoAsync(userId, ct);
 
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = detailUser?.DisplayName ?? "Unknown",
-            ProfilePictureUrl = detailUser?.ProfilePictureUrl,
             Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
@@ -91,8 +64,8 @@ public class OnboardingReviewController : HumansControllerBase
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
             ConsentCount = consentCount,
             RequiredConsentCount = requiredConsentCount,
-            HasPendingApplication = pendingApp is not null,
-            ApplicationMotivation = pendingApp?.Motivation
+            HasPendingApplication = pendingApplicationMotivation is not null,
+            ApplicationMotivation = pendingApplicationMotivation
         };
 
         return View(viewModel);
@@ -103,31 +76,31 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
         try
         {
-            var result = await _onboardingService.ClearConsentCheckAsync(
+            var result = await onboardingService.ClearConsentCheckAsync(
                 userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
                 SetError(result.ErrorKey switch
                 {
-                    "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
-                    _ => _localizer["Common_Error"].Value
+                    "AlreadyRejected" => localizer["OnboardingReview_AlreadyRejected"].Value,
+                    _ => localizer["Common_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(_localizer["OnboardingReview_Cleared"].Value);
+            SetSuccess(localizer["OnboardingReview_Cleared"].Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear consent check for user {UserId}", userId);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to clear consent check for user {UserId}", userId);
+            SetError(localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -137,24 +110,24 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> BulkClear([FromForm] List<Guid> selectedUserIds, CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
         try
         {
-            var result = await _onboardingService.BulkClearConsentChecksAsync(
+            var result = await onboardingService.BulkClearConsentChecksAsync(
                 selectedUserIds, currentUser.Id, ct);
             SetBulkClearResultMessage(result, selectedUserIds.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Failed to bulk clear consent checks for {Count} users: {UserIds}",
                 selectedUserIds.Count,
                 selectedUserIds);
-            SetError(_localizer["Common_Error"].Value);
+            SetError(localizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index));
@@ -164,15 +137,15 @@ public class OnboardingReviewController : HumansControllerBase
     {
         if (result.ApprovedCount == 0)
         {
-            SetInfo(_localizer["OnboardingReview_BulkClearedNone"].Value);
+            SetInfo(localizer["OnboardingReview_BulkClearedNone"].Value);
         }
         else if (result.ApprovedCount < selectedCount)
         {
-            SetSuccess(_localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
+            SetSuccess(localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
         }
         else
         {
-            SetSuccess(_localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
+            SetSuccess(localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
         }
     }
 
@@ -181,27 +154,27 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
         try
         {
-            var result = await _onboardingService.FlagConsentCheckAsync(
+            var result = await onboardingService.FlagConsentCheckAsync(
                 userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
-                SetError(_localizer["Common_Error"].Value);
+                SetError(localizer["Common_Error"].Value);
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(_localizer["OnboardingReview_Flagged"].Value);
+            SetSuccess(localizer["OnboardingReview_Flagged"].Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to flag consent check for user {UserId}", userId);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to flag consent check for user {UserId}", userId);
+            SetError(localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -211,255 +184,54 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
         try
         {
-            var result = await _onboardingService.RejectSignupAsync(
+            var result = await onboardingService.RejectSignupAsync(
                 userId, currentUser.Id, reason);
 
-            if (!result.Success)
-            {
-                SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
-                    ? _localizer["OnboardingReview_AlreadyRejected"].Value
-                    : _localizer["Common_Error"].Value);
-                return RedirectToAction(nameof(Index));
-            }
-
-            SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
+            SetRejectSignupResultMessage(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to reject signup for user {UserId}", userId);
-            SetError(_localizer["Common_Error"].Value);
+            logger.LogError(ex, "Failed to reject signup for user {UserId}", userId);
+            SetError(localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpGet("BoardVoting")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> BoardVoting(CancellationToken ct)
+    private void SetRejectSignupResultMessage(OnboardingResult result)
     {
-        var (applications, boardMembers) = await _applicationDecisionService.GetBoardVotingDashboardAsync(ct);
-
-        var viewModel = new BoardVotingDashboardViewModel
+        if (result.Success)
         {
-            BoardMembers = boardMembers
-                .Select(m => new BoardVoteMemberViewModel
-                {
-                    UserId = m.UserId,
-                    DisplayName = m.DisplayName
-                })
-                .ToList(),
-            Applications = applications.Select(a =>
-            {
-                var appVm = new BoardVotingApplicationViewModel
-                {
-                    ApplicationId = a.ApplicationId,
-                    UserId = a.UserId,
-                    DisplayName = a.UserDisplayName,
-                    ProfilePictureUrl = a.UserProfilePictureUrl,
-                    MembershipTier = a.MembershipTier,
-                    ApplicationMotivation = a.ApplicationMotivation,
-                    SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
-                    Status = a.Status
-                };
-                foreach (var vote in a.Votes)
-                {
-                    appVm.VotesByBoardMember[vote.BoardMemberUserId] = new BoardVoteCellViewModel
-                    {
-                        Vote = vote.Vote,
-                        Note = vote.Note
-                    };
-                }
-                return appVm;
-            }).ToList(),
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpGet("BoardVoting/{applicationId:guid}")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> BoardVotingDetail(Guid applicationId, CancellationToken ct)
-    {
-        var application = await _applicationDecisionService.GetBoardVotingDetailAsync(applicationId, ct);
-        if (application is null)
-            return NotFound();
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        var currentVote = application.Votes.FirstOrDefault(v => v.BoardMemberUserId == currentUser.Id);
-        var isAdmin = RoleChecks.IsAdmin(User);
-
-        var viewModel = new BoardVotingDetailViewModel
-        {
-            ApplicationId = application.ApplicationId,
-            UserId = application.UserId,
-            DisplayName = application.DisplayName,
-            ProfilePictureUrl = application.ProfilePictureUrl,
-            Email = application.Email,
-            FirstName = application.FirstName,
-            LastName = application.LastName,
-            City = application.City,
-            CountryCode = application.CountryCode,
-            MembershipTier = application.MembershipTier,
-            Status = application.Status,
-            ApplicationMotivation = application.Motivation,
-            AdditionalInfo = application.AdditionalInfo,
-            SignificantContribution = application.SignificantContribution,
-            RoleUnderstanding = application.RoleUnderstanding,
-            SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
-            Votes = application.Votes
-                .Select(v => new BoardVoteDetailItemViewModel
-                {
-                    BoardMemberUserId = v.BoardMemberUserId,
-                    DisplayName = v.BoardMemberDisplayName ?? string.Empty,
-                    Vote = v.Vote,
-                    Note = v.Note,
-                    VotedAt = v.VotedAt.ToDateTimeUtc()
-                })
-                .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .ToList(),
-            CurrentUserVote = currentVote?.Vote,
-            CurrentUserNote = currentVote?.Note,
-            CanFinalize = isAdmin
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpPost("BoardVoting/Vote")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.BoardOnly)]
-    public async Task<IActionResult> Vote(Guid applicationId, VoteChoice vote, string? note)
-    {
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        try
-        {
-            var result = await _applicationDecisionService.CastBoardVoteAsync(
-                applicationId, currentUser.Id, vote, note);
-
-            if (!result.Success)
-            {
-                SetError(result.ErrorKey switch
-                {
-                    "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                    "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
-                    _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
-                });
-                return RedirectToAction(nameof(BoardVoting));
-            }
-
-            SetSuccess(_localizer["BoardVoting_VoteSaved"].Value);
-            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to cast board vote for application {ApplicationId}", applicationId);
-            SetError(_localizer["BoardVoting_ApplicationNotVotable"].Value);
-            return RedirectToAction(nameof(BoardVoting));
-        }
-    }
-
-    [HttpPost("BoardVoting/Finalize")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
-    {
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        // Require a valid meeting date (validated in controller as it's form input)
-        LocalDate? meetingDate = null;
-        if (!string.IsNullOrWhiteSpace(model.BoardMeetingDate))
-        {
-            var pattern = NodaTime.Text.LocalDatePattern.Iso;
-            var parseResult = pattern.Parse(model.BoardMeetingDate);
-            if (parseResult.Success)
-                meetingDate = parseResult.Value;
+            SetSuccess(localizer["OnboardingReview_Rejected"].Value);
+            return;
         }
 
-        if (meetingDate is null)
-        {
-            SetError(_localizer["BoardVoting_MeetingDateRequired"].Value);
-            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
-        }
-
-        // Require at least one board vote before finalization
-        var hasVotes = await _applicationDecisionService.HasBoardVotesAsync(model.ApplicationId);
-        if (!hasVotes)
-        {
-            SetError(_localizer["BoardVoting_NoVotes"].Value);
-            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
-        }
-
-        try
-        {
-            ApplicationDecisionResult result;
-            if (model.Approved)
-            {
-                result = await _applicationDecisionService.ApproveAsync(
-                    model.ApplicationId, currentUser.Id,
-                    model.DecisionNote, meetingDate);
-            }
-            else
-            {
-                result = await _applicationDecisionService.RejectAsync(
-                    model.ApplicationId, currentUser.Id,
-                    model.DecisionNote ?? string.Empty, meetingDate);
-            }
-
-            if (!result.Success)
-            {
-                _logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
-                    model.ApplicationId, result.ErrorKey);
-                SetError(result.ErrorKey switch
-                {
-                    "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                    "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
-                    "ConcurrencyConflict" => _localizer["BoardVoting_ConcurrencyConflict"].Value,
-                    _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
-                });
-                return RedirectToAction(nameof(BoardVoting));
-            }
-
-            SetSuccess(_localizer["BoardVoting_Finalized"].Value);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to finalize application {ApplicationId}", model.ApplicationId);
-            SetError(_localizer["BoardVoting_ApplicationNotVotable"].Value);
-        }
-        return RedirectToAction(nameof(BoardVoting));
+        SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
+            ? localizer["OnboardingReview_AlreadyRejected"].Value
+            : localizer["Common_Error"].Value);
     }
 
     private static OnboardingReviewItemViewModel MapToItem(
-        Profile profile, IReadOnlyDictionary<Guid, User> usersById,
+        UserInfo info,
         HashSet<Guid> pendingAppUserIds,
         Dictionary<Guid, ConsentProgressInfo> consentProgress)
     {
-        var progress = consentProgress.GetValueOrDefault(profile.UserId);
-        var itemUser = usersById.GetValueOrDefault(profile.UserId);
+        var progress = consentProgress.GetValueOrDefault(info.Id);
+        var profile = info.Profile!;
         return new OnboardingReviewItemViewModel
         {
-            UserId = profile.UserId,
-            DisplayName = itemUser?.DisplayName ?? "Unknown",
+            UserId = info.Id,
             LegalName = profile.FullName,
-            ProfilePictureUrl = itemUser?.ProfilePictureUrl,
-            Email = itemUser?.Email ?? string.Empty,
+            Email = info.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             MembershipTier = profile.MembershipTier,
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
-            HasPendingApplication = pendingAppUserIds.Contains(profile.UserId),
+            HasPendingApplication = pendingAppUserIds.Contains(info.Id),
             ConsentCount = progress?.Signed ?? 0,
             RequiredConsentCount = progress?.Required ?? 0
         };

@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using NodaTime;
-using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 
@@ -60,7 +59,7 @@ public enum IssueViewMode
 
 public class IssuePageViewModel
 {
-    public List<IssueListItemViewModel> Issues { get; set; } = new();
+    public List<IssueListItemViewModel> Issues { get; set; } = [];
 
     public IssueViewMode View { get; set; } = IssueViewMode.All;
     public IssueCategory? CategoryFilter { get; set; }
@@ -74,10 +73,10 @@ public class IssuePageViewModel
     public Guid? SelectedIssueId { get; set; }
 
     /// <summary>Sections this viewer is allowed to filter on (Admin sees all, others see their owned sections).</summary>
-    public List<SectionOption> SectionOptions { get; set; } = new();
+    public List<SectionOption> SectionOptions { get; set; } = [];
 
     /// <summary>Reporter dropdown (Admin only — non-admins only see their own queue).</summary>
-    public List<ReporterDropdownItem> Reporters { get; set; } = new();
+    public List<ReporterDropdownItem> Reporters { get; set; } = [];
 
     /// <summary>All status enum values, exposed so the view doesn't reach into Domain.</summary>
     public IssueStatus[] StatusValues => Enum.GetValues<IssueStatus>();
@@ -103,12 +102,10 @@ public class IssueListItemViewModel
     public string? Section { get; set; }
     public string AreaLabel { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
     public DateTime LastUpdate { get; set; }
     public int CommentCount { get; set; }
     public Guid? AssigneeUserId { get; set; }
-    public string? AssigneeName { get; set; }
     public int? GitHubIssueNumber { get; set; }
 }
 
@@ -126,9 +123,7 @@ public class IssueDetailViewModel
     public string? AdditionalContext { get; set; }
     public string? ScreenshotUrl { get; set; }
 
-    public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
-    public string? AssigneeName { get; set; }
     public Guid? AssigneeUserId { get; set; }
     public int? GitHubIssueNumber { get; set; }
     public LocalDate? DueDate { get; set; }
@@ -141,14 +136,14 @@ public class IssueDetailViewModel
     public bool IsHandler { get; set; }
     public bool IsReporter { get; set; }
 
-    public List<IssueThreadEventViewModel> Thread { get; set; } = new();
+    public List<IssueThreadEventViewModel> Thread { get; set; } = [];
 
     /// <summary>
     /// Active humans the handler can assign this issue to. Empty for non-handlers.
     /// Reuses <see cref="AssigneeOption"/> from the Feedback view models so the
     /// shape stays consistent across triage UIs.
     /// </summary>
-    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
+    public List<AssigneeOption> AssigneeOptions { get; set; } = [];
 }
 
 public class IssueThreadEventViewModel
@@ -221,6 +216,7 @@ public static class AreaLabelMap
             [IssueSectionRouting.Legal] = "Legal & consent",
             [IssueSectionRouting.Onboarding] = "Onboarding",
             [IssueSectionRouting.Profiles] = "Profile & onboarding",
+            [IssueSectionRouting.Scanner] = "Scanner",
             [IssueSectionRouting.Shifts] = "Shifts & volunteering",
             [IssueSectionRouting.Teams] = "Teams",
             [IssueSectionRouting.Tickets] = "Tickets",

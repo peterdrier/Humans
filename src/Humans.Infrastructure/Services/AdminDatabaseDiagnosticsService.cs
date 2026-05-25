@@ -1,58 +1,39 @@
 using Humans.Application.Interfaces.Admin;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsService
+public sealed class AdminDatabaseDiagnosticsService(
+    IAdminDatabaseDiagnosticsRepository repository,
+    IUserServiceRead userService,
+    ITicketServiceRead ticketQueryService) : IAdminDatabaseDiagnosticsService
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
-    private readonly ITicketQueryService _ticketQueryService;
+    public Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default) =>
+        repository.GetMigrationStatusAsync(ct);
 
-    public AdminDatabaseDiagnosticsService(
-        IDbContextFactory<HumansDbContext> factory,
-        IUserService userService,
-        IProfileService profileService,
-        ITicketQueryService ticketQueryService)
-    {
-        _factory = factory;
-        _userService = userService;
-        _profileService = profileService;
-        _ticketQueryService = ticketQueryService;
-    }
-
-    public async Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
-        var pending = await db.Database.GetPendingMigrationsAsync(ct);
-
-        return new DatabaseMigrationStatus(
-            LastApplied: applied.LastOrDefault(),
-            AppliedCount: applied.Count,
-            PendingCount: pending.Count());
-    }
-
-    public async Task<int> ClearHangfireLocksAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock", ct);
-    }
+    public Task<int> ClearHangfireLocksAsync(CancellationToken ct = default) =>
+        repository.ClearHangfireLocksAsync(ct);
 
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
-        var allUsers = await _userService.GetAllUsersAsync(ct);
-        var allUserIds = allUsers.Select(u => u.Id).ToArray();
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
-        var profileUserIds = profilesByUserId.Keys.ToHashSet();
-        IReadOnlySet<Guid> ticketUserIds = year.HasValue
-            ? await _ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
-            : await _ticketQueryService.GetAllMatchedUserIdsAsync();
+        var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
+        var start = year.HasValue ? Instant.FromUtc(year.Value, 1, 1, 0, 0) : default;
+        var end = year.HasValue ? Instant.FromUtc(year.Value + 1, 1, 1, 0, 0) : default;
+        IReadOnlySet<Guid> ticketUserIds = ticketOrders
+            .Where(o => !year.HasValue || (o.PurchasedAt >= start && o.PurchasedAt < end))
+            .SelectMany(o => o.MatchedUserId.HasValue
+                ? o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value)
+                    .Append(o.MatchedUserId.Value)
+                : o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value))
+            .ToHashSet();
 
         var withProfile = 0;
         var withTicket = 0;
@@ -61,7 +42,7 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
 
         foreach (var user in allUsers)
         {
-            var hasProfile = profileUserIds.Contains(user.Id);
+            var hasProfile = user.Profile is not null;
             var hasTicket = ticketUserIds.Contains(user.Id);
 
             if (hasProfile) withProfile++;
@@ -70,7 +51,12 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var years = await _ticketQueryService.GetMatchedTicketYearsAsync(ct);
+        var years = ticketOrders
+            .Where(o => o.MatchedUserId.HasValue)
+            .Select(o => o.PurchasedAt.InUtc().Year)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToList();
 
         return new AudienceSegmentation(
             TotalAccounts: allUsers.Count,

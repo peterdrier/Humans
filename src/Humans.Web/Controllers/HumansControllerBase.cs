@@ -1,50 +1,55 @@
-using Humans.Application.Services.AuditLog;
-using Humans.Domain.Entities;
+using System.Security.Claims;
+using Humans.Application;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Constants;
-using Humans.Web.Models;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-public abstract class HumansControllerBase : Controller
+public abstract class HumansControllerBase(IUserServiceRead userService) : Controller
 {
-    private readonly UserManager<User> _userManager;
-    protected UserManager<User> UserManager => _userManager;
+    protected IUserServiceRead UserService => userService;
 
-    protected HumansControllerBase(UserManager<User> userManager)
+    protected Guid? GetCurrentUserId()
     {
-        _userManager = userManager;
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 
-    protected Task<User?> GetCurrentUserAsync()
+    protected bool IsAuthenticated()
     {
-        return _userManager.GetUserAsync(User);
+        return User.Identity?.IsAuthenticated == true;
     }
 
-    protected Task<User?> FindUserByIdAsync(Guid userId)
+    protected async ValueTask<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
     {
-        return _userManager.FindByIdAsync(userId.ToString());
+        var id = GetCurrentUserId();
+        return id is null ? null : await userService.GetUserInfoAsync(id.Value, ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User)> RequireCurrentUserAsync()
+    protected async ValueTask<UserInfo?> FindUserInfoByIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => NotFound());
+        return await userService.GetUserInfoAsync(userId, ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrChallengeAsync()
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> RequireCurrentUserAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => Challenge());
+        return await ResolveCurrentUserAsync(NotFound, ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrUnauthorizedAsync()
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrChallengeAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => Unauthorized());
+        return await ResolveCurrentUserAsync(Challenge, ct);
     }
 
-    private async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrUnauthorizedAsync(CancellationToken ct = default)
     {
-        var user = await GetCurrentUserAsync();
+        return await ResolveCurrentUserAsync(Unauthorized, ct);
+    }
+
+    private async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing, CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync(ct);
         return user is null ? (onMissing(), null!) : (null, user);
     }
 
@@ -64,47 +69,5 @@ public abstract class HumansControllerBase : Controller
     protected void SetInfo(string message)
     {
         TempData[TempDataKeys.InfoMessage] = message;
-    }
-
-    protected Task<IdentityResult> UpdateCurrentUserAsync(User user)
-    {
-        return _userManager.UpdateAsync(user);
-    }
-
-    protected IActionResult GoogleSyncAuditView(
-        string title,
-        string? backUrl,
-        string? backLabel,
-        IEnumerable<AuditEvent> events)
-    {
-        return View("GoogleSyncAudit", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, events));
-    }
-
-    protected static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
-        string title,
-        string? backUrl,
-        string? backLabel,
-        IEnumerable<AuditEvent> events)
-    {
-        return new GoogleSyncAuditListViewModel
-        {
-            Title = title,
-            BackUrl = backUrl,
-            BackLabel = backLabel,
-            Entries = events.Select(static ev => new GoogleSyncAuditEntryViewModel
-            {
-                Action = ev.Action,
-                Description = ev.Description,
-                UserEmail = ev.UserEmail,
-                Role = ev.Role,
-                SyncSource = ev.SyncSource,
-                OccurredAt = ev.OccurredAt.ToDateTimeUtc(),
-                Success = ev.Success,
-                ErrorMessage = ev.ErrorMessage,
-                ResourceName = ev.ResourceName,
-                ResourceId = ev.ResourceId,
-                RelatedEntityId = ev.RelatedEntityId
-            }).ToList()
-        };
     }
 }

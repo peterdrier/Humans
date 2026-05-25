@@ -10,38 +10,23 @@ using Humans.Domain.Constants;
 
 namespace Humans.Web.ViewComponents;
 
-public class NavBadgesViewComponent : ViewComponent
+public class NavBadgesViewComponent(
+    IAdminDashboardService adminDashboardService,
+    IApplicationDecisionService applicationDecisionService,
+    IFeedbackService feedbackService,
+    IIssuesService issuesService,
+    IMemoryCache cache) : ViewComponent
 {
-    private readonly IAdminDashboardService _adminDashboardService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IFeedbackService _feedbackService;
-    private readonly IIssuesService _issuesService;
-    private readonly IMemoryCache _cache;
-
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
-
-    public NavBadgesViewComponent(
-        IAdminDashboardService adminDashboardService,
-        IApplicationDecisionService applicationDecisionService,
-        IFeedbackService feedbackService,
-        IIssuesService issuesService,
-        IMemoryCache cache)
-    {
-        _adminDashboardService = adminDashboardService;
-        _applicationDecisionService = applicationDecisionService;
-        _feedbackService = feedbackService;
-        _issuesService = issuesService;
-        _cache = cache;
-    }
 
     public async Task<IViewComponentResult> InvokeAsync(string queue)
     {
-        var counts = await _cache.GetOrCreateAsync(CacheKeys.NavBadgeCounts, async entry =>
+        var counts = await cache.GetOrCreateAsync(CacheKeys.NavBadgeCounts, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            var reviewCount = await _adminDashboardService.GetPendingReviewCountAsync();
-            var feedbackCount = await _feedbackService.GetActionableCountAsync();
+            var reviewCount = await adminDashboardService.GetPendingReviewCountAsync();
+            var feedbackCount = await feedbackService.GetActionableCountAsync();
 
             return (Review: reviewCount, Feedback: feedbackCount);
         });
@@ -74,11 +59,11 @@ public class NavBadgesViewComponent : ViewComponent
             return 0;
 
         var cacheKey = CacheKeys.VotingBadge(currentUserId);
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            return await _applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
+            return await applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
         });
     }
 
@@ -101,7 +86,7 @@ public class NavBadgesViewComponent : ViewComponent
             .ToList();
         var isAdmin = UserClaimsPrincipal.IsInRole(RoleNames.Admin);
 
-        return await _issuesService.GetActionableCountForViewerAsync(
+        return await issuesService.GetActionableCountForViewerAsync(
             currentUserId, roles, isAdmin);
     }
 }

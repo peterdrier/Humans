@@ -27,26 +27,20 @@ public class AgentApiSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
-public abstract class ApiKeyAuthFilterBase : IAuthorizationFilter
+public abstract class ApiKeyAuthFilterBase(string apiKey) : IAuthorizationFilter
 {
     private const string ApiKeyHeaderName = "X-Api-Key";
-    private readonly string _apiKey;
-
-    protected ApiKeyAuthFilterBase(string apiKey)
-    {
-        _apiKey = apiKey;
-    }
 
     public void OnAuthorization(AuthorizationFilterContext context)
     {
-        if (string.IsNullOrEmpty(_apiKey))
+        if (string.IsNullOrEmpty(apiKey))
         {
             context.Result = new StatusCodeResult(503); // Not configured
             return;
         }
 
         if (!context.HttpContext.Request.Headers.TryGetValue(ApiKeyHeaderName, out var providedKey)
-            || !string.Equals(providedKey, _apiKey, StringComparison.Ordinal))
+            || !string.Equals(providedKey, apiKey, StringComparison.Ordinal))
         {
             context.Result = new UnauthorizedResult(); // 401
         }

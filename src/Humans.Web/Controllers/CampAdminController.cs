@@ -1,142 +1,38 @@
-using System.Text;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Camps;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
-using Humans.Web.Models;
 using Humans.Web.Models.CampAdmin;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
-public class CampAdminController : HumansControllerBase
+public class CampAdminController(
+    ICampService campService,
+    ICampRoleService campRoleService,
+    ICityPlanningService cityPlanningService,
+    CampAdminPageBuilder campAdminPageBuilder,
+    CampCsvExportBuilder campCsvExportBuilder,
+    IUserServiceRead userService,
+    ILogger<CampAdminController> logger) : HumansControllerBase(userService)
 {
-    private readonly ICampService _campService;
-    private readonly ICampRoleService _campRoleService;
-    private readonly ICityPlanningService _cityPlanningService;
-    private readonly IUserService _userService;
-    private readonly ILogger<CampAdminController> _logger;
-
-    public CampAdminController(
-        ICampService campService,
-        ICampRoleService campRoleService,
-        ICityPlanningService cityPlanningService,
-        IUserService userService,
-        UserManager<User> userManager,
-        ILogger<CampAdminController> logger)
-        : base(userManager)
-    {
-        _campService = campService;
-        _campRoleService = campRoleService;
-        _cityPlanningService = cityPlanningService;
-        _userService = userService;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         try
         {
-            var settings = await _campService.GetSettingsAsync();
-            var registrationInfo = await _cityPlanningService.GetRegistrationInfoAsync();
-            var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
-            var pendingSeasons = await _campService.GetPendingSeasonsAsync();
-
-            var openSeasons = settings.OpenSeasons.ToList();
-            var nameLockDates = openSeasons.Count > 0
-                ? await _campService.GetNameLockDatesAsync(openSeasons)
-                : new Dictionary<int, NodaTime.LocalDate?>();
-
-            var withdrawnSeasons = allCamps
-                .SelectMany(c => c.Seasons
-                    .Where(s => s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Withdrawn)
-                    .Select(s => new CampCardViewModel
-                    {
-                        Id = c.Id,
-                        SeasonId = s.Id,
-                        Slug = c.Slug,
-                        Name = s.Name,
-                        BlurbShort = s.BlurbShort,
-                        Status = s.Status
-                    }))
-                .ToList();
-
-            // Load camps with leads for the summary table
-            var activeStatuses = new[] { CampSeasonStatus.Active, CampSeasonStatus.Full };
-            var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(settings.PublicYear, activeStatuses);
-
-            // Resolve lead display names via IUserService — CampLead.User nav is forbidden cross-domain.
-            var leadUserIds = campsWithLeads
-                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
-                .Distinct()
-                .ToList();
-            var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
-
-            var summaries = campsWithLeads.Select(c =>
-            {
-                var season = c.Seasons.FirstOrDefault();
-                return new CampSummaryRowViewModel
-                {
-                    Name = season?.Name ?? c.Slug,
-                    Slug = c.Slug,
-                    SeasonId = season?.Id,
-                    AcceptingMembers = season?.AcceptingMembers.ToString() ?? "—",
-                    MemberCount = season?.MemberCount ?? 0,
-                    Zone = season?.SoundZone?.ToString() ?? "—",
-                    SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
-                    YearsParticipating = c.TimesAtNowhere,
-                    EeSlotCount = season?.EeSlotCount ?? 0,
-                    EeGrantedCount = season?.EeGrantedCount ?? 0,
-                    Leads = (c.Leads ?? [])
-                        .Select(l => new CampLeadViewModel
-                        {
-                            LeadId = l.Id,
-                            UserId = l.UserId,
-                            DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.DisplayName : string.Empty
-                        }).ToList()
-                };
-            }).ToList();
-
-            var vm = new CampAdminViewModel
-            {
-                PublicYear = settings.PublicYear,
-                OpenSeasons = openSeasons,
-                TotalCamps = allCamps.Count,
-                ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
-                    s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
-                WithdrawnCamps = withdrawnSeasons,
-                NameLockDates = nameLockDates,
-                AllCampSummaries = summaries,
-                RegistrationInfo = registrationInfo,
-                EeStartDate = settings.EeStartDate,
-                PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
-                {
-                    Id = s.CampId,
-                    SeasonId = s.Id,
-                    Slug = s.CampSlug,
-                    Name = s.Name,
-                    BlurbShort = s.BlurbShort,
-                    Status = s.Status
-                }).ToList()
-            };
-
-            return View(vm);
+            return View(await campAdminPageBuilder.BuildAsync());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load Barrios admin page");
+            logger.LogError(ex, "Failed to load Barrios admin page");
             SetError("Failed to load Barrios admin page.");
             return RedirectToAction(nameof(AdminController.Index), "Admin");
         }
@@ -146,17 +42,17 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid seasonId, string? notes)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
         {
-            await _campService.ApproveSeasonAsync(seasonId, user.Id, notes);
+            await campService.ApproveSeasonAsync(seasonId, user.Id, notes);
             SetSuccess("Season approved.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to approve camp season {SeasonId} for admin {UserId}", seasonId, user.Id);
+            logger.LogWarning(ex, "Failed to approve camp season {SeasonId} for admin {UserId}", seasonId, user.Id);
             SetError(ex.Message);
         }
 
@@ -167,7 +63,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid seasonId, string notes)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         if (string.IsNullOrWhiteSpace(notes))
@@ -178,12 +74,12 @@ public class CampAdminController : HumansControllerBase
 
         try
         {
-            await _campService.RejectSeasonAsync(seasonId, user.Id, notes);
+            await campService.RejectSeasonAsync(seasonId, user.Id, notes);
             SetSuccess("Season rejected.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to reject camp season {SeasonId} for admin {UserId}", seasonId, user.Id);
+            logger.LogWarning(ex, "Failed to reject camp season {SeasonId} for admin {UserId}", seasonId, user.Id);
             SetError(ex.Message);
         }
 
@@ -196,12 +92,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            await _campService.OpenSeasonAsync(year);
+            await campService.OpenSeasonAsync(year);
             SetSuccess($"Season {year} opened for registration.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to open season {Year}", year);
+            logger.LogError(ex, "Failed to open season {Year}", year);
             SetError($"Failed to open season: {ex.Message}");
         }
         return RedirectToAction(nameof(Index));
@@ -213,12 +109,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            await _campService.CloseSeasonAsync(year);
+            await campService.CloseSeasonAsync(year);
             SetSuccess($"Season {year} closed for registration.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to close season {Year}", year);
+            logger.LogError(ex, "Failed to close season {Year}", year);
             SetError($"Failed to close season: {ex.Message}");
         }
         return RedirectToAction(nameof(Index));
@@ -230,12 +126,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            await _campService.SetPublicYearAsync(year);
+            await campService.SetPublicYearAsync(year);
             SetSuccess($"Public year set to {year}.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set public year to {Year}", year);
+            logger.LogError(ex, "Failed to set public year to {Year}", year);
             SetError($"Failed to set public year: {ex.Message}");
         }
         return RedirectToAction(nameof(Index));
@@ -254,12 +150,12 @@ public class CampAdminController : HumansControllerBase
 
         try
         {
-            await _campService.SetNameLockDateAsync(year, parseResult.Value);
+            await campService.SetNameLockDateAsync(year, parseResult.Value);
             SetSuccess($"Name lock date for {year} set to {parseResult.Value}.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set name lock date for {Year}", year);
+            logger.LogError(ex, "Failed to set name lock date for {Year}", year);
             SetError($"Failed to set name lock date: {ex.Message}");
         }
         return RedirectToAction(nameof(Index));
@@ -270,25 +166,25 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
         Guid seasonId, int slotCount, CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
         {
-            await _campService.SetCampSeasonEeSlotCountAsync(
+            await campService.SetCampSeasonEeSlotCountAsync(
                 seasonId, slotCount, user.Id, cancellationToken);
             SetSuccess($"EE slot count set to {slotCount}.");
         }
         catch (ArgumentOutOfRangeException)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "EE slot count must be non-negative for season {SeasonId} (actor {UserId})",
                 seasonId, user.Id);
             SetError("EE slot count cannot be negative.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Failed to set EE slot count on season {SeasonId}: {Reason}",
                 seasonId, ex.Message);
             SetError(ex.Message);
@@ -301,7 +197,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetEeStartDate(string? eeStartDate, CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         var (ok, parsed, parseError) = TryParseEeStartDate(eeStartDate);
@@ -313,12 +209,12 @@ public class CampAdminController : HumansControllerBase
 
         try
         {
-            await _campService.SetEeStartDateAsync(parsed, user.Id, cancellationToken);
+            await campService.SetEeStartDateAsync(parsed, user.Id, cancellationToken);
             SetSuccess(EeStartDateSuccessMessage(parsed));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set EE start date");
+            logger.LogError(ex, "Failed to set EE start date");
             SetError($"Failed to set EE start date: {ex.Message}");
         }
 
@@ -343,12 +239,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            await _campService.ReactivateSeasonAsync(seasonId);
+            await campService.ReactivateSeasonAsync(seasonId);
             SetSuccess("Season status updated.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to reactivate camp season {SeasonId}", seasonId);
+            logger.LogWarning(ex, "Failed to reactivate camp season {SeasonId}", seasonId);
             SetError(ex.Message);
         }
 
@@ -362,69 +258,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            var settings = await _campService.GetSettingsAsync();
-            var year = settings.PublicYear;
-
-            var camps = await _campService.GetCampsWithLeadsForYearAsync(year);
-
-            // Resolve lead display names + emails via IUserService.
-            var leadUserIds = camps
-                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
-                .Distinct()
-                .ToList();
-            var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
-
-            var csv = new StringBuilder();
-            csv.AppendCsvRow(
-                "Name", "Slug", "Status", "Contact Email", "Contact Phone",
-                "Leads", "Languages", "Member Count",
-                "Space Requirement", "Sound Zone", "Containers", "Electrical Grid",
-                "Accepting Members", "Kids Welcome", "Adult Playspace",
-                "Vibes", "Swiss Camp", "Times Participating");
-
-            foreach (var camp in camps)
-            {
-                var season = camp.Seasons.FirstOrDefault();
-                if (season is null) continue;
-
-                var leads = string.Join("; ", (camp.Leads ?? [])
-                    .Select(l =>
-                    {
-                        var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;
-                        return $"{user?.DisplayName ?? string.Empty} <{user?.Email ?? string.Empty}>";
-                    }));
-
-                var vibes = season.Vibes.Count > 0
-                    ? string.Join(", ", season.Vibes)
-                    : "";
-
-                csv.AppendCsvRow(
-                    season.Name,
-                    camp.Slug,
-                    season.Status,
-                    camp.ContactEmail,
-                    camp.ContactPhone,
-                    leads,
-                    season.Languages,
-                    season.MemberCount,
-                    season.SpaceRequirement?.ToString() ?? "",
-                    season.SoundZone?.ToString() ?? "",
-                    season.ContainerCount,
-                    season.ElectricalGrid?.ToString() ?? "",
-                    season.AcceptingMembers,
-                    season.KidsWelcome,
-                    season.AdultPlayspace,
-                    vibes,
-                    camp.IsSwissCamp ? "Yes" : "No",
-                    camp.TimesAtNowhere);
-            }
-
-            return File(Encoding.UTF8.GetBytes(csv.ToString()),
-                "text/csv", $"barrios-{year}.csv");
+            var export = await campCsvExportBuilder.BuildAsync();
+            return File(export.Content, export.ContentType, export.FileName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to export barrios");
+            logger.LogError(ex, "Failed to export barrios");
             SetError("Failed to export barrios.");
             return RedirectToAction(nameof(Index));
         }
@@ -436,12 +275,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            await _cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo);
+            await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo);
             SetSuccess("Registration info updated.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update registration info");
+            logger.LogError(ex, "Failed to update registration info");
             SetError("Failed to update registration info.");
         }
         return RedirectToAction(nameof(Index));
@@ -454,12 +293,12 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            await _campService.DeleteCampAsync(campId);
+            await campService.DeleteCampAsync(campId);
             SetSuccess("Camp deleted.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to delete camp {CampId}", campId);
+            logger.LogWarning(ex, "Failed to delete camp {CampId}", campId);
             SetError(ex.Message);
         }
 
@@ -469,14 +308,76 @@ public class CampAdminController : HumansControllerBase
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(CancellationToken ct)
     {
-        var defs = await _campRoleService.ListDefinitionsAsync(includeDeactivated: true, ct);
+        var defs = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, ct);
+        var settings = await campService.GetSettingsAsync(ct);
+        var year = settings.PublicYear;
+        CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
+            new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive,
+                string.IsNullOrWhiteSpace(d.Slug) ? null : campRoleService.BuildGroupKey(year, d.Slug));
         var active = defs.Where(d => d.IsActive).Select(MapRow).ToList();
         var deactivated = defs.Where(d => !d.IsActive).Select(MapRow).ToList();
-        return View(new CampRoleDefinitionListViewModel { Active = active, Deactivated = deactivated });
+        return View(new CampRoleDefinitionListViewModel
+        {
+            Active = active,
+            Deactivated = deactivated,
+            PublicYear = year,
+        });
     }
 
-    private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
-        new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
+    [HttpGet("Roles/{slug}")]
+    public async Task<IActionResult> RolesDrillDown(string slug, int? year, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return NotFound();
+
+        // Slug → GUID fallback per memory/architecture/slug-routes-fallback-to-guid.md.
+        // Slugs are user-controlled and may be empty ("" = no group yet); the GUID
+        // form is always reachable.
+        var info = await campRoleService.GetDefinitionBySlugAsync(slug, ct);
+        if (info is null && Guid.TryParse(slug, out var roleId))
+            info = await campRoleService.GetDefinitionByIdAsync(roleId, ct);
+        if (info is null) return NotFound();
+
+        var settings = await campService.GetSettingsAsync(ct);
+        var resolvedYear = year ?? settings.PublicYear;
+
+        var data = await campRoleService.BuildDrillDownAsync(info.Id, resolvedYear, ct);
+        if (data is null) return NotFound();
+
+        // Year picker options: union of open seasons, public year, and the resolved year
+        // (so a manually-entered year remains selectable). Sorted descending — most recent first.
+        var yearOptions = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear, resolvedYear };
+
+        var vm = new CampRoleDrillDownViewModel
+        {
+            Slug = data.Definition.Slug,
+            RouteKey = string.IsNullOrWhiteSpace(data.Definition.Slug)
+                ? data.Definition.Id.ToString()
+                : data.Definition.Slug,
+            RoleName = data.Definition.Name,
+            Description = data.Definition.Description,
+            SlotCount = data.Definition.SlotCount,
+            MinimumRequired = data.Definition.MinimumRequired,
+            Year = data.Year,
+            GroupEmail = data.GroupEmail,
+            YearOptions = yearOptions.OrderByDescending(y => y).ToList(),
+            Camps = data.Rows
+                .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
+                .Select(r => new CampRoleDrillDownCampRowViewModel(
+                    r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
+                    r.Assignees
+                        .OrderBy(a => a.AssignedAt)
+                        .Select(a => new CampRoleDrillDownAssigneeViewModel(a.UserId))
+                        .ToList()))
+                .ToList(),
+        };
+        return View("RoleDrillDown", vm);
+    }
+
+    private IActionResult RedirectToRolesWithSuccess(string message)
+    {
+        SetSuccess(message);
+        return RedirectToAction(nameof(Roles));
+    }
 
     [HttpGet("Roles/Create")]
     public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
@@ -488,14 +389,14 @@ public class CampAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("RoleForm", form);
 
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
         try
         {
             var input = new CreateCampRoleDefinitionInput(
-                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
-            await _campRoleService.CreateDefinitionAsync(input, user.Id, ct);
+                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
+            await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
             SetSuccess($"Created camp role '{form.Name}'.");
             return RedirectToAction(nameof(Roles));
         }
@@ -506,7 +407,7 @@ public class CampAdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "CreateRole failed.");
+            logger.LogError(ex, "CreateRole failed.");
             ModelState.AddModelError(string.Empty, "Failed to create role definition.");
             return View("RoleForm", form);
         }
@@ -515,12 +416,13 @@ public class CampAdminController : HumansControllerBase
     [HttpGet("Roles/{id:guid}/Edit")]
     public async Task<IActionResult> EditRole(Guid id, CancellationToken ct)
     {
-        var def = await _campRoleService.GetDefinitionByIdAsync(id, ct);
+        var def = await campRoleService.GetDefinitionByIdAsync(id, ct);
         if (def is null) return NotFound();
         return View("RoleForm", new CampRoleDefinitionFormViewModel
         {
             Id = def.Id,
             Name = def.Name,
+            Slug = def.Slug,
             Description = def.Description,
             SlotCount = def.SlotCount,
             MinimumRequired = def.MinimumRequired,
@@ -536,17 +438,20 @@ public class CampAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("RoleForm", form);
 
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
         {
             var input = new UpdateCampRoleDefinitionInput(
-                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
-            var ok = await _campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
-            if (!ok) return NotFound();
-            SetSuccess($"Updated camp role '{form.Name}'.");
-            return RedirectToAction(nameof(Roles));
+                form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
+            var result = await campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
+            return result.Status switch
+            {
+                UpdateCampRoleDefinitionStatus.Updated => RedirectToRolesWithSuccess(result.SuccessMessage),
+                UpdateCampRoleDefinitionStatus.NotFound => NotFound(),
+                _ => throw new InvalidOperationException($"Unexpected camp role update status '{result.Status}'.")
+            };
         }
         catch (InvalidOperationException ex)
         {
@@ -555,7 +460,7 @@ public class CampAdminController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "EditRole failed for {RoleId}.", id);
+            logger.LogError(ex, "EditRole failed for {RoleId}.", id);
             ModelState.AddModelError(string.Empty, "Failed to update role definition.");
             return View("RoleForm", form);
         }
@@ -565,18 +470,18 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateRole(Guid id, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
         try
         {
-            var ok = await _campRoleService.DeactivateDefinitionAsync(id, user.Id, ct);
+            var ok = await campRoleService.DeactivateDefinitionAsync(id, user.Id, ct);
             if (!ok) return NotFound();
             SetSuccess("Camp role deactivated.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "DeactivateRole failed for {RoleId}.", id);
+            logger.LogError(ex, "DeactivateRole failed for {RoleId}.", id);
             SetError("Failed to deactivate camp role.");
         }
         return RedirectToAction(nameof(Roles));
@@ -586,29 +491,57 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReactivateRole(Guid id, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
         try
         {
-            var ok = await _campRoleService.ReactivateDefinitionAsync(id, user.Id, ct);
+            var ok = await campRoleService.ReactivateDefinitionAsync(id, user.Id, ct);
             if (!ok) return NotFound();
             SetSuccess("Camp role reactivated.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "ReactivateRole failed for {RoleId}.", id);
+            logger.LogError(ex, "ReactivateRole failed for {RoleId}.", id);
             SetError("Failed to reactivate camp role.");
         }
         return RedirectToAction(nameof(Roles));
     }
 
+    [HttpPost("SeedSystemRoles")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SeedSystemRoles(CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync();
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            var result = await campRoleService.SeedSystemRolesAndMigrateLeadsAsync(user.Id, ct);
+            var summary =
+                $"System roles: {result.DefinitionsCreated} created. " +
+                $"Camp leads: {result.LeadsMigrated} migrated, " +
+                $"{result.LeadsAlreadyMigrated} already migrated, " +
+                $"{result.LeadsSkipped} skipped" +
+                (result.SkippedCampSlugs.Count == 0
+                    ? "."
+                    : $" ({string.Join(", ", result.SkippedCampSlugs)}).");
+            SetSuccess(summary);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "SeedSystemRoles failed.");
+            SetError("Failed to seed system roles and migrate leads.");
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpGet("Compliance")]
     public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
     {
-        var settings = await _campService.GetSettingsAsync(ct);
+        var settings = await campService.GetSettingsAsync(ct);
         var resolvedYear = year ?? settings.PublicYear;
-        var report = await _campRoleService.GetComplianceReportAsync(resolvedYear, ct);
+        var report = await campRoleService.GetComplianceReportAsync(resolvedYear, ct);
 
         var vm = new CampRoleComplianceViewModel
         {

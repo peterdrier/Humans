@@ -10,13 +10,18 @@ namespace Humans.Infrastructure.Data;
 /// <summary>
 /// Database context for the Humans application.
 /// </summary>
-public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>, IDataProtectionKeyContext
+/// <remarks>
+/// <para>
+/// Internal-sealed (issue #750). Access from outside this assembly is only
+/// available via repository interfaces in <c>Humans.Application.Interfaces.Repositories</c>
+/// or — for cross-cutting wiring — the extension methods in
+/// <c>Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions</c>.
+/// Test projects access this type via <c>InternalsVisibleTo</c>.
+/// </para>
+/// </remarks>
+internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
+    : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
 {
-    public HumansDbContext(DbContextOptions<HumansDbContext> options)
-        : base(options)
-    {
-    }
-
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public DbSet<Profile> Profiles => Set<Profile>();
@@ -47,6 +52,8 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<CampImage> CampImages => Set<CampImage>();
     public DbSet<CampSettings> CampSettings => Set<CampSettings>();
     public DbSet<CampMember> CampMembers => Set<CampMember>();
+    public DbSet<Container> Containers => Set<Container>();
+    public DbSet<ContainerPlacement> ContainerPlacements => Set<ContainerPlacement>();
     public DbSet<CampRoleDefinition> CampRoleDefinitions => Set<CampRoleDefinition>();
     public DbSet<CampRoleAssignment> CampRoleAssignments => Set<CampRoleAssignment>();
     public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
@@ -67,6 +74,13 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<ShiftSignup> ShiftSignups => Set<ShiftSignup>();
     public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
     public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
+    public DbSet<EventGuideSettings> EventGuideSettings => Set<EventGuideSettings>();
+    public DbSet<EventCategory> EventCategories => Set<EventCategory>();
+    public DbSet<EventVenue> EventVenues => Set<EventVenue>();
+    public DbSet<Event> Events => Set<Event>();
+    public DbSet<EventModerationAction> EventModerationActions => Set<EventModerationAction>();
+    public DbSet<EventPreference> EventPreferences => Set<EventPreference>();
+    public DbSet<EventFavourite> EventFavourites => Set<EventFavourite>();
     public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();

@@ -12,47 +12,34 @@ namespace Humans.Infrastructure.Jobs;
 /// Purges old sent messages from the email outbox. Runs weekly.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupEmailOutboxJob : IRecurringJob
+public class CleanupEmailOutboxJob(
+    IEmailOutboxRepository outboxRepo,
+    IClock clock,
+    IOptions<EmailSettings> settings,
+    IHumansMetrics metrics,
+    ILogger<CleanupEmailOutboxJob> logger) : IRecurringJob
 {
-    private readonly IEmailOutboxRepository _outboxRepo;
-    private readonly IClock _clock;
-    private readonly EmailSettings _settings;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<CleanupEmailOutboxJob> _logger;
-
-    public CleanupEmailOutboxJob(
-        IEmailOutboxRepository outboxRepo,
-        IClock clock,
-        IOptions<EmailSettings> settings,
-        IHumansMetrics metrics,
-        ILogger<CleanupEmailOutboxJob> logger)
-    {
-        _outboxRepo = outboxRepo;
-        _clock = clock;
-        _settings = settings.Value;
-        _metrics = metrics;
-        _logger = logger;
-    }
+    private readonly EmailSettings _settings = settings.Value;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var cutoff = _clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
+            var cutoff = clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
 
-            var deletedCount = await _outboxRepo.DeleteSentOlderThanAsync(cutoff, cancellationToken);
+            var deletedCount = await outboxRepo.DeleteSentOlderThanAsync(cutoff, cancellationToken);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "CleanupEmailOutboxJob deleted {Count} sent messages older than {Cutoff}",
                 deletedCount,
                 cutoff);
 
-            _metrics.RecordJobRun("cleanup_email_outbox", "success");
+            metrics.RecordJobRun("cleanup_email_outbox", "success");
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("cleanup_email_outbox", "failure");
-            _logger.LogError(ex, "Error cleaning up email outbox");
+            metrics.RecordJobRun("cleanup_email_outbox", "failure");
+            logger.LogError(ex, "Error cleaning up email outbox");
             throw;
         }
     }

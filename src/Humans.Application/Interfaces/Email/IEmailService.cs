@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Email;
@@ -213,36 +211,6 @@ public interface IEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a Board daily digest email summarizing new approvals and outstanding items.
-    /// </summary>
-    /// <param name="email">The Board member's email.</param>
-    /// <param name="name">The Board member's display name.</param>
-    /// <param name="date">The date being summarized (e.g. "2026-02-22").</param>
-    /// <param name="groups">Tier groups with approved display names.</param>
-    /// <param name="outstandingCounts">Outstanding item counts (personalized per board member).</param>
-    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task SendBoardDailyDigestAsync(
-        string email,
-        string name,
-        string date,
-        IReadOnlyList<BoardDigestTierGroup> groups,
-        BoardDigestOutstandingCounts? outstandingCounts = null,
-        string? culture = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Sends an Admin daily digest email summarizing system health and pending actions.
-    /// </summary>
-    Task SendAdminDailyDigestAsync(
-        string email,
-        string name,
-        string date,
-        AdminDigestCounts counts,
-        string? culture = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Sends a feedback response notification to the reporter.
     /// </summary>
     Task SendFeedbackResponseAsync(
@@ -261,6 +229,17 @@ public interface IEmailService : IApplicationService
         bool includeContactInfo,
         string? senderEmail,
         string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a personalized "email a rota" message from the rota's coordinator
+    /// to a single signup on the rota. The body carries the coordinator's free-text
+    /// message plus the recipient's own chronologically-ordered shift list on this
+    /// rota. Category is <see cref="MessageCategory.VolunteerUpdates"/>; replies go
+    /// to the coordinator's email when supplied.
+    /// </summary>
+    Task SendCoordinatorRotaMessageAsync(
+        CoordinatorRotaMessageRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -318,6 +297,16 @@ public interface IEmailService : IApplicationService
     Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends an event lifecycle notification (submitted / approved / rejected /
+    /// resubmit-requested) — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
+    /// to pick the matching template.
+    /// </summary>
+    Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a notification that a Google Group membership has been removed
     /// (Variant 1 — full loss of access, group sub-template). System category;
     /// no unsubscribe footer (issue peterdrier/Humans#639).
@@ -355,7 +344,62 @@ public interface IEmailService : IApplicationService
         string currentGoogleEmail,
         string? culture = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Confirmation to the Sender that their ticket-transfer request was received
+    /// and the ticket team will process it.
+    /// </summary>
+    Task SendTicketTransferRequestedAsync(
+        string senderEmail,
+        string senderName,
+        string receiverName,
+        string ticketLabel,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Action-needed notification to the ticket team inbox (tickets@) that a new
+    /// transfer request is awaiting manual processing. Always English (admin).
+    /// </summary>
+    Task SendTicketTransferTeamNotificationAsync(
+        string senderName,
+        string receiverName,
+        string receiverEmail,
+        string ticketLabel,
+        string? reason,
+        string reviewUrl,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Decision notification sent to both Sender and Receiver: the transfer was
+    /// completed (<paramref name="successful"/> true) or cancelled with a reason.
+    /// </summary>
+    Task SendTicketTransferDecisionAsync(
+        string toEmail,
+        string toName,
+        bool successful,
+        string ticketLabel,
+        string receiverName,
+        string? reason,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Payload for a coordinator "email a rota" message to a single signup.
+/// <see cref="ShiftLines"/> are pre-rendered, chronologically-ordered shift labels
+/// for the recipient on this rota (e.g. "Mon July 6 @ 19:30") — the renderer
+/// HTML-encodes them, it does not parse or sort them.
+/// </summary>
+public record CoordinatorRotaMessageRequest(
+    string RecipientEmail,
+    string RecipientName,
+    string SenderName,
+    string? SenderEmail,
+    string RotaName,
+    string MessageText,
+    IReadOnlyList<string> ShiftLines,
+    string? Culture = null);
 
 /// <summary>
 /// Payload for enqueuing a campaign-code email.
@@ -369,3 +413,30 @@ public record CampaignCodeEmailRequest(
     string MarkdownBody,
     string Code,
     string? ReplyTo);
+
+/// <summary>
+/// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
+/// the template: <see cref="EventStatus.Pending"/> = submission received,
+/// <see cref="EventStatus.Approved"/> = approved, <see cref="EventStatus.Rejected"/>
+/// = rejected (requires <see cref="Reason"/> and <see cref="ActionUrl"/> for the
+/// edit link), <see cref="EventStatus.ResubmitRequested"/> = changes requested
+/// (also requires <see cref="Reason"/> and <see cref="ActionUrl"/>).
+/// </summary>
+public record EventLifecycleNotification(
+    EventStatus NewStatus,
+    string UserName,
+    string EventTitle,
+    string? Reason = null,
+    string? ActionUrl = null,
+    string? Culture = null)
+{
+    public string TemplateName() => NewStatus switch
+    {
+        EventStatus.Pending => "event_submitted",
+        EventStatus.Approved => "event_approved",
+        EventStatus.Rejected => "event_rejected",
+        EventStatus.ResubmitRequested => "event_resubmit_requested",
+        _ => throw new InvalidOperationException(
+            $"EventLifecycleNotification does not support status {NewStatus}")
+    };
+}

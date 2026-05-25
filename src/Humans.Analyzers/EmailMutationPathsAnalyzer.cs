@@ -9,6 +9,7 @@ namespace Humans.Analyzers;
 /// <summary>
 /// Pins the single legitimate call chain for the OAuth reconcile primitive:
 /// <c>AccountController</c> → <c>IUserEmailService.ReconcileOAuthIdentityAsync</c> →
+/// <c>IUserService.ApplyUserEmailReconcilePlanAsync</c> ->
 /// <c>IUserEmailRepository.ApplyReconcilePlanAsync</c>. Any other call site is forbidden.
 /// </summary>
 /// <remarks>
@@ -38,28 +39,30 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
 
     public static readonly DiagnosticDescriptor RepositoryCallerRule = new(
         id: RepositoryCallerDiagnosticId,
-        title: "IUserEmailRepository.ApplyReconcilePlanAsync may only be called from UserEmailService",
+        title: "IUserEmailRepository.ApplyReconcilePlanAsync may only be called from approved user-email storage services",
         messageFormat:
-            "IUserEmailRepository.ApplyReconcilePlanAsync may only be called from UserEmailService " +
-            "(which composes the reconcile plan, enforces invariants, and writes audit rows). " +
+            "IUserEmailRepository.ApplyReconcilePlanAsync may only be called from UserService " +
+            "or UserEmailService. " +
             "See memory/architecture/email-mutation-paths.md.",
         category: AnalyzerCategories.Architecture,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "The repository primitive is the atomic apply step; the service owns plan " +
-            "composition, invariant enforcement, and audit writes. Bypassing the service " +
-            "skips all three.");
+            "The repository primitive is the atomic apply step. UserEmailService owns OAuth " +
+            "policy and audit writes; UserService owns storage mutation and invariant repair.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(ServiceCallerRule, RepositoryCallerRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [ServiceCallerRule, RepositoryCallerRule
+    ];
 
     private const string ServiceInterface = "Humans.Application.Interfaces.Profiles.IUserEmailService";
     private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserEmailRepository";
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
     private const string RepositoryMethodName = "ApplyReconcilePlanAsync";
     private const string AllowedServiceCaller = "Humans.Web.Controllers.AccountController";
-    private const string AllowedRepositoryCaller = "Humans.Application.Services.Profile.UserEmailService";
+    private static readonly ImmutableHashSet<string> AllowedRepositoryCallers =
+        ImmutableHashSet.Create(
+            "Humans.Application.Services.Profiles.UserEmailService",
+            "Humans.Application.Services.Users.UserService");
 
     public override void Initialize(AnalysisContext context)
     {
@@ -100,7 +103,7 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
 
         if (InterfaceMethodMatcher.Targets(method, RepositoryInterface, RepositoryMethodName))
         {
-            if (!string.Equals(callerTopLevel, AllowedRepositoryCaller, System.StringComparison.Ordinal))
+            if (callerTopLevel is null || !AllowedRepositoryCallers.Contains(callerTopLevel))
                 context.ReportDiagnostic(Diagnostic.Create(RepositoryCallerRule, op.Syntax.GetLocation()));
         }
     }

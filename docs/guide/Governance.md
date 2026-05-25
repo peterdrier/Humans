@@ -1,10 +1,7 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Application/**
-  src/Humans.Web/Views/OnboardingReview/BoardVoting.cshtml
-  src/Humans.Web/Views/OnboardingReview/BoardVotingDetail.cshtml
   src/Humans.Web/Views/Governance/**
-  src/Humans.Web/Controllers/ApplicationController.cs
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
+  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
   src/Humans.Web/Controllers/GovernanceController.cs
   src/Humans.Application/Services/Governance/**
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
@@ -32,12 +29,12 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the ne
 
 ## Key pages at a glance
 
-- `/Application/Create` — submit a Colaborador or Asociado application.
-- `/Application` — your application status and history.
-- `/Application/Admin` — admin list of all applications, filterable by status and tier (Board and Admin).
-- `/Application/Admin/{id}` — admin detail view of a single application (Board and Admin).
-- `/OnboardingReview/BoardVoting` — Board voting dashboard (Board and Admin).
-- `/OnboardingReview/BoardVoting/{id}` — application detail and vote form (Board and Admin); the Finalize form is rendered only for Admin.
+- `/Governance/Applications/Create` — submit a Colaborador or Asociado application.
+- `/Governance/Applications` — your application status and history.
+- `/Governance/Applications/Admin` — admin list of all applications, filterable by status and tier (Board and Admin).
+- `/Governance/Applications/Admin/{id}` — admin detail view of a single application (Board and Admin).
+- `/Governance/BoardVoting` — Board voting dashboard (Board and Admin).
+- `/Governance/BoardVoting/{id}` — application detail and vote form (Board and Admin); the Finalize form is rendered only for Admin.
 - `/Governance/Roles` — paginated list of all role assignments, filterable by role (Board and Admin).
 - `/Profile/{id}/Admin/Roles/Add` and `/Profile/{id}/Admin/Roles/{roleId}/End` — assign and end role assignments on a specific human (Board, HumanAdmin, and Admin).
 
@@ -47,13 +44,13 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the ne
 
 As an active Volunteer you can apply for **Colaborador** (active contributor with project and event responsibilities) or **Asociado** (voting member with governance rights). If you are already a Colaborador, you can apply to upgrade to Asociado. Both require a Board vote and grant a 2-year term on approval.
 
-Go to `/Application/Create`, pick the tier, and fill in a **motivation** (required) and any **additional info** for the Board (optional). Your current tier and access stay the same while the Board reviews. You cannot submit a second application for the same tier while one is pending.
+Go to `/Governance/Applications/Create`, pick the tier, and fill in a **motivation** (required) and any **additional info** for the Board (optional). Your current tier and access stay the same while the Board reviews. You cannot submit a second application for the same tier while one is pending.
 
-If you applied inline during initial signup, that form was a one-shot. After onboarding, `/Application/Create` is the only way to apply.
+If you applied inline during initial signup, that form was a one-shot. After onboarding, `/Governance/Applications/Create` is the only way to apply.
 
 ### See your application status
 
-Your dashboard and `/Application` show the status of any application you have submitted:
+Your dashboard and `/Governance/Applications` show the status of any application you have submitted:
 
 - **Submitted** — waiting on the Board.
 - **Approved** — tier granted. You will see the term expiry date, Board meeting date, and decision note.
@@ -74,7 +71,7 @@ About 90 days before your term expires, a renewal reminder email and in-app noti
 
 ### Vote on tier applications
 
-Open `/OnboardingReview/BoardVoting`. The dashboard is a spreadsheet: applications on the rows, Board members on the columns, each cell showing that member's current vote (or a dash if they have not voted). Filter by tier and click **Review** on a row to open the application.
+Open `/Governance/BoardVoting`. The dashboard is a spreadsheet: applications on the rows, Board members on the columns, each cell showing that member's current vote (or a dash if they have not voted). Filter by tier and click **Review** on a row to open the application.
 
 On the detail page you see the applicant's profile, their motivation, and the votes cast so far. Vote options are **Yay**, **Maybe**, **No**, and **Abstain**. You can add a note and change your vote at any time until the application is finalized. Each Board member gets exactly one vote per application. Admins can view but do not cast individual Board votes (the vote form is gated by the `BoardOnly` policy).
 

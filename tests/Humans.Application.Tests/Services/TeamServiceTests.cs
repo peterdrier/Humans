@@ -9,26 +9,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
-using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Infrastructure.Repositories.Auth;
@@ -36,242 +31,299 @@ using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
 
-public class TeamServiceTests : IDisposable
+public sealed class TeamServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly TeamService _service;
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
-    private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(new TestDbContextFactory(options)),
+            new RoleAssignmentRepository(DbFactory),
             Substitute.For<IUserService>(),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            AuditLog,
+            Notifier,
             Substitute.For<ISystemTeamSync>(),
             Substitute.For<INavBadgeCacheInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            _clock,
+            Substitute.For<IRoleAssignmentCacheInvalidator>(),
+            Clock,
             NullLogger<RoleAssignmentService>.Instance);
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        var emailService = Substitute.For<IEmailService>();
-        var systemTeamSync = Substitute.For<ISystemTeamSync>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
-        serviceProvider.GetService(typeof(IEmailService)).Returns(emailService);
-        serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(systemTeamSync);
         _teamResourceService = Substitute.For<ITeamResourceService>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
-        serviceProvider.GetService(typeof(ITeamResourceService)).Returns(_teamResourceService);
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+
+        // Capture the user service to a local before threading it into the locator
+        // builder — NSubstitute can't attach an outer .Returns() to a factory that
+        // itself configures substitute calls.
+        var userService = NewDbBackedUserService();
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamService>()
+            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With<IEmailService>()
+            .With<ISystemTeamSync>()
+            .With(_teamResourceService)
+            .With(userService)
+            .Build();
         var shiftManagementService = new ShiftManagementService(
-            shiftRepo,
-            Substitute.For<IAuditLogService>(),
+            new ShiftManagementRepository(DbFactory),
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
-            _cache,
-            _clock,
+            Cache,
+            Substitute.For<IShiftViewInvalidator>(),
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
-        var teamRepo = new TeamRepository(new TestDbContextFactory(options));
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
         // (backed by ShiftManagementService in DI). In tests we redirect it to the
         // same IMemoryCache entry so legacy assertions on the ShiftAuthorization
         // cache key keep working.
-        _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
-        _shiftAuthInvalidator
+        ShiftAuthInvalidator
             .When(s => s.Invalidate(Arg.Any<Guid>()))
-            .Do(ci => _cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
+            .Do(ci => Cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
 
-        // Provide a test IUserService that reads from the same in-memory DB so
-        // cross-domain User stitching (design-rules §6b) behaves correctly when
-        // the service under test calls GetByIdsAsync during team reads.
-        var testUserService = Substitute.For<IUserService>();
-        testUserService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
-                using var db = new HumansDbContext(options);
-                var users = db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
-            });
-        testUserService
-            .GetByIdsWithEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
-                using var db = new HumansDbContext(options);
-                var users = db.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .Where(u => ids.Contains(u.Id))
-                    .ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
-            });
-        testUserService
-            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var id = callInfo.Arg<Guid>();
-                using var db = new HumansDbContext(options);
-                return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
-            });
-        serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
         _service = new TeamService(
-            teamRepo,
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationEmitter>(),
+            new TeamRepository(DbFactory),
+            AuditLog,
+            Notifier,
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            _shiftAuthInvalidator,
+            ShiftAuthInvalidator,
+            AdminAuthorization,
             serviceProvider,
-            _clock,
+            Clock,
             NullLogger<TeamService>.Instance);
     }
 
-    public void Dispose()
-    {
-        _cache.Dispose();
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
-    }
+    // IsUserAdminAsync / IsUserBoardMemberAsync coverage lives in RoleAssignmentServiceTests.
 
     // ==========================================================================
-    // IsUserAdminAsync
+    // CreateTeamAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task IsUserAdminAsync_ActiveAdminRole_ReturnsTrue()
+    public async Task CreateTeamAsync_ReservedSlug_Throws()
     {
-        var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+        var act = () => _service.CreateTeamAsync("Roster", null, requiresApproval: false);
 
-        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
-
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*reserved route*");
     }
 
     [HumansFact]
-    public async Task IsUserAdminAsync_NoRoleAssignment_ReturnsFalse()
+    public async Task CreateTeamAsync_ParentNotFound_Throws()
     {
-        var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        var act = () => _service.CreateTeamAsync(
+            "Child", null, requiresApproval: false, parentTeamId: Guid.NewGuid());
 
-        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
-
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
     }
 
     [HumansFact]
-    public async Task IsUserAdminAsync_ExpiredRole_ReturnsFalse()
+    public async Task CreateTeamAsync_ParentIsSystemTeam_Throws()
     {
-        var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(30),
-            _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+        var parent = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
 
-        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
+        var act = () => _service.CreateTeamAsync(
+            "Child", null, requiresApproval: false, parentTeamId: parent.Id);
 
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*System teams cannot be parents*");
     }
 
     [HumansFact]
-    public async Task IsUserAdminAsync_FutureRole_ReturnsFalse()
+    public async Task CreateTeamAsync_ParentAlreadyHasParent_Throws()
     {
-        var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() + Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+        var grandparent = SeedTeam("Department");
+        var parent = SeedTeam("SubTeam");
+        parent.ParentTeamId = grandparent.Id;
+        await Db.SaveChangesAsync();
 
-        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
+        var act = () => _service.CreateTeamAsync(
+            "GrandChild", null, requiresApproval: false, parentTeamId: parent.Id);
 
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already has a parent*");
     }
 
     [HumansFact]
-    public async Task IsUserAdminAsync_BoardRoleOnly_ReturnsFalse()
+    public async Task CreateTeamAsync_PersistsAllFields()
     {
-        var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+        var result = await _service.CreateTeamAsync(
+            name: "Engineering",
+            description: "Builds things",
+            requiresApproval: true,
+            parentTeamId: null,
+            googleGroupPrefix: "eng",
+            isHidden: true);
 
-        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == result.Id);
+        stored.Name.Should().Be("Engineering");
+        stored.Description.Should().Be("Builds things");
+        stored.Slug.Should().Be("engineering");
+        stored.IsActive.Should().BeTrue();
+        stored.RequiresApproval.Should().BeTrue();
+        stored.IsHidden.Should().BeTrue();
+        stored.GoogleGroupPrefix.Should().Be("eng");
+        stored.ParentTeamId.Should().BeNull();
+        stored.SystemTeamType.Should().Be(SystemTeamType.None);
+        stored.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
 
-        result.Should().BeFalse();
+    [HumansFact]
+    public async Task CreateTeamAsync_ValidParent_PersistsParentId()
+    {
+        var parent = SeedTeam("Department");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.CreateTeamAsync(
+            "SubTeam", null, requiresApproval: false, parentTeamId: parent.Id);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == result.Id);
+        stored.ParentTeamId.Should().Be(parent.Id);
+    }
+
+    [HumansFact]
+    public async Task CreateTeamAsync_SlugCollision_AppendsSuffix()
+    {
+        var first = await _service.CreateTeamAsync("Alpha", null, requiresApproval: false);
+        first.Slug.Should().Be("alpha");
+
+        var second = await _service.CreateTeamAsync("Alpha", null, requiresApproval: false);
+
+        second.Slug.Should().Be("alpha-2");
     }
 
     // ==========================================================================
-    // IsUserBoardMemberAsync
+    // AddSeededMemberAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task IsUserBoardMemberAsync_ActiveBoardRole_ReturnsTrue()
+    public async Task AddSeededMemberAsync_TeamNotFound_Throws()
     {
-        var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+        var act = () => _service.AddSeededMemberAsync(
+            Guid.NewGuid(), Guid.NewGuid(), TeamMemberRole.Member, Clock.GetCurrentInstant());
 
-        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
-
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
     }
 
     [HumansFact]
-    public async Task IsUserBoardMemberAsync_NoRoleAssignment_ReturnsFalse()
+    public async Task AddSeededMemberAsync_SystemTeam_Throws()
     {
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
+        var act = () => _service.AddSeededMemberAsync(
+            team.Id, user.Id, TeamMemberRole.Member, Clock.GetCurrentInstant());
 
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot target system teams*");
     }
 
     [HumansFact]
-    public async Task IsUserBoardMemberAsync_ExpiredRole_ReturnsFalse()
+    public async Task AddSeededMemberAsync_AlreadyMember_Throws()
     {
+        var team = SeedTeam("Alpha");
         var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(30),
-            _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
 
-        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
+        var act = () => _service.AddSeededMemberAsync(
+            team.Id, user.Id, TeamMemberRole.Member, Clock.GetCurrentInstant());
 
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already a member*");
     }
 
     [HumansFact]
-    public async Task IsUserBoardMemberAsync_AdminRoleOnly_ReturnsFalse()
+    public async Task AddSeededMemberAsync_PersistsMemberWithRoleAndJoinedAt()
+    {
+        var team = SeedTeam("Alpha");
+        var user = SeedUser();
+        await Db.SaveChangesAsync();
+        var joinedAt = Instant.FromUtc(2025, 1, 1, 0, 0);
+
+        var result = await _service.AddSeededMemberAsync(
+            team.Id, user.Id, TeamMemberRole.Coordinator, joinedAt);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamMembers.AsNoTracking()
+            .SingleAsync(m => m.TeamId == team.Id && m.UserId == user.Id);
+        stored.Role.Should().Be(TeamMemberRole.Coordinator);
+        stored.JoinedAt.Should().Be(joinedAt);
+        stored.LeftAt.Should().BeNull();
+        result.Id.Should().Be(stored.Id);
+    }
+
+    // ==========================================================================
+    // GetActiveTeamMembershipsForUserAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_ReturnsActiveNonSystemMembershipWithHiddenFlag()
     {
         var user = SeedUser();
-        SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+        var team = SeedTeam("Build");
+        team.IsHidden = true;
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
+        await Db.SaveChangesAsync();
 
-        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
 
-        result.Should().BeFalse();
+        result.Should().ContainSingle();
+        result[0].TeamName.Should().Be("Build");
+        result[0].Role.Should().Be(TeamMemberRole.Coordinator);
+        result[0].IsHidden.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_SkipsVolunteersSystemTeam()
+    {
+        var user = SeedUser();
+        var vols = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        SeedTeamMember(vols.Id, user.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_SkipsInactiveTeams()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Old", isActive: false);
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamMembershipsForUserAsync_SkipsTeamsWhereUserIsNotMember()
+    {
+        var user = SeedUser();
+        var other = SeedUser();
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, other.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
+
+        result.Should().BeEmpty();
     }
 
     // ==========================================================================
@@ -284,7 +336,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
@@ -297,7 +349,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
@@ -310,8 +362,8 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
@@ -325,7 +377,7 @@ public class TeamServiceTests : IDisposable
         var teamA = SeedTeam("Alpha");
         var teamB = SeedTeam("Beta");
         SeedTeamMember(teamA.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(teamB.Id, user.Id);
 
@@ -340,7 +392,7 @@ public class TeamServiceTests : IDisposable
         var child = SeedTeam("SubTeam");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -355,7 +407,7 @@ public class TeamServiceTests : IDisposable
         var child = SeedTeam("SubTeam");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -372,7 +424,7 @@ public class TeamServiceTests : IDisposable
         var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
         var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
         SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
@@ -391,7 +443,7 @@ public class TeamServiceTests : IDisposable
         var member = SeedTeamMember(childA.Id, user.Id, TeamMemberRole.Coordinator);
         var roleDef = SeedTeamRoleDefinition(childA.Id, isManagement: true);
         SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(childB.Id, user.Id);
 
@@ -408,183 +460,1096 @@ public class TeamServiceTests : IDisposable
         var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
         var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
         SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(parent.Id, user.Id);
 
         result.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task UpdateTeamPageContentWithResultAsync_NormalizesCallsToActionAndUpdatesPage()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.UpdateTeamPageContentAsync(
+            team.Id,
+            "Welcome", [
+                new TeamPageCallToActionInput(" Join ", " /join ", CallToActionStyle.Primary),
+                new TeamPageCallToActionInput("", "/ignored", CallToActionStyle.Secondary)
+            ],
+            isPublicPage: true,
+            showCoordinatorsOnPublicPage: true,
+            user.Id);
+
+        result.Succeeded.Should().BeTrue();
+
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.PageContent.Should().Be("Welcome");
+        stored.CallsToAction.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new CallToAction
+            {
+                Text = "Join",
+                Url = "/join",
+                Style = CallToActionStyle.Primary
+            });
+        stored.IsPublicPage.Should().BeTrue();
+        stored.ShowCoordinatorsOnPublicPage.Should().BeTrue();
+    }
+
     // ==========================================================================
-    // CanUserApproveRequestsForTeamAsync
+    // UpdateTeamAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_Admin_ReturnsTrue()
+    public async Task UpdateTeamAsync_TeamNotFound_Throws()
     {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedRoleAssignment(user.Id, RoleNames.Admin,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+        var act = () => _service.UpdateTeamAsync(
+            Guid.NewGuid(), "name", null, requiresApproval: false, isActive: true);
 
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
     }
 
     [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_BoardMember_ReturnsTrue()
+    public async Task UpdateTeamAsync_SystemTeam_UpdatesOnlyDescriptionAndPrefixAndReturnsEarly()
     {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedRoleAssignment(user.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        await _dbContext.SaveChangesAsync();
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        team.Description = "old";
+        team.RequiresApproval = false;
+        await Db.SaveChangesAsync();
+        var originalName = team.Name;
+        var originalSlug = team.Slug;
 
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        var result = await _service.UpdateTeamAsync(
+            team.Id,
+            name: "Renamed",
+            description: "new",
+            requiresApproval: true,
+            isActive: false,
+            googleGroupPrefix: "vol-prefix");
 
-        result.Should().BeTrue();
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Description.Should().Be("new");
+        stored.GoogleGroupPrefix.Should().Be("vol-prefix");
+        // System teams ignore name/requiresApproval/isActive on update
+        stored.Name.Should().Be(originalName);
+        stored.Slug.Should().Be(originalSlug);
+        stored.RequiresApproval.Should().BeFalse();
+        stored.IsActive.Should().BeTrue();
+        result.Description.Should().Be("new");
     }
 
     [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfTeam_ReturnsTrue()
+    public async Task UpdateTeamAsync_ParentIsSelf_Throws()
     {
-        var user = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: team.Id);
 
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*own parent*");
     }
 
     [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
+    public async Task UpdateTeamAsync_TeamHasChildren_Throws()
     {
-        var user = SeedUser();
-        var parent = SeedTeam("Department");
-        var child = SeedTeam("SubTeam");
+        var parent = SeedTeam("Parent");
+        var child = SeedTeam("Child");
         child.ParentTeamId = parent.Id;
-        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
-        await _dbContext.SaveChangesAsync();
+        var newParent = SeedTeam("NewParent");
+        await Db.SaveChangesAsync();
 
-        var result = await _service.CanUserApproveRequestsForTeamAsync(child.Id, user.Id);
+        var act = () => _service.UpdateTeamAsync(
+            parent.Id, "Parent", null, false, true, parentTeamId: newParent.Id);
 
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*sub-teams*");
     }
 
     [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_RegularMember_ReturnsFalse()
+    public async Task UpdateTeamAsync_ParentNotFound_Throws()
     {
-        var user = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: Guid.NewGuid());
 
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Parent team*not found*");
     }
 
     [HumansFact]
-    public async Task CanUserApproveRequestsForTeamAsync_NoRelation_ReturnsFalse()
+    public async Task UpdateTeamAsync_ParentIsSystemTeam_Throws()
     {
-        var user = SeedUser();
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        var systemParent = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
 
-        var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: systemParent.Id);
 
-        result.Should().BeFalse();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*System teams cannot be parents*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentAlreadyHasParent_Throws()
+    {
+        var grandparent = SeedTeam("Grand");
+        var parent = SeedTeam("Parent");
+        parent.ParentTeamId = grandparent.Id;
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: parent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*nest more than one level*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_InvalidCustomSlug_Throws()
+    {
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, customSlug: "!@#$");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Custom slug is not valid*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_CustomSlugTakenByAnotherTeam_Throws()
+    {
+        SeedTeam("Other Team");
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, customSlug: "other-team");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already in use*");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_BlankCustomSlug_NormalizesToNull()
+    {
+        var team = SeedTeam("Alpha");
+        team.CustomSlug = "previous-custom";
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, customSlug: "");
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.CustomSlug.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_RenamesTeam_AndRegeneratesSlug()
+    {
+        var team = SeedTeam("Old Name");
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Brand New Name", null, false, true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Name.Should().Be("Brand New Name");
+        stored.Slug.Should().Be("brand-new-name");
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_RenameWithSlugTaken_KeepsOldSlug()
+    {
+        SeedTeam("Conflict");
+        var team = SeedTeam("Old Name");
+        await Db.SaveChangesAsync();
+        var originalSlug = team.Slug;
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Conflict", null, false, true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Name.Should().Be("Conflict");
+        stored.Slug.Should().Be(originalSlug);
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_PersistsAllCoreFields()
+    {
+        var team = SeedTeam("Alpha");
+        team.Description = "old";
+        team.RequiresApproval = false;
+        team.IsActive = true;
+        team.IsPublicPage = false;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id,
+            "Alpha Renamed",
+            "new description",
+            requiresApproval: true,
+            isActive: false,
+            googleGroupPrefix: "alpha-prefix",
+            hasBudget: true,
+            isHidden: true,
+            isSensitive: true,
+            isPromotedToDirectory: true);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.Description.Should().Be("new description");
+        stored.RequiresApproval.Should().BeTrue();
+        stored.IsActive.Should().BeFalse();
+        stored.GoogleGroupPrefix.Should().Be("alpha-prefix");
+        stored.HasBudget.Should().BeTrue();
+        stored.IsHidden.Should().BeTrue();
+        stored.IsSensitive.Should().BeTrue();
+        stored.IsPromotedToDirectory.Should().BeTrue();
+        stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_OptionalFlagsNull_LeavesExistingValues()
+    {
+        var team = SeedTeam("Alpha");
+        team.HasBudget = true;
+        team.IsHidden = true;
+        team.IsSensitive = true;
+        team.IsPromotedToDirectory = true;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true,
+            hasBudget: null, isHidden: null, isSensitive: null, isPromotedToDirectory: null);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.HasBudget.Should().BeTrue();
+        stored.IsHidden.Should().BeTrue();
+        stored.IsSensitive.Should().BeTrue();
+        stored.IsPromotedToDirectory.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_BecomingChild_ForcesPublicPageFalse()
+    {
+        var parent = SeedTeam("Parent");
+        var team = SeedTeam("Alpha");
+        team.IsPublicPage = true;
+        team.ShowCoordinatorsOnPublicPage = true;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: parent.Id);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.IsPublicPage.Should().BeFalse();
+        stored.ShowCoordinatorsOnPublicPage.Should().BeFalse();
+        stored.ParentTeamId.Should().Be(parent.Id);
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_ParentChange_InvalidatesShiftAuthForManagementUsers()
+    {
+        var parentOld = SeedTeam("Old Parent");
+        var parentNew = SeedTeam("New Parent");
+        var team = SeedTeam("Alpha");
+        team.ParentTeamId = parentOld.Id;
+        var manager = SeedUser(displayName: "Manager");
+        var member = SeedTeamMember(team.Id, manager.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await Db.SaveChangesAsync();
+        Cache.Set(CacheKeys.ShiftAuthorization(manager.Id), new[] { team.Id });
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, false, true, parentTeamId: parentNew.Id);
+
+        Cache.TryGetValue(CacheKeys.ShiftAuthorization(manager.Id), out _).Should().BeFalse();
     }
 
     // ==========================================================================
-    // IsUserMemberOfTeamAsync
+    // RequestToJoinTeamAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_ActiveMember_ReturnsTrue()
+    public async Task RequestToJoinTeamAsync_TeamNotFound_Throws()
+    {
+        var user = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(Guid.NewGuid(), user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_SystemTeam_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers, requiresApproval: true);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_HiddenTeam_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        team.IsHidden = true;
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*hidden*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_TeamWithoutApproval_Throws()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*does not require approval*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_AlreadyHasPendingRequest_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedJoinRequest(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already has a pending request*");
+    }
+
+    [HumansFact]
+    public async Task RequestToJoinTeamAsync_AlreadyMember_Throws()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", requiresApproval: true);
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
+        var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null);
 
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already a member*");
     }
 
     [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_LeftTeam_ReturnsFalse()
+    public async Task RequestToJoinTeamAsync_HappyPath_PersistsRequestWithMessage()
     {
         var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        await Db.SaveChangesAsync();
 
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
+        var result = await _service.RequestToJoinTeamAsync(team.Id, user.Id, "Pick me");
 
-        result.Should().BeFalse();
-    }
+        result.TeamId.Should().Be(team.Id);
+        result.UserId.Should().Be(user.Id);
+        result.Message.Should().Be("Pick me");
+        result.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        result.RequestedAt.Should().Be(Clock.GetCurrentInstant());
 
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_NotMember_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamJoinRequests.AsNoTracking().SingleAsync();
+        stored.Id.Should().Be(result.Id);
+        stored.Message.Should().Be("Pick me");
     }
 
     // ==========================================================================
-    // GetTeamBySlugAsync
+    // RemoveMemberAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
+    public async Task RemoveMemberAsync_TeamNotFound_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(Guid.NewGuid(), Guid.NewGuid(), actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_SystemTeam_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        SeedTeamMember(team.Id, target.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, target.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_TargetNotAMember_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not a member*");
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_RegularMember_SetsLeftAtAndReturnsFalse()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
+        var member = SeedTeamMember(team.Id, target.Id, TeamMemberRole.Member);
+        await Db.SaveChangesAsync();
+
+        var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        wasCoordinator.Should().BeFalse();
+        Db.ChangeTracker.Clear();
+        var reloaded = await Db.TeamMembers.AsNoTracking().SingleAsync(tm => tm.Id == member.Id);
+        reloaded.LeftAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_Coordinator_ReturnsTrue()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, target.Id, TeamMemberRole.Coordinator);
+        await Db.SaveChangesAsync();
+
+        var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
+
+        wasCoordinator.Should().BeTrue();
+    }
+
+    // ==========================================================================
+    // RejectJoinRequestAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_RequestNotFound_Throws()
+    {
+        var approver = SeedUser(displayName: "Approver");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RejectJoinRequestAsync(Guid.NewGuid(), approver.Id, "reason");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_ApproverLacksPermission_Throws()
+    {
+        var stranger = SeedUser(displayName: "Stranger");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RejectJoinRequestAsync(request.Id, stranger.Id, "no thanks");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_RequestAlreadyApproved_Throws()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id, TeamJoinRequestStatus.Approved);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "late");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*pending*");
+    }
+
+    [HumansFact]
+    public async Task RejectJoinRequestAsync_HappyPath_RecordsRejectionWithReason()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await Db.SaveChangesAsync();
+
+        await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "out of capacity");
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Rejected);
+        stored.ReviewNotes.Should().Be("out of capacity");
+        stored.ReviewedByUserId.Should().Be(coordinator.Id);
+        stored.ResolvedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // ==========================================================================
+    // CreateRoleDefinitionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_TeamNotFound_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            Guid.NewGuid(), "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Team*not found*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_DuplicateName_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        SeedTeamRoleDefinition(team.Id, isManagement: false);
+        var existingName = "Member Role";
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            team.Id, existingName, null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already exists*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.CreateRoleDefinitionAsync(
+            team.Id, "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_HappyPath_PersistsDefinition()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        await Db.SaveChangesAsync();
+
+        var result = await _service.CreateRoleDefinitionAsync(
+            team.Id, "Lead", "Lead description", 2,
+            [SlotPriority.Critical, SlotPriority.Important], 5, RolePeriod.Event, actor.Id,
+            isPublic: false);
+
+        result.TeamId.Should().Be(team.Id);
+        result.Name.Should().Be("Lead");
+        result.SlotCount.Should().Be(2);
+        result.SortOrder.Should().Be(5);
+        result.IsPublic.Should().BeFalse();
+        result.Period.Should().Be(RolePeriod.Event);
+        result.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // ==========================================================================
+    // UpdateRoleDefinitionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_DefinitionNotFound_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            Guid.NewGuid(), "Lead", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Role definition*not found*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            def.Id, "Lead", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_ReducingSlotCountBelowAssignmentsCount_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        def.SlotCount = 3;
+        var user = SeedUser(displayName: "Holder");
+        var member = SeedTeamMember(team.Id, user.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            def.Id, def.Name, null, slotCount: 1,
+            [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Cannot reduce slot count*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var first = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        first.Name = "Original";
+        var second = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        second.Name = "Other";
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            second.Id, "Original", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already exists*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_CanToggleManagementFalse_PreservesIsManagement()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateRoleDefinitionAsync(
+            def.Id, def.Name, null, 1, [SlotPriority.None], 0,
+            isManagement: false, RolePeriod.YearRound, actor.Id,
+            canToggleManagement: false);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id);
+        stored.IsManagement.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_PromotingToManagementWhenAnotherExists_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var existingManagement = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        existingManagement.Name = "Existing Mgmt";
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        def.Name = "To Promote";
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            def.Id, def.Name, null, 1, [SlotPriority.None], 0,
+            isManagement: true, RolePeriod.YearRound, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already marked as the management role*");
+    }
+
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_HappyPath_UpdatesAllEditableFields()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        def.Name = "Original";
+        def.SortOrder = 0;
+        await Db.SaveChangesAsync();
+
+        await _service.UpdateRoleDefinitionAsync(
+            def.Id, "Renamed", "new desc", slotCount: 2,
+            [SlotPriority.Critical, SlotPriority.None], sortOrder: 7,
+            isManagement: false, RolePeriod.Event, actor.Id, isPublic: false);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id);
+        stored.Name.Should().Be("Renamed");
+        stored.Description.Should().Be("new desc");
+        stored.SlotCount.Should().Be(2);
+        stored.SortOrder.Should().Be(7);
+        stored.IsPublic.Should().BeFalse();
+        stored.Period.Should().Be(RolePeriod.Event);
+        stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // ==========================================================================
+    // DeleteRoleDefinitionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_NotFound_Throws()
+    {
+        var actor = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.DeleteRoleDefinitionAsync(Guid.NewGuid(), actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Role definition*not found*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_ManagementWithAssignedMembers_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        var holder = SeedUser(displayName: "Holder");
+        var member = SeedTeamMember(team.Id, holder.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*management role while members are assigned*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRoleDefinitionAsync_HappyPath_RemovesDefinition()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        await _service.DeleteRoleDefinitionAsync(def.Id, actor.Id);
+
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().FirstOrDefaultAsync(d => d.Id == def.Id);
+        stored.Should().BeNull();
+    }
+
+    // ==========================================================================
+    // ToggleRoleIsManagementAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_DefinitionNotFound_Throws()
+    {
+        var actor = SeedUser();
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(Guid.NewGuid(), actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Role definition*not found*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_ActorLacksPermission_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_PromotingWithAssignments_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        var holder = SeedUser(displayName: "Holder");
+        var member = SeedTeamMember(team.Id, holder.Id);
+        SeedTeamRoleAssignment(def.Id, member.Id);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*members are assigned*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_PromotingWhenAnotherManagementExists_Throws()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        SeedTeamRoleDefinition(team.Id, isManagement: true);
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already marked as the management role*");
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_HappyPathPromote_FlipsIsManagement()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        result.IsManagement.Should().BeTrue();
+        Db.ChangeTracker.Clear();
+        var stored = await Db.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id);
+        stored.IsManagement.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ToggleRoleIsManagementAsync_HappyPathDemote_FlipsIsManagement()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ToggleRoleIsManagementAsync(def.Id, actor.Id);
+
+        result.IsManagement.Should().BeFalse();
+    }
+
+    // ==========================================================================
+    // PermanentlyDeleteTeamAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task PermanentlyDeleteTeamAsync_TeamNotFound_Throws()
+    {
+        var act = () => _service.PermanentlyDeleteTeamAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task PermanentlyDeleteTeamAsync_SystemTeam_Throws()
+    {
+        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.PermanentlyDeleteTeamAsync(team.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system team*");
+    }
+
+    [HumansFact]
+    public async Task PermanentlyDeleteTeamAsync_HasActiveChildren_Throws()
+    {
+        var parent = SeedTeam("Parent");
+        var child = SeedTeam("Child");
+        child.ParentTeamId = parent.Id;
+        await Db.SaveChangesAsync();
+
+        var act = () => _service.PermanentlyDeleteTeamAsync(parent.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*sub-teams*");
+    }
+
+    // Happy-path PermanentlyDeleteTeamAsync needs a real transactional store; the in-memory
+    // EF provider used in this harness does not support transactions. Cover it in Integration tests.
+
+    // ==========================================================================
+    // GetTeamEntityBySlugAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetTeamEntityBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
         SeedTeamMember(team.Id, SeedUser(displayName: "Left User").Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
-        var result = await _service.GetTeamBySlugAsync("alpha");
+        var result = await _service.GetTeamEntityBySlugAsync("alpha");
 
         result.Should().NotBeNull();
-        result!.Name.Should().Be("Alpha");
+        result.Name.Should().Be("Alpha");
         result.Members.Should().ContainSingle();
     }
 
     [HumansFact]
-    public async Task GetTeamBySlugAsync_NonExistentSlug_ReturnsNull()
+    public async Task GetTeamEntityBySlugAsync_NonExistentSlug_ReturnsNull()
     {
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var result = await _service.GetTeamBySlugAsync("non-existent");
+        var result = await _service.GetTeamEntityBySlugAsync("non-existent");
 
         result.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetTeamBySlugAsync_IncludesUserNavigation()
+    public async Task GetTeamEntityBySlugAsync_IncludesUserNavigation()
     {
         var user = SeedUser(displayName: "Alice");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var result = await _service.GetTeamBySlugAsync("alpha");
+        var result = await _service.GetTeamEntityBySlugAsync("alpha");
 
         result!.Members.Single().User.Should().NotBeNull();
         result.Members.Single().User.DisplayName.Should().Be("Alice");
+    }
+
+    // ==========================================================================
+    // GetTeamBySlugAsync (TeamInfo? — ITeamServiceRead surface)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsSameTeamAsEntityVersion()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id);
+        await Db.SaveChangesAsync();
+
+        var info = await _service.GetTeamBySlugAsync("alpha");
+        var entity = await _service.GetTeamEntityBySlugAsync("alpha");
+
+        info.Should().NotBeNull();
+        entity.Should().NotBeNull();
+        info!.Id.Should().Be(entity!.Id);
+        info.Slug.Should().Be(entity.Slug);
+        info.Name.Should().Be(entity.Name);
+    }
+
+    [HumansFact]
+    public async Task GetTeamBySlugAsync_NonExistentSlug_ReturnsNull()
+    {
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetTeamBySlugAsync("non-existent");
+
+        result.Should().BeNull();
     }
 
     // ==========================================================================
@@ -598,13 +1563,13 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
         SeedTeamMember(team.Id, SeedUser(displayName: "Left User").Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamByIdAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().ContainSingle();
+        result.Members.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -624,7 +1589,7 @@ public class TeamServiceTests : IDisposable
     {
         SeedTeam("Active");
         SeedTeam("Inactive", isActive: false);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAllTeamsAsync();
 
@@ -638,11 +1603,11 @@ public class TeamServiceTests : IDisposable
         SeedTeam("Charlie");
         SeedTeam("Alpha");
         SeedTeam("Bravo");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAllTeamsAsync();
 
-        result.Select(t => t.Name).Should().BeEquivalentTo(["Alpha", "Bravo", "Charlie"]);
+        result.Select(t => t.Name).Should().BeEquivalentTo("Alpha", "Bravo", "Charlie");
     }
 
     [HumansFact]
@@ -653,8 +1618,8 @@ public class TeamServiceTests : IDisposable
         var left = SeedUser(displayName: "Left");
         SeedTeamMember(team.Id, active.Id);
         SeedTeamMember(team.Id, left.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAllTeamsAsync();
 
@@ -681,8 +1646,8 @@ public class TeamServiceTests : IDisposable
         var teamB = SeedTeam("Beta");
         SeedTeamMember(teamA.Id, user.Id);
         SeedTeamMember(teamB.Id, user.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -696,7 +1661,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -708,7 +1673,7 @@ public class TeamServiceTests : IDisposable
     public async Task GetUserTeamsAsync_NoMemberships_ReturnsEmpty()
     {
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
 
@@ -729,7 +1694,7 @@ public class TeamServiceTests : IDisposable
         SeedTeamMember(systemTeam.Id, user.Id, TeamMemberRole.Coordinator);
         SeedJoinRequest(managedTeam.Id, SeedUser(displayName: "Requester A").Id);
         SeedJoinRequest(systemTeam.Id, SeedUser(displayName: "Requester B").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -747,11 +1712,11 @@ public class TeamServiceTests : IDisposable
         SeedRoleAssignment(
             user.Id,
             RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
+            Clock.GetCurrentInstant() - Duration.FromDays(10));
         var team = SeedTeam("Alpha", requiresApproval: true);
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
         SeedJoinRequest(team.Id, SeedUser(displayName: "Requester").Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
 
@@ -782,12 +1747,12 @@ public class TeamServiceTests : IDisposable
         privateChild.ParentTeamId = team.Id;
         privateChild.IsPublicPage = false;
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamDetailAsync(team.Slug, userId: null);
 
         result.Should().NotBeNull();
-        result!.IsAuthenticated.Should().BeFalse();
+        result.IsAuthenticated.Should().BeFalse();
         result.Members.Select(m => m.DisplayName).Should().BeEquivalentTo(
             ["Coordinator"],
             cfg => cfg.WithStrictOrdering());
@@ -810,12 +1775,12 @@ public class TeamServiceTests : IDisposable
         var pendingRequest = SeedJoinRequest(team.Id, requester.Id);
         var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamDetailAsync(team.Slug, coordinator.Id);
 
         result.Should().NotBeNull();
-        result!.IsAuthenticated.Should().BeTrue();
+        result.IsAuthenticated.Should().BeTrue();
         result.IsCurrentUserMember.Should().BeTrue();
         result.IsCurrentUserCoordinator.Should().BeTrue();
         result.CanCurrentUserManage.Should().BeTrue();
@@ -832,98 +1797,6 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // GetPendingRequestsForApproverAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_BoardMember_ReturnsAllPending()
-    {
-        var approver = SeedUser();
-        SeedRoleAssignment(approver.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        var teamA = SeedTeam("Alpha", requiresApproval: true);
-        var teamB = SeedTeam("Beta", requiresApproval: true);
-        var requestor1 = SeedUser(displayName: "R1");
-        var requestor2 = SeedUser(displayName: "R2");
-        SeedJoinRequest(teamA.Id, requestor1.Id);
-        SeedJoinRequest(teamB.Id, requestor2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(approver.Id);
-
-        result.Should().HaveCount(2);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_Coordinator_ReturnsOnlyOwnTeamRequests()
-    {
-        var coordinator = SeedUser();
-        var teamA = SeedTeam("Alpha", requiresApproval: true);
-        var teamB = SeedTeam("Beta", requiresApproval: true);
-        SeedTeamMember(teamA.Id, coordinator.Id, TeamMemberRole.Coordinator);
-        var requestor1 = SeedUser(displayName: "R1");
-        var requestor2 = SeedUser(displayName: "R2");
-        SeedJoinRequest(teamA.Id, requestor1.Id);
-        SeedJoinRequest(teamB.Id, requestor2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
-
-        result.Should().ContainSingle();
-        result[0].TeamId.Should().Be(teamA.Id);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_CoordinatorOfParent_IncludesChildTeamRequests()
-    {
-        var coordinator = SeedUser();
-        var parent = SeedTeam("Department");
-        var child = SeedTeam("SubTeam");
-        child.ParentTeamId = parent.Id;
-        SeedTeamMember(parent.Id, coordinator.Id, TeamMemberRole.Coordinator);
-        var requestor = SeedUser(displayName: "R1");
-        SeedJoinRequest(child.Id, requestor.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
-
-        result.Should().ContainSingle();
-        result[0].TeamId.Should().Be(child.Id);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_RegularUser_ReturnsEmpty()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha", requiresApproval: true);
-        var requestor = SeedUser(displayName: "R1");
-        SeedJoinRequest(team.Id, requestor.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(user.Id);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_ExcludesNonPendingRequests()
-    {
-        var approver = SeedUser();
-        SeedRoleAssignment(approver.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        var team = SeedTeam("Alpha", requiresApproval: true);
-        var r1 = SeedUser(displayName: "R1");
-        var r2 = SeedUser(displayName: "R2");
-        SeedJoinRequest(team.Id, r1.Id, TeamJoinRequestStatus.Approved);
-        SeedJoinRequest(team.Id, r2.Id, TeamJoinRequestStatus.Pending);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(approver.Id);
-
-        result.Should().ContainSingle();
-    }
-
-    // ==========================================================================
     // GetPendingRequestsForTeamAsync
     // ==========================================================================
 
@@ -935,7 +1808,7 @@ public class TeamServiceTests : IDisposable
         var u2 = SeedUser(displayName: "U2");
         SeedJoinRequest(team.Id, u1.Id);
         SeedJoinRequest(team.Id, u2.Id, TeamJoinRequestStatus.Rejected);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestsForTeamAsync(team.Id);
 
@@ -947,7 +1820,7 @@ public class TeamServiceTests : IDisposable
     public async Task GetPendingRequestsForTeamAsync_NoRequests_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestsForTeamAsync(team.Id);
 
@@ -967,19 +1840,19 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = u1.Id,
             Status = TeamJoinRequestStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant() - Duration.FromHours(2)
+            RequestedAt = Clock.GetCurrentInstant() - Duration.FromHours(2)
         };
-        _dbContext.TeamJoinRequests.Add(earlier);
+        Db.TeamJoinRequests.Add(earlier);
         var later = new TeamJoinRequest
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
             UserId = u2.Id,
             Status = TeamJoinRequestStatus.Pending,
-            RequestedAt = _clock.GetCurrentInstant() - Duration.FromHours(1)
+            RequestedAt = Clock.GetCurrentInstant() - Duration.FromHours(1)
         };
-        _dbContext.TeamJoinRequests.Add(later);
-        await _dbContext.SaveChangesAsync();
+        Db.TeamJoinRequests.Add(later);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetPendingRequestsForTeamAsync(team.Id);
 
@@ -997,12 +1870,12 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var user = SeedUser();
         SeedJoinRequest(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
         result.Should().NotBeNull();
-        result!.UserId.Should().Be(user.Id);
+        result.UserId.Should().Be(user.Id);
     }
 
     [HumansFact]
@@ -1010,7 +1883,7 @@ public class TeamServiceTests : IDisposable
     {
         var team = SeedTeam("Alpha");
         var user = SeedUser();
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
@@ -1023,7 +1896,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var user = SeedUser();
         SeedJoinRequest(team.Id, user.Id, TeamJoinRequestStatus.Approved);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserPendingRequestAsync(team.Id, user.Id);
 
@@ -1042,13 +1915,13 @@ public class TeamServiceTests : IDisposable
         var left = SeedUser(displayName: "Left");
         SeedTeamMember(team.Id, active.Id);
         SeedTeamMember(team.Id, left.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().ContainSingle();
+        result.Members.Should().ContainSingle();
         result.Members[0].UserId.Should().Be(active.Id);
     }
 
@@ -1066,7 +1939,7 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = coordinator.Id,
             Role = TeamMemberRole.Coordinator,
-            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(5)
+            JoinedAt = Clock.GetCurrentInstant() - Duration.FromDays(5)
         };
         var m2 = new TeamMember
         {
@@ -1074,7 +1947,7 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = memberEarly.Id,
             Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(3)
+            JoinedAt = Clock.GetCurrentInstant() - Duration.FromDays(3)
         };
         var m3 = new TeamMember
         {
@@ -1082,15 +1955,15 @@ public class TeamServiceTests : IDisposable
             TeamId = team.Id,
             UserId = memberLate.Id,
             Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(1)
+            JoinedAt = Clock.GetCurrentInstant() - Duration.FromDays(1)
         };
-        await _dbContext.TeamMembers.AddRangeAsync(m1, m2, m3);
-        await _dbContext.SaveChangesAsync();
+        await Db.TeamMembers.AddRangeAsync(m1, m2, m3);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().HaveCount(3);
+        result.Members.Should().HaveCount(3);
         result.Members.Count(m => m.Role == TeamMemberRole.Member).Should().Be(2);
         result.Members.Count(m => m.Role == TeamMemberRole.Coordinator).Should().Be(1);
         result.Members.Select(m => m.UserId).Should().Contain([memberEarly.Id, memberLate.Id]);
@@ -1102,7 +1975,7 @@ public class TeamServiceTests : IDisposable
         var team = SeedTeam("Alpha");
         var user = SeedUser(displayName: "Alice");
         SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
@@ -1114,215 +1987,97 @@ public class TeamServiceTests : IDisposable
     public async Task GetTeamAsync_NoMembers_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
-        result!.Members.Should().BeEmpty();
+        result.Members.Should().BeEmpty();
     }
 
     // ==========================================================================
-    // GetPendingRequestCountsByTeamIdsAsync
+    // GetAdminTeamListAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_ReturnsCounts()
-    {
-        var teamA = SeedTeam("Alpha");
-        var teamB = SeedTeam("Beta");
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        var u3 = SeedUser(displayName: "U3");
-        SeedJoinRequest(teamA.Id, u1.Id);
-        SeedJoinRequest(teamA.Id, u2.Id);
-        SeedJoinRequest(teamB.Id, u3.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([teamA.Id, teamB.Id]);
-
-        result[teamA.Id].Should().Be(2);
-        result[teamB.Id].Should().Be(1);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_ExcludesNonPending()
-    {
-        var team = SeedTeam("Alpha");
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        SeedJoinRequest(team.Id, u1.Id);
-        SeedJoinRequest(team.Id, u2.Id, TeamJoinRequestStatus.Approved);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
-
-        result[team.Id].Should().Be(1);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_EmptyInput_ReturnsEmptyDict()
-    {
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([]);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestCountsByTeamIdsAsync_TeamWithNoPending_ReturnsZero()
-    {
-        var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
-
-        result[team.Id].Should().Be(0);
-    }
-
-    // ==========================================================================
-    // GetNonSystemTeamNamesByUserIdsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ReturnsTeamNamesGroupedByUser()
-    {
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        var teamA = SeedTeam("Alpha");
-        var teamB = SeedTeam("Beta");
-        SeedTeamMember(teamA.Id, u1.Id);
-        SeedTeamMember(teamB.Id, u1.Id);
-        SeedTeamMember(teamA.Id, u2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([u1.Id, u2.Id]);
-
-        result[u1.Id].Should().HaveCount(2);
-        result[u1.Id].Should().Contain("Alpha");
-        result[u1.Id].Should().Contain("Beta");
-        result[u2.Id].Should().ContainSingle("Alpha");
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesSystemTeams()
-    {
-        var user = SeedUser();
-        var userTeam = SeedTeam("User Team");
-        var sysTeam = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(userTeam.Id, user.Id);
-        SeedTeamMember(sysTeam.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([user.Id]);
-
-        result[user.Id].Should().ContainSingle("User Team");
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesLeftMembers()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([user.Id]);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_EmptyInput_ReturnsEmptyDict()
-    {
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([]);
-
-        result.Should().BeEmpty();
-    }
-
-    // ==========================================================================
-    // GetAllTeamsForAdminAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_ReturnsPaginatedResults()
+    public async Task GetAdminTeamListAsync_ReturnsPaginatedResults()
     {
         SeedTeam("Alpha");
         SeedTeam("Beta");
         SeedTeam("Charlie");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var (items, totalCount) = await _service.GetAllTeamsForAdminAsync(1, 2);
+        var result = await _service.GetAdminTeamListAsync(1, 2);
 
-        items.Should().HaveCount(2);
-        totalCount.Should().Be(3);
+        result.Teams.Should().HaveCount(2);
+        result.TotalCount.Should().Be(3);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_SecondPage_ReturnsRemainingItems()
+    public async Task GetAdminTeamListAsync_SecondPage_ReturnsRemainingItems()
     {
         SeedTeam("Alpha");
         SeedTeam("Beta");
         SeedTeam("Charlie");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var (items, totalCount) = await _service.GetAllTeamsForAdminAsync(2, 2);
+        var result = await _service.GetAdminTeamListAsync(2, 2);
 
-        items.Should().ContainSingle();
-        totalCount.Should().Be(3);
+        result.Teams.Should().ContainSingle();
+        result.TotalCount.Should().Be(3);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_IncludesMembers()
+    public async Task GetAdminTeamListAsync_IncludesMemberCount()
     {
         var team = SeedTeam("Alpha");
         var active = SeedUser(displayName: "Active");
         SeedTeamMember(team.Id, active.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var (items, _) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
-        items.Single().Members.Should().ContainSingle();
+        result.Teams.Single().MemberCount.Should().Be(1);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_IncludesJoinRequests()
+    public async Task GetAdminTeamListAsync_IncludesPendingRequestCount()
     {
         var team = SeedTeam("Alpha");
         var u1 = SeedUser(displayName: "U1");
         SeedJoinRequest(team.Id, u1.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var (items, _) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
-        items.Single().JoinRequests.Should().ContainSingle();
+        result.Teams.Single().PendingRequestCount.Should().Be(1);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_IncludesInactiveTeams()
+    public async Task GetAdminTeamListAsync_IncludesInactiveTeams()
     {
         SeedTeam("Active");
         SeedTeam("Inactive", isActive: false);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var (items, totalCount) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
-        totalCount.Should().Be(2);
-        items.Should().HaveCount(2);
+        result.TotalCount.Should().Be(2);
+        result.Teams.Should().HaveCount(2);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_SystemTeamsOrderedFirst()
+    public async Task GetAdminTeamListAsync_SystemTeamsOrderedFirst()
     {
         SeedTeam("Zebra");
         SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var (items, _) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
         // SystemTeamType.None(0) < Volunteers(1), so None sorts first in ascending order
-        items[0].SystemTeamType.Should().Be(SystemTeamType.None);
-        items[1].SystemTeamType.Should().Be(SystemTeamType.Volunteers);
+        result.Teams[0].SystemTeamType.Should().BeNull();
+        result.Teams[1].SystemTeamType.Should().Be(nameof(SystemTeamType.Volunteers));
     }
 
     // ==========================================================================
@@ -1335,7 +2090,7 @@ public class TeamServiceTests : IDisposable
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id);
 
@@ -1345,7 +2100,7 @@ public class TeamServiceTests : IDisposable
         result.Role.Should().Be(TeamMemberRole.Member);
         result.LeftAt.Should().BeNull();
 
-        var memberInDb = await _dbContext.TeamMembers
+        var memberInDb = await Db.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == target.Id && tm.LeftAt == null);
         memberInDb.Should().NotBeNull();
     }
@@ -1357,7 +2112,7 @@ public class TeamServiceTests : IDisposable
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, target.Id);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var act = () => _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id);
 
@@ -1371,7 +2126,7 @@ public class TeamServiceTests : IDisposable
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var act = () => _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id);
 
@@ -1387,13 +2142,13 @@ public class TeamServiceTests : IDisposable
         var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
         var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
         SeedTeamRoleAssignment(roleDefinition.Id, member.Id);
-        await _dbContext.SaveChangesAsync();
-        _cache.Set(CacheKeys.ShiftAuthorization(user.Id), new[] { team.Id });
+        await Db.SaveChangesAsync();
+        Cache.Set(CacheKeys.ShiftAuthorization(user.Id), new[] { team.Id });
 
         var result = await _service.LeaveTeamAsync(team.Id, user.Id);
 
         result.Should().BeTrue();
-        _cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
+        Cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
     }
 
     [HumansFact]
@@ -1414,8 +2169,8 @@ public class TeamServiceTests : IDisposable
             Priorities = [SlotPriority.Important, SlotPriority.None],
             SortOrder = 0,
             Period = RolePeriod.YearRound,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         alphaDefinition.Assignments.Add(new TeamRoleAssignment
         {
@@ -1424,7 +2179,7 @@ public class TeamServiceTests : IDisposable
             TeamMemberId = alphaTeamMember.Id,
             TeamMember = alphaTeamMember,
             SlotIndex = 0,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = Guid.NewGuid()
         });
 
@@ -1438,12 +2193,12 @@ public class TeamServiceTests : IDisposable
             Priorities = [SlotPriority.Critical],
             SortOrder = 0,
             Period = RolePeriod.Event,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
 
-        await _dbContext.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
-        await _dbContext.SaveChangesAsync();
+        await Db.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetRosterAsync(priority: null, status: null, period: null);
 
@@ -1478,8 +2233,8 @@ public class TeamServiceTests : IDisposable
             Priorities = [SlotPriority.Critical, SlotPriority.Important, SlotPriority.Important],
             SortOrder = 0,
             Period = RolePeriod.Event,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         definition.Assignments.Add(new TeamRoleAssignment
         {
@@ -1488,12 +2243,12 @@ public class TeamServiceTests : IDisposable
             TeamMemberId = assignedTeamMember.Id,
             TeamMember = assignedTeamMember,
             SlotIndex = 1,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = Guid.NewGuid()
         });
 
-        _dbContext.TeamRoleDefinitions.Add(definition);
-        await _dbContext.SaveChangesAsync();
+        Db.TeamRoleDefinitions.Add(definition);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetRosterAsync(
             priority: nameof(SlotPriority.Important),
@@ -1533,7 +2288,7 @@ public class TeamServiceTests : IDisposable
         var oldShift = SeedShift(oldRota.Id);
         SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 500);
 
@@ -1553,7 +2308,7 @@ public class TeamServiceTests : IDisposable
         var shift = SeedShift(rota.Id);
         SeedShiftSignup(shift.Id, user.Id, SignupStatus.Pending);
 
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetAdminTeamListAsync(1, 500);
 
@@ -1576,34 +2331,34 @@ public class TeamServiceTests : IDisposable
         SeedTeamMember(team.Id, bob.Id);
         // Previously-left member should NOT be touched.
         var ghost = SeedUser(displayName: "Ghost");
-        SeedTeamMember(team.Id, ghost.Id, leftAt: _clock.GetCurrentInstant() - Duration.FromDays(30));
-        await _dbContext.SaveChangesAsync();
+        SeedTeamMember(team.Id, ghost.Id, leftAt: Clock.GetCurrentInstant() - Duration.FromDays(30));
+        await Db.SaveChangesAsync();
 
         // Act
         await _service.DeleteTeamAsync(team.Id);
 
         // Service uses its own DbContext; detach trackers so assertions re-read
         // from the store rather than returning stale tracked entities.
-        _dbContext.ChangeTracker.Clear();
+        Db.ChangeTracker.Clear();
 
         // Assert — team soft-deleted
-        var reloaded = await _dbContext.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
+        var reloaded = await Db.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
         // All previously-active memberships now have LeftAt set.
-        var aliceMember = await _dbContext.TeamMembers.AsNoTracking()
+        var aliceMember = await Db.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == alice.Id);
-        var bobMember = await _dbContext.TeamMembers.AsNoTracking()
+        var bobMember = await Db.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == bob.Id);
         aliceMember.LeftAt.Should().NotBeNull();
         bobMember.LeftAt.Should().NotBeNull();
-        aliceMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
-        bobMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
+        aliceMember.LeftAt.Should().Be(Clock.GetCurrentInstant());
+        bobMember.LeftAt.Should().Be(Clock.GetCurrentInstant());
 
         // Previously-left membership is unchanged (still has its original LeftAt).
-        var ghostMember = await _dbContext.TeamMembers.AsNoTracking()
+        var ghostMember = await Db.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id);
-        ghostMember.LeftAt.Should().Be(_clock.GetCurrentInstant() - Duration.FromDays(30));
+        ghostMember.LeftAt.Should().Be(Clock.GetCurrentInstant() - Duration.FromDays(30));
 
         // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
         // flipping GoogleResource.IsActive here would make the next reconciliation tick
@@ -1617,99 +2372,38 @@ public class TeamServiceTests : IDisposable
     public async Task DeleteTeamAsync_NoActiveMembers_StillSoftDeletes()
     {
         var team = SeedTeam("Empty Team");
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.DeleteTeamAsync(team.Id);
 
-        _dbContext.ChangeTracker.Clear();
+        Db.ChangeTracker.Clear();
 
-        var reloaded = await _dbContext.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
+        var reloaded = await Db.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
             Arg.Any<Guid>(), Arg.Any<GoogleResourceType?>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task GetExpectedAsync_DuplicateGoogleGroupEmail_SkipsClaim()
+    {
+        var alice = SeedUser(displayName: "Alice");
+        var bob = SeedUser(displayName: "Bob");
+        var first = SeedTeam("First");
+        var second = SeedTeam("Second");
+        first.GoogleGroupPrefix = "shared";
+        second.GoogleGroupPrefix = "shared";
+        SeedTeamMember(first.Id, alice.Id);
+        SeedTeamMember(second.Id, bob.Id);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetExpectedAsync();
+
+        result.Should().NotContainKey($"shared@{DomainConstants.GoogleGroupDomain}");
+    }
+
     // --- Helpers ---
-
-    private User SeedUser(Guid? id = null, string displayName = "Test User")
-    {
-        var userId = id ?? Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        _dbContext.Users.Add(user);
-        return user;
-    }
-
-    private Team SeedTeam(string name, SystemTeamType type = SystemTeamType.None, Guid? id = null, bool isActive = true, bool requiresApproval = false)
-    {
-        var team = new Team
-        {
-            Id = id ?? Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(" ", "-"),
-            SystemTeamType = type,
-            IsActive = isActive,
-            RequiresApproval = requiresApproval,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Teams.Add(team);
-        return team;
-    }
-
-    private TeamMember SeedTeamMember(Guid teamId, Guid userId, TeamMemberRole role = TeamMemberRole.Member, Instant? leftAt = null)
-    {
-        var member = new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            Team = _dbContext.Teams.Local.Single(t => t.Id == teamId),
-            UserId = userId,
-            User = _dbContext.Users.Local.Single(u => u.Id == userId),
-            Role = role,
-            JoinedAt = _clock.GetCurrentInstant(),
-            LeftAt = leftAt
-        };
-        _dbContext.TeamMembers.Add(member);
-        return member;
-    }
-
-    private RoleAssignment SeedRoleAssignment(Guid userId, string roleName, Instant validFrom, Instant? validTo = null)
-    {
-        var ra = new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            RoleName = roleName,
-            ValidFrom = validFrom,
-            ValidTo = validTo,
-            CreatedAt = _clock.GetCurrentInstant(),
-            CreatedByUserId = Guid.NewGuid()
-        };
-        _dbContext.RoleAssignments.Add(ra);
-        return ra;
-    }
-
-    private TeamJoinRequest SeedJoinRequest(Guid teamId, Guid userId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
-    {
-        var request = new TeamJoinRequest
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Status = status,
-            RequestedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.TeamJoinRequests.Add(request);
-        return request;
-    }
 
     private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)
     {
@@ -1721,10 +2415,10 @@ public class TeamServiceTests : IDisposable
             IsManagement = isManagement,
             SlotCount = 1,
             SortOrder = 0,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.TeamRoleDefinitions.Add(definition);
+        Db.TeamRoleDefinitions.Add(definition);
         return definition;
     }
 
@@ -1736,10 +2430,10 @@ public class TeamServiceTests : IDisposable
             TeamRoleDefinitionId = roleDefinitionId,
             TeamMemberId = teamMemberId,
             SlotIndex = 0,
-            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = Guid.NewGuid()
         };
-        _dbContext.TeamRoleAssignments.Add(assignment);
+        Db.TeamRoleAssignments.Add(assignment);
         return assignment;
     }
 
@@ -1755,10 +2449,10 @@ public class TeamServiceTests : IDisposable
             EventEndOffset = 5,
             StrikeEndOffset = 7,
             IsActive = isActive,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.EventSettings.Add(es);
+        Db.EventSettings.Add(es);
         return es;
     }
 
@@ -1770,10 +2464,10 @@ public class TeamServiceTests : IDisposable
             TeamId = teamId,
             EventSettingsId = eventSettingsId,
             Name = name,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Rotas.Add(rota);
+        Db.Rotas.Add(rota);
         return rota;
     }
 
@@ -1788,10 +2482,10 @@ public class TeamServiceTests : IDisposable
             Duration = Duration.FromHours(4),
             MinVolunteers = 1,
             MaxVolunteers = 5,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Shifts.Add(shift);
+        Db.Shifts.Add(shift);
         return shift;
     }
 
@@ -1803,10 +2497,12 @@ public class TeamServiceTests : IDisposable
             ShiftId = shiftId,
             UserId = userId,
             Status = status,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.ShiftSignups.Add(signup);
+        Db.ShiftSignups.Add(signup);
         return signup;
     }
 }
+
+

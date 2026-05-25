@@ -1,6 +1,6 @@
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -8,6 +8,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>contact_fields</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
+[Section("Humans")]
 public interface IContactFieldRepository : IRepository
 {
     /// <summary>
@@ -25,14 +26,6 @@ public interface IContactFieldRepository : IRepository
     /// across all profiles is far smaller than the user count.
     /// </summary>
     Task<IReadOnlyList<ContactField>> GetAllAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns contact fields for a profile filtered by allowed visibility
-    /// levels, read-only, ordered by <c>DisplayOrder</c> then <c>CreatedAt</c>.
-    /// </summary>
-    Task<IReadOnlyList<ContactField>> GetVisibleByProfileIdAsync(
-        Guid profileId, IReadOnlyList<ContactFieldVisibility> allowedVisibilities,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Returns detached entities intended to be mutated in-memory and passed back

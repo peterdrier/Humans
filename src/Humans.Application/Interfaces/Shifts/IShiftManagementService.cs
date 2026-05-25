@@ -1,5 +1,3 @@
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
@@ -8,29 +6,13 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
 
+public record ShiftTagSummary(Guid Id, string Name);
+public record ShiftTagPreferenceSummary(Guid Id, string Name);
+
 /// <summary>
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
 /// </summary>
-/// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>
-///     48→49 — added HasQualifyingCantinaSignupAsync for the dietary/medical nudge gate (issue nobodies-collective/Humans#279). Authorized by Frank, 2026-05-23. To be reviewed by Peter.
-///     <para>
-///     Justification: this is a single-bool view-gate helper for the dashboard Things-to-do nudge. The composition (active event + active signup + qualifying-shift rule + future-end clock check) is non-trivial enough that inlining at the call site would duplicate the logic across ThingsToDoViewComponent and any future consumer (e.g., a reminder job). Follows the precedent of peterdrier#602 (GetDepartmentCoveragePiesAsync, same interface, similar dashboard-aggregator shape, authorized by Peter 2026-05-16).
-///     </para>
-///   </item>
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(48)] (issue nobodies-collective/Humans#700).</item>
-///   <item>49→48 — collapsed GetAllTagsAsync and SearchTagsAsync into one GetTagsAsync(query) method.</item>
-///   <item>50→49 — tech-debt interface consolidation: collapsed GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync into one GetShiftsSummaryAsync(eventId, teamIds) method.</item>
-///   <item>49→50 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against rotas must live in the owning section per design-rules §6.</item>
-///   <item>50→49 — account-merge fold final consolidation: removed ReassignProfilesAndTagPrefsToUserAsync from IShiftManagementService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
-///   <item>50→50 — account-merge fold redesign Phase 3.2: added ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync (zero production callers, zero tests — fully dead since the shift-management slice 1/2 plan that introduced it never wired it up; controllers use IsDeptCoordinatorAsync + role checks directly).</item>
-///   <item>+1 GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).</item>
-/// </list>
-/// </remarks>
-[SurfaceBudget(49)]
 public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
@@ -75,9 +57,11 @@ public interface IShiftManagementService : IApplicationService
     Task UpdateAsync(EventSettings entity);
 
     /// <summary>
-    /// Gets the available (non-barrios) EE slots for a given day offset.
+    /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
+    /// and shift signups. Requires the current authenticated user to hold the
+    /// full Admin role.
     /// </summary>
-    int GetAvailableEeSlots(EventSettings settings, int dayOffset);
+    Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 
     // === Rota ===
 
@@ -95,7 +79,7 @@ public interface IShiftManagementService : IApplicationService
     /// Moves a rota to a different department (parent team).
     /// Preserves all shifts and signups. Records an audit log entry.
     /// </summary>
-    Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId);
+    Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input);
 
     /// <summary>
     /// Deletes a rota. Throws if child shifts have confirmed signups.
@@ -133,26 +117,27 @@ public interface IShiftManagementService : IApplicationService
     /// Creates one all-day shift per day for a Build or Strike rota.
     /// Throws if the rota has Period=Event.
     /// </summary>
-    Task CreateBuildStrikeShiftsAsync(Guid rotaId, Dictionary<int, (int Min, int Max)> dailyStaffing);
+    Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input);
 
     /// <summary>
     /// Generates shifts for an Event rota as Cartesian product of days × time slots.
     /// Throws if the rota has Period != Event.
     /// </summary>
-    Task GenerateEventShiftsAsync(Guid rotaId, int startDayOffset, int endDayOffset,
-        List<(LocalTime StartTime, double DurationHours)> timeSlots, int minVolunteers = 2, int maxVolunteers = 5);
+    Task<ShiftGenerationResult> GenerateEventShiftsAsync(GenerateEventShiftsInput input);
 
     // === Shift ===
 
     /// <summary>
-    /// Creates a new shift. Validates DayOffset range and volunteer counts.
+    /// Creates a new shift for a department rota. Validates rota ownership,
+    /// period DayOffset range, and volunteer counts.
     /// </summary>
-    Task CreateShiftAsync(Shift shift);
+    Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input);
 
     /// <summary>
-    /// Updates an existing shift.
+    /// Updates an existing shift for a department rota. Validates shift
+    /// ownership, period DayOffset range, and volunteer counts.
     /// </summary>
-    Task UpdateShiftAsync(Shift shift);
+    Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input);
 
     /// <summary>
     /// Deletes a shift. Throws if confirmed signups exist; cancels pending signups.
@@ -246,6 +231,23 @@ public interface IShiftManagementService : IApplicationService
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns one row per department pie shown above the /Shifts page.
+    /// Pie-eligible teams = top-level departments + promoted sub-teams
+    /// (<see cref="Team.IsInDirectory"/>). Non-promoted sub-team rotas roll
+    /// up to their parent's pie. AdminOnly shifts and hidden rotas are
+    /// excluded. Date filters are applied per-shift via
+    /// <c>EventSettings.GateOpeningDate + DayOffset</c>.
+    /// Rows are returned in natural <c>TeamName</c> order; the
+    /// "promoted sub-team next to its parent" display ordering is applied
+    /// in the view-model assembly layer.
+    /// </summary>
+    Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
+        Guid eventSettingsId,
+        LocalDate? fromDate = null,
+        LocalDate? toDate = null,
+        CancellationToken ct = default);
+
     // === Coordinator Dashboard ===
 
     /// <summary>
@@ -310,12 +312,12 @@ public interface IShiftManagementService : IApplicationService
     /// <summary>
     /// Gets shift tags, optionally filtered by name (case-insensitive contains).
     /// </summary>
-    Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null);
+    Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null);
 
     /// <summary>
     /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).
     /// </summary>
-    Task<ShiftTag> GetOrCreateTagAsync(string name);
+    Task<ShiftTagSummary> GetOrCreateTagAsync(string name);
 
     /// <summary>
     /// Sets the tags for a rota, replacing any existing tags.
@@ -325,7 +327,7 @@ public interface IShiftManagementService : IApplicationService
     /// <summary>
     /// Gets a volunteer's tag preferences.
     /// </summary>
-    Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId);
+    Task<IReadOnlyList<ShiftTagPreferenceSummary>> GetVolunteerTagPreferencesAsync(Guid userId);
 
     /// <summary>
     /// Sets a volunteer's tag preferences, replacing any existing ones.
@@ -386,7 +388,7 @@ public record UrgentShift(
     int ConfirmedCount,
     int RemainingSlots,
     string DepartmentName,
-    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status, bool HasProfilePicture)> Signups);
+    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status)> Signups);
 
 /// <summary>
 /// Per-day staffing data for set-up/event/strike visualization.
@@ -409,6 +411,37 @@ public record ShiftsSummaryData(
     int UniqueVolunteerCount);
 
 /// <summary>
+/// One pie shown above the /Shifts page. Hours are decimal so callers can
+/// render an exact percentage; the ratio <c>FilledHours / RequestedHours</c>
+/// is the disc fill. <see cref="ParentTeamName"/> is non-null only for
+/// promoted sub-team rows and carries the parent's display name so the
+/// presentation layer can group sub-teams next to their parent without a
+/// second team lookup.
+/// </summary>
+public record DepartmentCoveragePie(
+    Guid TeamId,
+    string TeamName,
+    string TeamSlug,
+    bool IsSubTeam,
+    Guid? ParentTeamId,
+    string? ParentTeamName,
+    decimal RequestedHours,
+    decimal FilledHours)
+{
+    /// <summary>
+    /// Filled / requested as an integer 0..100. Single source of truth for
+    /// the disc fill — service caps the inputs so the ratio is bounded, but
+    /// we clamp here too in case a future contributor wires a different
+    /// input path.
+    /// </summary>
+    public int FillPercent => RequestedHours > 0
+        ? Math.Clamp(
+            (int)Math.Round(FilledHours / RequestedHours * 100m, MidpointRounding.AwayFromZero),
+            0, 100)
+        : 0;
+}
+
+/// <summary>
 /// Per-day staffing hours grouped by shift priority for volume visualization.
 /// Hours = shift duration × MaxVolunteers. All-day shifts count as 8h per slot.
 /// </summary>
@@ -418,3 +451,68 @@ public record DailyStaffingHours(
     double EssentialHours,
     double ImportantHours,
     double NormalHours);
+
+public sealed record CreateShiftInput(
+    Guid RotaId,
+    Guid TeamId,
+    string? Description,
+    int DayOffset,
+    LocalTime StartTime,
+    double DurationHours,
+    int MinVolunteers,
+    int MaxVolunteers,
+    bool AdminOnly,
+    bool IsAllDay);
+
+public sealed record UpdateShiftInput(
+    Guid ShiftId,
+    Guid TeamId,
+    string? Description,
+    int DayOffset,
+    LocalTime StartTime,
+    double DurationHours,
+    int MinVolunteers,
+    int MaxVolunteers,
+    bool AdminOnly);
+
+public sealed record GenerateEventShiftsInput(
+    Guid RotaId,
+    Guid TeamId,
+    int StartDayOffset,
+    int EndDayOffset,
+    IReadOnlyList<ShiftTimeSlotInput> TimeSlots,
+    int MinVolunteers,
+    int MaxVolunteers);
+
+public sealed record ShiftTimeSlotInput(LocalTime StartTime, double DurationHours);
+
+public sealed record ConfigureBuildStrikeStaffingInput(
+    Guid RotaId,
+    Guid TeamId,
+    IReadOnlyList<DayStaffingInput> Days);
+
+public sealed record DayStaffingInput(int DayOffset, int MinVolunteers, int MaxVolunteers);
+
+public sealed record MoveRotaInput(
+    Guid RotaId,
+    Guid SourceTeamId,
+    Guid TargetTeamId,
+    Guid ActorUserId);
+
+public sealed record ShiftMutationResult(bool Succeeded, string Message, Guid? ShiftId = null)
+{
+    public static ShiftMutationResult Success(string message, Guid shiftId) => new(true, message, shiftId);
+    public static ShiftMutationResult Failure(string message) => new(false, message);
+}
+
+public sealed record ShiftGenerationResult(bool Succeeded, string Message, int CreatedCount = 0)
+{
+    public static ShiftGenerationResult Success(string message, int createdCount) => new(true, message, createdCount);
+    public static ShiftGenerationResult Failure(string message) => new(false, message);
+}
+
+public sealed record RotaMoveResult(bool Succeeded, string Message, string? RedirectSlug = null)
+{
+    public static RotaMoveResult Success(string message, string redirectSlug) => new(true, message, redirectSlug);
+    public static RotaMoveResult Failure(string message) => new(false, message);
+}

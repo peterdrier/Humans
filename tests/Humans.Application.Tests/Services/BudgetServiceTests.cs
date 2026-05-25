@@ -1,60 +1,41 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Budget;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using BudgetServiceImpl = Humans.Application.Services.Budget.BudgetService;
 
 namespace Humans.Application.Tests.Services;
 
-public class BudgetServiceTests : IAsyncLifetime
+public sealed class BudgetServiceTests : ServiceTestHarness
 {
-    private readonly ServiceProvider _provider;
-    private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly BudgetRepository _repository;
     private readonly ITeamService _teamService;
-    private readonly FakeClock _clock;
     private readonly BudgetServiceImpl _service;
     private readonly Guid _yearId = Guid.NewGuid();
 
     public BudgetServiceTests()
+        : base(Instant.FromUtc(2026, 3, 31, 12, 0))
     {
-        var services = new ServiceCollection();
-        services.AddDbContextFactory<HumansDbContext>(options =>
-            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
-        _provider = services.BuildServiceProvider();
-
-        _factory = _provider.GetRequiredService<IDbContextFactory<HumansDbContext>>();
-        _repository = new BudgetRepository(_factory, NullLogger<BudgetRepository>.Instance);
+        _repository = new BudgetRepository(DbFactory, NullLogger<BudgetRepository>.Instance);
         _teamService = Substitute.For<ITeamService>();
         var userService = Substitute.For<IUserService>();
         userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 31, 12, 0));
+            .Returns(new HashSet<Guid>());
 
         _service = new BudgetServiceImpl(
             _repository,
             _teamService,
             userService,
-            _clock,
+            Clock,
             NullLogger<BudgetServiceImpl>.Instance);
-    }
-
-    // xUnit v3 IAsyncLifetime: both methods return ValueTask.
-    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
-
-    public async ValueTask DisposeAsync()
-    {
-        await _provider.DisposeAsync();
     }
 
     // ─── VAT rate validation ─────────────────────────────────────────────────
@@ -80,6 +61,44 @@ public class BudgetServiceTests : IAsyncLifetime
             .WithMessage("*between 0 and 21*");
     }
 
+    [HumansFact]
+    public async Task CreateLineItemWithResultAsync_ReturnsSuccess_WhenLineItemCreated()
+    {
+        var category = await SeedCategoryAsync();
+
+        var result = await _service.CreateLineItemWithResultAsync(
+            category.Id,
+            "Test line item",
+            100m,
+            null,
+            null,
+            null,
+            0,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CreateLineItemWithResultAsync_ReturnsFailure_WhenVatRateInvalid()
+    {
+        var category = await SeedCategoryAsync();
+
+        var result = await _service.CreateLineItemWithResultAsync(
+            category.Id,
+            "Test line item",
+            100m,
+            null,
+            null,
+            null,
+            22,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("VAT rate");
+    }
+
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
@@ -95,7 +114,7 @@ public class BudgetServiceTests : IAsyncLifetime
             VatRate = 0
         };
 
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetLineItems.Add(lineItem);
             await ctx.SaveChangesAsync();
@@ -118,14 +137,136 @@ public class BudgetServiceTests : IAsyncLifetime
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
 
     [HumansFact]
+    public async Task UpdateLineItemWithResultAsync_ReturnsSuccess_WhenLineItemUpdated()
+    {
+        var category = await SeedCategoryAsync();
+        var lineItem = new BudgetLineItem
+        {
+            Id = Guid.NewGuid(),
+            BudgetCategoryId = category.Id,
+            Description = "Existing",
+            Amount = 100m,
+            VatRate = 0
+        };
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
+        {
+            ctx.BudgetLineItems.Add(lineItem);
+            await ctx.SaveChangesAsync();
+        }
+
+        var result = await _service.UpdateLineItemWithResultAsync(
+            lineItem.Id,
+            "Updated",
+            150m,
+            null,
+            null,
+            null,
+            0,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateLineItemWithResultAsync_ReturnsFailure_WhenVatRateInvalid()
+    {
+        var result = await _service.UpdateLineItemWithResultAsync(
+            Guid.NewGuid(),
+            "Updated",
+            150m,
+            null,
+            null,
+            null,
+            22,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("VAT rate");
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorBudgetViewDataAsync_RedirectsNonCoordinatorNonFinanceUser()
+    {
+        var result = await _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), isFinanceAdmin: false);
+
+        result.ShouldRedirectToSummary.Should().BeTrue();
+        result.Year.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorBudgetViewDataAsync_LoadsActiveYearForFinanceAdmin()
+    {
+        _teamService.GetTeamsAsync().Returns(
+            new Dictionary<Guid, TeamInfo>());
+        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
+
+        var result = await _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), isFinanceAdmin: true);
+
+        result.ShouldRedirectToSummary.Should().BeFalse();
+        result.Year!.Id.Should().Be(year.Id);
+        result.IsFinanceAdmin.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorCategoryDetailViewDataAsync_ReturnsCategoryAndTeamsForFinanceAdmin()
+    {
+        var category = await SeedCategoryAsync();
+        var teamId = Guid.NewGuid();
+        var teamInfo = new TeamInfo(
+            teamId, "Kitchen", null, "kitchen",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: []);
+        _teamService.GetTeamsAsync().Returns(
+            new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
+
+        var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: true);
+
+        result.ShouldForbid.Should().BeFalse();
+        result.Category!.Id.Should().Be(category.Id);
+        result.Teams.Should().HaveCount(1);
+        result.Teams[0].Id.Should().Be(teamId);
+        result.Teams[0].Name.Should().Be("Kitchen");
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorCategoryDetailViewDataAsync_ForbidsNonFinanceNonCoordinator()
+    {
+        var category = await SeedCategoryAsync();
+
+        var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: false);
+
+        result.ShouldForbid.Should().BeTrue();
+        result.Category!.Id.Should().Be(category.Id);
+        result.Teams.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()
     {
-        IReadOnlyList<TeamOptionDto> teams =
-        [
-            new(Guid.NewGuid(), "Kitchen"),
-            new(Guid.NewGuid(), "Site Ops")
-        ];
-        _teamService.GetBudgetableTeamsAsync().Returns(teams);
+        var kitchenId = Guid.NewGuid();
+        var siteOpsId = Guid.NewGuid();
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [kitchenId] = new(
+                kitchenId, "Kitchen", null, "kitchen",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: [],
+                HasBudget: true),
+            [siteOpsId] = new(
+                siteOpsId, "Site Ops", null, "site-ops",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: [],
+                HasBudget: true),
+        };
+        _teamService.GetTeamsAsync().Returns(teams);
 
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
 
@@ -133,7 +274,7 @@ public class BudgetServiceTests : IAsyncLifetime
         year.Name.Should().Be("Budget 2026");
         year.Status.Should().Be(BudgetYearStatus.Draft);
 
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         var persistedYear = await ctx.BudgetYears
             .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
@@ -165,7 +306,7 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
     {
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -186,7 +327,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
         await _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
 
-        await using var ctx2 = await _factory.CreateDbContextAsync();
+        await using var ctx2 = await DbFactory.CreateDbContextAsync();
         var years = await ctx2.BudgetYears.ToListAsync();
 
         years.Single(y => string.Equals(y.Year, "2025", StringComparison.Ordinal)).Status
@@ -215,7 +356,7 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task UpdateYearAsync_writes_field_audit_only_for_changed_fields()
     {
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -229,7 +370,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
         await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", Guid.NewGuid());
 
-        await using var ctx2 = await _factory.CreateDbContextAsync();
+        await using var ctx2 = await DbFactory.CreateDbContextAsync();
         var auditEntries = await ctx2.BudgetAuditLogs
             .Where(a => a.BudgetYearId == _yearId)
             .ToListAsync();
@@ -243,7 +384,7 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task DeleteYearAsync_refuses_when_year_is_active()
     {
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -264,7 +405,7 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task DeleteYearAsync_soft_deletes_when_draft()
     {
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -278,7 +419,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
         await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
 
-        await using var ctx2 = await _factory.CreateDbContextAsync();
+        await using var ctx2 = await DbFactory.CreateDbContextAsync();
         var year = await ctx2.BudgetYears.SingleAsync(y => y.Id == _yearId);
         year.IsDeleted.Should().BeTrue();
         year.DeletedAt.Should().NotBeNull();
@@ -290,7 +431,7 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task CreateGroupAsync_refuses_when_year_is_closed()
     {
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -330,7 +471,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
         changed.Should().BeGreaterThan(0);
 
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         var revenueItems = await ctx.BudgetLineItems
             .Where(li => li.BudgetCategoryId == revenueCatId)
             .ToListAsync();
@@ -349,7 +490,7 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task SyncTicketingActualsAsync_is_noop_when_no_ticketing_group()
     {
-        await using (var ctx = await _factory.CreateDbContextAsync())
+        await using (var ctx = await DbFactory.CreateDbContextAsync())
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -382,7 +523,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
         created.Should().BeGreaterThan(0);
 
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         var projectedRevenueItems = await ctx.BudgetLineItems
             .Where(li => li.BudgetCategoryId == revenueCatId
                 && li.Description.StartsWith("Projected:"))
@@ -423,7 +564,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
         await _service.SyncTicketingActualsAsync(_yearId, actuals);
 
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
 
         // The projection was updated in-place before materialization.
         var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId);
@@ -486,7 +627,7 @@ public class BudgetServiceTests : IAsyncLifetime
             Name = "Operations"
         };
 
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         ctx.BudgetYears.Add(year);
         ctx.BudgetGroups.Add(group);
         ctx.BudgetCategories.Add(category);
@@ -503,7 +644,7 @@ public class BudgetServiceTests : IAsyncLifetime
         var revenueCatId = Guid.NewGuid();
         var feesCatId = Guid.NewGuid();
 
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         ctx.BudgetYears.Add(new BudgetYear
         {
             Id = _yearId,
@@ -552,7 +693,7 @@ public class BudgetServiceTests : IAsyncLifetime
         decimal averageTicketPrice,
         decimal dailySalesRate)
     {
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await DbFactory.CreateDbContextAsync();
         var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId);
         projection.StartDate = startDate;
         projection.EventDate = eventDate;

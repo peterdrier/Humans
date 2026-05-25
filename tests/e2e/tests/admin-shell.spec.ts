@@ -47,7 +47,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     login: loginAsAdmin,
     groups: [
       { label: 'Operations', items: ['Tickets', 'Scanner'] },
-      { label: 'Members', items: ['Humans', 'Review'] },
+      { label: 'Members', items: ['Humans', 'Roles', 'Review'] },
       { label: 'Money', items: ['Finance', 'Store catalog'] },
       { label: 'Governance', items: ['Voting', 'Board'] },
       { label: 'Integrations', items: ['Google', 'Email preview', 'Email outbox', 'Campaigns', 'Workspace accounts'] },
@@ -61,7 +61,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     login: loginAsBoard,
     groups: [
       { label: 'Operations', items: ['Tickets', 'Scanner'] },
-      { label: 'Members', items: ['Humans', 'Review'] },
+      { label: 'Members', items: ['Humans', 'Roles', 'Review'] },
       { label: 'Governance', items: ['Voting', 'Board'] },
     ],
   },
@@ -69,7 +69,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'humanAdmin',
     login: loginAsHumanAdmin,
     groups: [
-      { label: 'Members', items: ['Humans'] },
+      { label: 'Members', items: ['Humans', 'Roles'] },
     ],
   },
   {

@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -32,6 +33,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// (same Scoped <c>HumansDbContext</c> instance).
 /// </para>
 /// </remarks>
+[Section("Shifts")]
 public interface IShiftSignupRepository : IRepository
 {
     // ============================================================
@@ -48,7 +50,7 @@ public interface IShiftSignupRepository : IRepository
     /// Returns every <see cref="ShiftSignup"/> the user owns, optionally
     /// filtered to a single event. Includes <c>Shift.Rota.EventSettings</c> for
     /// display. Ordered by <c>Shift.DayOffset</c>, then <c>Shift.StartTime</c>.
-    /// Team display name is resolved via <c>ITeamService.GetTeamNamesByIdsAsync</c>.
+    /// Team display name is resolved via <c>ITeamService.GetTeamsAsync</c>.
     /// Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
@@ -82,15 +84,6 @@ public interface IShiftSignupRepository : IRepository
         Guid signupBlockId, bool includeConfirmed, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads every Pending signup the user owns in the given event with
-    /// <c>Shift.Rota</c> and the shift's sibling signups (for the
-    /// rota-policy + per-shift capacity re-check). Tracking-enabled — used by
-    /// the post-admission promotion path.
-    /// </summary>
-    Task<List<ShiftSignup>> GetPendingForUserInEventForMutationAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
     /// Loads the first signup in a block with <c>Shift.Rota</c>. Read-only,
     /// used for block-ownership lookups.
     /// </summary>
@@ -104,10 +97,20 @@ public interface IShiftSignupRepository : IRepository
     Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns Pending and Confirmed signups for every shift on the given rota,
+    /// with <c>Shift</c> included for date/time resolution. Refused, Bailed,
+    /// Cancelled, and NoShow signups are excluded. Used by the coordinator
+    /// "email a rota" action to enumerate current recipients. Read-only.
+    /// Caller resolves user display fields via <c>IUserService.GetByIdsAsync</c>.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetActiveByRotaAsync(
+        Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all no-show signups for a user with <c>Shift.Rota.EventSettings</c>.
     /// Ordered by <c>ReviewedAt</c> descending. Read-only. Caller resolves
     /// reviewer display fields via <c>IUserService.GetByIdsAsync</c> and the
-    /// team name via <c>ITeamService.GetTeamNamesByIdsAsync</c>.
+    /// team name via <c>ITeamService.GetTeamsAsync</c>.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
 
@@ -193,6 +196,24 @@ public interface IShiftSignupRepository : IRepository
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUserAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
+    /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
+    /// bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads <see cref="ShiftSignup"/> rows for the supplied user ids in the
+    /// given event in one query, with <c>Shift.Rota.EventSettings</c> included
+    /// (read-only). Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+
     // ============================================================
     // Writes — ShiftSignup
     // ============================================================
@@ -231,6 +252,13 @@ public interface IShiftSignupRepository : IRepository
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every signup row owned by the supplied users. Returns deleted row count.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Account-merge fold: re-FKs <c>shift_signups</c> rows from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// Plain re-FK with one defensive guard — when source and target both
@@ -254,4 +282,11 @@ public interface IShiftSignupRepository : IRepository
     /// reconciliation screen. Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user-ids with at least one Pending or Confirmed signup for the
+    /// given event. Read-only. Used by Mailer audience computations.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
 }

@@ -1,6 +1,6 @@
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
+using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -11,55 +11,34 @@ namespace Humans.Application.Interfaces.Users;
 /// Service owning user-level concerns. Currently focused on event participation.
 /// </summary>
 /// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(31)] (issue nobodies-collective/Humans#700).</item>
-///   <item>30→31 — issue-660 EmailProblems case 8 cleanup: added DeleteAllExternalLoginsForUserAsync — service surface for the admin "Delete ghost logins" action. Auth-table cleanup; no expiable substitute (only the User section can write to AspNetUserLogins).</item>
-///   <item>29→30 — issue-660 EmailProblems case 8: added GetUsersWithLoginsButNoEmailsAsync to surface ghost AspNetUserLogins rows. Authorized by repo owner — no expiable substitute exists at the service surface (UserLogins is auth-internal).</item>
-///   <item>31→29 — account-merge fold final consolidation: removed ReassignLoginsToUserAsync and ReassignEventParticipationToUserAsync from IUserService. Both moves now happen through IUserMerge.ReassignAsync on UserService; DuplicateAccountService routes the logins move directly via IUserRepository.</item>
-///   <item>31→31 — account-merge fold redesign Phase 4.1: added GetMergedSourceIdsAsync (the chain-follow service primitive AuditLog/Consent/BudgetAuditLog reads call to surface rows still attributed to merged source tombstones); removed GetPendingDeletionCountAsync. Three callers derive the count in-memory from the full user list per design-rules in-memory caching guidance.</item>
-///   <item>31→31 — account-merge fold redesign Phase 3.4: added 3 fold primitives (AnonymizeForMergeAsync, ReassignLoginsToUserAsync, ReassignEventParticipationToUserAsync); removed 3 to match: SetGoogleEmailStatusAsync (interface-surface-dead), BackfillNobodiesTeamGoogleEmailsAsync (sole caller now iterates per-user via IUserEmailService.TryBackfillGoogleEmailAsync), GetAllUserIdsAsync (callers derive ids from GetAllUsersAsync).</item>
-///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
-/// </list>
+/// SurfaceBudget intentionally removed for the duration of the Users+Profile
+/// section merge — the interface is absorbing IProfileService methods over the
+/// next several PRs and per-PR budget churn is not useful while that is in
+/// flight. Owner re-adds [SurfaceBudget(N)] once the merged surface stabilizes.
 /// </remarks>
-[SurfaceBudget(31)]
-public interface IUserService : IApplicationService
+public interface IUserService : IUserServiceRead, IApplicationService, IUserMerge
 {
     /// <summary>
-    /// Fetches a single user by id. Returns null if the user does not exist.
-    /// Used by section services that need a slice of user data (email,
-    /// display name, preferred language) for rendering or notifications
-    /// without loading a cross-domain navigation property.
+    /// Fetches a single user by id with the <see cref="User.UserEmails"/>
+    /// collection populated. Returns null if the user does not exist. Served
+    /// from the caching decorator's <see cref="UserInfo"/> dict for warm-cache
+    /// callers — the cache holds the full user payload, so there is no
+    /// "without emails" variant.
     /// </summary>
+    [Obsolete("Callers must migrate to IUserService.GetUserInfoAsync()", false, DiagnosticId = "HUM_USER_GetById")]
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Fetches a batched set of users keyed by id. Missing users are simply
+    /// Fetches a batched set of users keyed by id with each user's
+    /// <see cref="User.UserEmails"/> collection populated. Missing users are
     /// absent from the returned dictionary. Used for in-memory stitching
     /// when rendering lists that previously relied on
-    /// <c>.Include(x =&gt; x.User)</c>.
+    /// <c>.Include(x =&gt; x.User)</c>. Served from the caching decorator's
+    /// <see cref="UserInfo"/> dict for warm-cache callers.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="GetByIdsAsync"/> but also hydrates each user's
-    /// <see cref="User.UserEmails"/> collection so callers can resolve
-    /// <see cref="User.GetEffectiveEmail"/> (the verified notification-target
-    /// address) without a second round-trip. Used by notification-sending
-    /// jobs (digests, re-consent reminder, term renewal) so the correct
-    /// recipient is picked instead of silently falling back to
-    /// <see cref="User.Email"/>.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Get the participation record for a user in a given year. Returns null if no record exists.
-    /// </summary>
-    Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
     /// Get all participation records for a given year.
@@ -79,11 +58,23 @@ public interface IUserService : IApplicationService
 
     /// <summary>
     /// Set participation status from ticket sync. Handles the lifecycle rules:
-    /// - Valid ticket → Ticketed
+    /// - Valid ticket → Ticketed (<paramref name="checkedInAt"/> ignored)
     /// - Checked in → Attended (permanent)
     /// - Ticket purchase overrides NotAttending
+    /// <para>
+    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
+    /// instant. Stored on <see cref="EventParticipation.CheckedInAt"/> when an
+    /// Attended row is being created or upgraded. Never overwritten once
+    /// non-null — matches the "Attended is permanent" invariant (issue
+    /// nobodies-collective/Humans#736).
+    /// </para>
     /// </summary>
-    Task SetParticipationFromTicketSyncAsync(Guid userId, int year, ParticipationStatus status, CancellationToken ct = default);
+    Task SetParticipationFromTicketSyncAsync(
+        Guid userId,
+        int year,
+        ParticipationStatus status,
+        Instant? checkedInAt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Remove a TicketSync-sourced participation record when a user no longer has valid tickets.
@@ -104,19 +95,10 @@ public interface IUserService : IApplicationService
     Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the language distribution for the given user ids, grouped by
-    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard
-    /// to render language stats for approved humans.
-    /// </summary>
-    Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Purges a human at the User aggregate — removes all UserEmail rows for
     /// the user, anonymizes the email/display name, and permanently locks out
     /// the account. Returns the prior display name on success, or <c>null</c>
-    /// if the user did not exist. Invalidates the FullProfile cache on
+    /// if the user did not exist. Invalidates the UserInfo cache on
     /// success so downstream consumers see the purged view. Cross-section
     /// invalidation (ActiveTeams cache, etc.) is owned by the caller —
     /// <see cref="IAccountDeletionService.PurgeAsync"/> is the orchestrator
@@ -131,7 +113,7 @@ public interface IUserService : IApplicationService
     /// clears phone/picture/iCal/deletion fields, sets the security stamp,
     /// and permanently locks out the account. Returns the pre-write identity
     /// slice or <c>null</c> if the user does not exist. Invalidates the
-    /// FullProfile cache on success. Cross-section cascade (team
+    /// UserInfo cache on success. Cross-section cascade (team
     /// memberships, role assignments, profile anonymization, shift cleanup)
     /// is owned by <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
@@ -139,26 +121,6 @@ public interface IUserService : IApplicationService
         Guid userId, CancellationToken ct = default);
 
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
-
-    /// <summary>
-    /// Sets <c>User.GoogleEmail</c> if it is currently null. No-op if the
-    /// user already has a GoogleEmail set or the user does not exist.
-    /// Returns true if the GoogleEmail was set.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle), maintained by UserEmailService.EnsureGoogleInvariantAsync on every row creation. Read FullProfile.GoogleEmail; promote a row with IUserEmailService.SetGoogleAsync.")]
-    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
-    /// value. Used by <c>EmailProvisioningService</c> after a successful
-    /// Google Workspace provisioning, where the new <c>@nobodies.team</c>
-    /// address must become the authoritative Google identity even if the
-    /// user previously signed in with a personal Google account. Returns
-    /// true if the user exists and the value was written, false if the user
-    /// does not exist.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively); read via FullProfile.GoogleEmail.")]
-    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
     /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
@@ -180,6 +142,18 @@ public interface IUserService : IApplicationService
     Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets <c>User.PreferredLanguage</c>. Invalidates the UserInfo cache on
+    /// success. No-op if the user does not exist.
+    /// </summary>
+    Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>User.ICalToken</c>. Invalidates the UserInfo cache on success.
+    /// No-op if the user does not exist.
+    /// </summary>
+    Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, optional <c>DeletionEligibleAfter</c>).
     /// <paramref name="eligibleAfter"/> is the post-event hold date when the
@@ -197,6 +171,150 @@ public interface IUserService : IApplicationService
     /// </summary>
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 
+    // ---- Profile storage commands ----
+
+    /// <summary>
+    /// Idempotently materializes a stub profile for a live user. Returns true
+    /// only when a profile row was created.
+    /// </summary>
+    Task<bool> EnsureStubProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates <see cref="Profile.MembershipTier"/> on the user's profile.
+    /// Returns false when no profile exists.
+    /// </summary>
+    Task<bool> SetMembershipTierAsync(
+        Guid userId,
+        MembershipTier tier,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies a consolidated onboarding/profile-state mutation to the user's
+    /// profile. Audit/logging policy remains with the caller.
+    /// </summary>
+    Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
+        Guid userId,
+        UserProfileOnboardingCommand command,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Saves the profile fields projected into UserInfo and updates the user's
+    /// display label in the same storage operation. Filesystem writes remain
+    /// outside this service; picture metadata changes are returned to the
+    /// orchestrator as old/current content types.
+    /// </summary>
+    Task<UserProfileSaveResult> SaveProfileAsync(
+        Guid userId,
+        UserProfileSaveCommand command,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the profile-picture content-type column that gates UserInfo custom
+    /// picture rendering. The caller owns filesystem writes and uses the old
+    /// content type returned here to remove stale files.
+    /// </summary>
+    Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
+        Guid userId,
+        string contentType,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Anonymizes profile-owned personal data for GDPR deletion and returns the
+    /// previous picture metadata so the orchestrator can remove filesystem
+    /// bytes after the DB read gate has been cleared.
+    /// </summary>
+    Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
+        Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Reconciles the profile's volunteer-history rows. Returns false when no
+    /// profile exists for the user.
+    /// </summary>
+    Task<bool> SaveProfileVolunteerHistoryAsync(
+        Guid userId,
+        IReadOnlyList<CVEntry> entries,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces a profile's language rows and returns the owning user id so
+    /// cache decorators can refresh the affected UserInfo entry.
+    /// </summary>
+    Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
+        Guid profileId,
+        IReadOnlyList<ProfileLanguage> languages,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets or clears the profile IBAN. Returns false when no profile exists.
+    /// The caller owns validation and audit logging.
+    /// </summary>
+    Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
+
+    /// <summary>
+    /// Suspends the given profiles for missing consent and returns the user ids
+    /// that were actually mutated.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Downgrades expired membership tiers and returns each user id with the
+    /// tier that was written.
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeMembershipTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default);
+
+    // ---- UserEmail storage commands ----
+
+    /// <summary>
+    /// Adds a Users-owned email row and applies the primary / Google row
+    /// invariants. Does not generate verification tokens, send email, create
+    /// account-merge requests, or touch external-login rows.
+    /// </summary>
+    Task<UserEmailAddResult> AddUserEmailAsync(
+        Guid userId,
+        UserEmailAddCommand command,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates mutable UserEmail row state through one invariant-aware command
+    /// instead of one public method per flag transition.
+    /// </summary>
+    Task<bool> UpdateUserEmailAsync(
+        Guid userId,
+        Guid emailId,
+        UserEmailUpdateCommand command,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a Users-owned email row and optionally repairs primary / Google
+    /// invariants. External login removal is orchestrated by callers before
+    /// invoking this storage command.
+    /// </summary>
+    Task<bool> RemoveUserEmailAsync(
+        Guid userId,
+        Guid emailId,
+        UserEmailRemoveCommand command,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies an OAuth reconcile row plan and repairs UserEmail invariants for
+    /// every affected user. OAuth policy, external login state, and audit rows
+    /// remain outside this storage command.
+    /// </summary>
+    Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(
+        Guid userId,
+        UserEmailReconcilePlanCommand command,
+        CancellationToken ct = default);
+
     // ---- Methods added for ContactService migration ----
 
     /// <summary>
@@ -205,17 +323,6 @@ public interface IUserService : IApplicationService
     /// when applicable. Returns null if no match.
     /// </summary>
     Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login falls
-    /// within the half-open window <c>[fromInclusive, toExclusive)</c>. Used by the
-    /// shift coordinator dashboard to chart distinct logins by day without reading
-    /// the users table directly.
-    /// </summary>
-    Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
@@ -237,14 +344,6 @@ public interface IUserService : IApplicationService
         Guid userId, Instant sentAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of users whose <see cref="User.GoogleEmailStatus"/>
-    /// equals <see cref="Humans.Domain.Enums.GoogleEmailStatus.Rejected"/>.
-    /// Used by the admin daily digest so the job does not read the users
-    /// table directly (design-rules §2c).
-    /// </summary>
-    Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
     /// in the past (or equal to <paramref name="now"/>) and with
     /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by
@@ -262,7 +361,7 @@ public interface IUserService : IApplicationService
     /// (<c>LockoutEnd</c> far future), and applies the existing per-user
     /// anonymization fields (display name, picture, phone, security stamp,
     /// iCal token). Returns true if the source row existed; false if it
-    /// was missing. Invalidates the FullProfile cache for the source on
+    /// was missing. Invalidates the UserInfo cache for the source on
     /// success. Used by <c>AccountMergeService.AcceptAsync</c> as the
     /// final step of the fold-into-target flow.
     /// </summary>
@@ -271,20 +370,20 @@ public interface IUserService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the set of source-tombstone ids whose <c>MergedToUserId</c>
-    /// equals <paramref name="targetUserId"/>. Single canonical chain-follow
-    /// primitive: AuditLog, Consent, BudgetAuditLog reads call this rather
-    /// than each section reinventing the lookup. Set is small (typically
-    /// zero, usually one).
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns userIds of users that have AspNetUserLogins rows but zero
     /// UserEmail rows. Used by EmailProblems admin scan.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Permanently deletes the requested user rows after the caller has cleared
+    /// cross-section references. Also removes the users' email rows and
+    /// external login rows. Requires the current authenticated user to hold
+    /// the full Admin role.
+    /// </summary>
+    Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
@@ -330,3 +429,14 @@ public record AnonymizedAccountSummary(
     string OriginalDisplayName,
     string PreferredLanguage,
     IReadOnlyList<(Guid SignupId, Guid ShiftId)> CancelledSignupIds);
+
+/// <summary>
+/// Per-user row returned from <see cref="IUserServiceRead.GetOnsiteUsersAsync"/>.
+/// Names of camps / teams / governance roles are not stitched in here; the Web
+/// layer joins them via the owning section services before rendering. Issue
+/// nobodies-collective/Humans#736.
+/// </summary>
+public sealed record OnsiteUserRow(
+    Guid UserId,
+    string DisplayName,
+    Instant? CheckedInAt);

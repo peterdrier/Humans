@@ -23,22 +23,26 @@ public sealed class GlobalSearchViewModel
     /// <c>_HumanSearchResults</c> partial.
     /// </summary>
     public IReadOnlyList<HumanSearchResultViewModel> HumanResults { get; init; } =
-        Array.Empty<HumanSearchResultViewModel>();
+        [];
 
     public IReadOnlyList<GlobalSearchResult> TeamResults { get; init; } =
-        Array.Empty<GlobalSearchResult>();
+        [];
 
     public IReadOnlyList<GlobalSearchResult> CampResults { get; init; } =
-        Array.Empty<GlobalSearchResult>();
+        [];
 
     public IReadOnlyList<GlobalSearchResult> ShiftResults { get; init; } =
-        Array.Empty<GlobalSearchResult>();
+        [];
+
+    public IReadOnlyList<GlobalSearchResult> EventResults { get; init; } =
+        [];
 
     public int HumanCount => HumanResults.Count;
     public int TeamCount => TeamResults.Count;
     public int CampCount => CampResults.Count;
     public int ShiftCount => ShiftResults.Count;
-    public int TotalCount => HumanCount + TeamCount + CampCount + ShiftCount;
+    public int EventCount => EventResults.Count;
+    public int TotalCount => HumanCount + TeamCount + CampCount + ShiftCount + EventCount;
 
     public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
     public bool QueryIsTooShort => HasQuery && (Query?.Trim().Length ?? 0) < 2;

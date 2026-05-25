@@ -12,15 +12,9 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// <c>DriveActivityMonitorService</c> runs against this stub — there is no
 /// separate "stub service" variant.
 /// </summary>
-public sealed class StubGoogleDriveActivityClient : IGoogleDriveActivityClient
+public sealed class StubGoogleDriveActivityClient(ILogger<StubGoogleDriveActivityClient> logger)
+    : IGoogleDriveActivityClient
 {
-    private readonly ILogger<StubGoogleDriveActivityClient> _logger;
-
-    public StubGoogleDriveActivityClient(ILogger<StubGoogleDriveActivityClient> logger)
-    {
-        _logger = logger;
-    }
-
     public bool IsConfigured => false;
 
     public Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
@@ -35,7 +29,7 @@ public sealed class StubGoogleDriveActivityClient : IGoogleDriveActivityClient
         string sinceIsoTimestamp,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogDebug(
+        logger.LogDebug(
             "[Stub] Drive activity query for {GoogleItemId} since {Since} — no Google credentials configured",
             googleItemId, sinceIsoTimestamp);
         yield break;

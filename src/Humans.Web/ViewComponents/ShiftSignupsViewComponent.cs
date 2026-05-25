@@ -1,34 +1,19 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Enums;
 using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
 namespace Humans.Web.ViewComponents;
 
-public class ShiftSignupsViewComponent : ViewComponent
+public class ShiftSignupsViewComponent(
+    IShiftView shiftView,
+    IShiftManagementService shiftMgmt,
+    ITeamServiceRead teamService,
+    IClock clock,
+    ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
 {
-    private readonly IShiftSignupService _signupService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly ITeamService _teamService;
-    private readonly IClock _clock;
-    private readonly ILogger<ShiftSignupsViewComponent> _logger;
-
-    public ShiftSignupsViewComponent(
-        IShiftSignupService signupService,
-        IShiftManagementService shiftMgmt,
-        ITeamService teamService,
-        IClock clock,
-        ILogger<ShiftSignupsViewComponent> logger)
-    {
-        _signupService = signupService;
-        _shiftMgmt = shiftMgmt;
-        _teamService = teamService;
-        _clock = clock;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode, string? displayName = null)
     {
         var model = new ShiftSignupsViewModel
@@ -40,59 +25,45 @@ public class ShiftSignupsViewComponent : ViewComponent
 
         try
         {
-            var es = await _shiftMgmt.GetActiveAsync();
+            var es = await shiftMgmt.GetActiveAsync();
 
-            var signups = es is not null
-                ? await _signupService.GetByUserAsync(userId, es.Id)
-                : [];
+            // T-10: signups come from the cached ShiftUserView (issue #720).
+            // ShiftUserView.Signups is pre-filtered to the active event by the
+            // inner ShiftViewService — no active event yields an empty list.
+            var userView = await shiftView.GetUserAsync(userId);
+            var signups = userView.Signups;
 
-            var now = _clock.GetCurrentInstant();
+            var now = clock.GetCurrentInstant();
             model.EventSettings = es;
 
-            var componentTeamIds = signups
-                .Where(s => s.Shift?.Rota is not null)
-                .Select(s => s.Shift.Rota.TeamId)
-                .Distinct()
-                .ToList();
-            var componentTeamNames = componentTeamIds.Count == 0
-                ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
-                : await _teamService.GetTeamNamesByIdsAsync(componentTeamIds);
-
-            foreach (var signup in signups)
+            var componentTeamIds = ShiftSignupBucketer.GetTeamIds(signups);
+            IReadOnlyDictionary<Guid, string> componentTeamNames;
+            if (componentTeamIds.Count == 0)
             {
-                if (signup.Shift?.Rota is null || es is null)
-                    continue;
-
-                var item = new MySignupItem
-                {
-                    Signup = signup,
-                    DepartmentName = componentTeamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, "Unknown"),
-                    AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
-                    AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es)
-                };
-
-                switch (signup.Status)
-                {
-                    case SignupStatus.Confirmed when item.AbsoluteEnd > now:
-                        model.Upcoming.Add(item);
-                        break;
-                    case SignupStatus.Pending:
-                        model.Pending.Add(item);
-                        break;
-                    default:
-                        if (signup.Status is SignupStatus.Confirmed or SignupStatus.NoShow or SignupStatus.Bailed)
-                            model.Past.Add(item);
-                        break;
-                }
+                componentTeamNames = new Dictionary<Guid, string>();
+            }
+            else
+            {
+                var teamsById = await teamService.GetTeamsAsync();
+                componentTeamNames = componentTeamIds
+                    .Where(teamsById.ContainsKey)
+                    .ToDictionary(id => id, id => teamsById[id].Name);
             }
 
-            model.Upcoming = model.Upcoming.OrderBy(s => s.AbsoluteStart).ToList();
-            model.Pending = model.Pending.OrderBy(s => s.AbsoluteStart).ToList();
-            model.Past = model.Past.OrderByDescending(s => s.AbsoluteStart).ToList();
+            var buckets = ShiftSignupBucketer.Build(
+                signups,
+                es,
+                componentTeamNames,
+                now,
+                includeOtherStatusesInPast: false);
+
+            model.Upcoming = buckets.Upcoming;
+            model.Pending = buckets.Pending;
+            model.Past = buckets.Past;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading shift signups for user {UserId}", userId);
+            logger.LogError(ex, "Error loading shift signups for user {UserId}", userId);
         }
 
         return View(model);

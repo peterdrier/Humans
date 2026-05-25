@@ -13,55 +13,42 @@ namespace Humans.Infrastructure.Caching;
 /// Application layer can describe their cross-section cache dependencies
 /// without coupling directly to <c>IMemoryCache</c>.
 /// </summary>
-public sealed class NavBadgeCacheInvalidator : INavBadgeCacheInvalidator
+public sealed class NavBadgeCacheInvalidator(IMemoryCache cache) : INavBadgeCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public NavBadgeCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate() => _cache.InvalidateNavBadgeCounts();
+    public void Invalidate() => cache.InvalidateNavBadgeCounts();
 }
 
-public sealed class NotificationMeterCacheInvalidator : INotificationMeterCacheInvalidator
+public sealed class NotificationMeterCacheInvalidator(IMemoryCache cache) : INotificationMeterCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public NotificationMeterCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate() => _cache.InvalidateNotificationMeters();
+    public void Invalidate() => cache.InvalidateNotificationMeters();
 }
 
-public sealed class VotingBadgeCacheInvalidator : IVotingBadgeCacheInvalidator
+public sealed class VotingBadgeCacheInvalidator(IMemoryCache cache) : IVotingBadgeCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public VotingBadgeCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate(Guid userId) => _cache.InvalidateVotingBadge(userId);
+    public void Invalidate(Guid userId) => cache.InvalidateVotingBadge(userId);
 }
 
-public sealed class IssuesBadgeCacheInvalidator : IIssuesBadgeCacheInvalidator
+public sealed class IssuesBadgeCacheInvalidator(IMemoryCache cache) : IIssuesBadgeCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public IssuesBadgeCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate(Guid userId) => _cache.InvalidateIssuesBadge(userId);
+    public void Invalidate(Guid userId) => cache.InvalidateIssuesBadge(userId);
     public void InvalidateMany(IEnumerable<Guid> userIds)
     {
-        foreach (var id in userIds) _cache.InvalidateIssuesBadge(id);
+        foreach (var id in userIds) cache.InvalidateIssuesBadge(id);
     }
 }
 
-public sealed class CampLeadJoinRequestsBadgeCacheInvalidator : ICampLeadJoinRequestsBadgeCacheInvalidator
+public sealed class CampLeadJoinRequestsBadgeCacheInvalidator(IMemoryCache cache)
+    : ICampLeadJoinRequestsBadgeCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public CampLeadJoinRequestsBadgeCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate(Guid userId) => _cache.InvalidateCampLeadJoinRequestsBadge(userId);
+    public void Invalidate(Guid userId) => cache.InvalidateCampLeadJoinRequestsBadge(userId);
 }
 
-public sealed class RoleAssignmentClaimsCacheInvalidator : IRoleAssignmentClaimsCacheInvalidator
+public sealed class RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) : IRoleAssignmentClaimsCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate(Guid userId) => _cache.InvalidateRoleAssignmentClaims(userId);
+    public void Invalidate(Guid userId) => cache.InvalidateRoleAssignmentClaims(userId);
 }
 
-public sealed class ActiveTeamsCacheInvalidator : IActiveTeamsCacheInvalidator
+public sealed class ActiveTeamsCacheInvalidator(ITeamService teamService) : IActiveTeamsCacheInvalidator
 {
-    private readonly ITeamService _teamService;
-    public ActiveTeamsCacheInvalidator(ITeamService teamService) => _teamService = teamService;
-    public void Invalidate() => _teamService.InvalidateActiveTeamsCache();
+    public void Invalidate() => teamService.InvalidateActiveTeamsCache();
 }

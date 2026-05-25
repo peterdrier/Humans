@@ -6,32 +6,22 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services.Agent;
 
-public sealed class AgentSettingsService : IAgentSettingsService
+public sealed class AgentSettingsService(IAgentRepository repo, IAgentSettingsStore store, IClock clock)
+    : IAgentSettingsService
 {
-    private readonly IAgentRepository _repo;
-    private readonly IAgentSettingsStore _store;
-    private readonly IClock _clock;
-
-    public AgentSettingsService(IAgentRepository repo, IAgentSettingsStore store, IClock clock)
-    {
-        _repo = repo;
-        _store = store;
-        _clock = clock;
-    }
-
-    public AgentSettingsDto Current => ToDto(_store.Current);
+    public AgentSettingsDto Current => ToDto(store.Current);
 
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
-        var row = await _repo.GetSettingsAsync(cancellationToken);
+        var row = await repo.GetSettingsAsync(cancellationToken);
         if (row is not null)
-            _store.Set(row);
+            store.Set(row);
     }
 
     public async Task UpdateAsync(Action<AgentSettings> mutator, CancellationToken cancellationToken)
     {
-        var row = await _repo.UpdateSettingsAsync(mutator, _clock.GetCurrentInstant(), cancellationToken);
-        _store.Set(row);
+        var row = await repo.UpdateSettingsAsync(mutator, clock.GetCurrentInstant(), cancellationToken);
+        store.Set(row);
     }
 
     private static AgentSettingsDto ToDto(AgentSettings settings) => new(

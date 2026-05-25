@@ -2,37 +2,29 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Services.Governance;
 using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Governance;
 
 namespace Humans.Application.Tests.Services;
 
-public sealed class ApplicationDecisionServiceTests : IDisposable
+public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
     private readonly ApplicationRepository _repository;
-    private readonly FakeClock _clock;
-    private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
@@ -46,19 +38,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     public ApplicationDecisionServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _repository = new ApplicationRepository(DbFactory);
+        _userService = NewDbBackedUserService();
 
-        _dbContext = new HumansDbContext(options);
-        _repository = new ApplicationRepository(_dbContext);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-
-        // Default stubs — tests that need stitched user data override these.
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>()));
-        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<User?>(null));
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
@@ -66,9 +48,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _service = new ApplicationDecisionService(
             _repository,
             _userService,
-            _profileService,
             _roleAssignmentService,
-            _auditLogService,
+            AuditLog,
             _emailService,
             _userEmailService,
             _notificationService,
@@ -77,14 +58,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _navBadge,
             _notificationMeter,
             _votingBadge,
-            _clock,
+            Clock,
             NullLogger<ApplicationDecisionService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     // --- Submit flow ---
@@ -100,7 +75,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeTrue();
         result.ApplicationId.Should().NotBeNull();
-        var app = await _dbContext.Applications.FirstAsync();
+        var app = await Db.Applications.FirstAsync();
         app.MembershipTier.Should().Be(MembershipTier.Colaborador);
         app.Motivation.Should().Be("I want to contribute");
         app.Status.Should().Be(ApplicationStatus.Submitted);
@@ -115,7 +90,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             userId, MembershipTier.Asociado, "Motivation",
             null, "My contribution", "I understand the role", "es");
 
-        var app = await _dbContext.Applications.FirstAsync();
+        var app = await Db.Applications.FirstAsync();
         app.SignificantContribution.Should().Be("My contribution");
         app.RoleUnderstanding.Should().Be("I understand the role");
     }
@@ -129,7 +104,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             userId, MembershipTier.Colaborador, "Motivation",
             null, "Should be ignored", "Also ignored", "en");
 
-        var app = await _dbContext.Applications.FirstAsync();
+        var app = await Db.Applications.FirstAsync();
         app.SignificantContribution.Should().BeNull();
         app.RoleUnderstanding.Should().BeNull();
     }
@@ -146,6 +121,30 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_VolunteerTier_ReturnsInvalidTier()
+    {
+        var result = await _service.SubmitAsync(
+            Guid.NewGuid(), MembershipTier.Volunteer, "Motivation",
+            null, null, null, "en");
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("InvalidTier");
+        (await Db.Applications.CountAsync()).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_AsociadoMissingRequiredFields_ReturnsFieldError()
+    {
+        var result = await _service.SubmitAsync(
+            Guid.NewGuid(), MembershipTier.Asociado, "Motivation",
+            null, "   ", null, "en");
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("SignificantContributionRequired");
+        (await Db.Applications.CountAsync()).Should().Be(0);
     }
 
     [HumansFact]
@@ -173,7 +172,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.WithdrawAsync(app.Id, userId);
 
         result.Success.Should().BeTrue();
-        var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
+        Db.ChangeTracker.Clear();
+        var updated = await Db.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Withdrawn);
         _metrics.Received().RecordApplicationProcessed("withdrawn");
     }
@@ -183,8 +183,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
-        app.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
+        app.Withdraw(Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.WithdrawAsync(app.Id, userId);
 
@@ -214,7 +214,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Approved", null);
 
         result.Success.Should().BeTrue();
-        var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
+        Db.ChangeTracker.Clear();
+        var updated = await Db.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Approved);
     }
 
@@ -225,21 +226,22 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
-        var today = _clock.GetCurrentInstant().InUtc().Date;
+        Db.ChangeTracker.Clear();
+        var updated = await Db.Applications.FirstAsync(a => a.Id == app.Id);
+        var today = Clock.GetCurrentInstant().InUtc().Date;
         var expectedExpiry = TermExpiryCalculator.ComputeTermExpiry(today);
         updated.TermExpiresAt.Should().Be(expectedExpiry);
     }
 
     [HumansFact]
-    public async Task ApproveAsync_UpdatesProfileTierViaProfileService()
+    public async Task ApproveAsync_UpdatesProfileTierViaUserService()
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        await _profileService.Received().SetMembershipTierAsync(
+        await _userService.Received().SetMembershipTierAsync(
             userId, MembershipTier.Asociado, Arg.Any<CancellationToken>());
     }
 
@@ -247,19 +249,19 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task ApproveAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        _dbContext.BoardVotes.Add(new BoardVote
+        Db.BoardVotes.Add(new BoardVote
         {
             Id = Guid.NewGuid(),
             ApplicationId = app.Id,
             BoardMemberUserId = Guid.NewGuid(),
             Vote = VoteChoice.Yay,
-            VotedAt = _clock.GetCurrentInstant()
+            VotedAt = Clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        var votes = await _dbContext.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync();
+        var votes = await Db.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync();
         votes.Should().BeEmpty();
     }
 
@@ -308,14 +310,14 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         var voter1 = Guid.NewGuid();
         var voter2 = Guid.NewGuid();
-        await _dbContext.BoardVotes.AddRangeAsync(
+        await Db.BoardVotes.AddRangeAsync(
             new BoardVote
             {
                 Id = Guid.NewGuid(),
                 ApplicationId = app.Id,
                 BoardMemberUserId = voter1,
                 Vote = VoteChoice.Yay,
-                VotedAt = _clock.GetCurrentInstant()
+                VotedAt = Clock.GetCurrentInstant()
             },
             new BoardVote
             {
@@ -323,9 +325,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 ApplicationId = app.Id,
                 BoardMemberUserId = voter2,
                 Vote = VoteChoice.No,
-                VotedAt = _clock.GetCurrentInstant()
+                VotedAt = Clock.GetCurrentInstant()
             });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -337,8 +339,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task ApproveAsync_NotSubmitted_ReturnsError()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        app.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
+        app.Withdraw(Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -368,7 +370,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = "alice@test.com",
             PreferredLanguage = "en"
         };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -397,7 +399,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = null,
             PreferredLanguage = "en"
         };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -431,7 +433,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = null,
             PreferredLanguage = "en"
         };
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(user, [], [], [], null, [], [], [], []));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -452,7 +455,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Not ready", null);
 
         result.Success.Should().BeTrue();
-        var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
+        Db.ChangeTracker.Clear();
+        var updated = await Db.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Rejected);
         updated.DecisionNote.Should().Be("Not ready");
     }
@@ -461,19 +465,19 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task RejectAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        _dbContext.BoardVotes.Add(new BoardVote
+        Db.BoardVotes.Add(new BoardVote
         {
             Id = Guid.NewGuid(),
             ApplicationId = app.Id,
             BoardMemberUserId = Guid.NewGuid(),
             Vote = VoteChoice.No,
-            VotedAt = _clock.GetCurrentInstant()
+            VotedAt = Clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
-        var votes = await _dbContext.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync();
+        var votes = await Db.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync();
         votes.Should().BeEmpty();
     }
 
@@ -485,7 +489,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
-        await _profileService.DidNotReceive().SetMembershipTierAsync(
+        await _userService.DidNotReceive().SetMembershipTierAsync(
             Arg.Any<Guid>(), Arg.Any<MembershipTier>(), Arg.Any<CancellationToken>());
     }
 
@@ -506,8 +510,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task RejectAsync_NotSubmitted_ReturnsError()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        app.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
+        app.Withdraw(Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
@@ -527,8 +531,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             UserId = userId,
             MembershipTier = MembershipTier.Colaborador,
             Motivation = "M1",
-            SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
-            UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = Clock.GetCurrentInstant() - Duration.FromDays(2),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         var app2 = new MemberApplication
         {
@@ -536,8 +540,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             UserId = userId,
             MembershipTier = MembershipTier.Asociado,
             Motivation = "M2",
-            SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(1),
-            UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         var app3 = new MemberApplication
         {
@@ -545,13 +549,13 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             UserId = userId,
             MembershipTier = MembershipTier.Colaborador,
             Motivation = "M3",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        await _dbContext.Applications.AddRangeAsync(app1, app2, app3);
-        app1.Approve(Guid.NewGuid(), "ok", _clock);
-        app2.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
+        await Db.Applications.AddRangeAsync(app1, app2, app3);
+        app1.Approve(Guid.NewGuid(), "ok", Clock);
+        app2.Withdraw(Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserApplicationsAsync(userId);
 
@@ -602,15 +606,20 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [reviewerId] = reviewer.ToUserInfo() }));
 
         var app = await SeedSubmittedApplicationAsync(userId);
-        app.Approve(reviewerId, "Good", _clock);
-        await _dbContext.SaveChangesAsync();
+        app.Approve(reviewerId, "Good", Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId);
 
         result.Should().NotBeNull();
-        result!.ReviewerName.Should().Be("Reviewer");
+        result.ReviewerName.Should().Be("Reviewer");
         result.History.Should().NotBeEmpty();
         result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
     }
@@ -638,13 +647,13 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
-        app.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
+        app.Withdraw(Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId);
 
         result.Should().NotBeNull();
-        result!.History.Should().HaveCount(1);
+        result.History.Should().HaveCount(1);
         result.History[0].Status.Should().Be(ApplicationStatus.Withdrawn);
     }
 
@@ -655,8 +664,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         var submittedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         var approvedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        approvedApp.Approve(Guid.NewGuid(), "ok", _clock);
-        await _dbContext.SaveChangesAsync();
+        approvedApp.Approve(Guid.NewGuid(), "ok", Clock);
+        await Db.SaveChangesAsync();
 
         var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10);
 
@@ -671,8 +680,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         await SeedSubmittedApplicationAsync(Guid.NewGuid());
         var approvedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        approvedApp.Approve(Guid.NewGuid(), "ok", _clock);
-        await _dbContext.SaveChangesAsync();
+        approvedApp.Approve(Guid.NewGuid(), "ok", Clock);
+        await Db.SaveChangesAsync();
 
         var (items, totalCount) = await _service.GetFilteredApplicationsAsync("Approved", null, 1, 10);
 
@@ -722,6 +731,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
                 new Dictionary<Guid, User> { [userId] = user }));
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo() }));
 
         var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10);
 
@@ -761,15 +775,24 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                     [applicantId] = applicant,
                     [reviewerId] = reviewer
                 }));
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [applicantId] = applicant.ToUserInfo(),
+                    [reviewerId] = reviewer.ToUserInfo()
+                }));
 
         var app = await SeedSubmittedApplicationAsync(applicantId);
-        app.Approve(reviewerId, "Looks good", _clock);
-        await _dbContext.SaveChangesAsync();
+        app.Approve(reviewerId, "Looks good", Clock);
+        await Db.SaveChangesAsync();
 
         var result = await _service.GetApplicationDetailAsync(app.Id);
 
         result.Should().NotBeNull();
-        result!.UserId.Should().Be(applicantId);
+        result.UserId.Should().Be(applicantId);
         result.UserDisplayName.Should().Be("Applicant");
         result.UserEmail.Should().Be("a@t.com");
         result.UserProfilePictureUrl.Should().Be("https://example.com/pic.png");
@@ -794,7 +817,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetApplicationDetailAsync(app.Id);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(app.Id);
+        result.Id.Should().Be(app.Id);
         result.UserId.Should().Be(userId);
     }
 
@@ -810,11 +833,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             UserId = userId,
             MembershipTier = tier,
             Motivation = "Motivation",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
-        _dbContext.Applications.Add(app);
-        await _dbContext.SaveChangesAsync();
+        Db.Applications.Add(app);
+        await Db.SaveChangesAsync();
         return app;
     }
 }

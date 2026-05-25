@@ -52,6 +52,11 @@ public static class RoleNames
     public const string NoInfoAdmin = "NoInfoAdmin";
 
     /// <summary>
+    /// Guide Moderator — can approve, reject, and request edits on event guide submissions.
+    /// </summary>
+    public const string EventsAdmin = "EventsAdmin";
+
+    /// <summary>
     /// Feedback Administrator — can view all feedback reports, respond to reporters,
     /// manage feedback status, and link GitHub issues.
     /// </summary>
@@ -77,6 +82,29 @@ public static class RoleNames
     public const string StoreAdmin = "StoreAdmin";
 
     /// <summary>
+    /// Every role name defined above, in display order. The single source of truth
+    /// for UI that enumerates roles (e.g. the role-assignment filter bar) so new
+    /// roles surface automatically. Completeness is enforced by
+    /// <c>RoleNamesTests.All_ContainsEveryDefinedRoleConstant</c>.
+    /// </summary>
+    public static readonly IReadOnlyList<string> All =
+    [
+        Admin,
+        Board,
+        HumanAdmin,
+        ConsentCoordinator,
+        VolunteerCoordinator,
+        TeamsAdmin,
+        CampAdmin,
+        TicketAdmin,
+        NoInfoAdmin,
+        EventsAdmin,
+        FeedbackAdmin,
+        FinanceAdmin,
+        StoreAdmin
+    ];
+
+    /// <summary>
     /// Roles that Board and HumanAdmin are permitted to manage (assign/end).
     /// Used by both service-layer authorization and Web-layer role checks.
     /// </summary>
@@ -90,6 +118,7 @@ public static class RoleNames
         NoInfoAdmin,
         FeedbackAdmin,
         FinanceAdmin,
+        EventsAdmin,
         StoreAdmin,
         ConsentCoordinator,
         VolunteerCoordinator

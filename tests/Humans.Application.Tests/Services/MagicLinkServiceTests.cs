@@ -3,44 +3,36 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
 
 namespace Humans.Application.Tests.Services;
 
-public class MagicLinkServiceTests : IDisposable
+public sealed class MagicLinkServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
     private readonly MagicLinkService _service;
 
     public MagicLinkServiceTests()
+        : base(Instant.FromUtc(2026, 3, 25, 12, 0))
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 25, 12, 0));
-
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
 
         _userEmailService = Substitute.For<IUserEmailService>();
+        _userService = Substitute.For<IUserService>();
 
         // Default: no verified UserEmail row exists. Individual tests override
         // by stubbing the service with a UserEmailWithUser.
@@ -62,18 +54,18 @@ public class MagicLinkServiceTests : IDisposable
         _service = new MagicLinkService(
             _userManager,
             _userEmailService,
+            _userService,
             _emailService,
             _urlBuilder,
             _rateLimiter,
-            _clock,
+            Clock,
             NullLogger<MagicLinkService>.Instance);
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
-        _dbContext.Dispose();
         _userManager.Dispose();
-        GC.SuppressFinalize(this);
+        base.Dispose();
     }
 
     [HumansFact]
@@ -86,7 +78,7 @@ public class MagicLinkServiceTests : IDisposable
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -94,6 +86,8 @@ public class MagicLinkServiceTests : IDisposable
             .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
 
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(user));
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         await _service.SendMagicLinkAsync("alice@work.com", "/dashboard");
@@ -115,13 +109,15 @@ public class MagicLinkServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant()
         };
 
         _userEmailService
             .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
             .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(user));
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
@@ -148,6 +144,18 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    private static UserInfo CreateUserInfo(User user) =>
+        UserInfo.Create(
+            user,
+            [],
+            [],
+            [],
+            null,
+            [],
+            [],
+            [],
+            []);
+
     [HumansFact]
     public async Task SendMagicLinkAsync_RateLimited_DoesNotSendEmail()
     {
@@ -158,8 +166,8 @@ public class MagicLinkServiceTests : IDisposable
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant(),
-            MagicLinkSentAt = _clock.GetCurrentInstant() - Duration.FromSeconds(30) // 30s ago
+            CreatedAt = Clock.GetCurrentInstant(),
+            MagicLinkSentAt = Clock.GetCurrentInstant() - Duration.FromSeconds(30) // 30s ago
         };
 
         _userEmailService
@@ -261,7 +269,7 @@ public class MagicLinkServiceTests : IDisposable
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token");
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
+        result.Id.Should().Be(userId);
     }
 
     [HumansFact]
@@ -278,7 +286,7 @@ public class MagicLinkServiceTests : IDisposable
         var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com");
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
+        result.Id.Should().Be(userId);
     }
 
     [HumansFact]

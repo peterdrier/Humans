@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Services.Agent;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services.Agent;
@@ -23,10 +22,14 @@ internal static class AgentSectionExtensions
 
         services.AddSingleton<IAgentSettingsStore, AgentSettingsStore>();
         services.AddSingleton<IAgentRateLimitStore, AgentRateLimitStore>();
+        services.AddSingleton<IAgentRetentionRunStore, AgentRetentionRunStore>();
 
         services.AddScoped<IAgentRepository, AgentRepository>();
         services.AddScoped<IAgentSettingsService, AgentSettingsService>();
         services.AddScoped<IAgentUserSnapshotProvider, AgentUserSnapshotProvider>();
+        services.AddScoped<IAgentAdminStatusService, AgentAdminStatusService>();
+
+        services.AddScoped<IAgentAnthropicBalanceProvider, Humans.Infrastructure.Services.Anthropic.AnthropicBalanceProvider>();
 
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();

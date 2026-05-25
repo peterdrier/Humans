@@ -1,5 +1,5 @@
 <!-- freshness:flag-on-change
-  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006/HUM0008.
+  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006/HUM0008/HUM0009.
   Flag if a new analyzer ships (move that entry from Tier 1 → catalogue in code-analysis.md),
   if a new atom lands with call-site shape, or if a recent clamp-fix commit would have been
   prevented by a not-yet-shipped analyzer.
@@ -8,7 +8,7 @@
 # Roslyn Analyzer Candidates
 
 Forward-looking inventory of *additional* in-repo analyzer rules beyond the
-shipped `HUM0001`–`HUM0006` / `HUM0008` (catalogued in
+shipped `HUM0001`–`HUM0006` / `HUM0008` / `HUM0009` (catalogued in
 [`code-analysis.md`](code-analysis.md)). This file is the queue we draw from
 when adding the next analyzer; do not start writing one without checking here
 first.
@@ -39,6 +39,54 @@ Rules where the call-site shape is crisp, no baseline is required, and the
 in-editor feedback prevents a class of regression that has already cost the
 project at least one fix commit.
 
+### HUM0020 — Caching decorators must not reference repositories (SHIPPED)
+
+- Rule: a `Caching*Service` class under `Humans.Infrastructure.Services.*`,
+  or one of its nested helper types, must not structurally reference any
+  `IRepository` implementation/interface. Cache misses and warm paths go
+  through the keyed inner application service, never sideways into persistence.
+- Source: generalized from the deleted `CachingTeamServiceBypassArchitectureTests`
+  one-off and `TicketQueryArchitectureTests.CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter`.
+- Why analyzer, not one-off test: the important invariant is system-wide:
+  decorators are transparent wrappers around the application service surface.
+  If a decorator injects a repository, it can bypass the inner service's
+  authorization, write orchestration, section boundaries, and cache invalidation
+  behavior. The call-site/constructor shape is crisp and should fail at build
+  time for every new decorator.
+- Status: shipped as `HUM0020` and enforced as an error. The original
+  repository-backed cache loaders now route through keyed inner services.
+
+### 2026-05-24 architecture-test audit follow-ups
+
+The current architecture-test suite still contains several repeated one-off
+assertion families that are plausible analyzer candidates:
+
+- Application services should not inject forbidden infrastructure-ish
+  dependencies: `IMemoryCache`, store abstractions, `IServiceProvider`,
+  `UserManager`, or direct SDK clients. `IMemoryCache` is already covered by a
+  generalized arch test; promote it to an analyzer once the remaining
+  grandfather story is clear.
+- Repository implementations should be sealed, live under
+  `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory` rather
+  than direct `HumansDbContext` construction. The first two are already
+  generalized arch tests.
+- Interface marker obligations should be compile-time enforced:
+  `I*Service`/`I*Query`/`I*Calculator` extend `IApplicationService`, and
+  `I*Repository` extends `IRepository`.
+- External SDK types must not leak across Application/Web boundaries. The
+  repeated Ticket Tailor, Stripe, and Google bridge tests are one rule family:
+  application interfaces expose DTOs/abstractions, infrastructure owns vendor
+  SDK types.
+- DbSet write ownership should become one analyzer family: only the owning
+  repository/section writes its owned DbSets. Today AuditLog, Events, and
+  Notifications each carry bespoke ratchets for the same invariant.
+- Application service read methods should not expose domain/EF entities.
+  `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
+  needs either a grandfather mechanism or a warning-first migration.
+- Cross-section EF/nav rules are high value but need a semantic section
+  ownership map before analyzer promotion. The current regex/folder ratchets
+  should stay until that framework exists.
+
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 
 - Rule: an EF configuration `Property(...)` chain may not call
@@ -56,22 +104,6 @@ project at least one fix commit.
   gives Peter a build-break the moment someone adds one, in-editor, with the
   atom link in the diagnostic message.
 - Current coverage: `NoConcurrencyTokensRule` (ratchet). Migrate it.
-
-### HUM0009 — Application services may not inject `HumansDbContext`
-
-- Rule: any class under namespace `Humans.Application.Services.*` may not have
-  a constructor parameter typed `HumansDbContext`.
-- Source: same atom as HUM0008 + design-rules §2b.
-- Call-site shape: `INamedTypeSymbol.ContainingNamespace` starts with
-  `Humans.Application.Services`, scan constructors. Pure scope-by-namespace
-  guard, no allowlist.
-- Why analyzer, not ratchet: zero legitimate uses ever (the Application
-  project doesn't even reference EF Core, so this normally fails at compile
-  time — but the project graph can be wiggled, and an analyzer prevents
-  someone from "just adding it" by editing the csproj). In-editor squiggle
-  on the constructor parameter beats a build-time test that reports
-  `path:line`.
-- Current coverage: `NoServiceInjectsDbContextRule` (ratchet, baselined).
 
 ### HUM0010 — View components may not inject `IMemoryCache`
 
@@ -144,11 +176,10 @@ project at least one fix commit.
   Over-budget fires HUM0015; under-budget (slack) fires HUM0016.
 - Source: replaces the retired `InterfaceMethodBudgetTests`
   (issue [nobodies-collective/Humans#700](https://github.com/nobodies-collective/Humans/issues/700)).
-  Budgets now live as a per-type attribute with the rationale captured in
-  XML `<remarks>` on the type itself — visible in tooltips, diffed alongside
-  the surface change, scoped to a single symbol. Currently applied to service
-  interfaces only; the attribute is valid on classes/structs too if you want
-  to budget an implementation's public surface directly.
+  Budgets live as a per-type attribute with the rationale in XML `<remarks>`
+  on the type. Owner-applied only (currently the read-side `I…ServiceRead`
+  interfaces); agents never add it or suggest adding it — see
+  `memory/code/surface-budget-owner-applied.md`.
 - Call-site shape: `SymbolKind.NamedType`, filter to interface/class/struct
   carrying the attribute, count public-instance `MethodKind == Ordinary`
   members directly on the symbol. Accessibility filter is a no-op on
@@ -238,7 +269,6 @@ Listed so the next maintainer doesn't propose them as analyzers. Each one is
 shaped for ratchet / marker / filesystem-aware enforcement, not for an
 analyzer.
 
-- `NoServiceInjectsDbContextRule` (`tests/.../Rules/NoServiceInjectsDbContextRule.cs`) — promoted in Tier 1 as HUM0009, kept here until the analyzer ships.
 - `NoConcurrencyTokensRule` (`tests/.../Rules/NoConcurrencyTokensRule.cs`) — promoted in Tier 1 as HUM0007.
 - `NoCrossSectionEfJoinsRule` (`tests/.../Rules/NoCrossSectionEfJoinsRule.cs`) — section ownership is encoded in the `Configurations/<Section>/` folder layout; filesystem-aware. Stay as ratchet.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.

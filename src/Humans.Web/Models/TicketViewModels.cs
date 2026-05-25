@@ -14,40 +14,24 @@ public class TicketDashboardViewModel
     public int BreakEvenTarget { get; set; }
     public string Currency { get; set; } = "EUR";
 
-    // Fee tracking
     public decimal TotalStripeFees { get; set; }
     public decimal TotalApplicationFees { get; set; }
     public decimal NetRevenue { get; set; }
 
-    // Fee breakdown by payment method
     public List<PaymentMethodFeeBreakdown> FeesByPaymentMethod { get; set; } = [];
 
-    // Daily sales chart data
     public List<DailySalesPoint> DailySales { get; set; } = [];
 
-    // Problems / attention items
     public int UnmatchedOrderCount { get; set; }
     public TicketSyncStatus SyncStatus { get; set; }
     public string? SyncError { get; set; }
     public Instant? LastSyncAt { get; set; }
 
-    // Recent orders (last 10)
     public List<TicketOrderSummary> RecentOrders { get; set; } = [];
 
     public bool IsConfigured { get; set; }
 
-    // Who hasn't bought count (for dashboard link)
     public int WhoHasntBoughtCount { get; set; }
-
-    // Volunteer ticket coverage
-    public int TotalActiveVolunteers { get; set; }
-    public int VolunteersWithTickets { get; set; }
-    public decimal VolunteerCoveragePercent { get; set; }
-
-    // Participation breakdown
-    public int ParticipationNotAttending { get; set; }
-    public int ParticipationNoTicket { get; set; }
-    public int ParticipationHasTicket { get; set; }
 }
 
 public class PaymentMethodFeeBreakdown
@@ -79,12 +63,8 @@ public class TicketOrderSummary
     public TicketPaymentStatus PaymentStatus { get; set; }
 }
 
-public class TicketOrdersViewModel : PagedListViewModel
+public class TicketOrdersViewModel() : PagedListViewModel(25)
 {
-    public TicketOrdersViewModel() : base(25)
-    {
-    }
-
     public List<TicketOrderRow> Orders { get; set; } = [];
     public string? Search { get; set; }
     public string SortBy { get; set; } = "date";
@@ -119,12 +99,8 @@ public class TicketOrderRow
     public string? MatchedUserName { get; set; }
 }
 
-public class TicketAttendeesViewModel : PagedListViewModel
+public class TicketAttendeesViewModel() : PagedListViewModel(25)
 {
-    public TicketAttendeesViewModel() : base(25)
-    {
-    }
-
     public List<TicketAttendeeRow> Attendees { get; set; } = [];
     public string? Search { get; set; }
     public string SortBy { get; set; } = "name";
@@ -218,12 +194,8 @@ public class QuarterlySalesRow
     public decimal VipDonations { get; set; }
 }
 
-public class WhoHasntBoughtViewModel : PagedListViewModel
+public class WhoHasntBoughtViewModel() : PagedListViewModel(25)
 {
-    public WhoHasntBoughtViewModel() : base(25)
-    {
-    }
-
     public List<WhoHasntBoughtRow> Humans { get; set; } = [];
     public string? Search { get; set; }
     public string? FilterTeam { get; set; }

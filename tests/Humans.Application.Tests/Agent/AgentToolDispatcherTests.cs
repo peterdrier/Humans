@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Constants;
 using Humans.Application.Models;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 
@@ -29,17 +28,17 @@ public class AgentToolDispatcherTests
         var actor = Guid.NewGuid();
         var stub = new StubAuditViewer
         {
-            Events = new[]
-            {
+            Events =
+            [
                 BuildVoluntoldEvent(actor, viewer),
                 BuildUnmappedEvent()
-            }
+            ]
         };
 
         var dispatcher = MakeDispatcher(stub);
 
         var result = await dispatcher.DispatchAsync(
-            new Humans.Application.Models.AnthropicToolCall("t1", Humans.Application.Constants.AgentToolNames.GetAuditHistory, """{"limit":5}"""),
+            new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":5}"""),
             userId: viewer,
             conversationId: Guid.NewGuid(),
             CancellationToken.None);
@@ -55,10 +54,10 @@ public class AgentToolDispatcherTests
     [HumansFact]
     public async Task GetAuditHistory_empty_history_returns_friendly_message()
     {
-        var dispatcher = MakeDispatcher(new StubAuditViewer { Events = Array.Empty<Humans.Application.Services.AuditLog.AuditEvent>() });
+        var dispatcher = MakeDispatcher(new StubAuditViewer { Events = [] });
 
         var result = await dispatcher.DispatchAsync(
-            new Humans.Application.Models.AnthropicToolCall("t1", Humans.Application.Constants.AgentToolNames.GetAuditHistory, "{}"),
+            new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
             userId: Guid.NewGuid(),
             conversationId: Guid.NewGuid(),
             CancellationToken.None);
@@ -72,24 +71,24 @@ public class AgentToolDispatcherTests
     {
         // The dispatcher passes `limit` straight to GetForUserAsync after
         // clamping. We capture the value used.
-        var stub = new StubAuditViewer { Events = Array.Empty<Humans.Application.Services.AuditLog.AuditEvent>() };
+        var stub = new StubAuditViewer { Events = [] };
         var dispatcher = MakeDispatcher(stub);
 
         // Request 999 → clamps to 50.
         await dispatcher.DispatchAsync(
-            new Humans.Application.Models.AnthropicToolCall("t1", Humans.Application.Constants.AgentToolNames.GetAuditHistory, """{"limit":999}"""),
+            new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":999}"""),
             userId: Guid.NewGuid(), conversationId: Guid.NewGuid(), CancellationToken.None);
         stub.LastLimit.Should().Be(50);
 
         // Omit limit → defaults to 20.
         await dispatcher.DispatchAsync(
-            new Humans.Application.Models.AnthropicToolCall("t1", Humans.Application.Constants.AgentToolNames.GetAuditHistory, "{}"),
+            new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
             userId: Guid.NewGuid(), conversationId: Guid.NewGuid(), CancellationToken.None);
         stub.LastLimit.Should().Be(20);
 
         // Request 0 → clamps to 1 (minimum).
         await dispatcher.DispatchAsync(
-            new Humans.Application.Models.AnthropicToolCall("t1", Humans.Application.Constants.AgentToolNames.GetAuditHistory, """{"limit":0}"""),
+            new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":0}"""),
             userId: Guid.NewGuid(), conversationId: Guid.NewGuid(), CancellationToken.None);
         stub.LastLimit.Should().Be(1);
     }
@@ -161,13 +160,12 @@ public class AgentToolDispatcherTests
             .Select(i => MakeSignup(viewer, blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), Humans.Domain.Enums.SignupStatus.Confirmed))
             .ToList();
 
-        var shiftSignups = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftSignupService>();
-        shiftSignups.GetByUserAsync(viewer, ev.Id).Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)signups);
+        var shiftView = MakeViewFor(viewer, signups);
 
-        var shiftMgmt = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftManagementService>();
+        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -194,14 +192,12 @@ public class AgentToolDispatcherTests
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new NodaTime.LocalTime(9, 0), durationHours: 4),
             Humans.Domain.Enums.SignupStatus.Pending);
 
-        var shiftSignups = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftSignupService>();
-        shiftSignups.GetByUserAsync(viewer, ev.Id)
-            .Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)new[] { signup });
+        var shiftView = MakeViewFor(viewer, [signup]);
 
-        var shiftMgmt = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftManagementService>();
+        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -222,14 +218,12 @@ public class AgentToolDispatcherTests
         var viewer = Guid.NewGuid();
         var ev = MakeEventSettings();
 
-        var shiftSignups = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftSignupService>();
-        shiftSignups.GetByUserAsync(viewer, ev.Id)
-            .Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)Array.Empty<Humans.Domain.Entities.ShiftSignup>());
+        var shiftView = MakeViewFor(viewer, []);
 
-        var shiftMgmt = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftManagementService>();
+        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -252,15 +246,13 @@ public class AgentToolDispatcherTests
         var foreignBlockId = Guid.NewGuid();
         var ev = MakeEventSettings();
 
-        var shiftSignups = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftSignupService>();
-        // Viewer has zero signups.
-        shiftSignups.GetByUserAsync(viewer, ev.Id)
-            .Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)Array.Empty<Humans.Domain.Entities.ShiftSignup>());
+        // Viewer has zero signups in their cached view.
+        var shiftView = MakeViewFor(viewer, []);
 
-        var shiftMgmt = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftManagementService>();
+        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -345,8 +337,8 @@ public class AgentToolDispatcherTests
 
     private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher(
         Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
-        Humans.Application.Interfaces.Shifts.IShiftSignupService? shiftSignups = null,
-        Humans.Application.Interfaces.Shifts.IShiftManagementService? shiftManagement = null)
+        Interfaces.Shifts.IShiftView? shiftView = null,
+        Interfaces.Shifts.IShiftManagementService? shiftManagement = null)
     {
         var env = new TestHostEnvironment();
         var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
@@ -356,15 +348,31 @@ public class AgentToolDispatcherTests
             sections,
             features,
             auditViewer ?? new StubAuditViewer(),
-            shiftSignups ?? Substitute.For<Humans.Application.Interfaces.Shifts.IShiftSignupService>(),
-            shiftManagement ?? Substitute.For<Humans.Application.Interfaces.Shifts.IShiftManagementService>(),
+            shiftView ?? Substitute.For<Interfaces.Shifts.IShiftView>(),
+            shiftManagement ?? Substitute.For<Interfaces.Shifts.IShiftManagementService>(),
             logger);
+    }
+
+    private static Interfaces.Shifts.IShiftView MakeViewFor(
+        Guid userId, IReadOnlyList<Humans.Domain.Entities.ShiftSignup> signups)
+    {
+        var view = Substitute.For<Interfaces.Shifts.IShiftView>();
+        var record = new DTOs.Shifts.ShiftUserView(
+            UserId: userId,
+            Profile: null,
+            Availability: null,
+            BuildStatus: null,
+            TagPreferences: [],
+            Signups: signups);
+        view.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<DTOs.Shifts.ShiftUserView>(record));
+        return view;
     }
 
     private sealed class StubAuditViewer : Humans.Application.Interfaces.AuditLog.IAuditViewerService
     {
-        public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } =
-            Array.Empty<Humans.Application.Services.AuditLog.AuditEvent>();
+        public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; init; } =
+            [];
 
         /// <summary>Captures the limit value passed to <see cref="GetForUserAsync"/> for clamp-behaviour assertions.</summary>
         public int? LastLimit { get; private set; }

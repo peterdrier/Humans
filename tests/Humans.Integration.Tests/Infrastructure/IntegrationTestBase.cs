@@ -9,11 +9,17 @@ public abstract class IntegrationTestBase : IClassFixture<HumansWebApplicationFa
 
     protected IntegrationTestBase(HumansWebApplicationFactory factory)
     {
-        Factory = factory;
+        // The factory (and its single-instance NSubstitute stubs) is shared across
+        // every test in the class via IClassFixture. This constructor runs once per
+        // test, so reset the shared substitutes here to guarantee no mutation leaks
+        // between tests — keeping the suite correct even under per-method parallelism.
+        factory.ResetSharedSubstitutes();
+
         Client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
         {
             // Don't follow redirects so we can assert on redirect responses
             AllowAutoRedirect = false
         });
+        Factory = factory;
     }
 }

@@ -1,11 +1,8 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
-
-public record TeamPageCustomPicture(Guid ProfileId, long UpdatedAtTicks);
 
 public record TeamPageMemberSummary(
     Guid UserId,
@@ -13,8 +10,7 @@ public record TeamPageMemberSummary(
     string? Email,
     string? ProfilePictureUrl,
     TeamMemberRole Role,
-    Instant? JoinedAt,
-    TeamPageCustomPicture? CustomPicture);
+    Instant? JoinedAt);
 
 public record TeamPageResourceSummary(
     string Name,
@@ -29,11 +25,32 @@ public record TeamPageShiftsSummary(
     bool CanManageShifts,
     int IncludesSubTeamCount = 0);
 
+public record TeamPageTeamLink(Guid Id, string Name, string Slug);
+
+public record TeamPageTeamSummary(
+    Guid Id,
+    string Name,
+    string DisplayName,
+    string? Description,
+    string Slug,
+    bool IsActive,
+    bool RequiresApproval,
+    bool IsSystemTeam,
+    SystemTeamType SystemTeamType,
+    Instant CreatedAt,
+    bool IsPublicPage,
+    bool ShowCoordinatorsOnPublicPage,
+    string? PageContent,
+    List<CallToAction> CallsToAction,
+    Instant? PageContentUpdatedAt,
+    Guid? PageContentUpdatedByUserId,
+    TeamPageTeamLink? ParentTeam);
+
 public record TeamPageDetailResult(
-    Team Team,
+    TeamPageTeamSummary Team,
     IReadOnlyList<TeamPageMemberSummary> Members,
-    IReadOnlyList<Team> ChildTeams,
-    IReadOnlyList<TeamRoleDefinition> RoleDefinitions,
+    IReadOnlyList<TeamPageTeamLink> ChildTeams,
+    IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
     IReadOnlyList<TeamPageResourceSummary> Resources,
     bool IsAuthenticated,
     bool IsCurrentUserMember,

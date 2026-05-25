@@ -4,6 +4,10 @@ Membership management system for Nobodies Collective (Spanish nonprofit). Manage
 
 ## Architecture
 
+**The hard rules below are the constitution — the final word. They override every other doc on conflict, and are hand-maintained by Peter; never edit them as an LLM.**
+
+@docs/architecture/peters-hard-rules.md
+
 Clean Architecture with 4 layers (strict dependency direction inward):
 
 - **Domain** — entities, enums, value objects. No external dependencies.
@@ -11,7 +15,7 @@ Clean Architecture with 4 layers (strict dependency direction inward):
 - **Infrastructure** — repository implementations, `HumansDbContext`, migrations, external API clients, jobs.
 - **Web** — controllers, views, view models, API endpoints, DI wiring.
 
-See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for the full architecture story (the constitution): layer responsibilities, table ownership map, caching pattern (§15), authorization pattern, cross-domain rules. Read it once cover-to-cover.
+See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) — the **regulations**: the implementing detail behind the hard rules (layer responsibilities, table ownership map, caching pattern §15, authorization, cross-domain rules). Open a single section on demand; read cover-to-cover only when onboarding. On any conflict with the hard rules, the hard rules win.
 
 ## Project Rules — `memory/INDEX.md`
 
@@ -30,6 +34,10 @@ Pattern + format spec: [`memory/META.md`](memory/META.md). Maintenance loop: [`m
 ## Design Dialogue — 95% Confidence Loop
 
 When drafting an issue/spec/API/refactor proposal: audit from code (not memory), draft, self-assess. If <95% confident, ask focused clarifying questions on the load-bearing guesses (`AskUserQuestion`, multi-question batches, include a "let the implementer decide" option where genuine), update, repeat. *Then* ask to submit. Catches cow-path-as-design and hallucinated requirements. Cap at ~2 rounds; punt minor stuff to the implementer.
+
+## Reuse-First Change Discipline
+
+Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner/surface first. Prefer reuse, caller-side composition, and small local LINQ/mapping over new durable surface. If new surface is still necessary, state which existing options were rejected and why; public/interface surface requires Peter approval.
 
 ## Concepts — Volunteer vs Tier Applications
 

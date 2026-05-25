@@ -1,0 +1,76 @@
+@model Humans.Web.Models.ContainerCardModel
+@{
+    var c = Model.Container;
+    var p = Model.Placement;
+}
+@if (c.ImageUrl is not null)
+{
+    <div class="modal fade" id="lightboxModal-@c.Id" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@c.Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 text-center">
+                    <img src="@c.ImageUrl" alt="@c.Name" class="img-fluid" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.HasPlacementInfo && p is not null)
+{
+    <div class="modal fade" id="placementInfoModal-@c.Id" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Localizer["Container_PlacementNotes_Title"] — @c.Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(p.PlacementNotes))
+                    {
+                        <div style="white-space: pre-wrap">@p.PlacementNotes</div>
+                    }
+                    @if (p.PlacementImageUrl is not null)
+                    {
+                        <div class="mt-3">
+                            <img src="@p.PlacementImageUrl" alt="@p.PlacementImageFileName" class="img-fluid" style="cursor:pointer;" data-bs-dismiss="modal" />
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Close"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.CanManage)
+{
+    <div class="modal fade" id="editModal-@c.Id" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Localizer["Container_EditModal_Title"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form asp-controller="@Model.FormController" asp-action="@Model.EditAction"
+                      asp-all-route-data="@Model.ExtraRouteValues" asp-route-id="@c.Id"
+                      method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body">
+                        <partial name="_ContainerFormFields" model="@c" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

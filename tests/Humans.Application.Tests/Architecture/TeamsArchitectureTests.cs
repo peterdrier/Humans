@@ -3,8 +3,10 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Teams;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
+using Humans.Infrastructure.Services.Teams;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -19,46 +21,13 @@ namespace Humans.Application.Tests.Architecture;
 /// <item><description><c>TeamService</c> never imports <c>Microsoft.EntityFrameworkCore</c> (structurally enforced by the project reference graph — this test acts as a defence-in-depth).</description></item>
 /// <item><description><see cref="ITeamRepository"/> lives in <c>Humans.Application.Interfaces.Repositories</c> and has a sealed EF-backed implementation.</description></item>
 /// </list>
-/// Teams follows Option A (no caching decorator): the section uses an
-/// in-service short-TTL <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/>
-/// projection keyed on <c>CacheKeys.ActiveTeams</c>, same pattern the Camps
-/// section uses per design-rules §15f / §15i — Camps entry. The decorator
-/// split can be layered on later without changing the <see cref="ITeamService"/>
-/// surface if profiling warrants it.
+/// Teams uses the §15 caching decorator pattern: <see cref="CachingTeamService"/>
+/// wraps the keyed inner <see cref="ITeamService"/> and exposes the read split
+/// via <see cref="ITeamServiceRead"/>.
 /// </summary>
 public class TeamsArchitectureTests
 {
     // ── TeamService ──────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void TeamService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void TeamService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TeamService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITeamRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void TeamService_HasNoIDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(TeamService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.EntityFrameworkCore.IDbContextFactory", StringComparison.Ordinal));
-
-        factoryParam.Should().BeNull(
-            because: "IDbContextFactory is a repository concern (design-rules §15b) — services go through repositories, not straight to the factory");
-    }
 
     [HumansFact]
     public void TeamService_TakesRepository()
@@ -96,14 +65,6 @@ public class TeamsArchitectureTests
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
 
     [HumansFact]
-    public void ITeamRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITeamRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void TeamRepository_IsSealed()
     {
         typeof(TeamRepository).IsSealed.Should().BeTrue(
@@ -123,5 +84,112 @@ public class TeamsArchitectureTests
         typeof(TeamRepository).Namespace
             .Should().Be("Humans.Infrastructure.Repositories.Teams",
                 because: "EF-backed repository implementations live in Humans.Infrastructure.Repositories.<Section> per design-rules §15b");
+    }
+
+    // ── ITeamRepository injection is Teams-section-only ──────────────────────
+
+    /// <summary>
+    /// Production code outside the Teams section namespace must not inject
+    /// <see cref="ITeamRepository"/> directly. Cross-section reads route through
+    /// the public <see cref="ITeamService"/> / <see cref="ITeamServiceRead"/>
+    /// surface (decorated by <see cref="CachingTeamService"/>) so they hit the
+    /// cache instead of the DB on every request. Repository injection is allowed
+    /// only in the scoped inner <c>TeamService</c> and the EF impl itself; caching
+    /// decorators must resolve the keyed inner instead of injecting repositories
+    /// directly (HUM0020). Scans all three production
+    /// assemblies — Application, Infrastructure, and Web — so a future regression
+    /// where a controller, page handler, or filter takes <see cref="ITeamRepository"/>
+    /// directly fails this test.
+    /// </summary>
+    [HumansFact]
+    public void ITeamRepository_InjectedOnlyInsideTeamsSection()
+    {
+        var assembliesToScan = new[]
+        {
+            typeof(TeamService).Assembly,                                // Humans.Application
+            typeof(CachingTeamService).Assembly,                         // Humans.Infrastructure
+            typeof(Humans.Web.Controllers.HomeController).Assembly,      // Humans.Web
+        };
+
+        var violations = new List<string>();
+        foreach (var assembly in assembliesToScan)
+        {
+            foreach (var type in assembly.GetTypes()
+                         .Where(t => t.IsClass && !t.IsAbstract))
+            {
+                if (IsTeamsSectionType(type))
+                    continue;
+
+                foreach (var ctor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    foreach (var parameter in ctor.GetParameters())
+                    {
+                        if (parameter.ParameterType == typeof(ITeamRepository))
+                        {
+                            violations.Add($"{type.FullName}:{parameter.ParameterType.Name}");
+                        }
+                    }
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            because: "non-Teams sections must read teams via ITeamService (cache-backed), not ITeamRepository (DB-direct). " +
+                     "T-02 (docs/plans/2026-05-16-cache-migration.md) removes the last bypass; this test pins the rule.");
+    }
+
+    private static bool IsTeamsSectionType(Type type)
+    {
+        var ns = type.Namespace;
+        if (ns is null)
+            return false;
+
+        // Teams section homes for production code that legitimately injects ITeamRepository:
+        //   - Humans.Application.Services.Teams.*   (TeamService and helpers)
+        //   - Humans.Infrastructure.Repositories.Teams.* (the EF impl itself)
+        return ns.StartsWith("Humans.Application.Services.Teams", StringComparison.Ordinal)
+            || ns.StartsWith("Humans.Infrastructure.Repositories.Teams", StringComparison.Ordinal);
+    }
+
+    // ── ITeamServiceRead split (memory/architecture/section-read-write-split.md) ──
+
+    [HumansFact]
+    public void ITeamService_InheritsITeamServiceRead()
+    {
+        typeof(ITeamServiceRead).IsAssignableFrom(typeof(ITeamService))
+            .Should().BeTrue(
+                because: "ITeamService is the full Teams surface; external sections inject the narrow ITeamServiceRead. " +
+                         "See memory/architecture/section-read-write-split.md.");
+    }
+
+    [HumansFact]
+    public void CachingTeamService_ImplementsITeamServiceRead()
+    {
+        typeof(ITeamServiceRead).IsAssignableFrom(typeof(CachingTeamService))
+            .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void ITeamService_And_ITeamServiceRead_ResolveToSameSingleton()
+    {
+        // Mirrors the Teams-section DI shape: the same CachingTeamService
+        // singleton is exposed under both interface keys.
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<ITeamRepository>());
+        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
+        services.AddSingleton(Substitute.For<ILogger<CachingTeamService>>());
+
+        services.AddSingleton<CachingTeamService>();
+        services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromFull = provider.GetRequiredService<ITeamService>();
+        var fromRead = provider.GetRequiredService<ITeamServiceRead>();
+        var concrete = provider.GetRequiredService<CachingTeamService>();
+
+        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromRead, concrete).Should().BeTrue();
     }
 }

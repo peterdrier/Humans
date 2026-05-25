@@ -13,6 +13,10 @@ public class CityPlanningSettings
     public Instant? OpenedAt { get; set; }
     public Instant? ClosedAt { get; set; }
 
+    public bool IsContainerPlacementOpen { get; set; }
+    public Instant? ContainerPlacementOpenedAt { get; set; }
+    public Instant? ContainerPlacementClosedAt { get; set; }
+
     /// <summary>Informational scheduled open time shown in help modal. Not enforced.</summary>
     public LocalDateTime? PlacementOpensAt { get; set; }
 

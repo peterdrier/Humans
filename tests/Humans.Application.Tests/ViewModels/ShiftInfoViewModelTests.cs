@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Web.Models;
-using Xunit;
 
 namespace Humans.Application.Tests.ViewModels;
 
@@ -10,14 +9,14 @@ public class ShiftInfoViewModelTests
     public void TimePreferenceOptions_contains_all_four_values()
     {
         ShiftInfoViewModel.TimePreferenceOptions.Should()
-            .BeEquivalentTo(["Early Bird", "Night Owl", "All Day", "No Preference"]);
+            .BeEquivalentTo("Early Bird", "Night Owl", "All Day", "No Preference");
     }
 
     [HumansFact]
     public void ToggleQuirkOptions_excludes_time_preferences()
     {
         ShiftInfoViewModel.ToggleQuirkOptions.Should()
-            .BeEquivalentTo(["Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights"]);
+            .BeEquivalentTo("Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights");
 
         // No overlap with time preferences
         ShiftInfoViewModel.ToggleQuirkOptions.Should()
@@ -51,7 +50,7 @@ public class ShiftInfoViewModelTests
 
         var result = ShiftInfoViewModel.ExtractToggleQuirks(quirks);
 
-        result.Should().BeEquivalentTo(["Sober Shift", "No Heights"]);
+        result.Should().BeEquivalentTo("Sober Shift", "No Heights");
     }
 
     [HumansFact]
@@ -61,7 +60,7 @@ public class ShiftInfoViewModelTests
 
         var result = ShiftInfoViewModel.MergeQuirks("Early Bird", toggles);
 
-        result.Should().BeEquivalentTo(["Sober Shift", "No Heights", "Early Bird"]);
+        result.Should().BeEquivalentTo("Sober Shift", "No Heights", "Early Bird");
     }
 
     [HumansFact]
@@ -71,7 +70,7 @@ public class ShiftInfoViewModelTests
 
         var result = ShiftInfoViewModel.MergeQuirks(null, toggles);
 
-        result.Should().BeEquivalentTo(["Sober Shift"]);
+        result.Should().BeEquivalentTo("Sober Shift");
     }
 
     [HumansFact]
@@ -82,7 +81,7 @@ public class ShiftInfoViewModelTests
             "Rigging",
             ["Legacy Skill", "Other: Old", "Bartending"]);
 
-        result.Should().BeEquivalentTo(["Bartending", "Other: Rigging", "Legacy Skill"]);
+        result.Should().BeEquivalentTo("Bartending", "Other: Rigging", "Legacy Skill");
     }
 
     [HumansFact]
@@ -93,7 +92,7 @@ public class ShiftInfoViewModelTests
             "Catalan",
             ["Legacy Language", "Other: Old", "English"]);
 
-        result.Should().BeEquivalentTo(["English", "Other: Catalan", "Legacy Language"]);
+        result.Should().BeEquivalentTo("English", "Other: Catalan", "Legacy Language");
     }
 
     [HumansFact]
@@ -104,6 +103,6 @@ public class ShiftInfoViewModelTests
             ["Sober Shift"],
             ["Legacy Quirk", "Early Bird"]);
 
-        result.Should().BeEquivalentTo(["Sober Shift", "Night Owl", "Legacy Quirk"]);
+        result.Should().BeEquivalentTo("Sober Shift", "Night Owl", "Legacy Quirk");
     }
 }

@@ -27,8 +27,7 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
             "Controllers reaching directly for HumansDbContext bypass the service and repository layers. " +
             "Keep database access behind an application or infrastructure service and inject that service instead.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private const string ControllerBaseFullName = "Microsoft.AspNetCore.Mvc.ControllerBase";
     private const string HumansDbContextFullName = "Humans.Infrastructure.Data.HumansDbContext";

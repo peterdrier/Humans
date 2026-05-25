@@ -30,7 +30,7 @@ As a nonprofit operating in Spain and the EU, Nobodies Collective must comply wi
 - **Per-document grace period**: Each document has its own `GracePeriodDays` (default 7). After grace expires without re-consent, the user is removed from that team.
 - **Multi-language content**: Document versions store content in a `Content` dictionary keyed by language code ("es", "en", "de", etc.). Spanish ("es") is always canonical/legally binding.
 - **Folder-based GitHub sync**: Admin sets a `GitHubFolderPath`; sync discovers translations by naming convention: `name.md` (Spanish), `name-en.md` (English), `name-de.md` (German), etc.
-- **Admin CRUD**: Documents are created and managed via the admin UI at `/Admin/LegalDocuments`, not in config files.
+- **Admin CRUD**: Documents are created and managed via the admin UI at `/Legal/Admin/Documents`, not in config files.
 
 ## User Stories
 
@@ -216,13 +216,14 @@ For each document with GitHubFolderPath:
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/Admin/LegalDocuments` | GET | List all documents (optional team filter) |
-| `/Admin/CreateLegalDocument` | GET | Create form |
-| `/Admin/CreateLegalDocument` | POST | Create handler |
-| `/Admin/EditLegalDocument/{id}` | GET | Edit form |
-| `/Admin/EditLegalDocument/{id}` | POST | Update handler |
-| `/Admin/ArchiveLegalDocument/{id}` | POST | Soft-delete (IsActive=false) |
-| `/Admin/SyncLegalDocument/{id}` | POST | Trigger single-document sync |
+| `/Legal/Admin/Documents` | GET | List all documents (optional team filter) |
+| `/Legal/Admin/Documents/Create` | GET | Create form |
+| `/Legal/Admin/Documents/Create` | POST | Create handler |
+| `/Legal/Admin/Documents/{id}/Edit` | GET | Edit form |
+| `/Legal/Admin/Documents/{id}/Edit` | POST | Update handler |
+| `/Legal/Admin/Documents/{id}/Archive` | POST | Soft-delete (IsActive=false) |
+| `/Legal/Admin/Documents/{id}/Sync` | POST | Trigger single-document sync |
+| `/Legal/Admin/Documents/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
 
 ## GDPR Compliance
 

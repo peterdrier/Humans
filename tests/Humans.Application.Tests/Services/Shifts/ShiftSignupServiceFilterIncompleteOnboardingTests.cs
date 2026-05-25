@@ -1,23 +1,19 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -25,66 +21,59 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// Tests for <see cref="ShiftSignupService.FilterToIncompleteOnboardingAsync"/> —
 /// the coordinator-side Pending-list "Incomplete onboarding" filter chip helper.
 /// </summary>
-public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
+public sealed class ShiftSignupServiceFilterIncompleteOnboardingTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membership;
     private readonly ShiftSignupService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     public ShiftSignupServiceFilterIncompleteOnboardingTests()
+        : base(TestNow)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        var clock = new FakeClock(TestNow);
-        var auditLog = Substitute.For<IAuditLogService>();
         _membership = Substitute.For<IMembershipCalculator>();
 
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
-        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(teamService)
+            .With<ITeamServiceRead>(teamService)
+            .With(roleAssignmentService)
+            .Build();
 
-        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        var shiftRepo = new ShiftManagementRepository(DbFactory);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
-            auditLog,
+            AuditLog,
+            AdminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
-            clock,
+            Substitute.For<IShiftViewInvalidator>(),
+            Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        var repo = new ShiftSignupRepository(_dbContext, clock);
+        var repo = new ShiftSignupRepository(Db, Clock);
         _service = new ShiftSignupService(
             repo,
             shiftMgmt,
             _membership,
-            auditLog,
+            AuditLog,
             Substitute.For<INotificationService>(),
+            AdminAuthorization,
+            Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
-            clock,
+            Clock,
             NullLogger<ShiftSignupService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
     public async Task Filter_EmptyList_ReturnsEmptyWithoutMembershipCall()
     {
-        var result = await _service.FilterToIncompleteOnboardingAsync(Array.Empty<ShiftSignup>());
+        var result = await _service.FilterToIncompleteOnboardingAsync([]);
 
         result.Should().BeEmpty();
         await _membership.DidNotReceiveWithAnyArgs()
-            .GetUsersWithAllRequiredConsentsForTeamAsync(default!, default, default);
+            .GetUsersWithAllRequiredConsentsForTeamAsync(null!, Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
@@ -159,6 +148,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
         await _service.FilterToIncompleteOnboardingAsync(signups);
 
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
+            // ReSharper disable once PossibleMultipleEnumeration — Arg.Is requires an expression-tree lambda.
             Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == ids.Count() && ids.Count() == 2),
             SystemTeamIds.Volunteers,
             Arg.Any<CancellationToken>());

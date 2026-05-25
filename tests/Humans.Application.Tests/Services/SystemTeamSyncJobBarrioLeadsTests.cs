@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -18,7 +17,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -43,6 +41,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
@@ -61,6 +60,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _campRepository,
             provider,
             _googleSyncService,
+            _googleGroupSync,
             _auditLogService,
             _emailService,
             _roleAssignmentClaimsInvalidator,
@@ -69,30 +69,31 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _clock);
     }
 
-    private Team StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
+    private SystemTeamMembershipSnapshot StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
     {
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = "Barrio Leads",
-            Slug = "barrio-leads",
-            Description = "System team for barrio leads",
-            SystemTeamType = SystemTeamType.BarrioLeads,
-            IsActive = true,
-            IsHidden = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        };
-        if (activeMembers is not null)
-        {
-            foreach (var m in activeMembers)
-            {
-                team.Members.Add(m);
-            }
-        }
-        _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.BarrioLeads, Arg.Any<CancellationToken>())
-            .Returns(team);
+        var teamId = Guid.NewGuid();
+        var team = new SystemTeamMembershipSnapshot(
+            teamId,
+            "Barrio Leads",
+            "barrio-leads",
+            IsHidden: true,
+            SystemTeamType.BarrioLeads,
+            activeMembers?
+                .Where(member => member.LeftAt is null)
+                .Select(member => member.UserId)
+                .ToList() ?? []);
+        var teamInfo = new TeamInfo(
+            teamId, "Barrio Leads", null, "barrio-leads",
+            IsActive: true, IsSystemTeam: true, SystemTeamType: SystemTeamType.BarrioLeads,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: true,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: team.ActiveMemberUserIds
+                .Select(uid => new TeamMemberInfo(
+                    Guid.NewGuid(), uid, string.Empty, null, null,
+                    TeamMemberRole.Member, Instant.MinValue))
+                .ToList());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
         return team;
     }
 
@@ -143,7 +144,10 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         _userService.GetByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
+            .Returns(new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var job = CreateJob();
 

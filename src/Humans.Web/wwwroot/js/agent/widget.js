@@ -63,6 +63,21 @@
         closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
     }
 
+    // Enter submits the message; Shift+Enter inserts a newline (textarea default).
+    // Guard on sendBtn.disabled so rapid Enter can't double-send while a turn is in-flight.
+    // Skip while an IME composition is active so confirming a CJK candidate with
+    // Enter doesn't submit mid-compose.
+    if (input) {
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                e.preventDefault();
+                if (!sendBtn.disabled) {
+                    composer.requestSubmit();
+                }
+            }
+        });
+    }
+
     composer.addEventListener('submit', async function (e) {
         e.preventDefault();
         const message = input.value.trim();

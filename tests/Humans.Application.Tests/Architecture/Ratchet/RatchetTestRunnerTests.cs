@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture.Ratchet;
 
@@ -35,39 +34,35 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void Run_passes_when_current_violations_match_baseline()
     {
-        File.WriteAllLines(_baselineAbsolutePath, new[]
-        {
+        File.WriteAllLines(_baselineAbsolutePath, [
             "# Test baseline",
             "src/A.cs:10:foo",
-            "src/B.cs:20:bar",
-        });
+            "src/B.cs:20:bar"
+        ]);
 
         // Act+Assert: should not throw.
         RatchetTestRunner.Run(
             "TestRule",
-            _baselineRelativePath,
-            new[] { "src/A.cs:10:foo", "src/B.cs:20:bar" });
+            _baselineRelativePath, ["src/A.cs:10:foo", "src/B.cs:20:bar"]);
     }
 
     [HumansFact]
     public void Run_passes_when_baseline_missing_and_no_violations()
     {
         // Baseline file does not exist → empty baseline → no violations is fine.
-        RatchetTestRunner.Run("TestRule", _baselineRelativePath, Array.Empty<string>());
+        RatchetTestRunner.Run("TestRule", _baselineRelativePath, []);
     }
 
     [HumansFact]
     public void Run_hard_fails_on_new_violation()
     {
-        File.WriteAllLines(_baselineAbsolutePath, new[]
-        {
-            "src/A.cs:10:known-violation",
-        });
+        File.WriteAllLines(_baselineAbsolutePath, [
+            "src/A.cs:10:known-violation"
+        ]);
 
         var act = () => RatchetTestRunner.Run(
             "TestRule",
-            _baselineRelativePath,
-            new[] { "src/A.cs:10:known-violation", "src/B.cs:55:NEW-violation" });
+            _baselineRelativePath, ["src/A.cs:10:known-violation", "src/B.cs:55:NEW-violation"]);
 
         act.Should().Throw<Exception>()
             .WithMessage("*NEW violation*", "the new line should be flagged");
@@ -79,16 +74,14 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void Run_soft_fails_on_stale_baseline_entry()
     {
-        File.WriteAllLines(_baselineAbsolutePath, new[]
-        {
+        File.WriteAllLines(_baselineAbsolutePath, [
             "src/A.cs:10:already-fixed",
-            "src/B.cs:20:still-here",
-        });
+            "src/B.cs:20:still-here"
+        ]);
 
         var act = () => RatchetTestRunner.Run(
             "TestRule",
-            _baselineRelativePath,
-            new[] { "src/B.cs:20:still-here" });
+            _baselineRelativePath, ["src/B.cs:20:still-here"]);
 
         act.Should().Throw<Exception>()
             .WithMessage("*you fixed*",
@@ -101,16 +94,15 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void ReadBaseline_strips_comments_and_blanks()
     {
-        File.WriteAllLines(_baselineAbsolutePath, new[]
-        {
+        File.WriteAllLines(_baselineAbsolutePath, [
             "# header",
             string.Empty,
             "src/A.cs:1:x",
             "   # indented comment",
-            "src/B.cs:2:y",
-        });
+            "src/B.cs:2:y"
+        ]);
         var read = RatchetTestRunner.ReadBaseline(_baselineRelativePath);
-        read.Should().BeEquivalentTo(new[] { "src/A.cs:1:x", "src/B.cs:2:y" });
+        read.Should().BeEquivalentTo("src/A.cs:1:x", "src/B.cs:2:y");
     }
 
     [HumansFact]
@@ -119,19 +111,13 @@ public class RatchetTestRunnerTests : IDisposable
         // Trailing " # ..." on data lines is informational only — the diff
         // key stops at the " # " separator. Lines without the separator are
         // returned verbatim.
-        File.WriteAllLines(_baselineAbsolutePath, new[]
-        {
+        File.WriteAllLines(_baselineAbsolutePath, [
             "src/A.cs:foo # L42 lines=10",
             "src/B.cs:bar#1 # L99",
-            "src/C.cs:baz",
-        });
+            "src/C.cs:baz"
+        ]);
         var read = RatchetTestRunner.ReadBaseline(_baselineRelativePath);
-        read.Should().BeEquivalentTo(new[]
-        {
-            "src/A.cs:foo",
-            "src/B.cs:bar#1",
-            "src/C.cs:baz",
-        });
+        read.Should().BeEquivalentTo("src/A.cs:foo", "src/B.cs:bar#1", "src/C.cs:baz");
     }
 
     [HumansFact]
@@ -152,32 +138,28 @@ public class RatchetTestRunnerTests : IDisposable
     {
         // The whole point of the new format: an unrelated edit that shifts
         // a violation's line number must NOT trip the ratchet.
-        File.WriteAllLines(_baselineAbsolutePath, new[]
-        {
+        File.WriteAllLines(_baselineAbsolutePath, [
             "src/A.cs:Edit/2 # L100 lines=30",
-            "src/B.cs:Update/1 # L50 lines=20",
-        });
+            "src/B.cs:Update/1 # L50 lines=20"
+        ]);
 
         // Same keys, different line numbers and diagnostics — should pass.
         RatchetTestRunner.Run(
             "TestRule",
-            _baselineRelativePath,
-            new[]
-            {
+            _baselineRelativePath, [
                 "src/A.cs:Edit/2 # L142 lines=30",   // shifted +42 lines
-                "src/B.cs:Update/1 # L73 lines=22",  // shifted +23 lines, diagnostics changed
-            });
+                "src/B.cs:Update/1 # L73 lines=22" // shifted +23 lines, diagnostics changed
+            ]);
     }
 
     [HumansFact]
     public void Run_failure_message_includes_full_locator_with_line_info()
     {
-        File.WriteAllLines(_baselineAbsolutePath, Array.Empty<string>());
+        File.WriteAllLines(_baselineAbsolutePath, []);
 
         var act = () => RatchetTestRunner.Run(
             "TestRule",
-            _baselineRelativePath,
-            new[] { "src/B.cs:NewViolation/1 # L77 lines=42" });
+            _baselineRelativePath, ["src/B.cs:NewViolation/1 # L77 lines=42"]);
 
         // The failure message should preserve the trailing info so the
         // human can locate the violation in the source.

@@ -59,7 +59,6 @@ public static class DateTimeDisplayExtensions
         return DateTimeZone.Utc;
     }
 
-    // --- Timezone-aware Instant overloads (explicit) ---
 
     public static string ToDisplayDate(this Instant value, DateTimeZone timeZone) =>
         value.InZone(timeZone).Date.ToDisplayDate();
@@ -76,7 +75,6 @@ public static class DateTimeDisplayExtensions
     public static string ToDisplayCompactDayTime(this Instant value, DateTimeZone timeZone) =>
         value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayCompactDayTime();
 
-    // --- DateTime display methods ---
 
     public static string ToDisplayDate(this DateTime value) =>
         value.ToString("d MMM yyyy", CultureInfo.CurrentCulture);

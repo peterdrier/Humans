@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -24,6 +25,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>docs/sections/Shifts.md</c>.
 /// </para>
 /// </remarks>
+[Section("Shifts")]
 public interface IGeneralAvailabilityRepository : IRepository
 {
     /// <summary>
@@ -43,6 +45,15 @@ public interface IGeneralAvailabilityRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<GeneralAvailability>> GetByEventAsync(
         Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns <see cref="GeneralAvailability"/> rows for the supplied user
+    /// ids in the given event, in one query. Read-only (<c>AsNoTracking</c>).
+    /// Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<GeneralAvailability>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Upserts the availability row for the given user + event pair. If no row

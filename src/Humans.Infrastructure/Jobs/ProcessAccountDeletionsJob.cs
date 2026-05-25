@@ -27,56 +27,37 @@ namespace Humans.Infrastructure.Jobs;
 /// column (owning-section rule).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class ProcessAccountDeletionsJob : IRecurringJob
+public class ProcessAccountDeletionsJob(
+    IUserService userService,
+    IAccountDeletionService accountDeletionService,
+    IEmailService emailService,
+    IAuditLogService auditLogService,
+    IHumansMetrics metrics,
+    ILogger<ProcessAccountDeletionsJob> logger,
+    IClock clock) : IRecurringJob
 {
-    private readonly IUserService _userService;
-    private readonly IAccountDeletionService _accountDeletionService;
-    private readonly IEmailService _emailService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IHumansMetrics _metrics;
-    private readonly ILogger<ProcessAccountDeletionsJob> _logger;
-    private readonly IClock _clock;
-
-    public ProcessAccountDeletionsJob(
-        IUserService userService,
-        IAccountDeletionService accountDeletionService,
-        IEmailService emailService,
-        IAuditLogService auditLogService,
-        IHumansMetrics metrics,
-        ILogger<ProcessAccountDeletionsJob> logger,
-        IClock clock)
-    {
-        _userService = userService;
-        _accountDeletionService = accountDeletionService;
-        _emailService = emailService;
-        _auditLogService = auditLogService;
-        _metrics = metrics;
-        _logger = logger;
-        _clock = clock;
-    }
-
     /// <summary>
     /// Processes all accounts scheduled for deletion where the grace period has expired.
     /// </summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
-        _logger.LogInformation(
+        var now = clock.GetCurrentInstant();
+        logger.LogInformation(
             "Starting account deletion processing at {Time}",
             now);
 
         try
         {
-            var dueUserIds = await _userService.GetAccountsDueForAnonymizationAsync(now, cancellationToken);
+            var dueUserIds = await userService.GetAccountsDueForAnonymizationAsync(now, cancellationToken);
 
             if (dueUserIds.Count == 0)
             {
-                _metrics.RecordJobRun("process_account_deletions", "success");
-                _logger.LogInformation("No accounts scheduled for deletion");
+                metrics.RecordJobRun("process_account_deletions", "success");
+                logger.LogInformation("No accounts scheduled for deletion");
                 return;
             }
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Found {Count} accounts to process for deletion",
                 dueUserIds.Count);
 
@@ -86,27 +67,27 @@ public class ProcessAccountDeletionsJob : IRecurringJob
             {
                 try
                 {
-                    var summary = await _accountDeletionService.AnonymizeExpiredAccountAsync(
+                    var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, cancellationToken);
 
                     if (summary is null)
                     {
                         // User disappeared between enumeration and anonymization.
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Skipping account deletion for user {UserId} — no longer exists",
                             userId);
                         continue;
                     }
 
                     // Audit AFTER the business save has succeeded, per design-rules §7a.
-                    await _auditLogService.LogAsync(
+                    await auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), userId,
                         $"Account anonymized (was {summary.OriginalDisplayName})",
                         nameof(ProcessAccountDeletionsJob));
 
                     foreach (var (signupId, shiftId) in summary.CancelledSignupIds)
                     {
-                        await _auditLogService.LogAsync(
+                        await auditLogService.LogAsync(
                             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
                             $"Cancelled signup (account deletion) for shift {shiftId}",
                             nameof(ProcessAccountDeletionsJob));
@@ -114,7 +95,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
                     if (!string.IsNullOrEmpty(summary.OriginalEmail))
                     {
-                        await _emailService.SendAccountDeletedAsync(
+                        await emailService.SendAccountDeletedAsync(
                             summary.OriginalEmail,
                             summary.OriginalDisplayName,
                             summary.PreferredLanguage,
@@ -123,27 +104,27 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
                     processed++;
 
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Successfully anonymized account {UserId}",
                         userId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex,
+                    logger.LogError(ex,
                         "Failed to process deletion for user {UserId}",
                         userId);
                 }
             }
 
-            _metrics.RecordJobRun("process_account_deletions", "success");
-            _logger.LogInformation(
+            metrics.RecordJobRun("process_account_deletions", "success");
+            logger.LogInformation(
                 "Completed account deletion processing, processed {Count} accounts",
                 processed);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("process_account_deletions", "failure");
-            _logger.LogError(ex, "Error processing account deletions");
+            metrics.RecordJobRun("process_account_deletions", "failure");
+            logger.LogError(ex, "Error processing account deletions");
             throw;
         }
     }

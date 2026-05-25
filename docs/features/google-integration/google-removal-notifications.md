@@ -109,14 +109,14 @@ Google Groups don't carry their primary email directly on the resource. We deriv
 ## Workflows
 
 ```
-GoogleWorkspaceSyncService.RemoveUserFromGroupAsync (gateway)
+IGoogleGroupSync group membership reconciliation
   → IGoogleGroupMembershipClient delete
   → on success: GoogleRemovalNotificationService.NotifyRemovalAsync
      → orphan check
      → variant selection
      → IEmailService.SendGoogle*Async → OutboxEmailService.EnqueueAsync (MessageCategory.System)
 
-GoogleWorkspaceSyncService.RemoveUserFromDriveAsync (gateway)
+GoogleWorkspaceSyncService.RemoveUserFromDriveAsync (Drive gateway)
   → IGoogleDrivePermissionsClient delete
   → on success: same notification flow
 ```
@@ -125,9 +125,9 @@ The notification is **always** post-delete, never pre-delete — we don't tell u
 
 ## Related Features
 
-- [`07-google-integration.md`](../google-integration/google-integration.md) — sync architecture, gateway methods, sync modes
-- [`21-email-outbox.md`](../email/email-outbox.md) — outbox infrastructure, `MessageCategory`, branded-template composition
-- [`02-profiles.md`](../profiles/profiles.md) — `UserEmail` rows, `IsGoogle` flag, email rotation flows
+- [`google-integration.md`](../google-integration/google-integration.md) — sync architecture, group orchestrator, Drive gateway methods, sync modes
+- [`email-outbox.md`](../email/email-outbox.md) — outbox infrastructure, `MessageCategory`, branded-template composition
+- [`profiles.md`](../profiles/profiles.md) — `UserEmail` rows, `IsGoogle` flag, email rotation flows
 - [`docs/sections/GoogleIntegration.md`](../../sections/GoogleIntegration.md) — section invariants, cross-section dependencies
 
 ## Open Follow-ups

@@ -10,46 +10,28 @@ using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.Legal;
 
-/// <summary>
-/// Application-layer implementation of <see cref="IAdminLegalDocumentService"/>.
-/// Routes all persistence through <see cref="ILegalDocumentRepository"/>
-/// and cross-domain team reads through <see cref="ITeamService"/>.
-/// </summary>
-public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentService
+public sealed partial class AdminLegalDocumentService(
+    ILegalDocumentRepository repository,
+    ILegalDocumentSyncService legalDocumentSyncService,
+    ITeamService teamService,
+    IOptions<GitHubSettings> githubSettings,
+    IClock clock) : IAdminLegalDocumentService
 {
-    private readonly ILegalDocumentRepository _repository;
-    private readonly ILegalDocumentSyncService _legalDocumentSyncService;
-    private readonly ITeamService _teamService;
-    private readonly GitHubSettings _githubSettings;
-    private readonly IClock _clock;
-
-    public AdminLegalDocumentService(
-        ILegalDocumentRepository repository,
-        ILegalDocumentSyncService legalDocumentSyncService,
-        ITeamService teamService,
-        IOptions<GitHubSettings> githubSettings,
-        IClock clock)
-    {
-        _repository = repository;
-        _legalDocumentSyncService = legalDocumentSyncService;
-        _teamService = teamService;
-        _githubSettings = githubSettings.Value;
-        _clock = clock;
-    }
+    private readonly GitHubSettings _githubSettings = githubSettings.Value;
 
     public async Task<IReadOnlyList<AdminLegalDocumentListItem>> GetLegalDocumentsAsync(
         Guid? teamId,
         CancellationToken cancellationToken = default)
     {
-        var documents = await _repository.GetDocumentsAsync(teamId, cancellationToken);
+        var documents = await repository.GetDocumentsAsync(teamId, cancellationToken);
         if (documents.Count == 0)
             return [];
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
 
-        // Stitch team names in memory instead of the old .Include(d => d.Team).
+        // Stitch team names in memory (no .Include).
         var teamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
 
         return documents
             .Select(d =>
@@ -79,10 +61,36 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
             .ToList();
     }
 
-    public Task<LegalDocument?> GetLegalDocumentWithVersionsAsync(
+    public async Task<AdminLegalDocumentEditDetail?> GetLegalDocumentWithVersionsAsync(
         Guid documentId,
-        CancellationToken cancellationToken = default) =>
-        _repository.GetByIdAsync(documentId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var document = await repository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+            return null;
+
+        return new AdminLegalDocumentEditDetail(
+            document.Id,
+            document.Name,
+            document.TeamId,
+            document.IsRequired,
+            document.IsActive,
+            document.GracePeriodDays,
+            document.GitHubFolderPath,
+            document.LastSyncedAt,
+            document.Versions
+                .Select(v => new AdminLegalDocumentVersionDetail(
+                    v.Id,
+                    v.VersionNumber,
+                    v.CommitSha,
+                    v.EffectiveFrom,
+                    v.CreatedAt,
+                    v.ChangesSummary,
+                    v.RequiresReConsent,
+                    v.Content.Count,
+                    v.Content.Keys.Order(StringComparer.Ordinal).ToList()))
+                .ToList());
+    }
 
     public GitHubFolderPathNormalizationResult NormalizeGitHubFolderPath(string? input)
     {
@@ -138,10 +146,42 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
             GracePeriodDays = request.GracePeriodDays,
             GitHubFolderPath = request.GitHubFolderPath,
             CurrentCommitSha = string.Empty,
-            CreatedAt = _clock.GetCurrentInstant()
+            CreatedAt = clock.GetCurrentInstant()
         };
 
-        return await _repository.AddAsync(document, cancellationToken);
+        return await repository.AddAsync(document, cancellationToken);
+    }
+
+    public async Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
+        AdminLegalDocumentUpsertRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await CreateLegalDocumentAsync(request, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(document.GitHubFolderPath))
+        {
+            return new AdminLegalDocumentCreateResult(
+                document,
+                AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
+        }
+
+        try
+        {
+            var syncMessage = await SyncLegalDocumentAsync(document.Id, cancellationToken);
+            return new AdminLegalDocumentCreateResult(
+                document,
+                syncMessage is null
+                    ? AdminLegalDocumentInitialSyncStatus.AlreadyCurrent
+                    : AdminLegalDocumentInitialSyncStatus.Synced,
+                syncMessage);
+        }
+        catch (Exception ex)
+        {
+            return new AdminLegalDocumentCreateResult(
+                document,
+                AdminLegalDocumentInitialSyncStatus.Failed,
+                SyncError: ex.Message);
+        }
     }
 
     public async Task<LegalDocument?> UpdateLegalDocumentAsync(
@@ -149,7 +189,7 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
         AdminLegalDocumentUpsertRequest request,
         CancellationToken cancellationToken = default)
     {
-        var updated = await _repository.UpdateAsync(
+        var updated = await repository.UpdateAsync(
             documentId,
             request.Name,
             request.TeamId,
@@ -160,24 +200,24 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
             cancellationToken);
 
         return updated
-            ? await _repository.GetByIdAsync(documentId, cancellationToken)
+            ? await repository.GetByIdAsync(documentId, cancellationToken)
             : null;
     }
 
     public Task<LegalDocument?> ArchiveLegalDocumentAsync(
         Guid documentId,
         CancellationToken cancellationToken = default) =>
-        _repository.ArchiveAsync(documentId, cancellationToken);
+        repository.ArchiveAsync(documentId, cancellationToken);
 
     public Task<string?> SyncLegalDocumentAsync(Guid documentId, CancellationToken cancellationToken = default) =>
-        _legalDocumentSyncService.SyncDocumentAsync(documentId, cancellationToken);
+        legalDocumentSyncService.SyncDocumentAsync(documentId, cancellationToken);
 
     public Task<bool> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
         CancellationToken cancellationToken = default) =>
-        _repository.UpdateVersionSummaryAsync(documentId, versionId, changesSummary, cancellationToken);
+        repository.UpdateVersionSummaryAsync(documentId, versionId, changesSummary, cancellationToken);
 
     [GeneratedRegex(
         @"^https?://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)/tree/(?<branch>[^/]+)/(?<path>[^\s]+)$",

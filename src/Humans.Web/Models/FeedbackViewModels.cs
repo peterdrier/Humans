@@ -25,19 +25,19 @@ public class SubmitFeedbackViewModel
 
 public class FeedbackPageViewModel
 {
-    public List<FeedbackListItemViewModel> Reports { get; set; } = new();
+    public List<FeedbackListItemViewModel> Reports { get; set; } = [];
     public FeedbackStatus? StatusFilter { get; set; }
     public FeedbackCategory? CategoryFilter { get; set; }
     public Guid? ReporterFilter { get; set; }
-    public List<ReporterDropdownItem> Reporters { get; set; } = new();
+    public List<ReporterDropdownItem> Reporters { get; set; } = [];
     public Guid? AssignedToFilter { get; set; }
     public Guid? TeamFilter { get; set; }
     public bool UnassignedFilter { get; set; }
     public bool IsAdmin { get; set; }
     public Guid? SelectedReportId { get; set; }
     public Guid CurrentUserId { get; set; }
-    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
-    public List<TeamOptionDto> TeamOptions { get; set; } = new();
+    public List<AssigneeOption> AssigneeOptions { get; set; } = [];
+    public IReadOnlyList<TeamInfo> TeamOptions { get; set; } = [];
 }
 
 public class AssigneeOption
@@ -95,9 +95,9 @@ public class FeedbackDetailViewModel
     public string? AssignedToName { get; set; }
     public Guid? AssignedToTeamId { get; set; }
     public string? AssignedToTeamName { get; set; }
-    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
-    public List<TeamOptionDto> TeamOptions { get; set; } = new();
-    public List<FeedbackMessageViewModel> Messages { get; set; } = new();
+    public List<AssigneeOption> AssigneeOptions { get; set; } = [];
+    public IReadOnlyList<TeamInfo> TeamOptions { get; set; } = [];
+    public List<FeedbackMessageViewModel> Messages { get; set; } = [];
 }
 
 public class FeedbackMessageViewModel

@@ -1,7 +1,9 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -30,6 +32,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// things that evolve on very different cadences.
 /// </para>
 /// </remarks>
+[Section("Tickets")]
 public interface ITicketRepository : IRepository
 {
     // ── TicketSyncState (singleton row, Id == 1) ─────────────────────────────
@@ -134,7 +137,23 @@ public interface ITicketRepository : IRepository
     /// Used by the transfer-request flow so it can validate ownership without
     /// loading the full attendee set.
     /// </summary>
+    /// <remarks>
+    /// Does NOT include sibling <see cref="TicketOrder.Attendees"/> — that path
+    /// (TicketAttendee → TicketOrder → Attendees) is a cycle and EF Core
+    /// rejects it under <c>AsNoTracking</c>. Callers that need sibling vendor
+    /// ticket ids should call <see cref="GetVendorTicketIdsForOrderAsync"/>.
+    /// </remarks>
     Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the <c>VendorTicketId</c>s of every attendee on a given order,
+    /// in stable order by vendor ticket id. Used by the transfer admin detail
+    /// page to render sibling tickets without loading the full
+    /// <see cref="TicketAttendee"/> graph (which would form a cycle through
+    /// <see cref="TicketOrder.Attendees"/>).
+    /// </summary>
+    Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
+        Guid orderId, CancellationToken ct = default);
 
     /// <summary>
     /// Get all TicketAttendees the user is attached to: either as the buyer
@@ -169,6 +188,21 @@ public interface ITicketRepository : IRepository
     /// </summary>
     Task UpsertAttendeesAsync(IReadOnlyList<TicketAttendee> attendees, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every <see cref="TicketAttendee"/> for the given vendor event
+    /// that is currently unmatched (<c>MatchedUserId is null</c>) and whose
+    /// <see cref="Humans.Domain.Enums.TicketAttendeeStatus"/> is
+    /// <c>Valid</c> or <c>CheckedIn</c>, AND whose
+    /// <see cref="TicketAttendee.AttendeeEmail"/> is non-empty.
+    ///
+    /// Used by the attendee contact import to identify candidates for user
+    /// provisioning. Returns the full entity so the caller can mutate
+    /// <c>MatchedUserId</c> and pass the list back to
+    /// <see cref="UpsertAttendeesAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
+        string vendorEventId, CancellationToken ct = default);
+
     /// <summary>Insert or update a single TicketAttendee row. Used when the Tickets section creates an attendee outside the sync loop (e.g. on approved transfer reissue).</summary>
     Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default);
 
@@ -201,7 +235,15 @@ public interface ITicketRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Returns distinct <c>MatchedUserId</c> values for attendees in
+    /// <c>Valid</c> or <c>CheckedIn</c> state whose owning order's
+    /// <c>VendorEventId</c> equals <paramref name="vendorEventId"/>. Used by
+    /// audience-side ticket-holder enumeration and the dashboard volunteer
+    /// coverage stat — both want "current event" semantics.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsForEventAsync(
+        string vendorEventId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Guid>> GetAllMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
 
@@ -306,6 +348,15 @@ public interface ITicketRepository : IRepository
         Instant now,
         string errorMessage,
         CancellationToken ct = default);
+
+    // ── Admin diagnostics ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns paid orders whose live-ticket count (Valid or CheckedIn) is
+    /// less than their total attendee count. Used by the admin order-drift
+    /// diagnostic.
+    /// </summary>
+    Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
 
     // ── Account-merge fold ───────────────────────────────────────────────────
 

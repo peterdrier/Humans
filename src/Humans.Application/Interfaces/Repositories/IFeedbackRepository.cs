@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -21,6 +22,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Singleton + <c>IDbContextFactory</c> pattern so each method owns its own
 /// <c>HumansDbContext</c> lifetime.
 /// </remarks>
+[Section("Feedback")]
 public interface IFeedbackRepository : IRepository
 {
     // ==========================================================================

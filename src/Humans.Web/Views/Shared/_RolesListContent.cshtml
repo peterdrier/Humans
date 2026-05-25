@@ -1,3 +1,4 @@
+@using Humans.Domain.Constants
 @model Humans.Web.Models.AdminRoleAssignmentListViewModel
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -12,14 +13,16 @@
                class="btn @(string.IsNullOrEmpty(Model.RoleFilter) ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminRoles_All"]
             </a>
-            <a asp-action="Roles" asp-route-role="Admin" asp-route-showInactive="@Model.ShowInactive"
-               class="btn @(Model.RoleFilter == "Admin" ? "btn-primary" : "btn-outline-primary")">
-                Admin
-            </a>
-            <a asp-action="Roles" asp-route-role="Board" asp-route-showInactive="@Model.ShowInactive"
-               class="btn @(Model.RoleFilter == "Board" ? "btn-primary" : "btn-outline-primary")">
-                Board
-            </a>
+            @foreach (var role in RoleNames.All)
+            {
+                var label = role != RoleNames.Admin && role.EndsWith(RoleNames.Admin, StringComparison.Ordinal)
+                    ? role[..^RoleNames.Admin.Length]
+                    : role;
+                <a asp-action="Roles" asp-route-role="@role" asp-route-showInactive="@Model.ShowInactive"
+                   class="btn @(Model.RoleFilter == role ? "btn-primary" : "btn-outline-primary")">
+                    @label
+                </a>
+            }
         </div>
         <div>
             @if (Model.ShowInactive)
@@ -106,16 +109,5 @@
     </div>
 </div>
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Roles" asp-route-page="@i" asp-route-role="@Model.RoleFilter" asp-route-showInactive="@Model.ShowInactive">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Roles") { NavCssClass = "mt-4" }; }
+<partial name="_Pager" model="pagerModel" />

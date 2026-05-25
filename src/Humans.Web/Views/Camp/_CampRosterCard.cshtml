@@ -1,0 +1,27 @@
+@model Humans.Web.Models.CampDetailViewModel
+@{
+    if (!Model.CanSeeFullCamp || Model.CurrentSeason is null) { return; }
+}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-users me-1"></i> Roster @Model.CurrentSeason.Year
+        <span class="text-muted">(@Model.Roster.Count)</span>
+    </div>
+    <div class="card-body">
+        @if (Model.Roster.Count == 0)
+        {
+            <p class="text-center text-muted mb-0">No humans recorded for this season yet.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var member in Model.Roster)
+                {
+                    <div class="col-6 col-sm-4 col-md-3">
+                        <vc:human user-id="@member.UserId" layout="Card" size="102" />
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

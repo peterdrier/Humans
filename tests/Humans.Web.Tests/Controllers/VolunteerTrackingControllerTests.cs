@@ -1,13 +1,13 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Controllers;
@@ -46,10 +46,14 @@ public class VolunteerTrackingControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IVolunteerTrackingExportService _exportService =
+        Substitute.For<IVolunteerTrackingExportService>();
+    private readonly Humans.Web.Models.VolunteerTracking.VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
 
     public VolunteerTrackingControllerTests()
     {
@@ -65,16 +69,28 @@ public class VolunteerTrackingControllerTests
         if (currentUser is not null)
         {
             _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+            _userService.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                    currentUser,
+                    [],
+                    [],
+                    [],
+                    profile: null,
+                    [],
+                    [],
+                    [],
+                    [])));
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _profileService, _auditLog, _userManager, _localizer);
+            _service, _shiftMgmt, _exportService, _xlsxBuilder,
+            _userService, _auditLog, _localizer);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
         {
-            http.User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString()) },
+            http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString())
+                ],
                 "test"));
         }
 
@@ -112,7 +128,7 @@ public class VolunteerTrackingControllerTests
         var attr = typeof(VolunteerTrackingController)
             .GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull("class-level [Authorize] gates anonymous reads");
-        attr!.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
+        attr.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
     }
 
     [HumansTheory]
@@ -127,7 +143,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, actionName, StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull($"{actionName} must require VolunteerTrackingWrite");
-        attr!.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
 
     [HumansTheory]
@@ -158,8 +174,8 @@ public class VolunteerTrackingControllerTests
                 BuildStartOffset: 0,
                 GateOpeningDate: default,
                 Today: default,
-                MainCohort: Array.Empty<VolunteerHeatmapRow>(),
-                UnbookedCohort: Array.Empty<VolunteerCohortRow>()));
+                MainCohort: [],
+                UnbookedCohort: []));
         var ctrl = BuildSut(current);
 
         var result = await ctrl.Index(false, false, false, CancellationToken.None);
@@ -188,26 +204,26 @@ public class VolunteerTrackingControllerTests
         {
             new(aliceId, FirstSignupDay: -10, LastEligibleSignupOffset: -2,
                 BarrioSetupStartDate: null, GapCount: 2,
-                Cells: Array.Empty<VolunteerCell>(),
-                DayOffs: Array.Empty<DayOffSummary>()),
+                Cells: [],
+                DayOffs: []),
             new(bobId, FirstSignupDay: -10, LastEligibleSignupOffset: -1,
                 BarrioSetupStartDate: null, GapCount: 3,
-                Cells: Array.Empty<VolunteerCell>(),
-                DayOffs: Array.Empty<DayOffSummary>()),
+                Cells: [],
+                DayOffs: []),
             new(carolId, FirstSignupDay: -10, LastEligibleSignupOffset: -5,
                 BarrioSetupStartDate: null, GapCount: 2,
-                Cells: Array.Empty<VolunteerCell>(),
-                DayOffs: Array.Empty<DayOffSummary>()),
+                Cells: [],
+                DayOffs: []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
-                Array.Empty<VolunteerCohortRow>()));
-        _profileService.GetFullProfileAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Alice")));
-        _profileService.GetFullProfileAsync(bobId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Bob")));
-        _profileService.GetFullProfileAsync(carolId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Carol")));
+                []));
+        _userService.GetUserInfoAsync(aliceId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(StubUserInfo(aliceId, "Alice")));
+        _userService.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(StubUserInfo(bobId, "Bob")));
+        _userService.GetUserInfoAsync(carolId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(StubUserInfo(carolId, "Carol")));
 
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
@@ -224,12 +240,12 @@ public class VolunteerTrackingControllerTests
         var a = Guid.NewGuid(); var b = Guid.NewGuid();
         var rows = new List<VolunteerHeatmapRow>
         {
-            new(a, -10, -2, null, GapCount: 0, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
-            new(b, -10, -2, null, GapCount: 1, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
+            new(a, -10, -2, null, GapCount: 0, [], []),
+            new(b, -10, -2, null, GapCount: 1, [], []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
-                Array.Empty<VolunteerCohortRow>()));
+                []));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(hideNoGaps: true, false, false, CancellationToken.None);
@@ -247,12 +263,12 @@ public class VolunteerTrackingControllerTests
         var rows = new List<VolunteerHeatmapRow>
         {
             new(a, -10, -2, BarrioSetupStartDate: new LocalDate(2026, 6, 14),
-                GapCount: 5, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
-            new(b, -10, -2, null, GapCount: 5, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
+                GapCount: 5, [], []),
+            new(b, -10, -2, null, GapCount: 5, [], []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
-                Array.Empty<VolunteerCohortRow>()));
+                []));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(false, hideCampSetup: true, false, CancellationToken.None);
@@ -270,11 +286,11 @@ public class VolunteerTrackingControllerTests
         var unbooked = new List<VolunteerCohortRow>
         {
             new(u, FirstAvailableDay: -3, BarrioSetupStartDate: null,
-                UnbookedCount: 2, Cells: Array.Empty<VolunteerCell>()),
+                UnbookedCount: 2, Cells: []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15),
-                Array.Empty<VolunteerHeatmapRow>(), unbooked));
+                [], unbooked));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(false, false, hideUnbookedSection: true, CancellationToken.None);
@@ -297,7 +313,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(
                 target, Arg.Any<LocalDate>(), Arg.Any<string?>(),
                 current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetCampSetupResult(Ok: true, ErrorMessageKey: null, AutoClearedDayOffs: Array.Empty<int>()));
+            .Returns(new SetCampSetupResult(Ok: true, ErrorMessageKey: null, AutoClearedDayOffs: []));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14", Notes = "early" };
 
@@ -550,7 +566,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(target, Arg.Any<LocalDate>(), Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
             .Returns(new SetCampSetupResult(
                 Ok: true, ErrorMessageKey: null,
-                AutoClearedDayOffs: new[] { -6, -4 }));
+                AutoClearedDayOffs: [-6, -4]));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-30", Notes = null };
 
@@ -564,14 +580,36 @@ public class VolunteerTrackingControllerTests
             Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    private static Humans.Application.FullProfile StubFullProfile(string displayName) =>
-        new(
-            UserId: Guid.NewGuid(), DisplayName: displayName, ProfilePictureUrl: null,
-            HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
-            BurnerName: null, Bio: null, Pronouns: null, ContributionInterests: null,
-            City: null, CountryCode: null, Latitude: null, Longitude: null,
-            BirthdayDay: null, BirthdayMonth: null,
-            IsApproved: true, IsSuspended: false,
-            CVEntries: Array.Empty<Humans.Application.CVEntry>(),
-            PrimaryEmail: null);
+    private static UserInfo StubUserInfo(Guid userId, string burnerName)
+    {
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = burnerName,
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        };
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = burnerName,
+            FirstName = burnerName,
+            LastName = "Test",
+            IsApproved = true,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+        return UserInfo.Create(
+            user: user,
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
+    }
 }

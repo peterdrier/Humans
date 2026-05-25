@@ -4,31 +4,17 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Repositories.Profiles;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IUserEmailRepository"/>. The only
-/// non-test file that touches <c>DbContext.UserEmails</c> after the Profile
-/// migration lands.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
-/// </summary>
-public sealed class UserEmailRepository : IUserEmailRepository
+/// <summary>EF-backed <see cref="IUserEmailRepository"/>.</summary>
+internal sealed class UserEmailRepository(IDbContextFactory<HumansDbContext> factory) : IUserEmailRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public UserEmailRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     public async Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.UserId == userId)
@@ -43,7 +29,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         // With IDbContextFactory the context is short-lived, so returned entities
         // are detached. Callers must pass mutated entities explicitly back to
         // UpdateAsync / UpdateBatchAsync.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.UserId == userId)
@@ -53,14 +39,14 @@ public sealed class UserEmailRepository : IUserEmailRepository
     public async Task<UserEmail?> GetByIdAndUserIdAsync(
         Guid emailId, Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .FirstOrDefaultAsync(e => e.Id == emailId && e.UserId == userId, ct);
     }
 
     public async Task<UserEmail?> GetByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == emailId, ct);
@@ -70,7 +56,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         Guid userId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return alternateEmail is null
             ? await ctx.UserEmails.AnyAsync(
                 e => e.UserId == userId && EF.Functions.ILike(e.Email, normalizedEmail), ct)
@@ -84,7 +70,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         Guid userId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return alternateEmail is null
             ? await ctx.UserEmails.AnyAsync(
                 e => e.UserId != userId && e.IsVerified &&
@@ -99,7 +85,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         Guid excludeEmailId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return alternateEmail is null
             ? await ctx.UserEmails.FirstOrDefaultAsync(
                 e => e.Id != excludeEmailId && e.IsVerified &&
@@ -113,7 +99,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
     public async Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
         GetLegacyBackfillSnapshotsByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.UserId == userId)
@@ -129,19 +115,9 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.IsVerified && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .ToListAsync(ct);
@@ -149,7 +125,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var emails = await ctx.UserEmails
             .Where(e => e.UserId == userId)
             .ToListAsync(ct);
@@ -165,7 +141,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var sourceRows = await ctx.UserEmails
             .Where(e => e.UserId == sourceUserId)
@@ -212,9 +188,9 @@ public sealed class UserEmailRepository : IUserEmailRepository
     }
 
     public async Task<bool> MarkVerifiedAsync(
-        Guid emailId, NodaTime.Instant now, CancellationToken ct = default)
+        Guid emailId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var email = await ctx.UserEmails.FirstOrDefaultAsync(e => e.Id == emailId, ct);
         if (email is null)
             return false;
@@ -227,7 +203,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var email = await ctx.UserEmails.FirstOrDefaultAsync(e => e.Id == emailId, ct);
         if (email is null)
             return false;
@@ -243,7 +219,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         if (emails.Count == 0)
             return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         // Lower-case both sides for a case-insensitive IN comparison.
         // UserEmail.Email is a plain text column; explicit invariant lowering
         // keeps the translation provider-neutral. The .NET-side LINQ to Entities
@@ -263,7 +239,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         // otherwise the collision check can report false positives
         // (e.g. john_doe@... matching johnXdoe@...).
         var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AnyAsync(ue => EF.Functions.ILike(ue.Email, escaped, "\\"), ct);
     }
@@ -277,7 +253,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.IsVerified && e.IsPrimary)
@@ -301,7 +277,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         // "aXb"). Pass '\' as the explicit escape character.
         var pattern = $"%{EscapeLikePattern(searchTerm.Trim())}%";
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, pattern, "\\"))
@@ -313,7 +289,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
     public async Task<string?> GetVerifiedEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(ue => ue.Id == emailId && ue.UserId == userId && ue.IsVerified)
@@ -325,7 +301,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         string email, CancellationToken ct = default)
     {
         var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.IsVerified)
@@ -333,17 +309,45 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => ue.Email.StartsWith(prefix) && ue.Email.EndsWith(suffix))
+            .Select(ue => ue.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
         string email, CancellationToken ct = default)
     {
         var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.IsVerified)
             .Select(ue => ue.UserId)
             .Distinct()
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var query = ctx.UserEmails.AsNoTracking().Where(ue => ue.IsVerified);
+
+        query = alternateEmail is null
+            ? query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail))
+            : query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail)
+                             || EF.Functions.ILike(ue.Email, alternateEmail));
+
+        return await query.Select(ue => ue.UserId).Distinct().ToListAsync(ct);
     }
 
     public async Task<Guid?> GetOtherUserIdHavingEmailAsync(
@@ -354,7 +358,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         // cross-user conflict. Escape ILIKE wildcards so '_' and '%' in the address
         // are treated as literals, matching the prior exact-comparison semantics.
         var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.UserId != excludeUserId)
@@ -368,7 +372,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         Instant updatedAt,
         CancellationToken cancellationToken = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        await using var ctx = await factory.CreateDbContextAsync(cancellationToken);
         await using var tx = await ctx.Database.BeginTransactionAsync(cancellationToken);
 
         var rows = await ctx.UserEmails
@@ -389,14 +393,14 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task AddAsync(UserEmail email, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.UserEmails.Add(email);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task RemoveAsync(UserEmail email, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(email);
         ctx.UserEmails.Remove(email);
         await ctx.SaveChangesAsync(ct);
@@ -404,7 +408,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var emails = await ctx.UserEmails
             .Where(e => e.UserId == userId)
             .ToListAsync(ct);
@@ -417,7 +421,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.UserEmails
             .AsNoTracking()
             .Where(ue => ue.IsVerified);
@@ -462,7 +466,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return escapedAlternate is null
             ? await ctx.UserEmails
                 .AsNoTracking()
@@ -477,7 +481,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task UpdateAsync(UserEmail email, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(email);
         ctx.Entry(email).State = EntityState.Modified;
         ExcludeLegacyShadowsFromUpdate(ctx.Entry(email));
@@ -486,7 +490,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         foreach (var email in emails)
         {
             ctx.Attach(email);
@@ -514,7 +518,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         var escaped = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.UserEmails
             .Where(e => e.IsVerified && e.UserId != excludeUserId);
 
@@ -537,7 +541,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
             && rowToUpdate is null && rowToInsert is null)
             return;
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
 
         if (displacedRowToDelete is not null)

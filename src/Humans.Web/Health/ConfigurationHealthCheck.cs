@@ -8,20 +8,13 @@ namespace Humans.Web.Health;
 /// Reads from the ConfigurationRegistry instead of a hardcoded list,
 /// checking all keys marked as Critical importance.
 /// </summary>
-public class ConfigurationHealthCheck : IHealthCheck
+public class ConfigurationHealthCheck(ConfigurationRegistry registry) : IHealthCheck
 {
-    private readonly ConfigurationRegistry _registry;
-
-    public ConfigurationHealthCheck(ConfigurationRegistry registry)
-    {
-        _registry = registry;
-    }
-
     public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        var missingKeys = _registry.GetAll()
+        var missingKeys = registry.GetAll()
             .Where(e => e.Importance == ConfigurationImportance.Critical && !e.IsSet)
             .Select(e => e.Key)
             .ToList();

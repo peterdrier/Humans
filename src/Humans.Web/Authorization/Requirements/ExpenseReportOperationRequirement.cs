@@ -7,12 +7,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// Used with IAuthorizationService.AuthorizeAsync(User, reportDto, requirement)
 /// where the resource is an <c>ExpenseReportDto</c>.
 /// </summary>
-public sealed class ExpenseReportOperationRequirement : IAuthorizationRequirement
+public sealed class ExpenseReportOperationRequirement(ExpenseReportOperation operation) : IAuthorizationRequirement
 {
-    public ExpenseReportOperation Operation { get; }
-
-    public ExpenseReportOperationRequirement(ExpenseReportOperation operation)
-    {
-        Operation = operation;
-    }
+    public ExpenseReportOperation Operation { get; } = operation;
 }

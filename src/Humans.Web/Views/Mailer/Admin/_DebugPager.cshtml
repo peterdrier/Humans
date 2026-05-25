@@ -1,0 +1,55 @@
+@using Humans.Web.Models.Mailer
+@model DebugPagerModel
+@{
+    var state = Model.State;
+    var total = Model.Total;
+    var size = state.PageSize;
+    var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)size);
+    var pageNumber = Math.Min(Math.Max(state.Page, 1), totalPages);
+    var firstRow = total == 0 ? 0 : (pageNumber - 1) * size + 1;
+    var lastRow = Math.Min(total, pageNumber * size);
+}
+<div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 small">
+    <div class="text-muted">
+        @if (total == 0)
+        {
+            <span>0 rows</span>
+        }
+        else
+        {
+            <span>@firstRow.ToString("N0") – @lastRow.ToString("N0") of @total.ToString("N0")</span>
+        }
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted">Page size:</span>
+        @foreach (var sz in Model.Options.PageSizes)
+        {
+            if (sz == size)
+            {
+                <span class="badge bg-secondary">@sz</span>
+            }
+            else
+            {
+                <a class="link-secondary" href="@Model.Url(state, 1, sz, null, null)">@sz</a>
+            }
+        }
+        <span class="vr"></span>
+        @if (pageNumber > 1)
+        {
+            <a class="link-secondary" href="@Model.Url(state, pageNumber - 1, null, null, null)" aria-label="Previous">&laquo; Prev</a>
+        }
+        else
+        {
+            <span class="text-muted">&laquo; Prev</span>
+        }
+        <span class="text-muted">Page @pageNumber of @totalPages</span>
+        @if (pageNumber < totalPages)
+        {
+            <a class="link-secondary" href="@Model.Url(state, pageNumber + 1, null, null, null)" aria-label="Next">Next &raquo;</a>
+        }
+        else
+        {
+            <span class="text-muted">Next &raquo;</span>
+        }
+    </div>
+</div>

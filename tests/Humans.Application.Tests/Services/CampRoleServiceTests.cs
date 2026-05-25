@@ -1,65 +1,50 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
-public class CampRoleServiceTests : IDisposable
+public sealed class CampRoleServiceTests : ServiceTestHarness
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly CampRoleService _service;
-    private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
-    private readonly INotificationEmitter _notificationEmitter;
+    private readonly IUserEmailService _userEmailService;
     private readonly ICampService _campService;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
+        : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(_options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 26, 12, 0));
-        _auditLog = Substitute.For<IAuditLogService>();
         _userService = Substitute.For<IUserService>();
-        _notificationEmitter = Substitute.For<INotificationEmitter>();
+        _userEmailService = Substitute.For<IUserEmailService>();
         _campService = Substitute.For<ICampService>();
 
-        var factory = new TestDbContextFactory(_options);
-        var repo = new CampRoleRepository(factory);
+        var repo = new CampRoleRepository(DbFactory);
+        var campRepo = new CampRepository(DbFactory);
 
         _service = new CampRoleService(
             repo,
+            campRepo,
             _campService,
             _userService,
-            _auditLog,
-            _notificationEmitter,
-            _clock,
+            _userEmailService,
+            AuditLog,
+            Notifier,
+            Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
+            Clock,
             NullLogger<CampRoleService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -93,7 +78,7 @@ public class CampRoleServiceTests : IDisposable
         var result = await _service.GetDefinitionByIdAsync(def.Id);
 
         result.Should().NotBeNull();
-        result!.Name.Should().Be("Build Lead");
+        result.Name.Should().Be("Build Lead");
     }
 
     [HumansFact]
@@ -108,7 +93,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task CreateDefinition_persists_and_audits()
     {
         var input = new CreateCampRoleDefinitionInput(
-            Name: "Sound Lead", Description: "Manages sound system",
+            Name: "Sound Lead", Slug: "sound-lead", Description: "Manages sound system",
             SlotCount: 1, MinimumRequired: 0, SortOrder: 60);
 
         var result = await _service.CreateDefinitionAsync(input, _actorUserId);
@@ -118,7 +103,7 @@ public class CampRoleServiceTests : IDisposable
         result.MinimumRequired.Should().Be(0);
 
         // Audit happens AFTER save (I1 fix)
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
             result.Id,
@@ -133,7 +118,7 @@ public class CampRoleServiceTests : IDisposable
         await SeedDefinitionAsync("Consent Lead");
 
         var input = new CreateCampRoleDefinitionInput(
-            Name: "Consent Lead", Description: null,
+            Name: "Consent Lead", Slug: "consent-lead-2", Description: null,
             SlotCount: 1, MinimumRequired: 1, SortOrder: 99);
 
         var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
@@ -145,7 +130,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task CreateDefinition_rejects_minimumRequired_above_slotCount()
     {
         var input = new CreateCampRoleDefinitionInput(
-            Name: "Bad Role", Description: null,
+            Name: "Bad Role", Slug: "bad-role", Description: null,
             SlotCount: 1, MinimumRequired: 2, SortOrder: 99);
 
         var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
@@ -159,18 +144,19 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync("Old Name", slotCount: 1);
 
         var input = new UpdateCampRoleDefinitionInput(
-            Name: "New Name", Description: "Updated description",
+            Name: "New Name", Slug: "new-name", Description: "Updated description",
             SlotCount: 2, MinimumRequired: 0, SortOrder: 99);
 
-        var ok = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
+        var result = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
 
-        ok.Should().BeTrue();
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.Updated);
+        result.SuccessMessage.Should().Be("Updated camp role 'New Name'.");
         var updated = await _service.GetDefinitionByIdAsync(def.Id);
         updated!.Name.Should().Be("New Name");
         updated.SlotCount.Should().Be(2);
         updated.MinimumRequired.Should().Be(0);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionUpdated,
             nameof(CampRoleDefinition),
             def.Id,
@@ -186,7 +172,7 @@ public class CampRoleServiceTests : IDisposable
         var def2 = await SeedDefinitionAsync("LNT");
 
         var input = new UpdateCampRoleDefinitionInput(
-            Name: "Consent Lead", Description: null,
+            Name: "Consent Lead", Slug: "consent-lead", Description: null,
             SlotCount: def2.SlotCount, MinimumRequired: def2.MinimumRequired,
             SortOrder: def2.SortOrder);
 
@@ -199,12 +185,12 @@ public class CampRoleServiceTests : IDisposable
     public async Task UpdateDefinition_returns_false_when_not_found()
     {
         var input = new UpdateCampRoleDefinitionInput(
-            Name: "Anything", Description: null,
+            Name: "Anything", Slug: "anything", Description: null,
             SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
-        var ok = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
+        var result = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
 
-        ok.Should().BeFalse();
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.NotFound);
     }
 
     [HumansFact]
@@ -218,7 +204,7 @@ public class CampRoleServiceTests : IDisposable
         var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
         reloaded!.DeactivatedAt.Should().NotBeNull();
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
     }
@@ -241,7 +227,7 @@ public class CampRoleServiceTests : IDisposable
         var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
         reloaded!.DeactivatedAt.Should().BeNull();
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
     }
@@ -253,23 +239,23 @@ public class CampRoleServiceTests : IDisposable
         var member = await SeedActiveMemberAsync(season.Id);
         var def = await SeedDefinitionAsync();
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
 
         outcome.Should().Be(AssignCampRoleOutcome.Assigned);
 
-        var assignments = await _dbContext.CampRoleAssignments.AsNoTracking().ToListAsync();
+        var assignments = await Db.CampRoleAssignments.AsNoTracking().ToListAsync();
         assignments.Should().HaveCount(1);
         assignments[0].CampMemberId.Should().Be(member.Id);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleAssigned, nameof(CampRoleAssignment),
             Arg.Any<Guid>(), Arg.Any<string>(), _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
-        await _notificationEmitter.Received(1).SendAsync(
+        await Notifier.Received(1).SendAsync(
             NotificationSource.CampRoleAssigned,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
@@ -286,13 +272,13 @@ public class CampRoleServiceTests : IDisposable
         var member = await SeedActiveMemberAsync(season.Id);
         var def = await SeedDefinitionAsync();
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Pending));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
 
         outcome.Should().Be(AssignCampRoleOutcome.MemberNotActive);
-        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+        (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
     }
 
     [HumansFact]
@@ -303,7 +289,7 @@ public class CampRoleServiceTests : IDisposable
         var member = await SeedActiveMemberAsync(otherSeason.Id);
         var def = await SeedDefinitionAsync();
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(otherSeason.Id, member.UserId, CampMemberStatus.Active));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -342,7 +328,7 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync(slotCount: 2);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         (await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId))
@@ -358,7 +344,7 @@ public class CampRoleServiceTests : IDisposable
         var def = await SeedDefinitionAsync(deactivated: true);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
@@ -372,18 +358,18 @@ public class CampRoleServiceTests : IDisposable
         var (camp, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync();
         var member = await SeedActiveMemberAsync(season.Id);
-        _campService.GetCampMemberStatusAsync(member.Id, default)
+        _campService.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
-        var assignment = await _dbContext.CampRoleAssignments.FirstAsync();
+        var assignment = await Db.CampRoleAssignments.FirstAsync();
 
         var ok = await _service.UnassignAsync(assignment.Id, _actorUserId);
 
         ok.Should().BeTrue();
-        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+        (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
 
-        await _auditLog.Received(1).LogAsync(
+        await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleUnassigned, nameof(CampRoleAssignment),
             assignment.Id, Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -404,25 +390,28 @@ public class CampRoleServiceTests : IDisposable
         var member1 = await SeedActiveMemberAsync(season.Id);
         var member2 = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(
+        Db.CampRoleAssignments.Add(
             new CampRoleAssignment
             {
                 Id = Guid.NewGuid(),
                 CampSeasonId = season.Id,
                 CampRoleDefinitionId = def1.Id,
                 CampMemberId = member1.Id,
-                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedAt = Clock.GetCurrentInstant(),
                 AssignedByUserId = _actorUserId
             });
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var users = new Dictionary<Guid, User>
         {
-            [member1.UserId] = new User { Id = member1.UserId, DisplayName = "Member One" },
-            [member2.UserId] = new User { Id = member2.UserId, DisplayName = "Member Two" },
+            [member1.UserId] = new() { Id = member1.UserId, DisplayName = "Member One" },
+            [member2.UserId] = new() { Id = member2.UserId, DisplayName = "Member Two" },
         };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo())));
 
         var panel = await _service.BuildPanelAsync(season.Id);
 
@@ -446,18 +435,21 @@ public class CampRoleServiceTests : IDisposable
         var m1 = await SeedActiveMemberAsync(season.Id);
         var m2 = await SeedActiveMemberAsync(season.Id);
 
-        await _dbContext.CampRoleAssignments.AddRangeAsync(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m1.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m2.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await _dbContext.SaveChangesAsync();
+        await Db.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m1.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m2.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
 
         var users = new Dictionary<Guid, User>
         {
-            [m1.UserId] = new User { Id = m1.UserId, DisplayName = "Alpha" },
-            [m2.UserId] = new User { Id = m2.UserId, DisplayName = "Beta" },
+            [m1.UserId] = new() { Id = m1.UserId, DisplayName = "Alpha" },
+            [m2.UserId] = new() { Id = m2.UserId, DisplayName = "Beta" },
         };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo())));
 
         var panel = await _service.BuildPanelAsync(season.Id);
 
@@ -475,12 +467,12 @@ public class CampRoleServiceTests : IDisposable
         var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        _dbContext.CampRoleAssignments.Add(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleAssignments.Add(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
 
-        _campService.GetCampSeasonsForComplianceAsync(2026, default)
-            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+        _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
 
@@ -496,8 +488,8 @@ public class CampRoleServiceTests : IDisposable
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
-        _campService.GetCampSeasonsForComplianceAsync(2026, default)
-            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+        _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
 
@@ -512,8 +504,8 @@ public class CampRoleServiceTests : IDisposable
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync("Power", slotCount: 1, minimumRequired: 0);
 
-        _campService.GetCampSeasonsForComplianceAsync(2026, default)
-            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+        _campService.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
 
@@ -529,33 +521,192 @@ public class CampRoleServiceTests : IDisposable
         var def2 = await SeedDefinitionAsync("LNT");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        await _dbContext.CampRoleAssignments.AddRangeAsync(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await _dbContext.SaveChangesAsync();
+        await Db.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
 
         var deletedCount = await _service.RemoveAllForMemberAsync(member.Id, _actorUserId);
 
         deletedCount.Should().Be(2);
-        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+        (await Db.CampRoleAssignments.CountAsync()).Should().Be(0);
+    }
+
+    // ==========================================================================
+    // IGoogleGroupMembershipSource.GetExpectedAsync — issue #740
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetExpected_returns_one_key_per_active_role_and_in_scope_year_with_assignees()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = member.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await Db.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: [2026],
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        result.Should().ContainKey("barrios-2026-consent-lead@nobodies.team");
+        result["barrios-2026-consent-lead@nobodies.team"]
+            .Should().Equal(member.UserId);
+    }
+
+    [HumansFact]
+    public async Task GetExpected_excludes_deactivated_definitions()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("Old", slug: "old", deactivated: true);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = member.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await Db.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: [2026],
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        // No key should claim the deactivated role's slug.
+        result.Keys.Should().NotContain(k => k.Contains("-old@", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [HumansFact]
+    public async Task GetExpected_excludes_definitions_with_empty_slug()
+    {
+        // Empty Slug = admin hasn't assigned a slug to this role yet → no
+        // Google Group is provisioned and the role does not appear in the
+        // membership-source's claim list.
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("No Slug Yet", slug: "");
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = member.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await Db.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: [2026],
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        // No key for the slug-less role.
+        result.Should().BeEmpty(
+            because: "definitions with an empty Slug do not get a Google Group and must not appear in expected claims");
+    }
+
+    [HumansFact]
+    public async Task GetExpected_excludes_assignment_when_member_is_inactive()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
+
+        // Seed a member that is NOT Active (Removed).
+        var inactiveMember = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Removed,
+            RequestedAt = Clock.GetCurrentInstant(),
+            RemovedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampMembers.Add(inactiveMember);
+
+        var activeMember = await SeedActiveMemberAsync(season.Id);
+
+        await Db.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = def.Id,
+                CampMemberId = inactiveMember.Id,
+                AssignedAt = Clock.GetCurrentInstant(),
+                AssignedByUserId = _actorUserId,
+            },
+            new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = def.Id,
+                CampMemberId = activeMember.Id,
+                AssignedAt = Clock.GetCurrentInstant(),
+                AssignedByUserId = _actorUserId,
+            });
+        await Db.SaveChangesAsync();
+
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(
+                PublicYear: 2026,
+                OpenSeasons: [2026],
+                EeStartDate: null));
+
+        var result = await _service.GetExpectedAsync();
+
+        // Service-layer filtering: stale assignments whose CampMember is no longer Active
+        // must not appear as expected group members. The orchestrator's user-state filter
+        // catches suspended/rejected users; per-section sources are responsible for keeping
+        // their own data clean of dangling member references.
+        var key = "barrios-2026-consent-lead@nobodies.team";
+        result.Should().ContainKey(key);
+        result[key].Should().NotContain(inactiveMember.UserId);
+        result[key].Should().Contain(activeMember.UserId);
     }
 
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
-        bool deactivated = false)
+        bool deactivated = false, string? slug = null)
     {
         var def = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
             Name = name,
+            Slug = slug ?? Humans.Application.Helpers.SlugHelper.GenerateSlug(name) + "-" + Guid.NewGuid().ToString("N").Substring(0, 6),
             SlotCount = slotCount,
             MinimumRequired = minimumRequired,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-            DeactivatedAt = deactivated ? _clock.GetCurrentInstant() : null,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+            DeactivatedAt = deactivated ? Clock.GetCurrentInstant() : null,
         };
-        _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
         return def;
     }
 
@@ -574,9 +725,9 @@ public class CampRoleServiceTests : IDisposable
             Name = "Test Camp",
             Status = CampSeasonStatus.Active,
         };
-        _dbContext.Camps.Add(camp);
-        _dbContext.CampSeasons.Add(season);
-        await _dbContext.SaveChangesAsync();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
         return (camp, season);
     }
 
@@ -588,12 +739,181 @@ public class CampRoleServiceTests : IDisposable
             CampSeasonId = seasonId,
             UserId = userId ?? Guid.NewGuid(),
             Status = CampMemberStatus.Active,
-            RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(),
+            RequestedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = Clock.GetCurrentInstant(),
             ConfirmedByUserId = _actorUserId,
         };
-        _dbContext.CampMembers.Add(member);
-        await _dbContext.SaveChangesAsync();
+        Db.CampMembers.Add(member);
+        await Db.SaveChangesAsync();
         return member;
+    }
+
+    // ==========================================================================
+    // GetSeasonLeadUserIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetSeasonLeadUserIdsAsync_ReturnsLeadHolders_ExcludesOtherRolesAndSeasons()
+    {
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var (_, otherSeason) = await SeedCampWithSeasonAsync();
+
+        var leadDef = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = CampSystemRoles.CampLeadName,
+            Slug = CampSystemRoles.CampLeadSlug,
+            SlotCount = 2,
+            MinimumRequired = 1,
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampRoleDefinitions.Add(leadDef);
+        var regularDef = await SeedDefinitionAsync("Greeter");
+        await Db.SaveChangesAsync();
+
+        var leadUser = Guid.NewGuid();
+        var leadMember = await SeedActiveMemberAsync(season.Id, leadUser);
+        var regularMember = await SeedActiveMemberAsync(season.Id);
+        var otherSeasonLead = await SeedActiveMemberAsync(otherSeason.Id);
+
+        Db.CampRoleAssignments.Add(NewAssignment(season.Id, leadDef.Id, leadMember.Id));
+        Db.CampRoleAssignments.Add(NewAssignment(season.Id, regularDef.Id, regularMember.Id));
+        Db.CampRoleAssignments.Add(NewAssignment(otherSeason.Id, leadDef.Id, otherSeasonLead.Id));
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetSeasonLeadUserIdsAsync(season.Id);
+
+        result.Should().ContainSingle().Which.Should().Be(leadUser);
+    }
+
+    private CampRoleAssignment NewAssignment(Guid seasonId, Guid definitionId, Guid memberId) => new()
+    {
+        Id = Guid.NewGuid(),
+        CampSeasonId = seasonId,
+        CampRoleDefinitionId = definitionId,
+        CampMemberId = memberId,
+        AssignedAt = Clock.GetCurrentInstant(),
+        AssignedByUserId = _actorUserId,
+    };
+
+    // ==========================================================================
+    // System role immutability + seeding (issue nobodies-collective/Humans#753)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateDefinition_rejects_rename_of_system_role()
+    {
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = CampSystemRoles.CampLeadName,
+            Slug = CampSystemRoles.CampLeadSlug,
+            SlotCount = CampSystemRoles.CampLeadSlotCount,
+            MinimumRequired = CampSystemRoles.CampLeadMinimumRequired,
+            SortOrder = CampSystemRoles.CampLeadSortOrder,
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
+
+        var input = new UpdateCampRoleDefinitionInput(
+            Name: "Renamed", Slug: CampSystemRoles.CampLeadSlug, Description: null,
+            SlotCount: def.SlotCount, MinimumRequired: def.MinimumRequired,
+            SortOrder: def.SortOrder);
+
+        var act = async () => await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*system role*");
+    }
+
+    [HumansFact]
+    public async Task UpdateDefinition_allows_SlotCount_change_on_system_role()
+    {
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = CampSystemRoles.CampLeadName,
+            Slug = CampSystemRoles.CampLeadSlug,
+            SlotCount = 2,
+            MinimumRequired = CampSystemRoles.CampLeadMinimumRequired,
+            SortOrder = CampSystemRoles.CampLeadSortOrder,
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
+
+        var input = new UpdateCampRoleDefinitionInput(
+            Name: def.Name, Slug: def.Slug, Description: "new description",
+            SlotCount: 5, MinimumRequired: def.MinimumRequired,
+            SortOrder: def.SortOrder);
+
+        var result = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
+
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.Updated);
+        var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
+        reloaded!.SlotCount.Should().Be(5);
+    }
+
+    [HumansFact]
+    public async Task DeactivateDefinition_rejects_system_role()
+    {
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = CampSystemRoles.CampLeadName,
+            Slug = CampSystemRoles.CampLeadSlug,
+            SlotCount = CampSystemRoles.CampLeadSlotCount,
+            MinimumRequired = CampSystemRoles.CampLeadMinimumRequired,
+            SortOrder = CampSystemRoles.CampLeadSortOrder,
+            SpecialRole = CampSpecialRole.Lead,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampRoleDefinitions.Add(def);
+        await Db.SaveChangesAsync();
+
+        var act = async () => await _service.DeactivateDefinitionAsync(def.Id, _actorUserId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*system role*");
+    }
+
+    [HumansFact]
+    public async Task SeedSystemRolesAndMigrateLeads_creates_both_definitions_when_empty()
+    {
+        _campService.GetCampMemberStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<CampMemberLookup?>(null));
+
+        var result = await _service.SeedSystemRolesAndMigrateLeadsAsync(_actorUserId);
+
+        result.DefinitionsCreated.Should().Be(2);
+        result.LeadsMigrated.Should().Be(0);
+
+        var defs = await Db.CampRoleDefinitions
+            .Where(d => d.SpecialRole != CampSpecialRole.None)
+            .ToListAsync();
+        defs.Should().HaveCount(2);
+        defs.Should().Contain(d => d.SpecialRole == CampSpecialRole.Lead && d.Name == CampSystemRoles.CampLeadName);
+        defs.Should().Contain(d => d.SpecialRole == CampSpecialRole.Workshop && d.Name == CampSystemRoles.WorkshopLeadName);
+    }
+
+    [HumansFact]
+    public async Task SeedSystemRolesAndMigrateLeads_is_idempotent()
+    {
+        var first = await _service.SeedSystemRolesAndMigrateLeadsAsync(_actorUserId);
+        first.DefinitionsCreated.Should().Be(2);
+
+        var second = await _service.SeedSystemRolesAndMigrateLeadsAsync(_actorUserId);
+        second.DefinitionsCreated.Should().Be(0);
+        second.LeadsMigrated.Should().Be(0);
+        second.LeadsAlreadyMigrated.Should().Be(0);
+
+        (await Db.CampRoleDefinitions.CountAsync(d => d.SpecialRole != CampSpecialRole.None))
+            .Should().Be(2);
     }
 }

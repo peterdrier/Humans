@@ -2,67 +2,92 @@ using AwesomeAssertions;
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profile;
+using Humans.Application.Services.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using NodaTime.Testing;
+using Humans.Domain.Enums;
+using NodaTime;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
 
-public class EmailProblemsServiceTests
+public sealed class EmailProblemsServiceTests : ServiceTestHarness
 {
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
+
+    private readonly List<UserInfo> _allInfos = [];
 
     public EmailProblemsServiceTests()
+        : base(Instant.FromUtc(2026, 5, 5, 12, 0))
     {
-        _userEmailService.GetEntitiesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmail>>());
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_allInfos.ToArray()));
     }
 
     private EmailProblemsService Sut => new(
-        _profileService, _userEmailService, _userService, _clock);
+        _userEmailService, _userService, Clock);
 
-    private void SetAllUserEmails(params UserEmail[] emails)
-    {
-        var grouped = emails
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
-        _userEmailService.GetEntitiesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(grouped);
-    }
-
-    private static FullProfile MakeProfile(Guid userId, params UserEmailSnapshot[] emails) =>
-        new FullProfile(
-            UserId: userId, DisplayName: "Test User", ProfilePictureUrl: null,
-            HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
-            BurnerName: "Test", Bio: null, Pronouns: null, ContributionInterests: null,
-            City: null, CountryCode: null, Latitude: null, Longitude: null,
-            BirthdayDay: null, BirthdayMonth: null,
-            IsApproved: true, IsSuspended: false,
-            CVEntries: Array.Empty<CVEntry>(),
-            UserEmails: emails);
-
-    private void SetProfiles(params FullProfile[] profiles)
-    {
-        var users = profiles
-            .Select(p => new User { Id = p.UserId })
-            .ToList();
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(users);
-
-        foreach (var p in profiles)
+    private static UserEmail Email(Guid userId, string address,
+        bool isVerified = true, bool isPrimary = false, bool isGoogle = false) =>
+        new()
         {
-            _profileService.GetFullProfileAsync(p.UserId, Arg.Any<CancellationToken>())
-                .Returns(new ValueTask<FullProfile?>(p));
-        }
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = address,
+            IsVerified = isVerified,
+            IsPrimary = isPrimary,
+            IsGoogle = isGoogle,
+        };
+
+    private static UserInfo MakeInfo(
+        Guid userId,
+        bool hasProfile = true,
+        string? identityEmailColumn = null,
+        params UserEmail[] emails)
+    {
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Test User",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+            Email = identityEmailColumn,
+        };
+        Profile? profile = hasProfile
+            ? new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = "Test",
+                FirstName = "Test",
+                LastName = "User",
+                IsApproved = true,
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            }
+            : null;
+        return UserInfo.Create(
+            user: user,
+            userEmails: emails,
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 
-    private void SetOrphans(params UserEmail[] orphans) =>
+    private void AddInfo(UserInfo info)
+    {
+        _allInfos.Add(info);
+        _userService.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+    }
+
+    private void SetOrphans(params UserEmailOrphan[] orphans) =>
         _userEmailService.GetOrphanUserEmailsAsync(Arg.Any<CancellationToken>())
             .Returns(orphans);
 
@@ -73,7 +98,6 @@ public class EmailProblemsServiceTests
     [HumansFact]
     public async Task EmptySnapshot_ReturnsEmptyReport()
     {
-        SetProfiles();
         SetOrphans();
         SetGhosts();
 
@@ -86,9 +110,11 @@ public class EmailProblemsServiceTests
     public async Task DetectsMultipleIsPrimary()
     {
         var userId = Guid.NewGuid();
-        SetProfiles(MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", true, true, false),
-            new UserEmailSnapshot(Guid.NewGuid(), "b@x.com", true, true, false)));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: true, isPrimary: true),
+            Email(userId, "b@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -102,9 +128,11 @@ public class EmailProblemsServiceTests
     public async Task DetectsMultipleIsGoogle()
     {
         var userId = Guid.NewGuid();
-        SetProfiles(MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", true, false, true),
-            new UserEmailSnapshot(Guid.NewGuid(), "b@x.com", true, false, true)));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: true, isGoogle: true),
+            Email(userId, "b@x.com", isVerified: true, isGoogle: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -118,9 +146,11 @@ public class EmailProblemsServiceTests
     public async Task DetectsZeroIsPrimary_WhenUserHasVerifiedEmails()
     {
         var userId = Guid.NewGuid();
-        SetProfiles(MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", true, false, false),
-            new UserEmailSnapshot(Guid.NewGuid(), "b@x.com", true, false, false)));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: true),
+            Email(userId, "b@x.com", isVerified: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -134,8 +164,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagZeroIsPrimary_WhenUserHasNoVerifiedEmails()
     {
         var userId = Guid.NewGuid();
-        SetProfiles(MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", false, false, false)));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: false)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -148,8 +180,10 @@ public class EmailProblemsServiceTests
     public async Task DetectsZeroIsGoogle()
     {
         var userId = Guid.NewGuid();
-        SetProfiles(MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", true, true, false)));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -163,9 +197,8 @@ public class EmailProblemsServiceTests
     public async Task DetectsUnverifiedEmail_RegardlessOfFlags()
     {
         var userId = Guid.NewGuid();
-        var emailId = Guid.NewGuid();
-        SetProfiles(MakeProfile(userId,
-            new UserEmailSnapshot(emailId, "a@x.com", false, false, false)));
+        var unverified = Email(userId, "a@x.com", isVerified: false);
+        AddInfo(MakeInfo(userId, emails: [unverified]));
         SetOrphans();
         SetGhosts();
 
@@ -174,7 +207,7 @@ public class EmailProblemsServiceTests
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.Unverified
             && p.UserId == userId
-            && p.UserEmailId == emailId
+            && p.UserEmailId == unverified.Id
             && p.Email == "a@x.com");
     }
 
@@ -183,9 +216,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        SetProfiles(
-            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)),
-            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@x.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@x.com", isVerified: true, isPrimary: true)]));
         SetOrphans();
         SetGhosts();
 
@@ -204,9 +236,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        SetProfiles(
-            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@gmail.com", true, true, false)),
-            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@googlemail.com", true, true, false)));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true)]));
         SetOrphans();
         SetGhosts();
 
@@ -220,14 +251,7 @@ public class EmailProblemsServiceTests
     {
         var deadUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
-        SetProfiles();
-        SetOrphans(new UserEmail
-        {
-            Id = emailId,
-            UserId = deadUserId,
-            Email = "ghost@x.com",
-            IsVerified = true
-        });
+        SetOrphans(new UserEmailOrphan(deadUserId, emailId, "ghost@x.com"));
         SetGhosts();
 
         var report = await Sut.ScanAsync();
@@ -243,7 +267,6 @@ public class EmailProblemsServiceTests
     public async Task DetectsGhostExternalLogins()
     {
         var ghostUserId = Guid.NewGuid();
-        SetProfiles();
         SetOrphans();
         SetGhosts(ghostUserId);
 
@@ -258,9 +281,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        SetProfiles(
-            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)),
-            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@x.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@x.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
     }
@@ -270,9 +292,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        SetProfiles(
-            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@gmail.com", true, true, false)),
-            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@googlemail.com", true, true, false)));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
     }
@@ -282,9 +303,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        SetProfiles(
-            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "alice@x.com", true, true, false)),
-            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "bob@x.com", true, true, false)));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "alice@x.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "bob@x.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeFalse();
     }
@@ -293,7 +313,7 @@ public class EmailProblemsServiceTests
     public async Task UsersShareAnyEmail_SameUserId_False()
     {
         var u = Guid.NewGuid();
-        SetProfiles(MakeProfile(u, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)));
+        AddInfo(MakeInfo(u, emails: [Email(u, "joe@x.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u, u)).Should().BeFalse();
     }
@@ -317,41 +337,14 @@ public class EmailProblemsServiceTests
         (await Sut.IsGhostExternalLoginsUserAsync(otherUserId)).Should().BeFalse();
     }
 
-    private void SetUsersWithProfiles(params (User User, FullProfile Profile)[] pairs)
-    {
-        var users = pairs.Select(p => p.User).ToList();
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>()).Returns(users);
-        var grouped = new Dictionary<Guid, IReadOnlyList<UserEmail>>();
-        foreach (var (u, profile) in pairs)
-        {
-            _profileService.GetFullProfileAsync(u.Id, Arg.Any<CancellationToken>())
-                .Returns(new ValueTask<FullProfile?>(profile));
-            var rows = profile.AllUserEmails.Select(s => new UserEmail
-            {
-                Id = s.Id,
-                UserId = u.Id,
-                Email = s.Email,
-                IsVerified = s.IsVerified,
-                IsPrimary = s.IsPrimary,
-                IsGoogle = s.IsGoogle
-            }).ToList();
-            if (rows.Count > 0) grouped[u.Id] = rows;
-        }
-        _userEmailService.GetEntitiesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(grouped);
-    }
-
-    private static User MakeUser(Guid id, string? legacyEmail) =>
-        new User { Id = id, DisplayName = "Test User", Email = legacyEmail };
-
     [HumansFact]
     public async Task DetectsLegacyIdentityEmailNotInUserEmails()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "legacy@x.com");
-        SetUsersWithProfiles((user, MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "other@x.com", true, true, false))));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails:
+        [
+            Email(userId, "other@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -367,9 +360,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenMatchingVerifiedRowExists()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "match@x.com");
-        SetUsersWithProfiles((user, MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "match@x.com", true, true, false))));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails:
+        [
+            Email(userId, "match@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -383,8 +377,7 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenColumnIsNull()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, legacyEmail: null);
-        SetUsersWithProfiles((user, MakeProfile(userId)));
+        AddInfo(MakeInfo(userId, identityEmailColumn: null));
         SetOrphans();
         SetGhosts();
 
@@ -398,9 +391,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenMatchingRowIsUnverified()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "legacy@x.com");
-        SetUsersWithProfiles((user, MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "legacy@x.com", false, false, false))));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails:
+        [
+            Email(userId, "legacy@x.com", isVerified: false)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -419,8 +413,7 @@ public class EmailProblemsServiceTests
         // address is added as a plain verified row; the next OAuth sign-in's
         // reconcile attaches the provider tag via TagMoved.
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "legacy@x.com");
-        SetUsersWithProfiles((user, MakeProfile(userId)));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com"));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
@@ -434,9 +427,10 @@ public class EmailProblemsServiceTests
     public async Task BackfillLegacyIdentityEmails_AlreadyHasMatchingVerifiedRow_SkipsUser()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "match@x.com");
-        SetUsersWithProfiles((user, MakeProfile(userId,
-            new UserEmailSnapshot(Guid.NewGuid(), "match@x.com", true, true, false))));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails:
+        [
+            Email(userId, "match@x.com", isVerified: true, isPrimary: true)
+        ]));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
@@ -449,8 +443,7 @@ public class EmailProblemsServiceTests
     public async Task BackfillLegacyIdentityEmails_NullColumn_SkipsUser()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, legacyEmail: null);
-        SetUsersWithProfiles((user, MakeProfile(userId)));
+        AddInfo(MakeInfo(userId, identityEmailColumn: null));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
@@ -461,18 +454,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenProfileLessUserHasMatchingVerifiedRow()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "import@x.com");
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user });
-        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
-        SetAllUserEmails(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "import@x.com",
-            IsVerified = true
-        });
+        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails:
+        [
+            Email(userId, "import@x.com", isVerified: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -486,12 +471,7 @@ public class EmailProblemsServiceTests
     public async Task DetectsLegacyEmail_WhenProfileLessUserHasNoMatchingRow()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "legacy@x.com");
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user });
-        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
-        SetAllUserEmails();
+        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "legacy@x.com"));
         SetOrphans();
         SetGhosts();
 
@@ -507,18 +487,10 @@ public class EmailProblemsServiceTests
     public async Task BackfillLegacyIdentityEmails_ProfileLessUserAlreadyMatched_SkipsUser()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "import@x.com");
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user });
-        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
-        SetAllUserEmails(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "import@x.com",
-            IsVerified = true
-        });
+        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails:
+        [
+            Email(userId, "import@x.com", isVerified: true)
+        ]));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 

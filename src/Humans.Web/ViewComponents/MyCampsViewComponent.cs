@@ -1,7 +1,6 @@
+using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
@@ -10,31 +9,16 @@ namespace Humans.Web.ViewComponents;
 /// Lists camps the current human belongs to (or has requested), grouped by year.
 /// Rendered on the human's own profile page. Private — never shown publicly.
 /// </summary>
-public class MyCampsViewComponent : ViewComponent
+public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
 {
-    private readonly ICampService _campService;
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<MyCampsViewComponent> _logger;
-
-    public MyCampsViewComponent(
-        ICampService campService,
-        UserManager<User> userManager,
-        ILogger<MyCampsViewComponent> logger)
-    {
-        _campService = campService;
-        _userManager = userManager;
-        _logger = logger;
-    }
-
     public async Task<IViewComponentResult> InvokeAsync()
     {
         try
         {
-            var user = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (user is null)
+            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var memberships = await _campService.GetCampMembershipsForUserAsync(user.Id);
+            var memberships = await campService.GetCampMembershipsForUserAsync(userId);
             if (memberships.Count == 0)
                 return Content(string.Empty);
 
@@ -57,7 +41,7 @@ public class MyCampsViewComponent : ViewComponent
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load camp memberships for current user");
+            logger.LogError(ex, "Failed to load camp memberships for current user");
             return Content(string.Empty);
         }
     }

@@ -10,18 +10,13 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// Per the §15 connector pattern, the Application-layer service runs
 /// against this stub — there is no "stub service" variant.
 /// </summary>
-public sealed class StubGoogleGroupProvisioningClient : IGoogleGroupProvisioningClient
+public sealed class StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupProvisioningClient> logger)
+    : IGoogleGroupProvisioningClient
 {
-    private readonly ILogger<StubGoogleGroupProvisioningClient> _logger;
     private readonly Dictionary<string, StubGroup> _groupsByEmail = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, GroupSettingsSnapshot> _settingsByEmail = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _gate = new();
     private long _nextGroupId = 1;
-
-    public StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupProvisioningClient> logger)
-    {
-        _logger = logger;
-    }
 
     public Task<GroupCreateResult> CreateGroupAsync(
         string groupEmail,
@@ -29,7 +24,7 @@ public sealed class StubGoogleGroupProvisioningClient : IGoogleGroupProvisioning
         string description,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Create group {Email} '{Name}'", groupEmail, displayName);
+        logger.LogInformation("[STUB] Create group {Email} '{Name}'", groupEmail, displayName);
 
         lock (_gate)
         {
@@ -50,7 +45,7 @@ public sealed class StubGoogleGroupProvisioningClient : IGoogleGroupProvisioning
         string groupEmail,
         CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] Lookup group {Email}", groupEmail);
+        logger.LogDebug("[STUB] Lookup group {Email}", groupEmail);
 
         lock (_gate)
         {
@@ -69,7 +64,7 @@ public sealed class StubGoogleGroupProvisioningClient : IGoogleGroupProvisioning
         string groupEmail,
         CancellationToken ct = default)
     {
-        _logger.LogDebug("[STUB] Get group settings for {Email}", groupEmail);
+        logger.LogDebug("[STUB] Get group settings for {Email}", groupEmail);
 
         lock (_gate)
         {
@@ -89,7 +84,7 @@ public sealed class StubGoogleGroupProvisioningClient : IGoogleGroupProvisioning
         GroupSettingsExpected expected,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Update settings for {Email}", groupEmail);
+        logger.LogInformation("[STUB] Update settings for {Email}", groupEmail);
 
         var snapshot = MapSnapshot(expected);
         lock (_gate)

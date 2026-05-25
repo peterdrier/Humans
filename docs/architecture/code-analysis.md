@@ -13,11 +13,14 @@ Runs during `dotnet build`:
 **Common suppressions in `Directory.Build.props`:**
 - `CS1591` - Missing XML comment for publicly visible type or member
 - `MA0048` - File name must match type name
-- `MA0016` - Prefer collection abstraction
-- `MA0026` - Fix TODO comments
-- `MA0051` - Method too long (>60 lines)
+- `MA0016` - Prefer using collection abstraction instead of implementation
+- `MA0026` - Fix TODO comment
+- `MA0051` - Method is too long
 - `VSTHRD200` - Use "Async" suffix for async methods (not required for ASP.NET Core controller actions)
-- `xUnit1051` - Pass TestContext.Current.CancellationToken to methods accepting CancellationToken (test projects only)
+- `HUM_PROFILE_ISSUSPENDED` - Legacy reads of `Profile.IsSuspended` permitted until lazy-State-backfill follow-up (issue #635 §15i)
+- `HUM_USER_NORMALIZEDEMAIL` - Legacy reads of Identity's shadow-populated `User.NormalizedEmail` permitted (issue #635 §15i)
+- `xUnit1051` - Pass `TestContext.Current.CancellationToken` to methods accepting `CancellationToken` (test projects only, via `tests/Directory.Build.props`)
+- `HUM_USER_DISPLAYNAME` - Legacy `User.DisplayName` seeded in test fixtures (account creation/merge/deletion, cached `UserInfo` fallback) — not render-path violations (test projects only, via `tests/Directory.Build.props`)
 
 <!-- /freshness:auto -->
 
@@ -67,9 +70,11 @@ HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync must not be called from
 HUM0004 | Profile.IsSuspended must not be written outside the allowlisted dual-writers                  | Error
 HUM0005 | IUserEmailService.UpdateEmailAsync may only be called from AccountController                  | Error
 HUM0006 | IUserEmailRepository.UpdateEmailAsync may only be called from UserEmailService                | Error
-HUM0008 | Controllers may not inject HumansDbContext                                                     | Error
-HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods            | Error
-HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack)  | Error
+HUM0008 | Controllers may not inject HumansDbContext                                                    | Error
+HUM0009 | Class uses HumansDbContext but does not implement IRepository                                 | Error
+HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods           | Error
+HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack) | Error
+HUM0020 | Caching decorator references a repository directly instead of the keyed inner service         | Error
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

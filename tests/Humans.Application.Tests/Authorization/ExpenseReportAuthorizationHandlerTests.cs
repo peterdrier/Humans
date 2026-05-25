@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
@@ -38,7 +37,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
         // Category is linked to TeamId
         _budgetService.GetCategoryByIdAsync(CategoryId)
-            .Returns(new BudgetCategory { Id = CategoryId, TeamId = TeamId });
+            .Returns(CreateCategorySnapshot(CategoryId, TeamId));
 
         // CoordinatorId is a coordinator of TeamId; OtherCoordinatorId is not
         _teamService.IsUserCoordinatorOfTeamAsync(TeamId, CoordinatorId)
@@ -332,7 +331,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     {
         // Category without a team — coordinator access is not possible
         _budgetService.GetCategoryByIdAsync(CategoryId)
-            .Returns(new BudgetCategory { Id = CategoryId, TeamId = null });
+            .Returns(CreateCategorySnapshot(CategoryId, null));
 
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.Endorse);
@@ -369,6 +368,18 @@ public sealed class ExpenseReportAuthorizationHandlerTests
             Lines = []
         };
     }
+
+    private static BudgetCategorySnapshot CreateCategorySnapshot(Guid categoryId, Guid? teamId) =>
+        new(
+            categoryId,
+            Guid.NewGuid(),
+            "Category",
+            0m,
+            default,
+            teamId,
+            0,
+            null,
+            []);
 
     private static ClaimsPrincipal CreateUser(Guid userId)
     {

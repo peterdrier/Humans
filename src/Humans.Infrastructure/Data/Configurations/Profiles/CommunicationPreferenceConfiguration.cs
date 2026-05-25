@@ -32,6 +32,10 @@ public class CommunicationPreferenceConfiguration : IEntityTypeConfiguration<Com
             .HasMaxLength(100)
             .IsRequired();
 
+        builder.Property(x => x.SubscribedAt)
+            .HasColumnName("SubscribedAt")
+            .HasColumnType("timestamp with time zone");
+
         // Issue #635 (§15i): inverse-side FK preservation after the User-side
         // nav (User.CommunicationPreferences) was stripped.
         builder.HasOne<User>()

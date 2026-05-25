@@ -17,21 +17,14 @@ namespace Humans.Infrastructure.Services;
 /// <c>ProfileService.GetProfilePictureAsync</c>) are excluded from
 /// <c>app.UseStaticFiles()</c> via dedicated middleware in <c>Program.cs</c>.
 /// </remarks>
-public sealed class FileSystemFileStorage : IFileStorage
+public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<FileSystemFileStorage> logger)
+    : IFileStorage
 {
-    private readonly string _root;
-    private readonly ILogger<FileSystemFileStorage> _logger;
+    private readonly string _root = Path.Combine(environment.ContentRootPath, "wwwroot");
 
-    public FileSystemFileStorage(
-        IHostEnvironment environment,
-        ILogger<FileSystemFileStorage> logger)
-    {
-        // wwwroot is conventional for an ASP.NET Core app; Infrastructure
-        // does not reference Microsoft.AspNetCore.Hosting so we resolve it
-        // from ContentRootPath instead of IWebHostEnvironment.WebRootPath.
-        _root = Path.Combine(environment.ContentRootPath, "wwwroot");
-        _logger = logger;
-    }
+    // wwwroot is conventional for an ASP.NET Core app; Infrastructure
+    // does not reference Microsoft.AspNetCore.Hosting so we resolve it
+    // from ContentRootPath instead of IWebHostEnvironment.WebRootPath.
 
     public async Task SaveAsync(string key, Stream content, CancellationToken ct = default)
     {
@@ -52,7 +45,7 @@ public sealed class FileSystemFileStorage : IFileStorage
         }
         catch (Exception moveEx)
         {
-            _logger.LogWarning(moveEx,
+            logger.LogWarning(moveEx,
                 "Failed to rename temp file {TempPath} to {FinalPath}; cleaning up",
                 tempPath, fullPath);
             try
@@ -61,7 +54,7 @@ public sealed class FileSystemFileStorage : IFileStorage
             }
             catch (IOException cleanupEx)
             {
-                _logger.LogWarning(cleanupEx,
+                logger.LogWarning(cleanupEx,
                     "Failed to clean up temp file {TempPath} after a failed rename to {FinalPath}",
                     tempPath, fullPath);
             }
@@ -89,7 +82,7 @@ public sealed class FileSystemFileStorage : IFileStorage
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "Failed to read file at {Path}", fullPath);
+            logger.LogWarning(ex, "Failed to read file at {Path}", fullPath);
             return null;
         }
     }

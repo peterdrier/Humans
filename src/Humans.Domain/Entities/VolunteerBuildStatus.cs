@@ -51,7 +51,7 @@ public class VolunteerBuildStatus
     /// app-side normalization. See
     /// <see href="../../docs/superpowers/specs/2026-05-09-day-off-redesign-design.md"/>.
     /// </summary>
-    public List<DayOffEntry> DayOffs { get; set; } = new();
+    public List<DayOffEntry> DayOffs { get; set; } = [];
 }
 
 /// <summary>

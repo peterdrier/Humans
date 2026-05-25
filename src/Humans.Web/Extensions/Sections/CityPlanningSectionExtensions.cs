@@ -1,7 +1,7 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.CitiPlanning;
+using Humans.Infrastructure.Repositories.CityPlanning;
 using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 
 namespace Humans.Web.Extensions.Sections;

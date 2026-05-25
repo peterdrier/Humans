@@ -1,10 +1,9 @@
-using AwesomeAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
@@ -12,7 +11,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
 
@@ -43,9 +41,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
         _job = new ProcessAccountDeletionsJob(
@@ -62,14 +58,14 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     public async Task ExecuteAsync_NoDueAccounts_DoesNotCallAnonymize()
     {
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Guid>());
+            .Returns([]);
 
         await _job.ExecuteAsync();
 
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
-            .AnonymizeExpiredAccountAsync(default, default);
+            .AnonymizeExpiredAccountAsync(Guid.Empty, CancellationToken.None);
         await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
-            default!, default!, default, default);
+            null!, null!, null, CancellationToken.None);
     }
 
     [HumansFact]
@@ -80,14 +76,14 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var shiftId = Guid.NewGuid();
 
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
-            .Returns(new[] { userId });
+            .Returns([userId]);
 
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: "test@example.com",
                 OriginalDisplayName: "Test User",
                 PreferredLanguage: "en",
-                CancelledSignupIds: new[] { (signupId, shiftId) }));
+                CancelledSignupIds: [(signupId, shiftId)]));
 
         await _job.ExecuteAsync();
 
@@ -118,14 +114,14 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var goodId = Guid.NewGuid();
 
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
-            .Returns(new[] { vanishedId, goodId });
+            .Returns([vanishedId, goodId]);
 
         _accountDeletionService.AnonymizeExpiredAccountAsync(vanishedId, Arg.Any<CancellationToken>())
             .Returns((AnonymizedAccountSummary?)null);
         _accountDeletionService.AnonymizeExpiredAccountAsync(goodId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 "other@example.com", "Other User", "es",
-                Array.Empty<(Guid, Guid)>()));
+                []));
 
         await _job.ExecuteAsync();
 
@@ -140,18 +136,18 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     {
         var userId = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
-            .Returns(new[] { userId });
+            .Returns([userId]);
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: null,
                 OriginalDisplayName: "Orphan User",
                 PreferredLanguage: "en",
-                CancelledSignupIds: Array.Empty<(Guid, Guid)>()));
+                CancelledSignupIds: []));
 
         await _job.ExecuteAsync();
 
         await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
-            default!, default!, default, default);
+            null!, null!, null, CancellationToken.None);
 
         // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(
@@ -167,14 +163,14 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var user2 = Guid.NewGuid();
 
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
-            .Returns(new[] { user1, user2 });
+            .Returns([user1, user2]);
 
         _accountDeletionService.AnonymizeExpiredAccountAsync(user1, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB error"));
         _accountDeletionService.AnonymizeExpiredAccountAsync(user2, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 "u2@example.com", "User Two", "en",
-                Array.Empty<(Guid, Guid)>()));
+                []));
 
         await _job.ExecuteAsync();
 

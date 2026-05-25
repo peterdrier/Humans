@@ -8,51 +8,32 @@ using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Services.Users;
 
-/// <summary>
-/// Validates unsubscribe tokens (new category-aware and legacy campaign-only)
-/// and applies the unsubscribe action.
-/// </summary>
-/// <remarks>
-/// Application-layer implementation — goes through <see cref="IUserRepository"/>,
-/// never injects <c>DbContext</c>.
-/// </remarks>
-public sealed class UnsubscribeService : IUnsubscribeService
+public sealed class UnsubscribeService(
+    IUserRepository userRepository,
+    IUserServiceRead userService,
+    ICommunicationPreferenceService preferenceService,
+    IDataProtectionProvider dataProtection,
+    ILogger<UnsubscribeService> logger) : IUnsubscribeService
 {
-    private readonly IUserRepository _userRepository;
-    private readonly ICommunicationPreferenceService _preferenceService;
-    private readonly IDataProtectionProvider _dataProtection;
-    private readonly ILogger<UnsubscribeService> _logger;
-
-    public UnsubscribeService(
-        IUserRepository userRepository,
-        ICommunicationPreferenceService preferenceService,
-        IDataProtectionProvider dataProtection,
-        ILogger<UnsubscribeService> logger)
-    {
-        _userRepository = userRepository;
-        _preferenceService = preferenceService;
-        _dataProtection = dataProtection;
-        _logger = logger;
-    }
-
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
     {
-        // Try new category-aware token first
-        var result = _preferenceService.ValidateUnsubscribeToken(token);
+        // Try category-aware token first.
+        var result = preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
-            var user = await _userRepository.GetByIdAsync(result.UserId, ct);
+            var user = await userRepository.GetByIdAsync(result.UserId, ct);
             if (user is null)
                 return UnsubscribeTokenResult.Invalid();
 
-            return UnsubscribeTokenResult.Valid(result.UserId, user.DisplayName, result.Category);
+            var info = await userService.GetUserInfoAsync(result.UserId, ct);
+            return UnsubscribeTokenResult.Valid(result.UserId, info?.BurnerName ?? string.Empty, result.Category);
         }
 
-        // Expired new-format token — don't fall through to legacy
+        // Expired new-format — don't fall through to legacy.
         if (result.Status == TokenValidationStatus.Expired)
             return UnsubscribeTokenResult.Expired();
 
-        // Not a new-format token at all — fall back to legacy campaign-only token
+        // Fall back to legacy campaign-only token.
         return await ValidateLegacyTokenAsync(token, ct);
     }
 
@@ -62,7 +43,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
         if (!result.IsValid || !result.UserId.HasValue || !result.Category.HasValue)
             return result;
 
-        await _preferenceService.UpdatePreferenceAsync(
+        await preferenceService.UpdatePreferenceAsync(
             result.UserId.Value, result.Category.Value, optedOut: true, source: source);
 
         return result;
@@ -70,7 +51,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
 
     private async Task<UnsubscribeTokenResult> ValidateLegacyTokenAsync(string token, CancellationToken ct)
     {
-        var protector = _dataProtection
+        var protector = dataProtection
             .CreateProtector("CampaignUnsubscribe")
             .ToTimeLimitedDataProtector();
 
@@ -82,19 +63,19 @@ public sealed class UnsubscribeService : IUnsubscribeService
         }
         catch (CryptographicException ex)
         {
-            // CommunicationPreferenceService already logged the first attempt at Information.
-            // Don't double-log here — this is the legacy-protector fallback for the same event. See #483.
+            // No double-log — already logged in CommunicationPreferenceService (see #483).
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
 
-            _logger.LogDebug(ex, "Legacy unsubscribe token failed to unprotect");
+            logger.LogDebug(ex, "Legacy unsubscribe token failed to unprotect");
             return UnsubscribeTokenResult.Invalid();
         }
 
-        var user = await _userRepository.GetByIdAsync(userId, ct);
+        var user = await userRepository.GetByIdAsync(userId, ct);
         if (user is null)
             return UnsubscribeTokenResult.Invalid();
 
-        return UnsubscribeTokenResult.Valid(userId, user.DisplayName, MessageCategory.Marketing, isLegacy: true);
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        return UnsubscribeTokenResult.Valid(userId, info?.BurnerName ?? string.Empty, MessageCategory.Marketing, isLegacy: true);
     }
 }

@@ -22,6 +22,7 @@ For each issue in the work order (sequentially, never parallel):
 1. Read the issue spec carefully. Identify every acceptance criterion and behavioral requirement.
 2. Explore the codebase to understand existing patterns and relevant files.
 3. Implement the feature/fix. Follow all project rules — scan `memory/INDEX.md` and read any atom whose description matches the change you're making. The architecture story is in `docs/architecture/design-rules.md`.
+   Before adding durable surface (new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration), read `memory/process/reuse-first-change-discipline.md` and audit the existing owner/surface.
 3.5. **Escape valve — privilege OR broader spec change.** STOP, do NOT commit, do NOT push, and report back to the orchestrator if EITHER of these fires during exploration or implementation:
 
    a. **Privilege change.** The change crosses into privilege territory — bumping a default permission tier, modifying `[Authorize]` requirements, expanding a role grant, adding to a CORS allowlist beyond clearly-internal dev origins, adding an admin flag, lowering an auth bar, granting move/delete/admin on shared resources. Per `memory/process/privilege-changes-need-explicit-approval.md`.
@@ -52,7 +53,17 @@ For each acceptance criterion:
 
 **Critical: no scope reduction.** When the review finds N failures, fix N failures. Do not fix some and report others as "too big" or "needs human review." The authorization to fix was given when the batch was launched. If a fix is genuinely blocked (missing data, needs a DB migration you can't create, external dependency), explain the specific blocker — "this is hard" is not a blocker.
 
-**If all criteria PASS:** Move to the next issue.
+**If all criteria PASS:** Proceed to reuse review.
+
+### Phase 2.5: Reuse Review
+
+Before moving to the next issue, review the issue's diff against `docs/architecture/reuse-review-rules.md`.
+
+1. Inventory new durable surface: files, public types, interface methods, service/repository methods, DTOs/view models, helpers, endpoints, dependencies, and DI registrations.
+2. For each item, identify the existing owner/surface considered for reuse.
+3. If any added surface should reuse existing code instead, fix it now.
+4. If public/interface surface is genuinely necessary and Peter has not approved it, STOP and report the needed approval instead of committing it.
+5. Include the reuse-review result in the issue handoff: `PASS - no unnecessary durable surface` or `WARN - fixed <N> reuse issues`.
 
 ### Phase 3: Code Review (after all issues in batch)
 
@@ -74,6 +85,7 @@ After all issues are implemented and spec-reviewed:
    - Type safety in views
    - CSP compliance
    - Dead code
+4. Review the full batch diff against `docs/architecture/reuse-review-rules.md`. Confirm no unnecessary durable surface remains.
 
 **If any CRITICAL issues found:**
 - Fix ALL of them, not just the easy ones.
@@ -117,6 +129,7 @@ Self-reviewed against CODE_REVIEW_RULES.md. No critical issues.
 ## Important Rules
 
 - **Never skip a review gate.** Every issue gets spec-reviewed. Every batch gets code-reviewed.
+- **Never skip reuse review.** New surface is treated as debt until the existing owner/surface has been audited.
 - **Never move past a failing issue.** If issue #2 of 4 won't pass spec review, the batch stops at #2. Don't implement #3 and #4 on top of broken work.
 - **Read the issue spec, not your own summary of it.** The failure this agent prevents is building something that sounds right but doesn't match the spec. Re-read the original spec every time you review.
 - **One commit per issue, plus fix commits.** Keep the history clean so individual issues can be traced.

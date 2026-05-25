@@ -1,5 +1,4 @@
 @model Humans.Web.Models.ExpenseCoordinatorViewModel
-@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "Expense Reports — Coordinator Queue";
     var badgeClass = (ExpenseReportStatus s) => s switch
@@ -19,21 +18,7 @@
     <h1>Coordinator Queue</h1>
 </div>
 
-@if (TempData["Success"] is string success)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @success
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @error
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
+<vc:temp-data-alerts />
 
 @if (!Model.Reports.Any())
 {
@@ -104,7 +89,6 @@ else
         </table>
     </div>
 
-    @* Coordinator rejection modals *@
     @foreach (var r in Model.Reports.Where(x => x.Status == ExpenseReportStatus.Submitted))
     {
         <div class="modal fade" id="rejectModal-@r.Id" tabindex="-1"

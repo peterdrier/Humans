@@ -1,72 +1,33 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>
-/// Stateless helper used by the Admin humans-list controller endpoint to
-/// assemble status-partitioned <see cref="AdminHumanRow"/> rows. Replaces
-/// the deleted <c>IProfileService.GetFilteredHumansAsync</c> — orchestrating
-/// "all users + profiles + partition + status filter" is presentation-layer
-/// composition, not a business-logic surface that earns its own service
-/// method (and the
-/// <c>memory/architecture/interface-method-budget-ratchet.md</c> ratchet
-/// agrees: this would have been the 40th method on
-/// <c>IProfileService</c>).
-///
-/// <para>The text-search portion is now controller-driven: the caller may
-/// pre-filter the candidate user-id set by passing
-/// <paramref name="searchUserIds"/>, which is the union returned by
-/// <c>IProfileService.SearchProfilesAsync(query, PersonSearchFields.AdminAll)</c>
-/// + email-direct match. Pass <c>null</c> when no search term is in play.</para>
-/// </summary>
+// Stateless helper for the admin humans-list endpoint. Caller pre-filters via searchUserIds (null when no search).
+// Every status bucket and the cross-cutting "missing name" filter are derived purely from UserInfo flat predicates.
+// The page intentionally has no Active/Missing-Consents split (consents were dropped from this view), so it no
+// longer depends on IMembershipCalculator/PartitionUsersAsync — the Board dashboard still owns the consent-aware
+// partition.
 public static class AdminHumanListAssembler
 {
-    public static async Task<IReadOnlyList<AdminHumanRow>> AssembleAsync(
-        IReadOnlyList<User> allUsers,
-        IReadOnlyDictionary<Guid, ProfileEntity> profilesByUserId,
+    public static IReadOnlyList<AdminHumanRow> Assemble(
+        IReadOnlyCollection<UserInfo> allUsers,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,
         IReadOnlySet<Guid>? searchUserIds,
-        string? statusFilter,
-        IMembershipCalculator membershipCalculator,
-        CancellationToken ct = default)
+        string? statusFilter)
     {
         ArgumentNullException.ThrowIfNull(allUsers);
-        ArgumentNullException.ThrowIfNull(profilesByUserId);
         ArgumentNullException.ThrowIfNull(notificationEmailsByUserId);
-        ArgumentNullException.ThrowIfNull(membershipCalculator);
 
-        var candidates = searchUserIds is null
+        IEnumerable<UserInfo> candidates = searchUserIds is null
             ? allUsers
-            : allUsers.Where(u => searchUserIds.Contains(u.Id)).ToList();
+            : allUsers.Where(u => searchUserIds.Contains(u.Id));
 
-        var ids = candidates.Select(u => u.Id).ToList();
-        var partition = await membershipCalculator.PartitionUsersAsync(ids, ct);
-
-        IReadOnlySet<Guid>? statusIds = statusFilter switch
-        {
-            _ when string.Equals(statusFilter, "active", StringComparison.OrdinalIgnoreCase) => partition.Active,
-            _ when string.Equals(statusFilter, "missingconsents", StringComparison.OrdinalIgnoreCase) => partition.MissingConsents,
-            _ when string.Equals(statusFilter, "pending", StringComparison.OrdinalIgnoreCase) => partition.PendingApproval,
-            _ when string.Equals(statusFilter, "suspended", StringComparison.OrdinalIgnoreCase) => partition.Suspended,
-            _ when string.Equals(statusFilter, "incomplete", StringComparison.OrdinalIgnoreCase) => partition.IncompleteSignup,
-            _ when string.Equals(statusFilter, "deleting", StringComparison.OrdinalIgnoreCase) => partition.PendingDeletion,
-            _ => null,
-        };
-
-        var rows = statusIds is null
-            ? candidates
-            : candidates.Where(u => statusIds.Contains(u.Id));
+        var predicate = FilterPredicate(statusFilter);
+        var rows = predicate is null ? candidates : candidates.Where(predicate);
 
         return rows.Select(u =>
         {
-            profilesByUserId.TryGetValue(u.Id, out var profile);
-            var hasProfile = profile is not null;
-            var isApproved = profile?.IsApproved ?? false;
-
             var email = notificationEmailsByUserId.TryGetValue(u.Id, out var primary)
                 ? primary
                 : u.Email ?? string.Empty;
@@ -74,19 +35,45 @@ public static class AdminHumanListAssembler
             return new AdminHumanRow(
                 u.Id,
                 email,
-                u.DisplayName,
+                u.BurnerName,
                 u.ProfilePictureUrl,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),
-                hasProfile,
-                isApproved,
-                partition.PendingDeletion.Contains(u.Id) ? MembershipStatusLabels.PendingDeletion :
-                partition.Suspended.Contains(u.Id) ? MembershipStatusLabels.Suspended :
-                partition.PendingApproval.Contains(u.Id) ? MembershipStatusLabels.PendingApproval :
-                partition.MissingConsents.Contains(u.Id) ? MembershipStatusLabels.MissingConsents :
-                partition.Active.Contains(u.Id) ? MembershipStatusLabels.Active :
-                partition.IncompleteSignup.Contains(u.Id) ? MembershipStatusLabels.IncompleteSignup :
-                "Unknown");
+                u.HasProfile,
+                u.IsApproved,
+                StatusLabel(u));
         }).ToList();
     }
+
+    // Mutually-exclusive status label, in precedence order. Tombstones first (terminal: a merged/deleted row
+    // must not also read as Suspended/Pending), then the lifecycle states. Genuine no-profile or rejected rows
+    // get an empty label (no badge) — they surface via the "missing name" filter, not a status bucket.
+    internal static string StatusLabel(UserInfo u) =>
+        u.IsMerged ? MembershipStatusLabels.Merged :
+        u.IsTombstone ? MembershipStatusLabels.Deleted :
+        u.IsDeletionPending ? MembershipStatusLabels.PendingDeletion :
+        u.IsSuspended ? MembershipStatusLabels.Suspended :
+        !u.HasProfile ? string.Empty :
+        !u.IsActive ? string.Empty :
+        !u.IsApproved ? MembershipStatusLabels.PendingApproval :
+        MembershipStatusLabels.Active;
+
+    // Status filters reuse StatusLabel so the filter and the badge can never drift. "hasname" is the one
+    // cross-cutting filter — orthogonal to status; with every account now carrying a profile it is the
+    // meaningful "active" signal (a named, usable account), which is why the UI sits it next to Active.
+    private static Func<UserInfo, bool>? FilterPredicate(string? statusFilter) =>
+        statusFilter?.ToLowerInvariant() switch
+        {
+            "active" => u => HasStatus(u, MembershipStatusLabels.Active),
+            "pending" => u => HasStatus(u, MembershipStatusLabels.PendingApproval),
+            "suspended" => u => HasStatus(u, MembershipStatusLabels.Suspended),
+            "deleting" => u => HasStatus(u, MembershipStatusLabels.PendingDeletion),
+            "merged" => u => HasStatus(u, MembershipStatusLabels.Merged),
+            "deleted" => u => HasStatus(u, MembershipStatusLabels.Deleted),
+            "hasname" => u => u.HasRequiredNameFields,
+            _ => null,
+        };
+
+    private static bool HasStatus(UserInfo u, string label) =>
+        string.Equals(StatusLabel(u), label, StringComparison.Ordinal);
 }

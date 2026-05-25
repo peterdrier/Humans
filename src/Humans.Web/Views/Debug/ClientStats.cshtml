@@ -1,0 +1,83 @@
+@model ClientStatsViewModel
+@{
+    ViewData["Title"] = "Client Statistics";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Client Statistics</h1>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    All counts are in-memory and reset on every restart/redeploy — read them as
+    <strong>"since this deploy"</strong>, not historical totals. OS / browser / device
+    are tallied per HTML page view; resolution is reported once per browser session.
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <partial name="_ClientStatTable"
+                 model="@(new Humans.Web.Models.ClientStatTableModel("Operating system", "fa-solid fa-desktop", Model.TotalPageViews, Model.OperatingSystems))" />
+    </div>
+    <div class="col-lg-6">
+        <partial name="_ClientStatTable"
+                 model="@(new Humans.Web.Models.ClientStatTableModel("Browser", "fa-solid fa-globe", Model.TotalPageViews, Model.Browsers))" />
+    </div>
+    <div class="col-lg-6">
+        <partial name="_ClientStatTable"
+                 model="@(new Humans.Web.Models.ClientStatTableModel("Device type", "fa-solid fa-mobile-screen", Model.TotalPageViews, Model.DeviceTypes))" />
+    </div>
+    <div class="col-lg-6">
+        <partial name="_ClientStatTable"
+                 model="@(new Humans.Web.Models.ClientStatTableModel("Screen resolution", "fa-solid fa-ruler-combined", Model.TotalResolutionSamples, Model.Resolutions))" />
+    </div>
+</div>
+
+<h2 class="h4 mt-5 mb-2">
+    <i class="fa-solid fa-signal me-1"></i>HTTP status codes
+</h2>
+<p class="text-muted small">
+    @Model.TotalResponses.ToString("N0") responses since startup, across <em>all</em> traffic
+    (pages, assets, API, probes) — observed from ASP.NET Core's request metric.
+</p>
+
+@if (Model.StatusCodes.Count == 0)
+{
+    <div class="alert alert-secondary">No responses recorded yet.</div>
+}
+else
+{
+    <div class="table-responsive" style="max-width: 32rem;">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Category</th>
+                    <th class="text-end">Count</th>
+                    <th class="text-end">%</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.StatusCodes)
+                {
+                    var rowClass = row.StatusCode switch
+                    {
+                        >= 500 => "table-danger",
+                        >= 400 => "table-warning",
+                        >= 300 => "table-info",
+                        _ => ""
+                    };
+                    <tr class="@rowClass">
+                        <td>@row.StatusCode</td>
+                        <td>@row.Category</td>
+                        <td class="text-end">@row.Count.ToString("N0")</td>
+                        <td class="text-end">@row.Percent.ToString("F1")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

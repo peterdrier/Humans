@@ -27,7 +27,6 @@ public class TicketTailorService : ITicketVendorService
     private readonly HttpClient _httpClient;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTailorService> _logger;
-    private readonly TicketVendorSettings _settings;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,10 +42,10 @@ public class TicketTailorService : ITicketVendorService
     {
         _httpClient = httpClient;
         _cache = cache;
-        _settings = settings.Value;
+        var settings1 = settings.Value;
         _logger = logger;
 
-        var apiKey = _settings.ApiKey;
+        var apiKey = settings1.ApiKey;
         if (!string.IsNullOrEmpty(apiKey))
         {
             var authBytes = Encoding.ASCII.GetBytes($"{apiKey}:");
@@ -139,10 +138,13 @@ public class TicketTailorService : ITicketVendorService
                     VendorTicketId: ticket.Id,
                     VendorOrderId: ticket.OrderId,
                     AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
-                    AttendeeEmail: ticket.Email,
+                    AttendeeEmail: ResolveAttendeeEmail(ticket),
                     TicketTypeName: ticket.Description ?? "Unknown",
                     Price: (ticket.ListedPrice ?? 0) / 100m,
-                    Status: ticket.Status ?? "valid"));
+                    Status: ticket.Status ?? "valid",
+                    CheckedInAt: ticket.CheckIn?.CheckedInAt is long epoch and > 0
+                        ? Instant.FromUnixTimeSeconds(epoch)
+                        : null));
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
@@ -351,7 +353,36 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("description")] string? Description,
         [property: JsonPropertyName("listed_price")] int? ListedPrice,
         [property: JsonPropertyName("status")] string? Status,
-        [property: JsonPropertyName("order_id")] string? OrderId);
+        [property: JsonPropertyName("order_id")] string? OrderId,
+        [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
+        [property: JsonPropertyName("check_in")] TtCheckIn? CheckIn = null);
+
+    // TicketTailor returns `check_in` as a nested object on issued_tickets when
+    // a ticket has been scanned at the gate. `checked_in_at` is epoch seconds.
+    // Absent / null when not checked in. Issue nobodies-collective/Humans#736.
+    internal sealed record TtCheckIn(
+        [property: JsonPropertyName("checked_in_at")] long? CheckedInAt);
+
+    internal sealed record TtCustomQuestion(
+        [property: JsonPropertyName("question")] string? Question,
+        [property: JsonPropertyName("answer")] string? Answer);
+
+    // TT's issued_ticket.email is the buyer/account email replicated onto every
+    // ticket in the order — useless for matching the actual attendee. The real
+    // attendee email is collected via a custom checkout question whose text is
+    // exactly "Email" (see order or_76148796). Match the question string
+    // verbatim; fall back to the top-level field when absent.
+    internal static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
+    {
+        var customEmail = ticket.CustomQuestions?
+            .FirstOrDefault(q =>
+                string.Equals(q.Question, "Email", StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(q.Answer))
+            ?.Answer
+            ?.Trim();
+
+        return !string.IsNullOrEmpty(customEmail) ? customEmail : ticket.Email;
+    }
 
     internal sealed record TtEvent(
         [property: JsonPropertyName("name")] string? Name,
@@ -373,113 +404,4 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("code")] string? Code,
         [property: JsonPropertyName("times_used")] int? TimesUsed);
 
-    public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
-        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
-    {
-        var url = $"{BaseUrl}/issued_tickets/{vendorTicketId}/void";
-        using var content = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["void_to_hold"] = voidToHold ? "true" : "false",
-        });
-
-        HttpResponseMessage response;
-        try
-        {
-            response = await _httpClient.PostAsync(url, content, ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new TicketVendorWriteException(
-                $"TicketTailor void transport failure: {ex.Message}",
-                TicketVendorFailureKind.Transient, ex);
-        }
-
-        if (!response.IsSuccessStatusCode)
-            throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
-
-        var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
-        return new VoidIssuedTicketResult(
-            VendorTicketId: body?.Id ?? vendorTicketId,
-            HoldId: body?.HoldId);
-    }
-
-    public async Task<VendorTicketDto> IssueTicketAsync(
-        IssueTicketRequest request, CancellationToken ct = default)
-    {
-        if (string.IsNullOrEmpty(request.HoldId) &&
-            (string.IsNullOrEmpty(request.EventId) || string.IsNullOrEmpty(request.TicketTypeId)))
-        {
-            throw new ArgumentException(
-                "IssueTicketRequest requires either HoldId or both EventId and TicketTypeId.",
-                nameof(request));
-        }
-
-        var form = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["full_name"] = request.FullName,
-            ["send_email"] = request.SendEmail ? "true" : "false",
-        };
-        if (!string.IsNullOrEmpty(request.HoldId))
-            form["hold_id"] = request.HoldId;
-        else
-        {
-            form["event_id"] = request.EventId!;
-            form["ticket_type_id"] = request.TicketTypeId!;
-        }
-        if (!string.IsNullOrEmpty(request.Email)) form["email"] = request.Email;
-        if (!string.IsNullOrEmpty(request.ExternalReference)) form["reference"] = request.ExternalReference;
-
-        using var content = new FormUrlEncodedContent(form);
-
-        HttpResponseMessage response;
-        try
-        {
-            response = await _httpClient.PostAsync($"{BaseUrl}/issued_tickets", content, ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new TicketVendorWriteException(
-                $"TicketTailor issue transport failure: {ex.Message}",
-                TicketVendorFailureKind.Transient, ex);
-        }
-
-        if (!response.IsSuccessStatusCode)
-            throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
-
-        var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
-            ?? throw new TicketVendorWriteException(
-                "TicketTailor issue returned 2xx with empty body",
-                TicketVendorFailureKind.Transient);
-
-        return new VendorTicketDto(
-            VendorTicketId: body.Id,
-            VendorOrderId: body.OrderId,
-            AttendeeName: body.FullName ?? $"{body.FirstName} {body.LastName}".Trim(),
-            AttendeeEmail: body.Email,
-            TicketTypeName: body.Description ?? "Unknown",
-            Price: (body.ListedPrice ?? 0) / 100m,
-            Status: body.Status ?? "valid");
-    }
-
-    internal sealed record TtVoidResponse(
-        [property: JsonPropertyName("id")] string? Id,
-        [property: JsonPropertyName("hold_id")] string? HoldId,
-        [property: JsonPropertyName("voided")] string? Voided);
-
-    private static async Task<TicketVendorWriteException> BuildVendorWriteExceptionAsync(
-        HttpResponseMessage response, string op, string subject, CancellationToken ct)
-    {
-        var body = await response.Content.ReadAsStringAsync(ct);
-        var kind = (int)response.StatusCode switch
-        {
-            400 or 422 => TicketVendorFailureKind.Validation,
-            401 or 403 => TicketVendorFailureKind.AuthFailed,
-            404 => TicketVendorFailureKind.NotFound,
-            429 => TicketVendorFailureKind.RateLimited,
-            >= 500 => TicketVendorFailureKind.Transient,
-            _ => TicketVendorFailureKind.Transient,
-        };
-        return new TicketVendorWriteException(
-            $"TicketTailor {op} {subject} returned {(int)response.StatusCode}: {body}", kind);
-    }
 }

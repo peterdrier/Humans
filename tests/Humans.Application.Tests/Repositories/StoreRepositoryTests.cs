@@ -5,7 +5,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Store;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -89,7 +88,7 @@ public sealed class StoreRepositoryTests
 
         var fetched = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId);
         fetched.Should().NotBeNull();
-        fetched!.Id.Should().Be(orderId);
+        fetched.Id.Should().Be(orderId);
         fetched.Label.Should().Be("Lead's first order");
         fetched.Lines.Should().BeEmpty();
         fetched.Payments.Should().BeEmpty();

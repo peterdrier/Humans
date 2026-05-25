@@ -1,14 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
+using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
+using Humans.Web.Models.Google;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
@@ -18,47 +16,29 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.Controllers;
 
 [Route("Google")]
-public class GoogleController : HumansControllerBase
+public class GoogleController(
+    IUserServiceRead userService,
+    IGoogleSyncService googleSyncService,
+    IGoogleGroupSync googleGroupSync,
+    IAuditViewerService auditViewer,
+    ITeamResourceService teamResourceService,
+    IEmailProvisioningService emailProvisioningService,
+    IGoogleAdminService googleAdminService,
+    ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly IAuditViewerService _auditViewer;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IEmailProvisioningService _emailProvisioningService;
-    private readonly IGoogleAdminService _googleAdminService;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<GoogleController> _logger;
+    private readonly IAuditViewerService _auditViewer = auditViewer;
 
-    public GoogleController(
-        UserManager<User> userManager,
-        IGoogleSyncService googleSyncService,
-        IAuditViewerService auditViewer,
-        ITeamResourceService teamResourceService,
-        IEmailProvisioningService emailProvisioningService,
-        IGoogleAdminService googleAdminService,
-        IMemoryCache cache,
-        ILogger<GoogleController> logger)
-        : base(userManager)
-    {
-        _googleSyncService = googleSyncService;
-        _auditViewer = auditViewer;
-        _teamResourceService = teamResourceService;
-        _emailProvisioningService = emailProvisioningService;
-        _googleAdminService = googleAdminService;
-        _cache = cache;
-        _logger = logger;
-    }
-
-    // --- Sync Settings (from AdminController) ---
+    // --- Sync Settings ---
 
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings(
         [FromServices] ISyncSettingsService syncSettingsService,
-        [FromServices] IUserService userService)
+        [FromServices] IUserServiceRead userService)
     {
         var settings = await syncSettingsService.GetAllAsync();
 
-        // In-memory join: resolve UpdatedByUser display names via IUserService
+        // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
         // rather than an EF .Include across the section boundary (design-rules §6).
         var updatedByUserIds = settings
             .Select(s => s.UpdatedByUserId)
@@ -66,8 +46,8 @@ public class GoogleController : HumansControllerBase
             .Distinct()
             .ToList();
         var updatedByUsers = updatedByUserIds.Count > 0
-            ? await userService.GetByIdsAsync(updatedByUserIds)
-            : new Dictionary<Guid, User>();
+            ? await userService.GetUserInfosAsync(updatedByUserIds)
+            : new Dictionary<Guid, UserInfo>();
 
         var viewModel = new SyncSettingsViewModel
         {
@@ -78,7 +58,7 @@ public class GoogleController : HumansControllerBase
                 CurrentMode = s.SyncMode,
                 UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
                 UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
-                    ? u.DisplayName
+                    ? u.BurnerName
                     : null
             }).ToList()
         };
@@ -92,19 +72,19 @@ public class GoogleController : HumansControllerBase
         [FromServices] ISyncSettingsService syncSettingsService,
         SyncServiceType serviceType, SyncMode mode)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
 
-        _logger.LogInformation("Admin {AdminId} changed {ServiceType} sync mode to {Mode}",
+        logger.LogInformation("Admin {AdminId} changed {ServiceType} sync mode to {Mode}",
             currentUser.Id, serviceType, mode);
 
         SetSuccess($"Sync mode for {FormatServiceName(serviceType)} updated to {mode}.");
         return RedirectToAction(nameof(SyncSettings));
     }
 
-    // --- System Team Sync (from AdminController) ---
+    // --- System Team Sync ---
 
     [HttpPost("SyncSystemTeams")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -119,7 +99,7 @@ public class GoogleController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to sync system teams");
+            logger.LogError(ex, "Failed to sync system teams");
             SetError($"Sync failed: {ex.Message}");
             return RedirectToAction(nameof(Index));
         }
@@ -146,7 +126,7 @@ public class GoogleController : HumansControllerBase
         return View(report);
     }
 
-    // --- Google Group Settings (from AdminController) ---
+    // --- Google Group Settings ---
 
     [HttpPost("CheckGroupSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -155,12 +135,12 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.CheckGroupSettingsAsync();
+            var result = await googleSyncService.CheckGroupSettingsAsync();
             TempData[TempDataKeys.GroupSettingsResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check Google Group settings");
+            logger.LogError(ex, "Failed to check Google Group settings");
             SetError($"Settings check failed: {ex.Message}");
             return RedirectToAction(nameof(Index));
         }
@@ -193,17 +173,12 @@ public class GoogleController : HumansControllerBase
     public async Task<IActionResult> RemediateGroupSettings(
         [FromForm] string groupEmail, [FromForm] string? returnUrl)
     {
-        try
-        {
-            var success = await _googleSyncService.RemediateGroupSettingsAsync(groupEmail);
-            if (success) SetSuccess($"Settings remediated for {groupEmail}.");
-            else SetError($"Remediation skipped for {groupEmail} — sync may be disabled.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
-            SetError($"Remediation failed for {groupEmail}: {ex.Message}");
-        }
+        var result = await googleSyncService.RemediateGroupSettingsAsync(groupEmail);
+        if (result.Succeeded)
+            SetSuccess($"Settings remediated for {groupEmail}.");
+        else
+            SetError(result.ErrorMessage ?? $"Remediation failed for {groupEmail}.");
+
         return Redirect(Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(AllGroups))!);
     }
 
@@ -214,7 +189,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.GetAllDomainGroupsAsync();
+            var result = await googleSyncService.GetAllDomainGroupsAsync();
             if (result.ErrorMessage is not null)
             {
                 SetError($"Failed to enumerate groups: {result.ErrorMessage}");
@@ -233,17 +208,9 @@ public class GoogleController : HumansControllerBase
 
             foreach (var group in drifted)
             {
-                try
-                {
-                    var success = await _googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
-                    if (success) fixed_++;
-                    else errors.Add($"{group.GroupEmail}: sync disabled");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to remediate {GroupEmail}", group.GroupEmail);
-                    errors.Add($"{group.GroupEmail}: {ex.Message}");
-                }
+                var remediation = await googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
+                if (remediation.Succeeded) fixed_++;
+                else errors.Add($"{group.GroupEmail}: {remediation.ErrorMessage ?? "failed"}");
             }
 
             if (errors.Count > 0)
@@ -253,13 +220,13 @@ public class GoogleController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to remediate all group settings");
+            logger.LogError(ex, "Failed to remediate all group settings");
             SetError($"Batch remediation failed: {ex.Message}");
         }
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- All Domain Groups (from AdminController) ---
+    // --- All Domain Groups ---
 
     [HttpGet("AllGroups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -267,14 +234,16 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.GetAllDomainGroupsAsync();
-            var teams = await _googleAdminService.GetActiveTeamsAsync();
+            var result = await googleSyncService.GetAllDomainGroupsAsync();
+            var teams = (await googleAdminService.GetActiveTeamsAsync())
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
             ViewBag.Teams = teams;
             return View(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load domain groups");
+            logger.LogError(ex, "Failed to load domain groups");
             SetError($"Failed to load domain groups: {ex.Message}");
             return RedirectToAction(nameof(Index));
         }
@@ -292,7 +261,7 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(AllGroups));
         }
 
-        var result = await _googleAdminService.LinkGroupToTeamAsync(teamId, groupPrefix);
+        var result = await googleAdminService.LinkGroupToTeamAsync(teamId, groupPrefix);
 
         if (result.ErrorMessage is not null)
             SetError(result.ErrorMessage);
@@ -304,30 +273,26 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- Resource Sync Dashboard (from TeamController) ---
+    // --- Resource Sync Dashboard ---
 
     [HttpGet("Sync")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public IActionResult Sync()
     {
-        var viewModel = new TeamSyncViewModel
-        {
-            CanExecuteActions = RoleChecks.IsAdmin(User)
-        };
-        return View(viewModel);
+        return View(new TeamSyncViewModel());
     }
 
     [HttpGet("Sync/Preview/{resourceType}")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
+        var result = resourceType == GoogleResourceType.Group
+            ? await googleGroupSync.ReconcileAllAsync(SyncAction.Preview, HttpContext.RequestAborted)
+            : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, HttpContext.RequestAborted);
 
-        // Sort resources alphabetically
         result.Diffs.Sort((a, b) =>
             string.Compare(a.ResourceName, b.ResourceName, StringComparison.Ordinal));
 
-        // Sort members within each resource: by state then by displayName
         foreach (var diff in result.Diffs)
         {
             diff.Members.Sort((a, b) =>
@@ -342,9 +307,7 @@ public class GoogleController : HumansControllerBase
         var viewModel = new SyncTabContentViewModel
         {
             Result = result,
-            ResourceType = resourceType.ToString(),
-            CanExecuteActions = RoleChecks.IsAdmin(User),
-            CanViewAudit = RoleChecks.IsAdminOrBoard(User)
+            ResourceType = resourceType.ToString()
         };
 
         return PartialView("_SyncTabContent", viewModel);
@@ -357,12 +320,15 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
+            var result = await googleSyncService.SyncSingleResourceAsync(
+                resourceId,
+                SyncAction.Execute,
+                HttpContext.RequestAborted);
             return Json(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to execute sync for resource {ResourceId}", resourceId);
+            logger.LogError(ex, "Failed to execute sync for resource {ResourceId}", resourceId);
             return Json(new { ErrorMessage = ex.Message });
         }
     }
@@ -374,86 +340,19 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
+            var result = resourceType == GoogleResourceType.Group
+                ? await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, HttpContext.RequestAborted)
+                : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, HttpContext.RequestAborted);
             return Json(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to execute sync for resource type {ResourceType}", resourceType);
+            logger.LogError(ex, "Failed to execute sync for resource type {ResourceType}", resourceType);
             return Json(new { ErrorMessage = ex.Message });
         }
     }
 
-    // --- Drive Activity (from BoardController) ---
-
-    [HttpPost("AuditLog/CheckDriveActivity")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckDriveActivity(
-        [FromServices] IDriveActivityMonitorService monitorService)
-    {
-        var currentUser = await GetCurrentUserAsync();
-
-        try
-        {
-            var count = await monitorService.CheckForAnomalousActivityAsync();
-            _logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
-                currentUser?.Id, count);
-
-            SetSuccess(count > 0
-                ? $"Drive activity check completed: {count} anomalous change(s) detected."
-                : "Drive activity check completed: no anomalies detected.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Manual Drive activity check failed");
-            SetError("Drive activity check failed. Check logs for details.");
-        }
-
-        return RedirectToAction(nameof(BoardController.AuditLog), "Board", new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
-    }
-
-    // --- Sync Audit Views (from BoardController and HumanController) ---
-
-    [HttpGet("Sync/Resource/{id:guid}/Audit")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> GoogleSyncResourceAudit(Guid id)
-    {
-        var resource = await _teamResourceService.GetResourceByIdAsync(id);
-
-        if (resource is null)
-        {
-            return NotFound();
-        }
-
-        var events = await _auditViewer.GetForResourceAsync(id);
-        return GoogleSyncAuditView(
-            $"Sync Audit: {resource.Name}",
-            Url.Action(nameof(Sync)),
-            "Back to Sync Status",
-            events);
-    }
-
-    [HttpGet("Human/{id:guid}/SyncAudit")]
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
-    {
-        var user = await FindUserByIdAsync(id);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
-        return GoogleSyncAuditView(
-            $"Google Sync Audit: {user.DisplayName}",
-            Url.Action("AdminDetail", "Profile", new { id }),
-            "Back to Human Detail",
-            events);
-    }
-
-    // --- Human Email Provisioning (from HumanController) ---
+    // --- Human Email Provisioning ---
 
     [HttpPost("Human/{id:guid}/ProvisionEmail")]
     [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
@@ -466,11 +365,11 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
-        var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
+        var result = await emailProvisioningService.ProvisionNobodiesEmailAsync(
             id, emailPrefix, currentUser.Id);
 
         if (!result.Success)
@@ -479,9 +378,6 @@ public class GoogleController : HumansControllerBase
         }
         else
         {
-            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
-            _cache.InvalidateNobodiesTeamEmails();
-
             if (result.RecoveryEmail is not null)
             {
                 SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
@@ -495,13 +391,13 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
     }
 
-    // --- Workspace Accounts (from AdminEmailController) ---
+    // --- Workspace Accounts ---
 
     [HttpGet("Accounts")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Accounts()
     {
-        var result = await _googleAdminService.GetWorkspaceAccountListAsync();
+        var result = await googleAdminService.GetWorkspaceAccountListAsync();
 
         if (result.ErrorMessage is not null)
         {
@@ -553,18 +449,10 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionAccount(ProvisionWorkspaceAccountModel model)
     {
-        if (string.IsNullOrWhiteSpace(model.EmailPrefix) ||
-            string.IsNullOrWhiteSpace(model.FirstName) ||
-            string.IsNullOrWhiteSpace(model.LastName))
-        {
-            SetError("All fields are required.");
-            return RedirectToAction(nameof(Accounts));
-        }
-
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.ProvisionStandaloneAccountAsync(
+        var result = await googleAdminService.ProvisionStandaloneAccountAsync(
             model.EmailPrefix, model.FirstName, model.LastName,
             currentUser.Id);
 
@@ -586,10 +474,10 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.SuspendAccountAsync(
+        var result = await googleAdminService.SuspendAccountAsync(
             email, currentUser.Id);
 
         if (result.Success)
@@ -610,10 +498,10 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.ReactivateAccountAsync(
+        var result = await googleAdminService.ReactivateAccountAsync(
             email, currentUser.Id);
 
         if (result.Success)
@@ -629,15 +517,10 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return BadRequest();
-        }
-
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.ResetPasswordAsync(
+        var result = await googleAdminService.ResetPasswordAsync(
             email, currentUser.Id);
 
         if (result.Success)
@@ -663,15 +546,10 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPasswordAndGenerate2Fa(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return BadRequest();
-        }
-
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.ResetPasswordAndGenerate2FaAsync(
+        var result = await googleAdminService.ResetPasswordAndGenerate2FaAsync(
             email, currentUser.Id);
 
         if (result.Success && !string.IsNullOrEmpty(result.TempPassword))
@@ -714,15 +592,14 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(Accounts));
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.LinkAccountAsync(
+        var result = await googleAdminService.LinkAccountAsync(
             email, userId, currentUser.Id);
 
         if (result.Success)
         {
-            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(result.Message!);
         }
         else
@@ -738,32 +615,27 @@ public class GoogleController : HumansControllerBase
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] IUserService userService,
-        [FromServices] ITeamService teamService,
-        [FromServices] IProfileService profileService)
+        [FromServices] IUserServiceRead userService,
+        [FromServices] ITeamServiceRead teamService)
     {
-        var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
+        var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
-        // Resolve display info for events via section-owned services (§15 Part 2c,
-        // design-rules §2a — controllers go through service interfaces, not repos).
-        // Issue #635 (§15i): GoogleEmail derives from FullProfile.GoogleEmail
-        // (which reads the IsGoogle UserEmail row); fall back to user.Email
-        // (the canonical primary, computed via the override) when no
-        // IsGoogle row is set.
+        // Display info via UserInfo cache (one lookup/user). GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var users = await userService.GetByIdsWithEmailsAsync(userIds);
-        var googleEmailLookup = new Dictionary<Guid, string>();
-        foreach (var (userId, user) in users)
+        var googleEmailLookup = new Dictionary<Guid, string>(userIds.Count);
+        var displayNameLookup = new Dictionary<Guid, string>(userIds.Count);
+        foreach (var userId in userIds)
         {
-            var fullProfile = await profileService.GetFullProfileAsync(userId);
-            googleEmailLookup[userId] = fullProfile?.GoogleEmail ?? user.Email ?? "unknown";
+            var info = await userService.GetUserInfoAsync(userId);
+            googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
+            displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
         }
-        var displayNameLookup = users.ToDictionary(
-            kvp => kvp.Key, kvp => kvp.Value.DisplayName);
-        var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        var resourcesByTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
+        var teamsById = await teamService.GetTeamsAsync();
+        var teamLookup = teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
+        var resourcesByTeam = await teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
         var resourceLookup = resourcesByTeam.ToDictionary(
             kvp => kvp.Key,
             kvp => kvp.Value.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
@@ -784,12 +656,12 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleAdminService.DetectEmailRenamesAsync();
+            var result = await googleAdminService.DetectEmailRenamesAsync();
             TempData[TempDataKeys.EmailRenameResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check email renames");
+            logger.LogError(ex, "Failed to check email renames");
             SetError($"Email rename check failed: {ex.Message}");
             return RedirectToAction(nameof(Index));
         }
@@ -825,10 +697,7 @@ public class GoogleController : HumansControllerBase
         CancellationToken ct)
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
-        var sorted = violations
-            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        return View(sorted);
+        return View(violations);
     }
 
     // --- Index ---

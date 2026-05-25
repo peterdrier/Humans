@@ -6,18 +6,16 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Global action filter that restricts most of the app to active Volunteers team members.
-/// Users who haven't been approved or haven't consented to required docs are redirected
-/// to the home dashboard, which shows them what steps remain.
+/// Global filter restricting most of the app to active Volunteers team members; non-members redirect to Home/Guest dashboard.
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
 {
-    // Controllers accessible without active membership (onboarding flow + public pages)
+    // Onboarding flow + public pages exempt from active-membership gate.
     private static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "Home",        // Public landing + dashboard (shows onboarding status)
         "Account",     // Login/logout/OAuth
-        "Application", // Submit membership application
+        "GovernanceApplications", // Submit membership application
         "Consent",     // Sign required legal documents
         "Profile",     // Set up profile during onboarding
         "Admin",       // Has its own Roles = "Admin" gate
@@ -31,7 +29,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "FeedbackApi",      // API key auth, no membership required
         "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
-        "Notification",     // Notification inbox — accessible to all authenticated users
+        "Notifications",    // Notification inbox — accessible to all authenticated users
         "OnboardingWidget", // Guided onboarding flow (Names → Shifts → Consents) — used by mid-onboarding users
     };
 
@@ -39,19 +37,16 @@ public class MembershipRequiredFilter : IAsyncActionFilter
     {
         var user = context.HttpContext.User;
 
-        // Not authenticated — let normal auth handle it
         if (user.Identity?.IsAuthenticated != true)
         {
             return next();
         }
 
-        // Admin/Board/Coordinator bypass — they always have access
         if (RoleChecks.BypassesMembershipRequirement(user))
         {
             return next();
         }
 
-        // AllowAnonymous endpoints bypass membership check (e.g. Team/Index, Camp/Index)
         if (context.ActionDescriptor is ControllerActionDescriptor cad &&
             (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true) ||
              cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true)))
@@ -59,7 +54,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        // Exempt controllers — accessible during onboarding
         if (context.Controller is Controller controller)
         {
             var controllerName = controller.ControllerContext.ActionDescriptor.ControllerName;
@@ -69,7 +63,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             }
         }
 
-        // Check ActiveMember claim (set by RoleAssignmentClaimsTransformation)
+        // ActiveMember claim is set by RoleAssignmentClaimsTransformation.
         var isActiveMember = user.HasClaim(c =>
             string.Equals(c.Type, RoleAssignmentClaimsTransformation.ActiveMemberClaimType, StringComparison.Ordinal) &&
             string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
@@ -79,12 +73,11 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        // Not an active member — redirect based on whether they have a profile
+        // Profileless → Guest; onboarding (has profile) → Home.
         var hasProfile = user.HasClaim(c =>
             string.Equals(c.Type, RoleAssignmentClaimsTransformation.HasProfileClaimType, StringComparison.Ordinal) &&
             string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
 
-        // Profileless accounts go to Guest dashboard; onboarding members go to Home dashboard
         context.Result = hasProfile
             ? new RedirectToActionResult("Index", "Home", null)
             : new RedirectToActionResult("Index", "Guest", null);

@@ -20,7 +20,7 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
 
   test('US-18.1: voting dashboard loads', async ({ page }) => {
     await loginAsBoard(page);
-    await page.goto('/OnboardingReview/BoardVoting');
+    await page.goto('/Governance/BoardVoting');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
     // May show voting table or "no pending applications" — either is valid

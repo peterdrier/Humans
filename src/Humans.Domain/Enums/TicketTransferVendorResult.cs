@@ -1,13 +1,11 @@
 namespace Humans.Domain.Enums;
 
 /// <summary>
-/// Outcome of the TicketTailor writeback when a transfer is approved.
-/// <list type="bullet">
-///   <item><see cref="NotAttempted"/> — only set on Pending/Rejected/Cancelled rows.</item>
-///   <item><see cref="Succeeded"/> — original ticket voided AND replacement issued.</item>
-///   <item><see cref="VoidSucceededIssueFailed"/> — recoverable; admin can retry just the issue half.</item>
-///   <item><see cref="Failed"/> — neither leg succeeded; transfer is Option-C-only (admin must edit TT dashboard).</item>
-/// </list>
+/// Vendor-writeback outcome retained ONLY as a dormant storage column on
+/// <see cref="Humans.Domain.Entities.TicketTransferRequest"/>. The automated
+/// void+reissue engine was removed when transfers moved to manual processing;
+/// the column lingers until a follow-up PR drops it post-prod-soak (see
+/// memory/architecture/no-drops-until-prod-verified.md). No code reads it.
 /// </summary>
 public enum TicketTransferVendorResult
 {

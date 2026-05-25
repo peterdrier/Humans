@@ -11,25 +11,18 @@ using Humans.Application.Services.Tickets;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
-public class TicketSyncServiceTests : IDisposable
+public sealed class TicketSyncServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly TestDbContextFactory _factory;
-    private readonly FakeClock _clock;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
@@ -40,13 +33,6 @@ public class TicketSyncServiceTests : IDisposable
 
     public TicketSyncServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _factory = new TestDbContextFactory(options);
-        _dbContext = _factory.CreateDbContext();
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _vendorService = Substitute.For<ITicketVendorService>();
 
         var settings = Options.Create(new TicketVendorSettings
@@ -59,39 +45,33 @@ public class TicketSyncServiceTests : IDisposable
         _stripeService = Substitute.For<IStripeService>();
         _userService = Substitute.For<IUserService>();
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<EventParticipation>());
+            .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IShiftManagementService>();
 
-        _ticketRepository = new TicketRepository(_factory);
+        _ticketRepository = new TicketRepository(DbFactory);
 
         _service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(_factory),
+            new TicketTransferRepository(DbFactory),
             _vendorService,
             _stripeService,
-            _clock,
+            Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             _userService,
             _campaignService,
             _shiftManagementService);
 
         // Seed the singleton TicketSyncState row
-        _dbContext.TicketSyncStates.Add(new TicketSyncState
+        Db.TicketSyncStates.Add(new TicketSyncState
         {
             Id = 1,
             SyncStatus = TicketSyncStatus.Idle,
             VendorEventId = string.Empty
         });
-        _dbContext.SaveChanges();
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        Db.SaveChanges();
     }
 
     // ==========================================================================
@@ -117,9 +97,9 @@ public class TicketSyncServiceTests : IDisposable
         result.OrdersSynced.Should().Be(2);
         result.AttendeesSynced.Should().Be(0);
 
-        var dbOrders = await _dbContext.TicketOrders.ToListAsync();
+        var dbOrders = await Db.TicketOrders.ToListAsync();
         dbOrders.Should().HaveCount(2);
-        dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo(new[] { "ord_001", "ord_002" });
+        dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo("ord_001", "ord_002");
     }
 
     // ==========================================================================
@@ -133,7 +113,7 @@ public class TicketSyncServiceTests : IDisposable
         SeedUser(userId);
         // Seed email in LOWERCASE — order will use UPPERCASE to test case-insensitivity
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         var orders = new List<VendorOrderDto>
         {
@@ -149,7 +129,7 @@ public class TicketSyncServiceTests : IDisposable
 
         result.OrdersMatched.Should().Be(1);
 
-        var dbOrder = await _dbContext.TicketOrders.SingleAsync();
+        var dbOrder = await Db.TicketOrders.SingleAsync();
         dbOrder.MatchedUserId.Should().Be(userId);
     }
 
@@ -184,7 +164,7 @@ public class TicketSyncServiceTests : IDisposable
         // Second sync
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var dbOrders = await _dbContext.TicketOrders.ToListAsync();
+        var dbOrders = await Db.TicketOrders.ToListAsync();
         dbOrders.Should().ContainSingle();
         dbOrders[0].BuyerName.Should().Be("Alice Updated");
         dbOrders[0].TotalAmount.Should().Be(75m);
@@ -239,7 +219,7 @@ public class TicketSyncServiceTests : IDisposable
         var result = await _service.SyncOrdersAndAttendeesAsync();
 
         result.OrdersSynced.Should().Be(0);
-        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+        var syncState = await Db.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastError.Should().BeNull();
@@ -255,7 +235,7 @@ public class TicketSyncServiceTests : IDisposable
 
         await act.Should().ThrowAsync<HttpRequestException>();
 
-        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+        var syncState = await Db.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Error);
         syncState.LastError.Should().Be("Unauthorized");
@@ -278,13 +258,13 @@ public class TicketSyncServiceTests : IDisposable
 
         var service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(_factory),
+            new TicketTransferRepository(DbFactory),
             _vendorService,
             _stripeService,
-            _clock,
+            Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IShiftManagementService>());
@@ -327,10 +307,10 @@ public class TicketSyncServiceTests : IDisposable
         // Second sync with same data
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var dbOrders = await _dbContext.TicketOrders.ToListAsync();
+        var dbOrders = await Db.TicketOrders.ToListAsync();
         dbOrders.Should().ContainSingle();
 
-        var dbAttendees = await _dbContext.TicketAttendees.ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.ToListAsync();
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].AttendeeName.Should().Be("Alice");
     }
@@ -356,7 +336,7 @@ public class TicketSyncServiceTests : IDisposable
 
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var order = await _dbContext.TicketOrders.SingleAsync();
+        var order = await Db.TicketOrders.SingleAsync();
         order.VatAmount.Should().Be(28.64m);
     }
 
@@ -382,7 +362,7 @@ public class TicketSyncServiceTests : IDisposable
 
         await _service.SyncOrdersAndAttendeesAsync();
 
-        var syncedOrders = await _dbContext.TicketOrders
+        var syncedOrders = await Db.TicketOrders
             .OrderBy(o => o.VendorOrderId)
             .ToListAsync();
 
@@ -421,43 +401,237 @@ public class TicketSyncServiceTests : IDisposable
         result.OrdersSynced.Should().Be(500);
         result.AttendeesSynced.Should().Be(700);
 
-        var dbOrders = await _dbContext.TicketOrders.CountAsync();
+        var dbOrders = await Db.TicketOrders.CountAsync();
         dbOrders.Should().Be(500);
 
-        var dbAttendees = await _dbContext.TicketAttendees.CountAsync();
+        var dbAttendees = await Db.TicketAttendees.CountAsync();
         dbAttendees.Should().Be(700);
 
         // Sync state should be Idle after success
-        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+        var syncState = await Db.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastSyncAt.Should().NotBeNull();
     }
 
     // ==========================================================================
-    // Helpers
+    // EventParticipation.CheckedInAt threading (#736)
     // ==========================================================================
 
-    private User SeedUser(Guid? id = null, string displayName = "Test User")
+    [HumansFact]
+    public async Task SyncEventParticipations_PassesVendorCheckedInAt_ForCheckedInAttendees()
     {
-        var userId = id ?? Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = displayName,
-            UserName = $"test-{userId}@test.com",
-            Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        _dbContext.Users.Add(user);
-        return user;
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_chk", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: checkInInstant)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            checkInInstant, Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_TakesMinCheckedInAt_AcrossUsersCheckedInAttendees()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        var earlier = Instant.FromUtc(2026, 7, 8, 10, 0);
+        var later = Instant.FromUtc(2026, 7, 8, 18, 0);
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_two", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_a", "ord_two", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: later),
+                MakeTicketDto("tkt_b", "ord_two", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: earlier),
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            earlier, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_PassesNullCheckedInAt_WhenVendorDidntReturnTimestamp()
+    {
+        // Graceful fallback: vendor returned status=checked_in but no
+        // check_in.checked_in_at — sync still flips to Attended but with null
+        // timestamp. Repo's "never overwrite non-null" rule preserves a prior
+        // timestamp if one already exists.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_x", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_x", "ord_x", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: null)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            (Instant?)null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_PassesNullCheckedInAt_ForTicketedOnlyAttendees()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_v", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_v", "ord_v", "Alice", "alice@example.com",
+                    status: "valid", checkedInAt: null)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Ticketed,
+            (Instant?)null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_SkipsWrite_WhenCacheAlreadyMatches()
+    {
+        // User already recorded as Ticketed-from-sync for the active year, and the
+        // vendor still shows a valid ticket. Nothing changed, so the per-user upsert
+        // (and the cache-slice refresh it triggers) must be skipped entirely.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipation>
+            {
+                new()
+                {
+                    UserId = userId,
+                    Year = 2026,
+                    Status = ParticipationStatus.Ticketed,
+                    Source = ParticipationSource.TicketSync
+                }
+            });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_same", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_same", "ord_same", "Alice", "alice@example.com", status: "valid")
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.DidNotReceive().SetParticipationFromTicketSyncAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(),
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().RemoveTicketSyncParticipationAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SyncEventParticipations_StillWrites_WhenTicketedHolderChecksIn()
+    {
+        // Cache shows Ticketed; vendor now reports checked-in. The status genuinely
+        // changes (Ticketed → Attended), so the upsert must still fire.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await Db.SaveChangesAsync();
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns(new EventSettings { Year = 2026 });
+
+        _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipation>
+            {
+                new()
+                {
+                    UserId = userId,
+                    Year = 2026,
+                    Status = ParticipationStatus.Ticketed,
+                    Source = ParticipationSource.TicketSync
+                }
+            });
+
+        var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_chk", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com",
+                    status: "checked_in", checkedInAt: checkInInstant)
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
+            userId, 2026, ParticipationStatus.Attended,
+            checkInInstant, Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // Helpers
+    // ==========================================================================
 
     private UserEmail SeedUserEmail(
         Guid userId, string email,
         bool isOAuth = false, bool isVerified = true)
     {
-        var now = _clock.GetCurrentInstant();
+        var now = Clock.GetCurrentInstant();
         var userEmail = new UserEmail
         {
             Id = Guid.NewGuid(),
@@ -469,7 +643,7 @@ public class TicketSyncServiceTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         };
-        _dbContext.UserEmails.Add(userEmail);
+        Db.UserEmails.Add(userEmail);
         return userEmail;
     }
 
@@ -500,7 +674,8 @@ public class TicketSyncServiceTests : IDisposable
         string attendeeName,
         string? attendeeEmail,
         decimal price = 50m,
-        string status = "valid")
+        string status = "valid",
+        Instant? checkedInAt = null)
     {
         return new VendorTicketDto(
             VendorTicketId: vendorTicketId,
@@ -509,6 +684,7 @@ public class TicketSyncServiceTests : IDisposable
             AttendeeEmail: attendeeEmail,
             TicketTypeName: "Full Week",
             Price: price,
-            Status: status);
+            Status: status,
+            CheckedInAt: checkedInAt);
     }
 }

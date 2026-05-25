@@ -9,23 +9,9 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Budget;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IBudgetRepository"/>. The only
-/// non-test file that touches <c>DbContext.BudgetYears</c>,
-/// <c>DbContext.BudgetGroups</c>, <c>DbContext.BudgetCategories</c>,
-/// <c>DbContext.BudgetLineItems</c>, <c>DbContext.TicketingProjections</c>,
-/// or <c>DbContext.BudgetAuditLogs</c>.
-/// </summary>
-/// <remarks>
-/// Follows design-rules §15b: registered as Singleton, injects
-/// <see cref="IDbContextFactory{TContext}"/>, and opens a fresh short-lived
-/// <see cref="HumansDbContext"/> per method. There is no shared unit of
-/// work across methods — each public method is an atomic load-mutate-save
-/// against its own context. Multi-entity mutations that must be atomic
-/// (e.g., creating a year + its default groups + categories) happen inside a
-/// single repository method so they commit together.
-/// </remarks>
-public sealed class BudgetRepository : IBudgetRepository
+/// <summary>EF-backed <see cref="IBudgetRepository"/>.</summary>
+internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factory, ILogger<BudgetRepository> logger)
+    : IBudgetRepository
 {
     private const string TicketRevenueCategoryName = "Ticket Revenue";
     private const string ProcessingFeesCategoryName = "Processing Fees";
@@ -33,25 +19,12 @@ public sealed class BudgetRepository : IBudgetRepository
     private const string TicketingGroupName = "Ticketing";
     private const string TicketingProjectedPrefix = "Projected: ";
 
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly ILogger<BudgetRepository> _logger;
-
-    public BudgetRepository(
-        IDbContextFactory<HumansDbContext> factory,
-        ILogger<BudgetRepository> logger)
-    {
-        _factory = factory;
-        _logger = logger;
-    }
-
-    // ==========================================================================
     // Budget Years — reads
-    // ==========================================================================
 
     public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(
         bool includeArchived, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.BudgetYears
             .AsNoTracking()
@@ -63,20 +36,19 @@ public sealed class BudgetRepository : IBudgetRepository
             query = query.Where(y => !y.IsDeleted);
 
         return await query
+            // arch:db-sort-ok budget year list chronology
             .OrderByDescending(y => y.Year)
             .ToListAsync(ct);
     }
 
     public async Task<BudgetYear?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Includes — BudgetCategory.Team is an obsolete nav; views
-        // render team info via the ResponsibleTeam nav on line items (owned by the
-        // Teams section, read in-domain until the full strip) and via TeamId-keyed
-        // lookups elsewhere.
+        // No cross-domain Includes — views read team data via TeamId lookups.
         return await ctx.BudgetYears
             .AsNoTracking()
+            // arch:db-sort-ok budget tree persisted SortOrder
             .Include(y => y.Groups.OrderBy(g => g.SortOrder))
                 .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
                     .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
@@ -87,11 +59,12 @@ public sealed class BudgetRepository : IBudgetRepository
 
     public async Task<BudgetYear?> GetActiveYearAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var activeId = await ctx.BudgetYears
             .AsNoTracking()
             .Where(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted)
+            // arch:db-sort-ok deterministic singleton selector
             .OrderBy(y => y.Id)
             .Select(y => (Guid?)y.Id)
             .FirstOrDefaultAsync(ct);
@@ -101,6 +74,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
         return await ctx.BudgetYears
             .AsNoTracking()
+            // arch:db-sort-ok budget tree persisted SortOrder
             .Include(y => y.Groups.OrderBy(g => g.SortOrder))
                 .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
                     .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
@@ -111,7 +85,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
     public async Task<bool> IsYearClosedAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var status = await ctx.BudgetYears
             .AsNoTracking()
@@ -122,14 +96,12 @@ public sealed class BudgetRepository : IBudgetRepository
         return status == BudgetYearStatus.Closed;
     }
 
-    // ==========================================================================
     // Budget Years — atomic mutations
-    // ==========================================================================
 
     public async Task CreateYearWithScaffoldAsync(
         BudgetYearDraft draft, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var budgetYear = new BudgetYear
         {
@@ -233,7 +205,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var budgetYear = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (budgetYear is null)
@@ -268,7 +240,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (year is null)
@@ -313,7 +285,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (year is null)
@@ -341,7 +313,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (year is null || !year.IsDeleted)
@@ -367,12 +339,13 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
         var deptGroup = await ctx.BudgetGroups
             .Include(g => g.Categories)
+            // arch:db-sort-ok deterministic singleton selector
             .OrderBy(g => g.Id)
             .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup, ct)
             ?? throw new InvalidOperationException("No Departments group found for this budget year");
@@ -424,7 +397,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -487,9 +460,7 @@ public sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Budget Groups — atomic mutations
-    // ==========================================================================
 
     public async Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId,
@@ -499,7 +470,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var yearExists = await ctx.BudgetYears.AnyAsync(y => y.Id == budgetYearId, ct);
         if (!yearExists)
@@ -541,7 +512,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == groupId, ct);
         if (group is null)
@@ -588,7 +559,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == groupId, ct);
         if (group is null)
@@ -609,30 +580,24 @@ public sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Budget Categories — reads
-    // ==========================================================================
 
     public async Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // BudgetCategory.Team is an obsolete cross-domain nav — callers resolve
-        // team names via ITeamService keyed off TeamId. BudgetLineItem.ResponsibleTeam
-        // is still used by the Finance CategoryDetail view and will be stripped in
-        // a follow-up; keep the Include until that PR lands.
+        // No cross-domain Includes — the team navs on BudgetCategory and
+        // BudgetLineItem are obsolete cross-section navs. Callers resolve
+        // team names via ITeamService keyed off TeamId / ResponsibleTeamId.
         return await ctx.BudgetCategories
             .AsNoTracking()
             .Include(c => c.BudgetGroup)
                 .ThenInclude(g => g!.BudgetYear)
             .Include(c => c.LineItems.OrderBy(li => li.SortOrder))
-                .ThenInclude(li => li.ResponsibleTeam)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
-    // ==========================================================================
     // Budget Categories — atomic mutations
-    // ==========================================================================
 
     public async Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId,
@@ -644,7 +609,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == budgetGroupId, ct)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
@@ -686,7 +651,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -736,7 +701,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -757,22 +722,18 @@ public sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Budget Line Items — reads
-    // ==========================================================================
 
     public async Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.BudgetLineItems
             .AsNoTracking()
             .FirstOrDefaultAsync(li => li.Id == id, ct);
     }
 
-    // ==========================================================================
     // Budget Line Items — atomic mutations
-    // ==========================================================================
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         BudgetLineItemDraft draft,
@@ -780,7 +741,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -824,7 +785,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var lineItem = await ctx.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -906,7 +867,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var lineItem = await ctx.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -928,14 +889,12 @@ public sealed class BudgetRepository : IBudgetRepository
         return true;
     }
 
-    // ==========================================================================
     // Ticketing Projection — reads
-    // ==========================================================================
 
     public async Task<TicketingProjection?> GetTicketingProjectionAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.TicketingProjections
             .AsNoTracking()
@@ -944,16 +903,14 @@ public sealed class BudgetRepository : IBudgetRepository
 
     public async Task<BudgetGroup?> GetGroupByIdAsync(Guid groupId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.BudgetGroups
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == groupId, ct);
     }
 
-    // ==========================================================================
     // Ticketing Projection — atomic mutations
-    // ==========================================================================
 
     public async Task<bool> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
@@ -961,7 +918,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == update.BudgetGroupId, ct)
             ?? throw new InvalidOperationException($"Budget group {update.BudgetGroupId} not found");
@@ -1001,7 +958,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var ticketingGroup = await LoadTicketingGroupForMutationAsync(ctx, budgetYearId, ct);
         if (ticketingGroup is null)
@@ -1014,7 +971,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
         if (revenueCategory is null || feesCategory is null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Ticketing group missing expected categories for year {YearId}", budgetYearId);
             return 0;
         }
@@ -1070,7 +1027,7 @@ public sealed class BudgetRepository : IBudgetRepository
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var ticketingGroup = await LoadTicketingGroupForMutationAsync(ctx, budgetYearId, ct);
         if (ticketingGroup is null)
@@ -1093,14 +1050,12 @@ public sealed class BudgetRepository : IBudgetRepository
         return created;
     }
 
-    // ==========================================================================
     // Audit Log — reads (append-only per §12)
-    // ==========================================================================
 
     public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
         Guid? budgetYearId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // No cross-domain Include — BudgetAuditLog.ActorUser is obsolete; the
         // Finance audit log view renders actor via <vc:human user-id=@ActorUserId>.
@@ -1110,6 +1065,7 @@ public sealed class BudgetRepository : IBudgetRepository
             query = query.Where(a => a.BudgetYearId == budgetYearId.Value);
 
         return await query
+            // arch:db-sort-ok top-N budget audit selector
             .OrderByDescending(a => a.OccurredAt)
             .Take(500)
             .ToListAsync(ct);
@@ -1118,11 +1074,12 @@ public sealed class BudgetRepository : IBudgetRepository
     public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.BudgetAuditLogs
             .AsNoTracking()
             .Where(bal => bal.ActorUserId == userId)
+            // arch:db-sort-ok budget audit user chronology
             .OrderByDescending(bal => bal.OccurredAt)
             .ToListAsync(ct);
     }
@@ -1133,18 +1090,17 @@ public sealed class BudgetRepository : IBudgetRepository
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.BudgetAuditLogs
             .AsNoTracking()
             .Where(bal => userIds.Contains(bal.ActorUserId))
+            // arch:db-sort-ok budget audit user chronology
             .OrderByDescending(bal => bal.OccurredAt)
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
     // Private helpers
-    // ==========================================================================
 
     // Spanish IVA rate applied to Stripe and TicketTailor processing fees.
     private const int TicketingFeeVatRate = 21;
@@ -1389,7 +1345,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
         // Downgraded from Information→Debug per design-rules (the audit row in
         // budget_audit_logs is the durable record; the log line is trace only).
-        _logger.LogDebug(
+        logger.LogDebug(
             "BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);
     }
@@ -1414,7 +1370,7 @@ public sealed class BudgetRepository : IBudgetRepository
             OccurredAt = occurredAt
         });
 
-        _logger.LogDebug(
+        logger.LogDebug(
             "BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);
     }

@@ -150,20 +150,50 @@ public static class AccessMatrixDefinitions
             ]
         },
 
-        ["CityPlanning"] = new AccessMatrixData
+        ["CityPlanningOverview"] = new AccessMatrixData
         {
-            SectionName = "City Planning",
-            Roles = ["Volunteer", "Camp Lead", "Map Admin", "CampAdmin"],
+            SectionName = "City Planning Overview",
+            Roles = ["Volunteer", "Barrio Lead", "Map Admin"],
             Features =
             [
-                Feature("View the map", "Volunteer", A, "Camp Lead", A, "Map Admin", A, "CampAdmin", A),
-                Feature("Place / edit own camp polygon (placement open)", "Volunteer", D, "Camp Lead", A, "Map Admin", A, "CampAdmin", A),
-                Feature("Edit any camp polygon", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
-                Feature("View polygon history", "Volunteer", D, "Camp Lead", A, "Map Admin", A, "CampAdmin", A),
-                Feature("Restore historical polygon version", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
-                Feature("Open / close placement phase", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
-                Feature("Configure placement dates, limit zone, official zones", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
-                Feature("Export GeoJSON", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
+                Feature("View the map", "Volunteer", A, "Barrio Lead", A, "Map Admin", A),
+                Feature("Toggle layers (containers, camp limits)", "Volunteer", A, "Barrio Lead", A, "Map Admin", A),
+                Feature("Measure distances", "Volunteer", A, "Barrio Lead", A, "Map Admin", A),
+                Feature("Navigate to barrio placement", "Volunteer", D, "Barrio Lead", L, "Map Admin", A),
+                Feature("Navigate to container placement", "Volunteer", D, "Barrio Lead", L, "Map Admin", A),
+            ]
+        },
+
+        ["CityPlanningBarrioMap"] = new AccessMatrixData
+        {
+            SectionName = "Barrio Placement",
+            Roles = ["Barrio Lead", "Map Admin"],
+            Features =
+            [
+                Feature("View barrio polygons", "Barrio Lead", A, "Map Admin", A),
+                Feature("Place / edit own barrio polygon (placement open)", "Barrio Lead", A, "Map Admin", A),
+                Feature("Edit any barrio polygon", "Barrio Lead", D, "Map Admin", A),
+                Feature("View polygon history", "Barrio Lead", A, "Map Admin", A),
+                Feature("Restore historical polygon version", "Barrio Lead", D, "Map Admin", A),
+                Feature("Measure distances", "Barrio Lead", A, "Map Admin", A),
+                Feature("Open / close placement phase", "Barrio Lead", D, "Map Admin", A),
+                Feature("Configure settings (dates, zones, limit zone)", "Barrio Lead", D, "Map Admin", A),
+                Feature("Manage containers", "Barrio Lead", D, "Map Admin", A),
+                Feature("Export GeoJSON", "Barrio Lead", D, "Map Admin", A),
+            ]
+        },
+
+        ["ContainerMap"] = new AccessMatrixData
+        {
+            SectionName = "Container Placement",
+            Roles = ["Barrio Lead", "Map Admin"],
+            Features =
+            [
+                Feature("View placed containers", "Barrio Lead", A, "Map Admin", A),
+                Feature("Place / move own containers (placement open)", "Barrio Lead", A, "Map Admin", A),
+                Feature("Place / move any container", "Barrio Lead", D, "Map Admin", A),
+                Feature("Clear container placement", "Barrio Lead", A, "Map Admin", A),
+                Feature("Measure distances", "Barrio Lead", A, "Map Admin", A),
             ]
         },
     };
@@ -190,7 +220,9 @@ public static class AccessMatrixDefinitions
     {
         var dict = new Dictionary<string, AccessLevel>(StringComparer.Ordinal);
         for (var i = 0; i < roleAccessPairs.Length; i += 2)
+        {
             dict[(string)roleAccessPairs[i]] = (AccessLevel)roleAccessPairs[i + 1];
+        }
         return new AccessMatrixFeature { Name = name, RoleAccess = dict };
     }
 }

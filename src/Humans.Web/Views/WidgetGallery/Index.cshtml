@@ -1,7 +1,5 @@
 @model Humans.Web.Controllers.WidgetGalleryViewModel
 @using Humans.Web.Authorization
-@using Humans.Web.TagHelpers
-@using Humans.Web.ViewComponents
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Widget Gallery";
@@ -203,12 +201,12 @@
             }
         }
         html.Append("</dl>");
-        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+        return new HtmlString(html.ToString());
     }
 
     private static IHtmlContent AuthLine(string text)
     {
-        return new Microsoft.AspNetCore.Html.HtmlString(
+        return new HtmlString(
             $"<div class=\"wg-auth-line\">{text}</div>");
     }
 }
@@ -331,6 +329,34 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Profile/{id}/Admin</code>.
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required"),
+                        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" />
+                        </div>
+
+                        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" read-only="true" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_HumanPopover.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -353,6 +379,29 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:human-summary&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSummaryViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Renders the same content as the hover popover (<code>_HumanPopover.cshtml</code>) inline — avatar, name, membership badge, city/country, public + (admin-only) hidden teams, and languages. Use on admin-review screens where the reviewer needs identity context without having to hover (e.g. ticket-transfer detail).
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required")
+                    )
+                    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsAdminBoardOrAdmin</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:human-summary user-id="@Model.CurrentUserId" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:nobodies-email-badge&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -364,8 +413,7 @@
                     @ParamsBlock(
                         ("userId", "<code>Guid</code> — required"),
                         ("mode", "<code>string</code> — badge (default) · status · email · provision · detail"),
-                        ("teamSlug", "<code>string?</code> — required for <code>provision</code> mode (which team to provision into)"),
-                        ("displayName", "<code>string?</code> — confirm-dialog text in <code>provision</code> mode")
+                        ("teamSlug", "<code>string?</code> — required for <code>provision</code> mode (which team to provision into)")
                     )
                     <div class="wg-variants">
                         <div class="wg-variant-label">mode="badge"<span class="wg-variant-sub">icon badge for cards</span></div>
@@ -414,6 +462,25 @@
             @* ============== PERSONAL DASHBOARD ============== *@
             <section id="dashboard" class="wg-section">
                 <h2>Personal Dashboard</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:ticket-stub&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/TicketStubViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Renders one held ticket as a physical admission stub. Shared by the transfer wizard, the <code>/Profile/Me</code> ticket card, and the homepage. A pending outgoing transfer shows a diagonal "Transfer pending" stamp; voided tickets render muted with a struck name. The event label is currently a constant (open item to source from the active event).</div>
+                    @ParamsBlock(
+                        ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, <code>VendorTicketId</code> serial, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>) from <code>ITicketServiceRead</code>")
+                    )
+                    <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-001", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-002", Humans.Domain.Enums.TicketAttendeeStatus.Valid, true, Guid.NewGuid()))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-003", Humans.Domain.Enums.TicketAttendeeStatus.Void, false, null))" />
+                    </div>
+                </div>
 
                 <div class="wg-card">
                     <div class="wg-card-header">
@@ -803,29 +870,25 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">_HumanSearchInput.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
+                            <span class="wg-card-name">HumanSearchViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchInput.cshtml</span>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSearchViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Type-ahead human picker. Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form.</div>
+                    <div class="wg-card-note">Type-ahead human picker (<code>&lt;vc:human-search&gt;</code>). Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form. Pass <code>selected-user-id</code> to prefill for edit forms.</div>
                     @ParamsBlock(
-                        ("ViewData[\"FieldName\"]", "<code>string</code> — name of the hidden input (default <code>userId</code>)"),
-                        ("ViewData[\"InstanceKey\"]", "<code>string?</code> — required when multiple instances render on the same page"),
-                        ("ViewData[\"Placeholder\"]", "<code>string</code> — input placeholder (default \"Search by name…\")"),
-                        ("ViewData[\"ExcludeUserIds\"]", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
-                        ("ViewData[\"Scope\"]", "<code>string?</code> — \"name\" narrows to display/burner names; null = full-text")
+                        ("field-name", "<code>string</code> — name of the hidden input (default <code>userId</code>)"),
+                        ("instance-key", "<code>string?</code> — required when multiple instances render on the same page"),
+                        ("placeholder", "<code>string?</code> — input placeholder (default \"Search by name…\")"),
+                        ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
+                        ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
+                        ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)"),
+                        ("allow-email", "<code>bool</code> — when true (default false), an <code>@@</code>-containing query resolves by exact, case-insensitive verified email (0-or-1 result, no enumeration leak); safe on non-admin surfaces")
                     )
                     <div class="wg-card-example" style="max-width: 400px;">
-                        @{
-                            var humanSearchData = new ViewDataDictionary(ViewData)
-                            {
-                                ["FieldName"] = "exampleUserId",
-                                ["InstanceKey"] = "widget-gallery-demo",
-                                ["Placeholder"] = "Type a name to search…"
-                            };
-                        }
-                        @await Html.PartialAsync("_HumanSearchInput", null, humanSearchData)
+                        <vc:human-search field-name="exampleUserId"
+                                         instance-key="widget-gallery-demo"
+                                         placeholder="Type a name to search…" />
                     </div>
                 </div>
 
@@ -982,14 +1045,15 @@
                 <p class="text-muted">A handful of widgets are intentionally not rendered standalone here:</p>
                 <ul>
                     <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminNavTree</code>, <code>AdminNav</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
-                    <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_AdminTopbarUserMenu</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
+                    <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
                     <li><strong>Build/Strike sign-up form</strong> — <code>_BuildStrikeRotaTable</code>: a sign-up form (not a display widget) keyed to all-day shifts under one rota; submits to <code>/Shifts/SignUpRange</code>. Rendering it standalone is misleading because it's an inert form here. See <a href="/Shifts">/Shifts</a>.</li>
                     <li><strong>Coordinator dashboard</strong> — <code>_DashboardActivity</code>, <code>_DashboardStats</code>, <code>_DashboardStaffing</code>: take an <code>AdminDashboardViewModel</code> built by the dashboard controller. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
                     <li><strong>Form fragments</strong> — <code>_LegalDocumentFormFields</code>, <code>_TabbedMarkdownDocuments</code>, <code>_TeamDescriptionAndApprovalFields</code>, <code>_TeamGoogleAndParentFields</code>: form sub-views inside parent forms; see Team admin and Legal pages.</li>
                     <li><strong>Audit/list partials</strong> — <code>_AuditLogContent</code>, <code>_AuditLogScripts</code>, <code>_RolesListContent</code>, <code>_ApplicationHistory</code>, <code>_ApplicationsListContent</code>, <code>_ApplicationResponseSections</code>: pieces of larger pages, exercised via the <code>vc:audit-log</code> entry above and the Applications/Roles admin pages.</li>
                     <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
-                    <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>, <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>, cannot render in isolation. See <a href="/ShiftDashboard/VolunteerTracking">/ShiftDashboard/VolunteerTracking</a>.</li>
+                    <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>, <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>, cannot render in isolation. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.</li>
+                    <li><strong>Container card fragments</strong> — <code>_ContainerCardRow</code>, <code>_ContainerCardModals</code>, <code>_ContainerFormFields</code>: context-bound — render only as part of a populated <code>ContainerCardModel</code> on the container list/admin pages, with route values, placement state, and the parent modal-target form action. See <a href="/CityPlanning/BarrioMap/Admin/Containers/2026">/CityPlanning/BarrioMap/Admin/Containers/{year}</a>.</li>
                 </ul>
             </section>
 

@@ -1,7 +1,7 @@
 using Humans.Application.Configuration;
+using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -11,69 +11,51 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Services.Dashboard;
 
-/// <summary>
-/// Orchestrates the member dashboard snapshot. Pulls from several owning services
-/// (profile, membership, applications, shifts, signups, tickets, participation)
-/// and applies the business rules (term expiry, urgent-shift aggregation, signup
-/// filtering, ticket visibility) that previously lived in <c>HomeController</c>.
-/// </summary>
-public class DashboardService : IDashboardService
+/// <summary>Orchestrates the member dashboard snapshot across profile/membership/applications/shifts/tickets/participation.</summary>
+public class DashboardService(
+    IMembershipCalculator membershipCalculator,
+    IApplicationDecisionService applicationDecisionService,
+    IShiftManagementService shiftMgmt,
+    IShiftView shiftView,
+    ITicketServiceRead ticketQueryService,
+    IUserServiceRead userService,
+    ITeamServiceRead teamService,
+    IOptions<TicketVendorSettings> ticketSettings,
+    IClock clock,
+    ILogger<DashboardService> logger) : IDashboardService
 {
-    private readonly IProfileService _profileService;
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftSignupService _shiftSignup;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly TicketVendorSettings _ticketSettings;
-    private readonly IClock _clock;
-    private readonly ILogger<DashboardService> _logger;
-
-    public DashboardService(
-        IProfileService profileService,
-        IMembershipCalculator membershipCalculator,
-        IApplicationDecisionService applicationDecisionService,
-        IShiftManagementService shiftMgmt,
-        IShiftSignupService shiftSignup,
-        ITicketQueryService ticketQueryService,
-        IUserService userService,
-        ITeamService teamService,
-        IOptions<TicketVendorSettings> ticketSettings,
-        IClock clock,
-        ILogger<DashboardService> logger)
-    {
-        _profileService = profileService;
-        _membershipCalculator = membershipCalculator;
-        _applicationDecisionService = applicationDecisionService;
-        _shiftMgmt = shiftMgmt;
-        _shiftSignup = shiftSignup;
-        _ticketQueryService = ticketQueryService;
-        _userService = userService;
-        _teamService = teamService;
-        _ticketSettings = ticketSettings.Value;
-        _clock = clock;
-        _logger = logger;
-    }
+    private readonly TicketVendorSettings _ticketSettings = ticketSettings.Value;
 
     public async Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,
-        bool isPrivileged,
         CancellationToken cancellationToken = default)
     {
-        _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
-
-        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
-        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, cancellationToken);
+        var userInfo = await userService.GetUserInfoAsync(userId, cancellationToken);
+        var profile = userInfo?.Profile;
+        var userView = await shiftView.GetUserAsync(userId, cancellationToken);
+        var hasShiftTagPreferences = userView.TagPreferences.Count > 0;
+        var dashboardProfile = profile is null
+            ? null
+            : new DashboardProfile(
+                ProfileComplete: !string.IsNullOrEmpty(profile.FirstName),
+                CompletionPercent: ProfileCompletion.ComputePercent(profile, hasShiftTagPreferences),
+                ConsentCheckStatus: profile.ConsentCheckStatus,
+                IsRejected: profile.RejectedAt is not null,
+                RejectionReason: profile.RejectionReason);
+        var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, cancellationToken);
 
         // Applications + term expiry state
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
+        var latestApplicationSnapshot = latestApplication is null
+            ? null
+            : new DashboardApplication(
+                latestApplication.Status,
+                latestApplication.SubmittedAt,
+                latestApplication.MembershipTier);
         var hasPendingApp = latestApplication is not null &&
             latestApplication.Status == ApplicationStatus.Submitted;
 
@@ -85,11 +67,11 @@ public class DashboardService : IDashboardService
         EventSettings? activeEvent = null;
         try
         {
-            activeEvent = await _shiftMgmt.GetActiveAsync();
+            activeEvent = await shiftMgmt.GetActiveAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load active event for dashboard");
+            logger.LogError(ex, "Failed to load active event for dashboard");
         }
 
         var urgentItems = new List<DashboardUrgentShift>();
@@ -101,39 +83,36 @@ public class DashboardService : IDashboardService
         {
             try
             {
-                var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
+                var urgentShifts = await shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
                 foreach (var u in urgentShifts)
                 {
-                    if (u.Shift is null)
-                    {
-                        _logger.LogWarning("Skipping urgent shift item because shift data was missing");
-                        continue;
-                    }
-
                     try
                     {
                         urgentItems.Add(new DashboardUrgentShift(
-                            Shift: u.Shift,
-                            DepartmentName: u.DepartmentName ?? "Unknown",
+                            RotaName: u.Shift.Rota?.Name ?? "Unknown",
+                            DepartmentName: u.DepartmentName,
                             AbsoluteStart: u.Shift.GetAbsoluteStart(activeEvent),
                             RemainingSlots: u.RemainingSlots,
                             UrgencyScore: u.UrgencyScore));
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift.Id);
+                        logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift.Id);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load urgent shifts for dashboard");
+                logger.LogError(ex, "Failed to load urgent shifts for dashboard");
             }
 
             try
             {
-                var now = _clock.GetCurrentInstant();
-                var userSignups = await _shiftSignup.GetByUserAsync(userId, activeEvent.Id);
+                var now = clock.GetCurrentInstant();
+                // Filter signups to active event in memory.
+                var userSignups = userView.Signups
+                    .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
+                    .ToList();
                 pendingCount = userSignups
                     .Where(s => s.Status == SignupStatus.Pending)
                     .Select(s => s.SignupBlockId ?? s.Id)
@@ -146,22 +125,18 @@ public class DashboardService : IDashboardService
                     .Select(s => s.Shift.Rota.TeamId)
                     .Distinct()
                     .ToList();
-                var teamNames = dashboardTeamIds.Count == 0
-                    ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
-                    : await _teamService.GetTeamNamesByIdsAsync(dashboardTeamIds);
+                var teamsById = await teamService.GetTeamsAsync();
+                var teamNames = dashboardTeamIds
+                    .Where(teamsById.ContainsKey)
+                    .ToDictionary(id => id, id => teamsById[id].Name);
 
                 foreach (var s in confirmedSignups)
                 {
                     try
                     {
-                        if (s.Shift is null)
-                        {
-                            _logger.LogWarning("Skipping signup {SignupId} on dashboard because shift data was missing", s.Id);
-                            continue;
-                        }
-
+                        // Shift/Rota navs populated by ShiftSignupRepository.GetByUserAsync; upstream filtered non-null Rota.
                         var item = new DashboardSignup(
-                            Signup: s,
+                            RotaName: s.Shift.Rota.Name,
                             DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),
                             AbsoluteStart: s.Shift.GetAbsoluteStart(activeEvent),
                             AbsoluteEnd: s.Shift.GetAbsoluteEnd(activeEvent));
@@ -170,7 +145,7 @@ public class DashboardService : IDashboardService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to build shift item for signup {SignupId}", s.Id);
+                        logger.LogError(ex, "Failed to build shift item for signup {SignupId}", s.Id);
                     }
                 }
 
@@ -179,7 +154,7 @@ public class DashboardService : IDashboardService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load user signups for dashboard");
+                logger.LogError(ex, "Failed to load user signups for dashboard");
             }
         }
 
@@ -191,13 +166,14 @@ public class DashboardService : IDashboardService
         {
             if (ticketsConfigured)
             {
-                userTicketCount = await _ticketQueryService.GetUserTicketCountAsync(userId);
+                var holdings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, cancellationToken);
+                userTicketCount = holdings.TicketCount;
                 hasTicket = userTicketCount > 0;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
+            logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
         }
 
         // Event participation
@@ -206,29 +182,32 @@ public class DashboardService : IDashboardService
         {
             if (activeEvent is not null && activeEvent.Year > 0)
             {
-                var participation = await _userService.GetParticipationAsync(userId, activeEvent.Year, cancellationToken);
-                participationStatus = participation?.Status;
+                var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+                participationStatus = info?.EventParticipations
+                    .FirstOrDefault(p => p.Year == activeEvent.Year)?.Status;
             }
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
+            logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load participation status for user {UserId}", userId);
+            logger.LogError(ex, "Failed to load participation status for user {UserId}", userId);
         }
 
         return new MemberDashboardData(
-            Profile: profile,
+            Profile: dashboardProfile,
             MembershipSnapshot: membershipSnapshot,
-            LatestApplication: latestApplication,
+            LatestApplication: latestApplicationSnapshot,
             HasPendingApplication: hasPendingApp,
             CurrentTier: currentTier,
             TermExpiresAt: termExpiresAt,
             TermExpiresSoon: termExpiresSoon,
             TermExpired: termExpired,
-            ActiveEvent: activeEvent,
+            ActiveEvent: activeEvent is null
+                ? null
+                : new DashboardEvent(activeEvent.EventName, activeEvent.IsShiftBrowsingOpen, activeEvent.Year),
             UrgentShifts: urgentItems,
             NextShifts: nextShifts,
             PendingSignupCount: pendingCount,
@@ -240,7 +219,7 @@ public class DashboardService : IDashboardService
     }
 
     private (LocalDate? ExpiresAt, bool ExpiresSoon, bool Expired) ComputeTermState(
-        IReadOnlyList<MemberApplication> applications,
+        IReadOnlyList<UserApplicationSnapshot> applications,
         MembershipTier currentTier)
     {
         if (currentTier == MembershipTier.Volunteer)
@@ -260,7 +239,7 @@ public class DashboardService : IDashboardService
             return (null, false, false);
         }
 
-        var today = _clock.GetCurrentInstant().InUtc().Date;
+        var today = clock.GetCurrentInstant().InUtc().Date;
         var expiryDate = latestApprovedApp.TermExpiresAt.Value;
         var expired = expiryDate < today;
         var expiresSoon = !expired && expiryDate <= today.PlusDays(90);

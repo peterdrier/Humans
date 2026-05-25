@@ -71,7 +71,7 @@ public static class OnboardingShiftsBrowseModelBuilder
             SelectedPriority = NormalizePriority(selectedPriority),
             BrowseModel = new ShiftBrowseViewModel
             {
-                EventSettings = null!,
+                EventSettings = null,
                 ShowSignups = true,
                 Sort = "urgency",
             },

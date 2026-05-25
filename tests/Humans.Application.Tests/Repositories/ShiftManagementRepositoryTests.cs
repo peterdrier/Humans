@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +7,6 @@ using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -38,7 +36,6 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
@@ -52,7 +49,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         var result = await _repo.GetActiveEventSettingsAsync();
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(active.Id);
+        result.Id.Should().Be(active.Id);
     }
 
     [HumansFact]
@@ -78,13 +75,13 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
 
         var days = await _repo.GetShiftDayOffsetsForRotaAsync(rota.Id);
 
-        days.Should().BeEquivalentTo(new[] { -3, -2 });
+        days.Should().BeEquivalentTo([-3, -2]);
     }
 
     [HumansFact]
     public async Task GetConfirmedSignupCountsByShiftAsync_EmptyInput_ReturnsEmpty()
     {
-        var result = await _repo.GetConfirmedSignupCountsByShiftAsync(Array.Empty<Guid>());
+        var result = await _repo.GetConfirmedSignupCountsByShiftAsync([]);
         result.Should().BeEmpty();
     }
 
@@ -104,7 +101,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
-        await _repo.SetVolunteerTagPreferencesAsync(userId, new[] { tagB.Id, tagC.Id });
+        await _repo.SetVolunteerTagPreferencesAsync(userId, [tagB.Id, tagC.Id]);
 
         _dbContext.ChangeTracker.Clear();
         var preferences = await _dbContext.VolunteerTagPreferences
@@ -112,7 +109,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
             .Where(v => v.UserId == userId)
             .Select(v => v.ShiftTagId)
             .ToListAsync();
-        preferences.Should().BeEquivalentTo(new[] { tagB.Id, tagC.Id });
+        preferences.Should().BeEquivalentTo([tagB.Id, tagC.Id]);
     }
 
     [HumansFact]

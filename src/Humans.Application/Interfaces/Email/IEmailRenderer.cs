@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Email;
@@ -81,16 +80,6 @@ public interface IEmailRenderer
     EmailContent RenderTermRenewalReminder(string userName, string tierName, string expiresAt, string? culture = null);
 
     /// <summary>
-    /// Board daily digest of new approvals and outstanding items.
-    /// </summary>
-    EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null);
-
-    /// <summary>
-    /// Admin daily digest of system health and pending actions.
-    /// </summary>
-    EmailContent RenderAdminDailyDigest(string adminName, string date, AdminDigestCounts counts, string? culture = null);
-
-    /// <summary>
     /// Feedback response notification.
     /// </summary>
     EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
@@ -110,6 +99,20 @@ public interface IEmailRenderer
         string messageText,
         bool includeContactInfo,
         string? senderEmail,
+        string? culture = null);
+
+    /// <summary>
+    /// "Email a rota" message from the coordinator to a single signup on the
+    /// rota. Body contains the coordinator's free-text message plus the
+    /// recipient's chronologically-ordered shift list on this rota.
+    /// </summary>
+    EmailContent RenderCoordinatorRotaMessage(
+        string recipientName,
+        string senderName,
+        string? senderEmail,
+        string rotaName,
+        string messageText,
+        IReadOnlyList<string> shiftLines,
         string? culture = null);
 
     /// <summary>
@@ -134,6 +137,12 @@ public interface IEmailRenderer
     /// injection, and converting the resulting markdown body to HTML.
     /// </summary>
     EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
+
+    /// <summary>
+    /// Event lifecycle notification — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
+    /// to render the matching template (submitted / approved / rejected / resubmit-requested).
+    /// </summary>
+    EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null);
 
     /// <summary>
     /// Variant 1 group sub-template — Google Group removal, loss of access
@@ -164,4 +173,18 @@ public interface IEmailRenderer
         string removedEmail,
         string currentGoogleEmail,
         string? culture = null);
+
+    /// <summary>Ticket-transfer request confirmation to the Sender.</summary>
+    EmailContent RenderTicketTransferRequested(
+        string senderName, string receiverName, string ticketLabel, string? culture = null);
+
+    /// <summary>Ticket-transfer action-needed notice to the ticket team (English).</summary>
+    EmailContent RenderTicketTransferTeamNotification(
+        string senderName, string receiverName, string receiverEmail,
+        string ticketLabel, string? reason, string reviewUrl);
+
+    /// <summary>Ticket-transfer decision (completed / cancelled-with-reason) to Sender + Receiver.</summary>
+    EmailContent RenderTicketTransferDecision(
+        string toName, bool successful, string ticketLabel, string receiverName,
+        string? reason, string? culture = null);
 }

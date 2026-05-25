@@ -1,177 +1,102 @@
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Application-layer query service for the Tickets section. Owns
-/// <c>ticket_orders</c> and <c>ticket_attendees</c> read access via
-/// <see cref="ITicketRepository"/> and stitches cross-section data
-/// (users, profiles, teams, emails, participation, campaigns, budget, event
-/// settings) via their owning service interfaces.
+/// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15 / T-07).
 /// </summary>
-/// <remarks>
-/// Migrated to <see cref="Humans.Application"/> per §15 (issue
-/// nobodies-collective/Humans#545 sub-task #545a). Never imports EF types —
-/// all DB access flows through <see cref="ITicketRepository"/>.
-/// </remarks>
-public sealed class TicketQueryService : ITicketQueryService, IUserDataContributor
+public sealed class TicketQueryService(
+    ITicketRepository ticketRepository,
+    IBudgetService budgetService,
+    ICampaignService campaignService,
+    IUserService userService,
+    IUserEmailService userEmailService,
+    ITeamServiceRead teamService,
+    IShiftManagementService shiftManagementService,
+    IClock clock) : ITicketService, IUserDataContributor
 {
-    private static readonly TimeSpan TicketCountCacheTtl = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan UserIdsWithTicketsCacheTtl = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan ValidAttendeeEmailsCacheTtl = TimeSpan.FromMinutes(5);
-
-    private readonly ITicketRepository _ticketRepository;
-    private readonly IMemoryCache _cache;
-    private readonly IBudgetService _budgetService;
-    private readonly ICampaignService _campaignService;
-    private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
-    private readonly IProfileService _profileService;
-    private readonly ITeamService _teamService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly IClock _clock;
-
-    public TicketQueryService(
-        ITicketRepository ticketRepository,
-        IMemoryCache cache,
-        IBudgetService budgetService,
-        ICampaignService campaignService,
-        IUserService userService,
-        IUserEmailService userEmailService,
-        IProfileService profileService,
-        ITeamService teamService,
-        IShiftManagementService shiftManagementService,
-        IClock clock)
+    private async Task<int> ComputeUserTicketCountAsync(Guid userId)
     {
-        _ticketRepository = ticketRepository;
-        _cache = cache;
-        _budgetService = budgetService;
-        _campaignService = campaignService;
-        _userService = userService;
-        _userEmailService = userEmailService;
-        _profileService = profileService;
-        _teamService = teamService;
-        _shiftManagementService = shiftManagementService;
-        _clock = clock;
-    }
-
-    // ==========================================================================
-    // Per-user ticket counts and match sets
-    // ==========================================================================
-
-    public async Task<int> GetUserTicketCountAsync(Guid userId)
-    {
-        var cacheKey = CacheKeys.UserTicketCount(userId);
-        if (_cache.TryGetExistingValue(cacheKey, out int cached))
-            return cached;
-
-        var count = await GetUserTicketCountCoreAsync(userId);
-        _cache.Set(cacheKey, count, TicketCountCacheTtl);
-        return count;
-    }
-
-    private async Task<int> GetUserTicketCountCoreAsync(Guid userId)
-    {
-        // Match on attendees only — a buyer who purchased tickets for others
-        // should NOT count as having a ticket themselves.
-
-        // First check by MatchedUserId (set during sync).
-        var matchedCount = await _ticketRepository
+        // Attendees only — buyers don't count for themselves.
+        var matchedCount = await ticketRepository
             .CountValidAttendeesMatchedToUserAsync(userId);
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback: check all verified user emails against attendee emails
-        // case-insensitively. The attendee email set is cached and compared
-        // in memory — avoids SQL upper() vs .NET ToUpperInvariant drift for
-        // non-ASCII code points by applying a single StringComparer rule.
-        var verifiedEmails = await _userEmailService.GetVerifiedEmailsForUserAsync(userId);
+        // Fallback: verified-emails ↔ attendee-emails, compared in-memory for consistent casing.
+        var verifiedEmails = await userEmailService.GetVerifiedEmailsForUserAsync(userId);
         if (verifiedEmails.Count == 0)
             return 0;
 
-        var attendeeEmails = await GetValidAttendeeEmailsCachedAsync();
+        var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync();
         if (attendeeEmails.Count == 0)
             return 0;
 
         var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return attendeeEmails.Count(e => verifiedSet.Contains(e));
+        return attendeeEmails.Count(verifiedSet.Contains);
     }
 
-    private Task<IReadOnlyList<string>> GetValidAttendeeEmailsCachedAsync() =>
-        _cache.GetOrCreateAsync<IReadOnlyList<string>>(CacheKeys.ValidAttendeeEmails, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = ValidAttendeeEmailsCacheTtl;
-            return await _ticketRepository.GetValidAttendeeEmailsAsync();
-        })!;
-
-    public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
+    public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
-        return await _cache.GetOrCreateAsync(CacheKeys.UserIdsWithTickets, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = UserIdsWithTicketsCacheTtl;
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var currentEventId = syncState?.VendorEventId;
+        var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
 
-            var ids = await _ticketRepository.GetValidMatchedAttendeeUserIdsAsync();
-            return ids.ToHashSet();
-        }) ?? [];
+        return orders
+            .Select(o => Project(o, currentEventId))
+            .ToList();
+    }
+
+    private async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
+    {
+        var syncState = await ticketRepository.GetSyncStateAsync();
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return [];
+
+        var ids = await ticketRepository.GetValidMatchedAttendeeUserIdsForEventAsync(syncState.VendorEventId);
+        return ids.ToHashSet();
     }
 
     public async Task<List<string>> GetAvailableTicketTypesAsync()
     {
-        var types = await _ticketRepository.GetDistinctTicketTypesAsync();
+        var types = await ticketRepository.GetDistinctTicketTypesAsync();
         return types.ToList();
     }
 
-    public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
+    private async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
     {
-        var fromAttendees = await _ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
-        var fromOrders = await _ticketRepository.GetAllMatchedOrderUserIdsAsync();
+        var fromAttendees = await ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
+        var fromOrders = await ticketRepository.GetAllMatchedOrderUserIdsAsync();
         return fromAttendees.Concat(fromOrders).ToHashSet();
     }
 
-    public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default)
-    {
-        var start = Instant.FromUtc(year, 1, 1, 0, 0);
-        var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
-
-        var fromOrders = await _ticketRepository.GetMatchedOrderUserIdsInWindowAsync(start, end, ct);
-        var fromAttendees = await _ticketRepository.GetMatchedAttendeeUserIdsInWindowAsync(start, end, ct);
-        return fromOrders.Concat(fromAttendees).ToHashSet();
-    }
-
-    public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) =>
-        _ticketRepository.GetMatchedOrderYearsAsync(ct);
-
-    // ==========================================================================
-    // Dashboard stats
-    // ==========================================================================
-
     public async Task<TicketDashboardStats> GetDashboardStatsAsync()
     {
-        // Reset stuck Running state — if Running for > 30 min, treat as stale (crash recovery).
-        var now = _clock.GetCurrentInstant();
+        // Crash recovery: reset Running >30min.
+        var now = clock.GetCurrentInstant();
         var staleThreshold = now - Duration.FromMinutes(30);
-        var syncState = await _ticketRepository.ResetStaleRunningStateAsync(
+        var syncState = await ticketRepository.ResetStaleRunningStateAsync(
             olderThan: staleThreshold,
             now: now,
             errorMessage: "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.");
 
-        var totals = await _ticketRepository.GetDashboardTotalsAsync();
+        var totals = await ticketRepository.GetDashboardTotalsAsync();
 
         var revenue = totals.GrossRevenue;
         var totalStripeFees = totals.TotalStripeFees;
@@ -182,8 +107,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = totals.UnmatchedOrderCount;
 
-        // Fee breakdown by payment method (load in memory — small dataset).
-        var feeData = await _ticketRepository.GetPaidOrderPaymentMethodsAsync();
+        var feeData = await ticketRepository.GetPaidOrderPaymentMethodsAsync();
 
         var feesByMethod = feeData
             .GroupBy(
@@ -206,8 +130,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .OrderByDescending(f => f.TotalStripeFees)
             .ToList();
 
-        // Daily sales data for chart.
-        var orderDates = await _ticketRepository.GetOrderDateAttendeeCountsAsync();
+        var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync();
 
         var salesByDate = orderDates
             .GroupBy(o => o.PurchasedAt.InUtc().Date)
@@ -239,11 +162,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             }
         }
 
-        // Recent 10 orders — MatchedUserName is stitched via IUserService.
-        var recentOrders = await _ticketRepository.GetRecentOrdersAsync(count: 10);
+        var recentOrders = await ticketRepository.GetRecentOrdersAsync(count: 10);
 
-        // Volunteer ticket coverage.
-        var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToList() ?? [];
         var totalActiveVolunteers = volunteerUserIds.Count;
 
@@ -276,13 +197,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         };
     }
 
-    // ==========================================================================
-    // Cash-flow / break-even
-    // ==========================================================================
-
-    public Task<decimal> GetGrossTicketRevenueAsync() =>
-        _ticketRepository.GetGrossPaidRevenueAsync();
-
     public async Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold,
         decimal grossRevenue,
@@ -293,20 +207,16 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (ticketsSold <= 0 || grossRevenue <= 0)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
-        var activeBudgetYear = await _budgetService.GetActiveYearAsync();
+        var activeBudgetYear = await budgetService.GetActiveYearAsync();
         if (activeBudgetYear is null)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
-        var summary = _budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
+        var summary = budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
         var plannedExpenses = Math.Abs(summary.TotalExpenses);
         if (plannedExpenses <= 0)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
-        // A = tickets sold so far, B = gross revenue so far, C = gross planned expenses
-        // D = remaining expenses = C - B
-        // E = gross average ticket price = B / A
-        // F = remaining tickets = D / E
-        // G = break-even target = A + F
+        // break-even = sold + ceil((plannedExpenses - revenue) / avgPrice)
         var grossAverageTicketPrice = grossRevenue / ticketsSold;
         var remainingExpenses = Math.Max(0m, plannedExpenses - grossRevenue);
         long remainingTicketsToSell = 0;
@@ -318,7 +228,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 : decimal.ToInt32(remainingTicketCount);
         }
 
-        var breakEvenTarget = (long)ticketsSold + remainingTicketsToSell;
+        var breakEvenTarget = ticketsSold + remainingTicketsToSell;
         var target = breakEvenTarget > int.MaxValue ? int.MaxValue : (int)breakEvenTarget;
 
         var detail = canAccessFinance
@@ -328,13 +238,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
     }
 
-    // ==========================================================================
-    // Code tracking (campaigns ↔ ticket orders)
-    // ==========================================================================
-
     public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search)
     {
-        var campaignData = await _campaignService.GetCodeTrackingAsync();
+        var campaignData = await campaignService.GetCodeTrackingAsync();
 
         var campaignSummaries = campaignData.Campaigns
             .Select(c => new CampaignCodeSummaryDto
@@ -358,8 +264,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 g.RecipientName.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
 
-        // Correlate redemption codes against ticket orders.
-        var ordersWithCodes = await _ticketRepository.GetOrdersWithDiscountCodesAsync();
+        var ordersWithCodes = await ticketRepository.GetOrdersWithDiscountCodesAsync();
         var orderByCode = ordersWithCodes
             .GroupBy(o => o.DiscountCode, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -396,13 +301,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         };
     }
 
-    // ==========================================================================
-    // Sales aggregates
-    // ==========================================================================
-
     public async Task<TicketSalesAggregates> GetSalesAggregatesAsync()
     {
-        var orders = await _ticketRepository.GetPaidOrderSalesRowsAsync();
+        var orders = await ticketRepository.GetPaidOrderSalesRowsAsync();
 
         var weeklySales = orders
             .GroupBy(o =>
@@ -458,10 +359,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         };
     }
 
-    // ==========================================================================
-    // Paged admin list views
-    // ==========================================================================
-
     public async Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
@@ -474,7 +371,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             parsedStatus = paymentStatus;
         }
 
-        var (rawRows, totalCount) = await _ticketRepository.GetOrdersPageAsync(
+        var (rawRows, totalCount) = await ticketRepository.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             parsedStatus, filterTicketType, filterMatched);
 
@@ -495,7 +392,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             parsedStatus = status;
         }
 
-        var (rawRows, totalCount) = await _ticketRepository.GetAttendeesPageAsync(
+        var (rawRows, totalCount) = await ticketRepository.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterTicketType, parsedStatus, filterMatched, filterOrderId, filterMultipleTickets);
 
@@ -513,7 +410,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await _userService.GetByIdsAsync(matchedIds);
+        var users = await userService.GetUserInfosAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
@@ -539,7 +436,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     PaymentStatus = r.PaymentStatus,
                     VendorDashboardUrl = r.VendorDashboardUrl,
                     MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.DisplayName,
+                    MatchedUserName = user.BurnerName,
                 };
             }
             return r;
@@ -556,7 +453,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await _userService.GetByIdsAsync(matchedIds);
+        var users = await userService.GetUserInfosAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
@@ -570,7 +467,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     Price = r.Price,
                     Status = r.Status,
                     MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.DisplayName,
+                    MatchedUserName = user.BurnerName,
                     VendorOrderId = r.VendorOrderId,
                 };
             }
@@ -578,19 +475,14 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         }).ToList();
     }
 
-    // ==========================================================================
-    // "Who hasn't bought" admin view — User × Profile × Teams × UserEmails
-    // ==========================================================================
-
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
         int page, int pageSize)
     {
         var matchedUserIds = await GetAllMatchedUserIdsAsync();
 
-        // Load Users and Volunteers-team membership via service interfaces.
-        var allUsers = await _userService.GetAllUsersAsync();
-        var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var allUsers = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
+        var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         var candidateIds = allUsers
@@ -598,12 +490,11 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .Select(u => u.Id)
             .ToList();
 
-        // Exclude humans who declared not attending this year.
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
+        var activeEvent = await shiftManagementService.GetActiveAsync();
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            var participations = await _userService.GetAllParticipationsForYearAsync(activeEvent.Year);
+            var participations = await userService.GetAllParticipationsForYearAsync(activeEvent.Year);
             notAttendingSet = participations
                 .Where(ep => ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
@@ -621,19 +512,31 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             };
         }
 
-        // Stitch in memory: profiles (for tier), notification emails, team memberships.
-        var profiles = await _profileService.GetByUserIdsAsync(candidateIds);
-        var emailsById = await _userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
-        var teamsByUser = await _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(candidateIds);
+        var emailsById = await userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
+        var candidateIdSet = candidateIds.ToHashSet();
+        var teamsByIdLookup = await teamService.GetTeamsAsync();
+        var teamsByUser = new Dictionary<Guid, IReadOnlyList<string>>();
+        foreach (var team in teamsByIdLookup.Values
+            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
+        {
+            foreach (var member in team.Members.Where(m => candidateIdSet.Contains(m.UserId)))
+            {
+                if (!teamsByUser.TryGetValue(member.UserId, out var names))
+                {
+                    names = new List<string>();
+                    teamsByUser[member.UserId] = names;
+                }
+                ((List<string>)names).Add(team.Name);
+            }
+        }
 
         var usersById = allUsers.ToDictionary(u => u.Id);
 
         var rows = candidateIds
-            .Where(id => profiles.ContainsKey(id))
+            .Where(id => usersById.TryGetValue(id, out var u) && u.Profile is not null)
             .Select(id =>
             {
                 var user = usersById[id];
-                var profile = profiles[id];
                 emailsById.TryGetValue(id, out var email);
                 teamsByUser.TryGetValue(id, out var teamNames);
 
@@ -641,21 +544,19 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 {
                     UserId = id,
                     HasTicket = matchedUserIds.Contains(id),
-                    Name = user.DisplayName,
+                    Name = user.BurnerName,
                     Email = email ?? string.Empty,
                     TeamNames = teamNames ?? [],
-                    Tier = profile.MembershipTier,
+                    Tier = user.Profile!.MembershipTier,
                 };
             })
             .ToList();
 
-        // Email search against the full UserEmail set (not just the notification
-        // target) so admins can find humans whose ticket-vendor address differs
-        // from their primary notification email.
+        // Search the full verified-email set so admins can find secondary-address purchases.
         HashSet<Guid>? emailMatchUserIds = null;
         if (HasSearchTerm(search, 1))
         {
-            var matches = await _userEmailService.SearchUserIdsByVerifiedEmailAsync(search!);
+            var matches = await userEmailService.SearchUserIdsByVerifiedEmailAsync(search!);
             emailMatchUserIds = matches.ToHashSet();
         }
 
@@ -728,10 +629,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
         if (HasSearchTerm(search, 1))
         {
-            // Match against display name, notification email, and any verified
-            // email belonging to the user (via emailMatchUserIds). Admins rely
-            // on the verified-email match when a ticket was purchased under a
-            // secondary address.
             filtered = filtered.Where(r =>
                 ContainsIgnoreCase(r.Name, search) ||
                 ContainsIgnoreCase(r.Email, search) ||
@@ -741,46 +638,72 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return filtered.ToList();
     }
 
-    // ==========================================================================
-    // Exports
-    // ==========================================================================
-
     public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync()
     {
-        var rows = await _ticketRepository.GetAttendeeExportDataAsync();
+        var rows = await ticketRepository.GetAttendeeExportDataAsync();
         return rows.ToList();
     }
 
     public async Task<List<OrderExportRow>> GetOrderExportDataAsync()
     {
-        var rows = await _ticketRepository.GetOrderExportDataAsync();
+        var rows = await ticketRepository.GetOrderExportDataAsync();
         return rows.ToList();
     }
 
-    // ==========================================================================
-    // Per-user match probes (used by ProfileService / GuestController)
-    // ==========================================================================
-
-    public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) =>
-        _ticketRepository.HasAnyTicketMatchAsync(userId);
-
-    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
+    public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
+        Guid userId, CancellationToken ct = default)
     {
-        var orders = await _ticketRepository.GetOrdersMatchedToUserAsync(userId);
-        return orders.Select(o => new UserTicketOrderSummary(
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orderCount = orders.Count;
+        var orderSummaries = orders.Select(o => new UserTicketOrderSummary(
             o.BuyerName,
             o.PurchasedAt,
             o.Attendees.Count,
             o.TotalAmount,
             o.Currency)).ToList();
+        var openTicketOrderIds = orders
+            .Where(o => o.PaymentStatus is TicketPaymentStatus.Paid or TicketPaymentStatus.Pending)
+            .Select(o => o.Id)
+            .ToList();
+
+        var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+        var tickets = attendees
+            .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
+            .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
+            .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
+            .Select(a => new UserTicketHoldingRow(
+                a.Id,
+                a.AttendeeName,
+                a.AttendeeEmail,
+                a.VendorTicketId,
+                a.TicketTypeName,
+                a.Status))
+            .ToList();
+
+        var ticketCount = await ComputeUserTicketCountAsync(userId);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var hasCurrentEventTicket = syncState is not null
+            && !string.IsNullOrEmpty(syncState.VendorEventId)
+            && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
+        var postEventHoldDate = hasCurrentEventTicket
+            ? await GetPostEventHoldDateAsync(ct)
+            : null;
+
+        return new UserTicketHoldings(
+            orderCount,
+            tickets,
+            hasCurrentEventTicket,
+            ticketCount,
+            postEventHoldDate)
+        {
+            OrderSummaries = orderSummaries,
+            OpenTicketOrderIds = openTicketOrderIds,
+        };
     }
 
-    public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        _ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
-
-    public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
+    private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
-        var activeEvent = await _shiftManagementService.GetActiveAsync();
+        var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null)
             return null;
 
@@ -792,23 +715,14 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             .AtStartOfDayInZone(tz)
             .ToInstant();
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         return postEventInstant > now ? postEventInstant : null;
-    }
-
-    public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
-    {
-        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return false;
-
-        return await _ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
     }
 
     public async Task<UserTicketExportData> GetUserTicketExportDataAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var orders = await _ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
         var orderRows = orders
             .Select(o => new UserTicketOrderExportRow(
                 o.BuyerName,
@@ -820,7 +734,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 o.PurchasedAt))
             .ToList();
 
-        var attendees = await _ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
+        var attendees = await ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
         var attendeeRows = attendees
             .Select(a => new UserTicketAttendeeExportRow(
                 a.AttendeeName,
@@ -833,22 +747,29 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return new UserTicketExportData(orderRows, attendeeRows);
     }
 
-    public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
-        CancellationToken ct = default)
-    {
-        var ids = await _ticketRepository.GetMatchedUserIdsForPaidOrdersAsync(ct);
-        return ids;
-    }
-
-    public Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default) =>
-        _ticketRepository.GetPaidOrderDatesInWindowAsync(fromInclusive, toExclusive, ct);
-
-    // ==========================================================================
-    // GDPR data export contributor
-    // ==========================================================================
+    private static TicketOrderInfo Project(TicketOrder o, string? currentEventId) => new(
+        Id: o.Id,
+        VendorOrderId: o.VendorOrderId,
+        BuyerName: o.BuyerName,
+        BuyerEmail: o.BuyerEmail,
+        TotalAmount: o.TotalAmount,
+        Currency: o.Currency,
+        DiscountCode: o.DiscountCode,
+        PaymentStatus: o.PaymentStatus,
+        VendorEventId: o.VendorEventId,
+        PurchasedAt: o.PurchasedAt,
+        MatchedUserId: o.MatchedUserId,
+        IsCurrentEvent: !string.IsNullOrEmpty(currentEventId)
+            && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
+        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
+            Id: a.Id,
+            VendorTicketId: a.VendorTicketId,
+            AttendeeName: a.AttendeeName,
+            AttendeeEmail: a.AttendeeEmail,
+            TicketTypeName: a.TicketTypeName,
+            Price: a.Price,
+            Status: a.Status,
+            MatchedUserId: a.MatchedUserId)).ToList());
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
@@ -878,10 +799,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return [ordersSlice, attendeesSlice];
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private static bool HasSearchTerm(
         [NotNullWhen(true)] string? value, int minLength = 2) =>
         !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
@@ -889,13 +806,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
-    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
-    {
-        _cache.InvalidateTicketCaches();
-        _cache.InvalidateUserTicketCount(senderUserId);
-        if (receiverUserId is { } receiver)
-        {
-            _cache.InvalidateUserTicketCount(receiver);
-        }
-    }
+    // Invalidation no-ops on the inner; CachingTicketQueryService intercepts.
+    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
+        ticketRepository.GetOrderDriftAsync(ct);
+
 }

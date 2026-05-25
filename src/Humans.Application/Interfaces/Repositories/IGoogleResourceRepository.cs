@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -19,6 +20,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// the service layer via <see cref="Teams.ITeamService"/>
 /// per design-rules §2c/§6.
 /// </remarks>
+[Section("GoogleIntegration")]
 public interface IGoogleResourceRepository : IRepository
 {
     // ==========================================================================
@@ -44,6 +46,14 @@ public interface IGoogleResourceRepository : IRepository
     /// </summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>> GetActiveByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the display name for each resource id in <paramref name="resourceIds"/>.
+    /// Missing ids are absent from the dictionary. Read-only.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
         CancellationToken ct = default);
 
     /// <summary>

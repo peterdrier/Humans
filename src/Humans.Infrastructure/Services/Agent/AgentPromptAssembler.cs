@@ -114,24 +114,19 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
 
     public IReadOnlyList<AnthropicToolDefinition> BuildToolDefinitions() =>
     [
-        new AnthropicToolDefinition(
-            Name: AgentToolNames.FetchFeatureSpec,
+        new(Name: AgentToolNames.FetchFeatureSpec,
             Description: "Fetch a feature specification from docs/features/{name}.md. Use only for whitelisted filename stems.",
             JsonSchema: """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}"""),
-        new AnthropicToolDefinition(
-            Name: AgentToolNames.FetchSectionGuide,
+        new(Name: AgentToolNames.FetchSectionGuide,
             Description: "Fetch the long procedural guide for a given section key from SectionHelpContent.Guides.",
             JsonSchema: """{"type":"object","properties":{"section":{"type":"string"}},"required":["section"]}"""),
-        new AnthropicToolDefinition(
-            Name: AgentToolNames.GetAuditHistory,
+        new(Name: AgentToolNames.GetAuditHistory,
             Description: "Fetch the calling user's recent audit history as plain-text lines (shifts, team membership, role changes, voluntolds, approvals, Workspace events). The tool substitutes the user's id with 'You' and resolves other actors to display names — no GUIDs are returned. Use for personal-history questions; do not use for questions about other users. Default limit is 20, hard cap 50.",
             JsonSchema: """{"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":50,"description":"Max lines to return. Defaults to 20, capped at 50."}}}"""),
-        new AnthropicToolDefinition(
-            Name: AgentToolNames.GetShiftDetails,
+        new(Name: AgentToolNames.GetShiftDetails,
             Description: "Look up details for one of the user's upcoming shift entries (block or singleton). Pass the Key value from an UpcomingShifts row in the user-context tail. Returns rota name, full description, dates, day count, status, all-day window or start/duration, and where-to-show-up notes from PracticalInfo. Only the calling user's signups are accessible — looking up other users' shifts returns a not-found error.",
             JsonSchema: """{"type":"object","properties":{"shiftId":{"type":"string","format":"uuid"}},"required":["shiftId"]}"""),
-        new AnthropicToolDefinition(
-            Name: AgentToolNames.RouteToIssue,
+        new(Name: AgentToolNames.RouteToIssue,
             Description: "Hand off a question the agent cannot answer to the Issues system. Does NOT create the issue — the system pre-fills an issue submission form so the user can review and submit. Use Question for general help requests, Bug for things that look broken, Feature for missing capabilities.",
             JsonSchema: """{"type":"object","properties":{"title":{"type":"string","description":"Short one-line title (max 200 chars)."},"category":{"type":"string","enum":["Bug","Feature","Question"],"description":"Issue category."},"description":{"type":"string","description":"Detailed description of what the user asked and any relevant context (max 5000 chars)."}},"required":["title","category","description"]}""")
     ];

@@ -1,11 +1,10 @@
+using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
+using Humans.Application.Tests.Architecture.Ratchet;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 using NotificationMeterProvider = Humans.Application.Services.Notifications.NotificationMeterProvider;
-using Humans.Infrastructure.Repositories.Notifications;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -26,23 +25,8 @@ public class NotificationsArchitectureTests
 {
     // ── NotificationService ──────────────────────────────────────────────────
 
-    [HumansFact]
-    public void NotificationService_LivesInHumansApplicationServicesNotificationsNamespace()
-    {
-        typeof(NotificationService).Namespace
-            .Should().Be("Humans.Application.Services.Notifications",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void NotificationService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(NotificationService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use INotificationRepository instead (design-rules §3)");
-    }
+    // The DbContext-constructor-parameter check is covered by the generic
+    // ApplicationServicesTakeNoDbContextRule for every Application service.
 
     [HumansFact]
     public void NotificationService_TakesRepository()
@@ -73,32 +57,15 @@ public class NotificationsArchitectureTests
     // ── NotificationInboxService ─────────────────────────────────────────────
 
     [HumansFact]
-    public void NotificationInboxService_LivesInHumansApplicationServicesNotificationsNamespace()
-    {
-        typeof(NotificationInboxService).Namespace
-            .Should().Be("Humans.Application.Services.Notifications");
-    }
-
-    [HumansFact]
-    public void NotificationInboxService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(NotificationInboxService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use INotificationRepository instead");
-    }
-
-    [HumansFact]
     public void NotificationInboxService_TakesRepositoryAndUserService()
     {
-        // Display-name stitching runs through IUserService.GetByIdsAsync rather
+        // Display-name stitching runs through IUserServiceRead.GetUserInfosAsync rather
         // than a cross-domain .Include(nr => nr.User) chain (design-rules §6).
         var ctor = typeof(NotificationInboxService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(INotificationRepository));
-        paramTypes.Should().Contain(p => p.Name == "IUserService");
+        paramTypes.Should().Contain(p => p.Name == "IUserServiceRead");
     }
 
     // ── NotificationMeterProvider ────────────────────────────────────────────
@@ -111,31 +78,21 @@ public class NotificationsArchitectureTests
     }
 
     [HumansFact]
-    public void NotificationMeterProvider_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "the meter provider must reach every non-owned table via its owning section service (design-rules §2c)");
-    }
-
-    [HumansFact]
     public void NotificationMeterProvider_TakesCrossSectionInterfaces()
     {
         // The meter provider computes badge counts by calling into each owning
-        // section service — IProfileService, IUserService, IGoogleSyncService,
-        // ITeamService, ITicketSyncService, IApplicationDecisionService — never
-        // reading the underlying tables directly.
+        // section service (IUserService, IGoogleSyncService, ITeamServiceRead,
+        // ITicketSyncService, IApplicationDecisionService,
+        // ICampService) — never reading the underlying tables directly.
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
-        paramTypeNames.Should().Contain("IProfileService");
-        paramTypeNames.Should().Contain("IUserService");
+        paramTypeNames.Should().Contain("IUserServiceRead");
         paramTypeNames.Should().Contain("IGoogleSyncService");
-        paramTypeNames.Should().Contain("ITeamService");
+        paramTypeNames.Should().Contain("ITeamServiceRead");
         paramTypeNames.Should().Contain("ITicketSyncService");
         paramTypeNames.Should().Contain("IApplicationDecisionService");
+        paramTypeNames.Should().Contain("ICampService");
     }
 
     [HumansFact]
@@ -155,20 +112,64 @@ public class NotificationsArchitectureTests
 
     // ── INotificationRepository ──────────────────────────────────────────────
 
+    // Sealed-repository check is covered by the generic
+    // IRepositoryImplementationsAreSealedRule across every repository.
+
+    // ── Sole-writer DbSet rule ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Only <c>NotificationRepository</c> may write to
+    /// <c>ctx.Notifications</c> or <c>ctx.NotificationRecipients</c>. Any
+    /// other production class calling <c>.Add</c>, <c>.AddRange</c>,
+    /// <c>.Update</c>, <c>.Remove</c>, or <c>.Attach</c> on either DbSet is
+    /// a cross-section boundary violation: callers must go through
+    /// <see cref="Humans.Application.Interfaces.Notifications.INotificationService"/>,
+    /// <see cref="Humans.Application.Interfaces.Notifications.INotificationEmitter"/>,
+    /// or <see cref="Humans.Application.Interfaces.Notifications.INotificationInboxService"/>.
+    /// </summary>
     [HumansFact]
-    public void INotificationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
+    public void Only_NotificationRepository_Writes_Notification_DbSets()
     {
-        typeof(INotificationRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
+        var repoRoot = RatchetTestRunner.LocateRepoRoot();
+        var violations = ScanNotificationDbSetWrites(repoRoot);
+        RatchetTestRunner.Run(
+            "OnlyNotificationRepositoryWritesNotificationDbSets",
+            "tests/Humans.Application.Tests/Architecture/Baselines/OnlyNotificationRepositoryWritesNotificationDbSets.baseline.txt",
+            violations);
     }
 
-    [HumansFact]
-    public void NotificationRepository_IsSealed()
-    {
-        var repoType = typeof(NotificationRepository);
+    // Matches the write-operation call chains on either notification DbSet.
+    // e.g. ctx.Notifications.Add(...)  /  .AddRange  /  .Update  /  .Remove  /  .Attach
+    //     ctx.NotificationRecipients.Add(...)  / ... etc.
+    private static readonly Regex NotificationWriteRegex = new(
+        @"(?:Notifications|NotificationRecipients)\s*\.\s*(?:Add|AddRange|Update|Remove|Attach)\b",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(2));
 
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
+    internal static IEnumerable<string> ScanNotificationDbSetWrites(string repoRoot)
+    {
+        foreach (var path in RatchetTestRunner.EnumerateSourceFiles(repoRoot))
+        {
+            // The canonical owner is NotificationRepository — exclude it from violation reporting.
+            if (path.Replace('\\', '/').EndsWith(
+                    "Infrastructure/Repositories/Notifications/NotificationRepository.cs",
+                    StringComparison.Ordinal))
+                continue;
+
+            var content = File.ReadAllText(path);
+            if (!NotificationWriteRegex.IsMatch(content)) continue;
+
+            var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            var ordinal = 0;
+            foreach (var match in NotificationWriteRegex.Matches(content).Cast<Match>())
+            {
+                ordinal++;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                var dbset = match.Value.StartsWith("NotificationRecipients", StringComparison.Ordinal)
+                    ? "NotificationRecipients-write"
+                    : "Notifications-write";
+                yield return $"{rel}:{dbset}#{ordinal} # L{line}";
+            }
+        }
     }
 }

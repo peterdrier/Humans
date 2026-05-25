@@ -1,3 +1,5 @@
+using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Domain.Attributes;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -9,6 +11,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// scoped Build-period signup read used by the gap detector. All methods
 /// return materialized lists / nullable rows — no IQueryable leaks.
 /// </summary>
+[Section("Shifts")]
 public interface IVolunteerTrackingRepository : IRepository
 {
     /// <summary>Fetch the row for (userId, eventSettingsId), or null.</summary>
@@ -18,6 +21,14 @@ public interface IVolunteerTrackingRepository : IRepository
     /// <summary>All rows for the event keyed by UserId. Empty list if none.</summary>
     Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(
         Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns <see cref="VolunteerBuildStatus"/> rows for the supplied user
+    /// ids in the given event, in one query. Read-only. Backs the bulk path
+    /// on <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Upsert (UserId, EventSettingsId): mutate or insert the row's camp set-up
@@ -72,6 +83,18 @@ public interface IVolunteerTrackingRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns confirmed shift signups whose [StartsAtUtc, EndsAtUtc) overlaps the date range
+    /// (in event-local time). When <paramref name="departmentId"/> is non-null, restricts to
+    /// shifts whose rota belongs to that team.
+    /// </summary>
+    Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
+        Guid eventSettingsId,
+        LocalDate startDate,
+        LocalDate endDate,
+        Guid? departmentId,
+        CancellationToken ct);
 }
 
 /// <summary>

@@ -10,21 +10,15 @@ namespace Humans.Infrastructure.Services;
 /// IMemoryCache in DI so all existing consumers get automatic tracking with
 /// no code changes. Stats are in-memory only — reset on application restart.
 /// </summary>
-public sealed class TrackingMemoryCache : IMemoryCache, ICacheStatsProvider
+public sealed class TrackingMemoryCache(IMemoryCache inner) : IMemoryCache, ICacheStatsProvider
 {
-    private readonly IMemoryCache _inner;
     private readonly ConcurrentDictionary<string, CacheStatEntry> _stats = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _liveKeys = new(StringComparer.Ordinal);
-
-    public TrackingMemoryCache(IMemoryCache inner)
-    {
-        _inner = inner;
-    }
 
     public bool TryGetValue(object key, out object? value)
     {
         var keyType = DeriveKeyType(key);
-        var found = _inner.TryGetValue(key, out value);
+        var found = inner.TryGetValue(key, out value);
 
         if (found)
         {
@@ -49,7 +43,7 @@ public sealed class TrackingMemoryCache : IMemoryCache, ICacheStatsProvider
         var keyStr = key.ToString() ?? "(null)";
         _liveKeys.TryAdd(keyStr, 0);
 
-        var entry = _inner.CreateEntry(key);
+        var entry = inner.CreateEntry(key);
         entry.RegisterPostEvictionCallback((evictedKey, _, _, _) =>
         {
             var evictedKeyStr = evictedKey.ToString() ?? "(null)";
@@ -61,14 +55,14 @@ public sealed class TrackingMemoryCache : IMemoryCache, ICacheStatsProvider
 
     public void Remove(object key)
     {
-        _inner.Remove(key);
+        inner.Remove(key);
         var keyStr = key.ToString() ?? "(null)";
         _liveKeys.TryRemove(keyStr, out _);
     }
 
     public void Dispose()
     {
-        _inner.Dispose();
+        inner.Dispose();
     }
 
     // ICacheStatsProvider

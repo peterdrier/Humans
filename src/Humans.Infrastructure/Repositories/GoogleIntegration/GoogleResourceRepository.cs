@@ -14,22 +14,15 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-public sealed class GoogleResourceRepository : IGoogleResourceRepository
+internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext> factory) : IGoogleResourceRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-
-    public GoogleResourceRepository(IDbContextFactory<HumansDbContext> factory)
-    {
-        _factory = factory;
-    }
-
     // ==========================================================================
     // Reads
     // ==========================================================================
 
     public async Task<GoogleResource?> GetByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
@@ -37,7 +30,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task<IReadOnlyList<GoogleResource>> GetActiveByTeamIdAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .Where(r => r.TeamId == teamId && r.IsActive)
@@ -54,7 +47,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
             return new Dictionary<Guid, IReadOnlyList<GoogleResource>>();
         }
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.GoogleResources
             .AsNoTracking()
             .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
@@ -64,7 +57,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         var result = new Dictionary<Guid, IReadOnlyList<GoogleResource>>(teamIds.Count);
         foreach (var teamId in teamIds)
         {
-            result[teamId] = Array.Empty<GoogleResource>();
+            result[teamId] = [];
         }
         foreach (var group in rows.GroupBy(r => r.TeamId))
         {
@@ -73,9 +66,26 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         return result;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default)
+    {
+        if (resourceIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GoogleResources
+            .AsNoTracking()
+            .Where(r => resourceIds.Contains(r.Id))
+            .Select(r => new { r.Id, r.Name })
+            .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .Where(r => r.IsActive)
@@ -86,7 +96,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.DriveFolder)
@@ -95,7 +105,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task<int> GetCountAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources.AsNoTracking().CountAsync(ct);
     }
 
@@ -105,7 +115,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         GoogleResourceType type,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId
@@ -120,7 +130,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         GoogleResourceType type,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId
@@ -134,7 +144,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         string normalizedGroupEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId
@@ -149,7 +159,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         string normalizedGroupEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.GoogleResources
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId
@@ -164,7 +174,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task AddAsync(GoogleResource resource, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.GoogleResources.Add(resource);
         await ctx.SaveChangesAsync(ct);
     }
@@ -178,7 +188,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         DrivePermissionLevel? newPermissionLevel,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FirstOrDefaultAsync(r => r.Id == resourceId, ct);
         if (row is null)
         {
@@ -205,7 +215,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task UnlinkAsync(Guid resourceId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FirstOrDefaultAsync(r => r.Id == resourceId, ct);
         if (row is null)
         {
@@ -221,7 +231,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         DrivePermissionLevel level,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
         if (row is null)
         {
@@ -238,7 +248,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         bool restrict,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
         if (row is null)
         {
@@ -255,7 +265,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         GoogleResourceType? resourceType,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.GoogleResources.Where(r => r.TeamId == teamId && r.IsActive);
         if (resourceType is { } rt)
         {
@@ -265,7 +275,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         var rows = await query.ToListAsync(ct);
         if (rows.Count == 0)
         {
-            return Array.Empty<GoogleResource>();
+            return [];
         }
 
         foreach (var row in rows)
@@ -278,7 +288,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task MarkSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
         if (row is null)
         {
@@ -300,7 +310,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
             return;
         }
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.GoogleResources
             .Where(r => resourceIds.Contains(r.Id))
             .ToListAsync(ct);
@@ -328,7 +338,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
             return;
         }
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.GoogleResources
             .Where(r => resourceIds.Contains(r.Id))
             .ToListAsync(ct);
@@ -347,7 +357,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task UpdateNameAsync(Guid resourceId, string name, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
         if (row is null)
         {
@@ -360,7 +370,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
 
     public async Task DeactivateAsync(Guid resourceId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
         if (row is null)
         {

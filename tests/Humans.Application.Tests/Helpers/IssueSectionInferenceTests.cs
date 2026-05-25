@@ -25,11 +25,16 @@ public class IssueSectionInferenceTests
     [InlineData("/Legal", IssueSectionRouting.Legal)]
     [InlineData("/Consent", IssueSectionRouting.Legal)]
     [InlineData("/City/zone", IssueSectionRouting.CityPlanning)]
+    [InlineData("/Scanner", IssueSectionRouting.Scanner)]
+    [InlineData("/Scanner/Barcode", IssueSectionRouting.Scanner)]
     [InlineData("https://example.com/Camps/abc", IssueSectionRouting.Camps)]
+    [InlineData("https://example.com/Scanner/Barcode", IssueSectionRouting.Scanner)]
     [InlineData("/Tickets?tab=open", IssueSectionRouting.Tickets)]
     [InlineData("/Camps/123?foo=bar&baz=qux", IssueSectionRouting.Camps)]
+    [InlineData("/Scanner?foo=bar&baz=qux", IssueSectionRouting.Scanner)]
     [InlineData("/Shifts#anchor", IssueSectionRouting.Shifts)]
     [InlineData("/Profile?id=42#section", IssueSectionRouting.Profiles)]
+    [InlineData("/Scanner#barcode", IssueSectionRouting.Scanner)]
     public void FromPath_maps_known_first_segment(string input, string expected)
     {
         IssueSectionInference.FromPath(input).Should().Be(expected);

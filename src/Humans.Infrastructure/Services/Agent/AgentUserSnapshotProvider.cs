@@ -3,7 +3,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -14,52 +13,32 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services.Agent;
 
-public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
+public sealed class AgentUserSnapshotProvider(
+    IUserServiceRead users,
+    IRoleAssignmentService roles,
+    ITeamServiceRead teams,
+    IConsentServiceRead consents,
+    IFeedbackService feedback,
+    ITicketServiceRead tickets,
+    IShiftView shiftView,
+    IShiftManagementService shiftManagement,
+    IClock clock) : IAgentUserSnapshotProvider
 {
-    private readonly IProfileService _profiles;
-    private readonly IUserService _users;
-    private readonly IRoleAssignmentService _roles;
-    private readonly ITeamService _teams;
-    private readonly IConsentService _consents;
-    private readonly IFeedbackService _feedback;
-    private readonly ITicketQueryService _tickets;
-    private readonly IShiftSignupService _shiftSignups;
-    private readonly IShiftManagementService _shiftManagement;
-    private readonly IClock _clock;
-
-    public AgentUserSnapshotProvider(
-        IProfileService profiles,
-        IUserService users,
-        IRoleAssignmentService roles,
-        ITeamService teams,
-        IConsentService consents,
-        IFeedbackService feedback,
-        ITicketQueryService tickets,
-        IShiftSignupService shiftSignups,
-        IShiftManagementService shiftManagement,
-        IClock clock)
-    {
-        _profiles = profiles;
-        _users = users;
-        _roles = roles;
-        _teams = teams;
-        _consents = consents;
-        _feedback = feedback;
-        _tickets = tickets;
-        _shiftSignups = shiftSignups;
-        _shiftManagement = shiftManagement;
-        _clock = clock;
-    }
-
     public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var profile = await _profiles.GetProfileAsync(userId, cancellationToken);
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
-        var activeRoles = await _roles.GetActiveForUserAsync(userId, cancellationToken);
-        var teamMemberships = await _teams.GetActiveTeamMembershipsForUserAsync(userId, cancellationToken);
-        var pendingDocs = await _consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
-        var openFeedback = await _feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
-        var openTickets = await _tickets.GetOpenTicketIdsForUserAsync(userId, cancellationToken);
+        var user = await users.GetUserInfoAsync(userId, cancellationToken);
+        var profile = user?.Profile;
+        var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
+        var teamMemberships = (await teams.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
+            .Where(x => x.Membership is not null)
+            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+            .ToList();
+        var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
+        var openFeedback = await feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
+        var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);
+        var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
@@ -68,7 +47,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
 
         return new AgentUserSnapshot(
             UserId: userId,
-            DisplayName: user?.DisplayName ?? string.Empty,
+            DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: profile?.MembershipTier.ToString() ?? "Volunteer",
             IsApproved: profile?.IsApproved ?? false,
@@ -83,22 +62,25 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
     private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var activeEvent = await _shiftManagement.GetActiveAsync();
+        var activeEvent = await shiftManagement.GetActiveAsync();
         if (activeEvent is null)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
-        var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
+        // T-09 (issue #720): read signups from the cached ShiftUserView
+        // rather than IShiftSignupService.GetByUserAsync. The view already
+        // filters Signups to the active event (see ShiftViewService).
+        var userView = await shiftView.GetUserAsync(userId, cancellationToken);
+        var signups = userView.Signups;
         if (signups.Count == 0)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
-        var now = _clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
         var upcoming = signups
-            .Where(s => s.Shift is not null
-                && s.Shift.GetAbsoluteEnd(activeEvent) > now
+            .Where(s => s.Shift.GetAbsoluteEnd(activeEvent) > now
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var entries = new List<UpcomingShiftEntry>();
 

@@ -1,0 +1,21 @@
+@model Humans.Web.ViewComponents.TicketHoldingsViewModel
+
+<div class="card mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <h3 class="h6 mb-0">Tickets</h3>
+        <small class="text-muted">@Model.OrderCount @(Model.OrderCount == 1 ? "order" : "orders")</small>
+    </div>
+    <div class="card-body py-3 d-flex flex-column gap-2">
+        @if (Model.Tickets.Count == 0)
+        {
+            <p class="text-muted small mb-0">No tickets.</p>
+        }
+        else
+        {
+            @foreach (var t in Model.Tickets)
+            {
+                <vc:ticket-stub stub="@t" />
+            }
+        }
+    </div>
+</div>

@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Humans.Application;
 using Humans.Application.Interfaces.Issues;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
@@ -13,47 +13,24 @@ using Humans.Web.Authorization.Requirements;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 
-// Issue / IssueComment cross-domain nav properties (Reporter, Assignee,
-// ResolvedByUser, SenderUser) are [Obsolete] — IssuesService stitches them in
-// memory from IUserService so controllers can read them for view-model shaping.
-// Nav-strip follow-up tracked in design-rules §15i.
+// Obsolete nav props (Reporter/Assignee/ResolvedByUser/SenderUser) stitched in-memory by IssuesService; see design-rules §15i.
 #pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Issues")]
-public class IssuesController : HumansControllerBase
+public class IssuesController(
+    IIssuesService issues,
+    IAuthorizationService authorization,
+    IUserServiceRead users,
+    IUserServiceRead userService,
+    IStringLocalizer<SharedResource> localizer,
+    ILogger<IssuesController> logger) : HumansControllerBase(userService)
 {
-    private readonly IIssuesService _issues;
-    private readonly IAuthorizationService _authorization;
-    private readonly IProfileService _profiles;
-    private readonly IUserService _users;
-    private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ILogger<IssuesController> _logger;
+    private readonly IStringLocalizer<SharedResource> _localizer = localizer;
 
-    public IssuesController(
-        IIssuesService issues,
-        IAuthorizationService authorization,
-        IProfileService profiles,
-        IUserService users,
-        UserManager<User> userManager,
-        IStringLocalizer<SharedResource> localizer,
-        ILogger<IssuesController> logger)
-        : base(userManager)
-    {
-        _issues = issues;
-        _authorization = authorization;
-        _profiles = profiles;
-        _users = users;
-        _localizer = localizer;
-        _logger = logger;
-    }
-
-    // Roles must come from claims (the RoleAssignment → claims-transformation
-    // path), NOT from UserManager.GetRolesAsync (which only returns Identity-DB
-    // roles and misses RoleAssignment-driven roles like CampAdmin). Mirrors
-    // NavBadgesViewComponent so the badge count and the list always agree.
+    // Roles from claims (RoleAssignment → claims-transformation), NOT UserManager.GetRolesAsync (misses CampAdmin etc.).
     private List<string> ClaimsRoles() => User.Claims
         .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
         .Select(c => c.Value)
@@ -75,10 +52,7 @@ public class IssuesController : HumansControllerBase
         var isAdmin = User.IsInRole(RoleNames.Admin);
         var viewMode = view ?? IssueViewMode.All;
 
-        // "Open" expands to the non-terminal set so the count matches the
-        // nav badge's actionable definition; "Closed" inverts to terminal.
-        // "Mine" forces ReporterUserId to the current user — allowed for any
-        // user since filtering on your own reports is never a privacy escalation.
+        // Open = non-terminal (matches nav badge); Closed = terminal; Mine = ReporterUserId == current user.
         var statuses = viewMode switch
         {
             IssueViewMode.Open => new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress },
@@ -86,23 +60,21 @@ public class IssuesController : HumansControllerBase
             _ => null
         };
 
-        // Admin reporter dropdown is independent of the view-mode buttons.
-        // Non-admins may only filter by their own ID (the Mine button); the
-        // dropdown is never rendered for them.
+        // Non-admin: reporter filter forced to self (Mine button). Admin dropdown is independent.
         Guid? reporterFilter = viewMode == IssueViewMode.Mine
             ? user.Id
             : (isAdmin ? reporter : null);
 
         var filter = new IssueListFilter(
             Statuses: statuses,
-            Categories: category.HasValue ? new[] { category.Value } : null,
-            Sections: !string.IsNullOrWhiteSpace(section) ? new string?[] { section } : null,
+            Categories: category.HasValue ? [category.Value] : null,
+            Sections: !string.IsNullOrWhiteSpace(section) ? [section] : null,
             ReporterUserId: reporterFilter,
             AssigneeUserId: null,
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
 
-        var issues = await _issues.GetIssueListAsync(filter, user.Id, roles, isAdmin);
+        var issues1 = await issues.GetIssueListAsync(filter, user.Id, roles, isAdmin);
 
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).
@@ -118,7 +90,7 @@ public class IssuesController : HumansControllerBase
         var reporterOptions = new List<ReporterDropdownItem>();
         if (isAdmin)
         {
-            var distinct = await _issues.GetDistinctReportersAsync();
+            var distinct = await issues.GetDistinctReportersAsync();
             reporterOptions = distinct
                 .Select(r => new ReporterDropdownItem
                 {
@@ -129,7 +101,7 @@ public class IssuesController : HumansControllerBase
                 .ToList();
         }
 
-        var rows = issues.Select(MapListItem).ToList();
+        var rows = issues1.Select(MapListItem).ToList();
 
         var vm = new IssuePageViewModel
         {
@@ -186,20 +158,7 @@ public class IssuesController : HumansControllerBase
         try
         {
             var roles = ClaimsRoles();
-            var additionalContextParts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(model.AdditionalContext))
-                additionalContextParts.Add(model.AdditionalContext);
-            if (roles.Count > 0)
-                additionalContextParts.Add($"roles: {string.Join(", ", roles.Order(StringComparer.Ordinal))}");
-            var additionalContext = additionalContextParts.Count > 0
-                ? string.Join(" | ", additionalContextParts)
-                : null;
-            // additional_context column is varchar(2000); the user input is bounded
-            // by [StringLength(2000)] but the roles suffix can push it past the limit.
-            if (additionalContext is { Length: > 2000 })
-                additionalContext = additionalContext[..2000];
-
-            var issue = await _issues.SubmitIssueAsync(
+            var issue = await issues.SubmitIssueAsync(
                 reporterUserId: user.Id,
                 category: model.Category,
                 title: model.Title,
@@ -207,9 +166,10 @@ public class IssuesController : HumansControllerBase
                 section: section,
                 pageUrl: model.PageUrl,
                 userAgent: model.UserAgent,
-                additionalContext: additionalContext,
+                additionalContext: model.AdditionalContext,
                 screenshot: model.Screenshot,
-                dueDate: model.DueDate);
+                dueDate: model.DueDate,
+                reporterRoles: roles);
 
             if (isAjax) return Json(new { id = issue.Id });
 
@@ -218,7 +178,7 @@ public class IssuesController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to submit issue for user {UserId}", user.Id);
+            logger.LogError(ex, "Failed to submit issue for user {UserId}", user.Id);
             if (isAjax) return StatusCode(500, new { error = "Failed to file issue" });
             SetError("Failed to file issue.");
             return View("New", model);
@@ -232,16 +192,11 @@ public class IssuesController : HumansControllerBase
         if (userMissing is not null) return userMissing;
 
         var isPartial = partial || Request.Headers.XRequestedWith == "XMLHttpRequest";
-        var issue = await _issues.GetIssueByIdAsync(id);
+        var issue = await issues.GetIssueByIdAsync(id);
 
-        // Treat "not found" and "no access" identically so we don't leak which
-        // GUIDs exist. For partial requests (the JS that paints the right pane
-        // on /Issues?selected=X), return a small inline notice so the panel
-        // doesn't get the framework's full-layout 404 rendered into it. For a
-        // direct nav, drop back to the Index without the selected param so the
-        // URL doesn't keep advertising the bad ID.
+        // "Not found" and "no access" indistinguishable. Partial → inline notice; full nav → redirect to Index.
         var canHandle = issue is not null
-            && (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
+            && (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
         var isReporter = issue is not null && issue.ReporterUserId == user.Id;
 
         if (issue is null || (!canHandle && !isReporter))
@@ -251,8 +206,9 @@ public class IssuesController : HumansControllerBase
                 : RedirectToAction(nameof(Index));
         }
 
-        var thread = await _issues.GetThreadAsync(id);
-        var vm = MapDetailViewModel(issue, thread, isHandler: canHandle, isReporter: isReporter);
+        var thread = await issues.GetThreadAsync(id);
+        var displayUsers = await GetIssueDisplayUsersAsync(issue);
+        var vm = MapDetailViewModel(issue, thread, displayUsers, isHandler: canHandle, isReporter: isReporter);
 
         if (canHandle)
         {
@@ -269,17 +225,20 @@ public class IssuesController : HumansControllerBase
 
     private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
     {
-        var activeIds = await _profiles.GetActiveApprovedUserIdsAsync();
+        var activeIds = (await users.GetAllUserInfosAsync().ConfigureAwait(false))
+            .Where(u => u.IsActive)
+            .Select(u => u.Id)
+            .ToList();
         if (activeIds.Count == 0)
         {
-            vm.AssigneeOptions = new List<AssigneeOption>();
+            vm.AssigneeOptions = [];
         }
         else
         {
-            var users = await _users.GetByIdsAsync(activeIds);
-            vm.AssigneeOptions = users.Values
-                .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+            var users1 = await users.GetUserInfosAsync(activeIds);
+            vm.AssigneeOptions = users1.Values
+                .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
+                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
                 .ToList();
         }
 
@@ -288,10 +247,11 @@ public class IssuesController : HumansControllerBase
         if (vm.AssigneeUserId.HasValue &&
             vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
         {
+            var inactiveInfo = await users.GetUserInfoAsync(vm.AssigneeUserId.Value);
             vm.AssigneeOptions.Insert(0, new AssigneeOption
             {
                 Id = vm.AssigneeUserId.Value,
-                DisplayName = (vm.AssigneeName ?? "Unknown") + " (inactive)"
+                DisplayName = (inactiveInfo?.BurnerName ?? "Unknown") + " (inactive)"
             });
         }
     }
@@ -303,10 +263,10 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await _issues.GetIssueByIdAsync(id);
+        var issue = await issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
 
-        var canHandle = (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
+        var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
         var isReporter = issue.ReporterUserId == user.Id;
         if (!canHandle && !isReporter) return NotFound();
 
@@ -318,13 +278,12 @@ public class IssuesController : HumansControllerBase
 
         try
         {
-            await _issues.PostCommentAsync(id, user.Id, model.Content, senderIsReporter: isReporter);
-
-            // "Comment & mark resolved" — only handlers can mark resolved.
-            if (model.ResolveOnPost && canHandle && !issue.Status.IsTerminal())
-            {
-                await _issues.UpdateStatusAsync(id, IssueStatus.Resolved, user.Id);
-            }
+            await issues.PostCommentAsync(
+                id,
+                user.Id,
+                model.Content,
+                senderIsReporter: isReporter,
+                resolveOnPost: model.ResolveOnPost && canHandle);
 
             SetSuccess("Comment posted.");
         }
@@ -332,12 +291,12 @@ public class IssuesController : HumansControllerBase
         {
             // Race: issue existed at the null-check above but was deleted
             // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during PostComment (deleted in race)", id);
+            logger.LogWarning("Issue {IssueId} not found during PostComment (deleted in race)", id);
             return NotFound();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to post comment on issue {IssueId}", id);
+            logger.LogError(ex, "Failed to post comment on issue {IssueId}", id);
             SetError("Failed to post comment.");
         }
 
@@ -351,27 +310,21 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await _issues.GetIssueByIdAsync(id);
+        var issue = await issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await issues.UpdateStatusWithResultAsync(id, model.Status, user.Id);
+        if (result.NotFound) return NotFound();
+
+        if (result.Succeeded)
         {
-            await _issues.UpdateStatusAsync(id, model.Status, user.Id);
             SetSuccess("Status updated.");
         }
-        catch (InvalidOperationException)
+        else
         {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during UpdateStatus (deleted in race)", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update issue {IssueId} status", id);
-            SetError("Failed to update status.");
+            SetError(result.ErrorMessage ?? "Failed to update status.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -384,27 +337,21 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await _issues.GetIssueByIdAsync(id);
+        var issue = await issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await issues.UpdateAssigneeWithResultAsync(id, model.AssigneeUserId, user.Id);
+        if (result.NotFound) return NotFound();
+
+        if (result.Succeeded)
         {
-            await _issues.UpdateAssigneeAsync(id, model.AssigneeUserId, user.Id);
             SetSuccess("Assignee updated.");
         }
-        catch (InvalidOperationException)
+        else
         {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during UpdateAssignee (deleted in race)", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update assignee on issue {IssueId}", id);
-            SetError("Failed to update assignee.");
+            SetError(result.ErrorMessage ?? "Failed to update assignee.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -417,31 +364,19 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await _issues.GetIssueByIdAsync(id);
+        var issue = await issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await issues.UpdateSectionWithResultAsync(id, model.Section, user.Id);
+        if (result.Succeeded)
         {
-            await _issues.UpdateSectionAsync(id, model.Section, user.Id);
             SetSuccess("Section updated.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            // UpdateSectionAsync throws for both "not found" and "section is
-            // not editable on a terminal issue" — surface the message so a
-            // handler trying to re-route a closed issue sees the actual reason
-            // rather than a silent 404. Both are expected user-driven problems;
-            // log at Warning so they stay visible in the prod log viewer
-            // (memory/code/always-log-problems.md).
-            _logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", id, ex.Message);
-            SetError(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update section on issue {IssueId}", id);
-            SetError("Failed to update section.");
+            SetError(result.ErrorMessage ?? "Failed to update section.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -454,33 +389,27 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await _issues.GetIssueByIdAsync(id);
+        var issue = await issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await issues.SetGitHubIssueNumberWithResultAsync(id, model.GitHubIssueNumber, user.Id);
+        if (result.NotFound) return NotFound();
+
+        if (result.Succeeded)
         {
-            await _issues.SetGitHubIssueNumberAsync(id, model.GitHubIssueNumber, user.Id);
             SetSuccess("GitHub issue linked.");
         }
-        catch (InvalidOperationException)
+        else
         {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue (deleted in race)", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to set GitHub issue for issue {IssueId}", id);
-            SetError("Failed to link GitHub issue.");
+            SetError(result.ErrorMessage ?? "Failed to link GitHub issue.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static IssueListItemViewModel MapListItem(Issue i) => new()
+    private static IssueListItemViewModel MapListItem(IssueListSnapshot i) => new()
     {
         Id = i.Id,
         Status = i.Status,
@@ -488,17 +417,19 @@ public class IssuesController : HumansControllerBase
         Section = i.Section,
         AreaLabel = AreaLabelMap.LabelFor(i.Section),
         Title = i.Title,
-        ReporterName = i.Reporter?.DisplayName ?? "Unknown",
         ReporterUserId = i.ReporterUserId,
         LastUpdate = i.UpdatedAt.ToDateTimeUtc(),
-        CommentCount = i.Comments.Count,
+        CommentCount = i.CommentCount,
         AssigneeUserId = i.AssigneeUserId,
-        AssigneeName = i.Assignee?.DisplayName,
         GitHubIssueNumber = i.GitHubIssueNumber
     };
 
     private static IssueDetailViewModel MapDetailViewModel(
-        Issue i, IReadOnlyList<IssueThreadEvent> thread, bool isHandler, bool isReporter)
+        Issue i,
+        IReadOnlyList<IssueThreadEvent> thread,
+        IReadOnlyDictionary<Guid, UserInfo> displayUsers,
+        bool isHandler,
+        bool isReporter)
     {
         return new IssueDetailViewModel
         {
@@ -513,16 +444,16 @@ public class IssuesController : HumansControllerBase
             UserAgent = i.UserAgent,
             AdditionalContext = i.AdditionalContext,
             ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
-            ReporterName = i.Reporter?.DisplayName ?? "Unknown",
             ReporterUserId = i.ReporterUserId,
-            AssigneeName = i.Assignee?.DisplayName,
             AssigneeUserId = i.AssigneeUserId,
             GitHubIssueNumber = i.GitHubIssueNumber,
             DueDate = i.DueDate,
             CreatedAt = i.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = i.ResolvedByUser?.DisplayName,
+            ResolvedByName = i.ResolvedByUserId is { } resolvedById
+                ? displayUsers.GetValueOrDefault(resolvedById)?.BurnerName
+                : null,
             IsHandler = isHandler,
             IsReporter = isReporter,
             Thread = thread.Select(e => e switch
@@ -547,5 +478,14 @@ public class IssuesController : HumansControllerBase
                 _ => throw new NotSupportedException($"Unknown thread event type {e.GetType().Name}")
             }).ToList()
         };
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(Issue issue)
+    {
+        var ids = new HashSet<Guid> { issue.ReporterUserId };
+        if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
+        if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
+
+        return await users.GetUserInfosAsync(ids);
     }
 }

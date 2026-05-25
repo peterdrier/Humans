@@ -1,17 +1,16 @@
 using AwesomeAssertions;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Xunit;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Services;
@@ -110,7 +109,8 @@ public class TeamServiceSlugRaceTests
             Substitute.For<IShiftManagementService>(),
             Substitute.For<INotificationMeterCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
-            Substitute.For<IServiceProvider>(),
+            Substitute.For<IAdminAuthorizationService>(),
+            new ServiceLocatorBuilder().Build(),
             clock,
             NullLogger<TeamService>.Instance);
     }

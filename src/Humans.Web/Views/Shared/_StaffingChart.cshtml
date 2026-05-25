@@ -94,7 +94,12 @@
             options: {
                 responsive: true,
                 layout: { padding: { top: 20 } },
-                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                scales: {
+                    x: { stacked: true },
+                    // Volunteer counts are integers — pin ticks to whole numbers so
+                    // small ranges (e.g. 0–3 vols) don't show 0.5/1.5/2.5.
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
+                },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     tooltip: {

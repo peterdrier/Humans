@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
-using Humans.Web.Helpers;
 
 namespace Humans.Web.Models;
 
@@ -15,7 +15,7 @@ public class ProfileViewModel
     public string? ProfilePictureUrl { get; set; }
 
     /// <summary>
-    /// Whether the profile has a custom uploaded picture (takes precedence over Google avatar).
+    /// Whether the profile has a custom uploaded picture.
     /// </summary>
     public bool HasCustomProfilePicture { get; set; }
 
@@ -23,13 +23,6 @@ public class ProfileViewModel
     /// URL to the custom profile picture endpoint (if uploaded).
     /// </summary>
     public string? CustomProfilePictureUrl { get; set; }
-
-    /// <summary>
-    /// True when the user can import a photo from Google — they signed in with Google,
-    /// we captured an avatar URL on <see cref="Humans.Domain.Entities.User.ProfilePictureUrl"/>,
-    /// and they don't yet have a custom uploaded picture. See issue #532.
-    /// </summary>
-    public bool CanImportGooglePicture { get; set; }
 
     [Required]
     [StringLength(100)]
@@ -245,7 +238,7 @@ public class ProfileViewModel
     public string? ApplicationRoleUnderstanding { get; set; }
 
     /// <summary>
-    /// The effective profile picture URL (custom upload takes priority over Google avatar).
+    /// The effective profile picture URL.
     /// </summary>
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
         ? CustomProfilePictureUrl
@@ -313,7 +306,7 @@ public class ProfileViewModel
     /// Campaign grants assigned to this user (Active and Completed campaigns only).
     /// Only populated when IsOwnProfile is true.
     /// </summary>
-    public IReadOnlyList<CampaignGrant> CampaignGrants { get; set; } = [];
+    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
 
     /// <summary>
     /// No-show history for coordinators/admins viewing other profiles.
@@ -339,7 +332,7 @@ public class ProfileViewModel
     /// <summary>
     /// All available shift tags (for the picker). Owner only.
     /// </summary>
-    public IReadOnlyList<ShiftTag> AllShiftTags { get; set; } = [];
+    public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
 
     /// <summary>
     /// IDs of shift tags the user has marked as preferred. Owner only.
@@ -366,6 +359,22 @@ public class ProfileViewModel
     /// </summary>
     [StringLength(500)]
     public string? AllergyOtherText { get; set; }
+
+    /// <summary>
+    /// When the human was first checked in at the active event's gate, or null
+    /// if not yet onsite. Drives the "Onsite since {time}" chip per issue
+    /// nobodies-collective/Humans#736. Visibility is policy-gated on
+    /// <see cref="CanViewOnsiteChip"/>.
+    /// </summary>
+    public Instant? OnsiteSince { get; set; }
+
+    /// <summary>
+    /// Whether the viewer is permitted to see the onsite chip. True for the
+    /// human themselves and for users matching the same admin/coordinator
+    /// policy that gates <c>/Tickets/Admin/Onsite</c>
+    /// (<c>PolicyNames.TicketAdminBoardOrAdmin</c>).
+    /// </summary>
+    public bool CanViewOnsiteChip { get; set; }
 }
 
 /// <summary>

@@ -35,7 +35,7 @@
             @for (int d = 1; d <= daysInMonth; d++)
             {
                 var day = firstOfMonth.PlusDays(d - 1);
-                var dayOccs = byDate.TryGetValue(day, out var list) ? list : new();
+                var dayOccs = byDate.TryGetValue(day, out var list) ? list : [];
                 <tr>
                     <td style="width: 10rem"><strong>@day.ToString("d MMM (ddd)", System.Globalization.CultureInfo.CurrentCulture)</strong></td>
                     <td>

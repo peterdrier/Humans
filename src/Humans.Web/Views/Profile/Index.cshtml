@@ -18,6 +18,14 @@
             </div>
         </div>
 
+        @if (Model.CanViewOnsiteChip && Model.OnsiteSince is not null)
+        {
+            <span class="badge text-bg-success mb-2" title="Checked in at the gate">
+                <i class="fa-solid fa-circle-check"></i>
+                Onsite since @Model.OnsiteSince.Value.ToDisplayDateTime()
+            </span>
+        }
+
         @if (Model.IsOwnProfile)
         {
             <vc:temp-data-alerts />
@@ -130,8 +138,8 @@
                             @foreach (var grant in Model.CampaignGrants)
                             {
                                 <tr>
-                                    <td>@grant.Campaign.Title</td>
-                                    <td><code>@grant.Code.Code</code></td>
+                                    <td>@grant.CampaignTitle</td>
+                                    <td><code>@grant.Code</code></td>
                                     <td>@grant.AssignedAt.ToDisplayDate()</td>
                                     <td>
                                         @if (grant.RedeemedAt.HasValue)
@@ -155,6 +163,8 @@
     @if (Model.IsOwnProfile)
     {
         <div class="col-md-4">
+            <vc:ticket-holdings user-id="@Model.UserId" />
+
             <div class="card mb-4">
                 <div class="card-header">@Localizer["Profile_QuickActions"]</div>
                 <div class="list-group list-group-flush">

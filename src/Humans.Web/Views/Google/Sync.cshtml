@@ -50,7 +50,6 @@
         return resourceTypeMap[name] ?? name;
     }
 
-    // Load tab data on activation
     document.querySelectorAll('#syncTabs button[data-resource-type]').forEach(function (btn) {
         btn.addEventListener('shown.bs.tab', function () {
             var resourceType = this.getAttribute('data-resource-type');
@@ -58,7 +57,6 @@
         });
     });
 
-    // Load the initially active tab
     var activeBtn = document.querySelector('#syncTabs button.active[data-resource-type]');
     if (activeBtn) {
         loadTab(activeBtn.getAttribute('data-resource-type'));
@@ -84,7 +82,6 @@
     }
 
     function bindTabActions(pane, resourceType) {
-        // Bind changes-only toggle
         var toggle = pane.querySelector('.sync-changes-toggle');
         if (toggle) {
             toggle.addEventListener('change', function () {
@@ -93,7 +90,6 @@
             applyFilter(pane, toggle.checked);
         }
 
-        // Bind execute-all buttons
         pane.querySelectorAll('[data-action="executeAll"]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var syncAction = parseInt(this.getAttribute('data-sync-action'));
@@ -105,7 +101,6 @@
             });
         });
 
-        // Bind execute-single buttons
         pane.querySelectorAll('[data-action="executeSingle"]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var resourceId = this.getAttribute('data-resource-id');
@@ -120,11 +115,9 @@
     }
 
     function applyFilter(pane, changesOnly) {
-        // Show/hide in-sync resource cards
         pane.querySelectorAll('.resource-in-sync').forEach(function (card) {
             card.style.display = changesOnly ? 'none' : '';
         });
-        // Show/hide correct and inherited member rows
         pane.querySelectorAll('.member-row').forEach(function (row) {
             var state = row.getAttribute('data-member-state');
             if (state === '0' || state === '3') {
@@ -174,7 +167,6 @@
         });
     }
 
-    // Rotate chevron on collapse toggle
     document.addEventListener('show.bs.collapse', function (e) {
         var btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
         if (btn) btn.style.transform = 'rotate(90deg)';

@@ -137,10 +137,10 @@
                                 }
                             </div>
                             <div class="text-muted small">
-                                @issue.ReporterName
-                                @if (!string.IsNullOrEmpty(issue.AssigneeName))
+                                <vc:human user-id="@issue.ReporterUserId" />
+                                @if (issue.AssigneeUserId.HasValue)
                                 {
-                                    <span> · @Localizer["Issue_AssignedTo"] @issue.AssigneeName</span>
+                                    <span> · @Localizer["Issue_AssignedTo"] <vc:human user-id="@issue.AssigneeUserId.Value" /></span>
                                 }
                             </div>
                         </td>

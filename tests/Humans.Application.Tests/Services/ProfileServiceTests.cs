@@ -2,96 +2,85 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Xunit;
-using ProfileService = Humans.Application.Services.Profile.ProfileService;
-using Humans.Application.Interfaces.AuditLog;
+using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Services.Profiles;
+using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
+using ProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
+using ProfilePictureStorageKeys = Humans.Application.Services.Profiles.ProfilePictureStorageKeys;
 
 namespace Humans.Application.Tests.Services;
 
-public class ProfileServiceTests : IDisposable
+public sealed class ProfileServiceTests : ServiceTestHarness
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
     private readonly ProfileService _service;
+    private readonly ProfileEditorService _editor;
     private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
     // Delegate to the production helper (made internal for test access)
     // so the test can't drift from the real key construction.
     private static string PicKey(Guid profileId, string contentType) =>
-        ProfileService.ProfilePictureKey(profileId, contentType);
+        ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType);
 
     public ProfileServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
-        var factory = new Infrastructure.TestDbContextFactory(options);
-        _profileRepository = new ProfileRepository(factory, _clock);
-        _userEmailRepository = new UserEmailRepository(factory);
-        _contactFieldRepository = new ContactFieldRepository(factory);
+        _profileRepository = new ProfileRepository(DbFactory, Clock);
+        _userEmailRepository = new UserEmailRepository(DbFactory);
+        _contactFieldRepository = new ContactFieldRepository(DbFactory);
+        var storageUserService = new UserService(
+            new UserRepository(DbFactory),
+            _userEmailRepository,
+            _profileRepository,
+            _contactFieldRepository,
+            _communicationPreferenceRepository,
+            AdminAuthorization,
+            Clock,
+            NullLogger<UserService>.Instance);
 
         _service = new ProfileService(
             _profileRepository, _userService,
-            _userEmailRepository,
-            _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _auditLogService,
-            _membershipCalculator,
             _fileStorage,
-            _clock,
             NullLogger<ProfileService>.Instance);
+        _editor = new ProfileEditorService(
+            _userService,
+            _fileStorage,
+            NullLogger<ProfileEditorService>.Instance);
 
-        // Default: return all input IDs as Active (sufficient for most tests that don't filter by status)
-        _membershipCalculator
-            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IEnumerable<Guid>>().ToHashSet();
-                return Task.FromResult(new MembershipPartition(
-                    IncompleteSignup: [],
-                    PendingApproval: [],
-                    Active: ids,
-                    MissingConsents: [],
-                    Suspended: [],
-                    PendingDeletion: []));
-            });
+        _userService.StubGetUserInfosFromContext(Db);
+        _userService.StubGetUserInfoFromContext(Db);
+        _userService.SaveProfileAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UserProfileSaveCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => storageUserService.SaveProfileAsync(
+                call.ArgAt<Guid>(0),
+                call.ArgAt<UserProfileSaveCommand>(1),
+                call.ArgAt<CancellationToken>(2)));
+        _userService.SetProfilePictureContentTypeAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => storageUserService.SetProfilePictureContentTypeAsync(
+                call.ArgAt<Guid>(0),
+                call.ArgAt<string>(1),
+                call.ArgAt<CancellationToken>(2)));
     }
 
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    // --- Profile save flow ---
+    // --- Profile editor save flow ---
 
     [HumansFact(Timeout = 10000)]
     public async Task SaveProfileAsync_NewProfile_CreatesProfile()
@@ -100,10 +89,10 @@ public class ProfileServiceTests : IDisposable
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        var profileId = await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+        var profileId = await _editor.SaveProfileAsync(userId, "Jane Doe", request);
 
         profileId.Should().NotBe(Guid.Empty);
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("Flame");
         profile.FirstName.Should().Be("Jane");
         profile.LastName.Should().Be("Doe");
@@ -116,15 +105,15 @@ public class ProfileServiceTests : IDisposable
     /// <see cref="ProfileState.Active"/>.
     /// </summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileService_UpdateProfileAsync_TransitionsStubToActive_WhenAllRequiredFieldsPopulated()
+    public async Task ProfileEditorService_SaveProfileAsync_TransitionsStubToActive_WhenAllRequiredFieldsPopulated()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+        await _editor.SaveProfileAsync(userId, "Jane Doe", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Active);
     }
 
@@ -132,16 +121,16 @@ public class ProfileServiceTests : IDisposable
     /// Issue #635 (§15i): missing required fields keeps the Profile in Stub.
     /// </summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileService_UpdateProfileAsync_StaysStub_WhenRequiredFieldsBlank()
+    public async Task ProfileEditorService_SaveProfileAsync_StaysStub_WhenRequiredFieldsBlank()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         // BurnerName/FirstName/LastName all empty — Stub state.
         var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
 
-        await _service.SaveProfileAsync(userId, "Stub", request, "en");
+        await _editor.SaveProfileAsync(userId, "Stub", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Stub);
     }
 
@@ -152,12 +141,12 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(burnerName: "NewName", firstName: "Updated", lastName: "Person");
 
-        await _service.SaveProfileAsync(userId, "Updated Person", request, "en");
+        await _editor.SaveProfileAsync(userId, "Updated Person", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("NewName");
         profile.FirstName.Should().Be("Updated");
-        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
@@ -167,9 +156,10 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest();
 
-        await _service.SaveProfileAsync(userId, "New Display Name", request, "en");
+        await _editor.SaveProfileAsync(userId, "New Display Name", request);
 
-        await _userService.Received().UpdateDisplayNameAsync(userId, "New Display Name", Arg.Any<CancellationToken>());
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        user.DisplayName.Should().Be("New Display Name");
     }
 
     [HumansFact]
@@ -179,9 +169,9 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 14);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
     }
 
@@ -192,78 +182,53 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 30);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task SaveProfileAsync_RemoveProfilePicture_ClearsData()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, withPicture: true);
-        var request = MakeRequest(removeProfilePicture: true);
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ProfilePictureData.Should().BeNull();
-        profile.ProfilePictureContentType.Should().BeNull();
-    }
-
-    // --- Profile picture dual-write (phase 1 of issue nobodies-collective/Humans#527) ---
+    // --- Profile picture write paths (file share is the source of truth; the
+    // DB bytes column is obsolete and untouched by code) ---
 
     [HumansFact]
-    public async Task SaveProfileAsync_UploadsProfilePicture_DualWritesToDbAndFilesystem()
+    public async Task SaveProfileAsync_UploadsProfilePicture_WritesToFilesystem()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
         var payload = new byte[] { 0x10, 0x20, 0x30 };
         var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        // DB was written
-        profile.ProfilePictureData.Should().BeEquivalentTo(payload);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        // Content-type column is the "has picture" marker + extension source.
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
-        // Filesystem was written with the same bytes, keyed under uploads/profile-pictures/
+        // Bytes live on the file share, keyed under uploads/profile-pictures/.
         var key = PicKey(profile.Id, "image/jpeg");
         _fileStorage.Files.Should().ContainKey(key);
         _fileStorage.Files[key].Should().BeEquivalentTo(payload);
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_RemoveProfilePicture_DeletesFromDbAndFilesystem()
+    public async Task SaveProfileAsync_RemoveProfilePicture_ClearsContentTypeAndDeletesFile()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
-        // Pre-seed the filesystem side at the same content-type the seeded
-        // profile uses (image/png — see SeedUserWithProfileAsync) so we can
-        // assert deletion.
-        await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), new byte[] { 1 });
 
         var request = MakeRequest(removeProfilePicture: true);
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _editor.SaveProfileAsync(userId, "Test", request);
 
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ProfilePictureData.Should().BeNull();
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureContentType.Should().BeNull();
-        _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
+        _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
     }
 
-    [HumansFact]
-    public async Task SaveProfileAsync_CallsSetConsentCheckPending()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-        var request = MakeRequest();
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
-    }
+    // Threshold check (formerly SaveProfileAsync_CallsSetConsentCheckPending)
+    // moved out of ProfileService entirely — it's a director method on
+    // IOnboardingService now, invoked by controllers as a peer call after
+    // SaveProfileAsync. ProfileService has no dep on Onboarding.
 
     // --- Profile save flow: tier application during initial setup ---
 
@@ -271,42 +236,17 @@ public class ProfileServiceTests : IDisposable
     // issue nobodies-collective/Humans#685. Deletion request/cancel moved to
     // IAccountDeletionService (covered by AccountDeletionServiceTests).
 
-    // --- Simple lookups ---
-
-    [HumansFact]
-    public async Task GetProfileAsync_ExistingUser_ReturnsProfile()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.GetProfileAsync(userId);
-
-        result.Should().NotBeNull();
-        result!.UserId.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task GetProfileAsync_NoProfile_ReturnsNull()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-
-        var result = await _service.GetProfileAsync(userId);
-
-        result.Should().BeNull();
-    }
-
     [HumansFact]
     public async Task GetProfilePictureAsync_WithPicture_ReturnsData()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
         result.Should().NotBeNull();
-        result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        result.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
         result.Value.ContentType.Should().Be("image/png");
     }
 
@@ -315,7 +255,7 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: false);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -339,7 +279,7 @@ public class ProfileServiceTests : IDisposable
         // when the DB content-type column says a picture exists.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
         var fsPayload = new byte[] { 9, 9, 9, 9 };
         await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload);
@@ -347,55 +287,41 @@ public class ProfileServiceTests : IDisposable
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
         result.Should().NotBeNull();
-        result!.Value.Data.Should().BeEquivalentTo(fsPayload);
+        result.Value.Data.Should().BeEquivalentTo(fsPayload);
         result.Value.ContentType.Should().Be("image/png");
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_DbOnly_ReturnsAndMigratesToFilesystem()
+    public async Task GetProfilePictureAsync_FilesystemMiss_ReturnsNull()
     {
-        // Migrate-on-read: the DB still has the bytes (legacy data, or a
-        // disk-restore scenario) but the filesystem store does not. The
-        // service must return the DB copy AND seed the store so the next
-        // read takes the fast path.
+        // Content-type gate passes but the file is gone — the picture is
+        // simply missing. (Pre-cleanup PR a DB-bytes fallback masked this;
+        // the file share is now the only source of truth.)
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
-        _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeFalse();
+        await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"));
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
-        result.Should().NotBeNull();
-        result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        result.Value.ContentType.Should().Be("image/png");
-
-        // Migrate-on-read should have populated the store under the content-typed key.
-        _fileStorage.Files.TryGetValue(PicKey(profile.Id, "image/png"), out var stored).Should().BeTrue();
-        stored.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        result.Should().BeNull();
     }
 
     [HumansFact]
     public async Task GetProfilePictureAsync_AnonymizedProfile_ReturnsNullEvenWithStaleFile()
     {
-        // GDPR / issue nobodies-collective/Humans#527 fix-pass: after
-        // anonymization the DB content-type is null. If the on-disk file
-        // wasn't successfully removed (best-effort delete failed) the read
-        // path MUST NOT serve it. The DB content-type column is the gate.
+        // GDPR: after anonymization the content-type column is null. If the
+        // on-disk file wasn't successfully removed (best-effort delete failed)
+        // the read path MUST NOT serve it. The content-type column is the gate.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
 
-        // Seed a stale on-disk file as if a prior anonymization left it behind.
-        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), new byte[] { 7, 7, 7 });
-
-        // Now anonymize via the service and force the FS delete to fail by
-        // pre-removing the entry, then re-add it AFTER the anonymize call.
-        // Easiest path: clear DB columns directly on the tracked profile.
-        var tracked = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
-        tracked.ProfilePictureData = null;
+        // Clear the gate as if anonymization had run.
+        var tracked = await Db.Profiles.FirstAsync(p => p.UserId == userId);
         tracked.ProfilePictureContentType = null;
-        await _dbContext.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         // Confirm the stale file is still on disk to make the gate meaningful.
         _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
@@ -405,183 +331,13 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
-    [HumansFact]
-    public async Task GetTierCountsAsync_CorrectCounts()
-    {
-        // 1 Colaborador non-suspended, 1 Colaborador suspended, 1 Asociado non-suspended
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
-        await SeedUserAsync(u3);
-        await _dbContext.Profiles.AddRangeAsync(
-            MakeProfile(u1, MembershipTier.Colaborador, isSuspended: false),
-            MakeProfile(u2, MembershipTier.Colaborador, isSuspended: true),
-            MakeProfile(u3, MembershipTier.Asociado, isSuspended: false));
-        await _dbContext.SaveChangesAsync();
-
-        var (colaboradorCount, asociadoCount) = await _service.GetTierCountsAsync();
-
-        colaboradorCount.Should().Be(1);
-        asociadoCount.Should().Be(1);
-    }
-
     // Profile-index/edit/admin-detail bundling moved to ProfileController in
     // issue nobodies-collective/Humans#685 — composition is now controller
     // concern (Profile + Application data are fetched separately and assembled
     // for the view). No ProfileService methods to test here.
 
-    // --- Batch/filtered queries ---
-
-    [HumansFact]
-    public async Task GetCustomPictureInfoByUserIdsAsync_WithPictures_ReturnsTuples()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        await SeedUserWithProfileAsync(u1, isApproved: true, withPicture: true);
-        await SeedUserWithProfileAsync(u2, isApproved: true, withPicture: true);
-        await SeedUserWithProfileAsync(u3, isApproved: true, withPicture: false);
-
-        var result = await _service.GetCustomPictureInfoByUserIdsAsync(new[] { u1, u2, u3 });
-
-        result.Should().HaveCount(2);
-    }
-
-    [HumansFact]
-    public async Task GetCustomPictureInfoByUserIdsAsync_EmptyInput_ReturnsEmpty()
-    {
-        var result = await _service.GetCustomPictureInfoByUserIdsAsync(Array.Empty<Guid>());
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetBirthdayProfilesAsync_MatchesMonth_OrderedByDay()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
-        await SeedUserAsync(u3);
-
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.DateOfBirth = new LocalDate(4, 3, 20);
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.DateOfBirth = new LocalDate(4, 3, 5);
-        var p3 = MakeProfile(u3, isApproved: true);
-        p3.DateOfBirth = new LocalDate(4, 6, 15);
-        await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
-        await _dbContext.SaveChangesAsync();
-
-        // CachingProfileService overrides this; test the static-method path directly
-        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2), MakeFullProfile(p3, u3) };
-        var result = snapshot
-            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.BirthdayMonth == 3 && fp.BirthdayDay.HasValue)
-            .OrderBy(fp => fp.BirthdayDay)
-            .ToList();
-
-        result.Should().HaveCount(2);
-        result[0].BirthdayDay.Should().Be(5);
-        result[1].BirthdayDay.Should().Be(20);
-    }
-
-    [HumansFact]
-    public async Task GetBirthdayProfilesAsync_ExcludesSuspended()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
-
-        var p1 = MakeProfile(u1, isApproved: true, isSuspended: true);
-        p1.DateOfBirth = new LocalDate(4, 3, 10);
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.DateOfBirth = new LocalDate(4, 3, 15);
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-
-        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
-        var result = snapshot
-            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.BirthdayMonth == 3 && fp.BirthdayDay.HasValue)
-            .ToList();
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task GetBirthdayProfilesAsync_NoMatches_ReturnsEmpty()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var profile = MakeProfile(userId);
-        profile.DateOfBirth = new LocalDate(4, 6, 10);
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-
-        var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var result = snapshot
-            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.BirthdayMonth == 3 && fp.BirthdayDay.HasValue)
-            .ToList();
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetApprovedProfilesWithLocationAsync_ReturnsApprovedWithCoordinates()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        profile.Latitude = 40.0;
-        profile.Longitude = -3.0;
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-
-        var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var result = snapshot
-            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.Latitude.HasValue && fp.Longitude.HasValue)
-            .ToList();
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(userId);
-        result[0].Latitude.Should().Be(40.0);
-        result[0].Longitude.Should().Be(-3.0);
-    }
-
-    [HumansFact]
-    public async Task GetApprovedProfilesWithLocationAsync_ExcludesSuspendedAndUnapproved()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
-        await SeedUserAsync(u3);
-
-        // Suspended with location
-        var p1 = MakeProfile(u1, isApproved: true, isSuspended: true);
-        p1.Latitude = 40.0;
-        p1.Longitude = -3.0;
-        // Unapproved with location
-        var p2 = MakeProfile(u2, isApproved: false);
-        p2.Latitude = 41.0;
-        p2.Longitude = -2.0;
-        // Approved without location
-        var p3 = MakeProfile(u3, isApproved: true);
-        await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
-        await _dbContext.SaveChangesAsync();
-
-        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2), MakeFullProfile(p3, u3) };
-        var result = snapshot
-            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.Latitude.HasValue && fp.Longitude.HasValue)
-            .ToList();
-
-        result.Should().BeEmpty();
-    }
+    // Birthday/Location snapshot tests removed alongside the FullProfile delete —
+    // those widgets now read directly from the UserInfo cache via CachingUserService.
 
     // GetAdminHumanDetailAsync moved to ProfileController.AdminDetail in
     // issue nobodies-collective/Humans#685 — composition is now controller
@@ -589,471 +345,14 @@ public class ProfileServiceTests : IDisposable
 
     // --- Cooldown and export ---
 
-    [HumansFact]
-    public async Task GetEmailCooldownInfoAsync_WithinCooldown_ReturnsFalse()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var emailId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = emailId,
-            UserId = userId,
-            Email = "test@test.com",
-            VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2),
-        });
-        await _dbContext.SaveChangesAsync();
+    // SearchProfilesAsync + GetFullProfileAsync tests removed alongside the
+    // FullProfile delete. The search surface lives on IUserService.SearchUsersAsync
+    // and is covered by CachingUserServiceTests.
 
-        var (canAdd, minutesUntilResend, pendingEmailId) = await _service.GetEmailCooldownInfoAsync(emailId);
-
-        canAdd.Should().BeFalse();
-        minutesUntilResend.Should().BeGreaterThan(0);
-        pendingEmailId.Should().Be(emailId);
-    }
+    // --- SaveProfileVolunteerHistoryAsync ---
 
     [HumansFact]
-    public async Task GetEmailCooldownInfoAsync_AfterCooldown_ReturnsTrue()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var emailId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = emailId,
-            UserId = userId,
-            Email = "test@test.com",
-            VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6),
-        });
-        await _dbContext.SaveChangesAsync();
-
-        var (canAdd, minutesUntilResend, pendingEmailId) = await _service.GetEmailCooldownInfoAsync(emailId);
-
-        canAdd.Should().BeTrue();
-        minutesUntilResend.Should().Be(0);
-        pendingEmailId.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetEmailCooldownInfoAsync_NoVerificationSent_ReturnsTrue()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var emailId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = emailId,
-            UserId = userId,
-            Email = "test@test.com",
-            VerificationSentAt = null,
-        });
-        await _dbContext.SaveChangesAsync();
-
-        var (canAdd, minutesUntilResend, pendingEmailId) = await _service.GetEmailCooldownInfoAsync(emailId);
-
-        canAdd.Should().BeTrue();
-        minutesUntilResend.Should().Be(0);
-        pendingEmailId.Should().BeNull();
-    }
-
-    // --- SearchProfilesAsync (PersonSearchFields bit-flag) ---
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_MatchesByBurnerName()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
-        var profile = MakeProfile(userId, isApproved: true);
-        profile.BurnerName = "Burner Bob";
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync("Burner", PersonSearchFields.PublicAll);
-
-        results.Should().HaveCount(1);
-        results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be("Name");
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_MatchesByCity()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        profile.City = "Barcelona";
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync("Barcelona", PersonSearchFields.PublicAll);
-
-        results.Should().HaveCount(1);
-        results[0].MatchField.Should().Be("City");
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_MatchesByBio()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        profile.Bio = "I love fire dancing and community building";
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync("fire dancing", PersonSearchFields.PublicAll);
-
-        results.Should().HaveCount(1);
-        results[0].MatchField.Should().Be("Bio");
-        results[0].MatchSnippet.Should().Contain("fire dancing");
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_ExcludesSuspended()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        var p1 = MakeProfile(u1, isApproved: true, isSuspended: true);
-        p1.City = "Madrid";
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.City = "Madrid";
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var results = await _service.SearchProfilesAsync("Madrid", PersonSearchFields.PublicAll);
-
-        results.Should().HaveCount(1);
-        results[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_ExcludesUnapproved()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        var p1 = MakeProfile(u1, isApproved: false);
-        p1.City = "Madrid";
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.City = "Madrid";
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var results = await _service.SearchProfilesAsync("Madrid", PersonSearchFields.PublicAll);
-
-        results.Should().HaveCount(1);
-        results[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_NoMatch_ReturnsEmpty()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync("zzzznonexistent", PersonSearchFields.PublicAll);
-
-        results.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_None_ReturnsEmpty()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId, displayName: "Match");
-        var profile = MakeProfile(userId, isApproved: true);
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync("Match", PersonSearchFields.None);
-
-        results.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_ExcludesRejected()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.City = "Madrid";
-        p1.RejectedAt = _clock.GetCurrentInstant();
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.City = "Madrid";
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var results = await _service.SearchProfilesAsync(
-            "Madrid", PersonSearchFields.AdminAll, limit: 50);
-
-        results.Should().HaveCount(1);
-        results[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_AdminBit_IncludesSuspended()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true, isSuspended: true);
-        profile.City = "Madrid";
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync(
-            "Madrid", PersonSearchFields.AdminAll, limit: 50);
-
-        results.Should().HaveCount(1);
-        results[0].UserId.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_AdminBit_ExactUserIdLookup()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        profile.BurnerName = "Embers";
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync(
-            userId.ToString(), PersonSearchFields.AdminAll, limit: 50);
-
-        results.Should().HaveCount(1);
-        results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be("User ID");
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_GuidDoesNotShortCircuitById()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        profile.BurnerName = "Embers";
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        // Public callers must not be able to enumerate IDs — even a valid
-        // UserId pasted as the query falls through to text matching, which
-        // can't match it.
-        var results = await _service.SearchProfilesAsync(
-            userId.ToString(), PersonSearchFields.PublicAll, limit: 50);
-
-        results.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task SearchProfilesAsync_AdminBit_GuidNotFound_ReturnsEmpty()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        var profile = MakeProfile(userId, isApproved: true);
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = user });
-
-        var results = await _service.SearchProfilesAsync(
-            Guid.NewGuid().ToString(), PersonSearchFields.AdminAll, limit: 50);
-
-        results.Should().BeEmpty();
-    }
-
-    // --- DB-backed fallback paths (§15 invariant: base service must work without decorator) ---
-
-    [HumansFact]
-    public async Task GetBirthdayProfilesAsync_BaseService_LoadsFromRepositoryAndFilters()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        var user3 = await SeedUserAsync(u3);
-
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.DateOfBirth = new LocalDate(4, 3, 20);
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.DateOfBirth = new LocalDate(4, 3, 5);
-        var p3 = MakeProfile(u3, isApproved: true);
-        p3.DateOfBirth = new LocalDate(4, 6, 15);
-        await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2, [u3] = user3 });
-
-        var result = await _service.GetBirthdayProfilesAsync(3);
-
-        result.Should().HaveCount(2);
-        result[0].Day.Should().Be(5);
-        result[1].Day.Should().Be(20);
-    }
-
-    [HumansFact]
-    public async Task GetApprovedProfilesWithLocationAsync_BaseService_LoadsFromRepositoryAndFilters()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-
-        // Approved with location
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.Latitude = 40.0;
-        p1.Longitude = -3.0;
-        p1.City = "Madrid";
-        // Unapproved with location (excluded)
-        var p2 = MakeProfile(u2, isApproved: false);
-        p2.Latitude = 41.0;
-        p2.Longitude = -2.0;
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var result = await _service.GetApprovedProfilesWithLocationAsync();
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u1);
-        result[0].City.Should().Be("Madrid");
-    }
-
-    // --- GetFullProfileAsync ---
-
-    [HumansFact]
-    public async Task GetFullProfileAsync_ReturnsStitchedProjection_WhenProfileExists()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-
-        var user = await SeedUserAsync(userId, displayName: "Real Name", profilePictureUrl: "https://img");
-        _dbContext.Profiles.Add(new Profile
-        {
-            Id = profileId,
-            UserId = userId,
-            BurnerName = "Burner",
-            Bio = "Bio text",
-            City = "Madrid",
-            IsApproved = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        var result = await _service.GetFullProfileAsync(userId);
-
-        result.Should().NotBeNull();
-        result!.UserId.Should().Be(userId);
-        result.DisplayName.Should().Be("Burner");
-        result.ProfilePictureUrl.Should().Be("https://img");
-        result.ProfileId.Should().Be(profileId);
-        result.BurnerName.Should().Be("Burner");
-        result.City.Should().Be("Madrid");
-        result.IsApproved.Should().BeTrue();
-        result.CVEntries.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetFullProfileAsync_ReturnsNull_WhenProfileMissing()
-    {
-        var userId = Guid.NewGuid();
-
-        var result = await _service.GetFullProfileAsync(userId);
-
-        result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetFullProfileAsync_ReturnsNull_WhenUserMissing()
-    {
-        // Seed a profile but no user. _userService.GetByIdAsync is an NSubstitute
-        // default and returns null when unstubbed, exercising the second null guard.
-        var userId = Guid.NewGuid();
-        _dbContext.Profiles.Add(new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetFullProfileAsync(userId);
-
-        result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetFullProfileAsync_PopulatesNotificationEmail_WhenVerifiedTargetExists()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        user.Email = "primary@example.com";
-        _dbContext.Profiles.Add(new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            IsApproved = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "notify@example.com",
-            IsVerified = true,
-            IsPrimary = true,
-        });
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        var result = await _service.GetFullProfileAsync(userId);
-
-        result.Should().NotBeNull();
-        result!.NotificationEmail.Should().Be("notify@example.com");
-    }
-
-    // --- SaveCVEntriesAsync ---
-
-    [HumansFact]
-    public async Task SaveCVEntriesAsync_DelegatesToRepository()
+    public async Task SaveProfileVolunteerHistoryAsync_DelegatesToRepository()
     {
         // Arrange: mock repository that knows about a seeded profile
         var userId = Guid.NewGuid();
@@ -1064,12 +363,12 @@ public class ProfileServiceTests : IDisposable
         {
             Id = profileId,
             UserId = userId,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         mockRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
 
-        var service = BuildServiceWith(mockRepo);
+        var service = BuildUserServiceWith(mockRepo);
 
         var entries = new List<CVEntry>
         {
@@ -1077,15 +376,16 @@ public class ProfileServiceTests : IDisposable
         };
 
         // Act
-        await service.SaveCVEntriesAsync(userId, entries);
+        var saved = await service.SaveProfileVolunteerHistoryAsync(userId, entries);
 
         // Assert: delegates to the repository with the profile's Id
+        saved.Should().BeTrue();
         await mockRepo.Received(1)
             .ReconcileCVEntriesAsync(profileId, entries, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SaveCVEntriesAsync_NoOp_WhenUserHasNoProfile()
+    public async Task SaveProfileVolunteerHistoryAsync_ReturnsFalse_WhenUserHasNoProfile()
     {
         // Arrange: mock repository that returns null (no profile)
         var userId = Guid.NewGuid();
@@ -1094,29 +394,30 @@ public class ProfileServiceTests : IDisposable
         mockRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var service = BuildServiceWith(mockRepo);
+        var service = BuildUserServiceWith(mockRepo);
 
         // Act
-        await service.SaveCVEntriesAsync(userId, new List<CVEntry>());
+        var saved = await service.SaveProfileVolunteerHistoryAsync(userId, new List<CVEntry>());
 
         // Assert: reconcile is never called
+        saved.Should().BeFalse();
         await mockRepo.DidNotReceive()
             .ReconcileCVEntriesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>
-    /// Builds a <see cref="ProfileService"/> with a custom <see cref="IProfileRepository"/>
+    /// Builds a <see cref="UserService"/> with a custom <see cref="IProfileRepository"/>
     /// while keeping all other dependencies wired to the same test-class fields.
     /// </summary>
-    private ProfileService BuildServiceWith(IProfileRepository profileRepository) => new(
-        profileRepository, _userService,
+    private UserService BuildUserServiceWith(IProfileRepository profileRepository) => new(
+        new UserRepository(DbFactory),
         _userEmailRepository,
-        _contactFieldRepository, _communicationPreferenceRepository,
-        _onboardingService, _auditLogService,
-        _membershipCalculator,
-        _fileStorage,
-        _clock,
-        NullLogger<ProfileService>.Instance);
+        profileRepository,
+        _contactFieldRepository,
+        _communicationPreferenceRepository,
+        AdminAuthorization,
+        Clock,
+        NullLogger<UserService>.Instance);
 
     // --- Helpers ---
 
@@ -1132,8 +433,8 @@ public class ProfileServiceTests : IDisposable
             ProfilePictureUrl = profilePictureUrl,
             PreferredLanguage = "en"
         };
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        Db.Users.Add(user);
+        await Db.SaveChangesAsync();
         return user;
     }
 
@@ -1149,44 +450,20 @@ public class ProfileServiceTests : IDisposable
             FirstName = "Old",
             LastName = "User",
             IsApproved = isApproved,
-            CreatedAt = _clock.GetCurrentInstant() - Duration.FromDays(1),
-            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromDays(1)
+            CreatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
+            UpdatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1)
         };
         if (withPicture)
         {
-            profile.ProfilePictureData = new byte[] { 1, 2, 3 };
             profile.ProfilePictureContentType = "image/png";
         }
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        Db.Profiles.Add(profile);
+        await Db.SaveChangesAsync();
+        if (withPicture)
+        {
+            await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [1, 2, 3]);
+        }
         return profile.Id;
-    }
-
-    private FullProfile MakeFullProfile(Profile profile, Guid userId, string? displayName = null)
-    {
-        var user = _dbContext.Users.Find(userId)!;
-        return new FullProfile(
-            UserId: userId,
-            DisplayName: displayName ?? user.DisplayName,
-            ProfilePictureUrl: user.ProfilePictureUrl,
-            HasCustomPicture: profile.ProfilePictureData is not null,
-            ProfileId: profile.Id,
-            UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
-            BurnerName: profile.BurnerName,
-            Bio: profile.Bio,
-            Pronouns: profile.Pronouns,
-            ContributionInterests: profile.ContributionInterests,
-            City: profile.City,
-            CountryCode: profile.CountryCode,
-            Latitude: profile.Latitude,
-            Longitude: profile.Longitude,
-            BirthdayDay: profile.DateOfBirth?.Day,
-            BirthdayMonth: profile.DateOfBirth?.Month,
-            IsApproved: profile.IsApproved,
-            IsSuspended: profile.IsSuspended,
-            CVEntries: profile.VolunteerHistory
-                .Select(v => new CVEntry(v.Id, v.Date, v.EventName, v.Description))
-                .ToList());
     }
 
     private static ProfileSaveRequest MakeRequest(
@@ -1220,328 +497,9 @@ public class ProfileServiceTests : IDisposable
             MembershipTier = tier,
             IsApproved = isApproved,
             IsSuspended = isSuspended,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
     }
 
-    [HumansFact]
-    public async Task ContributeForUserAsync_EmitsIsOAuthKey_SourcedFromProviderColumn()
-    {
-        // The JSON key stays "IsOAuth" per memory/code/no-rename-serialized-fields.md
-        // (exports are JSON files users download). The value sources from
-        // (Provider != null) — pre-PR-4 semantics meaning "this row has an OAuth
-        // login attached". The PR 4 spec's Task 17 swapped both the JSON key and
-        // the value source (e.IsGoogle); both have been reverted so the export
-        // emits identical bytes for the same row data as before PR 4.
-        //
-        // This row has Provider="Google" and IsGoogle=false to pin the source:
-        // under the reverted (Provider != null) projection it emits IsOAuth=true,
-        // which proves the source is Provider, not IsGoogle.
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "g@example.com",
-            IsVerified = true,
-            IsPrimary = true,
-            Provider = "Google",
-            ProviderKey = "sub-1",
-            IsGoogle = false,
-        });
-        await _dbContext.SaveChangesAsync();
-
-        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
-
-        var userEmailsSlice = slices.Single(s =>
-            string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
-        var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
-        json.Should().Contain("\"IsOAuth\":true");
-        // Legacy JSON key preserved for the C# IsPrimary rename
-        // (memory/code/no-rename-serialized-fields.md). Mirrors EF's HasColumnName pin on the
-        // renamed property — the GDPR export must keep emitting "IsNotificationTarget".
-        json.Should().Contain("\"IsNotificationTarget\":true");
-        json.Should().NotContain("\"IsPrimary\":");
-    }
-
-    // Smoke test for the per-userId service-side lock that replaced the
-    // AddIfNotExistsByUserIdAsync 23505-translating repo method. Asserts the
-    // lock serializes two concurrent EnsureStubProfileAsync callers so that
-    // only one AddAsync fires for a given userId.
-    [HumansFact(Timeout = 5000)]
-    public async Task EnsureStubProfileAsync_TwoConcurrentCallers_OnlyOneAddAsync()
-    {
-        var userId = Guid.NewGuid();
-
-        var fakeRepo = Substitute.For<IProfileRepository>();
-        Profile? stored = null;
-        fakeRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult(stored));
-        fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>()))
-            .Do(call => stored = call.Arg<Profile>());
-
-        var service = new ProfileService(
-            fakeRepo, _userService,
-            _userEmailRepository,
-            _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _auditLogService,
-            _membershipCalculator,
-            _fileStorage,
-            _clock,
-            NullLogger<ProfileService>.Instance);
-
-#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
-        await Task.WhenAll(
-            Task.Run(() => service.EnsureStubProfileAsync(userId)),
-            Task.Run(() => service.EnsureStubProfileAsync(userId)));
-#pragma warning restore VSTHRD003
-
-        await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
-    }
-
-    // ==========================================================================
-    // Issue #474 — phase 5 service-ownership: every profile state mutation now
-    // routes through ProfileService so the §15 caching decorator can keep the
-    // FullProfile dict in sync atomically with the DB write. These tests pin
-    // the contracts the decorator relies on (return values, field updates,
-    // error keys) so future refactors can't drift the behaviour.
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task SetMembershipTierAsync_UpdatesTierAndUpdatedAt()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-        _clock.Advance(Duration.FromHours(1));
-
-        await _service.SetMembershipTierAsync(userId, MembershipTier.Colaborador);
-
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.MembershipTier.Should().Be(MembershipTier.Colaborador);
-        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task SetMembershipTierAsync_UnknownUser_NoOp()
-    {
-        var unknownUserId = Guid.NewGuid();
-
-        // No throw, no profile created — just a logged warning.
-        await _service.SetMembershipTierAsync(unknownUserId, MembershipTier.Asociado);
-
-        var profileExists = await _dbContext.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId);
-        profileExists.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task RecordConsentCheckAsync_Cleared_FlipsIsApprovedAndStamps()
-    {
-        var userId = Guid.NewGuid();
-        var reviewerId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.RecordConsentCheckAsync(
-            userId, reviewerId, ConsentCheckStatus.Cleared, "Looks good");
-
-        result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
-        profile.IsApproved.Should().BeTrue();
-        profile.ConsentCheckAt.Should().Be(_clock.GetCurrentInstant());
-        profile.ConsentCheckedByUserId.Should().Be(reviewerId);
-        profile.ConsentCheckNotes.Should().Be("Looks good");
-    }
-
-    [HumansFact]
-    public async Task RecordConsentCheckAsync_Flagged_KeepsIsApprovedFalse()
-    {
-        var userId = Guid.NewGuid();
-        var reviewerId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.RecordConsentCheckAsync(
-            userId, reviewerId, ConsentCheckStatus.Flagged, "Concern X");
-
-        result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Flagged);
-        profile.IsApproved.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task RecordConsentCheckAsync_NoProfile_ReturnsNotFound()
-    {
-        var unknownUserId = Guid.NewGuid();
-
-        var result = await _service.RecordConsentCheckAsync(
-            unknownUserId, Guid.NewGuid(), ConsentCheckStatus.Cleared, null);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("NotFound");
-    }
-
-    [HumansFact]
-    public async Task RecordConsentCheckAsync_AlreadyRejected_BlocksClear()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
-        profile.RejectedAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.RecordConsentCheckAsync(
-            userId, Guid.NewGuid(), ConsentCheckStatus.Cleared, null);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("AlreadyRejected");
-    }
-
-    [HumansFact]
-    public async Task RecordConsentCheckAsync_PendingValue_Throws()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        // Pending is the system-driven transition — must use SetConsentCheckPendingAsync.
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.RecordConsentCheckAsync(
-                userId, Guid.NewGuid(), ConsentCheckStatus.Pending, null));
-    }
-
-    [HumansFact]
-    public async Task RejectSignupAsync_StampsRejectionFields()
-    {
-        var userId = Guid.NewGuid();
-        var reviewerId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.RejectSignupAsync(userId, reviewerId, "Spam account");
-
-        result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.RejectedAt.Should().Be(_clock.GetCurrentInstant());
-        profile.RejectedByUserId.Should().Be(reviewerId);
-        profile.RejectionReason.Should().Be("Spam account");
-        profile.IsApproved.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task RejectSignupAsync_AlreadyRejected_ReturnsErrorKey()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
-        profile.RejectedAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), null);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("AlreadyRejected");
-    }
-
-    [HumansFact]
-    public async Task RejectSignupAsync_NoProfile_ReturnsNotFound()
-    {
-        var result = await _service.RejectSignupAsync(Guid.NewGuid(), Guid.NewGuid(), null);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("NotFound");
-    }
-
-    [HumansFact]
-    public async Task ApproveVolunteerAsync_FlipsIsApprovedTrue()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-
-        var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid());
-
-        result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.IsApproved.Should().BeTrue();
-        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task ApproveVolunteerAsync_NoProfile_ReturnsNotFound()
-    {
-        var result = await _service.ApproveVolunteerAsync(Guid.NewGuid(), Guid.NewGuid());
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("NotFound");
-    }
-
-    [HumansFact]
-    public async Task SetSuspendedAsync_True_SetsSuspendedAndState()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: true, "Disruptive");
-
-        result.Success.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        profile.IsSuspended.Should().BeTrue();
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
-        profile.State.Should().Be(ProfileState.Suspended);
-        profile.AdminNotes.Should().Be("Disruptive");
-    }
-
-    [HumansFact]
-    public async Task SetSuspendedAsync_FalseRestoresActiveWhenIdentityComplete()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        profile.IsSuspended = true;
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
-        profile.State = ProfileState.Suspended;
-        // SeedUserWithProfileAsync seeds BurnerName/FirstName/LastName, so identity is complete.
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: false, notes: null);
-
-        result.Success.Should().BeTrue();
-        var fresh = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        fresh.IsSuspended.Should().BeFalse();
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
-        fresh.State.Should().Be(ProfileState.Active);
-    }
-
-    [HumansFact]
-    public async Task SetSuspendedAsync_NoProfile_ReturnsNotFound()
-    {
-        var result = await _service.SetSuspendedAsync(
-            Guid.NewGuid(), Guid.NewGuid(), suspended: true, notes: null);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("NotFound");
-    }
-
-    [HumansFact]
-    public async Task SetConsentCheckPendingAsync_FlipsToPending()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var set = await _service.SetConsentCheckPendingAsync(userId);
-
-        set.Should().BeTrue();
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Pending);
-    }
-
-    [HumansFact]
-    public async Task SetConsentCheckPendingAsync_NoProfile_ReturnsFalse()
-    {
-        var set = await _service.SetConsentCheckPendingAsync(Guid.NewGuid());
-
-        set.Should().BeFalse();
-    }
 }

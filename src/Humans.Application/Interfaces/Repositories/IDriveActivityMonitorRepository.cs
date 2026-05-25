@@ -1,5 +1,6 @@
 using NodaTime;
 using Humans.Domain.Entities;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -32,6 +33,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// pre-migration behavior.
 /// </para>
 /// </remarks>
+[Section("GoogleIntegration")]
 public interface IDriveActivityMonitorRepository : IRepository
 {
     /// <summary>

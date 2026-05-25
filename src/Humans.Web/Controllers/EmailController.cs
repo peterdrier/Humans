@@ -1,35 +1,23 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Humans.Application.DTOs;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Email;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Email")]
-public class EmailController : HumansControllerBase
+public class EmailController(
+    IUserServiceRead userService,
+    IEmailOutboxService outboxService,
+    ILogger<EmailController> logger) : HumansControllerBase(userService)
 {
-    private readonly IEmailOutboxService _outboxService;
-    private readonly ILogger<EmailController> _logger;
-
-    public EmailController(
-        UserManager<User> userManager,
-        IEmailOutboxService outboxService,
-        ILogger<EmailController> logger)
-        : base(userManager)
-    {
-        _outboxService = outboxService;
-        _logger = logger;
-    }
-
     [HttpGet("")]
     public IActionResult Index()
     {
@@ -39,7 +27,7 @@ public class EmailController : HumansControllerBase
     [HttpGet("EmailOutbox")]
     public async Task<IActionResult> EmailOutbox()
     {
-        var stats = await _outboxService.GetOutboxStatsAsync();
+        var stats = await outboxService.GetOutboxStatsAsync();
 
         var viewModel = new EmailOutboxViewModel
         {
@@ -58,8 +46,8 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PauseEmailSending()
     {
-        await _outboxService.SetEmailPausedAsync(true);
-        _logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
+        await outboxService.SetEmailPausedAsync(true);
+        logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
         SetSuccess("Email sending paused.");
         return RedirectToAction(nameof(EmailOutbox));
     }
@@ -68,8 +56,8 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeEmailSending()
     {
-        await _outboxService.SetEmailPausedAsync(false);
-        _logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
+        await outboxService.SetEmailPausedAsync(false);
+        logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
         SetSuccess("Email sending resumed.");
         return RedirectToAction(nameof(EmailOutbox));
     }
@@ -78,7 +66,7 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RetryEmailOutboxMessage(Guid id)
     {
-        var recipient = await _outboxService.RetryMessageAsync(id);
+        var recipient = await outboxService.RetryMessageAsync(id);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} queued for retry.");
@@ -89,7 +77,7 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id)
     {
-        var recipient = await _outboxService.DiscardMessageAsync(id);
+        var recipient = await outboxService.DiscardMessageAsync(id);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} discarded.");
@@ -142,7 +130,7 @@ public class EmailController : HumansControllerBase
             var c4 = renderer.RenderSignupRejected(name, "Incomplete profile information", culture);
             items.Add(new EmailPreviewItem { Id = "signup-rejected", Name = "Signup Rejected", Recipient = email, Subject = c4.Subject, Body = c4.HtmlBody });
 
-            var c5 = renderer.RenderReConsentsRequired(name, new[] { sampleDocs[0] }, culture);
+            var c5 = renderer.RenderReConsentsRequired(name, [sampleDocs[0]], culture);
             items.Add(new EmailPreviewItem { Id = "reconsent-required", Name = "Re-Consent Required (single doc)", Recipient = email, Subject = c5.Subject, Body = c5.HtmlBody });
 
             var c6 = renderer.RenderReConsentsRequired(name, sampleDocs, culture);
@@ -174,22 +162,6 @@ public class EmailController : HumansControllerBase
 
             var c14 = renderer.RenderTermRenewalReminder(name, "Colaborador", "April 1, 2026", culture);
             items.Add(new EmailPreviewItem { Id = "term-renewal-reminder", Name = "Term Renewal Reminder", Recipient = email, Subject = c14.Subject, Body = c14.HtmlBody });
-
-            var sampleDigestGroups = new List<BoardDigestTierGroup>
-            {
-                new("Volunteer", new[] { "Alice Johnson", "Bob Smith" }),
-                new("Colaborador", new[] { "Carlos Garc\u00eda" })
-            };
-            var sampleOutstanding = new BoardDigestOutstandingCounts(
-                OnboardingReview: 3,
-                StillOnboarding: 5,
-                BoardVotingTotal: 7,
-                BoardVotingYours: 4,
-                TeamJoinRequests: 2,
-                PendingConsents: 12,
-                PendingDeletions: 1);
-            var c15 = renderer.RenderBoardDailyDigest(name, "2026-02-22", sampleDigestGroups, sampleOutstanding, culture);
-            items.Add(new EmailPreviewItem { Id = "board-daily-digest", Name = "Board Daily Digest", Recipient = email, Subject = c15.Subject, Body = c15.HtmlBody });
 
             var cMsg1 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", true, "alex@example.com", culture);
             items.Add(new EmailPreviewItem { Id = "facilitated-message", Name = "Facilitated Message (with contact info)", Recipient = email, Subject = cMsg1.Subject, Body = cMsg1.HtmlBody });

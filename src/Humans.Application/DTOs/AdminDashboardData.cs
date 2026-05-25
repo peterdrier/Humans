@@ -14,6 +14,7 @@ public record AdminDashboardData(
     int RejectedApplications,
     int ColaboradorApplied,
     int AsociadoApplied,
-    IReadOnlyList<LanguageCount> LanguageDistribution);
+    IReadOnlyList<LanguageCount> LanguageDistribution,
+    UserSetMembership SetMembership);
 
 public record LanguageCount(string Language, int Count);

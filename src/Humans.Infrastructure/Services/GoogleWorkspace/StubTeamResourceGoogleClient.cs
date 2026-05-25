@@ -10,21 +10,15 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// becomes the id, the <c>Url</c> is echoed back, and every call succeeds
 /// (no network round-trip, no 404/403 handling).
 /// </summary>
-public sealed class StubTeamResourceGoogleClient : ITeamResourceGoogleClient
+public sealed class StubTeamResourceGoogleClient(ILogger<StubTeamResourceGoogleClient> logger)
+    : ITeamResourceGoogleClient
 {
-    private readonly ILogger<StubTeamResourceGoogleClient> _logger;
-
-    public StubTeamResourceGoogleClient(ILogger<StubTeamResourceGoogleClient> logger)
-    {
-        _logger = logger;
-    }
-
     public Task<DriveLookupResult> GetDriveItemAsync(
         string itemId,
         bool expectFolder,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Would look up Drive item {ItemId} (expectFolder={ExpectFolder})",
+        logger.LogInformation("[STUB] Would look up Drive item {ItemId} (expectFolder={ExpectFolder})",
             itemId, expectFolder);
 
         // Without Google, the stub cannot discover the real MIME type. Mirror
@@ -52,7 +46,7 @@ public sealed class StubTeamResourceGoogleClient : ITeamResourceGoogleClient
 
     public Task<GroupLookupResult> LookupGroupAsync(string groupEmail, CancellationToken ct = default)
     {
-        _logger.LogInformation("[STUB] Would look up Group {GroupEmail}", groupEmail);
+        logger.LogInformation("[STUB] Would look up Group {GroupEmail}", groupEmail);
 
         // Echo the email back as numeric id so the service's dedup-by-(id,email)
         // logic still works in dev.

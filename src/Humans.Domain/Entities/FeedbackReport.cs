@@ -79,7 +79,7 @@ public class FeedbackReport
     /// Service stitches this in memory when rendering reports; repositories
     /// must not <c>.Include()</c> it.
     /// </summary>
-    [Obsolete("Cross-domain nav — resolve via ITeamService.GetTeamNamesByIdsAsync instead of navigating FeedbackReport.AssignedToTeam. See design-rules §6c.")]
+    [Obsolete("Cross-domain nav — resolve via ITeamService.GetTeamsAsync / GetTeamAsync instead of navigating FeedbackReport.AssignedToTeam. See design-rules §6c.")]
     public Team? AssignedToTeam { get; set; }
 
     public ICollection<FeedbackMessage> Messages { get; set; } = new List<FeedbackMessage>();

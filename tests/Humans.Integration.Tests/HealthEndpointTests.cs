@@ -1,15 +1,12 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
-using Xunit;
 
 namespace Humans.Integration.Tests;
 
-public class HealthEndpointTests : IntegrationTestBase
+public class HealthEndpointTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    public HealthEndpointTests(HumansWebApplicationFactory factory) : base(factory) { }
-
-    [HumansFact]
+    [HumansFact(Timeout = 30000)]
     public async Task LivenessEndpoint_ReturnsOk()
     {
         var response = await Client.GetAsync("/health/live");
@@ -17,7 +14,7 @@ public class HealthEndpointTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 30000)]
     public async Task ReadinessEndpoint_ReturnsResponse()
     {
         var response = await Client.GetAsync("/health/ready");
@@ -28,7 +25,7 @@ public class HealthEndpointTests : IntegrationTestBase
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 30000)]
     public async Task DetailedHealthEndpoint_ReturnsJsonWithStatus()
     {
         var response = await Client.GetAsync("/health");

@@ -18,7 +18,7 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
         "Profile.IsSuspended is [Obsolete]. New writers must mutate " +
         "Profile.State (= ProfileState.Suspended) instead. The only sites permitted " +
         "to dual-write IsSuspended + State until the legacy column is dropped are " +
-        "ProfileService and ProfileRepository (Issue #635 §15i).";
+        "UserService, ProfileService, and ProfileRepository (Issue #635 section 15i).";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -28,19 +28,19 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "Issue #635 (§15i) makes Profile.State the canonical lifecycle marker. " +
-            "Profile.IsSuspended is dual-written by ProfileService / ProfileRepository " +
+            "Issue #635 section 15i makes Profile.State the canonical lifecycle marker. " +
+            "Profile.IsSuspended is dual-written by UserService / ProfileService / ProfileRepository " +
             "until the lazy-State-backfill follow-up drops the column.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private const string ProfileFullName = "Humans.Domain.Entities.Profile";
     private const string IsSuspendedPropertyName = "IsSuspended";
 
     private static readonly ImmutableHashSet<string> AllowedWriterTypes =
         ImmutableHashSet.Create(System.StringComparer.Ordinal,
-            "Humans.Application.Services.Profile.ProfileService",
+            "Humans.Application.Services.Users.UserService",
+            "Humans.Application.Services.Profiles.ProfileService",
             "Humans.Infrastructure.Repositories.Profiles.ProfileRepository");
 
     public override void Initialize(AnalysisContext context)

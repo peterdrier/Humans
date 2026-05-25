@@ -3,8 +3,9 @@
   src/Humans.Domain/Entities/Notification.cs
   src/Humans.Domain/Entities/NotificationRecipient.cs
   src/Humans.Infrastructure/Data/Configurations/Notifications/**
-  src/Humans.Infrastructure/Repositories/NotificationRepository.cs
-  src/Humans.Web/Controllers/NotificationController.cs
+  src/Humans.Infrastructure/Repositories/Notifications/**
+  src/Humans.Web/Controllers/NotificationsController.cs
+  src/Humans.Web/Views/Notifications/**
 -->
 <!-- freshness:flag-on-change
   Notification fan-out semantics, meter-vs-stored distinction, role-scoped dispatch, and inbox state machine — review when Notifications services/entities/controller change.
@@ -92,6 +93,7 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 - `Actionable` notifications cannot be dismissed (dismiss requires `Class == Informational` in the repository); they can only be resolved via `Resolve` or click-through into the underlying work item.
 - Notification fan-out should be fire-and-forget from the caller's perspective. (Note: the dispatch methods themselves are not `try/catch`-wrapped today — callers wrap the call when needed; see `design-rules` §7a for the current pattern.)
 - In-app notifications and email notifications are separate surfaces — emitting a notification does not automatically queue an email. Sections that need both send both.
+- Role-fanout `Actionable` notifications (`SendToRoleAsync(…, Actionable, …)`) must **not** duplicate a meter. If a role-gated meter already counts the same work (e.g. "Applications pending your vote" for Board, "Consent reviews pending" for Consent Coordinators), the meter is the surface and a stored per-event row would just be noise. Role-fanout `Actionable` is reserved for sources without a corresponding meter. Per-recipient `Actionable` (via `SendAsync(…, recipientUserIds)` to specific humans) is fine — it's not a fan-out.
 
 ## Negative Access Rules
 
@@ -108,12 +110,12 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 - After every successful send, resolve, dismiss, mark-read, mark-all-read, or click-through, the per-user `CacheKeys.NotificationBadgeCounts(userId)` entry is removed for each affected user (the `NotificationBellViewComponent` re-computes on next render). Dispatch and inbox services hold `IMemoryCache` directly for this — they do not route through `INavBadgeCacheInvalidator`.
 - Per-section meter caches invalidate via `INotificationMeterCacheInvalidator` after any write that changes an owning-section count (called from owning sections such as `ApplicationDecisionService`, `CachingProfileService`, etc.).
 - `INotificationInboxService.ResolveBySourceAsync(userId, source)` exists for sections that need to auto-resolve all open notifications of a given source for a user when the underlying condition is fixed (e.g. resolving `AccessSuspended` when consents are completed).
-- When an account merge accepts, `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient.UserId` from source to target (collapsing duplicates where the target already has a recipient row for the same notification). `Notification.ResolvedByUserId` is also re-FK'd. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `NotificationService` participates as an `IUserMerge` implementation: `IUserMerge.ReassignAsync` delegates to `INotificationRepository.ReassignRecipientsToUserAsync`, which re-FKs `NotificationRecipient.UserId` from source to target (collapsing duplicates where the target already has a recipient row for the same notification) and also re-FKs `Notification.ResolvedByUserId` so shared-resolution attribution points at the surviving user. Driven by `IAccountMergeService.AcceptAsync` (Profiles section) fanning out across registered `IUserMerge` implementations.
 
 ## Cross-Section Dependencies
 
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (via `INotificationRecipientResolver`) — role-scoped fan-out.
-- **Teams:** `ITeamService.GetTeamByIdAsync` + `GetTeamMembersAsync` (via `INotificationRecipientResolver`) — team-scoped fan-out. `ITeamService.GetTotalPendingJoinRequestCountAsync` — admin team-join-requests meter.
+- **Teams:** `ITeamService.GetTeamAsync` (via `INotificationRecipientResolver`, members projected from the returned `TeamInfo`) — team-scoped fan-out. `ITeamService.GetTotalPendingJoinRequestCountAsync` — admin team-join-requests meter.
 - **Profiles / Users:** `IUserService.GetByIdsAsync` — display data for resolver + recipient rendering (stitched in memory). `IUserService.GetAllUsersAsync` — admin pending-deletions meter (count derived in-memory from the loaded user list). `IProfileService.GetConsentReviewPendingCountAsync` + `GetNotApprovedAndNotSuspendedCountAsync` — consent-review and onboarding-pending meters.
 - **Governance:** `IApplicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId)` — per-board-member voting meter.
 - **Tickets:** `ITicketSyncService.IsInErrorStateAsync` — admin ticket-sync-error meter.
@@ -129,6 +131,15 @@ Inbound (other sections → Notifications):
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient` rows during account merge fold.
 - **Camps:** `CampService` and `CampRoleService` inject `INotificationEmitter` to emit `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, and `CampRoleAssigned` notifications.
 - **Issues:** `IssuesService` injects `INotificationService` to emit `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, and `IssueSubmitted` notifications.
+
+## Design Rationale
+
+<!-- wheat: docs/specs/2026-03-31-notification-inbox-design.md §4 ADR-1, ADR-5; §Decisions Log -->
+
+- **Materialized recipients at dispatch time.** Each `NotificationRecipient` row is created when the alert fires. The membership of a target group ("Coordinators of Geeks") is resolved *then*, not at query time. This captures "who was responsible when the alert fired" — late-added team members do not retroactively see older notifications, which is the intended behavior. Same pattern as the email outbox.
+- **Caller decides resolution scope.** Group-targeted notifications (team/role) create one `Notification` shared by all recipients — "any one of you handle this" — so the resolved state collapses to a single row. Individual-targeted notifications create one `Notification` per user — "each of you needs to see this" — so per-user dismissal is real. No `GroupKey` concept; the choice is explicit at the dispatch call site.
+- **Page-load badge refresh, not real-time push.** At ~500 users with a 2-minute cache, a WebSocket / SSE channel is overengineered. The badge re-computes when the user navigates. The existing `NavBadgesViewComponent` works this way for every other queue.
+- **Daily digests stay as email.** `SendBoardDailyDigestAsync` / `SendAdminDailyDigestAsync` are *summaries*, not individual work items, and don't map onto the resolve/dismiss model. Don't migrate them.
 
 ## Architecture
 
@@ -146,7 +157,7 @@ Inbound (other sections → Notifications):
 
 ### Routes
 
-`NotificationController` is `[Authorize]` and rooted at `/Notifications`:
+`NotificationsController` is `[Authorize]` and rooted at `/Notifications`:
 
 | Verb | Route | Purpose |
 |------|-------|---------|

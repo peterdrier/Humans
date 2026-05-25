@@ -2,12 +2,12 @@ using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
 namespace Humans.Application.Tests.Services;
@@ -134,6 +134,47 @@ public class TicketingBudgetServiceTests
         var result = await sut.RefreshProjectionsAsync(yearId);
 
         result.Should().Be(7);
+        await _budgetService.Received(1).RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateProjectionAndRefreshAsync_SavesParametersThenRefreshes()
+    {
+        var groupId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var command = new TicketingProjectionUpdateCommand(
+            groupId,
+            yearId,
+            new LocalDate(2026, 3, 1),
+            new LocalDate(2026, 6, 1),
+            InitialSalesCount: 10,
+            DailySalesRate: 2.5m,
+            AverageTicketPrice: 95m,
+            VatRate: 21,
+            StripeFeePercent: 1.4m,
+            StripeFeeFixed: 0.25m,
+            TicketTailorFeePercent: 0.5m);
+        _budgetService.RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>())
+            .Returns(4);
+
+        var sut = CreateSut();
+
+        var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId);
+
+        result.Should().Be(4);
+        await _budgetService.Received(1).UpdateTicketingProjectionAsync(
+            groupId,
+            command.StartDate,
+            command.EventDate,
+            command.InitialSalesCount,
+            command.DailySalesRate,
+            command.AverageTicketPrice,
+            command.VatRate,
+            command.StripeFeePercent,
+            command.StripeFeeFixed,
+            command.TicketTailorFeePercent,
+            actorUserId);
         await _budgetService.Received(1).RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
     }
 

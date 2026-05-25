@@ -1,22 +1,18 @@
-using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Services.Profiles;
-using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
-using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
-using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
-using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
-using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
-using ProfilesEmailProblemsService = Humans.Application.Services.Profile.EmailProblemsService;
+using ProfilesProfileService = Humans.Application.Services.Profiles.ProfileService;
+using ProfilesContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
+using ProfilesUserEmailService = Humans.Application.Services.Profiles.UserEmailService;
+using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
+using ProfilesAccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
+using ProfilesDuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
+using ProfilesEmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
+using ProfilesProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUserEmailProviderBackfillService = Humans.Application.Services.Users.UserEmailProviderBackfillService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
-using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
 
@@ -28,9 +24,7 @@ internal static class ProfileSectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
-        // Repositories use IDbContextFactory and are registered as Singleton so the
-        // CachingProfileService Singleton can inject them directly without scope-factory indirection.
+        // Profile section — see #504. Singleton repos so CachingUserService injects directly without scope-factory.
         services.AddSingleton<IProfileRepository, ProfileRepository>();
         services.AddSingleton<IContactFieldRepository, ContactFieldRepository>();
         services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
@@ -52,12 +46,6 @@ internal static class ProfileSectionExtensions
         services.AddScoped<ProfilesUserEmailService>();
         services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
-        // Google Integration §15 migration (issue #554) — email provisioning.
-        // Service lives in Humans.Application, goes through IUserService /
-        // IProfileService / IUserEmailService rather than injecting HumansDbContext.
-        // The Google Workspace Users API bridge is IGoogleWorkspaceUserService
-        // (already an Application-layer interface with Infrastructure impl).
-        services.AddScoped<IEmailProvisioningService, GoogleEmailProvisioningService>();
 
         services.AddScoped<ProfilesAccountMergeService>();
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
@@ -65,43 +53,13 @@ internal static class ProfileSectionExtensions
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IEmailProblemsService, ProfilesEmailProblemsService>();
+        services.AddScoped<IProfileEditorService, ProfilesProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailProviderBackfillService, UsersUserEmailProviderBackfillService>();
 
-        // ProfileService (inner): Scoped — has many Scoped cross-section deps.
-        // Registered under the keyed "profile-inner" key so CachingProfileService can
-        // resolve it from a scope without triggering self-resolution on the unkeyed
-        // IProfileService registration (which maps to the Singleton decorator).
-        services.AddKeyedScoped<IProfileService, ProfilesProfileService>(CachingProfileService.InnerServiceKey);
-        services.AddScoped<ProfilesProfileService>(sp =>
-            (ProfilesProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesProfileService>());
-
-        // CachingProfileService: Singleton so the _byUserId ConcurrentDictionary persists
-        // across requests. Resolves the Scoped inner IProfileService (keyed "profile-inner")
-        // and other Scoped deps (IUserService, INavBadgeCacheInvalidator,
-        // INotificationMeterCacheInvalidator) per-call via IServiceScopeFactory to avoid
-        // the captured-scoped-dep anti-pattern.
-        // IProfileRepository and IUserEmailRepository are injected directly because they
-        // are also Singleton (IDbContextFactory-based).
-        services.AddSingleton<CachingProfileService>();
-        services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
-
-        // CRITICAL: IFullProfileInvalidator and IUserMerge must resolve to the same
-        // Singleton decorator instance that backs IProfileService. The merge fan-out
-        // goes through the decorator so the orchestrator never has to know
-        // ProfileService has a cache — the decorator owns its own eviction.
-        services.AddSingleton<IFullProfileInvalidator>(sp =>
-            sp.GetRequiredService<CachingProfileService>());
-        services.AddSingleton<IUserMerge>(sp =>
-            sp.GetRequiredService<CachingProfileService>());
-
-        // Eagerly warm the FullProfile dict at startup so bulk reads
-        // (birthday widget, location directory, admin human list, profile search)
-        // return complete results immediately after deploy instead of filling
-        // in lazily per user. Failures are logged and swallowed; lazy population
-        // still works.
-        services.AddHostedService<FullProfileWarmupHostedService>();
+        // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.
+        services.AddScoped<ProfilesProfileService>();
+        services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfilesProfileService>());
 
         return services;
     }

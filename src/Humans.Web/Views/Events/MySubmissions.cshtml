@@ -1,0 +1,267 @@
+@model Humans.Web.Models.Events.MySubmissionsViewModel
+@{
+    ViewData["Title"] = "My Event Submissions";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">My Event Submissions</li>
+    </ol>
+</nav>
+
+<h2 class="mb-4">My Event Submissions</h2>
+
+<vc:temp-data-alerts />
+
+@if (!Model.IsSubmissionOpen)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-clock me-1"></i>
+        @if (Model.SubmissionOpenAt.HasValue && Model.SubmissionCloseAt.HasValue)
+        {
+            <text>Submission window: @Model.SubmissionOpenAt.Value.ToDisplayDateTime() — @Model.SubmissionCloseAt.Value.ToDisplayDateTime()</text>
+            if (Model.TimeZoneId != null)
+            {
+                <text> (@Model.TimeZoneId)</text>
+            }
+        }
+        else
+        {
+            <text>Submission window is not currently open. Contact an admin to configure guide settings.</text>
+        }
+    </div>
+}
+
+@* ── Personal events block ── *@
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-user me-1"></i> My personal events</span>
+        @if (Model.IsSubmissionOpen)
+        {
+            <a asp-action="Submit" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-plus me-1"></i>Submit new event
+            </a>
+        }
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-4">
+                <div class="card text-center border-0 bg-light">
+                    <div class="card-body py-2">
+                        <div class="fs-5 fw-bold">@Model.Personal.SubmittedCount</div>
+                        <small class="text-muted">Submitted</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card text-center border-0 bg-light">
+                    <div class="card-body py-2">
+                        <div class="fs-5 fw-bold text-warning">@Model.Personal.PendingCount</div>
+                        <small class="text-muted">Pending</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card text-center border-0 bg-light">
+                    <div class="card-body py-2">
+                        <div class="fs-5 fw-bold text-success">@Model.Personal.ApprovedCount</div>
+                        <small class="text-muted">Approved</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Personal.Events.Count == 0)
+        {
+            <p class="text-muted mb-0">You haven't submitted any personal events yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Event name</th>
+                            <th>Category</th>
+                            <th>Date &amp; time</th>
+                            <th>Status</th>
+                            <th style="width: 130px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var evt in Model.Personal.Events)
+                        {
+                            <tr>
+                                <td>@evt.Title</td>
+                                <td>@evt.CategoryName</td>
+                                <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
+                                <td>
+                                    @if (evt.CanEdit)
+                                    {
+                                        <a asp-action="Edit" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
+                                            <i class="fa-solid fa-pen me-1"></i>Edit
+                                        </a>
+                                    }
+                                    @if (evt.CanWithdraw)
+                                    {
+                                        <form method="post" asp-action="Withdraw" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── Barrio blocks (one per led barrio) ── *@
+@foreach (var barrio in Model.Barrios)
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fa-solid fa-flag me-1"></i> @barrio.CampName</span>
+            @if (Model.IsSubmissionOpen)
+            {
+                <a asp-action="BarrioSubmit" asp-route-slug="@barrio.CampSlug" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i>Add barrio event
+                </a>
+            }
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-4">
+                    <div class="card text-center border-0 bg-light">
+                        <div class="card-body py-2">
+                            <div class="fs-5 fw-bold">@barrio.SubmittedCount</div>
+                            <small class="text-muted">Submitted</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card text-center border-0 bg-light">
+                        <div class="card-body py-2">
+                            <div class="fs-5 fw-bold text-warning">@barrio.PendingCount</div>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card text-center border-0 bg-light">
+                        <div class="card-body py-2">
+                            <div class="fs-5 fw-bold text-success">@barrio.ApprovedCount</div>
+                            <small class="text-muted">Approved</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (barrio.Events.Count == 0)
+            {
+                <p class="text-muted mb-3">No events submitted yet for this barrio.</p>
+            }
+            else
+            {
+                <div class="table-responsive mb-3">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Event name</th>
+                                <th>Category</th>
+                                <th>Date &amp; time</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th style="width: 130px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var evt in barrio.Events)
+                            {
+                                <tr>
+                                    <td>@evt.Title</td>
+                                    <td>@evt.CategoryName</td>
+                                    <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                    <td>@evt.PriorityRank</td>
+                                    <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
+                                    <td>
+                                        @if (evt.CanEdit)
+                                        {
+                                            <a asp-action="BarrioEdit" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
+                                                <i class="fa-solid fa-pen me-1"></i>Edit
+                                            </a>
+                                        }
+                                        @if (evt.CanWithdraw)
+                                        {
+                                            <form method="post" asp-action="BarrioWithdraw" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <hr class="my-3" />
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <a asp-action="BulkUploadTemplate" asp-route-slug="@barrio.CampSlug" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-file-csv me-1"></i>Download events CSV
+                </a>
+                <form method="post" asp-action="BulkUploadImport" asp-route-slug="@barrio.CampSlug" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="file" name="file" accept=".csv" class="form-control form-control-sm" style="max-width: 260px;" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-upload me-1"></i>Upload CSV
+                    </button>
+                </form>
+            </div>
+
+            @if (barrio.BulkUploadErrors.Count > 0)
+            {
+                <div class="alert alert-danger mt-3">
+                    <strong>Upload failed.</strong> Fix the errors below and try again. No events were saved.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0">
+                        <thead class="table-danger">
+                            <tr>
+                                <th style="width: 60px;">Row</th>
+                                <th>Event</th>
+                                <th>Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rowError in barrio.BulkUploadErrors)
+                            {
+                                <tr>
+                                    <td>@rowError.RowNumber</td>
+                                    <td>@rowError.Title</td>
+                                    <td>
+                                        <ul class="mb-0 ps-3">
+                                            @foreach (var msg in rowError.Errors)
+                                            {
+                                                <li>@msg</li>
+                                            }
+                                        </ul>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}

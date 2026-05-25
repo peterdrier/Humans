@@ -1,7 +1,4 @@
-using System.Linq;
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 
 namespace Humans.Analyzers.Tests;
 
@@ -26,10 +23,10 @@ public class EmailMutationPathsAnalyzerTests
         """;
 
     private static bool IsHum0005(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, EmailMutationPathsAnalyzer.ServiceCallerDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, EmailMutationPathsAnalyzer.ServiceCallerDiagnosticId, StringComparison.Ordinal);
 
     private static bool IsHum0006(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, EmailMutationPathsAnalyzer.RepositoryCallerDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, EmailMutationPathsAnalyzer.RepositoryCallerDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_HUM0005_when_service_called_from_non_AccountController()
@@ -80,7 +77,7 @@ public class EmailMutationPathsAnalyzerTests
             "Humans.Web",
             source);
 
-        diagnostics.Where(d => IsHum0005(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0005).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -114,7 +111,7 @@ public class EmailMutationPathsAnalyzerTests
     {
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Profile
+            namespace Humans.Application.Services.Profiles
             {
                 public class UserEmailService
                 {
@@ -132,7 +129,33 @@ public class EmailMutationPathsAnalyzerTests
             "Humans.Application",
             source);
 
-        diagnostics.Where(d => IsHum0006(d)).Should().BeEmpty();
+        diagnostics.Where(IsHum0006).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_when_repository_called_from_UserService()
+    {
+        var source = InterfaceStubs + """
+
+            namespace Humans.Application.Services.Users
+            {
+                public class UserService
+                {
+                    public async System.Threading.Tasks.Task Run(
+                        Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
+                    {
+                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EmailMutationPathsAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0006).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -143,7 +166,7 @@ public class EmailMutationPathsAnalyzerTests
         // ContainingType was the class, not the interface.
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Profile
+            namespace Humans.Application.Services.Profiles
             {
                 public class UserEmailService : Humans.Application.Interfaces.Profiles.IUserEmailService
                 {
@@ -161,7 +184,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Services.Profile.UserEmailService concrete)
+                        Humans.Application.Services.Profiles.UserEmailService concrete)
                     {
                         await concrete.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }

@@ -1,5 +1,8 @@
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -10,38 +13,157 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/profiles")]
-public class ProfileApiController : ControllerBase
+public class ProfileApiController(
+    IUserServiceRead userService,
+    IContactFieldService contactFieldService,
+    IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
     private const int MaxResults = 10;
 
-    private readonly IProfileService _profileService;
-
-    public ProfileApiController(IProfileService profileService)
-    {
-        _profileService = profileService;
-    }
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] string? scope = null)
+    public async Task<IActionResult> Search(
+        [FromQuery] string? q,
+        [FromQuery] string? scope = null,
+        [FromQuery] bool allowEmail = false,
+        CancellationToken ct = default)
     {
         if (!q.HasSearchTerm())
             return Ok(Array.Empty<HumanLookupSearchResult>());
 
-        // scope=name → narrowed match on display name + burner name only.
-        // anything else (default) → broad match across bio / city / interests / CV +
-        // every public ContactField. Admin bit is never set here — services are
-        // auth-free, but a non-admin endpoint passing it would be a programmer
-        // error caught in code review (see PersonSearchFields docs).
+        // scope=name → display/burner name only; default → broad public match. Admin bit never set on public endpoint.
         var fields = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
             ? PersonSearchFields.Name
             : PersonSearchFields.PublicAll;
 
-        var results = await _profileService.SearchProfilesAsync(q, fields, MaxResults);
+        // Cover the deleted-user-but-session-still-valid race — fail-closed with 401.
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (authError is not null)
+            return authError;
+        var viewerUserId = viewer.Id;
 
-        // Display ordering belongs at the presentation layer, per
-        // memory/architecture/display-sort-in-controllers.md.
-        return Ok(results
-            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
-            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName)));
+        // AllowEmail: an exact (case-insensitive) verified-email match resolves at most
+        // one person — no enumeration/substring leak, so it is safe on this non-admin
+        // endpoint. Only triggers when the query looks like an email.
+        if (allowEmail && q!.Contains('@', StringComparison.Ordinal))
+        {
+            var matchedUserId = await userEmailService.GetUserIdByExactEmailAsync(q!, ct);
+            if (matchedUserId is null)
+                return Ok(Array.Empty<HumanLookupSearchResult>());
+
+            var matchedInfo = await _userService.GetUserInfoAsync(matchedUserId.Value, ct);
+            if (matchedInfo?.Profile is null || matchedInfo.Profile.RejectedAt is not null)
+                return Ok(Array.Empty<HumanLookupSearchResult>());
+
+            var emailDetail = await GetSharedDetailAsync(matchedUserId.Value, viewerUserId, ct);
+            return Ok(new[]
+            {
+                new HumanLookupSearchResult(
+                    matchedUserId.Value, matchedInfo.BurnerName, emailDetail, matchedInfo.ProfilePictureUrl)
+            });
+        }
+
+        var results = await _userService.SearchUsersAsync(q, fields, MaxResults, ct);
+
+        var response = new List<HumanLookupSearchResult>(results.Count);
+        foreach (var result in results.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase))
+        {
+            var detail = await GetSharedDetailAsync(
+                result.UserId,
+                viewerUserId,
+                ct);
+
+            response.Add(new HumanLookupSearchResult(
+                result.UserId,
+                result.BurnerName,
+                detail,
+                result.ProfilePictureUrl));
+        }
+
+        // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
+        return Ok(response);
+    }
+
+    // Single-person lookup by userId — same shape as Search.
+    [HttpGet("by-userid/{userId:guid}")]
+    public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
+    {
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (authError is not null)
+            return authError;
+        var viewerUserId = viewer.Id;
+
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        if (info?.Profile is null || info.Profile.RejectedAt is not null)
+            return NotFound();
+
+        var detail = await GetSharedDetailAsync(
+            userId,
+            viewerUserId,
+            ct);
+
+        return Ok(new HumanLookupSearchResult(
+            userId,
+            info.BurnerName,
+            detail,
+            info.ProfilePictureUrl));
+    }
+
+    // Disambiguation: viewer-visible primary email → highest-priority visible contact field → null. Legal name omitted deliberately.
+    private async Task<string?> GetSharedDetailAsync(
+        Guid userId,
+        Guid viewerUserId,
+        CancellationToken ct)
+    {
+        var accessLevel = await contactFieldService.GetViewerAccessLevelAsync(
+            userId,
+            viewerUserId,
+            ct);
+        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
+        var visibleEmail = visibleEmails
+            .OrderByDescending(e => e.IsPrimary)
+            .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+            .Select(e => e.Email)
+            .FirstOrDefault();
+
+        if (!string.IsNullOrWhiteSpace(visibleEmail))
+            return visibleEmail;
+
+        var visibleContactFields = await contactFieldService.GetVisibleContactFieldsAsync(
+            userId,
+            viewerUserId,
+            ct);
+
+        return visibleContactFields
+#pragma warning disable CS0618 // Obsolete ContactFieldType.Email is skipped; UserEmail is the canonical email source.
+            .Where(f => f.FieldType is not ContactFieldType.Email)
+#pragma warning restore CS0618
+            .OrderBy(f => GetContactFieldDisplayPriority(f.FieldType))
+            .ThenBy(f => f.Label, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(f => f.Value, StringComparer.OrdinalIgnoreCase)
+            .Select(FormatContactFieldDetail)
+            .FirstOrDefault();
+    }
+
+    private static int GetContactFieldDisplayPriority(ContactFieldType fieldType) =>
+        fieldType switch
+        {
+            ContactFieldType.Phone => 0,
+            ContactFieldType.Signal => 1,
+            ContactFieldType.Telegram => 2,
+            ContactFieldType.WhatsApp => 3,
+            ContactFieldType.Discord => 4,
+            ContactFieldType.Other => 5,
+            _ => 99
+        };
+
+    private static string FormatContactFieldDetail(ContactFieldDto field)
+    {
+        var label = string.IsNullOrWhiteSpace(field.Label)
+            ? field.FieldType.ToString()
+            : field.Label;
+
+        return $"{label} {field.Value}";
     }
 }

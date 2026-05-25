@@ -1,8 +1,11 @@
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
-/// Narrow connector over the Google Cloud Identity Groups API scoped to the
-/// group-membership operations performed by <c>GoogleWorkspaceSyncService</c>.
+/// Narrow connector over the Google Workspace Admin SDK Directory Members API
+/// scoped to the group-membership operations performed by <c>GoogleWorkspaceSyncService</c>.
+/// The Directory API is used (rather than Cloud Identity Groups) because it can add
+/// members whose email is not a Google account — external addresses such as a
+/// hotmail.fr address — directly to a group.
 /// Implementations live in <c>Humans.Infrastructure</c>; the Application-layer
 /// sync service (coming in §15 Part 2b, issue #575) depends only on this
 /// interface so that <c>Humans.Application</c> stays free of
@@ -55,8 +58,9 @@ public interface IGoogleGroupMembershipClient
         CancellationToken ct = default);
 
     /// <summary>
-    /// Removes the membership identified by its full Google Cloud Identity
-    /// resource name (e.g. <c>groups/{groupId}/memberships/{membershipId}</c>).
+    /// Removes the membership identified by its resource name
+    /// (e.g. <c>groups/{groupId}/memberships/{membershipId}</c>), as returned by
+    /// <see cref="ListMembershipsAsync"/>.
     /// </summary>
     Task<GoogleClientError?> DeleteMembershipAsync(
         string membershipResourceName,
