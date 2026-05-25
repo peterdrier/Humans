@@ -32,8 +32,10 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveCategoriesAsync_ReturnsOnlyActiveInDisplayOrder()
+    public async Task GetActiveCategoriesAsync_ReturnsOnlyActiveCategories()
     {
+        // Display ordering moved to the controller (display-sort-in-controllers);
+        // the repo returns the active set, order-agnostic.
         var inactive = SeedCategory("Inactive", "inactive", 0, isActive: false);
         var second = SeedCategory("Second", "second", 2);
         var first = SeedCategory("First", "first", 1);
@@ -41,7 +43,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetActiveCategoriesAsync();
 
-        result.Select(c => c.Id).Should().Equal(first.Id, second.Id);
+        result.Select(c => c.Id).Should().BeEquivalentTo([first.Id, second.Id]);
         result.Should().NotContain(c => c.Id == inactive.Id);
     }
 
@@ -56,8 +58,10 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetUserSubmissionsAsync_ReturnsOnlyIndividualEventsForSubmitterNewestFirst()
+    public async Task GetUserSubmissionsAsync_ReturnsOnlyIndividualEventsForSubmitter()
     {
+        // Newest-first ordering moved to the controller (display-sort-in-controllers);
+        // the repo returns the submitter's individual events, order-agnostic.
         var category = SeedCategory("Workshop", "workshop", 1);
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -69,7 +73,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetUserSubmissionsAsync(userId);
 
-        result.Select(e => e.Id).Should().Equal(newer.Id, older.Id);
+        result.Select(e => e.Id).Should().BeEquivalentTo([newer.Id, older.Id]);
     }
 
     [HumansFact]
@@ -123,8 +127,11 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetEventsByStatusAsync_OrdersPendingOldestFirst()
+    public async Task GetEventsByStatusAsync_ReturnsEventsForStatus()
     {
+        // Submitted-at ordering moved to the moderation controller
+        // (display-sort-in-controllers); the repo returns the status set,
+        // order-agnostic.
         var category = SeedCategory("Workshop", "workshop", 1);
         var older = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0));
         var newer = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, Instant.FromUtc(2026, 5, 2, 12, 0));
@@ -132,12 +139,15 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetEventsByStatusAsync(EventStatus.Pending);
 
-        result.Select(e => e.Id).Should().Equal(older.Id, newer.Id);
+        result.Select(e => e.Id).Should().BeEquivalentTo([older.Id, newer.Id]);
     }
 
     [HumansFact]
-    public async Task GetFavouritesWithEventsAsync_ReturnsOnlyApprovedEventsOrderedByStart()
+    public async Task GetFavouritesWithEventsAsync_ReturnsOnlyApprovedEvents()
     {
+        // Start-at ordering moved to the schedule/API controllers
+        // (display-sort-in-controllers); the repo returns the approved-only set,
+        // order-agnostic.
         var category = SeedCategory("Workshop", "workshop", 1);
         var userId = Guid.NewGuid();
         var later = SeedEvent(category.Id, userId, EventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 2, 10, 0));
@@ -151,7 +161,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetFavouritesWithEventsAsync(userId);
 
-        result.Select(f => f.GuideEventId).Should().Equal(earlier.Id, later.Id);
+        result.Select(f => f.GuideEventId).Should().BeEquivalentTo([earlier.Id, later.Id]);
     }
 
     [HumansFact]

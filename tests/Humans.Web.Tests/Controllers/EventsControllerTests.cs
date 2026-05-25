@@ -120,13 +120,22 @@ public class EventsControllerTests
     {
         var settingsId = Guid.NewGuid();
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = settingsId });
+            .Returns(new EventGuideSettingsView(
+                Id: Guid.NewGuid(),
+                EventSettingsId: settingsId,
+                SubmissionOpenAt: Instant.MinValue,
+                SubmissionCloseAt: Instant.MaxValue,
+                GuidePublishAt: Instant.MaxValue,
+                MaxPrintSlots: 100,
+                TimeZoneId: "Europe/Madrid",
+                CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+                UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0)));
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>())
             .Returns(MakeBurnSettings());
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventCategory>)[]);
+            .Returns((IReadOnlyList<EventCategoryView>)[]);
         _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventVenue>)[]);
+            .Returns((IReadOnlyList<EventVenueView>)[]);
     }
 
     private EventsController BuildController(Guid currentUserId, params string[] roles)

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -44,7 +45,30 @@ public sealed record ApprovedEventView(
     string? RecurrenceDays,
     int PriorityRank,
     Instant SubmittedAt,
-    Instant LastUpdatedAt);
+    Instant LastUpdatedAt)
+{
+    /// <summary>
+    /// Expands this approved event into concrete occurrence instants.
+    /// Mirrors <see cref="Event.GetOccurrenceInstants"/>.
+    /// </summary>
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone)
+    {
+        if (!IsRecurring || string.IsNullOrWhiteSpace(RecurrenceDays))
+            return [StartAt];
+
+        var startLocal = StartAt.InZone(timeZone);
+
+        return RecurrenceDays
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
+            .Where(d => d.HasValue)
+            .Select(d => gateOpeningDate.PlusDays(d!.Value)
+                .At(startLocal.TimeOfDay)
+                .InZoneLeniently(timeZone)
+                .ToInstant())
+            .ToList();
+    }
+}
 
 /// <summary>
 /// T-03 — Cached projection of an <see cref="EventCategory"/> row.
@@ -119,3 +143,118 @@ public sealed record EventGuideSettingsView(
     public bool IsSubmissionOpenAt(Instant now) =>
         now >= SubmissionOpenAt && now <= SubmissionCloseAt;
 }
+
+/// <summary>
+/// Category projection for the admin management list, carrying the linked-event
+/// count so the management UI can render usage without exposing the EF nav.
+/// </summary>
+public sealed record EventCategoryManageInfo(
+    Guid Id,
+    string Name,
+    string Slug,
+    bool IsSensitive,
+    int DisplayOrder,
+    bool IsActive,
+    int EventCount);
+
+/// <summary>
+/// Venue projection for the admin management list, carrying the linked-event
+/// count so the management UI can render usage without exposing the EF nav.
+/// </summary>
+public sealed record EventVenueManageInfo(
+    Guid Id,
+    string Name,
+    string? Description,
+    string? LocationDescription,
+    int DisplayOrder,
+    bool IsActive,
+    int EventCount);
+
+/// <summary>
+/// A single moderation-history entry projected for the moderation queue,
+/// flattened so the presentation layer never touches the EF nav collection.
+/// </summary>
+public sealed record EventModerationHistoryInfo(
+    Guid ActorUserId,
+    EventModerationActionType Action,
+    string? Reason,
+    Instant CreatedAt);
+
+/// <summary>
+/// Full event projection for moderation / dashboard / submissions / export
+/// reads. Carries the flattened category and (optional) venue name, status,
+/// and — where the source query loaded it — the moderation history. Replaces
+/// the <see cref="Event"/> entity on those read surfaces.
+/// </summary>
+public sealed record EventInfo(
+    Guid Id,
+    Guid? CampId,
+    Guid? GuideSharedVenueId,
+    Guid SubmitterUserId,
+    Guid CategoryId,
+    string CategoryName,
+    string CategorySlug,
+    bool CategoryIsSensitive,
+    string? VenueName,
+    string Title,
+    string Description,
+    string? LocationNote,
+    string? Host,
+    Instant StartAt,
+    int DurationMinutes,
+    bool IsRecurring,
+    string? RecurrenceDays,
+    int PriorityRank,
+    EventStatus Status,
+    Instant SubmittedAt,
+    Instant LastUpdatedAt,
+    IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
+{
+    /// <summary>
+    /// Expands this event into concrete occurrence instants.
+    /// Mirrors <see cref="Event.GetOccurrenceInstants"/>.
+    /// </summary>
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone)
+    {
+        if (!IsRecurring || string.IsNullOrWhiteSpace(RecurrenceDays))
+            return [StartAt];
+
+        var startLocal = StartAt.InZone(timeZone);
+
+        return RecurrenceDays
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
+            .Where(d => d.HasValue)
+            .Select(d => gateOpeningDate.PlusDays(d!.Value)
+                .At(startLocal.TimeOfDay)
+                .InZoneLeniently(timeZone)
+                .ToInstant())
+            .ToList();
+    }
+}
+
+/// <summary>
+/// A favourited event projected for the personal schedule / favourites API —
+/// the favourite metadata plus the flattened event projection.
+/// </summary>
+public sealed record EventFavouriteInfo(
+    Guid Id,
+    Guid UserId,
+    Guid GuideEventId,
+    Instant CreatedAt,
+    EventInfo Event);
+
+/// <summary>
+/// Per-user event guide preference projection (excluded category slugs).
+/// </summary>
+public sealed record EventPreferenceInfo(
+    Guid UserId,
+    string ExcludedCategorySlugs,
+    Instant UpdatedAt);
+
+/// <summary>
+/// Approved events plus the guide settings, projected for export surfaces.
+/// </summary>
+public sealed record ApprovedEventsExportInfo(
+    IReadOnlyList<EventInfo> Events,
+    EventGuideSettingsView? Settings);
