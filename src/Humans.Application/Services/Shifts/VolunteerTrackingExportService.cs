@@ -149,17 +149,8 @@ public sealed class VolunteerTrackingExportService(
         return result;
     }
 
-    private static Dictionary<Guid, LocalDate> ComputeFirstShiftDay(IReadOnlyList<ConfirmedShiftRow> shifts, DateTimeZone zone)
-    {
-        var firstDay = new Dictionary<Guid, LocalDate>();
-        foreach (var s in shifts)
-        {
-            var localStart = s.StartsAtUtc.InZone(zone).LocalDateTime.Date;
-            if (!firstDay.TryGetValue(s.UserId, out var existing) || localStart < existing)
-                firstDay[s.UserId] = localStart;
-        }
-        return firstDay;
-    }
+    private static Dictionary<Guid, LocalDate> ComputeFirstShiftDay(IReadOnlyList<ConfirmedShiftRow> shifts, DateTimeZone zone) =>
+        ShiftEarlyEntryProjection.FirstShiftDayByUser(shifts, zone);
 
     private static Dictionary<Guid, (Guid teamId, string teamName)> ComputePrimaryTeam(
         Dictionary<(Guid userId, LocalDate day), List<(Guid teamId, string teamName, double hours)>> bucket)
