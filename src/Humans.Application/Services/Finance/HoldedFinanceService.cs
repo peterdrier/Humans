@@ -327,40 +327,65 @@ public sealed class HoldedFinanceService(
     {
         var now = clock.GetCurrentInstant();
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var epoch = Instant.FromUnixTimeSeconds(0);
 
-        var chart = await client.ListChartOfAccountsAsync(ct);
-        var balances = chart
-            .Where(a => a.Num >= CreditorAccountMin && a.Num <= CreditorAccountMax)
-            .Select(a => new HoldedCreditorBalance
+        try
+        {
+            var chart = await client.ListChartOfAccountsAsync(ct);
+            var balances = chart
+                .Where(a => a.Num >= CreditorAccountMin && a.Num <= CreditorAccountMax)
+                .Select(a => new HoldedCreditorBalance
+                {
+                    Id = Guid.NewGuid(),
+                    SupplierAccountNum = a.Num,
+                    Name = a.Name,
+                    Balance = a.Balance,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                })
+                .ToList();
+            await repo.UpsertCreditorBalancesAsync(balances, now, ct);
+
+            var payments = (await client.ListPaymentsAsync(ct))
+                // Skip malformed rows: no id/contact, or a missing/epoch-0 date (would store 1970-01-01).
+                .Where(p => !string.IsNullOrEmpty(p.Id) && !string.IsNullOrEmpty(p.ContactId)
+                         && p.Date != epoch)
+                .Select(p => new HoldedPayment
+                {
+                    Id = Guid.NewGuid(),
+                    HoldedPaymentId = p.Id,
+                    HoldedContactId = p.ContactId,
+                    Amount = p.Amount,
+                    Date = p.Date.InZone(zone).Date,
+                    DocumentType = p.DocumentType,
+                    CreatedAt = now,
+                })
+                .ToList();
+            await repo.UpsertPaymentsAsync(payments, now, ct);
+
+            logger.LogInformation(
+                "Holded creditor sync cached {BalanceCount} creditor balances and {PaymentCount} payments",
+                balances.Count, payments.Count);
+        }
+        catch (Exception ex)
+        {
+            // Surface the failure in the same sync-state widget the actuals pull uses, then rethrow
+            // so Hangfire records the job failure too.
+            logger.LogError(ex, "HoldedFinanceService.SyncCreditorDataAsync failed");
+            try
             {
-                Id = Guid.NewGuid(),
-                SupplierAccountNum = a.Num,
-                Name = a.Name,
-                Balance = a.Balance,
-                CreatedAt = now,
-                UpdatedAt = now,
-            })
-            .ToList();
-        await repo.UpsertCreditorBalancesAsync(balances, now, ct);
-
-        var payments = (await client.ListPaymentsAsync(ct))
-            .Where(p => !string.IsNullOrEmpty(p.Id) && !string.IsNullOrEmpty(p.ContactId))
-            .Select(p => new HoldedPayment
+                var state = await repo.GetSyncStateAsync(CancellationToken.None);
+                state.SyncStatus = HoldedSyncStatus.Error;
+                state.LastError = ex.Message;
+                state.StatusChangedAt = now;
+                await repo.SaveSyncStateAsync(state, CancellationToken.None);
+            }
+            catch (Exception saveEx)
             {
-                Id = Guid.NewGuid(),
-                HoldedPaymentId = p.Id,
-                HoldedContactId = p.ContactId,
-                Amount = p.Amount,
-                Date = p.Date.InZone(zone).Date,
-                DocumentType = p.DocumentType,
-                CreatedAt = now,
-            })
-            .ToList();
-        await repo.UpsertPaymentsAsync(payments, now, ct);
-
-        logger.LogInformation(
-            "Holded creditor sync cached {BalanceCount} creditor balances and {PaymentCount} payments",
-            balances.Count, payments.Count);
+                logger.LogError(saveEx, "Failed to persist creditor-sync error state");
+            }
+            throw;
+        }
     }
 
     public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(

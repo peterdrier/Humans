@@ -295,8 +295,9 @@ public sealed class HoldedClient : IHoldedClient
     private static decimal ReadDecimal(JsonNode? node) =>
         node?.GetValue<decimal>() ?? 0m;
 
+    // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
     private static int? ReadInt(JsonNode? node) =>
-        node is null ? null : (int?)node.GetValue<long>();
+        node is null ? null : (int?)node.GetValue<decimal>();
 
     private static Instant? ReadInstant(JsonNode? node)
     {
