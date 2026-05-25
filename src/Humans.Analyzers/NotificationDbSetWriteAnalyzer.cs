@@ -18,6 +18,9 @@ public sealed class NotificationDbSetWriteAnalyzer : DiagnosticAnalyzer
     private const string HumansDbContextFullName = "Humans.Infrastructure.Data.HumansDbContext";
     private const string NotificationRepositoryFullName =
         "Humans.Infrastructure.Repositories.Notifications.NotificationRepository";
+    private const string NotificationEntityFullName = "Humans.Infrastructure.Data.Notification";
+    private const string NotificationRecipientEntityFullName = "Humans.Infrastructure.Data.NotificationRecipient";
+    private const string DbSetOpenTypeFullName = "Microsoft.EntityFrameworkCore.DbSet`1";
 
     private static readonly ImmutableHashSet<string> NotificationDbSets =
         ImmutableHashSet.Create(StringComparer.Ordinal, "Notifications", "NotificationRecipients");
@@ -70,14 +73,29 @@ public sealed class NotificationDbSetWriteAnalyzer : DiagnosticAnalyzer
         if (dbContextType is null)
             return;
 
+        var dbSetOpenType = context.Compilation.GetTypeByMetadataName(DbSetOpenTypeFullName);
+        var notificationEntityType = context.Compilation.GetTypeByMetadataName(NotificationEntityFullName);
+        var notificationRecipientType = context.Compilation.GetTypeByMetadataName(NotificationRecipientEntityFullName);
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
+
         context.RegisterOperationAction(
-            ctx => AnalyzeInvocation(ctx, dbContextType),
+            ctx => AnalyzeInvocation(
+                ctx,
+                dbContextType,
+                dbSetOpenType,
+                notificationEntityType,
+                notificationRecipientType,
+                grandfatheredAttr),
             OperationKind.Invocation);
     }
 
     private static void AnalyzeInvocation(
         OperationAnalysisContext context,
-        INamedTypeSymbol dbContextType)
+        INamedTypeSymbol dbContextType,
+        INamedTypeSymbol? dbSetOpenType,
+        INamedTypeSymbol? notificationEntityType,
+        INamedTypeSymbol? notificationRecipientType,
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var op = (IInvocationOperation)context.Operation;
         if (!WriteMethods.Contains(op.TargetMethod.Name))
@@ -87,33 +105,72 @@ public sealed class NotificationDbSetWriteAnalyzer : DiagnosticAnalyzer
         if (IsNotificationRepository(topLevelType))
             return;
 
-        var dbSetName = GetNotificationDbSetReceiverName(op.Instance, dbContextType);
+        var dbSetName = GetNotificationDbSetReceiverName(
+            op.Instance,
+            dbContextType,
+            dbSetOpenType,
+            notificationEntityType,
+            notificationRecipientType);
         if (dbSetName is null)
             return;
 
         var typeName = topLevelType?.Name ?? "<unknown>";
+        var severity = topLevelType is null
+            ? DiagnosticSeverity.Error
+            : GrandfatheredCheck.EffectiveSeverity(topLevelType, grandfatheredAttr, DiagnosticId);
+
         context.ReportDiagnostic(Diagnostic.Create(
-            Rule,
-            op.Syntax.GetLocation(),
-            typeName,
-            dbSetName));
+            descriptor: Rule,
+            location: op.Syntax.GetLocation(),
+            effectiveSeverity: severity,
+            additionalLocations: null,
+            properties: null,
+            messageArgs: [typeName, dbSetName]));
     }
 
     private static string? GetNotificationDbSetReceiverName(
         IOperation? receiver,
-        INamedTypeSymbol dbContextType)
+        INamedTypeSymbol dbContextType,
+        INamedTypeSymbol? dbSetOpenType,
+        INamedTypeSymbol? notificationEntityType,
+        INamedTypeSymbol? notificationRecipientType)
     {
         receiver = Unwrap(receiver);
-        if (receiver is not IPropertyReferenceOperation propertyReference)
-            return null;
 
-        var property = propertyReference.Property;
-        if (!NotificationDbSets.Contains(property.Name))
-            return null;
+        // Direct property reference: ctx.Notifications.Add(...)
+        if (receiver is IPropertyReferenceOperation propertyReference)
+        {
+            var property = propertyReference.Property;
+            if (NotificationDbSets.Contains(property.Name)
+                && SymbolEqualityComparer.Default.Equals(property.ContainingType, dbContextType))
+            {
+                return property.Name;
+            }
+        }
 
-        return SymbolEqualityComparer.Default.Equals(property.ContainingType, dbContextType)
-            ? property.Name
-            : null;
+        // Type-based fallback: a DbSet<Notification> captured into a local or field
+        // (var set = ctx.Notifications; set.Add(...)) still routes a write through the
+        // section's table, so match on the receiver's DbSet<T> element type.
+        if (dbSetOpenType is not null
+            && receiver?.Type is INamedTypeSymbol receiverType
+            && SymbolEqualityComparer.Default.Equals(receiverType.OriginalDefinition, dbSetOpenType)
+            && receiverType.TypeArguments.Length == 1
+            && receiverType.TypeArguments[0] is INamedTypeSymbol elementType)
+        {
+            if (notificationEntityType is not null
+                && SymbolEqualityComparer.Default.Equals(elementType, notificationEntityType))
+            {
+                return "Notifications";
+            }
+
+            if (notificationRecipientType is not null
+                && SymbolEqualityComparer.Default.Equals(elementType, notificationRecipientType))
+            {
+                return "NotificationRecipients";
+            }
+        }
+
+        return null;
     }
 
     private static IOperation? Unwrap(IOperation? operation)
