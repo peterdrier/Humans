@@ -135,28 +135,29 @@ public class ThingsToDoViewComponent : ViewComponent
                 });
             }
 
-            // 5. Dietary & medical nudge — fires when the user has an active qualifying
-            // signup (6h+ or all-day). Shows Pending when DietaryPreference is empty,
-            // Done when set. Matches the shift-info branch's Pending/Done pattern so the
-            // item disappears with the rest of the card only when everything is done.
-            // See feature #279 / 35 — docs/features/profiles/dietary-medical-nudge.md
+            // 5. Dietary & medical nudge — fires whenever DietaryPreference is empty.
+            // Copy varies by whether the user has an active qualifying signup; the
+            // item is the same Key either way so it disappears with the rest of the
+            // card when DietaryPreference becomes non-empty.
+            // See docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md
             try
             {
-                var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
-                if (hasQualifyingSignup)
+                var dietaryProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+                var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
+                if (dietaryEmpty)
                 {
-                    var dietaryProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
-                    var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
+                    var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
+                    var descriptionKey = hasQualifyingSignup
+                        ? "Todo_DietaryMedical_Pending"
+                        : "Todo_DietaryMedical_NoShift_Pending";
                     model.Items.Add(new TodoItem
                     {
                         Key = "dietary-medical",
                         Title = _localizer["Todo_DietaryMedical_Title"].Value,
-                        Description = dietaryEmpty
-                            ? _localizer["Todo_DietaryMedical_Pending"].Value
-                            : _localizer["Todo_DietaryMedical_Done"].Value,
-                        IsDone = !dietaryEmpty,
-                        ActionUrl = dietaryEmpty ? Url.Action("DietaryMedical", "Profile") : null,
-                        ActionText = dietaryEmpty ? _localizer["Todo_DietaryMedical_Action"].Value : null,
+                        Description = _localizer[descriptionKey].Value,
+                        IsDone = false,
+                        ActionUrl = Url.Action("DietaryMedical", "Profile"),
+                        ActionText = _localizer["Todo_DietaryMedical_Action"].Value,
                         IconClass = "fa-solid fa-utensils",
                     });
                 }
