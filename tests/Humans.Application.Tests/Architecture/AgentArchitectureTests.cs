@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Agent;
 using Humans.Infrastructure.Services.Agent;
 
@@ -23,31 +22,9 @@ public class AgentArchitectureTests
 {
     // ── AgentService (Application) ───────────────────────────────────────────
 
-    [HumansFact]
-    public void AgentService_TakesRepository()
-    {
-        var ctor = typeof(AgentService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IAgentRepository),
-            because: "§15 requires every section service to go through its owning repository interface");
-    }
-
-    [HumansFact]
-    public void AgentService_LivesInApplicationServicesAgentNamespace()
-    {
-        typeof(AgentService).Namespace
-            .Should().Be("Humans.Application.Services.Agent",
-                because: "the orchestrator service lives in the Application layer per design-rules §15");
-    }
-
-    [HumansFact]
-    public void AgentService_AssemblyIsHumansApplication()
-    {
-        typeof(AgentService).Assembly.GetName().Name
-            .Should().Be("Humans.Application",
-                because: "Humans.Application structurally forbids EF Core references, so the orchestrator cannot import EF even if a future typo tries");
-    }
+    // TakesRepository check covered by pattern G (positive wiring noise).
+    // Service-namespace check covered by HUM0012.
+    // AssemblyIsHumansApplication check covered by HUM0012.
 
     [HumansFact]
     public void AgentService_DoesNotReferenceEntityFrameworkCore()
@@ -63,35 +40,8 @@ public class AgentArchitectureTests
 
     // ── IAgentRepository implementation ──────────────────────────────────────
 
-    [HumansFact]
-    public void AgentRepository_IsSealed()
-    {
-        var repoType = typeof(AgentAbuseDetector).Assembly
-            .GetTypes()
-            .Single(t => !t.IsAbstract && typeof(IAgentRepository).IsAssignableFrom(t));
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
-    [HumansFact]
-    public void AgentRepository_ImplementationLivesInHumansInfrastructure()
-    {
-        // The EF-backed implementation sits under Humans.Infrastructure (it
-        // currently lives directly under Humans.Infrastructure.Repositories
-        // rather than a per-section subfolder — see the design-rules §15b
-        // follow-up. This test pins the assembly only so a future move into
-        // Repositories.Agent doesn't trip the test, while still preventing the
-        // implementation from leaking back into Application.)
-        var infraAssembly = typeof(AgentAbuseDetector).Assembly;
-        var impl = infraAssembly.GetTypes()
-            .SingleOrDefault(t => !t.IsAbstract && typeof(IAgentRepository).IsAssignableFrom(t));
-
-        impl.Should().NotBeNull(
-            because: "the EF-backed AgentRepository lives in Humans.Infrastructure");
-        impl.Assembly.GetName().Name
-            .Should().Be("Humans.Infrastructure",
-                because: "EF-backed repositories live in Humans.Infrastructure per design-rules §15b");
-    }
+    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
+    // Infrastructure-assembly check covered by RepositoryImplementationsLiveInInfrastructureRule.
 
     // ── Agent helpers stay in Infrastructure ─────────────────────────────────
 

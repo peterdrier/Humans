@@ -1,9 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
-using Humans.Infrastructure.Repositories.Calendar;
 using Humans.Infrastructure.Services.Calendar;
 using CalendarService = Humans.Application.Services.Calendar.CalendarService;
 
@@ -37,25 +34,6 @@ public class CalendarArchitectureTests
     }
 
     [HumansFact]
-    public void CalendarService_TakesRepository()
-    {
-        var ctor = typeof(CalendarService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ICalendarRepository));
-    }
-
-    [HumansFact]
-    public void CalendarService_TakesTeamServiceRead()
-    {
-        var ctor = typeof(CalendarService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITeamServiceRead),
-            because: "owning-team display names are resolved via the cross-section ITeamServiceRead surface (design-rules §6b, §9); CalendarEvent.OwningTeam nav is [Obsolete]");
-    }
-
-    [HumansFact]
     public void CalendarService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
@@ -65,17 +43,6 @@ public class CalendarArchitectureTests
 
         storeParam.Should().BeNull(
             because: "Calendar §15 migration goes through ICalendarRepository, not a Store");
-    }
-
-    [HumansFact]
-    public void CalendarService_DoesNotInjectIMemoryCache()
-    {
-        var ctor = typeof(CalendarService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType.FullName ?? string.Empty).ToList();
-
-        paramTypes.Should().NotContain(
-            n => n.Contains("Microsoft.Extensions.Caching.Memory.IMemoryCache", StringComparison.Ordinal),
-            because: "CalendarService is cache-free; decorators own any infrastructure cache concerns.");
     }
 
     // ── ICalendarServiceRead / CachingCalendarService ────────────────────────
@@ -125,17 +92,6 @@ public class CalendarArchitectureTests
         // Records expose the synthesized EqualityContract property.
         t.GetMethod("get_EqualityContract", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             .Should().NotBeNull(because: "CalendarEventInfo must be a record");
-    }
-
-    // ── ICalendarRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CalendarRepository_IsSealed()
-    {
-        var repoType = typeof(CalendarRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
     // ── CalendarEvent ────────────────────────────────────────────────────────

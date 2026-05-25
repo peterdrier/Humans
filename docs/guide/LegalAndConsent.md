@@ -61,7 +61,7 @@ Consent Coordinators are the safety gate between "this human signed the paperwor
 - **Clear** — the human is auto-approved as a Volunteer, added to the Volunteers system team, and granted the active-member claim that unlocks the rest of the app.
 - **Flag** — activation is blocked pending Board or Admin review. Flag when something looks off and leave a note so Board can pick it up.
 
-Coordinators cannot edit legal documents or publish new versions — that's an Admin function.
+Coordinators cannot edit legal documents or publish new versions — that's a Board or Admin function.
 
 ## As a Board member / Admin
 

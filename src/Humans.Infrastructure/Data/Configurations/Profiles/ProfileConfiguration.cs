@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -84,6 +86,21 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.EmergencyContactRelationship)
             .HasMaxLength(100);
 
+        // Dietary + medical (moved from VolunteerEventProfile). Lists persisted as
+        // JSONB with a sequence-equality value comparer, mirroring the prior VEP map.
+        var listComparer = new ValueComparer<List<string>>(
+            (a, b) => a != null && b != null && a.SequenceEqual(b),
+            v => v.Aggregate(0, HashCode.Combine),
+            v => v.ToList());
+
+        ConfigureJsonbList(builder, p => p.Allergies, listComparer);
+        ConfigureJsonbList(builder, p => p.Intolerances, listComparer);
+
+        builder.Property(p => p.DietaryPreference).HasMaxLength(200);
+        builder.Property(p => p.AllergyOtherText).HasMaxLength(500);
+        builder.Property(p => p.IntoleranceOtherText).HasMaxLength(500);
+        builder.Property(p => p.MedicalConditions).HasMaxLength(4000);
+
         builder.Property(p => p.NoPriorBurnExperience)
             .IsRequired();
 
@@ -115,5 +132,17 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         // Ignore computed properties
         builder.Ignore(p => p.FullName);
         builder.Ignore(p => p.HasCustomProfilePicture);
+    }
+
+    private static void ConfigureJsonbList(
+        EntityTypeBuilder<Profile> builder,
+        System.Linq.Expressions.Expression<Func<Profile, List<string>>> propertyExpression,
+        ValueComparer<List<string>> comparer)
+    {
+        builder.Property(propertyExpression).HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new(),
+                comparer);
     }
 }

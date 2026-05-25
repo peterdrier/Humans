@@ -81,7 +81,7 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 
 - **Edit your camp** at `/Camps/{slug}/Edit`. Update contact info, links, the current season's data (blurb, vibes, kids policy, space and sound needs, performance info), and camp-level fields like times at the event and the Swiss camp flag. Toggle **Hide historical names** to suppress the "Also known as" section on the public page.
 - **Manage names.** If a Camp Admin has set a name lock date for the year, name changes are blocked after that date. Any rename is automatically recorded as a historical name.
-- **Manage co-leads** from the Edit page: add a co-lead or remove a lead. A camp must always have at least one lead and is capped at 5 leads.
+- **Manage co-leads** from the Edit page: add a co-lead or remove a lead. A camp must always have at least one lead; the default cap is 2, which a Camp Admin can raise per camp.
 - **Upload, delete, and reorder images** from the Edit page. Images appear on the directory card and detail page in the order you set.
 - **Opt into a new season** when Camp Admins open one. The new season carries your camp's identity forward from the previous one. If your camp has any previously approved season it auto-approves to Active; if it has never been approved it goes to Pending for Camp Admin review. Either way, review and update the season-specific fields before the event.
 - **Withdraw a season** if plans change. You can also **rejoin a Withdrawn season** yourself (it goes back to Pending for re-approval). Reactivating a season that's been marked **Full** back to Active is a Camp Admin action.
@@ -117,4 +117,4 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 - [Profiles](Profiles.md) — camp leads are linked to human accounts; a valid profile is required to be a lead.
 - [Governance](Governance.md) — Colaborador application is the prerequisite for becoming a camp lead.
 - [City Planning](CityPlanning.md) — what happens to the placement data your camp profile feeds in.
-- [Glossary](Glossary.md) — definitions for "barrio", "season", "Primary Lead", "sound zone", and other camp terms.
+- [Glossary](Glossary.md) — definitions for "barrio", "season", "Camp Lead", "sound zone", and other camp terms.

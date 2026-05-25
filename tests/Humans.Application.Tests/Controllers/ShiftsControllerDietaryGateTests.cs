@@ -61,11 +61,10 @@ public class ShiftsControllerDietaryGateTests
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        // The controller resolves the current user via IUserService.GetUserInfoAsync.
-        // The UserInfo carries a complete Profile so the name gate passes and the
-        // dietary gate (the unit under test) is reached.
-        _userService.GetUserInfoAsync(_user.Id, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfoWithName());
+        // The controller resolves the current user via IUserService.GetUserInfoAsync,
+        // and reads DietaryPreference straight off UserInfo.Profile. Default: empty
+        // dietary; tests override via SetDietary.
+        SetDietary(null);
 
         // Mine() reads shiftView.GetUserAsync(...).Signups (#720); return an
         // empty, event-less view so the Mine-flag tests reach the dietary
@@ -101,32 +100,36 @@ public class ShiftsControllerDietaryGateTests
         _controller.Url = Substitute.For<IUrlHelper>();
     }
 
-    private UserInfo BuildUserInfoWithName() => UserInfo.Create(
-        user: _user,
-        userEmails: [],
-        eventParticipations: [],
-        externalLogins: [],
-        profile: new Profile
-        {
-            UserId = _user.Id,
-            BurnerName = "Burner",
-            FirstName = "First",
-            LastName = "Last",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        },
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+    // Stubs GetUserInfoAsync to return a name-complete profile (so the name gate
+    // passes) with the given DietaryPreference (the dietary gate's input).
+    private void SetDietary(string? dietary) =>
+        _userService.GetUserInfoAsync(_user.Id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                user: _user,
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
+                profile: new Profile
+                {
+                    UserId = _user.Id,
+                    BurnerName = "Burner",
+                    FirstName = "First",
+                    LastName = "Last",
+                    DietaryPreference = dietary,
+                    CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                    UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                },
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: []));
 
     [HumansFact]
     public async Task SignUp_DietaryEmpty_QualifyingShift_RedirectsToDietaryMedical()
     {
         var shiftId = Guid.NewGuid();
         _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+        SetDietary(null);
 
         var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
 
@@ -144,8 +147,7 @@ public class ShiftsControllerDietaryGateTests
     {
         var shiftId = Guid.NewGuid();
         _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: false));
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+        SetDietary(null);
         _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
@@ -162,8 +164,7 @@ public class ShiftsControllerDietaryGateTests
     {
         var shiftId = Guid.NewGuid();
         _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = "Vegan" });
+        SetDietary("Vegan");
         _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
@@ -185,8 +186,7 @@ public class ShiftsControllerDietaryGateTests
         _identity.AddClaim(new Claim(ClaimTypes.Role, RoleNames.Admin));
 
         _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+        SetDietary(null);
 
         var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
 
@@ -202,8 +202,7 @@ public class ShiftsControllerDietaryGateTests
         var rotaId = Guid.NewGuid();
         _signupService.PeekRangeShiftsAsync(rotaId, 0, 2, Arg.Any<CancellationToken>())
                       .Returns(new[] { BuildShift(Guid.NewGuid(), qualifiesForCantina: true) });
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+        SetDietary(null);
 
         var result = await _controller.SignUpRange(rotaId, 0, 2, null, null, null, null, null, null, null);
 
@@ -225,8 +224,7 @@ public class ShiftsControllerDietaryGateTests
         var rotaId = Guid.NewGuid();
         _signupService.PeekRangeShiftsAsync(rotaId, 0, 2, Arg.Any<CancellationToken>())
                       .Returns(Array.Empty<Shift>());
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+        SetDietary(null);
         _signupService.SignUpRangeAsync(_user.Id, rotaId, 0, 2, Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<bool>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
@@ -254,8 +252,6 @@ public class ShiftsControllerDietaryGateTests
 
         model.UserId.Should().Be(_user.Id);
         model.SignupsBlockedByMissingDietary.Should().BeFalse();
-        // Short-circuits before touching the profile.
-        await _shiftMgmt.DidNotReceive().GetShiftProfileAsync(Arg.Any<Guid>(), Arg.Any<bool>());
     }
 
     [HumansFact]
@@ -263,8 +259,7 @@ public class ShiftsControllerDietaryGateTests
     {
         _shiftMgmt.HasQualifyingCantinaSignupAsync(_user.Id, Arg.Any<CancellationToken>())
                   .Returns(true);
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+        SetDietary(null);
 
         var model = await GetMineViewModel();
 
@@ -276,8 +271,7 @@ public class ShiftsControllerDietaryGateTests
     {
         _shiftMgmt.HasQualifyingCantinaSignupAsync(_user.Id, Arg.Any<CancellationToken>())
                   .Returns(true);
-        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = "Vegan" });
+        SetDietary("Vegan");
 
         var model = await GetMineViewModel();
 

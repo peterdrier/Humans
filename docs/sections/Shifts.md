@@ -29,7 +29,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Range Signups** link multiple shifts via a block ID (`SignupBlockId`). Operations on a range (sign-up, voluntell, bail, approve, refuse) apply to the entire block atomically.
 - **Event Settings** is a singleton per event controlling dates, timezone, early-entry capacity, barrios EE allocation, early-entry close instant, global volunteer cap, reminder lead time, and whether shift browsing is open to regular volunteers.
 - **General Availability** tracks per-human per-event day availability (one row per user per event; `AvailableDayOffsets` is a jsonb list of day offsets).
-- **Volunteer Event Profile** stores per-user volunteer profile data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), languages, dietary preference, allergies, intolerances, and medical conditions. One-to-one with `User`.
+- **Volunteer Event Profile** stores per-user shift-matching data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), and languages. One-to-one with `User`. **Dietary preference, allergies, intolerances, and medical conditions moved to `Profile` (Users section)** — see the dietary-medical-to-profile migration; read them via `IUserServiceRead`. The old VEP columns are retained (unused) pending a post-prod-soak drop.
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
 - **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](Users.md)); Shifts may surface it as a derived view but does not write to it.
@@ -107,7 +107,7 @@ All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction
 
 ### VolunteerEventProfile
 
-Per-user volunteer profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages`, `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, and `MedicalConditions`. List columns are jsonb. Unique on `UserId`.
+Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The dietary/medical columns (`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions`) moved to `Profile`; the VEP columns remain in the schema (unused) pending a post-prod-soak drop.
 
 **Table:** `volunteer_event_profiles`
 
@@ -228,7 +228,7 @@ Selected routes:
 - Range signups (build/strike rotas) create signups for every all-day shift in the date range under one `SignupBlockId`; conflicts and capacity are reported as warnings, not failures (provided at least one slot is available). The whole block is bailed/approved/refused atomically by `BailRangeAsync` / `ApproveRangeAsync` / `RefuseRangeAsync`.
 - Event settings is a singleton per event — `CreateAsync` / `UpdateAsync` reject a second IsActive=true row.
 - Rota period (Build, Event, Strike, All) determines the shift creation UX (all-day vs time-slotted) and signup UX (date-range vs individual). Day offsets entered in the create/edit shift form must fall within the rota's period range.
-- Medical data on volunteer event profiles is restricted to Admin and NoInfoAdmin (`ShiftRoleChecks.CanViewMedical`). `IShiftManagementService.GetShiftProfileAsync(uid, includeMedical)` strips the field when `includeMedical = false`.
+- Medical data is now a `Profile` field (Users section), present on the cached `UserInfo`. It is restricted to Admin and NoInfoAdmin (`MedicalDataViewer` policy / `ShiftRoleChecks.CanViewMedical`) and **gated at every render/serialize surface** (volunteer search, the volunteer badges partial), not stripped at a service. `IShiftManagementService.GetShiftProfileAsync` no longer carries medical (it returns only Skills/Quirks/Languages).
 - When shift browsing is closed (`IsShiftBrowsingOpen = false`), regular volunteers can only see shifts if they already have signups (`hasSignups = true`). Coordinators and privileged roles can always browse. Sign-up and range sign-up are also gated by this flag.
 - Early-entry freeze: after `EventSettings.EarlyEntryClose`, non-privileged humans cannot sign up for, range-sign-up to, bail from, or have approval issued on Build-period shifts. Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinators bypass the freeze.
 - Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants.

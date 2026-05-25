@@ -2,8 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.Email;
-using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
 using OutboxEmailService = Humans.Application.Services.Email.OutboxEmailService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -28,26 +26,9 @@ public class EmailArchitectureTests
 {
     // ── EmailOutboxService ───────────────────────────────────────────────────
 
-    [HumansFact]
-    public void EmailOutboxService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(EmailOutboxService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "Email outbox is not IMemoryCache-backed; reads are infrequent admin dashboard queries that go straight to the repository (no decorator variant per Email §15 choice)");
-    }
-
-    [HumansFact]
-    public void EmailOutboxService_TakesRepository()
-    {
-        var ctor = typeof(EmailOutboxService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IEmailOutboxRepository));
-    }
+    // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
+    // TakesRepository check covered by pattern G (positive wiring noise).
+    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 
     // ── OutboxEmailService ───────────────────────────────────────────────────
 
@@ -85,23 +66,6 @@ public class EmailArchitectureTests
 
         hangfireParam.Should().BeNull(
             because: "Application layer must not reference Hangfire types directly — IImmediateOutboxProcessor abstracts the dispatch");
-    }
-
-    // ── IEmailOutboxRepository ───────────────────────────────────────────────
-
-    [HumansFact]
-    public void EmailOutboxRepository_IsSealed()
-    {
-        // Repositories are internal sealed since issue #750. Use GetTypes() —
-        // Humans.Application.Tests has InternalsVisibleTo on Humans.Infrastructure.
-        var repoType = typeof(IEmailOutboxRepository).Assembly
-            .GetTypes()
-            .Concat(typeof(EmailOutboxRepository).Assembly.GetTypes())
-            .Single(t => string.Equals(t.Name, "EmailOutboxRepository", StringComparison.Ordinal)
-                         && typeof(IEmailOutboxRepository).IsAssignableFrom(t));
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
     // ── Connector abstractions ──────────────────────────────────────────────

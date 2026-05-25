@@ -1,9 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using EmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
 using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
 using GoogleRemovalNotificationService = Humans.Application.Services.GoogleIntegration.GoogleRemovalNotificationService;
@@ -43,22 +38,6 @@ public class GoogleIntegrationArchitectureTests
     }
 
     [HumansFact]
-    public void EmailProvisioningService_DependenciesGoThroughSectionServiceInterfaces()
-    {
-        var ctor = typeof(EmailProvisioningService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IUserServiceRead),
-            because: "User and Profile reads (including FirstName/LastName) go through the cached UserInfo read-model on IUserServiceRead.GetUserInfoAsync per design-rules §9");
-        paramTypes.Should().NotContain(typeof(IProfilePictureService),
-            because: "profile reads moved onto IUserService.GetUserInfoAsync; the picture service is only for profile-picture bytes");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "UserEmail reads/writes go through IUserEmailService per design-rules §9");
-        paramTypes.Should().Contain(typeof(IGoogleWorkspaceUserService),
-            because: "Google Workspace Users API calls go through the IGoogleWorkspaceUserService bridge interface (design-rules §13)");
-    }
-
-    [HumansFact]
     public void EmailProvisioningService_IsSealed()
     {
         typeof(EmailProvisioningService).IsSealed.Should().BeTrue(
@@ -68,35 +47,6 @@ public class GoogleIntegrationArchitectureTests
     // ── GoogleWorkspaceSyncService (§15 Part 2b, issue #575) ─────────────────
 
     [HumansFact]
-    public void GoogleWorkspaceSyncService_DependenciesGoThroughBridgesAndSectionServiceInterfaces()
-    {
-        var ctor = typeof(GoogleWorkspaceSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        // Google SDK bridges (Part 2a). Group membership calls live in
-        // GoogleGroupSyncService; this service only provisions groups and
-        // manages settings drift.
-        paramTypes.Should().NotContain(typeof(IGoogleGroupMembershipClient));
-        paramTypes.Should().Contain(typeof(IGoogleGroupSync),
-            because: "group membership sync requests after Drive resource link/unlink route through IGoogleGroupSync.RequestSyncAsync");
-        paramTypes.Should().Contain(typeof(IGoogleGroupProvisioningClient));
-        paramTypes.Should().Contain(typeof(IGoogleDrivePermissionsClient));
-        paramTypes.Should().Contain(typeof(IGoogleDirectoryClient));
-
-        // Sibling-service cross-section reads.
-        paramTypes.Should().Contain(typeof(ITeamService),
-            because: "team/member reads route through ITeamService per design-rules §9");
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "User reads route through IUserService");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "extra-email identity resolution routes through IUserEmailService");
-
-        // Repositories for section-owned tables.
-        paramTypes.Should().Contain(typeof(IGoogleResourceRepository));
-        paramTypes.Should().Contain(typeof(IGoogleSyncOutboxRepository));
-    }
-
-    [HumansFact]
     public void GoogleWorkspaceSyncService_IsSealed()
     {
         typeof(GoogleWorkspaceSyncService).IsSealed.Should().BeTrue(
@@ -104,14 +54,6 @@ public class GoogleIntegrationArchitectureTests
     }
 
     // ── GoogleGroupSyncService ──────────────────────────────────────────────
-
-    [HumansFact]
-    public void GoogleGroupSyncService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleGroupSyncService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "Google group membership orchestration is Application-layer Google Integration business logic");
-    }
 
     [HumansFact]
     public void GoogleGroupSyncService_IsSealed()

@@ -88,6 +88,10 @@ public class GuideController(IGuideContentService content, IGuideRoleResolver ro
         {
             entries.Add(new GuideSidebarEntry(section, DisplayName(section), "Section guides"));
         }
+        foreach (var faq in GuideFiles.CommonQuestions)
+        {
+            entries.Add(new GuideSidebarEntry(faq, DisplayName(faq), "Common questions"));
+        }
         entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, "Glossary", "Appendix"));
         return new GuideSidebarModel { Entries = entries, ActiveStem = activeStem };
     }
@@ -100,6 +104,12 @@ public class GuideController(IGuideContentService content, IGuideRoleResolver ro
         "LegalAndConsent" => "Legal & Consent",
         "CityPlanning" => "City Planning",
         "GoogleIntegration" => "Google Integration",
+        "EmailAccount" => "Your @nobodies.team email",
+        "TwoStepVerification" => "Two-step verification (2FA)",
+        "TicketTransfers" => "Transferring your ticket",
+        "AiHelper" => "The in-app AI helper",
+        "SigningIn" => "Signing in & getting unstuck",
+        "YourData" => "Your data & privacy",
         _ => stem
     };
 }

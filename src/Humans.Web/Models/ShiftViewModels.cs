@@ -332,7 +332,7 @@ public class ShiftAdminViewModel
     public int ConfirmedCount { get; set; }
     public bool CanManageShifts { get; set; }
     public bool CanApproveSignups { get; set; }
-    public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
+    public Dictionary<Guid, VolunteerBadgesViewModel> VolunteerProfiles { get; set; } = new();
 
     /// <summary>
     /// User display data (BurnerName, ProfilePictureUrl) keyed by UserId for every signup

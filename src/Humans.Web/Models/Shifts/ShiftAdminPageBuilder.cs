@@ -84,19 +84,34 @@ public sealed class ShiftAdminPageBuilder(
         return (pendingSignups, totalSlots, confirmedCount);
     }
 
-    private async Task<Dictionary<Guid, VolunteerEventProfile>> LoadProfilesAsync(
+    private async Task<Dictionary<Guid, VolunteerBadgesViewModel>> LoadProfilesAsync(
         IReadOnlyList<Guid> userIds,
         bool canViewMedical)
     {
-        var profileDict = new Dictionary<Guid, VolunteerEventProfile>();
+        var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
+        if (userIds.Count == 0) return result;
+
+        // Skills/Quirks/Languages come from the shift profile (VEP); dietary +
+        // medical from the person's Profile (cached UserInfo). Medical is gated
+        // here — populated only when the viewer holds MedicalDataViewer.
+        var userInfos = await userService.GetUserInfosAsync(userIds);
         foreach (var uid in userIds)
         {
-            var profile = await shiftManagement.GetShiftProfileAsync(uid, includeMedical: canViewMedical);
-            if (profile is not null)
-                profileDict[uid] = profile;
+            var vep = await shiftManagement.GetShiftProfileAsync(uid);
+            userInfos.TryGetValue(uid, out var info);
+            var person = info?.Profile;
+            if (vep is null && person is null) continue;
+
+            result[uid] = new VolunteerBadgesViewModel(
+                Skills: vep?.Skills ?? [],
+                Quirks: vep?.Quirks ?? [],
+                Languages: vep?.Languages ?? [],
+                DietaryPreference: person?.DietaryPreference,
+                MedicalConditions: canViewMedical ? person?.MedicalConditions : null,
+                ShowMedical: canViewMedical);
         }
 
-        return profileDict;
+        return result;
     }
 
     private async Task<List<DepartmentOption>> LoadTransferDepartmentsAsync(TeamInfo currentDepartment)

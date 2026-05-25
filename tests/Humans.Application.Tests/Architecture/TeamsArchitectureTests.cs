@@ -30,24 +30,6 @@ public class TeamsArchitectureTests
     // ── TeamService ──────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void TeamService_TakesRepository()
-    {
-        var ctor = typeof(TeamService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITeamRepository),
-            because: "§15 requires every section service to go through its owning repository interface");
-    }
-
-    [HumansFact]
-    public void TeamService_AssemblyIsHumansApplication()
-    {
-        typeof(TeamService).Assembly.GetName().Name
-            .Should().Be("Humans.Application",
-                because: "cross-check: the Application-layer project graph structurally forbids EF Core references, so services in this assembly cannot import EF even if a future typo tries");
-    }
-
-    [HumansFact]
     public void TeamService_DoesNotReferenceEntityFrameworkCore()
     {
         // Humans.Application.csproj does not reference Microsoft.EntityFrameworkCore,
@@ -65,13 +47,6 @@ public class TeamsArchitectureTests
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
 
     [HumansFact]
-    public void TeamRepository_IsSealed()
-    {
-        typeof(TeamRepository).IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
-    [HumansFact]
     public void TeamRepository_ImplementsITeamRepository()
     {
         typeof(ITeamRepository).IsAssignableFrom(typeof(TeamRepository))
@@ -79,31 +54,15 @@ public class TeamsArchitectureTests
     }
 
     [HumansFact]
-    public void TeamRepository_LivesInInfrastructureRepositoriesTeamsNamespace()
-    {
-        typeof(TeamRepository).Namespace
-            .Should().Be("Humans.Infrastructure.Repositories.Teams",
-                because: "EF-backed repository implementations live in Humans.Infrastructure.Repositories.<Section> per design-rules §15b");
-    }
-
-    // ── ITeamRepository injection is Teams-section-only ──────────────────────
-
-    /// <summary>
-    /// Production code outside the Teams section namespace must not inject
-    /// <see cref="ITeamRepository"/> directly. Cross-section reads route through
-    /// the public <see cref="ITeamService"/> / <see cref="ITeamServiceRead"/>
-    /// surface (decorated by <see cref="CachingTeamService"/>) so they hit the
-    /// cache instead of the DB on every request. Repository injection is allowed
-    /// only in the scoped inner <c>TeamService</c> and the EF impl itself; caching
-    /// decorators must resolve the keyed inner instead of injecting repositories
-    /// directly (HUM0020). Scans all three production
-    /// assemblies — Application, Infrastructure, and Web — so a future regression
-    /// where a controller, page handler, or filter takes <see cref="ITeamRepository"/>
-    /// directly fails this test.
-    /// </summary>
-    [HumansFact]
     public void ITeamRepository_InjectedOnlyInsideTeamsSection()
     {
+        // Scans Application + Infrastructure + Web for any non-Teams class that
+        // injects ITeamRepository directly. NOT covered by the universal analyzers:
+        // HUM0017 (CrossSectionRepositoryInjectionAnalyzer) is Application-only and
+        // only fires on IApplicationService implementers; HUM0014 is Web-only;
+        // HUM0020 only covers caching decorators. A non-decorator Infrastructure
+        // class injecting ITeamRepository would otherwise go uncaught — this test
+        // pins that scope.
         var assembliesToScan = new[]
         {
             typeof(TeamService).Assembly,                                // Humans.Application

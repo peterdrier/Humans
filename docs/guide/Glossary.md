@@ -32,6 +32,13 @@ Yay, Maybe, No, or Abstain. Individual votes are deleted when the application
 is finalized; only the collective decision is retained. See
 [Governance](Governance.md).
 
+## Camp Lead
+
+A human responsible for a camp. A camp has at least one lead and, by default,
+up to two (a Camp Admin can raise the cap). Leads have equal authority and are
+managed from the camp's Edit page. (An older "Primary Lead / Co-Lead"
+distinction is being retired.) See [Camps](Camps.md).
+
 ## Camp Season
 
 A camp's per-year record — name, blurb, vibes, space needs, placement, and
@@ -77,12 +84,6 @@ of role. Individual capabilities depend on role.
 Your governance status — Volunteer (default), Colaborador, or Asociado.
 Tracked on the profile and changed via tier applications. See
 [Governance](Governance.md).
-
-## Primary Lead
-
-The human responsible for a camp. A camp has exactly one Primary Lead and
-optional Co-Leads; Primary can be transferred from the Edit page. See
-[Camps](Camps.md).
 
 ## Reconciliation
 
@@ -151,3 +152,9 @@ See [Teams](Teams.md).
 The default membership tier — the standard human. Everyone starts here after
 completing signup, profile setup, consent, and Consent Coordinator clearance.
 See [Onboarding](Onboarding.md).
+
+## Volunteer Coordinator
+
+The role that acts as a facilitation contact for onboarding, with read-only
+access to the onboarding review queue. Distinct from the Consent Coordinator,
+who clears consents. See [Onboarding](Onboarding.md).

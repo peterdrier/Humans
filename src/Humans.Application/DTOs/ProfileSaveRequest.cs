@@ -7,4 +7,7 @@ public record ProfileSaveRequest(
     int? BirthdayMonth, int? BirthdayDay,
     string? EmergencyContactName, string? EmergencyContactPhone, string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,
-    byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture);
+    byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture,
+    // Meal-pref + allergies owned by the Edit page (the DietaryMedical page owns
+    // intolerances + medical via SaveDietaryMedicalAsync). These three only.
+    string? DietaryPreference = null, List<string>? Allergies = null, string? AllergyOtherText = null);

@@ -209,6 +209,16 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
         CancellationToken ct = default);
 
     /// <summary>
+    /// Persists the six dietary + medical Profile columns (the DietaryMedical page).
+    /// Leaves all other profile fields untouched. MedicalConditions is GDPR Art. 9 —
+    /// the caller owns ownership/authorization checks.
+    /// </summary>
+    Task SaveDietaryMedicalAsync(
+        Guid userId,
+        UserProfileDietaryMedicalCommand command,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the profile-picture content-type column that gates UserInfo custom
     /// picture rendering. The caller owns filesystem writes and uses the old
     /// content type returned here to remove stale files.

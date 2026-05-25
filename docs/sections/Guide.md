@@ -41,7 +41,7 @@ None. Guide owns no database tables. All content is fetched from GitHub and cach
 |--------|-------|---------|------|
 | GET | `/Guide` | `GuideController.Index` → renders `README` | `[AllowAnonymous]` |
 | GET | `/Guide/{name}` | `GuideController.Document` → renders named stem | `[AllowAnonymous]` |
-| POST | `/Guide/Refresh` | `GuideController.Refresh` → re-fetches all 18 files | `[Authorize(AdminOnly)]` |
+| POST | `/Guide/Refresh` | `GuideController.Refresh` → re-fetches all 28 files | `[Authorize(AdminOnly)]` |
 
 Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cache returns 503 (`Unavailable.cshtml`).
 
@@ -62,7 +62,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - All content at or below a non-`As a …` `##` heading (e.g. `## Related sections`) is always visible.
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
-- Guide content is the 18 files in `docs/guide/`: `README`, `GettingStarted`, `Glossary`, plus the 15 sections enumerated in `GuideFiles.Sections`. Nothing is authored in-app.
+- Guide content is the 28 files in `docs/guide/`: `README`, `GettingStarted`, `Glossary`, the 19 sections enumerated in `GuideFiles.Sections`, plus the 6 plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). Nothing is authored in-app.
 - Cache key is `guide:<FileStem>`. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
 
@@ -75,8 +75,8 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Triggers
 
-- First `GET /Guide/*` on cold cache → `GuideContentService` fetches and renders all 18 files; entries populated with sliding TTL.
-- `POST /Guide/Refresh` (Admin) → re-fetches and re-renders all 18 files; existing cache entries overwritten.
+- First `GET /Guide/*` on cold cache → `GuideContentService` fetches and renders all 28 files; entries populated with sliding TTL.
+- `POST /Guide/Refresh` (Admin) → re-fetches and re-renders all 28 files; existing cache entries overwritten.
 - GitHub fetch failure on warm cache → stale content served; warning logged; TTL preserved.
 - GitHub fetch failure on cold cache → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`.
 

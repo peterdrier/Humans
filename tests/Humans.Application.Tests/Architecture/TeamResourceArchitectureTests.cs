@@ -1,7 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.GoogleIntegration;
 using TeamResourceService = Humans.Application.Services.GoogleIntegration.TeamResourceService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -49,26 +47,6 @@ public class TeamResourceArchitectureTests
     }
 
     [HumansFact]
-    public void TeamResourceService_TakesRepository()
-    {
-        var ctor = typeof(TeamResourceService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IGoogleResourceRepository),
-            because: "Application services reach persistence through a repository interface (design-rules §3/§15b)");
-    }
-
-    [HumansFact]
-    public void TeamResourceService_TakesGoogleConnector()
-    {
-        var ctor = typeof(TeamResourceService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITeamResourceGoogleClient),
-            because: "Google API calls route through an application-layer connector so Humans.Application stays free of Google.Apis.* imports");
-    }
-
-    [HumansFact]
     public void TeamResourceService_HasNoGoogleApisConstructorParameter()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -78,32 +56,6 @@ public class TeamResourceArchitectureTests
 
         googleApiParam.Should().BeNull(
             because: "the Application layer must not depend on Google.Apis.* — the ITeamResourceGoogleClient connector encapsulates every Google call");
-    }
-
-    [HumansFact]
-    public void TeamResourceService_AssemblyIsHumansApplication()
-    {
-        typeof(TeamResourceService).Assembly.GetName().Name
-            .Should().Be("Humans.Application");
-    }
-
-    // ── IGoogleResourceRepository ────────────────────────────────────────────
-
-    [HumansFact]
-    public void GoogleResourceRepository_IsSealed()
-    {
-        // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
-        // extend or override the EF-backed data access.
-        var repoType = typeof(GoogleResourceRepository);
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
-    [HumansFact]
-    public void GoogleResourceRepository_AssemblyIsHumansInfrastructure()
-    {
-        typeof(GoogleResourceRepository).Assembly.GetName().Name
-            .Should().Be("Humans.Infrastructure");
     }
 
     // ── ITeamResourceGoogleClient ────────────────────────────────────────────
