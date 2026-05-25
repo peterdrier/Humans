@@ -1,4 +1,9 @@
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Holded;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Finance;
+using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories.Finance;
 using Humans.Infrastructure.Services.Holded;
 
 namespace Humans.Web.Extensions.Sections;
@@ -21,6 +26,10 @@ public static class HoldedSectionExtensions
             client.BaseAddress = new Uri(opts.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+
+        services.AddScoped<IHoldedRepository, HoldedRepository>();
+        services.AddScoped<IHoldedFinanceService, HoldedFinanceService>();
+        services.AddScoped<HoldedSyncJob>();
 
         return services;
     }

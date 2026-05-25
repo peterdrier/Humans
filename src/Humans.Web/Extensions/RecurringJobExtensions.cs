@@ -81,6 +81,10 @@ public static class RecurringJobExtensions
             ("holded-expense-outbox", () => RecurringJob.AddOrUpdate<HoldedExpenseOutboxJob>(
                 "holded-expense-outbox", job => job.ExecuteAsync(CancellationToken.None), "*/1 * * * *")),
 
+            // Nightly pull of Holded purchase docs → budget-category actuals — daily at 03:00 UTC.
+            ("holded-sync", () => RecurringJob.AddOrUpdate<HoldedSyncJob>(
+                "holded-sync", job => job.ExecuteAsync(CancellationToken.None), "0 3 * * *")),
+
             // Poll Holded for payment confirmation on SepaSent reports — every 6 hours.
             ("expense-paid-polling", () => RecurringJob.AddOrUpdate<ExpensePaidPollingJob>(
                 "expense-paid-polling", job => job.ExecuteAsync(CancellationToken.None), "0 */6 * * *")),
