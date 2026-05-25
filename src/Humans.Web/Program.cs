@@ -464,8 +464,8 @@ DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContex
 // Post-Build so the parameterless enricher activator can read ambient HttpContext per log emission.
 CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 
-// Eager resolve so the background gauge-refresh timer starts immediately.
-app.Services.GetRequiredService<IHumansMetrics>();
+// HumansMetricsService is registered AddHostedService — its gauge-refresh timer is armed in
+// StartAsync (after the migration barrier), so no eager pre-Run() resolve is needed here.
 
 // Localization diagnostic check
 {

@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -18,7 +19,7 @@ namespace Humans.Infrastructure.Services;
 /// counters and observable gauges. Gauge values are refreshed every 60 seconds from
 /// the database via a background timer.
 /// </summary>
-public sealed class HumansMetricsService : IHumansMetrics, IDisposable
+public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisposable
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");
 
@@ -36,7 +37,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<HumansMetricsService> _logger;
     private readonly IUserActivityTracker _activityTracker;
-    private readonly Timer _refreshTimer;
+    private Timer? _refreshTimer;
 
     private volatile GaugeSnapshot _snapshot = GaugeSnapshot.Empty;
 
@@ -156,12 +157,29 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             description: "Distinct users with an authenticated request in the trailing window. In-memory only; resets on process restart.");
 
         // humans.email_outbox_pending lives on IMeters via ProcessEmailOutboxJob.
+    }
 
+    /// <summary>
+    /// Arms the gauge-refresh timer. Deliberately done here (StartAsync) rather than in the
+    /// constructor: the host runs every <see cref="IHostedLifecycleService"/>.StartingAsync —
+    /// including DatabaseMigrationHostedService, which applies pending migrations — to completion
+    /// before any StartAsync. Arming in the constructor (via an eager resolve before app.Run)
+    /// let the first refresh race schema migrations and query not-yet-migrated tables.
+    /// </summary>
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
         _refreshTimer = new Timer(
             callback: _ => _ = RefreshSnapshotAsync(),
             state: null,
             dueTime: TimeSpan.Zero,
             period: TimeSpan.FromSeconds(60));
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        _refreshTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        return Task.CompletedTask;
     }
 
     public void RecordEmailSent(string template)
@@ -341,7 +359,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
 
     public void Dispose()
     {
-        _refreshTimer.Dispose();
+        _refreshTimer?.Dispose();
     }
 
     private sealed record GaugeSnapshot

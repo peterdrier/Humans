@@ -203,7 +203,8 @@ public class AdminController(
         {
             lastApplied = status.LastApplied,
             appliedCount = status.AppliedCount,
-            pendingCount = status.PendingCount
+            pendingCount = status.PendingCount,
+            recentApplied = status.Applied.TakeLast(20).Reverse().ToList()
         });
     }
 

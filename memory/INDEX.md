@@ -9,6 +9,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 ## architecture/
 
 - [`audit-log-as-concurrency-safety-net`](architecture/audit-log-as-concurrency-safety-net.md) — audit log catches admin-clobbers-admin races at this scale; don't reach for `IsConcurrencyToken` / row versioning
+- [`background-db-work-after-migration-barrier`](architecture/background-db-work-after-migration-barrier.md) — DB-touching background workers (timers/pollers/pre-warmers) arm in `IHostedService.StartAsync`, never a constructor `Timer` or eager `GetRequiredService` before `app.Run()`; otherwise they race startup migrations (the #804 `p.Allergies` 42703 incident)
 - [`burnername-is-the-display-name`](architecture/burnername-is-the-display-name.md) — HARD RULE. When a Profile exists, `Profile.BurnerName` is the only name we render. `User.DisplayName` / `UserInfo.DisplayName` are legacy fields — fallback only. Use `<vc:human>`, `UserInfo.BurnerName`, or `FullProfile.DisplayName`.
 - [`caching-transparent`](architecture/caching-transparent.md) — no `Cached*` types in domain surface; `Full<Section>` is the §15 stitched-DTO pattern
 - [`cached-reads-no-shape-variants`](architecture/cached-reads-no-shape-variants.md) — once a read serves from an in-memory cache of the canonical DTO, do NOT offer `WithEmails` / `IncludeFoo` shape variants. The cache holds one shape — variants reintroduce EF-shaped thinking into a cache-first surface (PR #625 / issue #744).

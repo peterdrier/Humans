@@ -17,7 +17,8 @@ internal sealed class AdminDatabaseDiagnosticsRepository(IDbContextFactory<Human
         return new DatabaseMigrationStatus(
             LastApplied: applied.LastOrDefault(),
             AppliedCount: applied.Count,
-            PendingCount: pending.Count());
+            PendingCount: pending.Count(),
+            Applied: applied);
     }
 
     public async Task<int> ClearHangfireLocksAsync(CancellationToken ct = default)

@@ -48,7 +48,9 @@ internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeF
             var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
             var applied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
 
-            _logger.LogInformation(
+            // Warning level (not Information) so the per-boot migration breadcrumb survives
+            // production's default log filtering — makes "when did migrations run?" answerable.
+            _logger.LogWarning(
                 "Database {Database}: {AppliedCount} applied migrations, {PendingCount} pending",
                 dbName, applied.Count, pending.Count);
 
@@ -56,13 +58,13 @@ internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeF
             {
                 foreach (var migration in pending)
                 {
-                    _logger.LogInformation("Pending migration: {Migration}", migration);
+                    _logger.LogWarning("Applying pending migration: {Migration}", migration);
                 }
 
                 await dbContext.Database.MigrateAsync(cancellationToken);
 
                 var nowApplied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
-                _logger.LogInformation(
+                _logger.LogWarning(
                     "Database {Database}: migrations complete — {AppliedCount} total applied",
                     dbName, nowApplied.Count);
             }

@@ -12,7 +12,8 @@ public interface IAdminDatabaseDiagnosticsService : IApplicationService
 public sealed record DatabaseMigrationStatus(
     string? LastApplied,
     int AppliedCount,
-    int PendingCount);
+    int PendingCount,
+    IReadOnlyList<string> Applied);
 
 public sealed record AudienceSegmentation(
     int TotalAccounts,
