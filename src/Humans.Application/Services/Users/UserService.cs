@@ -945,6 +945,14 @@ public sealed class UserService(
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
+                // Dietary + medical (moved here from VolunteerEventProfile). Included in
+                // the data-subject export — this is the owner's own export of their data.
+                profile.DietaryPreference,
+                profile.Allergies,
+                profile.AllergyOtherText,
+                profile.Intolerances,
+                profile.IntoleranceOtherText,
+                profile.MedicalConditions,
                 profile.HasCustomProfilePicture,
                 CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
                 UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
