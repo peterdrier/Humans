@@ -28,12 +28,14 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
                 .Select(g => new MyCampsYearGroup
                 {
                     Year = g.Key,
-                    Memberships = g.Select(m => new MyCampsMembership
-                    {
-                        CampSlug = m.CampSlug,
-                        CampName = m.CampName,
-                        Status = m.Status
-                    }).ToList()
+                    Memberships = g
+                        .OrderBy(m => m.CampName, StringComparer.OrdinalIgnoreCase)
+                        .Select(m => new MyCampsMembership
+                        {
+                            CampSlug = m.CampSlug,
+                            CampName = m.CampName,
+                            Status = m.Status
+                        }).ToList()
                 })
                 .ToList();
 
