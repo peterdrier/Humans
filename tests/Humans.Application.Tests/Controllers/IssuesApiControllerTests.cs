@@ -69,6 +69,27 @@ public class IssuesApiControllerTests
         };
     }
 
+    private static IssueDetail MakeIssueDetail(Issue issue) => new(
+        issue.Id,
+        issue.Status,
+        issue.Category,
+        issue.Section,
+        issue.Title,
+        issue.Description,
+        issue.PageUrl,
+        issue.UserAgent,
+        issue.AdditionalContext,
+        issue.ScreenshotStoragePath,
+        issue.ReporterUserId,
+        issue.AssigneeUserId,
+        issue.ResolvedByUserId,
+        issue.GitHubIssueNumber,
+        issue.DueDate,
+        issue.CreatedAt,
+        issue.UpdatedAt,
+        issue.ResolvedAt,
+        issue.Comments.Count);
+
     private static IssueListSnapshot MakeIssueSnapshot(Issue issue) => new(
         issue.Id,
         issue.Status,
@@ -216,7 +237,7 @@ public class IssuesApiControllerTests
     {
         var id = Guid.NewGuid();
         _issues.GetIssueByIdAsync(id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Issue?>(null));
+            .Returns(Task.FromResult<IssueDetail?>(null));
 
         var result = await _sut.Get(id);
 
@@ -228,7 +249,7 @@ public class IssuesApiControllerTests
     {
         var issue = MakeIssue();
         _issues.GetIssueByIdAsync(issue.Id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Issue?>(issue));
+            .Returns(Task.FromResult<IssueDetail?>(MakeIssueDetail(issue)));
 
         var thread = new IssueThreadEvent[]
         {
@@ -276,7 +297,7 @@ public class IssuesApiControllerTests
         // stay consistent with the list endpoint, without reading User.Email.
         var issue = MakeIssue();
         _issues.GetIssueByIdAsync(issue.Id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Issue?>(issue));
+            .Returns(Task.FromResult<IssueDetail?>(MakeIssueDetail(issue)));
         _issues.GetThreadAsync(issue.Id, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<IssueThreadEvent>>([]));
 

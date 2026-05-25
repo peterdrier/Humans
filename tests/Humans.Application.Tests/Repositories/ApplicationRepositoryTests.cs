@@ -58,8 +58,10 @@ public sealed class ApplicationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByUserIdAsync_ReturnsApplicationsOrderedBySubmittedAtDescending()
+    public async Task GetByUserIdAsync_ReturnsAllApplicationsForUser()
     {
+        // Display ordering (SubmittedAt desc) now lives in the controller per the
+        // DisplaySortInControllers rule; the repository only scopes by user.
         var userId = Guid.NewGuid();
         var older = SeedApp(userId, submittedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
         var newer = SeedApp(userId, submittedAt: Instant.FromUtc(2026, 3, 1, 0, 0));
@@ -67,8 +69,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var result = await _repo.GetByUserIdAsync(userId);
 
         result.Should().HaveCount(2);
-        result[0].Id.Should().Be(newer.Id);
-        result[1].Id.Should().Be(older.Id);
+        result.Select(a => a.Id).Should().BeEquivalentTo([older.Id, newer.Id]);
     }
 
     [HumansFact]
