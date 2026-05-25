@@ -59,7 +59,7 @@ Don't panic, and don't make a second account.
 1. If you saved **backup codes**, use one of those to get in.
 2. No backup codes and no phone? Email
    [humans@nobodies.team](mailto:humans@nobodies.team) or use the help button in
-   the app (the speech bubble, bottom-right). An admin can help sort out your
+   the app (the round button, bottom-right). An admin can help sort out your
    `@nobodies.team` account from the Google side.
 
 ## Quick answers

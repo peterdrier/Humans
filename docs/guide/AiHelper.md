@@ -1,9 +1,9 @@
 # The in-app AI helper
 
-See the round **help button** in the bottom-right corner of the app (a little
-speech bubble or question mark)? Tap it and you'll get two choices: **report a
-problem**, or **talk with the AI helper** — a friendly chat assistant that can
-answer questions about the app and your account.
+See the round **help button** in the bottom-right corner of the app (it's got a
+question mark on it)? Tap it and you'll get two choices: **report a problem**, or
+**talk with the AI helper** — a friendly chat assistant that can answer questions
+about the app and your account.
 
 Think of it as someone who has read this whole guide and knows your account, who
 you can ask things in plain words like *"how do I sign up for a shift?"* or

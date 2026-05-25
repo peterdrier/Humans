@@ -35,7 +35,7 @@ Once every required document is signed, your safety check automatically flips to
 
 A Consent Coordinator reviews your profile and either **clears** it or **flags** it. Clearing is the common path — flagging pauses onboarding until a Board member or Admin resolves the note the coordinator left.
 
-When your profile is cleared **and** every required document is signed, the app does the rest automatically: you are added to the Volunteers system team, the rest of the app unlocks, and a welcome email goes out. No manual Board step is needed.
+When your profile is cleared **and** every required document is signed, the app does the rest automatically: you are added to the Volunteers system team, the rest of the app unlocks, and a welcome notification appears in the app. No manual Board step is needed.
 
 If an Admin has provisioned a `@nobodies.team` Google Workspace account for you, you also get a credentials email at your personal address with a temporary password and a 2FA setup prompt. That address then becomes your Google service email for every team you join. Teams with linked Google Groups or [Shared Drive](Glossary.md#shared-drive) folders grant you access on the next sync. See [Your `@nobodies.team` email](EmailAccount.md) for how the mailbox works and how to use your team's group address, and [Two-step verification (2FA)](TwoStepVerification.md) for that required sign-in step. [Email](Email.md) and [Google Integration](GoogleIntegration.md) cover the fuller reference and the sync mechanics underneath.
 

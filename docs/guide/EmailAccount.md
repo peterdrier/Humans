@@ -18,7 +18,7 @@ private inbox.
   automatically.
 - **Been around a while and don't have one yet?** Just ask. Your team
   coordinator can set one up for you from the app, or you can use the help
-  button (the little speech bubble, bottom-right of any page) or email
+  button (the round button, bottom-right of any page) or email
   [humans@nobodies.team](mailto:humans@nobodies.team).
 
 ## Signing in for the first time

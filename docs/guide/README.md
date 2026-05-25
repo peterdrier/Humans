@@ -25,8 +25,9 @@ it shouldn't.
 The code is fully public ([AGPL-3.0](../../LICENSE)) so any developer in the
 community can read, run, or maintain it. Backups are automated and the
 server is designed to run with minimal maintenance — not dependent on any
-one person. AI was used as a tool to build the app faster; the app itself
-does not use AI.
+one person. AI was used as a tool to build the app faster. The app itself uses
+AI in just one place — an optional [in-app helper](AiHelper.md) you can chat
+with for support; nothing else relies on it.
 
 The app is at [humans.nobodies.team](https://humans.nobodies.team/),
 available in English, Español, Deutsch, Français, Italiano, and Català.
