@@ -382,17 +382,6 @@ public interface IShiftManagementService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the on-site cohort's dietary read-models for the given event day
-    /// (same on-site rule as <see cref="GetOnSiteUserIdsForDayAsync"/>), projected
-    /// from <c>VolunteerEventProfile</c>. <see cref="OnSiteDietaryProfile"/> omits
-    /// medical conditions, so GDPR Art. 9 data never leaves the Shifts service.
-    /// Service-layer read for the Cantina roster (feature #36).
-    /// </summary>
-    Task<IReadOnlyList<OnSiteDietaryProfile>> GetOnSiteVolunteerProfilesForDayAsync(
-        int dayOffset,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Deletes every <c>VolunteerEventProfile</c> row owned by
     /// <paramref name="userId"/>. Returns the number of rows removed. Used by
     /// the account anonymization flow so the job does not write to

@@ -26,7 +26,7 @@ Read-only weekly roster surface for the food-service team — who is on site eac
 None — Cantina owns no tables. The section is a pure read/aggregate composition over:
 
 - `shift_signups` — owned by **Shifts** ([`Shifts.md`](Shifts.md)). Filtered to `Status ∈ {Pending, Confirmed}` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
-- `volunteer_event_profiles` — owned by **Shifts** ([`Shifts.md`](Shifts.md)). Read through `IShiftManagementService.GetOnSiteVolunteerProfilesForDayAsync`, which projects to the medical-free `OnSiteDietaryProfile` read-model (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`). **`MedicalConditions` is excluded at the service boundary — it never leaves the Shifts service.**
+- Dietary (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) — `Profile` fields owned by **Users/Identity**, read through the cached **`IUserServiceRead.GetUserInfosAsync`** (`UserInfo.Profile`). **`MedicalConditions` is never read by the cantina** — the cantina DTOs have no such field.
 - `profiles` / `users` — owned by **Users/Identity**. Burner names are read via the cross-section **`IUserServiceRead.GetUserInfosAsync`** (cached `UserInfo`); no entity reads, no new surface.
 
 ## Routing
@@ -52,7 +52,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 
 ## Invariants
 
-- **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). Exclusion is enforced at the **service boundary**: `IShiftManagementService.GetOnSiteVolunteerProfilesForDayAsync` returns `OnSiteDietaryProfile`, which has no medical field, so `CantinaRosterService` never even receives it. The output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) also have no `MedicalConditions` property. Medical data continues to flow only through the existing `_VolunteerProfileBadges` partial with `ShowMedical=true`, gated to NoInfoAdmin / Admin — not through Cantina.
+- **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). `MedicalConditions` lives on the cached `UserInfo`/`ProfileInfo`, but `CantinaRosterService` simply never reads it, and the output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) have no `MedicalConditions` property. Medical data continues to flow only through the `_VolunteerProfileBadges` partial with `ShowMedical=true`, gated to NoInfoAdmin / Admin — not through Cantina.
 - "On site" is strictly defined as a Pending or Confirmed `ShiftSignup` on a Shift with matching `DayOffset`. Refused, Bailed, Cancelled, and NoShow signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once.
 - The section is **read-only** — no writes to any table, no audit entries, no notifications.
@@ -76,7 +76,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 
 ## Cross-Section Dependencies
 
-- **Shifts:** `IShiftManagementService` — `GetOnSiteUserIdsForDayAsync` (cohort) and `GetOnSiteVolunteerProfilesForDayAsync` (dietary, as the medical-free `OnSiteDietaryProfile`), plus `GetActiveAsync` for the active event. Service-layer reads only; the cantina never touches the Shifts repository.
+- **Shifts:** `IShiftManagementService` — `GetOnSiteUserIdsForDayAsync` (on-site cohort) + `GetActiveAsync` (active event). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo` for burner-name stitching. No entity reads.
 
 ## Architecture
@@ -90,5 +90,5 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 - **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`.
 - **Decorator decision — no caching decorator on the roster itself.** Roster aggregation is live per request; the page is low-traffic (coordinator surface). The user reads it composes ride on the Users-section cache via `IUserServiceRead`.
 - **Cross-domain navs** — none declared; the section owns no entities. All cross-section linkage is via service interfaces, by id.
-- **Cross-section calls** — `IShiftManagementService` (cohort + dietary read-models + active event), `IUserServiceRead` (burner names).
+- **Cross-section calls** — `IShiftManagementService` (on-site cohort + active event), `IUserServiceRead` (burner names + dietary, from the cached `UserInfo`).
 - **Architecture test** — `tests/Humans.Application.Tests/Services/Cantina/CantinaRosterServiceTests.cs` and `CantinaAccessServiceTests.cs` pin the aggregation rules and the access gate. The cross-section read is additionally pinned by `CrossSectionRepositoryInjection.baseline.txt`.

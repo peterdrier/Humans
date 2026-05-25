@@ -1,7 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina;
@@ -17,8 +16,8 @@ namespace Humans.Application.Tests.Services.Cantina;
 /// Unit tests for <see cref="CantinaRosterService.GetDailyRosterAsync"/> —
 /// the per-day matrix payload that powers the drill-down view linked from
 /// each row of the Cantina Weekly Roster's per-day mini-table (feature #36).
-/// Companion to <see cref="CantinaRosterServiceTests"/> which covers the
-/// weekly-roster surface of the same service.
+/// Companion to <see cref="CantinaRosterServiceTests"/>. On-site cohort comes
+/// from the shift service; dietary from the cached UserInfo (Profile).
 /// </summary>
 public class CantinaDailyRosterServiceTests
 {
@@ -43,21 +42,28 @@ public class CantinaDailyRosterServiceTests
 
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
-        _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<OnSiteDietaryProfile>>(Array.Empty<OnSiteDietaryProfile>()));
 
         _service = new CantinaRosterService(_shiftMgmt, _userRead, _clock);
     }
 
-    /// <summary>Builds an on-site dietary read-model (the shape the service returns).</summary>
-    private static OnSiteDietaryProfile Vep(
+    /// <summary>Builds a Profile carrying burner name + dietary (dietary lives on Profile).</summary>
+    private static Profile Human(
         Guid userId,
+        string burner,
         string? dietary = null,
         IReadOnlyList<string>? allergies = null,
         string? allergyOther = null,
         IReadOnlyList<string>? intolerances = null,
-        string? intoleranceOther = null) =>
-        new(userId, dietary, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther);
+        string? intoleranceOther = null) => new()
+        {
+            UserId = userId,
+            BurnerName = burner,
+            DietaryPreference = dietary,
+            Allergies = allergies is null ? [] : [.. allergies],
+            AllergyOtherText = allergyOther,
+            Intolerances = intolerances is null ? [] : [.. intolerances],
+            IntoleranceOtherText = intoleranceOther,
+        };
 
     private static EventSettings ActiveEvent() => new()
     {
@@ -79,7 +85,6 @@ public class CantinaDailyRosterServiceTests
         result.CalendarDate.Should().BeNull();
         result.EventTodayDate.Should().BeNull();
         result.EventName.Should().BeNull();
-        // Fallback WeekStartOffset: day 3 → week starts at 0 (3 - (3 % 7)).
         result.WeekStartOffset.Should().Be(0);
         result.TotalOnSite.Should().Be(0);
         result.UnansweredCount.Should().Be(0);
@@ -87,7 +92,6 @@ public class CantinaDailyRosterServiceTests
         result.AllergyOtherEntries.Should().BeEmpty();
         result.IntoleranceOtherEntries.Should().BeEmpty();
 
-        // Canonical dietary + chip rollups still populated at zero.
         result.DietaryBreakdown.Should().ContainKey("Unanswered").WhoseValue.Should().Be(0);
         foreach (var pref in DietaryOptions.DietaryPreferences)
             result.DietaryBreakdown.Should().ContainKey(pref).WhoseValue.Should().Be(0);
@@ -102,7 +106,6 @@ public class CantinaDailyRosterServiceTests
     {
         var es = ActiveEvent();
         _shiftMgmt.GetActiveAsync().Returns(es);
-        // Default service behaviour returns empty for every day.
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -127,18 +130,12 @@ public class CantinaDailyRosterServiceTests
         var b = Guid.NewGuid();
         var c = Guid.NewGuid();
 
-        var profiles = new[]
-        {
-            new Profile { UserId = a, BurnerName = "Ava" },
-            new Profile { UserId = b, BurnerName = "Beth" },
-            new Profile { UserId = c, BurnerName = "Cleo" }
-        };
-        var vepA = Vep(a, "Vegan", allergies: ["Peanut", "Other"], allergyOther: "MSG", intolerances: ["Lactose"]);
-        var vepB = Vep(b, "Omnivore", allergies: ["Peanut"]);
-        // c intentionally has no VEP — must count as Unanswered.
-
-        SetupDay(0, new[] { a, b, c }, new[] { vepA, vepB });
-        SetupHumans(profiles);
+        // c intentionally has no dietary preference — must count as Unanswered.
+        SetupDay(0, a, b, c);
+        SetupHumans(
+            Human(a, "Ava", "Vegan", allergies: ["Peanut", "Other"], allergyOther: "MSG", intolerances: ["Lactose"]),
+            Human(b, "Beth", "Omnivore", allergies: ["Peanut"]),
+            Human(c, "Cleo"));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -182,11 +179,8 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_MedicalConditionsNeverInDto()
     {
-        // Medical data is excluded structurally: the service hands the cantina
-        // OnSiteDietaryProfile (no medical field), and the output DailyPersonRowDto
-        // has none either. Both are GDPR Art.9 boundaries — verify at compile time.
-        typeof(OnSiteDietaryProfile).GetProperty("MedicalConditions").Should().BeNull(
-            "OnSiteDietaryProfile must not carry MedicalConditions — medical never leaves the Shifts service.");
+        // The cantina output DTO must not expose MedicalConditions, even though
+        // medical now lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
         typeof(Humans.Application.Services.Cantina.Dtos.DailyPersonRowDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
@@ -195,16 +189,20 @@ public class CantinaDailyRosterServiceTests
         _shiftMgmt.GetActiveAsync().Returns(es);
 
         var userId = Guid.NewGuid();
-        var profile = new Profile { UserId = userId, BurnerName = "Sensitive" };
-        var vep = Vep(userId, "Omnivore");
-
-        SetupDay(0, new[] { userId }, new[] { vep });
-        SetupHumans(profile);
+        SetupDay(0, userId);
+        SetupHumans(new Profile
+        {
+            UserId = userId,
+            BurnerName = "Sensitive",
+            DietaryPreference = "Omnivore",
+            MedicalConditions = "Severe peanut allergy",
+        });
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
         var json = JsonSerializer.Serialize(result);
         json.Should().NotContain("MedicalConditions");
+        json.Should().NotContain("Severe peanut allergy");
     }
 
     [HumansFact]
@@ -234,16 +232,10 @@ public class CantinaDailyRosterServiceTests
         var c = Guid.NewGuid();
         var b = Guid.NewGuid();
         var a = Guid.NewGuid();
-        var profiles = new[]
-        {
-            new Profile { UserId = c, BurnerName = "Charlie" },
-            new Profile { UserId = b, BurnerName = "Bob" },
-            new Profile { UserId = a, BurnerName = "Alice" }
-        };
 
         // Order on the wire: C, B, A. Service must not re-sort.
-        SetupDay(0, new[] { c, b, a }, Array.Empty<OnSiteDietaryProfile>());
-        SetupHumans(profiles);
+        SetupDay(0, c, b, a);
+        SetupHumans(Human(c, "Charlie"), Human(b, "Bob"), Human(a, "Alice"));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0);
 
@@ -269,13 +261,9 @@ public class CantinaDailyRosterServiceTests
 
     // ---- helpers ----
 
-    private void SetupDay(int dayOffset, IReadOnlyList<Guid> onSiteIds, IReadOnlyList<OnSiteDietaryProfile> veps)
-    {
+    private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(onSiteIds));
-        _shiftMgmt.GetOnSiteVolunteerProfilesForDayAsync(dayOffset, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(veps));
-    }
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
     private void SetupHumans(params Profile[] profiles)
     {

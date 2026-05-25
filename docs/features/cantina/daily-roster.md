@@ -165,7 +165,7 @@ Reads:
 | `User.BurnerName` (or fallback display name) | Per-person table "Burner Name" column | Existing |
 | `EventSettings.GateOpeningDate`, `EventSettings.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing |
 
-At ~500-user scale, the service issues 7 sequential per-day queries (`GetOnSiteUserIdsForDayAsync` + `GetOnSiteVolunteerProfilesForDayAsync`, one pair per day). No batch repo method — keeps the existing repo surface unchanged.
+At ~500-user scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`).
 
 Explicitly **excluded** at the DTO boundary regardless of viewer role:
 
@@ -216,7 +216,8 @@ Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv`, where `<yyyy-MM-dd>` is the
 
 This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.
 
-- **Shifts (read, on-site cohort + dietary):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync` and `GetOnSiteVolunteerProfilesForDayAsync`, called in a 7-day loop and unioned. The dietary method returns the medical-free `OnSiteDietaryProfile` read-model — `MedicalConditions` is excluded at the service boundary and never reaches the cantina. (The service delegates to existing repo methods internally.)
+- **Shifts (read, on-site cohort):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
+- **Users/Identity (read, dietary + names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `IShiftManagementService.GetActiveAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
@@ -227,7 +228,6 @@ New / updated components:
 | Layer | Component | Purpose |
 |---|---|---|
 | Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService` + `IUserServiceRead` |
-| Application | `OnSiteDietaryProfile` | Medical-free dietary read-model returned by the Shifts service |
 | Application | `WeeklyRosterDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `RollupItemDto` | View-model contracts; no `MedicalConditions` field |
 | Domain | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
 | Web | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
@@ -236,7 +236,7 @@ New / updated components:
 ## Negative access rules
 
 - A user **cannot** see the roster page or CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
-- The roster page and CSV **never** include `MedicalConditions` — the data never even reaches the cantina (excluded at the Shifts service boundary via `OnSiteDietaryProfile`). To see medical conditions, viewers use the existing per-profile badges path with `ShowMedical = true`.
+- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges path with `ShowMedical = true`.
 - The 403 response **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.
