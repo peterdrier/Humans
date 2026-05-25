@@ -37,6 +37,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IGeneralAvailabilityRepository)] = "Shifts",
             [typeof(IGoogleResourceRepository)] = "GoogleIntegration",
             [typeof(IGoogleSyncOutboxRepository)] = "GoogleIntegration",
+            [typeof(IHoldedRepository)] = "Finance",
             [typeof(IIssuesRepository)] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
             [typeof(INotificationRepository)] = "Notifications",
