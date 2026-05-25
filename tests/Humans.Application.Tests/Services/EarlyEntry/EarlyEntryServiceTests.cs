@@ -20,7 +20,7 @@ public class EarlyEntryServiceTests
     public async Task Roster_groups_by_user_earliest_date_wins_both_sources_listed_HasMultiple_true()
     {
         var userId = Guid.NewGuid();
-        var campGrant  = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
+        var campGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
         var shiftGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 1), "Shift: Power");
 
         var sut = new EarlyEntryService(new[]
@@ -59,7 +59,7 @@ public class EarlyEntryServiceTests
     public async Task GetForUserAsync_returns_earliest_and_sources_or_null_for_unknown()
     {
         var userId = Guid.NewGuid();
-        var campGrant  = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
+        var campGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
         var shiftGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 1), "Shift: Power");
 
         var sut = new EarlyEntryService(new[]
