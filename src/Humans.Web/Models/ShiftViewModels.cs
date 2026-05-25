@@ -186,9 +186,16 @@ public class ShiftBrowseViewModel
     public List<string> FilterPeriods { get; set; } = [];
 
     public bool ShowFullShifts { get; set; }
+    public Guid UserId { get; set; }
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; partials lock out
+    /// Sign-Up buttons and the banner view component renders the inline prompt.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>
     /// Current sort mode: "urgency" for most-needed-first, null/empty for default by-department grouping.
@@ -282,11 +289,18 @@ public class ShiftDisplayItem
 public class MyShiftsViewModel
 {
     public EventSettings? EventSettings { get; set; }
+    public Guid UserId { get; set; }
     public List<MySignupItem> Upcoming { get; set; } = [];
     public List<MySignupItem> Pending { get; set; } = [];
     public List<MySignupItem> Past { get; set; } = [];
     public string? ICalUrl { get; set; }
     public List<int> AvailableDayOffsets { get; set; } = [];
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; the banner view
+    /// component renders the inline prompt and downstream signup CTAs are locked.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
 }
 
 public class MySignupItem
@@ -606,6 +620,13 @@ public class BuildStrikeRotaTableViewModel
     public EventSettings EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; the date-range
+    /// Sign-Up form is rendered disabled with the locked-out copy.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
     public Guid? FilterDepartmentId { get; set; }
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
@@ -630,6 +651,13 @@ public class EventRotaTableViewModel
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; per-shift Sign-Up
+    /// buttons are rendered disabled with the locked-out copy.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
     public Guid? FilterDepartmentId { get; set; }
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
