@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 
 namespace Humans.Web.Models;
@@ -53,6 +54,8 @@ public sealed class ExpenseDetailViewModel
 
     /// <summary>Non-null when the report was previously rejected.</summary>
     public string? LastRejectionReason => Report.LastRejectionReason;
+
+    public ExpenseHoldedTimeline? HoldedTimeline { get; init; }
 }
 
 public sealed class AddLineInputModel

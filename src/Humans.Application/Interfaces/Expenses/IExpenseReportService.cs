@@ -198,4 +198,15 @@ public sealed record ExpenseDetailViewData(
     bool CanSubmit,
     bool CanWithdraw,
     bool HasIban,
-    string? MaskedIban);
+    string? MaskedIban,
+    ExpenseHoldedTimeline? HoldedTimeline);
+
+/// <summary>Round-trip timeline for the submitter, sourced from the Holded creditor balance.</summary>
+public sealed record ExpenseHoldedTimeline(
+    bool RegisteredInHolded,
+    decimal OwedToMember,
+    decimal MemberRegisteredTotal,   // sum of this member's registered-but-unpaid ER totals
+    decimal OtherAmount,             // max(0, OwedToMember - MemberRegisteredTotal): fronted / adjustments
+    bool Paid,
+    NodaTime.LocalDate? PaidOn,
+    decimal TotalPaid);

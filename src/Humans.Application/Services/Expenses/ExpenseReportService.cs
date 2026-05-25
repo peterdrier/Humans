@@ -65,13 +65,54 @@ public sealed class ExpenseReportService(
             or ExpenseReportStatus.Approved;
         var iban = await GetSubmitterIbanViewAsync(viewerUserId, ct);
 
+        var timeline = isSubmitter
+            ? await BuildHoldedTimelineAsync(report, ct)
+            : null;
+
         return new ExpenseDetailViewData(
             CategoryDisplayName: categoryName,
             CanEdit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
             CanSubmit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
             CanWithdraw: isSubmitter && canWithdraw,
             HasIban: iban.HasIban,
-            MaskedIban: iban.MaskedIban);
+            MaskedIban: iban.MaskedIban,
+            HoldedTimeline: timeline);
+    }
+
+    /// <summary>
+    /// Aggregates the submitter's owed/paid round-trip from the cached Holded creditor balance.
+    /// The balance already sums all of a member's outstanding docs; when it exceeds the member's
+    /// own registered-unpaid ER totals, the remainder is shown as fronted/adjustments (spec §3).
+    /// </summary>
+    private async Task<ExpenseHoldedTimeline?> BuildHoldedTimelineAsync(
+        ExpenseReportDto report, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(report.HoldedContactId))
+            return new ExpenseHoldedTimeline(
+                RegisteredInHolded: false, OwedToMember: 0m, MemberRegisteredTotal: 0m,
+                OtherAmount: 0m, Paid: false, PaidOn: null, TotalPaid: 0m);
+
+        var status = await _holdedFinance.GetCreditorStatusAsync(
+            report.HoldedSupplierAccountNum, report.HoldedContactId, ct);
+
+        var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
+        var memberRegisteredTotal = memberReports
+            .Where(r => r.HoldedDocId is not null
+                     && r.Status is ExpenseReportStatus.Approved or ExpenseReportStatus.SepaSent)
+            .Sum(r => r.Total);
+
+        var owed = status?.OwedToMember ?? 0m;
+        var totalPaid = status?.TotalPaid ?? 0m;
+        var paid = status is not null && status.Balance >= 0m && totalPaid > 0m;
+
+        return new ExpenseHoldedTimeline(
+            RegisteredInHolded: report.HoldedDocId is not null,
+            OwedToMember: owed,
+            MemberRegisteredTotal: memberRegisteredTotal,
+            OtherAmount: Math.Max(0m, owed - memberRegisteredTotal),
+            Paid: paid,
+            PaidOn: status?.LastPaymentDate,
+            TotalPaid: totalPaid);
     }
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(

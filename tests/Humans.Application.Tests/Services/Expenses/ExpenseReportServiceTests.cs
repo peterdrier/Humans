@@ -1250,6 +1250,31 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         result[0].Id.Should().Be(submittedId);
     }
 
+    // ─────────────────────── Holded timeline (submitter view) ───────────────────
+
+    [HumansFact]
+    public async Task GetDetailViewData_builds_timeline_with_owed_and_other()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow);
+        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(reportId);
+        var detail = await _sut.GetDetailViewDataAsync(userId, report!);
+
+        detail.HoldedTimeline.Should().NotBeNull();
+        detail.HoldedTimeline!.RegisteredInHolded.Should().BeTrue();
+        detail.HoldedTimeline.OwedToMember.Should().Be(200m);
+        detail.HoldedTimeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
     // ─────────────────────── PollHoldedPaidStatus (creditor balance) ──────────
 
     [HumansFact]
