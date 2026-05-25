@@ -92,6 +92,51 @@ public class HoldedFinanceServiceTests
         toAdd[0].Tag.Should().NotBeNullOrEmpty();
     }
 
+    [HumansFact]
+    public async Task GetProvisioningPlan_skips_account_numbers_occupied_in_holded()
+    {
+        var catId = Guid.NewGuid();
+
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+            Id: Guid.NewGuid(),
+            Year: "2026",
+            Name: "Camp 2026",
+            Status: BudgetYearStatus.Active,
+            IsDeleted: false,
+            Groups:
+            [
+                new BudgetGroupDetail(
+                    Id: Guid.NewGuid(),
+                    BudgetYearId: Guid.NewGuid(),
+                    Name: "Operations",
+                    SortOrder: 1,
+                    IsRestricted: false,
+                    IsDepartmentGroup: false,
+                    IsTicketingGroup: false,
+                    TicketingProjection: null,
+                    Categories:
+                    [
+                        new BudgetCategoryDetail(catId, Guid.NewGuid(), "Staff", 0, ExpenditureType.OpEx, null, 0, []),
+                    ])
+            ]));
+
+        // Local map is empty …
+        _repo.GetCategoryMapAsync(default).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+
+        // … but Holded already has an account at the first block number.
+        _client.ListExpenseAccountsAsync(default).ReturnsForAnyArgs(
+            new List<HoldedExpenseAccountDto>
+            {
+                new() { Id = "acc-x", AccountNum = 6290010, Name = "Existing" },
+            });
+
+        var svc = MakeService();
+        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010);
+
+        var toAdd = plan.Rows.Single(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal));
+        toAdd.ProposedAccountNum.Should().Be(6290011); // 6290010 is taken in Holded → skipped
+    }
+
     // ─── Sync ─────────────────────────────────────────────────────────────────────
 
     [HumansFact]

@@ -41,7 +41,15 @@ public sealed class HoldedFinanceService(
         var activeByCat = map
             .Where(m => m.IsActive)
             .ToDictionary(m => m.BudgetCategoryId);
-        var usedNumbers = map.Select(m => m.HoldedAccountNumber).ToHashSet();
+
+        // Seed collision avoidance from BOTH the local map and the live Holded chart of
+        // accounts, so a number occupied remotely but missing locally — e.g. an account
+        // created in Holded whose local map write later failed, or accounts created
+        // directly in Holded — is never re-proposed.
+        var remoteAccounts = await client.ListExpenseAccountsAsync(ct);
+        var usedNumbers = map.Select(m => m.HoldedAccountNumber)
+            .Concat(remoteAccounts.Select(a => a.AccountNum))
+            .ToHashSet();
 
         var rows = new List<HoldedProvisioningRow>();
         var usedTags = new HashSet<string>(StringComparer.Ordinal);
