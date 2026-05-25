@@ -45,7 +45,7 @@ public class EventsApiController(IEventService guide, ICampServiceRead camps, IU
         var results = new List<GuideEventApiDto>();
         foreach (var e in events)
         {
-            if (categorySlug != null && !string.Equals(e.Category.Slug, categorySlug, StringComparison.OrdinalIgnoreCase))
+            if (categorySlug != null && !string.Equals(e.CategorySlug, categorySlug, StringComparison.OrdinalIgnoreCase))
                 continue;
 
             var campName = ResolveCampName(e.CampId, campsById);
@@ -257,7 +257,7 @@ public class EventsApiController(IEventService guide, ICampServiceRead camps, IU
         return await guide.GetExcludedCategorySlugsAsync(userId.Value);
     }
 
-    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettings? guideSettings)
+    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
     {
         if (guideSettings == null) return null;
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
@@ -278,32 +278,52 @@ public class EventsApiController(IEventService guide, ICampServiceRead camps, IU
     }
 
     // Individual events only — the published-guide host falls back to the submitter's burner name.
-    private static string? ResolveSubmitterName(Event e, IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
+    private static string? ResolveSubmitterName(ApprovedEventView e, IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
+        => e.CampId == null ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName : null;
+
+    private static string? ResolveSubmitterName(EventInfo e, IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
         => e.CampId == null ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName : null;
 
     private static GuideEventApiDto BuildEventDto(
-        Event e, Instant startAt, int dayOffset, string? campName, string? submitterName)
+        ApprovedEventView e, Instant startAt, int dayOffset, string? campName, string? submitterName)
+        => BuildEventDto(
+            e.Id, e.Title, e.Description, e.CategoryId, e.CategoryName, e.CategorySlug, e.CategoryIsSensitive,
+            e.CampId, e.GuideSharedVenueId, e.VenueName, e.LocationNote, e.Host, e.DurationMinutes, e.IsRecurring,
+            e.PriorityRank, startAt, dayOffset, campName, submitterName);
+
+    private static GuideEventApiDto BuildEventDto(
+        EventInfo e, Instant startAt, int dayOffset, string? campName, string? submitterName)
+        => BuildEventDto(
+            e.Id, e.Title, e.Description, e.CategoryId, e.CategoryName, e.CategorySlug, e.CategoryIsSensitive,
+            e.CampId, e.GuideSharedVenueId, e.VenueName, e.LocationNote, e.Host, e.DurationMinutes, e.IsRecurring,
+            e.PriorityRank, startAt, dayOffset, campName, submitterName);
+
+    private static GuideEventApiDto BuildEventDto(
+        Guid id, string title, string description, Guid categoryId, string categoryName, string categorySlug,
+        bool categoryIsSensitive, Guid? campId, Guid? guideSharedVenueId, string? venueName, string? locationNote,
+        string? host, int durationMinutes, bool isRecurring, int priorityRank,
+        Instant startAt, int dayOffset, string? campName, string? submitterName)
     {
         return new GuideEventApiDto(
-            e.Id,
-            e.Title,
-            e.Description,
+            id,
+            title,
+            description,
             new GuideEventCategoryApiDto(
-                e.Category.Id,
-                e.Category.Name,
-                e.Category.Slug,
-                e.Category.IsSensitive),
+                categoryId,
+                categoryName,
+                categorySlug,
+                categoryIsSensitive),
             InstantPattern.General.Format(startAt),
-            e.DurationMinutes,
+            durationMinutes,
             dayOffset,
-            e.IsRecurring,
-            e.CampId.HasValue ? new GuideEventCampApiDto(e.CampId.Value, campName) : null,
-            e.GuideSharedVenueId.HasValue && e.EventVenue != null
-                ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.EventVenue.Name)
+            isRecurring,
+            campId.HasValue ? new GuideEventCampApiDto(campId.Value, campName) : null,
+            guideSharedVenueId.HasValue && venueName != null
+                ? new GuideEventVenueApiDto(guideSharedVenueId.Value, venueName)
                 : null,
-            e.LocationNote,
-            e.CampId == null ? (e.Host ?? submitterName) : e.Host,
-            e.PriorityRank);
+            locationNote,
+            campId == null ? (host ?? submitterName) : host,
+            priorityRank);
     }
 
     private static int ComputeDayOffset(Instant instant, LocalDate? gateOpeningDate, DateTimeZone? tz)

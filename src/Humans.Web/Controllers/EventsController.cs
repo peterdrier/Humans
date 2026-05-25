@@ -69,7 +69,7 @@ public class EventsController(
                 {
                     Id = e.Id,
                     Title = e.Title,
-                    CategoryName = e.Category.Name,
+                    CategoryName = e.CategoryName,
                     StartAt = ToLocalDateTime(e.StartAt, tz),
                     DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
@@ -102,8 +102,8 @@ public class EventsController(
                 {
                     Id = e.Id,
                     Title = e.Title,
-                    VenueName = e.EventVenue?.Name ?? "—",
-                    CategoryName = e.Category.Name,
+                    VenueName = e.VenueName ?? "—",
+                    CategoryName = e.CategoryName,
                     StartAt = ToLocalDateTime(e.StartAt, tz),
                     DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
@@ -376,9 +376,9 @@ public class EventsController(
             {
                 EventId = e.Id,
                 Title = e.Title,
-                CategoryName = e.Category.Name,
+                CategoryName = e.CategoryName,
                 CampName = campName,
-                VenueName = e.EventVenue?.Name,
+                VenueName = e.VenueName,
                 LocationNote = e.LocationNote,
                 StartAt = localStart,
                 DurationMinutes = e.DurationMinutes,
@@ -475,9 +475,9 @@ public class EventsController(
                     EventId = e.Id,
                     Title = e.Title,
                     Description = e.Description,
-                    CategoryName = e.Category.Name,
+                    CategoryName = e.CategoryName,
                     CampName = campName,
-                    VenueName = e.EventVenue?.Name,
+                    VenueName = e.VenueName,
                     LocationNote = e.LocationNote,
                     StartAt = ToLocalDateTime(startInstant, tz),
                     DurationMinutes = e.DurationMinutes,
@@ -563,10 +563,10 @@ public class EventsController(
         return RedirectToAction(nameof(Schedule));
     }
 
-    private bool IsSubmissionOpen(EventGuideSettings? settings) =>
+    private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings, BurnSettingsInfo burn)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettingsView guideSettings, BurnSettingsInfo burn)
     {
         var model = new IndividualEventFormViewModel
         {
@@ -888,7 +888,7 @@ public class EventsController(
                 e.Status.ToString(),
                 e.Title,
                 e.Description,
-                e.Category.Name,
+                e.CategoryName,
                 date,
                 time,
                 e.DurationMinutes,
@@ -1030,7 +1030,7 @@ public class EventsController(
         }
     }
 
-    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettings? guideSettings)
+    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
     {
         if (guideSettings == null) return null;
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);

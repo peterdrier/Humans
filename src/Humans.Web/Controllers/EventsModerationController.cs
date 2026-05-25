@@ -227,7 +227,7 @@ public class EventsModerationController(
     }
 
     private static ModerationEventRowViewModel BuildRow(
-        Event e,
+        EventInfo e,
         DateTimeZone? tz,
         IReadOnlyDictionary<Guid, CampInfo> campsById,
         IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
@@ -248,8 +248,8 @@ public class EventsModerationController(
             SubmitterUserId = e.SubmitterUserId,
             CampName = campName,
             CampSlug = camp?.Slug,
-            VenueName = e.EventVenue?.Name,
-            CategoryName = e.Category.Name,
+            VenueName = e.VenueName,
+            CategoryName = e.CategoryName,
             StartAt = ToLocalDateTime(e.StartAt, tz),
             DurationMinutes = e.DurationMinutes,
             LocationNote = e.LocationNote,
@@ -258,7 +258,7 @@ public class EventsModerationController(
             PriorityRank = e.PriorityRank,
             SubmittedAt = ToLocalDateTime(e.SubmittedAt, tz),
             Status = e.Status,
-            History = e.EventModerationActions
+            History = e.ModerationHistory
                 .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new ModerationHistoryItemViewModel
                 {
