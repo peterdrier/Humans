@@ -38,12 +38,6 @@ public class BaselineSeeder
 
         WriteBaseline(
             repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoConcurrencyTokens.baseline.txt",
-            NoConcurrencyTokensRule.Scan(repoRoot),
-            "no concurrency tokens (memory/architecture/no-concurrency-tokens.md)");
-
-        WriteBaseline(
-            repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/NoLinqAtDbLayer.baseline.txt",
             NoLinqAtDbLayerRule.Scan(repoRoot),
             "no LINQ at DB layer in Application services (memory/architecture/no-linq-at-db-layer.md)");

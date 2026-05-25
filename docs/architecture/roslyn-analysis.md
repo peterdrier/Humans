@@ -101,9 +101,8 @@ assertion families that are plausible analyzer candidates:
   legitimate uses anywhere in the live source today (the existing ratchet
   test already runs with an empty baseline outside migrations). An analyzer
   with a path-based suppression for `src/Humans.Infrastructure/Migrations/**`
-  gives Peter a build-break the moment someone adds one, in-editor, with the
-  atom link in the diagnostic message.
-- Current coverage: `NoConcurrencyTokensRule` (ratchet). Migrate it.
+  gives Peter a build-break the moment someone adds one, in-editor and in CI.
+- Current coverage: `HUM0007` analyzer.
 
 ### HUM0010 — View components may not inject `IMemoryCache`
 
@@ -269,7 +268,7 @@ Listed so the next maintainer doesn't propose them as analyzers. Each one is
 shaped for ratchet / marker / filesystem-aware enforcement, not for an
 analyzer.
 
-- `NoConcurrencyTokensRule` (`tests/.../Rules/NoConcurrencyTokensRule.cs`) — promoted in Tier 1 as HUM0007.
+- `NoConcurrencyTokensRule` — replaced by semantic analyzer `HUM0007`.
 - `NoCrossSectionEfJoinsRule` (`tests/.../Rules/NoCrossSectionEfJoinsRule.cs`) — section ownership is encoded in the `Configurations/<Section>/` folder layout; filesystem-aware. Stay as ratchet.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.
 - `NoBusinessLogicInControllersRule` (`tests/.../Rules/NoBusinessLogicInControllersRule.cs`) — heuristic (action methods > 50 lines or cyclomatic ≥ 6); baseline-ratcheted. Stay as ratchet.
