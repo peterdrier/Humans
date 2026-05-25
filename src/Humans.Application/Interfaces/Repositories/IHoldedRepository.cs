@@ -16,6 +16,14 @@ public interface IHoldedRepository : IRepository
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 
+    // Creditor balances (chartofaccounts cache)
+    Task UpsertCreditorBalancesAsync(IReadOnlyList<HoldedCreditorBalance> rows, Instant now, CancellationToken ct = default);
+    Task<HoldedCreditorBalance?> GetCreditorBalanceByAccountNumAsync(int accountNum, CancellationToken ct = default);
+
+    // Payments cache
+    Task UpsertPaymentsAsync(IReadOnlyList<HoldedPayment> rows, Instant now, CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedPayment>> GetPaymentsByContactAsync(string holdedContactId, CancellationToken ct = default);
+
     // Sync state (singleton, seeded by migration)
     Task<HoldedSyncState> GetSyncStateAsync(CancellationToken ct = default);
     Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
