@@ -284,6 +284,28 @@ public class ShiftsController : HumansControllerBase
             routeValues: new { returnAction = "signup", shiftId });
     }
 
+    // Range variant of the dietary gate. PeekRangeShiftsAsync already filters to
+    // all-day shifts in the inclusive window, and every all-day shift
+    // QualifiesForCantinaMeal(), so "any shift qualifies" reduces to "filtered
+    // list is non-empty". Mirrors the single-shift gate above, including the
+    // SetInfo message key, so the user sees a consistent nudge regardless of
+    // which signup path tripped the gate.
+    private async Task<IActionResult?> RedirectIfDietaryMissingForRangeAsync(
+        User user, Guid rotaId, int startDayOffset, int endDayOffset)
+    {
+        var rangeShifts = await _signupService.PeekRangeShiftsAsync(rotaId, startDayOffset, endDayOffset, HttpContext.RequestAborted);
+        if (rangeShifts.Count == 0) return null;
+
+        var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return null;
+
+        SetInfo(_localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
+        return RedirectToAction(
+            actionName: "DietaryMedical",
+            controllerName: "Profile",
+            routeValues: new { returnAction = "signuprange", rotaId, startDayOffset, endDayOffset });
+    }
+
     [HttpPost("SignUpRange")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
@@ -293,6 +315,9 @@ public class ShiftsController : HumansControllerBase
         {
             return currentUserNotFound;
         }
+
+        if (await RedirectIfDietaryMissingForRangeAsync(user, rotaId, startDayOffset, endDayOffset) is { } gate)
+            return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
