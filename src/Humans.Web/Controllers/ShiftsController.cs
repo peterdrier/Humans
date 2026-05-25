@@ -245,6 +245,9 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
+        if (await RedirectIfDietaryMissingAsync(user, shiftId) is { } gate)
+            return gate;
+
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await _signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
 
@@ -259,6 +262,26 @@ public class ShiftsController : HumansControllerBase
             : "Signed up successfully!");
 
         return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
+    }
+
+    // Dietary gate: if the shift qualifies for a cantina meal (all-day or ≥6h)
+    // and the user hasn't recorded a DietaryPreference yet, bounce them to
+    // ProfileController.DietaryMedical with returnAction=signup so the
+    // post-save handler can replay the signup. Medical conditions are
+    // intentionally excluded from the gate (only DietaryPreference blocks).
+    private async Task<IActionResult?> RedirectIfDietaryMissingAsync(User user, Guid shiftId)
+    {
+        var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+        if (shift is null || !shift.QualifiesForCantinaMeal()) return null;
+
+        var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return null;
+
+        SetInfo(_localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
+        return RedirectToAction(
+            actionName: "DietaryMedical",
+            controllerName: "Profile",
+            routeValues: new { returnAction = "signup", shiftId });
     }
 
     [HttpPost("SignUpRange")]
