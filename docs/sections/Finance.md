@@ -4,6 +4,8 @@
   src/Humans.Domain/Entities/HoldedExpenseDoc.cs
   src/Humans.Domain/Entities/HoldedCategoryMap.cs
   src/Humans.Domain/Entities/HoldedSyncState.cs
+  src/Humans.Domain/Entities/HoldedCreditorBalance.cs
+  src/Humans.Domain/Entities/HoldedPayment.cs
   src/Humans.Infrastructure/Repositories/Finance/HoldedRepository.cs
   src/Humans.Infrastructure/Services/Holded/HoldedClient.cs
   src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
@@ -23,7 +25,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 **Today — Holded actuals integration** (built, Feature 1): Finance-owned entities (`HoldedExpenseDoc`, `HoldedCategoryMap`, `HoldedSyncState`) with a dedicated repository, `IHoldedFinanceService`/`HoldedFinanceService`, nightly sync job, and treasurer UI pages for account provisioning and unmatched-doc resolution. Actuals displayed on the budget year detail view.
 
-**Planned (Feature 2, not yet built):** contact enrichment, creditor-balance UI, paid-detection fix. Cross-section category reads currently use the full `IBudgetService` (matches existing `FinanceController` usage); future read-split noted as tech debt.
+**Today — Holded creditor-data cache** (built, Feature 2): nightly sync of creditor balances and payment rows from Holded; `GetCreditorStatusAsync` exposes the read surface to Expenses for paid-detection. See [Feature 2](#feature-2--holded-creditor-data-cache) below.
 
 ## Concepts
 
@@ -82,6 +84,18 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | ArchivedAt | Instant? | Set when `IsActive` flipped to false |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
+
+### HoldedCreditorBalance
+
+**Table:** `holded_creditor_balances`
+
+Cached chartofaccounts row for a 400000xx supplier account. Keyed by `SupplierAccountNum` (unique). `Balance` is signed; negative = org owes the creditor. Refreshed nightly by `SyncCreditorDataAsync`. `LastSyncedAt` updated on every upsert.
+
+### HoldedPayment
+
+**Table:** `holded_payments`
+
+Cached Holded payment row, keyed by `HoldedPaymentId` (unique). Indexed by `HoldedContactId` for fast per-supplier look-up. Refreshed nightly by `SyncCreditorDataAsync`.
 
 ### HoldedSyncState
 
@@ -201,12 +215,12 @@ Budget never calls into Finance.
 **Owning service:** `IHoldedFinanceService` / `HoldedFinanceService`  
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)  
 **Owned repository:** `IHoldedRepository` / `HoldedRepository`  
-**Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_sync_states`  
+**Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_creditor_balances`, `holded_payments`  
 **Job:** `HoldedSyncJob` (cron `0 3 * * *`)  
-**Migration:** `20260525163748_HoldedActuals`  
+**Migrations:** `20260525163748_HoldedActuals` (F1), `20260525_HoldedCreditorData` (F2)  
 **Architecture tests:** `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
 
-> **What exists:**
+> **What exists (Feature 1):**
 > - `src/Humans.Web/Controllers/FinanceController.cs` — Budget admin + treasurer view + Holded routes. Injects `IBudgetService`, `ITicketingBudgetService`, `ITicketServiceRead`, `IHoldedFinanceService`.
 > - `PolicyNames.FinanceAdminOrAdmin` and `RoleNames.FinanceAdmin` — role + policy wired in `AuthorizationPolicyExtensions.cs`.
 > - `src/Humans.Domain/Entities/HoldedExpenseDoc.cs`
@@ -221,25 +235,33 @@ Budget never calls into Finance.
 > - `src/Humans.Infrastructure/Services/Holded/HoldedClient.cs`
 > - `src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs`
 > - `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
-> - EF migration `20260525163748_HoldedActuals` for all three Finance-owned tables
+> - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables
 >
-> **What does not yet exist (Feature 2):**
-> - Contact enrichment / supplier sync
-> - Creditor-balance UI
-> - Paid-detection fix
-> - `IBudgetServiceRead` read-split (currently uses full `IBudgetService` for Holded category reads)
+> **What exists (Feature 2):**
+> - `src/Humans.Domain/Entities/HoldedCreditorBalance.cs`
+> - `src/Humans.Domain/Entities/HoldedPayment.cs`
+> - `IHoldedRepository.UpsertCreditorBalancesAsync`, `GetCreditorBalanceByAccountNumAsync`, `UpsertPaymentsAsync`, `GetPaymentsByContactAsync`
+> - `IHoldedFinanceService.SyncCreditorDataAsync` — nightly cache refresh (called from `HoldedSyncJob`)
+> - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum, string holdedContactId)` — Expenses→Finance read surface
+> - `IHoldedClient.GetContactAsync`, `ListChartOfAccountsAsync`, `ListPaymentsAsync`, `UpsertContactAsync` — extended Holded API surface
+
+### Feature 2 — Holded creditor-data cache
+
+`SyncCreditorDataAsync` runs nightly as part of `HoldedSyncJob`. It pulls the chartofaccounts and payments from Holded and upserts them into `holded_creditor_balances` and `holded_payments` respectively. The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierAccountNum, holdedContactId)`: it checks the cached balance (balance ≥ 0 means settled) and falls back to the payments cache for the contact.
+
+**Org-accounting boundary (HARD):** Humans only reads Holded balances. It never writes debt-reassignment journal entries or modifies the chartofaccounts to reflect internal transfers. The `holded_creditor_balances` table is a read-through cache, not a ledger.
 
 ### Owned repository
 
-- **`IHoldedRepository`** — owns `holded_expense_docs`, `holded_category_map`, `holded_sync_states`
+- **`IHoldedRepository`** — owns `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_creditor_balances`, `holded_payments`
   - No cross-domain navs: `BudgetCategoryId` is FK-only, no navigation property
-  - No append-only constraint: expense docs are upserted (full overwrite on re-sync)
+  - No append-only constraint: expense docs and creditor rows are upserted (full overwrite on re-sync)
 
 ### Current violations
 
-None. `FinanceController` calls Budget/Tickets via their service interfaces. `HoldedFinanceService` calls `IBudgetService` for cross-section reads (acknowledged tech debt; see Feature 2). No cross-section DbContext reads.
+None. `FinanceController` calls Budget/Tickets via their service interfaces. `HoldedFinanceService` calls `IBudgetService` for cross-section reads (acknowledged tech debt; future read-split to `IBudgetServiceRead` noted). No cross-section DbContext reads.
 
 ### Touch-and-clean guidance
 
 - **Soft boundary:** `TicketingProjection` and `TicketingBudgetService` are conceptually "actuals materialization" but live in Budget today. Treat as known soft boundary — separate cleanup, not an active violation.
-- **Feature 2:** split Holded's `IBudgetService` dependency to `IBudgetServiceRead` and introduce `IBudgetServiceRead` where only reads are needed.
+- **Future:** split Holded's `IBudgetService` dependency to `IBudgetServiceRead` and introduce `IBudgetServiceRead` where only reads are needed.

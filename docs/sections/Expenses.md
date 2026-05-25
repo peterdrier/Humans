@@ -10,6 +10,7 @@
   src/Humans.Infrastructure/Jobs/ExpensePaidPollingJob.cs
   src/Humans.Web/Controllers/ExpensesController.cs
   src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs
+  src/Humans.Application/Interfaces/Finance/IHoldedFinanceService.cs
 -->
 <!-- freshness:flag-on-change
   Expense lifecycle, IBAN access rules, SEPA generation, Holded sync, and resource-based authorization — review when Expenses services/entities/controllers/auth handlers change.
@@ -25,7 +26,7 @@ Members submit expense reports for reimbursement. Finance Admin approves and pro
 - An **ExpenseLine** is one line item within a report — a description, amount, and required attachment.
 - An **ExpenseAttachment** is a receipt or supporting document uploaded to a line item. Files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/expense-attachments/{attachmentId}{.ext}`); the download route at `/Expenses/Attachment/{id}` re-authorizes the caller and streams bytes with the original filename via `Content-Disposition`. Metadata only in the DB.
 - A **HoldedExpenseOutboxEvent** is an async task queued when a report is approved or its category tag changes — drained by `HoldedExpenseOutboxJob` to create/update Holded purchase documents.
-- **SEPA** — Finance Admin generates a pain.001 XML batch for all Approved/unpaid reports, then confirms sending; reports transition to `SepaSent`. `ExpensePaidPollingJob` polls Holded every 15 minutes and transitions `SepaSent` → `Paid` when Holded confirms payment.
+- **SEPA** — Finance Admin generates a pain.001 XML batch for all Approved/unpaid reports, then confirms sending; reports transition to `SepaSent`. `ExpensePaidPollingJob` polls Holded every 15 minutes and transitions `SepaSent` → `Paid` when Holded confirms payment. Paid detection uses the Finance-section creditor-balance cache (balance ≥ 0 = settled) via `IHoldedFinanceService.GetCreditorStatusAsync`, replacing the earlier per-doc `PaymentsPending` check.
 - **IBAN** — snapshotted from `Profile.Iban` at submit time into `ExpenseReport.PayeeIban`. Raw IBAN appears only in the SEPA XML and in Holded API request bodies. All log/audit/error output goes through `IbanFormatter.Mask`.
 
 ## Data Model
@@ -53,6 +54,8 @@ Members submit expense reports for reimbursement. Finance Admin approves and pro
 | SepaSentAt | Instant? | |
 | PaidAt | Instant? | |
 | HoldedDocId | string? | Holded purchase document id |
+| HoldedContactId | string? | Holded contact id for this submitter; set on first push; links to creditor cache |
+| HoldedSupplierAccountNum | int? | 400000xx supplier-account number (supplierRecord.num), cached at push time |
 | LastRejectionReason / LastRejectedByUserId / LastRejectedAt | — | last rejection details |
 | CreatedAt / UpdatedAt | Instant | |
 
@@ -165,6 +168,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Profiles**: `IProfileService.GetProfileAsync` — IBAN snapshot at submit time; masked IBAN for GDPR export.
 - **Users/Identity**: `IUserService.GetByIdAsync` / `GetByIdsAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
 - **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. `GetFilteredEntriesAsync` — GDPR export.
+- **Finance**: `IHoldedFinanceService.GetCreditorStatusAsync` — creditor-balance look-up for paid detection (Feature 2; full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt).
 - **Admin (Profiles section)**: `/Profile/{id}/Admin/RevealIban` lives in `ProfileController` (Profiles section) and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.
 
 ## Architecture
@@ -177,5 +181,11 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - `ExpenseRepository` (impl `Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches expense tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Expense data is mutable and user-specific; low-traffic at ~500 users.
 - **Cross-domain navs** — none declared. All cross-section linkage is scalar FK only.
-- **Cross-section calls** route through `IBudgetService`, `ITeamService`, `IProfileService`, `IUserService`, `IAuditLogService`.
+- **Cross-section calls** route through `IBudgetService`, `ITeamService`, `IProfileService`, `IUserService`, `IAuditLogService`, `IHoldedFinanceService` (Finance, Feature 2).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/ExpensesArchitectureTests.cs` pins the shape.
+
+### Feature 2 — Holded contact enrichment and payment status
+
+When a report is pushed to Holded (`HoldedExpenseOutboxJob`), the submitter's Holded contact is upserted with: legal name as `Name`, trade name only for "burner" identities (legal name required first), `CustomId` = `UserId`, `type = creditor`, IBAN. The returned contact id and resolved `supplierRecord.num` are stored on `ExpenseReport.HoldedContactId` / `HoldedSupplierAccountNum` for subsequent creditor look-ups.
+
+The submitter's expense detail view (`/Expenses/{id}`) shows a **payment status timeline**: pending / in-transit / settled, derived from `GetCreditorStatusAsync`. Paid detection now reads the nightly-cached creditor balance (balance ≥ 0 = settled) instead of the earlier per-doc `PaymentsPending` polling.
