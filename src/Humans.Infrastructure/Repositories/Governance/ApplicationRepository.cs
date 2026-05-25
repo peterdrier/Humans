@@ -29,7 +29,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
         await WithContextAsync(async ctx => await ctx.Applications
             .Include(a => a.StateHistory)
             .Where(a => a.UserId == userId)
-            .OrderByDescending(a => a.SubmittedAt)
             .ToListAsync(ct), ct);
 
     public async Task<bool> AnySubmittedForUserAsync(Guid userId, CancellationToken ct = default) =>
@@ -154,8 +153,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .AsNoTracking()
             .Include(a => a.BoardVotes)
             .Where(a => a.Status == ApplicationStatus.Submitted)
-            .OrderBy(a => a.MembershipTier)
-            .ThenBy(a => a.SubmittedAt)
             .ToListAsync(ct), ct);
 
     public async Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
@@ -270,8 +267,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
                 && a.ResolvedAt != null
                 && a.ResolvedAt.Value >= windowStart
                 && a.ResolvedAt.Value < windowEnd)
-            .OrderBy(a => a.MembershipTier)
-            .ThenBy(a => a.ResolvedAt)
             .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(

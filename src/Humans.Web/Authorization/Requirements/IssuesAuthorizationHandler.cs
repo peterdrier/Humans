@@ -1,5 +1,5 @@
+using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
@@ -18,12 +18,12 @@ namespace Humans.Web.Authorization.Requirements;
 /// Reads from claims only (RoleAssignmentClaimsTransformation populates them per-request,
 /// cached 60s) — no DB hit.
 /// </summary>
-public class IssuesAuthorizationHandler : AuthorizationHandler<IssuesOperationRequirement, Issue>
+public class IssuesAuthorizationHandler : AuthorizationHandler<IssuesOperationRequirement, IssueDetail>
 {
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         IssuesOperationRequirement requirement,
-        Issue resource)
+        IssueDetail resource)
     {
         if (context.User.IsInRole(RoleNames.Admin))
         {

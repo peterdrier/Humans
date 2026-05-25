@@ -522,7 +522,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     // --- GetUserApplicationsAsync ---
 
     [HumansFact]
-    public async Task GetUserApplicationsAsync_ReturnsAllStatusesOrderedBySubmittedAtDesc()
+    public async Task GetUserApplicationsAsync_ReturnsAllStatusesForUser()
     {
         var userId = Guid.NewGuid();
         var app1 = new MemberApplication
@@ -559,10 +559,11 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
 
         var result = await _service.GetUserApplicationsAsync(userId);
 
+        // Display ordering (SubmittedAt desc) now lives in the controller per the
+        // DisplaySortInControllers rule; the service returns all of the user's
+        // applications regardless of order.
         result.Should().HaveCount(3);
-        result[0].Id.Should().Be(app3.Id);
-        result[1].Id.Should().Be(app2.Id);
-        result[2].Id.Should().Be(app1.Id);
+        result.Select(a => a.Id).Should().BeEquivalentTo([app1.Id, app2.Id, app3.Id]);
     }
 
     [HumansFact]

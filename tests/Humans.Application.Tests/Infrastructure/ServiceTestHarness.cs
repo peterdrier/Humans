@@ -66,8 +66,8 @@ public abstract class ServiceTestHarness : IDisposable
 
     /// <summary>
     /// Creates an NSubstitute <see cref="IUserService"/> whose reader methods
-    /// (<c>GetByIdAsync</c>, <c>GetByIdsAsync</c>, <c>GetUserInfoAsync</c>,
-    /// <c>GetUserInfosAsync</c>) are wired to read from this harness's in-memory DB.
+    /// (<c>GetByIdsAsync</c>, <c>GetUserInfoAsync</c>, <c>GetUserInfosAsync</c>)
+    /// are wired to read from this harness's in-memory DB.
     /// Mirrors the production behavior of the User stitcher without requiring the real
     /// caching/repository stack. Use for services that depend on <see cref="IUserService"/>
     /// for cross-domain user lookups.
@@ -75,14 +75,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected IUserService NewDbBackedUserService()
     {
         var svc = Substitute.For<IUserService>();
-
-        svc.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var id = ci.Arg<Guid>();
-                using var db = new HumansDbContext(DbOptions);
-                return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
-            });
 
         svc.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>

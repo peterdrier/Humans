@@ -43,7 +43,7 @@ The marker interfaces make the boundary searchable by humans, reforge, and tests
 - all `I*Repository` interfaces are marked as `IRepository`;
 - Web classes do not inject repositories;
 - service read methods that already expose entities are baselined and must ratchet down;
-- existing cross-section repository injections are baselined and must ratchet down.
+- cross-section repository injection is enforced by analyzer `HUM0017`.
 
 ## Audit Command
 

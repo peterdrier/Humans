@@ -815,12 +815,13 @@ public sealed class UserService(
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault();
+        var effectiveEmail = SelectEffectiveEmail(userEmails, user.IdentityEmailColumn);
 
 #pragma warning disable HUM_USER_DISPLAYNAME // GDPR export must include the legacy Identity column value.
         var shaped = new
         {
             user.Id,
-            user.Email,
+            Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
             GoogleEmail = googleEmail,
@@ -951,6 +952,15 @@ public sealed class UserService(
             commPrefsSlice
         ];
     }
+
+    private static string? SelectEffectiveEmail(
+        IReadOnlyCollection<UserEmail> userEmails,
+        string? fallbackEmail) =>
+        userEmails
+            .Where(e => e.IsVerified)
+            .OrderByDescending(e => e.IsPrimary)
+            .Select(e => e.Email)
+            .FirstOrDefault() ?? fallbackEmail;
 
     private async Task SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
     {

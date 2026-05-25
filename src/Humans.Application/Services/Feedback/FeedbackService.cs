@@ -127,8 +127,8 @@ public sealed class FeedbackService(
         var report = await repository.GetByIdAsync(id, cancellationToken);
         if (report is null) return null;
 
-        var displayNames = await StitchCrossDomainNavsAsync([report], cancellationToken);
-        return CreateFeedbackReportInfo(report, displayNames);
+        var lookups = await StitchCrossDomainNavsAsync([report], cancellationToken);
+        return CreateFeedbackReportInfo(report, lookups);
     }
 
     public async Task<FeedbackReportInfo?> GetFeedbackByIdForViewerAsync(
@@ -151,8 +151,8 @@ public sealed class FeedbackService(
             status, category, reporterUserId, assignedToUserId, assignedToTeamId,
             unassignedOnly, limit, cancellationToken);
 
-        var displayNames = await StitchCrossDomainNavsAsync(reports, cancellationToken);
-        return reports.Select(r => CreateFeedbackReportInfo(r, displayNames)).ToList();
+        var lookups = await StitchCrossDomainNavsAsync(reports, cancellationToken);
+        return reports.Select(r => CreateFeedbackReportInfo(r, lookups)).ToList();
     }
 
     public async Task UpdateStatusAsync(
@@ -461,10 +461,10 @@ public sealed class FeedbackService(
     // Cross-domain nav stitching (design-rules §6b in-memory join).
 #pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
 
-    private async Task<IReadOnlyDictionary<Guid, DisplayUser>> StitchCrossDomainNavsAsync(
+    private async Task<FeedbackCrossDomainLookups> StitchCrossDomainNavsAsync(
         IReadOnlyList<FeedbackReport> reports, CancellationToken ct)
     {
-        if (reports.Count == 0) return EmptyDisplayUsers;
+        if (reports.Count == 0) return EmptyFeedbackCrossDomainLookups;
 
         var userIds = new HashSet<Guid>();
         var teamIds = new HashSet<Guid>();
@@ -485,7 +485,7 @@ public sealed class FeedbackService(
         var users = userIds.Count == 0
             ? null
             : await userService.GetByIdsAsync(userIds, ct);
-        IReadOnlyDictionary<Guid, string>? teamNames = null;
+        IReadOnlyDictionary<Guid, string> teamNames = EmptyTeamNames;
         if (teamIds.Count > 0)
         {
             var teamsById = await teamService.GetTeamsAsync(ct);
@@ -498,19 +498,11 @@ public sealed class FeedbackService(
         {
             if (users is not null && users.TryGetValue(r.UserId, out var reporter))
                 r.User = reporter;
-
-            if (r.AssignedToTeamId.HasValue && teamNames is not null &&
-                teamNames.TryGetValue(r.AssignedToTeamId.Value, out var teamName))
-            {
-                r.AssignedToTeam = new Team
-                {
-                    Id = r.AssignedToTeamId.Value,
-                    Name = teamName,
-                };
-            }
         }
 
-        return await BuildDisplayUsersAsync(userIds, ct);
+        return new FeedbackCrossDomainLookups(
+            await BuildDisplayUsersAsync(userIds, ct),
+            teamNames);
     }
 
     // Display/user-facing identity via UserInfo (memory/architecture/burnername-is-the-display-name.md).
@@ -532,12 +524,22 @@ public sealed class FeedbackService(
 
     private sealed record DisplayUser(string Name, string? Email, string PreferredLanguage);
 
+    private sealed record FeedbackCrossDomainLookups(
+        IReadOnlyDictionary<Guid, DisplayUser> DisplayUsers,
+        IReadOnlyDictionary<Guid, string> TeamNames);
+
     private static readonly IReadOnlyDictionary<Guid, DisplayUser> EmptyDisplayUsers =
         new Dictionary<Guid, DisplayUser>();
 
+    private static readonly IReadOnlyDictionary<Guid, string> EmptyTeamNames =
+        new Dictionary<Guid, string>();
+
+    private static readonly FeedbackCrossDomainLookups EmptyFeedbackCrossDomainLookups =
+        new(EmptyDisplayUsers, EmptyTeamNames);
+
     private static FeedbackReportInfo CreateFeedbackReportInfo(
         FeedbackReport report,
-        IReadOnlyDictionary<Guid, DisplayUser> displayUsers) =>
+        FeedbackCrossDomainLookups lookups) =>
         new(
             report.Id,
             report.UserId,
@@ -558,13 +560,13 @@ public sealed class FeedbackService(
             report.ResolvedByUserId,
             report.AssignedToUserId,
             report.AssignedToTeamId,
-            displayUsers.TryGetValue(report.UserId, out var reporter) ? reporter.Name : report.UserId.ToString(),
+            lookups.DisplayUsers.TryGetValue(report.UserId, out var reporter) ? reporter.Name : report.UserId.ToString(),
             reporter?.Email,
             reporter?.PreferredLanguage ?? "en",
-            ResolveName(report.ResolvedByUserId, displayUsers),
-            ResolveName(report.AssignedToUserId, displayUsers),
-            report.AssignedToTeam?.Name,
-            report.Messages.Select(m => CreateFeedbackMessageInfo(m, displayUsers)).ToList());
+            ResolveName(report.ResolvedByUserId, lookups.DisplayUsers),
+            ResolveName(report.AssignedToUserId, lookups.DisplayUsers),
+            ResolveTeamName(report.AssignedToTeamId, lookups.TeamNames),
+            report.Messages.Select(m => CreateFeedbackMessageInfo(m, lookups.DisplayUsers)).ToList());
 
     private static bool NeedsReply(FeedbackReport report) =>
         (report.LastReporterMessageAt.HasValue &&
@@ -584,6 +586,9 @@ public sealed class FeedbackService(
 
     private static string? ResolveName(Guid? userId, IReadOnlyDictionary<Guid, DisplayUser> displayUsers)
         => userId.HasValue && displayUsers.TryGetValue(userId.Value, out var user) ? user.Name : null;
+
+    private static string? ResolveTeamName(Guid? teamId, IReadOnlyDictionary<Guid, string> teamNames)
+        => teamId.HasValue && teamNames.TryGetValue(teamId.Value, out var teamName) ? teamName : null;
 
 #pragma warning restore CS0618
 }

@@ -12,12 +12,12 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Admin/MergeRequests")]
 public class AdminMergeController(
-    IUserService userService,
+    IUserServiceRead userService,
     IAccountMergeService mergeService,
     ITeamServiceRead teamService,
     ILogger<AdminMergeController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()

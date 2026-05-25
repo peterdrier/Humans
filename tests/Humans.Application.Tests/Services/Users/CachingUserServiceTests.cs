@@ -24,6 +24,12 @@ public class CachingUserServiceTests
         typeof(User).GetProperty("DisplayName")
         ?? throw new InvalidOperationException("User.DisplayName property missing.");
 
+    private static readonly System.Reflection.MethodInfo GetByIdAsyncMethod =
+        typeof(CachingUserService).GetMethod(
+            "GetByIdAsync",
+            [typeof(Guid), typeof(CancellationToken)])
+        ?? throw new InvalidOperationException("CachingUserService.GetByIdAsync method missing.");
+
     private readonly IUserService _inner = Substitute.For<IUserService>();
 
     private CachingUserService CreateSut()
@@ -76,6 +82,20 @@ public class CachingUserServiceTests
 
     private static string LegacyDisplayName(User user) =>
         (string?)LegacyDisplayNameProperty.GetValue(user) ?? string.Empty;
+
+    private static async Task<User?> InvokeGetByIdAsync(CachingUserService sut, Guid userId)
+    {
+        var task = (Task<User?>)GetByIdAsyncMethod.Invoke(
+            sut,
+            [userId, CancellationToken.None])!;
+        return await task;
+    }
+
+    private void InnerShouldNotHaveReceivedGetById()
+    {
+        _inner.ReceivedCalls().Should().NotContain(call =>
+            string.Equals(call.GetMethodInfo().Name, "GetByIdAsync", StringComparison.Ordinal));
+    }
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -523,6 +543,27 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetByIdAsync_ColdCache_UsesBatchFallback()
+    {
+        var userId = Guid.NewGuid();
+        var user = WithLegacyDisplayName(SampleUser(userId), "Fresh");
+        _inner.GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
+        var sut = CreateSut();
+
+        var result = await InvokeGetByIdAsync(sut, userId);
+
+        result.Should().BeSameAs(user);
+        InnerShouldNotHaveReceivedGetById();
+        await _inner.Received(1).GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetByIdAsync_WarmCache_ServesFromDict_NoInnerCall()
     {
         var userId = Guid.NewGuid();
@@ -533,13 +574,13 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId); // prime
 
-        var user = await sut.GetByIdAsync(userId);
+        var user = await InvokeGetByIdAsync(sut, userId);
 
         user.Should().NotBeNull();
         LegacyDisplayName(user).Should().Be("Cached");
 
         // GetByIdAsync should not have been delegated.
-        await _inner.DidNotReceive().GetByIdAsync(userId, Arg.Any<CancellationToken>());
+        InnerShouldNotHaveReceivedGetById();
     }
 
     [HumansFact]
