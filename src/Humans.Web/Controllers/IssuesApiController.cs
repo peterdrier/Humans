@@ -10,9 +10,6 @@ using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
 
-// Obsolete nav props (Reporter/Assignee/ResolvedByUser/SenderUser) stitched in-memory by IssuesService; see design-rules §15i.
-#pragma warning disable CS0618
-
 namespace Humans.Web.Controllers;
 
 [ApiController]
@@ -237,7 +234,7 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
         }
     }
 
-    private static object MapList(Issue i, IReadOnlyDictionary<Guid, UserInfo>? displayUsers = null) => new
+    private static object MapDetailIssue(IssueDetail i, IReadOnlyDictionary<Guid, UserInfo>? displayUsers = null) => new
     {
         i.Id,
         Status = i.Status.ToString(),
@@ -263,7 +260,7 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
         CreatedAt = i.CreatedAt.ToDateTimeUtc(),
         UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
         ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
-        CommentCount = i.Comments.Count
+        CommentCount = i.CommentCount
     };
 
     private static object MapList(IssueListSnapshot i) => new
@@ -293,11 +290,11 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
     };
 
     private static object MapDetail(
-        Issue i,
+        IssueDetail i,
         IReadOnlyList<IssueThreadEvent> thread,
         IReadOnlyDictionary<Guid, UserInfo> displayUsers) => new
         {
-            issue = MapList(i, displayUsers),
+            issue = MapDetailIssue(i, displayUsers),
             thread = thread.Select(e => e switch
             {
                 IssueCommentEvent c => (object)new
@@ -322,7 +319,7 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
             })
         };
 
-    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(Issue issue)
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(IssueDetail issue)
     {
         var ids = new HashSet<Guid> { issue.ReporterUserId };
         if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);

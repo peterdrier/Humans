@@ -158,7 +158,7 @@ public class ProfileController(
         var pendingConsentCount = snapshot.PendingConsentCount;
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(info.Id, ct);
-        var latestApplication = applications.Count > 0 ? applications[0] : null;
+        var latestApplication = applications.MaxBy(a => a.SubmittedAt);
 
         var campaignGrants = await campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
 

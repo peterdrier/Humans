@@ -7,7 +7,7 @@
 
 @if (Model.Count == 0)
 {
-    <div class="alert alert-info">No humans have signed up for shifts yet.</div>
+    <div class="alert alert-info">No humans have shift signups or role assignments yet.</div>
     return;
 }
 
@@ -18,7 +18,7 @@
                 <th data-sort>Human</th>
                 <th data-sort class="text-end">Confirmed signups</th>
                 <th data-sort class="text-end">Pending signups</th>
-                <th data-sort class="text-end" title="Role hours — coming soon (#734)">Role</th>
+                <th data-sort class="text-end" title="Estimated hours from year-round team roles">Year-round</th>
                 <th data-sort class="text-end">Build</th>
                 <th data-sort class="text-end">Event</th>
                 <th data-sort class="text-end">Strike</th>
@@ -32,7 +32,7 @@
                     <td data-value="@row.DisplayName"><vc:human user-id="@row.UserId" layout="Text" link="Admin" /></td>
                     <td class="text-end" data-value="@row.ConfirmedSignupCount">@row.ConfirmedSignupCount</td>
                     <td class="text-end" data-value="@row.PendingSignupCount">@row.PendingSignupCount</td>
-                    <td class="text-end text-muted" data-value="0" title="Role hours — coming soon (#734)">—</td>
+                    <td class="text-end" data-value="@row.YearRoundHours.ToString("0.##", inv)">@row.YearRoundHours.ToString("0.##")</td>
                     <td class="text-end" data-value="@row.BuildHours.ToString("0.##", inv)">@row.BuildHours.ToString("0.##")</td>
                     <td class="text-end" data-value="@row.EventHours.ToString("0.##", inv)">@row.EventHours.ToString("0.##")</td>
                     <td class="text-end" data-value="@row.StrikeHours.ToString("0.##", inv)">@row.StrikeHours.ToString("0.##")</td>

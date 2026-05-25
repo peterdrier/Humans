@@ -29,7 +29,7 @@ internal sealed class IssuesRepository(IDbContextFactory<HumansDbContext> factor
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
-            .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
+            .Include(i => i.Comments)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
     }
 
@@ -134,7 +134,7 @@ internal sealed class IssuesRepository(IDbContextFactory<HumansDbContext> factor
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
-            .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
+            .Include(i => i.Comments)
             .Where(i => i.ReporterUserId == userId)
             .ToListAsync(ct);
     }

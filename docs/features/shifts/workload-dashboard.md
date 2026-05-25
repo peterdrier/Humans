@@ -7,7 +7,8 @@
 -->
 <!-- freshness:flag-on-change
   Workload math (Confirmed-only hours, MaxVolunteers cap, all-day window),
-  pending-vs-confirmed split, role-hours follow-up, or scope of
+  pending-vs-confirmed split, role-hours mapping (RolePeriod → column;
+  per-holder annual estimate; dept planned = estimate × slots), or scope of
   admin-only/hidden inclusion may have changed.
 -->
 
@@ -17,21 +18,22 @@
 
 Coordinators and admins balancing the event need an at-a-glance view of "who is doing how much" so they can spot burnout candidates (too many confirmed hours), idle volunteers (no signups), and under-staffed departments (low coverage). The existing `/Shifts/Dashboard` answers operational questions per-department; this view answers the cross-event distribution question — sliced three ways on one page.
 
-Asked by Peter for the 2026 cycle. Scoped to **shift-based** workload only — role-based hours (the time a `TeamRoleDefinition` is estimated to require) are deferred until `TeamRoleDefinition.EstimatedHours` lands as a separate field. Once that ships, a follow-up extends `WorkloadByPersonRow` with `RoleHours` and unifies the burnout signal.
+Asked by Peter for the 2026 cycle. Combines **shift-based** workload (Confirmed shift hours) with **role-based** workload — each `TeamRoleDefinition.EstimatedHours` (whole hours per year) a person holds, mapped to the column matching the role's `RolePeriod`. Year-round roles get their own column; Build/Event/Strike roles fold into the matching shift-period column.
 
 ## User Stories
 
 ### US-WL.1: Admin Sees Per-Person Workload
 
 **As an** Admin / NoInfoAdmin / VolunteerCoordinator
-**I want to** see every volunteer with at least one shift signup, with their Confirmed hours and Pending count
+**I want to** see every volunteer with shift signups or role assignments, with their hours split by period and Pending count
 **So that** I can identify volunteers nearing burnout and volunteers who have queued work but no approved work
 
 **Acceptance Criteria:**
-- Row per user with `≥ 1` Pending or Confirmed signup for the active event
-- Columns: Display name, Confirmed hours, Confirmed signup count, Pending signup count
-- Pending signups do **not** contribute to Confirmed hours (no burnout inflation from queued work)
-- Display order: descending by Confirmed hours, then ascending by display name (sort is applied in the controller, not the service)
+- Row per user with `≥ 1` Pending/Confirmed signup **or** a role assignment carrying estimated hours, for the active event
+- Columns: Display name, Confirmed signup count, Pending signup count, Year-round / Build / Event / Strike hours, Total
+- Confirmed shift hours land in their shift period's column; a held role's `EstimatedHours` (full annual estimate, per holder) lands in the column matching the role's `RolePeriod`
+- Pending signups do **not** contribute to hours (no burnout inflation from queued work)
+- Display order: descending by Total hours, then ascending by display name (sort is applied in the controller, not the service)
 - Click a column header to re-sort asc/desc client-side
 
 ### US-WL.2: Admin Sees Per-Shift Coverage
@@ -55,26 +57,33 @@ Asked by Peter for the 2026 cycle. Scoped to **shift-based** workload only — r
 **So that** I can find departments that are under-staffed at the planning level
 
 **Acceptance Criteria:**
-- Row per department (any team owning at least one rota with shifts in the event)
+- Row per department: any team owning at least one rota with shifts in the event, **or** owning a role with estimated hours
 - Columns: Department, Rota count, Shift count, Planned slots, Filled slots, Coverage %, Planned hours, Filled hours
 - `FilledSlots` and `FilledHours` cap at `MaxVolunteers` per shift (over-enrolled shifts cannot drive coverage above 100 %)
+- Role estimates fold into `Planned hours` (estimate × slots) and `Filled hours` (estimate × assigned slots); slot counts and Coverage % stay shift-only
 - Default order: team name ascending (sort is applied in the controller)
 - Client-side column sort
 
 ## Data Model
 
-No new tables. Derived entirely from existing `event_settings`, `rotas`, `shifts`, `shift_signups`, and `teams`.
+No new tables. Derived from existing `event_settings`, `rotas`, `shifts`, `shift_signups`, `teams`, and team role definitions/assignments (`TeamRoleDefinition.EstimatedHours` + `RolePeriod`, read via the cached `TeamInfo` projection).
 
 ### Hour math
 
 ```
+# Shift hours
 hours       = shift.IsAllDay ? (AllDayWindowEnd − AllDayWindowStart) : shift.Duration.TotalHours
 planned    += hours × shift.MaxVolunteers              # per-department
 filled     += hours × min(confirmed, MaxVolunteers)    # per-department
-confirmed  += hours                                    # per-user, only for Confirmed signups
+confirmed  += hours                                    # per-user, only for Confirmed signups, by shift period
+
+# Role hours (estimate = TeamRoleDefinition.EstimatedHours, whole hours/year)
+per-user   += estimate                                 # each holder, into the role's RolePeriod column
+planned    += estimate × SlotCount                     # per-department
+filled     += estimate × assignedSlotCount             # per-department
 ```
 
-Pending signups contribute to the per-user `PendingSignupCount` only, never to hours.
+Pending signups contribute to the per-user `PendingSignupCount` only, never to hours. Roles with a null `EstimatedHours` contribute nothing. Roles on **deactivated** teams are excluded (deactivation doesn't clear role assignments, so stale holders would otherwise leak in). Role assignments are current holders (no per-event-year history); role hours show only when the active event has at least one shift.
 
 ### Inclusion rule
 
@@ -94,20 +103,17 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 ## Architecture
 
-`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and an inlined distinct over `GetShiftsForEventAsync` to derive the set of rota ids to walk (no new interface method — see `memory/architecture/interface-method-additions-are-debt.md`). Cross-section name stitching via `ITeamService.GetByIdsWithParentsAsync` and `IUserService.GetUserInfosAsync`.
+`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and an inlined distinct over `GetShiftsForEventAsync` to derive the set of rota ids to walk (no new interface method — see `memory/architecture/interface-method-additions-are-debt.md`). Cross-section name stitching via `ITeamService.GetByIdsWithParentsAsync` and `IUserService.GetUserInfosAsync`. Role hours come from `ITeamServiceRead.GetTeamsAsync` — the cached `TeamInfo` projection already carries each team's role definitions (with `EstimatedHours`, `RolePeriod`, `SlotCount`) and assignment holder ids, so no new cross-section method was added.
 
 **Cache:** No service-level cache. Source data lives in the Shifts-section per-rota cache owned by `CachingShiftViewService` (§15 Option B at the section level). Signup / shift / rota mutations evict the affected rota cache entries via `IShiftViewInvalidator`, so workload totals stay consistent without a parallel cache key. The aggregation itself is microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
 
 **Display sort:** The service returns unsorted lists; `ShiftWorkloadAdminController.SortForDisplay` applies the default ordering before passing the report to the view. Per `memory/architecture/display-sort-in-controllers.md` — sorting in the service would leak presentation into the data layer.
 
-## Deferred — Role-based hours
-
-Acceptance criterion *"Year filter is supported"* and the role-hours dimension (a `TeamRoleDefinition.EstimatedHours` contribution to per-person totals) are **deferred**:
+## Deferred — Year filter
 
 - **Year filter** — there is no multi-year surface on `IShiftManagementService` today. The view uses the active event. Easy follow-up once a year-based lookup lands.
-- **Role hours** — `TeamRoleDefinition.EstimatedHours` does not exist yet. Filed as a separate issue. Once it ships, extend `WorkloadByPersonRow` with `RoleHours` and unify the burnout signal across shift hours + role hours.
 
-Upstream issue stays open via `Refs nobodies-collective/Humans#734` until both follow-ups land.
+Role-based hours (the original #734 follow-up) are now implemented — see the per-person/per-department hour math above. Role hours only surface when the active event has at least one shift (the report short-circuits to empty for a shift-less event); revisit if year-round role workload needs to show before any shifts exist.
 
 ## Related Features
 

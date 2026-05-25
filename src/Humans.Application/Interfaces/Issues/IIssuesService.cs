@@ -34,7 +34,7 @@ public interface IIssuesService : IApplicationService
         IReadOnlyList<string>? reporterRoles,
         CancellationToken ct = default);
 
-    Task<Issue?> GetIssueByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IssueDetail?> GetIssueByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
         IssueListFilter filter,

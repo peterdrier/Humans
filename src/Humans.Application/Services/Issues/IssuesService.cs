@@ -179,13 +179,32 @@ public sealed class IssuesService(
 
     // ─── Reads ───
 
-    public async Task<Issue?> GetIssueByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(id, ct);
-        if (issue is null) return null;
-        await StitchCrossDomainNavsAsync([issue], ct);
-        return issue;
+        return issue is null ? null : MapDetail(issue);
     }
+
+    private static IssueDetail MapDetail(Issue issue) => new(
+        issue.Id,
+        issue.Status,
+        issue.Category,
+        issue.Section,
+        issue.Title,
+        issue.Description,
+        issue.PageUrl,
+        issue.UserAgent,
+        issue.AdditionalContext,
+        issue.ScreenshotStoragePath,
+        issue.ReporterUserId,
+        issue.AssigneeUserId,
+        issue.ResolvedByUserId,
+        issue.GitHubIssueNumber,
+        issue.DueDate,
+        issue.CreatedAt,
+        issue.UpdatedAt,
+        issue.ResolvedAt,
+        issue.Comments.Count);
 
     public async Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
         IssueListFilter filter,
@@ -251,7 +270,7 @@ public sealed class IssuesService(
     public async Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
         Guid issueId, CancellationToken ct = default)
     {
-        var issue = await GetIssueByIdAsync(issueId, ct)
+        var issue = await repo.GetByIdAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
         // Audit entries for the four Issue-related actions.
@@ -909,49 +928,4 @@ public sealed class IssuesService(
                 issue.Id);
         }
     }
-
-    // In-memory join for [Obsolete] cross-domain nav props (design-rules §6b).
-#pragma warning disable CS0618
-    private async Task StitchCrossDomainNavsAsync(
-        IReadOnlyList<Issue> issues, CancellationToken ct)
-    {
-        if (issues.Count == 0) return;
-
-        var userIds = new HashSet<Guid>();
-        foreach (var i in issues)
-        {
-            userIds.Add(i.ReporterUserId);
-            if (i.AssigneeUserId.HasValue) userIds.Add(i.AssigneeUserId.Value);
-            if (i.ResolvedByUserId.HasValue) userIds.Add(i.ResolvedByUserId.Value);
-            foreach (var c in i.Comments)
-            {
-                if (c.SenderUserId.HasValue) userIds.Add(c.SenderUserId.Value);
-            }
-        }
-
-        var users1 = userIds.Count == 0
-            ? null
-            : await users.GetByIdsAsync(userIds.ToList(), ct);
-
-        foreach (var i in issues)
-        {
-            if (users1 is not null && users1.TryGetValue(i.ReporterUserId, out var rep))
-                i.Reporter = rep;
-            if (i.AssigneeUserId is { } aid && users1 is not null &&
-                users1.TryGetValue(aid, out var assignee))
-                i.Assignee = assignee;
-            if (i.ResolvedByUserId is { } rbid && users1 is not null &&
-                users1.TryGetValue(rbid, out var resolver))
-                i.ResolvedByUser = resolver;
-            foreach (var c in i.Comments)
-            {
-                if (c.SenderUserId is { } sid && users1 is not null &&
-                    users1.TryGetValue(sid, out var sender))
-                {
-                    c.SenderUser = sender;
-                }
-            }
-        }
-    }
-#pragma warning restore CS0618
 }

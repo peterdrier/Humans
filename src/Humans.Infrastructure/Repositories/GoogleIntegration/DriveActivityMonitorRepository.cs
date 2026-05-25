@@ -13,8 +13,9 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// EF-backed implementation of <see cref="IDriveActivityMonitorRepository"/>.
 /// The only non-test file that touches the <c>DriveActivityMonitor:LastRunAt</c>
 /// row in <c>DbContext.SystemSettings</c> after the Google Integration §15
-/// migration lands. Anomaly audit entries go through this repository so the
-/// write is transactionally atomic with the last-run marker update.
+/// migration lands. Anomaly audit entries are written by the AuditLog section
+/// via <c>IAuditLogService</c> (the service layer owns that cross-section call);
+/// this repository only persists the monitor's own state.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
@@ -54,12 +55,11 @@ internal sealed class DriveActivityMonitorRepository(
         return null;
     }
 
-    public async Task PersistAnomaliesAsync(
-        IReadOnlyList<AuditLogEntry> anomalies,
+    public async Task AdvanceLastRunMarkerAsync(
         Instant? newLastRunAt,
         CancellationToken ct = default)
     {
-        if (anomalies.Count == 0 && newLastRunAt is null)
+        if (newLastRunAt is null)
         {
             // Nothing to persist — avoid opening a context.
             return;
@@ -67,29 +67,21 @@ internal sealed class DriveActivityMonitorRepository(
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        if (anomalies.Count > 0)
+        var value = newLastRunAt.Value.ToInvariantInstantString();
+        var setting = await ctx.SystemSettings
+            .FirstOrDefaultAsync(s => s.Key == LastRunSettingKey, ct);
+
+        if (setting is not null)
         {
-            ctx.AuditLogEntries.AddRange(anomalies);
+            setting.Value = value;
         }
-
-        if (newLastRunAt is not null)
+        else
         {
-            var value = newLastRunAt.Value.ToInvariantInstantString();
-            var setting = await ctx.SystemSettings
-                .FirstOrDefaultAsync(s => s.Key == LastRunSettingKey, ct);
-
-            if (setting is not null)
+            ctx.SystemSettings.Add(new SystemSetting
             {
-                setting.Value = value;
-            }
-            else
-            {
-                ctx.SystemSettings.Add(new SystemSetting
-                {
-                    Key = LastRunSettingKey,
-                    Value = value,
-                });
-            }
+                Key = LastRunSettingKey,
+                Value = value,
+            });
         }
 
         await ctx.SaveChangesAsync(ct);

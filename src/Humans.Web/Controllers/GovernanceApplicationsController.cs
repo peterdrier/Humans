@@ -37,15 +37,17 @@ public class GovernanceApplicationsController(
 
         var viewModel = new ApplicationIndexViewModel
         {
-            Applications = applications.Select(a => new ApplicationSummaryViewModel
-            {
-                Id = a.Id,
-                Status = a.Status,
-                MembershipTier = a.MembershipTier,
-                SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
-                ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
-                StatusBadgeClass = a.Status.GetBadgeClass()
-            }).ToList(),
+            Applications = applications
+                .OrderByDescending(a => a.SubmittedAt)
+                .Select(a => new ApplicationSummaryViewModel
+                {
+                    Id = a.Id,
+                    Status = a.Status,
+                    MembershipTier = a.MembershipTier,
+                    SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
+                    ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
+                    StatusBadgeClass = a.Status.GetBadgeClass()
+                }).ToList(),
             CanSubmitNew = !hasPendingApplication,
             IsApprovedColaborador = isApprovedColaborador
         };

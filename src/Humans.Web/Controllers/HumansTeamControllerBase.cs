@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Controllers;
 
 public abstract class HumansTeamControllerBase(
-    IUserService userService,
+    IUserServiceRead userService,
     ITeamServiceRead teamService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
