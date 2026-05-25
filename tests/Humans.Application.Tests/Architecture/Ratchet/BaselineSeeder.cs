@@ -78,11 +78,6 @@ public class BaselineSeeder
             ServiceBoundaryArchitectureTests.ScanApplicationServiceEntityReadReturns(),
             "no new Application service read methods return EF/domain entities (docs/architecture/service-entity-boundary-ratchet.md)");
 
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/CrossSectionRepositoryInjection.baseline.txt",
-            ServiceBoundaryArchitectureTests.ScanCrossSectionRepositoryInjections(),
-            "no new cross-section repository injections in Application services (docs/architecture/service-entity-boundary-ratchet.md)");
     }
 
     private static void WriteBaseline(string repoRoot, string relativePath, IEnumerable<string> violations, string ruleSummary)
