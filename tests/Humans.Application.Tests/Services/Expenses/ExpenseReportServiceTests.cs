@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -25,6 +26,8 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
 
     public ExpenseReportServiceTests()
@@ -44,7 +47,8 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             _teamService,
             _userService,
             AuditLog,
-            Substitute.For<IHoldedClient>(),
+            _holdedClient,
+            _holdedFinance,
             Clock,
             NullLogger<ExpenseReportService>.Instance);
     }
@@ -1243,6 +1247,103 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
 
         result.Should().HaveCount(1);
         result[0].Id.Should().Be(submittedId);
+    }
+
+    // ─────────────────────── Holded contact enrichment ───────────────────────
+
+    [HumansFact]
+    public async Task DrainHoldedOutboxAsync_UpsertContactWithLegalNameBurnerAndCustomId_PersistsContactLink()
+    {
+        // Arrange — active year + user with distinct legal name and burner
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        const string legalFirst = "Maria";
+        const string legalLast = "Garcia";
+        const string legalName = "Maria Garcia";
+        const string burnerName = "Meri"; // deliberately different from legal name
+        const string iban = "ES9121000418450200051332";
+
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = burnerName,
+                FirstName = legalFirst,
+                LastName = legalLast,
+                Iban = iban,
+            }));
+
+        // Seed approved report with an attachment via the real service flow
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+
+        // Reload so we can verify the line's attachment key for fileStorage
+        var reportBefore = await _sut.GetAsync(reportId);
+        var line = reportBefore!.Lines[0];
+
+        // Configure Holded substitutes
+        _holdedClient.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        // Also set up category for DrainHoldedOutboxAsync (it re-fetches)
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            ToBudgetCategorySnapshot(new BudgetCategory
+            {
+                Id = category.Id,
+                BudgetGroupId = Guid.NewGuid(),
+                Name = "Test Category",
+                TeamId = null,
+                SortOrder = 0,
+                CreatedAt = FakeNow,
+                UpdatedAt = FakeNow,
+            }));
+
+        // Act
+        await _sut.DrainHoldedOutboxAsync(100);
+
+        // Assert — contact upserted with legal name in Name, burner in TradeName, userId as CustomId
+        await _holdedClient.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i =>
+                i.Name == legalName &&
+                i.TradeName == burnerName &&
+                i.CustomId == userId.ToString() &&
+                i.Type == "creditor"),
+            Arg.Any<CancellationToken>());
+
+        // Assert — contact link persisted on the report
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.HoldedContactId.Should().Be("contact-123");
+        loaded.HoldedSupplierAccountNum.Should().Be(40000007);
+    }
+
+    /// <summary>
+    /// Seeds a report all the way through Draft → line → attachment → Submit → Approve
+    /// using the real sut + expenseRepo, so the outbox event row is written.
+    /// </summary>
+    private async Task<Guid> SeedApprovedReportWithAttachmentAsync(Guid submitterId, Guid categoryId)
+    {
+        var reportId = await _sut.CreateDraftAsync(submitterId, categoryId, "outbox test note");
+        var lineId = await _sut.AddLineAsync(reportId, submitterId, "Test line", 50m);
+
+        await using var stream = new MemoryStream([7, 8, 9]);
+        await _sut.AttachFileToLineAsync(
+            reportId, submitterId, lineId, "receipt.pdf", "application/pdf", stream);
+
+        var submitted = await _sut.SubmitAsync(reportId, submitterId);
+        if (!submitted) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: SubmitAsync returned false");
+
+        var approved = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null);
+        if (!approved) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: ApproveAsync returned false");
+
+        return reportId;
     }
 
     // ─────────────────────────── Helpers ─────────────────────────────────────

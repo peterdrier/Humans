@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -78,6 +79,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
+            Substitute.For<IHoldedFinanceService>(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>());
     }
@@ -443,6 +445,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
+            Substitute.For<IHoldedFinanceService>(),
             _clock,
             logger);
 

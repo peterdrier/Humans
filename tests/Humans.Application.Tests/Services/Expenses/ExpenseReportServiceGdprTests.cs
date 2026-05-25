@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
@@ -55,6 +56,7 @@ public class ExpenseReportServiceGdprTests
             _userService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),
+            Substitute.For<IHoldedFinanceService>(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance);
     }

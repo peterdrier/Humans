@@ -4,6 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
@@ -31,9 +32,13 @@ public sealed class ExpenseReportService(
     IUserService userService,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
+    IHoldedFinanceService holdedFinance,
     IClock clock,
     ILogger<ExpenseReportService> logger) : IExpenseReportService, IUserDataContributor
 {
+    // Stored for future Holded Finance integration tasks (creditor status polling etc.).
+    private readonly IHoldedFinanceService _holdedFinance = holdedFinance;
+
     public static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
 
@@ -936,8 +941,12 @@ public sealed class ExpenseReportService(
         Instant now,
         CancellationToken ct)
     {
+        // 1. Enrich/upsert the Holded contact. Legal name -> name; burner -> tradeName (only with a legal name).
+        var holdedContactId = await UpsertHoldedContactAsync(report, ct);
+
         var input = new HoldedPurchaseDocumentInput
         {
+            ContactId = holdedContactId,
             ContactName = submitterName,
             Date = report.SubmittedAt ?? report.CreatedAt,
             Description = report.Note ?? "",
@@ -953,7 +962,7 @@ public sealed class ExpenseReportService(
                 .ToList(),
         };
 
-        // Idempotency: reuse existing Holded doc id if a prior retry failed during attachment upload.
+        // 2. Create the purchase doc (idempotent on HoldedDocId).
         string holdedDocId;
         if (string.IsNullOrEmpty(report.HoldedDocId))
         {
@@ -965,21 +974,16 @@ public sealed class ExpenseReportService(
             holdedDocId = report.HoldedDocId;
         }
 
+        // 3. Upload attachments.
         foreach (var line in report.Lines.OrderBy(l => l.SortOrder))
         {
-            if (line.AttachmentId is null || line.Attachment is null)
-            {
-                continue;
-            }
+            if (line.AttachmentId is null || line.Attachment is null) continue;
 
             var bytes = await fileStorage.TryReadAsync(
                 AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
             if (bytes is null)
-            {
-                // Throw so the outbox event stays unprocessed and Hangfire retries.
                 throw new InvalidOperationException(
                     $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");
-            }
             using var stream = new MemoryStream(bytes, writable: false);
             await holdedClient.UploadAttachmentAsync(
                 holdedDocId,
@@ -992,7 +996,53 @@ public sealed class ExpenseReportService(
                 ct);
         }
 
+        // 4. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
+        int? supplierAccountNum = null;
+        try
+        {
+            var contact = await holdedClient.GetContactAsync(holdedContactId, ct);
+            supplierAccountNum = contact.SupplierAccountNum;
+        }
+        catch (HoldedTransientException ex)
+        {
+            logger.LogWarning(ex,
+                "Could not resolve supplier account number for contact {ContactId} — will backfill on the paid poll",
+                holdedContactId);
+        }
+        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
+
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
+    }
+
+    /// <summary>
+    /// Upserts the submitter's Holded contact. Reuses an existing <c>HoldedContactId</c> when present
+    /// (update), else creates. Legal name is the official identity; the burner is recognizability only
+    /// and is never written to the official <c>name</c> slot.
+    /// </summary>
+    private async Task<string> UpsertHoldedContactAsync(ExpenseReportDto report, CancellationToken ct)
+    {
+        var legalName = report.PayeeName;
+        string? burner = null;
+        if (!string.IsNullOrWhiteSpace(legalName))
+        {
+            var info = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
+            var display = info?.BurnerName;
+            if (!string.IsNullOrWhiteSpace(display) &&
+                !string.Equals(display, legalName, StringComparison.Ordinal))
+            {
+                burner = display;
+            }
+        }
+
+        return await holdedClient.UpsertContactAsync(new HoldedContactInput
+        {
+            Name = legalName,
+            TradeName = burner,
+            CustomId = report.SubmitterUserId.ToString(),
+            Type = "creditor",
+            Iban = string.IsNullOrWhiteSpace(report.PayeeIban) ? null : report.PayeeIban,
+            ExistingContactId = string.IsNullOrEmpty(report.HoldedContactId) ? null : report.HoldedContactId,
+        }, ct);
     }
 
     private async Task ProcessHoldedUpdateTagAsync(
