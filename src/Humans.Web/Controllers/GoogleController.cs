@@ -37,7 +37,9 @@ public class GoogleController(
         [FromServices] IUserServiceRead userService)
     {
         var settings = (await syncSettingsService.GetAllAsync())
-            .OrderBy(s => s.ServiceType)
+            // Sort by the enum's string name to match the prior EF ordering
+            // (ServiceType is stored via .HasConversion<string>()).
+            .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
             .ToList();
 
         // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
