@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
@@ -1804,17 +1805,8 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateUser(profile.UserId);
     }
 
-    public async Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical)
-    {
-        var profile = await repo.GetVolunteerEventProfileAsync(userId);
-
-        if (profile is not null && !includeMedical)
-        {
-            profile.MedicalConditions = null;
-        }
-
-        return profile;
-    }
+    public Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId) =>
+        repo.GetVolunteerEventProfileAsync(userId);
 
     public async Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,
@@ -1834,6 +1826,10 @@ public sealed class ShiftManagementService(
             && s.Shift.QualifiesForCantinaMeal()
             && s.Shift.GetAbsoluteEnd(eventSettings) > now);
     }
+
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset, CancellationToken ct = default) =>
+        repo.GetOnSiteUserIdsForDayAsync(dayOffset, ct);
 
     public async Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default)

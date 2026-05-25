@@ -689,6 +689,19 @@ internal sealed class ShiftManagementRepository(IDbContextFactory<HumansDbContex
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.ShiftSignups
+            .AsNoTracking()
+            .Where(ss => (ss.Status == SignupStatus.Pending || ss.Status == SignupStatus.Confirmed)
+                      && ss.Shift!.DayOffset == dayOffset)
+            .Select(ss => ss.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================

@@ -82,7 +82,7 @@
                                         @{
                                             var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(first.UserId);
                                         }
-                                        @await Html.PartialAsync("_VolunteerProfileBadges", (pendingProfile, Model.CanViewMedical))
+                                        @await Html.PartialAsync("_VolunteerProfileBadges", pendingProfile)
                                     </td>
                                     <td>@first.Shift.Rota.Name</td>
                                     <td>
@@ -579,7 +579,7 @@
                                                                     @{
                                                                         var manageProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                     }
-                                                                    @await Html.PartialAsync("_VolunteerProfileBadges", (manageProfile, Model.CanViewMedical))
+                                                                    @await Html.PartialAsync("_VolunteerProfileBadges", manageProfile)
                                                                 </div>
                                                                 <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
                                                                     @Html.AntiForgeryToken()
@@ -615,7 +615,7 @@
                                                                 @{
                                                                     var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                 }
-                                                                @await Html.PartialAsync("_VolunteerProfileBadges", (signupProfile, Model.CanViewMedical))
+                                                                @await Html.PartialAsync("_VolunteerProfileBadges", signupProfile)
                                                                 @if (signup.Status == SignupStatus.NoShow)
                                                                 {
                                                                     <span class="badge bg-danger ms-1">No-Show</span>

@@ -82,6 +82,13 @@ public static class RoleNames
     public const string StoreAdmin = "StoreAdmin";
 
     /// <summary>
+    /// Cantina Administrator — can view the cantina weekly/daily roster (on-site cohort,
+    /// dietary breakdown, allergy/intolerance rollups) to plan meals. Read-only; sees
+    /// dietary preferences but never medical conditions (excluded at the DTO boundary).
+    /// </summary>
+    public const string CantinaAdmin = "CantinaAdmin";
+
+    /// <summary>
     /// Every role name defined above, in display order. The single source of truth
     /// for UI that enumerates roles (e.g. the role-assignment filter bar) so new
     /// roles surface automatically. Completeness is enforced by
@@ -101,7 +108,8 @@ public static class RoleNames
         EventsAdmin,
         FeedbackAdmin,
         FinanceAdmin,
-        StoreAdmin
+        StoreAdmin,
+        CantinaAdmin
     ];
 
     /// <summary>
@@ -120,6 +128,7 @@ public static class RoleNames
         FinanceAdmin,
         EventsAdmin,
         StoreAdmin,
+        CantinaAdmin,
         ConsentCoordinator,
         VolunteerCoordinator
     };

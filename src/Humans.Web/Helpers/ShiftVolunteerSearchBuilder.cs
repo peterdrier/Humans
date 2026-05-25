@@ -105,6 +105,10 @@ public static class ShiftVolunteerSearchBuilder
         var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds);
 
+        // Dietary + medical moved to Profile — read them from the cached UserInfo.
+        // (Skills/Quirks/Languages still come from the ShiftUserView's VEP.)
+        var userInfos = await userService.GetUserInfosAsync(userIds);
+
         // The cached ShiftUserView.Signups is scoped to the currently active
         // event (ShiftViewService.GetUserAsync). When the target shift belongs
         // to a different event (e.g. admin searching a past/future event's
@@ -124,6 +128,8 @@ public static class ShiftVolunteerSearchBuilder
         {
             var view = views[user.UserId];
             var profile = view.Profile;
+            userInfos.TryGetValue(user.UserId, out var info);
+            var personProfile = info?.Profile;
             var signupsForEvent = targetIsActive
                 ? view.Signups
                 : targetEventSignups![user.UserId];
@@ -146,13 +152,13 @@ public static class ShiftVolunteerSearchBuilder
                 Skills = profile?.Skills ?? [],
                 Quirks = profile?.Quirks ?? [],
                 Languages = profile?.Languages ?? [],
-                DietaryPreference = profile?.DietaryPreference,
+                DietaryPreference = personProfile?.DietaryPreference,
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
                 IsInPool = poolUserIds.Contains(user.UserId),
-                // canViewMedical gates MedicalConditions here so the shared
-                // cached view's Profile is never mutated (would poison the cache).
-                MedicalConditions = canViewMedical ? profile?.MedicalConditions : null
+                // canViewMedical gates MedicalConditions — without the MedicalDataViewer
+                // policy the field is never surfaced (UserInfo carries it, the view withholds it).
+                MedicalConditions = canViewMedical ? personProfile?.MedicalConditions : null
             });
         }
 

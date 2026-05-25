@@ -1,5 +1,7 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.ViewComponents;
@@ -17,22 +19,34 @@ namespace Humans.Application.Tests.ViewComponents;
 public class DietaryMissingBannerViewComponentTests
 {
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IUserServiceRead _userRead = Substitute.For<IUserServiceRead>();
     private readonly DietaryMissingBannerViewComponent _sut;
 
     public DietaryMissingBannerViewComponentTests()
     {
         _sut = new DietaryMissingBannerViewComponent(
             _shiftMgmt,
+            _userRead,
             NullLogger<DietaryMissingBannerViewComponent>.Instance);
     }
+
+    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfo.Create(
+        user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: new Profile { UserId = userId, BurnerName = "Test", DietaryPreference = dietary },
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task Renders_WhenQualifyingSignupAndDietaryEmpty()
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(true);
-        _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { DietaryPreference = null });
+        _userRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
 
         var result = await _sut.InvokeAsync(userId);
 
@@ -47,8 +61,7 @@ public class DietaryMissingBannerViewComponentTests
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(hasQualifying);
-        _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false)
-                  .Returns(new VolunteerEventProfile { DietaryPreference = dietary });
+        _userRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, dietary));
 
         var result = await _sut.InvokeAsync(userId);
 

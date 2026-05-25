@@ -334,6 +334,17 @@ public interface IShiftManagementRepository : IRepository
         Guid eventSettingsId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the distinct <see cref="ShiftSignup.UserId"/>s of volunteers
+    /// on-site for the given event day: those with a <c>Pending</c>/<c>Confirmed</c>
+    /// signup on a <see cref="Shift"/> whose <see cref="Shift.DayOffset"/> matches.
+    /// The Cantina roster's on-site cohort (feature #36); dietary is read separately
+    /// from <c>Profile</c> via <c>IUserServiceRead</c>.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        int dayOffset,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================

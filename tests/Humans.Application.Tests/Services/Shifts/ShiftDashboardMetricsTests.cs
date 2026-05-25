@@ -1059,6 +1059,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<bool> SetMembershipTierAsync(Guid userId, MembershipTier tier, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(Guid userId, UserProfileOnboardingCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfileSaveResult> SaveProfileAsync(Guid userId, UserProfileSaveCommand command, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SaveDietaryMedicalAsync(Guid userId, UserProfileDietaryMedicalCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(Guid userId, string contentType, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SaveProfileVolunteerHistoryAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) => throw new NotSupportedException();

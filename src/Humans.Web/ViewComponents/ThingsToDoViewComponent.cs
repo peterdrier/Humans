@@ -98,7 +98,7 @@ public class ThingsToDoViewComponent(
                 var needsShiftInfo = false;
                 try
                 {
-                    var shiftProfile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+                    var shiftProfile = await shiftMgmt.GetShiftProfileAsync(userId);
                     needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
                 }
                 catch (Exception ex)
@@ -127,8 +127,8 @@ public class ThingsToDoViewComponent(
             // See docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md
             try
             {
-                var dietaryProfile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
-                var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
+                // Dietary now lives on Profile (already loaded as `profile` above).
+                var dietaryEmpty = string.IsNullOrEmpty(profile?.DietaryPreference);
                 if (dietaryEmpty)
                 {
                     var hasQualifyingSignup = await shiftMgmt.HasQualifyingCantinaSignupAsync(userId);

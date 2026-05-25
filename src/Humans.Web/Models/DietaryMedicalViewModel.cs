@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 
 namespace Humans.Web.Models;
 
@@ -47,7 +48,7 @@ public class DietaryMedicalViewModel
     /// <summary>Forwarder to <see cref="DietaryOptions.IntoleranceOptions"/>.</summary>
     public static readonly IReadOnlyList<string> IntoleranceOptions = DietaryOptions.IntoleranceOptions;
 
-    public static DietaryMedicalViewModel FromProfile(VolunteerEventProfile profile) => new()
+    public static DietaryMedicalViewModel FromProfile(ProfileInfo profile) => new()
     {
         DietaryPreference = profile.DietaryPreference ?? string.Empty,
         Allergies = [.. profile.Allergies],
@@ -57,15 +58,17 @@ public class DietaryMedicalViewModel
         MedicalConditions = profile.MedicalConditions,
     };
 
-    public void ApplyTo(VolunteerEventProfile profile)
-    {
-        profile.DietaryPreference = string.IsNullOrWhiteSpace(DietaryPreference) ? null : DietaryPreference;
-        profile.Allergies = [.. Allergies.Where(IsKnownAllergy)];
-        profile.AllergyOtherText = Allergies.Contains(OtherOption) ? AllergyOtherText?.Trim() : null;
-        profile.Intolerances = [.. Intolerances.Where(IsKnownIntolerance)];
-        profile.IntoleranceOtherText = Intolerances.Contains(OtherOption) ? IntoleranceOtherText?.Trim() : null;
-        profile.MedicalConditions = string.IsNullOrWhiteSpace(MedicalConditions) ? null : MedicalConditions.Trim();
-    }
+    /// <summary>
+    /// Normalizes the posted form into the storage command: unknown chips dropped,
+    /// "Other" free-text kept only when "Other" is selected, blanks coalesced to null.
+    /// </summary>
+    public UserProfileDietaryMedicalCommand ToCommand() => new(
+        DietaryPreference: string.IsNullOrWhiteSpace(DietaryPreference) ? null : DietaryPreference,
+        Allergies: [.. Allergies.Where(IsKnownAllergy)],
+        AllergyOtherText: Allergies.Contains(OtherOption) ? AllergyOtherText?.Trim() : null,
+        Intolerances: [.. Intolerances.Where(IsKnownIntolerance)],
+        IntoleranceOtherText: Intolerances.Contains(OtherOption) ? IntoleranceOtherText?.Trim() : null,
+        MedicalConditions: string.IsNullOrWhiteSpace(MedicalConditions) ? null : MedicalConditions.Trim());
 
     private static bool IsKnownAllergy(string v) => AllergyOptions.Contains(v, StringComparer.Ordinal);
     private static bool IsKnownIntolerance(string v) => IntoleranceOptions.Contains(v, StringComparer.Ordinal);

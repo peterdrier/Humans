@@ -760,6 +760,19 @@ public sealed class CachingUserService(
         return result;
     }
 
+    public async Task SaveDietaryMedicalAsync(
+        Guid userId,
+        UserProfileDietaryMedicalCommand command,
+        CancellationToken ct = default)
+    {
+        await WithInnerAsync(async inner =>
+        {
+            await inner.SaveDietaryMedicalAsync(userId, command, ct);
+            return true;
+        });
+        await RefreshEntryAsync(userId, ct);
+    }
+
     public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
         Guid userId,
         string contentType,

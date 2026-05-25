@@ -442,14 +442,20 @@
                         Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical.
                     </div>
                     @ParamsBlock(
-                        ("@@model", "<code>(VolunteerEventProfile? Profile, bool ShowMedical)</code> tuple")
+                        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary/medical from Profile)")
                     )
                     @AuthLine("<code>ShowMedical=true</code> only when the viewer is allowed to see medical info — gate at the call site.")
                     <div class="wg-card-example @(Model.SampleVolunteerProfile is null ? "is-empty" : "")">
                         @if (Model.SampleVolunteerProfile is not null)
                         {
                             @await Html.PartialAsync("_VolunteerProfileBadges",
-                                (Model.SampleVolunteerProfile, ShowMedical: true))
+                                new Humans.Web.Models.VolunteerBadgesViewModel(
+                                    Model.SampleVolunteerProfile.Skills,
+                                    Model.SampleVolunteerProfile.Quirks,
+                                    Model.SampleVolunteerProfile.Languages,
+                                    DietaryPreference: null,
+                                    MedicalConditions: null,
+                                    ShowMedical: true))
                         }
                         else
                         {

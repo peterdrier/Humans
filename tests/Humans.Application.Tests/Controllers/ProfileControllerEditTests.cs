@@ -339,7 +339,7 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToShiftProfile()
+    public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToProfile()
     {
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
@@ -351,30 +351,25 @@ public class ProfileControllerEditTests
 
         await _controller.Edit(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Is<VolunteerEventProfile>(sp =>
-            sp.DietaryPreference == "Vegan"
-            && sp.Allergies.Contains("Peanut")
-            && sp.Allergies.Contains("Other")
-            && sp.AllergyOtherText == "Kiwi"));
+        // Meal-pref + allergies are persisted through the Profile save request.
+        await _profileEditorService.Received(1).SaveProfileAsync(
+            _userId,
+            Arg.Any<string>(),
+            Arg.Is<ProfileSaveRequest>(r =>
+                r.DietaryPreference == "Vegan"
+                && r.Allergies != null && r.Allergies.Contains("Peanut") && r.Allergies.Contains("Other")
+                && r.AllergyOtherText == "Kiwi"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Edit_Post_WithDietary_DoesNotClobberIntolerancesOrMedical()
+    public async Task Edit_Post_WithDietary_DoesNotTouchIntolerancesOrMedical()
     {
-        // Load-bearing regression: the Edit page owns only meal-pref + allergies.
-        // Intolerances, IntoleranceOtherText, and MedicalConditions are owned by the
-        // DietaryMedical page (medical = GDPR Art. 9) and must survive an Edit save.
+        // The Edit page owns only meal-pref + allergies (carried on ProfileSaveRequest,
+        // which has no intolerance/medical fields). Intolerances + medical are written
+        // only by the DietaryMedical page via SaveDietaryMedicalAsync — never from Edit.
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
-
-        var existing = new VolunteerEventProfile
-        {
-            UserId = _userId,
-            MedicalConditions = "diabetes",
-            Intolerances = ["Lactose"],
-            IntoleranceOtherText = "sorbitol",
-        };
-        _shiftMgmt.GetOrCreateShiftProfileAsync(_userId).Returns(existing);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
         model.DietaryPreference = "Vegan";
@@ -382,15 +377,16 @@ public class ProfileControllerEditTests
 
         await _controller.Edit(model);
 
-        await _shiftMgmt.Received(1).UpdateShiftProfileAsync(Arg.Is<VolunteerEventProfile>(sp =>
-            sp.MedicalConditions == "diabetes"
-            && sp.Intolerances.Count == 1 && sp.Intolerances.Contains("Lactose")
-            && sp.IntoleranceOtherText == "sorbitol"
-            && sp.DietaryPreference == "Vegan"));
+        await _profileEditorService.Received(1).SaveProfileAsync(
+            _userId, Arg.Any<string>(),
+            Arg.Is<ProfileSaveRequest>(r => r.DietaryPreference == "Vegan"),
+            Arg.Any<CancellationToken>());
+        await _profileEditorService.DidNotReceiveWithAnyArgs()
+            .SaveDietaryMedicalAsync(default, default!, default);
     }
 
     [HumansFact]
-    public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveShiftProfile()
+    public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveProfile()
     {
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
@@ -404,19 +400,24 @@ public class ProfileControllerEditTests
         result.Should().BeOfType<ViewResult>();
         _controller.ModelState.IsValid.Should().BeFalse();
         _controller.ModelState.ContainsKey(nameof(model.AllergyOtherText)).Should().BeTrue();
-        await _shiftMgmt.DidNotReceiveWithAnyArgs().UpdateShiftProfileAsync(default!);
+        await _profileEditorService.DidNotReceiveWithAnyArgs()
+            .SaveProfileAsync(default, default!, default!, default);
     }
 
     [HumansFact]
-    public async Task Edit_Get_PopulatesDietaryFieldsFromShiftProfile()
+    public async Task Edit_Get_PopulatesDietaryFieldsFromProfile()
     {
-        _shiftMgmt.GetShiftProfileAsync(_userId, false).Returns(new VolunteerEventProfile
-        {
-            UserId = _userId,
-            DietaryPreference = "Pescatarian",
-            Allergies = ["Dairy", "Other"],
-            AllergyOtherText = "Mango",
-        });
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(new Profile
+            {
+                UserId = _userId,
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
+                DietaryPreference = "Pescatarian",
+                Allergies = ["Dairy", "Other"],
+                AllergyOtherText = "Mango",
+            }));
 
         var result = await _controller.Edit();
 
