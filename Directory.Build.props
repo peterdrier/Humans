@@ -53,8 +53,11 @@
           legacy reads (computed-override projections of UserEmails) are
           migrated through UserInfo / IUserEmailService. Promote to error
           once all reads are gone (delete this entry).
+        - HUM0024: cross-section EF navigation joins. Existing configuration
+          debt is warning-only while those joins are migrated to bare FK
+          columns and service-level stitching.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
