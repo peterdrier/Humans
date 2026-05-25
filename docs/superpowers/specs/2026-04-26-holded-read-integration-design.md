@@ -1,3 +1,5 @@
+> **SUPERSEDED** by `docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md` — Holded strips tag separators, so the `{group-slug}-{category-slug}` dash-split scheme described here never worked. Feature 1 shipped with dedicated per-category accounts (A) + dash-free tag fallback (B) + an unmatched bucket.
+
 # Holded read-side integration — design
 
 **Date:** 2026-04-26
