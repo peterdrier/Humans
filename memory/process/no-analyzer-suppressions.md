@@ -1,13 +1,17 @@
 ---
 name: No suppressions of Humans architecture analyzers
-description: HARD RULE — never use #pragma warning disable, [SuppressMessage], or // ReSharper disable to silence HUM* analyzers or other architecture findings. Always fix the underlying structural mistake.
+description: HARD RULE — never use #pragma warning disable, [SuppressMessage], or // ReSharper disable to silence HUM* analyzers or other architecture findings. Always fix the underlying structural mistake. The sole exception is a Peter-applied [DontFix] (intentional permanent exception).
 ---
 
-There is no path under which suppressing a Humans architecture analyzer (HUM* diagnostic id) is the right answer. Always fix the underlying architectural mistake.
+There is no path under which *silencing* a Humans architecture analyzer (HUM* diagnostic id) with `#pragma` / `[SuppressMessage]` / ReSharper-disable is the right answer. Always fix the underlying architectural mistake — or, for a deliberate **permanent** exception, use a Peter-applied `[DontFix]` (see below).
 
 `#pragma warning disable HUM<NNNN>`, `[SuppressMessage("HUM<NNNN>", ...)]`, and `// ReSharper disable [once] <RuleId>` for HUM rules are forbidden as a way to silence a custom architecture analyzer finding. The same prohibition applies to ReSharper findings that flag real architectural drift.
 
-**Why:** The analyzers exist to enforce design rules. Silencing one without fixing the underlying violation defeats the analyzer's purpose. Memory atoms that "explain" a suppression encode the avoidance rather than the fix and are equally forbidden.
+## The one exception — `[DontFix]`
+
+A Peter-applied `[DontFix("reason", since)]` on a class is the **single** sanctioned way to make a Humans architecture analyzer permanently accept a violation. It differs from the banned forms above in three ways: it is **owner-applied only** — agents never add it; if a rule seems wrong, an agent reports it rather than tagging the class — it is **greppable per class** (not a scattered pragma or a centralised allowlist), and it records **intent** (this is correct here and will not be fixed). The analyzer emits nothing for a `[DontFix]`-tagged class, unlike `[Grandfathered]`, which stays a Warning because it *will* be fixed. See [[dontfix-attribute]]. This exception does **not** reopen `#pragma` / `[SuppressMessage]` / `// ReSharper disable` — those remain forbidden.
+
+**Why:** The analyzers exist to enforce design rules. Silencing one without fixing the underlying violation defeats the analyzer's purpose. Memory atoms that "explain" a suppression encode the avoidance rather than the fix and are equally forbidden. (Documenting the sanctioned `[DontFix]` mechanism itself — see [[dontfix-attribute]] — is not such an atom; what's forbidden is an atom that rationalises a specific avoided fix.)
 
 **How to apply:** When an analyzer fires, the answer is to fix the architecture, not to disable the analyzer. Concrete examples of "fix the architecture":
 
