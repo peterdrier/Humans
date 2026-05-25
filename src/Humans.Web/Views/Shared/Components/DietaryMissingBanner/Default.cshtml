@@ -1,0 +1,12 @@
+<div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
+    <i class="fa-solid fa-utensils me-2"></i>
+    <div class="flex-grow-1">
+        <strong>@Localizer["DietaryMissingBanner_Title"]</strong>
+        <div class="small">@Localizer["DietaryMissingBanner_Body"]</div>
+    </div>
+    <a class="btn btn-sm btn-primary ms-3"
+       asp-controller="Profile" asp-action="DietaryMedical"
+       asp-route-returnAction="shifts">
+        @Localizer["DietaryMissingBanner_Cta"]
+    </a>
+</div>
