@@ -32,12 +32,6 @@ public class BaselineSeeder
 
         WriteBaseline(
             repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoConcurrencyTokens.baseline.txt",
-            NoConcurrencyTokensRule.Scan(repoRoot),
-            "no concurrency tokens (memory/architecture/no-concurrency-tokens.md)");
-
-        WriteBaseline(
-            repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/NoLinqAtDbLayer.baseline.txt",
             NoLinqAtDbLayerRule.Scan(repoRoot),
             "no LINQ at DB layer in Application services (memory/architecture/no-linq-at-db-layer.md)");
@@ -47,12 +41,6 @@ public class BaselineSeeder
             "tests/Humans.Application.Tests/Architecture/Baselines/NoStartupGuards.baseline.txt",
             NoStartupGuardsRule.Scan(repoRoot),
             "no startup guards (memory/architecture/no-startup-guards.md)");
-
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoObsoleteNavReads.baseline.txt",
-            NoObsoleteNavReadsRule.Scan(repoRoot),
-            "no [Obsolete] cross-domain nav reads (design-rules §6c)");
 
         WriteBaseline(
             repoRoot,
@@ -72,11 +60,6 @@ public class BaselineSeeder
             ServiceBoundaryArchitectureTests.ScanApplicationServiceEntityReadReturns(),
             "no new Application service read methods return EF/domain entities (docs/architecture/service-entity-boundary-ratchet.md)");
 
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/CrossSectionRepositoryInjection.baseline.txt",
-            ServiceBoundaryArchitectureTests.ScanCrossSectionRepositoryInjections(),
-            "no new cross-section repository injections in Application services (docs/architecture/service-entity-boundary-ratchet.md)");
     }
 
     private static void WriteBaseline(string repoRoot, string relativePath, IEnumerable<string> violations, string ruleSummary)

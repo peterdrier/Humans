@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
+using NodaTime;
 using Xunit;
 
 namespace Humans.Application.Tests.Authorization;
@@ -51,7 +53,7 @@ public sealed class IssuesAuthorizationHandlerTests
         (await EvaluateAsync(user, issue)).Should().BeFalse();
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, Issue resource)
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, IssueDetail resource)
     {
         var requirement = IssuesOperationRequirement.Handle;
         var context = new AuthorizationHandlerContext([requirement], user, resource);
@@ -59,17 +61,26 @@ public sealed class IssuesAuthorizationHandlerTests
         return context.HasSucceeded;
     }
 
-    private static Issue CreateIssue(string? section)
-    {
-        return new Issue
-        {
-            Id = Guid.NewGuid(),
-            ReporterUserId = Guid.NewGuid(),
-            Section = section,
-            Title = "test",
-            Description = "test",
-        };
-    }
+    private static IssueDetail CreateIssue(string? section) => new(
+        Id: Guid.NewGuid(),
+        Status: IssueStatus.Triage,
+        Category: IssueCategory.Bug,
+        Section: section,
+        Title: "test",
+        Description: "test",
+        PageUrl: null,
+        UserAgent: null,
+        AdditionalContext: null,
+        ScreenshotStoragePath: null,
+        ReporterUserId: Guid.NewGuid(),
+        AssigneeUserId: null,
+        ResolvedByUserId: null,
+        GitHubIssueNumber: null,
+        DueDate: null,
+        CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+        UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+        ResolvedAt: null,
+        CommentCount: 0);
 
     private static ClaimsPrincipal CreateUserWithRoles(params string[] roles)
     {
