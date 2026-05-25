@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
@@ -17,6 +18,9 @@ using Humans.Application.Interfaces.Auth;
 namespace Humans.Application.Services.Auth;
 
 // Stitches display data from UserInfo in memory — design-rules §6b in-memory join.
+[DontFix(
+    reason: "Auth (crosscut) references vertical sections — IUserServiceRead for assignee/creator display stitching, ISystemTeamSync for system-team membership. Permanent exception pending Peter-led inversion.",
+    since: "2026-05-25")]
 public sealed class RoleAssignmentService(
     IRoleAssignmentRepository repository,
     IUserServiceRead userService,

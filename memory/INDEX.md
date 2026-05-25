@@ -2,7 +2,7 @@
 
 # Project Rules Index
 
-Atomic rules. Fetch the body when the description's trigger matches your task. See [`META.md`](META.md) for the pattern; [`design-rules.md`](../docs/architecture/design-rules.md) for the architecture narrative.
+Atomic rules. Fetch the body when the description's trigger matches your task. The constitution above these atoms is [`peters-hard-rules.md`](../docs/architecture/peters-hard-rules.md) (final word on conflict); see [`META.md`](META.md) for the pattern and [`design-rules.md`](../docs/architecture/design-rules.md) for the implementing detail.
 
 ---
 

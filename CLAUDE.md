@@ -4,6 +4,10 @@ Membership management system for Nobodies Collective (Spanish nonprofit). Manage
 
 ## Architecture
 
+**The hard rules below are the constitution — the final word. They override every other doc on conflict, and are hand-maintained by Peter; never edit them as an LLM.**
+
+@docs/architecture/peters-hard-rules.md
+
 Clean Architecture with 4 layers (strict dependency direction inward):
 
 - **Domain** — entities, enums, value objects. No external dependencies.
@@ -11,7 +15,7 @@ Clean Architecture with 4 layers (strict dependency direction inward):
 - **Infrastructure** — repository implementations, `HumansDbContext`, migrations, external API clients, jobs.
 - **Web** — controllers, views, view models, API endpoints, DI wiring.
 
-See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for the full architecture story (the constitution): layer responsibilities, table ownership map, caching pattern (§15), authorization pattern, cross-domain rules. Read the relevant sections before architecture-sensitive work; read it cover-to-cover only when onboarding or doing broad architecture work.
+See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) — the **regulations**: the implementing detail behind the hard rules (layer responsibilities, table ownership map, caching pattern §15, authorization, cross-domain rules). Open a single section on demand; read cover-to-cover only when onboarding. On any conflict with the hard rules, the hard rules win.
 
 ## Project Rules — `memory/INDEX.md`
 

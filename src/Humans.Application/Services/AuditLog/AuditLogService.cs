@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
@@ -14,6 +15,9 @@ namespace Humans.Application.Services.AuditLog;
 /// <see cref="IAuditLogService"/> impl. Append-only (design-rules §12); best-effort — repo failures logged and swallowed (§7a).
 /// Callers must audit AFTER business save. Also <see cref="IUserDataContributor"/> for GDPR export.
 /// </summary>
+[DontFix(
+    reason: "Audit (crosscut) reads merged-account source IDs via IUserServiceRead so queries follow merged identities. Extracting merge-id resolution to a standalone leaf is deferred and Peter-owned.",
+    since: "2026-05-25")]
 public sealed class AuditLogService(
     IAuditLogRepository repo,
     IUserServiceRead userService,

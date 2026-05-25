@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.0">
+
+  <!--
+    Docs-only project. Exists solely to surface the docs/ tree in Solution
+    Explorer with glob auto-pickup: new files under docs/ appear without
+    editing the solution. Produces no build output; never packed or shipped.
+    TargetFramework is inherited from the root Directory.Build.props (NoTargets
+    requires one even though nothing compiles).
+  -->
+  <PropertyGroup>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="**/*" Exclude="obj/**;bin/**;*.csproj" />
+  </ItemGroup>
+
+</Project>

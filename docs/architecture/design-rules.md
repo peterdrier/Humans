@@ -4,6 +4,8 @@
 
 # Design Rules
 
+> **Subordinate to [`peters-hard-rules.md`](peters-hard-rules.md).** Those are the constitution — the final word; on any conflict, the hard rules win. This doc is the *regulations*: the implementing detail. Open a section on demand.
+
 Architectural rules governing how Web, Application, Infrastructure, and Domain interact. **These are target-state rules.** New code must follow them; existing code is migrated incrementally per [Migration Strategy](#15-migration-strategy).
 
 ## 1. Layer Responsibilities
