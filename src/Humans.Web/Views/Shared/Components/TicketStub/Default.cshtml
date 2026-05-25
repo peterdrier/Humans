@@ -52,6 +52,12 @@
         {
             <div class="ticket-stub-badge void">Void</div>
         }
+        @if (Model.EarlyEntryDate is { } ee)
+        {
+            <div class="ticket-stub-badge" style="background:#5b4636; color:#fff; margin-top:8px;">
+                <i class="fa-solid fa-door-open me-1"></i>Early entry @ee.ToString("ddd d MMM", null)
+            </div>
+        }
     </div>
     <div class="ticket-stub-side">
         <span class="ticket-stub-ico">🎟️</span>

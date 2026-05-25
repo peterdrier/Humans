@@ -91,4 +91,5 @@ public sealed record TicketStubInfo(
     string VendorTicketId,
     TicketAttendeeStatus Status,
     bool HasPendingTransfer,
-    Guid? PendingTransferRequestId);
+    Guid? PendingTransferRequestId,
+    LocalDate? EarlyEntryDate = null);
