@@ -55,6 +55,18 @@ Questions go to [humans@nobodies.team](mailto:humans@nobodies.team) or
 14. [Google Integration](GoogleIntegration.md)
 15. [Admin](Admin.md)
 
+## Common questions
+
+Plain-language answers to the things people ask most. Start here if you just want
+a quick, jargon-free hand.
+
+- [Your `@nobodies.team` email](EmailAccount.md)
+- [Two-step verification (2FA)](TwoStepVerification.md)
+- [Transferring your ticket](TicketTransfers.md)
+- [The in-app AI helper](AiHelper.md)
+- [Signing in & getting unstuck](SigningIn.md)
+- [Your data & privacy](YourData.md)
+
 ## Appendix
 
 - [Glossary](Glossary.md)

@@ -28,6 +28,21 @@ public static class GuideFiles
         "Admin"
     ];
 
+    /// <summary>
+    /// Plain-language "Common questions" pages. Canonical home for the
+    /// volunteer-facing how-to that section pages link into. Rendered as their
+    /// own sidebar group; order mirrors docs/guide/README.md.
+    /// </summary>
+    public static readonly IReadOnlyList<string> CommonQuestions =
+    [
+        "EmailAccount",
+        "TwoStepVerification",
+        "TicketTransfers",
+        "AiHelper",
+        "SigningIn",
+        "YourData"
+    ];
+
     public static readonly IReadOnlySet<string> All = BuildAll();
 
     private static IReadOnlySet<string> BuildAll()
@@ -41,6 +56,10 @@ public static class GuideFiles
         foreach (var section in Sections)
         {
             set.Add(section);
+        }
+        foreach (var faq in CommonQuestions)
+        {
+            set.Add(faq);
         }
         return set;
     }

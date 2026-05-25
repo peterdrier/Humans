@@ -46,6 +46,10 @@ Matching is by **attendee email**, not buyer email. The sync compares each atten
 
 If you have paid but your card still says you do not have a ticket, the attendee email on the order probably is not on your profile. Go to `/Profile/Me/Emails`, add the email you used at checkout, verify it, and the next sync picks it up. You buy tickets on the vendor's site — the Dashboard ticket card links out when you do not already have one matched.
 
+### Pass your ticket to someone else
+
+Can't make it, or bought a ticket under your name for a friend? You can transfer a ticket you hold to another person from **Tickets → Transfers** (`/Tickets/Transfers`). You start the request, the ticketing team completes the swap with the vendor, and you both get an email. Full walkthrough: [Transferring your ticket](TicketTransfers.md).
+
 ## As a Board member / Admin (Ticket Admin)
 
 Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view everything but cannot trigger sync, export, or generate codes — those require Ticket Admin or Admin.
