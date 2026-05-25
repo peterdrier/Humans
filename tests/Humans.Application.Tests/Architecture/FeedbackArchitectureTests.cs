@@ -1,10 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories.Feedback;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -21,26 +19,9 @@ public class FeedbackArchitectureTests
 {
     // ── FeedbackService ──────────────────────────────────────────────────────
 
-    [HumansFact]
-    public void FeedbackService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "Feedback has no canonical domain cache; cross-cutting nav-badge invalidation goes through INavBadgeCacheInvalidator, not IMemoryCache directly (design-rules §5)");
-    }
-
-    [HumansFact]
-    public void FeedbackService_TakesRepository()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IFeedbackRepository));
-    }
+    // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
+    // TakesRepository check covered by pattern G (positive wiring noise).
+    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 
     [HumansFact]
     public void FeedbackService_TakesNavBadgeInvalidator()
@@ -80,15 +61,5 @@ public class FeedbackArchitectureTests
 
     // ── IFeedbackRepository ──────────────────────────────────────────────────
 
-    [HumansFact]
-    public void FeedbackRepository_IsSealed()
-    {
-        var repoType = typeof(FeedbackRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-
-        typeof(IFeedbackRepository).IsAssignableFrom(repoType)
-            .Should().BeTrue(because: "FeedbackRepository must implement IFeedbackRepository");
-    }
+    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 }

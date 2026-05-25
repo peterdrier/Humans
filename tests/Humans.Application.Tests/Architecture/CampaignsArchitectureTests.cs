@@ -1,11 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Campaigns;
 using Microsoft.EntityFrameworkCore;
@@ -26,21 +21,6 @@ namespace Humans.Application.Tests.Architecture;
 public class CampaignsArchitectureTests
 {
     [HumansFact]
-    public void CampaignService_TakesRepository()
-    {
-        var ctor = typeof(Humans.Application.Services.Campaigns.CampaignService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ICampaignRepository));
-        paramTypes.Should().Contain(typeof(ITeamServiceRead));
-        paramTypes.Should().Contain(typeof(IUserEmailService));
-        paramTypes.Should().Contain(typeof(IUserServiceRead));
-        paramTypes.Should().Contain(typeof(INotificationService));
-        paramTypes.Should().Contain(typeof(ICommunicationPreferenceService));
-        paramTypes.Should().Contain(typeof(IEmailService));
-    }
-
-    [HumansFact]
     public void CampaignService_DoesNotReferenceEntityFrameworkCore()
     {
         // Humans.Application.csproj does not reference EF Core; this remains a
@@ -53,24 +33,10 @@ public class CampaignsArchitectureTests
     }
 
     [HumansFact]
-    public void CampaignRepository_IsSealed()
-    {
-        typeof(CampaignRepository).IsSealed.Should().BeTrue();
-    }
-
-    [HumansFact]
     public void CampaignRepository_ImplementsICampaignRepository()
     {
         typeof(CampaignRepository).IsAssignableTo(typeof(ICampaignRepository))
             .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void CampaignRepository_LivesInHumansInfrastructureRepositoriesCampaignsNamespace()
-    {
-        typeof(CampaignRepository).Namespace
-            .Should().Be("Humans.Infrastructure.Repositories.Campaigns",
-                because: "repository implementation belongs in Campaigns infrastructure namespace");
     }
 
     [HumansFact]

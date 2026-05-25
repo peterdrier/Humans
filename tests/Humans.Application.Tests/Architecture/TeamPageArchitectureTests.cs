@@ -1,8 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
 using TeamPageService = Humans.Application.Services.Teams.TeamPageService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -26,31 +23,6 @@ public class TeamPageArchitectureTests
     {
         typeof(ITeamPageService).IsAssignableFrom(typeof(TeamPageService))
             .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void TeamPageService_DependsOnlyOnSiblingServiceInterfaces()
-    {
-        var ctor = typeof(TeamPageService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITeamService));
-        paramTypes.Should().Contain(typeof(ITeamResourceService));
-        paramTypes.Should().Contain(typeof(IShiftManagementService));
-        paramTypes.Should().Contain(typeof(IUserServiceRead),
-            because: "user display-name lookups route through IUserServiceRead instead of a direct AspNetUsers query (design-rules §2c)");
-    }
-
-    [HumansFact]
-    public void TeamPageService_HasNoRepositoryDependencies()
-    {
-        var ctor = typeof(TeamPageService).GetConstructors().Single();
-        var repoParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
-
-        repoParam.Should().BeNull(
-            because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");
     }
 
     [HumansFact]

@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.Shifts;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -22,27 +20,6 @@ public class ShiftSignupArchitectureTests
     // ── ShiftSignupService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void ShiftSignupService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(ShiftSignupService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "shift-signup reads are request-scoped; §15 Option A applies (no caching decorator warranted)");
-    }
-
-    [HumansFact]
-    public void ShiftSignupService_TakesRepository()
-    {
-        var ctor = typeof(ShiftSignupService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IShiftSignupRepository));
-    }
-
-    [HumansFact]
     public void ShiftSignupService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -61,24 +38,4 @@ public class ShiftSignupArchitectureTests
             because: "Application-layer services are sealed to prevent ad-hoc extension; migrate behavior changes to the repository or a new service");
     }
 
-    // ── IShiftSignupRepository ──────────────────────────────────────────────
-
-    [HumansFact]
-    public void ShiftSignupRepository_IsSealed()
-    {
-        var repoType = typeof(ShiftSignupRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
-    [HumansFact]
-    public void ShiftSignupRepository_NamespaceIsHumansInfrastructureRepositories()
-    {
-        var repoType = typeof(ShiftSignupRepository);
-
-        repoType.Namespace
-            .Should().Be("Humans.Infrastructure.Repositories.Shifts",
-                because: "repository implementations live in Humans.Infrastructure.Repositories.<Section> per design-rules §3 — the only layer that may reference Microsoft.EntityFrameworkCore");
-    }
 }

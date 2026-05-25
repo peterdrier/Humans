@@ -2,9 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories.Issues;
 using IssuesService = Humans.Application.Services.Issues.IssuesService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -28,15 +26,6 @@ public class IssuesArchitectureTests
 
         paramTypes.Should().Contain(typeof(IIssuesBadgeCacheInvalidator),
             because: "IssuesService owns the per-user actionable-count cache surfaced by NavBadgesViewComponent and must explicitly evict each affected viewer's entry on every count-shifting mutation (memory/code/viewcomponent-no-cache.md + code-review-rules.md §Cache Invalidation)");
-    }
-
-    [HumansFact]
-    public void IssuesService_TakesRepository()
-    {
-        var ctor = typeof(IssuesService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IIssuesRepository));
     }
 
     [HumansFact]
@@ -77,15 +66,5 @@ public class IssuesArchitectureTests
 
     // ── IIssuesRepository ────────────────────────────────────────────────────
 
-    [HumansFact]
-    public void IssuesRepository_IsSealed()
-    {
-        var repoType = typeof(IssuesRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-
-        typeof(IIssuesRepository).IsAssignableFrom(repoType)
-            .Should().BeTrue(because: "IssuesRepository must implement IIssuesRepository");
-    }
+    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 }

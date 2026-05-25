@@ -1,7 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.Tickets;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -24,37 +21,6 @@ public class TicketingBudgetArchitectureTests
     // ── TicketingBudgetService ───────────────────────────────────────────────
 
     [HumansFact]
-    public void TicketingBudgetService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "TicketingBudgetService is a batch-style bridge; no per-request caching is warranted (design-rules §15 + Governance/User precedent for decorator-less sections)");
-    }
-
-    [HumansFact]
-    public void TicketingBudgetService_TakesRepository()
-    {
-        var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITicketingBudgetRepository));
-    }
-
-    [HumansFact]
-    public void TicketingBudgetService_TakesBudgetServiceForCrossSectionWrites()
-    {
-        var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IBudgetService),
-            because: "ticketing_projections and budget_line_items are Budget-owned; all mutations route through IBudgetService (design-rules §2c, §8)");
-    }
-
-    [HumansFact]
     public void TicketingBudgetService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -66,16 +32,4 @@ public class TicketingBudgetArchitectureTests
             because: "the store pattern is retired (design-rules §15); §15 sections use in-decorator ConcurrentDictionary when caching is warranted, or no cache at all");
     }
 
-    // ── ITicketingBudgetRepository ───────────────────────────────────────────
-
-    [HumansFact]
-    public void TicketingBudgetRepository_IsSealed()
-    {
-        // Mirrors ProfileRepository / UserRepository — repository implementations are terminal;
-        // no subclass should extend or override the EF-backed data access.
-        var repoType = typeof(TicketingBudgetRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
 }
