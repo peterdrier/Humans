@@ -83,8 +83,32 @@ public sealed record EarlyEntryRosterRow(
 public sealed record UserEarlyEntry(LocalDate EarliestEntryDate, IReadOnlyList<string> Sources);
 ```
 
-- `GetRosterAsync` — concat all provider results, group by `UserId`, `EarliestEntryDate = min(EntryDate)`, `Sources` = distinct labels, `HasMultiple = Sources.Count > 1`.
-- `GetForUserAsync` — same fan-out, filtered to one user (fine at ~500 users per the scale guidance); returns null when the user holds no EE.
+- `GetRosterAsync` — concat all provider results, group by `UserId`, `EarliestEntryDate = min(EntryDate)`, `Sources` = distinct labels, `HasMultiple = Sources.Count > 1`. **Pass-through (uncached)** — admin page, infrequent, and reallocation decisions must see live data.
+- `GetForUserAsync` — same fan-out, filtered to one user (fine at ~500 users per the scale guidance); returns null when the user holds no EE. **Cached** (see below) — hit on every `/Profile/Me` render.
+
+### Caching decorator (`Humans.Infrastructure.Services.EarlyEntry`)
+
+`CachingEarlyEntryService` is a Singleton decorator over `IEarlyEntryService`, following §15d: inherits `TrackedCache<Guid, UserEarlyEntry>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger)`. Per-user `GetForUserAsync` results are cached by `UserId`; **no startup warmup** (per Peter — the data is cold-loaded on first stub render). `GetRosterAsync` delegates straight to the inner service. The inner `EarlyEntryService` is registered keyed under `CachingEarlyEntryService.InnerServiceKey` (§15c).
+
+`UserEarlyEntry?` is nullable — a user with no EE must cache the *negative* (a sentinel or `TrackedCache` null-marker) so repeat renders for the ~majority with no EE don't re-fan-out every time.
+
+### Invalidation — §15e one-way signal (the derived-data wrinkle)
+
+EE is derived from camp grants and shift signups, so a `TrackedCache` entry would otherwise stay stale until app restart — meaning a human who *just* earned EE would never see it. The decorator exposes a one-method invalidator per §15e:
+
+```csharp
+public interface IEarlyEntryInvalidator   // Humans.Application.Interfaces.EarlyEntry
+{
+    void InvalidateUser(Guid userId);
+}
+```
+
+Implemented by `CachingEarlyEntryService` (same Singleton instance as the read interface — §15e CRITICAL). Injected and called by the two write paths that change a user's EE state:
+
+- **Camps** — `CampService.SetEarlyEntryAsync` (grant/revoke) and the member-removal cascade that clears `HasEarlyEntry`.
+- **Shifts** — `ShiftSignupService` confirm / bail (a build-shift signup changing alters the derived date). Evicting one dict entry is cheap even on this hotter path.
+
+This is the sanctioned cross-section signal (external section injects the invalidator when its writes make the cached view stale), not a cross-section read — no call-graph loop.
 
 ### DI
 
@@ -126,6 +150,8 @@ A new admin page at **`/Shifts/Admin/EarlyEntry`** (a temporary home — a bette
 - **Shared first-shift helper:** `BuildAsync` output unchanged after the extraction (regression guard on the export).
 - **Ticket stub:** EE line renders on the viewer's own stub when set; absent on a transfer-wizard stub for another person; absent when the viewer holds no EE.
 - **Roster authz:** coordinator/admin OK; non-privileged 403.
+- **Caching decorator:** second `GetForUserAsync` is a cache hit (no second fan-out); negative result (no EE) is cached too; `GetRosterAsync` always delegates to inner.
+- **Invalidation:** `InvalidateUser` evicts the entry; a grant via `SetEarlyEntryAsync` (and a build-shift confirm/bail) makes the next `GetForUserAsync` reflect the change; the invalidator and read interface resolve to the same Singleton.
 
 ## Files
 
@@ -133,8 +159,10 @@ A new admin page at **`/Shifts/Admin/EarlyEntry`** (a temporary home — a bette
 
 - `src/Humans.Application/Interfaces/EarlyEntry/IEarlyEntryProvider.cs` — interface + `EarlyEntryGrant`
 - `src/Humans.Application/Interfaces/EarlyEntry/IEarlyEntryService.cs` — orchestrator interface + `EarlyEntryRosterRow` / `UserEarlyEntry`
+- `src/Humans.Application/Interfaces/EarlyEntry/IEarlyEntryInvalidator.cs` — §15e one-way invalidator
 - `src/Humans.Application/Services/EarlyEntry/EarlyEntryService.cs` — orchestrator (fan-out)
-- `src/Humans.Web/Extensions/Sections/EarlyEntrySectionExtensions.cs` — orchestrator DI (mirror `GdprSectionExtensions`)
+- `src/Humans.Infrastructure/Services/EarlyEntry/CachingEarlyEntryService.cs` — Singleton decorator (`TrackedCache`, no warmup) + invalidator
+- `src/Humans.Web/Extensions/Sections/EarlyEntrySectionExtensions.cs` — orchestrator + decorator DI (mirror `GdprSectionExtensions` + a caching section's keyed-inner registration)
 - `src/Humans.Web/Controllers/` — roster action (in the existing Shifts admin controller that owns volunteer tracking, if present; else a thin new one)
 - `src/Humans.Web/Views/.../EarlyEntry.cshtml` — roster page
 - `tests/Humans.Application.Tests/Services/EarlyEntry/EarlyEntryServiceTests.cs`
@@ -142,8 +170,9 @@ A new admin page at **`/Shifts/Admin/EarlyEntry`** (a temporary home — a bette
 
 **Modified:**
 
-- `src/Humans.Application/Services/Camps/CampService.cs` — implement `IEarlyEntryProvider`
+- `src/Humans.Application/Services/Camps/CampService.cs` — implement `IEarlyEntryProvider`; inject + call `IEarlyEntryInvalidator` from `SetEarlyEntryAsync` + member-removal cascade
 - `src/Humans.Application/Services/Shifts/VolunteerTrackingExportService.cs` — implement `IEarlyEntryProvider`; extract shared first-shift-day method
+- `src/Humans.Application/Services/Shifts/ShiftSignupService.cs` — inject + call `IEarlyEntryInvalidator` on confirm / bail of build-shift signups
 - `src/Humans.Web/Extensions/Sections/CampsSectionExtensions.cs` — register `IEarlyEntryProvider`
 - `src/Humans.Web/Extensions/Sections/ShiftsSectionExtensions.cs` (or wherever `VolunteerTrackingExportService` is registered) — register `IEarlyEntryProvider`
 - `src/Humans.Application/DTOs/...TicketStubInfo` — add optional `EarlyEntryDate`
