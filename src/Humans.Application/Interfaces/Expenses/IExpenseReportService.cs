@@ -164,8 +164,9 @@ public interface IExpenseReportService : IApplicationService
     Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Polls Holded for payment status on SepaSent expense reports and marks them Paid
-    /// when their Holded purchase document shows PaymentsPending == 0 and ApprovedAt != null.
+    /// Reconciles payment status on SepaSent expense reports against the member's Holded creditor
+    /// balance and marks them Paid when that balance is settled (≥ 0) — treasury pays the creditor
+    /// account in aggregate, not per-document. Missing supplier-account numbers are backfilled here.
     /// Called by the recurring job.
     /// </summary>
     Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default);

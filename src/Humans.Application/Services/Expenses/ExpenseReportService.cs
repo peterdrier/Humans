@@ -96,6 +96,9 @@ public sealed class ExpenseReportService(
             report.HoldedSupplierAccountNum, report.HoldedContactId, ct);
 
         var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
+        // A report with a HoldedDocId is already booked as a payable in Holded (the purchase doc
+        // is created at outbox-drain time), so it contributes to the creditor balance from
+        // Approved onward — both Approved and SepaSent count toward the registered-unpaid total.
         var memberRegisteredTotal = memberReports
             .Where(r => r.HoldedDocId is not null
                      && r.Status is ExpenseReportStatus.Approved or ExpenseReportStatus.SepaSent)
@@ -103,7 +106,9 @@ public sealed class ExpenseReportService(
 
         var owed = status?.OwedToMember ?? 0m;
         var totalPaid = status?.TotalPaid ?? 0m;
-        var paid = status is not null && status.Balance >= 0m && totalPaid > 0m;
+        // Settled iff the creditor balance is non-negative — same trigger as PollHoldedPaidStatusAsync,
+        // so the timeline never contradicts the report's Paid status badge.
+        var paid = status is not null && status.Balance >= 0m;
 
         return new ExpenseHoldedTimeline(
             RegisteredInHolded: report.HoldedDocId is not null,
@@ -1053,6 +1058,8 @@ public sealed class ExpenseReportService(
         }
 
         // 4. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
+        // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
+        // (that would strand a created doc as permanently-failed). A null num is backfilled on the paid poll.
         int? supplierAccountNum = null;
         try
         {
@@ -1063,6 +1070,12 @@ public sealed class ExpenseReportService(
         {
             logger.LogWarning(ex,
                 "Could not resolve supplier account number for contact {ContactId} — will backfill on the paid poll",
+                holdedContactId);
+        }
+        catch (HoldedPermanentException ex)
+        {
+            logger.LogWarning(ex,
+                "Permanent error resolving supplier account number for contact {ContactId} — will backfill on the paid poll",
                 holdedContactId);
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
