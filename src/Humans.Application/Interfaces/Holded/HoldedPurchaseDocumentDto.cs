@@ -25,6 +25,8 @@ public sealed record HoldedPurchaseDocumentLineInput
 public sealed record HoldedPurchaseDocumentInput
 {
     public required string ContactName { get; init; }
+    /// <summary>When set, link the purchase doc to this Holded contact id.</summary>
+    public string? ContactId { get; init; }
     public required Instant Date { get; init; }
     public required IReadOnlyList<HoldedPurchaseDocumentLineInput> Lines { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
