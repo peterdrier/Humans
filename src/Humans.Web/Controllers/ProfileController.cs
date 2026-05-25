@@ -1661,33 +1661,33 @@ public class ProfileController(
             switch (model.ReturnAction)
             {
                 case "signup" when model.ShiftId is { } sid:
-                {
-                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                    var result = await shiftSignupService.SignUpAsync(
-                        user.Id, sid, actorUserId: null, isPrivileged: privileged);
-                    if (!result.Success)
-                        SetError(result.Error ?? "Shift signup failed.");
-                    else
-                        SetSuccess(result.Warning is not null
-                            ? $"Signed up successfully. Note: {result.Warning}"
-                            : "Signed up successfully!");
-                    return RedirectToAction("Index", "Shifts");
-                }
+                    {
+                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var result = await shiftSignupService.SignUpAsync(
+                            user.Id, sid, actorUserId: null, isPrivileged: privileged);
+                        if (!result.Success)
+                            SetError(result.Error ?? "Shift signup failed.");
+                        else
+                            SetSuccess(result.Warning is not null
+                                ? $"Signed up successfully. Note: {result.Warning}"
+                                : "Signed up successfully!");
+                        return RedirectToAction("Index", "Shifts");
+                    }
                 case "signuprange" when model.RotaId is { } rid
                                          && model.StartDayOffset is { } sd
                                          && model.EndDayOffset is { } ed:
-                {
-                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                    var result = await shiftSignupService.SignUpRangeAsync(
-                        user.Id, rid, sd, ed, actorUserId: null, isPrivileged: privileged, skipConflicts: true);
-                    if (!result.Success)
-                        SetError(result.Error ?? "Shift range signup failed.");
-                    else
-                        SetSuccess(result.Warning is not null
-                            ? $"Signed up for date range. Note: {result.Warning}"
-                            : "Signed up for date range!");
-                    return RedirectToAction("Index", "Shifts");
-                }
+                    {
+                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var result = await shiftSignupService.SignUpRangeAsync(
+                            user.Id, rid, sd, ed, actorUserId: null, isPrivileged: privileged, skipConflicts: true);
+                        if (!result.Success)
+                            SetError(result.Error ?? "Shift range signup failed.");
+                        else
+                            SetSuccess(result.Warning is not null
+                                ? $"Signed up for date range. Note: {result.Warning}"
+                                : "Signed up for date range!");
+                        return RedirectToAction("Index", "Shifts");
+                    }
                 case "shifts":
                     SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
                     return RedirectToAction("Index", "Shifts");
