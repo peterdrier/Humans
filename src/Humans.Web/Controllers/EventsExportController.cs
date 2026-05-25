@@ -41,7 +41,7 @@ public class EventsExportController(
         sb.Append('﻿');
         sb.AppendLine("Id,Title,Description,Category,CampName,VenueName,SubmitterName,LocationNote,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Status,SubmittedAt");
 
-        foreach (var e in events)
+        foreach (var e in events.OrderBy(e => e.StartAt))
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
             var seasonName = camp?.Active?.Name;

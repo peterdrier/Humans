@@ -65,7 +65,7 @@ public class EventsController(
                 SubmittedCount = campEvents.Count,
                 ApprovedCount = campEvents.Count(e => e.Status == EventStatus.Approved),
                 PendingCount = campEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = campEvents.Select(e => new CampEventRowViewModel
+                Events = campEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new CampEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,
@@ -98,7 +98,7 @@ public class EventsController(
                 SubmittedCount = individualEvents.Count,
                 ApprovedCount = individualEvents.Count(e => e.Status == EventStatus.Approved),
                 PendingCount = individualEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = individualEvents.Select(e => new IndividualEventRowViewModel
+                Events = individualEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,
@@ -356,7 +356,7 @@ public class EventsController(
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
         var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
 
-        var scheduleItems = favourites.Select(f =>
+        var scheduleItems = favourites.OrderBy(f => f.Event.StartAt).Select(f =>
         {
             var e = f.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
@@ -872,7 +872,10 @@ public class EventsController(
 
         sb.AppendLine("\"Id\",\"Barrio\",\"Status\",\"Title\",\"Description\",\"Category\",\"Date\",\"StartTime\",\"DurationMinutes\",\"LocationNote\",\"Host\",\"IsRecurring\",\"RecurrenceDays\",\"PriorityRank\"");
 
-        var nonWithdrawn = campEvents.Where(e => e.Status != Domain.Enums.EventStatus.Withdrawn).ToList();
+        var nonWithdrawn = campEvents
+            .Where(e => e.Status != Domain.Enums.EventStatus.Withdrawn)
+            .OrderByDescending(e => e.SubmittedAt)
+            .ToList();
         foreach (var e in nonWithdrawn)
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);

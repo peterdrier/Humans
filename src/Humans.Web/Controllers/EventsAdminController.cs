@@ -99,7 +99,10 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
     public async Task<IActionResult> Categories()
     {
         var categories = await guide.GetAllCategoriesAsync();
-        var rows = categories.Select(c => new EventCategoryRowViewModel
+        var rows = categories
+            .OrderBy(c => c.DisplayOrder)
+            .ThenBy(c => c.Name, StringComparer.Ordinal)
+            .Select(c => new EventCategoryRowViewModel
         {
             Id = c.Id,
             Name = c.Name,
@@ -243,7 +246,10 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
     public async Task<IActionResult> Venues()
     {
         var venues = await guide.GetAllVenuesAsync();
-        var rows = venues.Select(v => new GuideVenueRowViewModel
+        var rows = venues
+            .OrderBy(v => v.DisplayOrder)
+            .ThenBy(v => v.Name, StringComparer.Ordinal)
+            .Select(v => new GuideVenueRowViewModel
         {
             Id = v.Id,
             Name = v.Name,

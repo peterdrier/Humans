@@ -41,7 +41,10 @@ public class EventsModerationController(
             : null;
 
         var counts = await guide.GetEventStatusCountsAsync();
-        var events = await guide.GetEventsByStatusAsync(activeTab);
+        var unsortedEvents = await guide.GetEventsByStatusAsync(activeTab);
+        var events = (activeTab == EventStatus.Pending
+            ? unsortedEvents.OrderBy(e => e.SubmittedAt)
+            : unsortedEvents.OrderByDescending(e => e.SubmittedAt)).ToList();
 
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
         var submitterInfoById = await LoadSubmittersAsync(users, events.Select(e => e.SubmitterUserId).Distinct());

@@ -211,7 +211,7 @@ public class EventsApiController(IEventService guide, ICampServiceRead camps, IU
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
             UserService, favourites.Where(f => f.Event.CampId == null).Select(f => f.Event.SubmitterUserId).Distinct());
-        var results = favourites.Select(f =>
+        var results = favourites.OrderBy(f => f.Event.StartAt).Select(f =>
         {
             var e = f.Event;
             var campName = ResolveCampName(e.CampId, campsById);
