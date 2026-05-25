@@ -198,6 +198,59 @@ public class ShiftsControllerDietaryGateTests
               .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
     }
 
+    // ---- Lockout-flag computation on the top-level VM (Task 6.2) ----
+    // ComputeSignupsBlockedByMissingDietaryAsync sets the flag the rota-table
+    // Sign-Up buttons read. Mine() is the simplest action to drive: it tolerates
+    // a null active event and empty signups, so the three flag states isolate
+    // cleanly. (Index() would need a full shift-graph fixture.)
+
+    [HumansFact]
+    public async Task Mine_NoQualifyingCantinaSignup_FlagFalse()
+    {
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(_user.Id, Arg.Any<CancellationToken>())
+                  .Returns(false);
+
+        var model = await GetMineViewModel();
+
+        model.UserId.Should().Be(_user.Id);
+        model.SignupsBlockedByMissingDietary.Should().BeFalse();
+        // Short-circuits before touching the profile.
+        await _shiftMgmt.DidNotReceive().GetShiftProfileAsync(Arg.Any<Guid>(), Arg.Any<bool>());
+    }
+
+    [HumansFact]
+    public async Task Mine_QualifyingSignup_DietaryEmpty_FlagTrue()
+    {
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(_user.Id, Arg.Any<CancellationToken>())
+                  .Returns(true);
+        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
+                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = null });
+
+        var model = await GetMineViewModel();
+
+        model.SignupsBlockedByMissingDietary.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Mine_QualifyingSignup_DietaryFilled_FlagFalse()
+    {
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(_user.Id, Arg.Any<CancellationToken>())
+                  .Returns(true);
+        _shiftMgmt.GetShiftProfileAsync(_user.Id, includeMedical: false)
+                  .Returns(new VolunteerEventProfile { UserId = _user.Id, DietaryPreference = "Vegan" });
+
+        var model = await GetMineViewModel();
+
+        model.SignupsBlockedByMissingDietary.Should().BeFalse();
+    }
+
+    private async Task<Humans.Web.Models.MyShiftsViewModel> GetMineViewModel()
+    {
+        var result = await _controller.Mine();
+        return result.Should().BeOfType<ViewResult>()
+                     .Which.Model.Should().BeOfType<Humans.Web.Models.MyShiftsViewModel>().Subject;
+    }
+
     // All-day shifts qualify; this is the simplest knob to flip the
     // QualifiesForCantinaMeal() check without fabricating Duration values.
     private static Shift BuildShift(Guid id, bool qualifiesForCantina) =>

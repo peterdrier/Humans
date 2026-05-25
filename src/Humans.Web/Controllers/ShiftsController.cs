@@ -208,6 +208,8 @@ public class ShiftsController : HumansControllerBase
         var model = new ShiftBrowseViewModel
         {
             EventSettings = es,
+            UserId = user.Id,
+            SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user.Id, HttpContext.RequestAborted),
             FilterDepartmentId = departmentId,
             FilterFromDate = fromDate,
             FilterToDate = toDate,
@@ -262,6 +264,19 @@ public class ShiftsController : HumansControllerBase
             : "Signed up successfully!");
 
         return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
+    }
+
+    // Lockout flag shared by the dietary banner and the rota-table Sign-Up
+    // buttons: true when the user has a qualifying cantina signup but no
+    // recorded DietaryPreference. Computed once per request on the top-level
+    // VM (Index/Mine); the views propagate it to each rota-partial. Mirrors
+    // the banner's own self-check and the SignUp gate's condition. Medical
+    // conditions are intentionally excluded (only DietaryPreference blocks).
+    private async Task<bool> ComputeSignupsBlockedByMissingDietaryAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (!await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct)) return false;
+        var profile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+        return string.IsNullOrEmpty(profile?.DietaryPreference);
     }
 
     // Dietary gate: if the shift qualifies for a cantina meal (all-day or ≥6h)
@@ -414,7 +429,12 @@ public class ShiftsController : HumansControllerBase
             : [];
 
         var now = _clock.GetCurrentInstant();
-        var model = new MyShiftsViewModel { EventSettings = es };
+        var model = new MyShiftsViewModel
+        {
+            EventSettings = es,
+            UserId = user.Id,
+            SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user.Id, HttpContext.RequestAborted),
+        };
 
         var mineTeamIds = signups
             .Where(s => s.Shift?.Rota is not null)
