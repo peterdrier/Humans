@@ -1687,7 +1687,12 @@ public class ProfileController : HumansControllerBase
     }
 
     [HttpGet("Me/DietaryMedical")]
-    public async Task<IActionResult> DietaryMedical()
+    public async Task<IActionResult> DietaryMedical(
+        string? returnAction = null,
+        Guid? shiftId = null,
+        Guid? rotaId = null,
+        int? startDayOffset = null,
+        int? endDayOffset = null)
     {
         try
         {
@@ -1700,6 +1705,14 @@ public class ProfileController : HumansControllerBase
             var vm = profile is null
                 ? new DietaryMedicalViewModel()
                 : DietaryMedicalViewModel.FromProfile(profile);
+
+            // Carryover from the dietary-gate redirect (ShiftsController.SignUp/SignUpRange).
+            // The POST handler reads these to replay the original signup after a successful save.
+            vm.ReturnAction = returnAction;
+            vm.ShiftId = shiftId;
+            vm.RotaId = rotaId;
+            vm.StartDayOffset = startDayOffset;
+            vm.EndDayOffset = endDayOffset;
 
             return View(vm);
         }
@@ -1741,8 +1754,52 @@ public class ProfileController : HumansControllerBase
             model.ApplyTo(profile);
             await _shiftMgmt.UpdateShiftProfileAsync(profile);
 
-            SetSuccess(_localizer["Profile_DietaryMedical_Saved"].Value);
-            return RedirectToAction("Index", "Home");
+            // Signup-replay branches — the user was bounced here from
+            // ShiftsController.SignUp/SignUpRange by the dietary gate. After a
+            // successful save we re-run the original signup and land them on
+            // /Shifts with the appropriate flash. See
+            // docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md.
+            // Replay failure does NOT roll back the dietary save — the user can
+            // retry the signup directly from /Shifts without re-entering it.
+            // The inline flash-mapping duplicates ShiftsController's two existing
+            // inline copies; extract on the third call site per project doctrine.
+            switch (model.ReturnAction)
+            {
+                case "signup" when model.ShiftId is { } sid:
+                {
+                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                    var result = await _shiftSignupService.SignUpAsync(
+                        user.Id, sid, actorUserId: null, isPrivileged: privileged);
+                    if (!result.Success)
+                        SetError(result.Error ?? "Shift signup failed.");
+                    else
+                        SetSuccess(result.Warning is not null
+                            ? $"Signed up successfully. Note: {result.Warning}"
+                            : "Signed up successfully!");
+                    return RedirectToAction("Index", "Shifts");
+                }
+                case "signuprange" when model.RotaId is { } rid
+                                         && model.StartDayOffset is { } sd
+                                         && model.EndDayOffset is { } ed:
+                {
+                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                    var result = await _shiftSignupService.SignUpRangeAsync(
+                        user.Id, rid, sd, ed, actorUserId: null, isPrivileged: privileged, skipConflicts: true);
+                    if (!result.Success)
+                        SetError(result.Error ?? "Shift range signup failed.");
+                    else
+                        SetSuccess(result.Warning is not null
+                            ? $"Signed up for date range. Note: {result.Warning}"
+                            : "Signed up for date range!");
+                    return RedirectToAction("Index", "Shifts");
+                }
+                case "shifts":
+                    SetSuccess(_localizer["Profile_DietaryMedical_Saved"].Value);
+                    return RedirectToAction("Index", "Shifts");
+                default:
+                    SetSuccess(_localizer["Profile_DietaryMedical_Saved"].Value);
+                    return RedirectToAction("Index", "Home");
+            }
         }
         catch (Exception ex)
         {

@@ -22,6 +22,15 @@ public class DietaryMedicalViewModel
     [StringLength(4000)]
     public string? MedicalConditions { get; set; }
 
+    // Carryover from the redirect-then-replay flow (see dietary-prompt-tightening design).
+    // Not bound to VolunteerEventProfile — pure round-trip routing data so the POST handler
+    // can replay the original ShiftsController.SignUp / SignUpRange after a successful save.
+    public string? ReturnAction { get; set; }
+    public Guid? ShiftId { get; set; }
+    public Guid? RotaId { get; set; }
+    public int? StartDayOffset { get; set; }
+    public int? EndDayOffset { get; set; }
+
     /// <summary>
     /// Sentinel value used in <see cref="AllergyOptions"/> and <see cref="IntoleranceOptions"/>
     /// to indicate a free-text follow-up. Forwards to the canonical Domain constant so the

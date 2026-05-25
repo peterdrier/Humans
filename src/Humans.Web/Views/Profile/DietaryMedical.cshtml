@@ -19,6 +19,14 @@
         <form asp-action="DietaryMedical" method="post" novalidate>
             @Html.AntiForgeryToken()
 
+            @* Carryover routing data for the post-save signup-replay branch
+               (see ProfileController.DietaryMedical POST + the design doc). *@
+            <input type="hidden" asp-for="ReturnAction" />
+            <input type="hidden" asp-for="ShiftId" />
+            <input type="hidden" asp-for="RotaId" />
+            <input type="hidden" asp-for="StartDayOffset" />
+            <input type="hidden" asp-for="EndDayOffset" />
+
             @if (ViewData.ModelState!.ErrorCount > 0)
             {
                 <div class="alert alert-danger mb-3" id="validationSummary">
