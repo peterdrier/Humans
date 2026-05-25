@@ -24,4 +24,4 @@ HUM0019 | Humans.Architecture   | Warning  | Read of Identity-derived User colum
 HUM0020 | Humans.Architecture   | Error    | Caching decorator references a repository directly instead of routing through the keyed inner service
 HUM0021 | Humans.Architecture   | Warning  | Read of obsolete cross-domain navigation property from Application, Web, or Infrastructure
 HUM0024 | Humans.Architecture   | Error    | EF configuration creates a navigation join across section boundaries (downgrades to Warning for classes carrying [Grandfathered("HUM0024", ...)])
-HUM0022 | Humans.Architecture   | Error    | Notification DbSets may only be written by NotificationRepository
+HUM0025 | Humans.Architecture   | Error    | A DbSet table is referenced (read or written) by more than one repository — a table must belong to exactly one repository (downgrades to Warning for repos carrying [Grandfathered("HUM0025", ..., scope: "<DbSet>")])
