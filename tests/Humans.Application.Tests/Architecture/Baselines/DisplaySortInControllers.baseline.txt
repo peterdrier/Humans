@@ -73,8 +73,6 @@ src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs:ThenB
 src/Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#2
-src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:OrderBy#1

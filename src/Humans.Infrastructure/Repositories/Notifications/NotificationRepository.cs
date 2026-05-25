@@ -343,7 +343,6 @@ internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> 
         }
 
         return await query
-            .OrderByDescending(nr => nr.Notification.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -356,7 +355,6 @@ internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> 
             .Include(nr => nr.Notification)
                 .ThenInclude(n => n.Recipients)
             .AsNoTrackingWithIdentityResolution()
-            .OrderByDescending(nr => nr.Notification.CreatedAt)
             .ToListAsync(ct);
     }
 
