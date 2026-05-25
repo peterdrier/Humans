@@ -209,13 +209,22 @@ public sealed class DevelopmentBudgetSeeder(
         var sharedServicesGroup = currentYear.Groups.FirstOrDefault(g =>
             string.Equals(g.Name, "Shared Services", StringComparison.Ordinal));
 
+        Guid sharedServicesGroupId;
+        bool sharedServicesGroupRestricted;
         if (sharedServicesGroup is null)
         {
-            sharedServicesGroup = await budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
+            var createdGroup = await budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
+            sharedServicesGroupId = createdGroup.Id;
+            sharedServicesGroupRestricted = createdGroup.IsRestricted;
             groupsCreated++;
         }
+        else
+        {
+            sharedServicesGroupId = sharedServicesGroup.Id;
+            sharedServicesGroupRestricted = sharedServicesGroup.IsRestricted;
+        }
 
-        await budgetService.UpdateGroupAsync(sharedServicesGroup.Id, sharedServicesGroup.Name, 1, sharedServicesGroup.IsRestricted, actorUserId);
+        await budgetService.UpdateGroupAsync(sharedServicesGroupId, "Shared Services", 1, sharedServicesGroupRestricted, actorUserId);
 
         var ticketingGroup = currentYear.Groups.Single(g => g.IsTicketingGroup);
         await budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId);
@@ -240,8 +249,9 @@ public sealed class DevelopmentBudgetSeeder(
             var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
+                category = ToCategoryDetail(created);
                 categoriesCreated++;
             }
 
@@ -255,8 +265,9 @@ public sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
+                category = ToCategoryDetail(created);
                 categoriesCreated++;
             }
 
@@ -270,8 +281,9 @@ public sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
+                category = ToCategoryDetail(created);
                 categoriesCreated++;
             }
 
@@ -336,8 +348,20 @@ public sealed class DevelopmentBudgetSeeder(
         onUpdated();
     }
 
+    // Newly created categories carry no line items yet; seeding adds them next.
+    private static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) =>
+        new(
+            category.Id,
+            category.BudgetGroupId,
+            category.Name,
+            category.AllocatedAmount,
+            category.ExpenditureType,
+            category.TeamId,
+            category.SortOrder,
+            []);
+
     private async Task SeedLineItemsAsync(
-        BudgetCategory category,
+        BudgetCategoryDetail category,
         IReadOnlyList<BudgetLineItemSeed> lineItems,
         Guid actorUserId,
         CancellationToken cancellationToken,

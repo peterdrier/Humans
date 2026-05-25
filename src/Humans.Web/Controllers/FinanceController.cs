@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
@@ -548,14 +547,14 @@ public class FinanceController(
     }
 
     /// <summary>FinanceOverviewViewModel via shared summary + actual tickets in ViewBag.</summary>
-    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
+    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
     {
         var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
 
         var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
         if (ticketingGroup is not null)
         {
-            var actualSold = ticketingBudgetService.GetActualTicketsSold(ticketingGroup);
+            var actualSold = budgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
             var projections = await ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
@@ -585,7 +584,7 @@ public class FinanceController(
     }
 
     /// <summary>CashFlow VM: aggregate by period; synthesize VAT settlements; FinanceAdmin-only.</summary>
-    private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period, decimal grossTicketRevenue)
+    private CashFlowViewModel BuildCashFlowModel(BudgetYearDetail year, string period, decimal grossTicketRevenue)
     {
         if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(period, "monthly", StringComparison.OrdinalIgnoreCase))
