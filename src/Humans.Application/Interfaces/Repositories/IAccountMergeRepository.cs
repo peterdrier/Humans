@@ -9,33 +9,30 @@ namespace Humans.Application.Interfaces.Repositories;
 /// (issue #557).
 /// </summary>
 /// <remarks>
-/// Read methods for admin listing eagerly include <see cref="AccountMergeRequest.TargetUser"/>,
-/// <see cref="AccountMergeRequest.SourceUser"/>, and <see cref="AccountMergeRequest.ResolvedByUser"/>
-/// because the admin view needs display info for all three in a single fetch.
-/// These are cross-domain navs from the merge table into <c>AspNetUsers</c>;
-/// we tolerate them here because the Users section owns no distinct
-/// "display-info" DTO and the merge table sits alongside user identity in the
-/// table ownership map (§8, Users/Identity section).
+/// Read methods return the merge-request rows with scalar user IDs only.
+/// Display info for the source/target/resolver users is stitched in
+/// <c>AccountMergeService</c> via <c>IUserService</c> (§6b), never via the
+/// cross-domain <c>AspNetUsers</c> navigation properties.
 /// </remarks>
 [Section("Humans")]
 public interface IAccountMergeRepository : IRepository
 {
     /// <summary>
     /// Returns all pending merge requests for admin review, ordered by
-    /// <c>CreatedAt</c> ascending. Includes the source and target User
-    /// navigation properties for display. Read-only (AsNoTracking).
+    /// <c>CreatedAt</c> ascending. Scalar user IDs only — the service stitches
+    /// display info via <c>IUserService</c>. Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a single merge request by id with source, target, and resolver
-    /// user navigation properties loaded. Tracked for modification.
+    /// Returns a single merge request by id. Scalar user IDs only — the service
+    /// stitches display info via <c>IUserService</c>. Tracked for modification.
     /// </summary>
     Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a single merge request by id without navigation properties.
-    /// Tracked for modification.
+    /// Returns a single merge request by id, read-only (AsNoTracking). Use when
+    /// the caller does not modify the entity.
     /// </summary>
     Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default);
 

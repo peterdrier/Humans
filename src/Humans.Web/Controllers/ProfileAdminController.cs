@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin")]
 public class ProfileAdminController(
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailProblemsService emailProblems,
     IAccountMergeService accountMerge,
     IUserEmailService userEmails,

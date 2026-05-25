@@ -76,6 +76,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         json.Should().Contain("\"IsOAuth\":true");
         json.Should().Contain("\"IsNotificationTarget\":true");
         json.Should().NotContain("\"IsPrimary\":");
+
+        var accountSlice = slices.Single(s =>
+            string.Equals(s.SectionName, GdprExportSections.Account, StringComparison.Ordinal));
+        var accountJson = System.Text.Json.JsonSerializer.Serialize(accountSlice.Data);
+        accountJson.Should().Contain("\"Email\":\"g@example.com\"");
     }
 
     [HumansFact]
