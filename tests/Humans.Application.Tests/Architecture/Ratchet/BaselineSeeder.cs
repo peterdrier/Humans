@@ -56,12 +56,6 @@ public class BaselineSeeder
 
         WriteBaseline(
             repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoObsoleteNavReads.baseline.txt",
-            NoObsoleteNavReadsRule.Scan(repoRoot),
-            "no [Obsolete] cross-domain nav reads (design-rules §6c)");
-
-        WriteBaseline(
-            repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt",
             DisplaySortInControllersRule.Scan(repoRoot),
             "display sort belongs in controllers (memory/architecture/display-sort-in-controllers.md)");

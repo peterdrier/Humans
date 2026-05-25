@@ -88,12 +88,10 @@ public class AgentApiController : ControllerBase
         // Most-recent user message preview is useful at-a-glance triage signal —
         // matches the listing UX in the admin web view but stays JSON-clean for
         // the API consumer.
-#pragma warning disable CS0618 // AgentRole.User trips NoObsoleteNavReads ratchet false-positive (see design-rules §6c)
         var lastUserMessage = c.Messages
             .Where(m => m.Role == AgentRole.User && !string.IsNullOrEmpty(m.Content))
             .OrderByDescending(m => m.CreatedAt)
             .FirstOrDefault();
-#pragma warning restore CS0618
         var preview = lastUserMessage?.Content;
         if (preview is { Length: > 200 }) preview = preview[..200];
 

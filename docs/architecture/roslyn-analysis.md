@@ -26,7 +26,7 @@ forbidden), **marker / existence** (a symbol must exist, an interface must be
 implemented), or **filesystem-aware** (rule depends on which directory a file
 lives in).
 
-The 10 ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
+The ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
 and the 7 boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall
 outside the analyzer envelope and stay as tests. Tier 3 below lists them so
 they aren't re-proposed.
@@ -83,9 +83,9 @@ assertion families that are plausible analyzer candidates:
 - Application service read methods should not expose domain/EF entities.
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.
-- Cross-section EF/nav rules are high value but need a semantic section
-  ownership map before analyzer promotion. The current regex/folder ratchets
-  should stay until that framework exists.
+- Cross-section EF join rules are high value but need a semantic section
+  ownership map before analyzer promotion. The current folder ratchet should
+  stay until that framework exists.
 
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 
@@ -273,7 +273,7 @@ analyzer.
 - `NoCrossSectionEfJoinsRule` (`tests/.../Rules/NoCrossSectionEfJoinsRule.cs`) — section ownership is encoded in the `Configurations/<Section>/` folder layout; filesystem-aware. Stay as ratchet.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.
 - `NoBusinessLogicInControllersRule` (`tests/.../Rules/NoBusinessLogicInControllersRule.cs`) — heuristic (action methods > 50 lines or cyclomatic ≥ 6); baseline-ratcheted. Stay as ratchet.
-- `NoObsoleteNavReadsRule` (`tests/.../Rules/NoObsoleteNavReadsRule.cs`) — fades out as cross-domain navs get stripped; accumulated-debt ratchet. Stay as ratchet.
+- `NoObsoleteNavReadsRule` — replaced by semantic analyzer `HUM0021`.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` (`tests/.../Rules/NoStartupGuardsRule.cs`) — heuristic regex over `Program.cs` and startup classes; pattern is too fuzzy for crisp call-site analyzer detection. Stay as ratchet.
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.

@@ -12,9 +12,7 @@ public sealed class UserActivityTrackingMiddleware(RequestDelegate next, IUserAc
 {
     public async Task InvokeAsync(HttpContext context)
     {
-#pragma warning disable CS0618 // ASP.NET principal access — local extracted so the rest of the method has no `.User` token for NoObsoleteNavReadsRule's regex to flag.
         var principal = context.User;
-#pragma warning restore CS0618
 
         if (principal.Identity?.IsAuthenticated == true)
         {

@@ -45,9 +45,8 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
             "GoogleEmail",
             "GetGoogleServiceEmail");
 
-    // Strings built from segments so the NoObsoleteNavReads ratchet (which scans
-    // source text for dot-prefixed obsolete-nav names) doesn't false-positive on
-    // these metadata-name constants.
+    // Strings built from segments to keep architecture scans that operate on
+    // source text from confusing these metadata-name constants with User navs.
     private const string UserFullName = "Humans.Domain.Entities" + "." + "User";
     private const string UserEmailFullName = "Humans.Domain.Entities" + "." + "UserEmail";
 
