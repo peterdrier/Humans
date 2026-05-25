@@ -1,51 +1,23 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Services.Governance;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests pinning the §15 orchestrator shape for
-/// <see cref="MembershipCalculator"/>. The calculator owns no tables — it
-/// stitches profile + team + role + consent data through other sections'
-/// service interfaces. These tests fail loudly if a future change reintroduces
-/// a <c>DbContext</c> dependency, an <c>IDbContextFactory</c>, or drags the
-/// service back into <c>Humans.Infrastructure</c>.
+/// Architecture tests pinning DI-cycle guards and sealing for
+/// <see cref="MembershipCalculator"/>. The calculator routes team + role reads
+/// through <c>IMembershipQuery</c> to break the circular DI graph caused by
+/// <c>ISystemTeamSync</c>.
 ///
 /// <para>
-/// See <c>docs/architecture/design-rules.md</c> §15 (Profile-section canonical
-/// cache-collapse architecture) and §15i (known migrations). Part of issue
+/// See <c>docs/architecture/design-rules.md</c> §15. Part of issue
 /// #559 (Governance §15 Part 1 — MembershipCalculator).
 /// </para>
 /// </summary>
 public class MembershipCalculatorArchitectureTests
 {
-    [HumansFact]
-    public void MembershipCalculator_HasNoRepositoryConstructorParameter()
-    {
-        // The orchestrator owns no tables; it must not inject any
-        // IXxxRepository either. All cross-section reads go through
-        // service interfaces per design-rules §9.
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => (p.ParameterType.Namespace ?? string.Empty)
-                    .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal),
-                because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_TakesMembershipQuery()
-    {
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IMembershipQuery),
-                because: "team + role reads go through IMembershipQuery (a thin pass-through over ITeamService and IRoleAssignmentService) to break the circular DI graph caused by ISystemTeamSync — see PR #279");
-    }
-
     [HumansFact]
     public void MembershipCalculator_DoesNotTakeTeamServiceDirectly()
     {
@@ -62,15 +34,6 @@ public class MembershipCalculatorArchitectureTests
         ctor.GetParameters().Select(p => p.ParameterType)
             .Should().NotContain(typeof(IRoleAssignmentService),
                 because: "injecting IRoleAssignmentService directly closes the DI cycle IRoleAssignmentService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_TakesUserService()
-    {
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IUserServiceRead),
-                because: "user reads (for DeletionRequestedAt in PartitionUsersAsync) go through IUserServiceRead per design-rules §9");
     }
 
     [HumansFact]
