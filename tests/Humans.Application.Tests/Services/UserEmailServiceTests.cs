@@ -477,8 +477,6 @@ public class UserEmailServiceTests
             .Returns(deleting);
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { deleting, keeping });
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId });
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo> { new("Google", "sub-123", "Google") });
 
@@ -536,8 +534,6 @@ public class UserEmailServiceTests
             .Returns(only);
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { only });
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId });
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo>());
 

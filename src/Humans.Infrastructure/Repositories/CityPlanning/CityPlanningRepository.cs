@@ -59,10 +59,12 @@ internal sealed class CityPlanningRepository(IDbContextFactory<HumansDbContext> 
         Guid campSeasonId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Display ordering (newest first) is applied by the controller
+        // (CityPlanningApiController.GetCampPolygonHistory) per
+        // memory/architecture/display-sort-in-controllers.md.
         return await ctx.CampPolygonHistories
             .AsNoTracking()
             .Where(h => h.CampSeasonId == campSeasonId)
-            .OrderByDescending(h => h.ModifiedAt)
             .ToListAsync(ct);
     }
 

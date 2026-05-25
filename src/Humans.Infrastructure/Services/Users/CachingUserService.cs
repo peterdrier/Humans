@@ -509,7 +509,9 @@ public sealed class CachingUserService(
     {
         if (TryGet(userId, out var info))
             return RehydrateUser(info);
-        return await WithInnerAsync(inner => inner.GetByIdAsync(userId, ct));
+
+        var users = await WithInnerAsync(inner => inner.GetByIdsAsync([userId], ct));
+        return users.TryGetValue(userId, out var user) ? user : null;
     }
 
     public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(

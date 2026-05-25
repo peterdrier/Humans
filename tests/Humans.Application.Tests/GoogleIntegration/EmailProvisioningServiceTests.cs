@@ -142,13 +142,6 @@ public class EmailProvisioningServiceTests
 
     private static void StubTargetUser(ProvisioningFixture f, Guid userId, string? oauthEmail = "target@example.com")
     {
-        f.UserService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User
-            {
-                Id = userId,
-                Email = oauthEmail,
-                DisplayName = "Target",
-            });
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Target", LastName = "Two" }));
     }

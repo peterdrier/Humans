@@ -53,9 +53,15 @@ public sealed class WorkloadService(
             ? await teamService.GetByIdsWithParentsAsync(teamIds, ct)
             : new Dictionary<Guid, Team>();
 
+        // Role estimates come from the cached team projection (definitions carry
+        // EstimatedHours + RolePeriod; assignments carry the holder's user id).
+        var allTeams = await teamService.GetTeamsAsync(ct);
+        var rolePersonHours = BuildRolePersonHours(allTeams);
+        var roleDeptHours = BuildRoleDeptHours(allTeams);
+
         var byRota = BuildByRota(entries, teamLookup);
-        var byDepartment = BuildByDepartment(entries, teamLookup);
-        var byPerson = await BuildByPersonAsync(entries, es, ct);
+        var byDepartment = BuildByDepartment(entries, teamLookup, roleDeptHours);
+        var byPerson = await BuildByPersonAsync(entries, es, rolePersonHours, ct);
 
         return new WorkloadReport(
             EventSettingsId: es.Id,
@@ -103,10 +109,12 @@ public sealed class WorkloadService(
 
     private static List<WorkloadByDepartmentRow> BuildByDepartment(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        IReadOnlyDictionary<Guid, Team> teamLookup) =>
-        entries
+        IReadOnlyDictionary<Guid, Team> teamLookup,
+        IReadOnlyDictionary<Guid, RoleDeptHours> roleDeptHours)
+    {
+        var rows = entries
             .GroupBy(e => e.Rota.TeamId)
-            .Select(g =>
+            .ToDictionary(g => g.Key, g =>
             {
                 var hoursPerShift = g.ToDictionary(e => e.Shift.Id, e => HoursOf(e.Shift));
                 var plannedSlots = g.Sum(e => e.Shift.MaxVolunteers);
@@ -130,17 +138,42 @@ public sealed class WorkloadService(
                     FilledSlots: filledSlots,
                     PlannedHours: plannedHours,
                     FilledHours: filledHours);
-            })
-            .ToList();
+            });
+
+        // Fold role hours into the matching department; create rows for teams
+        // that own roles but no rotas in this event.
+        foreach (var (teamId, role) in roleDeptHours)
+        {
+            rows[teamId] = rows.TryGetValue(teamId, out var existing)
+                ? existing with
+                {
+                    PlannedHours = existing.PlannedHours + role.PlannedHours,
+                    FilledHours = existing.FilledHours + role.FilledHours,
+                }
+                : new WorkloadByDepartmentRow(
+                    TeamId: teamId,
+                    TeamName: role.TeamName,
+                    TeamSlug: role.TeamSlug,
+                    RotaCount: 0,
+                    ShiftCount: 0,
+                    PlannedSlots: 0,
+                    FilledSlots: 0,
+                    PlannedHours: role.PlannedHours,
+                    FilledHours: role.FilledHours);
+        }
+
+        return rows.Values.ToList();
+    }
 
     private async Task<List<WorkloadByPersonRow>> BuildByPersonAsync(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         EventSettings es,
+        IReadOnlyDictionary<Guid, RolePersonHours> rolePersonHours,
         CancellationToken ct)
     {
         // Confirmed → per-phase hours; Pending → count only (don't inflate
         // burnout from queued work).
-        var perUser = new Dictionary<Guid, (int Confirmed, int Pending, decimal Build, decimal Event, decimal Strike)>();
+        var perUser = new Dictionary<Guid, (int Confirmed, int Pending, decimal YearRound, decimal Build, decimal Event, decimal Strike)>();
         foreach (var (_, shift) in entries)
         {
             var hours = HoursOf(shift);
@@ -155,17 +188,30 @@ public sealed class WorkloadService(
                 {
                     totals = period switch
                     {
-                        ShiftPeriod.Build => (totals.Confirmed + 1, totals.Pending, totals.Build + hours, totals.Event, totals.Strike),
-                        ShiftPeriod.Event => (totals.Confirmed + 1, totals.Pending, totals.Build, totals.Event + hours, totals.Strike),
-                        _ => (totals.Confirmed + 1, totals.Pending, totals.Build, totals.Event, totals.Strike + hours),
+                        ShiftPeriod.Build => totals with { Confirmed = totals.Confirmed + 1, Build = totals.Build + hours },
+                        ShiftPeriod.Event => totals with { Confirmed = totals.Confirmed + 1, Event = totals.Event + hours },
+                        _ => totals with { Confirmed = totals.Confirmed + 1, Strike = totals.Strike + hours },
                     };
                 }
                 else
                 {
-                    totals = (totals.Confirmed, totals.Pending + 1, totals.Build, totals.Event, totals.Strike);
+                    totals = totals with { Pending = totals.Pending + 1 };
                 }
                 perUser[signup.UserId] = totals;
             }
+        }
+
+        // Fold role estimates in; a role-only holder (no signups) still gets a row.
+        foreach (var (userId, role) in rolePersonHours)
+        {
+            perUser.TryGetValue(userId, out var totals);
+            perUser[userId] = totals with
+            {
+                YearRound = totals.YearRound + role.YearRound,
+                Build = totals.Build + role.Build,
+                Event = totals.Event + role.Event,
+                Strike = totals.Strike + role.Strike,
+            };
         }
 
         if (perUser.Count == 0) return new List<WorkloadByPersonRow>();
@@ -183,10 +229,74 @@ public sealed class WorkloadService(
                     DisplayName: name,
                     ConfirmedSignupCount: kvp.Value.Confirmed,
                     PendingSignupCount: kvp.Value.Pending,
+                    YearRoundHours: kvp.Value.YearRound,
                     BuildHours: kvp.Value.Build,
                     EventHours: kvp.Value.Event,
                     StrikeHours: kvp.Value.Strike);
             })
             .ToList();
     }
+
+    // ── Role-hours aggregation off the cached TeamInfo projection ──────────────────
+
+    private sealed record RolePersonHours(decimal YearRound, decimal Build, decimal Event, decimal Strike);
+
+    private sealed record RoleDeptHours(string TeamName, string TeamSlug, decimal PlannedHours, decimal FilledHours);
+
+    // Roles on deactivated teams are excluded — deactivation doesn't clear role
+    // assignments, so a retired team's stale holders would otherwise leak in.
+    private static IEnumerable<TeamRoleDefinitionSnapshot> ActiveRoles(
+        IReadOnlyDictionary<Guid, TeamInfo> allTeams) =>
+        allTeams.Values
+            .Where(t => t.IsActive)
+            .SelectMany(t => t.RoleDefinitions ?? []);
+
+    // Per holder: each assigned user contributes the role's full annual estimate,
+    // bucketed by the role's period (year-round in its own bucket).
+    private static Dictionary<Guid, RolePersonHours> BuildRolePersonHours(
+        IReadOnlyDictionary<Guid, TeamInfo> allTeams)
+    {
+        var perUser = new Dictionary<Guid, RolePersonHours>();
+        foreach (var role in ActiveRoles(allTeams))
+        {
+            if (role.EstimatedHours is not { } est) continue;
+            foreach (var assignment in role.Assignments)
+            {
+                if (assignment.AssignedUserId is not { } userId) continue;
+                perUser.TryGetValue(userId, out var h);
+                h ??= new RolePersonHours(0, 0, 0, 0);
+                perUser[userId] = AddByPeriod(h, role.Period, est);
+            }
+        }
+        return perUser;
+    }
+
+    // Per department: planned = estimate × slots, filled = estimate × assigned slots.
+    private static Dictionary<Guid, RoleDeptHours> BuildRoleDeptHours(
+        IReadOnlyDictionary<Guid, TeamInfo> allTeams)
+    {
+        var perTeam = new Dictionary<Guid, RoleDeptHours>();
+        foreach (var role in ActiveRoles(allTeams))
+        {
+            if (role.EstimatedHours is not { } est) continue;
+            var assigned = role.Assignments.Count(a => a.AssignedUserId.HasValue);
+            perTeam.TryGetValue(role.TeamId, out var h);
+            h ??= new RoleDeptHours(role.TeamName, role.TeamSlug, 0, 0);
+            perTeam[role.TeamId] = h with
+            {
+                PlannedHours = h.PlannedHours + est * role.SlotCount,
+                FilledHours = h.FilledHours + est * assigned,
+            };
+        }
+        return perTeam;
+    }
+
+    private static RolePersonHours AddByPeriod(RolePersonHours h, RolePeriod period, int est) =>
+        period switch
+        {
+            RolePeriod.Build => h with { Build = h.Build + est },
+            RolePeriod.Event => h with { Event = h.Event + est },
+            RolePeriod.Strike => h with { Strike = h.Strike + est },
+            _ => h with { YearRound = h.YearRound + est },
+        };
 }

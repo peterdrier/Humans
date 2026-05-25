@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -15,6 +16,7 @@ public sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceService teamResourceService,
     IDriveActivityMonitorRepository repository,
+    IAuditLogService auditLogService,
     IClock clock,
     ILogger<DriveActivityMonitorService> logger) : IDriveActivityMonitorService
 {
@@ -56,7 +58,7 @@ public sealed class DriveActivityMonitorService(
 
         logger.LogDebug("Drive activity monitor checking events since {LookbackTime}", filterTime);
 
-        var anomalies = new List<AuditLogEntry>();
+        var anomalies = new List<(Guid ResourceId, string Description)>();
 
         foreach (var resource in resources)
         {
@@ -84,16 +86,7 @@ public sealed class DriveActivityMonitorService(
                         "Anomalous permission change detected on {ResourceName} ({GoogleId}) by {Actor}: {Description}",
                         resource.Name, resource.GoogleId, actorEmail ?? "unknown", description);
 
-                    anomalies.Add(new AuditLogEntry
-                    {
-                        Id = Guid.NewGuid(),
-                        Action = AuditAction.AnomalousPermissionDetected,
-                        EntityType = nameof(GoogleResource),
-                        EntityId = resource.Id,
-                        Description = $"{JobName}: {description}",
-                        OccurredAt = clock.GetCurrentInstant(),
-                        ActorUserId = null,
-                    });
+                    anomalies.Add((resource.Id, description));
                 }
 
                 // Reached only if the async enumerable completed without
@@ -152,7 +145,22 @@ public sealed class DriveActivityMonitorService(
             newMarker = now;
         }
 
-        await repository.PersistAnomaliesAsync(anomalies, newMarker, cancellationToken);
+        // Persist the monitor's own state (the last-run marker) first, then emit
+        // the audit entries through IAuditLogService so the only writer of
+        // audit_log_entries is the AuditLog section's repository. Audit is logged
+        // after the business save (per IAuditLogService) and regardless of the
+        // marker outcome — anomalies must surface even on a partial-failure run.
+        await repository.AdvanceLastRunMarkerAsync(newMarker, cancellationToken);
+
+        foreach (var (resourceId, description) in anomalies)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.AnomalousPermissionDetected,
+                nameof(GoogleResource),
+                resourceId,
+                description,
+                JobName);
+        }
 
         // All-resources-failed = connector outage (revoked key / network). Throw so Hangfire records a failed run, not a hollow success.
         if (hadFailures && !anyResourceQueried)

@@ -32,3 +32,30 @@ public sealed record IssueListFilter(
     int Limit = 100);
 
 public sealed record DistinctReporterRow(Guid UserId, string DisplayName, int Count);
+
+/// <summary>
+/// Single-issue projection for the detail view, API get, and resource-based
+/// authorization. Display names are resolved by the consumer via
+/// <c>IUserService</c> from the user-id fields; the thread is fetched
+/// separately via <c>GetThreadAsync</c>.
+/// </summary>
+public sealed record IssueDetail(
+    Guid Id,
+    IssueStatus Status,
+    IssueCategory Category,
+    string? Section,
+    string Title,
+    string Description,
+    string? PageUrl,
+    string? UserAgent,
+    string? AdditionalContext,
+    string? ScreenshotStoragePath,
+    Guid ReporterUserId,
+    Guid? AssigneeUserId,
+    Guid? ResolvedByUserId,
+    int? GitHubIssueNumber,
+    LocalDate? DueDate,
+    Instant CreatedAt,
+    Instant UpdatedAt,
+    Instant? ResolvedAt,
+    int CommentCount);

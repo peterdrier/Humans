@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -14,29 +15,33 @@ namespace Humans.Application.Tests.GoogleIntegration;
 /// <summary>
 /// Behavioral tests for the §15-migrated
 /// <see cref="DriveActivityMonitorService"/>. The service is a dispatcher
-/// over three collaborators — <see cref="IGoogleDriveActivityClient"/>,
-/// <see cref="ITeamResourceService"/>, and
-/// <see cref="IDriveActivityMonitorRepository"/> — so tests substitute all
-/// three and pin down: self-initiated changes get filtered, anomaly descriptions
-/// are built correctly, partial-failure keeps the last-run marker, and the
-/// happy path advances the marker.
+/// over four collaborators — <see cref="IGoogleDriveActivityClient"/>,
+/// <see cref="ITeamResourceService"/>,
+/// <see cref="IDriveActivityMonitorRepository"/>, and
+/// <see cref="IAuditLogService"/> — so tests substitute all four and pin down:
+/// self-initiated changes get filtered, anomaly descriptions are built
+/// correctly and emitted through <see cref="IAuditLogService"/>,
+/// partial-failure keeps the last-run marker, and the happy path advances it.
 /// </summary>
 public class DriveActivityMonitorServiceTests
 {
     private readonly IGoogleDriveActivityClient _client;
     private readonly ITeamResourceService _teamResources;
     private readonly IDriveActivityMonitorRepository _repository;
+    private readonly IAuditLogService _auditLog;
     private readonly FakeClock _clock;
     private readonly DriveActivityMonitorService _service;
 
     private const string ServiceAccountEmail = "humans-sa@example.iam.gserviceaccount.com";
     private const string ServiceAccountClientId = "1234567890";
+    private const string JobName = "DriveActivityMonitorJob";
 
     public DriveActivityMonitorServiceTests()
     {
         _client = Substitute.For<IGoogleDriveActivityClient>();
         _teamResources = Substitute.For<ITeamResourceService>();
         _repository = Substitute.For<IDriveActivityMonitorRepository>();
+        _auditLog = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
 
         _client.IsConfigured.Returns(true);
@@ -44,7 +49,7 @@ public class DriveActivityMonitorServiceTests
         _client.GetServiceAccountClientIdAsync(Arg.Any<CancellationToken>()).Returns(ServiceAccountClientId);
 
         _service = new DriveActivityMonitorService(
-            _client, _teamResources, _repository, _clock,
+            _client, _teamResources, _repository, _auditLog, _clock,
             NullLogger<DriveActivityMonitorService>.Instance);
     }
 
@@ -58,7 +63,9 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(0);
         _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, CancellationToken.None);
-        await _repository.DidNotReceiveWithAnyArgs().PersistAnomaliesAsync(null!, null, CancellationToken.None);
+        await _repository.DidNotReceiveWithAnyArgs().AdvanceLastRunMarkerAsync(null, CancellationToken.None);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -82,10 +89,12 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(0);
         // Marker still advances because no failures occurred.
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 0),
+        await _repository.Received(1).AdvanceLastRunMarkerAsync(
             _clock.GetCurrentInstant(),
             Arg.Any<CancellationToken>());
+        // No anomalies → no audit entries emitted.
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -103,17 +112,18 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(1);
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a =>
-                a.Count == 1 &&
-                a[0].Action == AuditAction.AnomalousPermissionDetected &&
-                a[0].EntityType == nameof(GoogleResource) &&
-                a[0].EntityId == resource.Id &&
-                a[0].Description.Contains("Sensitive-Drive") &&
-                a[0].Description.Contains("intruder@example.com") &&
-                a[0].Description.Contains("added writer")),
+        await _repository.Received(1).AdvanceLastRunMarkerAsync(
             _clock.GetCurrentInstant(),
             Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d =>
+                d.Contains("Sensitive-Drive", StringComparison.Ordinal) &&
+                d.Contains("intruder@example.com", StringComparison.Ordinal) &&
+                d.Contains("added writer", StringComparison.Ordinal)),
+            JobName);
     }
 
     [HumansFact]
@@ -134,12 +144,12 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(1);
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a =>
-                a.Count == 1 &&
-                a[0].Description.Contains("resolved@example.com")),
-            _clock.GetCurrentInstant(),
-            Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d => d.Contains("resolved@example.com", StringComparison.Ordinal)),
+            JobName);
 
         // Directory API should be hit exactly once per unique people/ id (per-run cache).
         await _client.Received(1).TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>());
@@ -165,11 +175,12 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(1);
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a =>
-                a.Count == 1 && a[0].Description.Contains("localdb@example.com")),
-            _clock.GetCurrentInstant(),
-            Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d => d.Contains("localdb@example.com", StringComparison.Ordinal)),
+            JobName);
     }
 
     [HumansFact]
@@ -192,10 +203,16 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(1);
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 1),
+        // Partial failure → marker not advanced, but the anomaly is still audited.
+        await _repository.Received(1).AdvanceLastRunMarkerAsync(
             null,
             Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            ok.Id,
+            Arg.Any<string>(),
+            JobName);
     }
 
     [HumansFact]
@@ -211,10 +228,11 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(0);
         // 404 is expected and does NOT count as a failure — marker advances.
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 0),
+        await _repository.Received(1).AdvanceLastRunMarkerAsync(
             _clock.GetCurrentInstant(),
             Arg.Any<CancellationToken>());
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -233,10 +251,11 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(0);
-        await _repository.Received(1).PersistAnomaliesAsync(
-            Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 0),
+        await _repository.Received(1).AdvanceLastRunMarkerAsync(
             null,
             Arg.Any<CancellationToken>());
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, default, null!, default(string)!);
     }
 
     [HumansFact]

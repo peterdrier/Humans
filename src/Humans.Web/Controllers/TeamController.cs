@@ -24,7 +24,7 @@ namespace Humans.Web.Controllers;
 public class TeamController(
     ITeamService teamService,
     ITeamPageService teamPageService,
-    IUserService userService,
+    IUserServiceRead userService,
     INotificationService notificationService,
     IGoogleSyncService googleSyncService,
     ITeamResourceService teamResourceService,
@@ -34,7 +34,7 @@ public class TeamController(
     IClock clock,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
     private readonly INotificationService _notificationService = notificationService;
 
     [AllowAnonymous]

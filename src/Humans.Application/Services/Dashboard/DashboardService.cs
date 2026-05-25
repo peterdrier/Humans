@@ -49,7 +49,7 @@ public class DashboardService(
 
         // Applications + term expiry state
         var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
-        var latestApplication = applications.Count > 0 ? applications[0] : null;
+        var latestApplication = applications.MaxBy(a => a.SubmittedAt);
         var latestApplicationSnapshot = latestApplication is null
             ? null
             : new DashboardApplication(
