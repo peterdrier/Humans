@@ -1,0 +1,32 @@
+@model Humans.Web.Models.EarlyEntry.EarlyEntryRosterViewModel
+@{
+    ViewData["Title"] = "Early Entry Roster";
+}
+<h1>Early Entry Roster</h1>
+<p class="text-muted">Everyone granted early entry, from camps and build shifts. Rows flagged
+    <span class="badge bg-warning text-dark">multiple</span> hold EE from more than one source —
+    one slot is redundant and can be reallocated.</p>
+
+@if (Model.Rows.Count == 0)
+{
+    <p>No early entry grants for the active event.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr><th>Human</th><th>Enters</th><th>Source(s)</th><th></th></tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr class="@(row.HasMultiple ? "table-warning" : "")">
+                <td>@row.DisplayName</td>
+                <td>@row.EarliestEntryDate.ToString("ddd d MMM", null)</td>
+                <td>@string.Join(", ", row.Sources)</td>
+                <td>@if (row.HasMultiple) { <span class="badge bg-warning text-dark">multiple</span> }</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
