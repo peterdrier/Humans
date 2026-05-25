@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -66,11 +67,17 @@ public sealed class ConcurrencyTokenAnalyzer : DiagnosticAnalyzer
         if (!ProductionAssemblies.Contains(context.Compilation.Assembly.Name))
             return;
 
-        context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
-        context.RegisterSymbolAction(AnalyzeAttributedSymbol, SymbolKind.Field, SymbolKind.Property);
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
+
+        context.RegisterOperationAction(
+            ctx => AnalyzeInvocation(ctx, grandfatheredAttr),
+            OperationKind.Invocation);
+        context.RegisterSymbolAction(
+            ctx => AnalyzeAttributedSymbol(ctx, grandfatheredAttr),
+            SymbolKind.Field, SymbolKind.Property);
     }
 
-    private static void AnalyzeInvocation(OperationAnalysisContext context)
+    private static void AnalyzeInvocation(OperationAnalysisContext context, INamedTypeSymbol? grandfatheredAttr)
     {
         if (IsInMigration(context.ContainingSymbol, context.Operation.Syntax.SyntaxTree.FilePath))
             return;
@@ -87,13 +94,18 @@ public sealed class ConcurrencyTokenAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        var severity = EffectiveSeverity(context.ContainingSymbol?.ContainingType, grandfatheredAttr);
+
         context.ReportDiagnostic(Diagnostic.Create(
-            Rule,
-            op.Syntax.GetLocation(),
-            method.Name));
+            descriptor: Rule,
+            location: op.Syntax.GetLocation(),
+            effectiveSeverity: severity,
+            additionalLocations: null,
+            properties: null,
+            messageArgs: method.Name));
     }
 
-    private static void AnalyzeAttributedSymbol(SymbolAnalysisContext context)
+    private static void AnalyzeAttributedSymbol(SymbolAnalysisContext context, INamedTypeSymbol? grandfatheredAttr)
     {
         if (IsInMigration(context.Symbol, context.Symbol.Locations.FirstOrDefault()?.SourceTree?.FilePath))
             return;
@@ -107,12 +119,22 @@ public sealed class ConcurrencyTokenAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
+            var severity = EffectiveSeverity(context.Symbol.ContainingType, grandfatheredAttr);
+
             context.ReportDiagnostic(Diagnostic.Create(
-                Rule,
-                PreferAttributeLocation(attr, context.Symbol),
-                attrType.Name));
+                descriptor: Rule,
+                location: PreferAttributeLocation(attr, context.Symbol),
+                effectiveSeverity: severity,
+                additionalLocations: null,
+                properties: null,
+                messageArgs: attrType.Name));
         }
     }
+
+    private static DiagnosticSeverity EffectiveSeverity(INamedTypeSymbol? containingType, INamedTypeSymbol? grandfatheredAttr) =>
+        containingType is not null
+            ? GrandfatheredCheck.EffectiveSeverity(containingType, grandfatheredAttr, DiagnosticId)
+            : DiagnosticSeverity.Error;
 
     private static bool IsInMigration(ISymbol? symbol, string? filePath)
     {
