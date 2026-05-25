@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md` — §3 (Feature 2), §1 (API findings), §4 (org-accounting boundary).
 
-**Branch / worktree:** `feat/holded-finance-creditor` at `.worktrees/holded-finance-f2`, branched off `feat/holded-finance-integration` (NOT `main`). This is a **stacked PR** (base = `feat/holded-finance-integration`). All work happens in this worktree.
+**Branch / worktree:** `feat/holded-finance-creditor` at `.worktrees/holded-finance-f2`. Feature 1 (PR #783) is now **merged to `main`**, its migration regenerated as `20260525215323_HoldedActuals`; this branch is rebased onto `origin/main`, so Feature 2 is a **normal PR to `main`** (no longer stacked). All work happens in this worktree.
 
 ---
 
@@ -599,15 +599,27 @@ git commit -m "feat(finance): HoldedCreditorBalance + HoldedPayment cache tables
 **Files:**
 - Create (generated): `src/Humans.Infrastructure/Migrations/*_HoldedCreditor.cs` (+ Designer + snapshot update)
 
-- [ ] **Step 1: Generate** (never hand-edit; the base already has the `HoldedActuals` migration — this stacks after it):
+> **Generate only after the branch is rebased on the current `origin/main`** (chain tip `20260525215323_HoldedActuals`). This migration must land **end-of-chain** after it. Never hand-edit the migration or the snapshot (`memory/architecture/no-hand-edited-migrations.md`). If the tools won't produce a clean migration, **stop and ask** — do not improvise (`memory/architecture/migration-regen-after-rebase.md`).
+
+- [ ] **Step 1: Generate** (CLI only):
 
 ```bash
 dotnet ef migrations add HoldedCreditor --project src/Humans.Infrastructure --startup-project src/Humans.Web -- -v quiet
 ```
 
-- [ ] **Step 2: Build + inspect.** Run `dotnet build Humans.slnx -v quiet`. Confirm the migration creates `holded_creditor_balances` + `holded_payments` (with the unique indexes) and adds `holded_contact_id` + `holded_supplier_account_num` columns to `expense_reports` — and **nothing else**. If it contains unrelated drift, stop and reconcile model state (see `memory/architecture/` migration rules) — do **not** edit the migration by hand.
+- [ ] **Step 2: Build.** `dotnet build Humans.slnx -v quiet` → success.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Verify scope — body AND snapshot.** Confirm the `Up`/`Down` body creates `holded_creditor_balances` + `holded_payments` (with the unique indexes) and adds `holded_contact_id` + `holded_supplier_account_num` (+ index) to `expense_reports` — and **nothing else**. Then per `memory/process/diff-snapshot-after-ef-tool.md`:
+
+```bash
+git diff src/Humans.Infrastructure/Migrations/HumansDbContextModelSnapshot.cs
+```
+
+The snapshot diff must touch only the two new entities + the two new `ExpenseReport` properties. If it touches anything else, **STOP** — snapshot drift; do not commit, do not hand-fix; reconcile the model or stop and ask.
+
+- [ ] **Step 4: MANDATORY migration-review gate** (`memory/process/ef-migration-review-gate.md`). Dispatch the EF migration reviewer agent at `.claude/agents/ef-migration-reviewer.md` against the generated migration. Do **not** commit until it passes with no CRITICAL issues. If CRITICAL, fix by **regenerating** (`migrations remove` → adjust model/config → `migrations add`), never by patching the file.
+
+- [ ] **Step 5: Commit** (only after the reviewer is clean)
 
 ```bash
 git add src/Humans.Infrastructure/Migrations/
