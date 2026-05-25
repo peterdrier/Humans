@@ -381,6 +381,7 @@ internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> 
             .AsNoTracking()
             .Include(nr => nr.Notification)
             .Where(nr => nr.UserId == userId)
+            // arch:db-sort-ok GDPR export: sole caller is IUserDataContributor.ContributeForUserAsync; no controller-layer caller can re-sort the exported slice
             .OrderByDescending(nr => nr.Notification.CreatedAt)
             .ToListAsync(ct);
     }
