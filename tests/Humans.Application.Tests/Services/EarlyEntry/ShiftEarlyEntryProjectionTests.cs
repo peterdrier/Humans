@@ -43,6 +43,32 @@ public class ShiftEarlyEntryProjectionTests
     }
 
     [HumansFact]
+    public void Same_earliest_day_breaks_tie_on_team_name_ascending()
+    {
+        var userId = Guid.NewGuid();
+        var zebraTeam = Guid.NewGuid();
+        var alphaTeam = Guid.NewGuid();
+
+        // Two shifts on the SAME earliest day, Zebra listed first.
+        var rows = new List<ConfirmedShiftRow>
+        {
+            new(userId, zebraTeam, At(2026, 7, 1, 9), At(2026, 7, 1, 17)),
+            new(userId, alphaTeam, At(2026, 7, 1, 18), At(2026, 7, 1, 22)),
+        };
+
+        var teamNames = new Dictionary<Guid, string>
+        {
+            [zebraTeam] = "Zebra",
+            [alphaTeam] = "Alpha",
+        };
+
+        var grants = ShiftEarlyEntryProjection.Project(rows, Madrid, teamNames);
+
+        grants.Should().ContainSingle();
+        grants[0].Source.Should().Be("Shift: Alpha");
+    }
+
+    [HumansFact]
     public void Empty_rows_produces_empty_result()
     {
         var grants = ShiftEarlyEntryProjection.Project(
