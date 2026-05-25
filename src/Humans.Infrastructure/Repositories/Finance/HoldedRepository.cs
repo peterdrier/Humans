@@ -28,17 +28,6 @@ internal sealed class HoldedRepository(IDbContextFactory<HumansDbContext> factor
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task ArchiveCategoryMapAsync(Guid id, Instant now, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var row = await ctx.HoldedCategoryMap.FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (row is null) return;
-        row.IsActive = false;
-        row.ArchivedAt = now;
-        row.UpdatedAt = now;
-        await ctx.SaveChangesAsync(ct);
-    }
-
     // ── Docs ─────────────────────────────────────────────────────────────────
 
     public async Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)

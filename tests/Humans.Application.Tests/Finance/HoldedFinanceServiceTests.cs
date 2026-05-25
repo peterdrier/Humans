@@ -114,7 +114,8 @@ public class HoldedFinanceServiceTests
 
         _repo.GetSyncStateAsync(default).ReturnsForAnyArgs(new HoldedSyncState
         {
-            Id = 1, SyncStatus = HoldedSyncStatus.Idle
+            Id = 1,
+            SyncStatus = HoldedSyncStatus.Idle
         });
 
         var docDate = Instant.FromUtc(2026, 4, 15, 10, 0);
@@ -188,7 +189,8 @@ public class HoldedFinanceServiceTests
 
         _repo.GetSyncStateAsync(default).ReturnsForAnyArgs(new HoldedSyncState
         {
-            Id = 1, SyncStatus = HoldedSyncStatus.Idle
+            Id = 1,
+            SyncStatus = HoldedSyncStatus.Idle
         });
 
         _client.ListPurchaseDocumentsPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())

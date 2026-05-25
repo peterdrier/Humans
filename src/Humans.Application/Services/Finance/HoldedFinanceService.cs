@@ -222,6 +222,11 @@ public sealed class HoldedFinanceService(
         HoldedMatchEntry[] entries,
         Instant now)
     {
+        // v1 attributes the whole doc by its FIRST line's account (+ union of doc/line tags)
+        // and assigns the full doc.Total to that one category. Per spec §6, virtually all
+        // purchase docs today are single-line, so this is correct in practice. Line-level
+        // attribution (splitting a mixed-account doc's total across categories) is a
+        // deliberate later refinement, not a v1 requirement.
         var bookedAccount = doc.Lines.Count > 0 ? doc.Lines[0].AccountId : null;
         var tags = doc.Tags
             .Concat(doc.Lines.SelectMany(l => l.Tags))

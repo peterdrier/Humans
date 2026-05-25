@@ -50,7 +50,7 @@
             <span class="badge bg-primary">@toAddRows.Count to add</span>
         </div>
         <div class="card-body d-flex gap-2">
-            <form asp-action="ProvisionHoldedAccounts" method="post" class="d-inline">
+            <form asp-action="ProvisionHoldedAccounts" method="post" class="d-inline js-provision-form">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="blockStart" value="@blockStart" />
                 <input type="hidden" name="addAll" value="false" />
@@ -58,7 +58,7 @@
                     <i class="fa-solid fa-flask me-1"></i>Add One (test)
                 </button>
             </form>
-            <form asp-action="ProvisionHoldedAccounts" method="post" class="d-inline">
+            <form asp-action="ProvisionHoldedAccounts" method="post" class="d-inline js-provision-form">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="blockStart" value="@blockStart" />
                 <input type="hidden" name="addAll" value="true" />
@@ -117,3 +117,21 @@
         </table>
     </div>
 </div>
+
+<script>
+    // Idempotency guard: provisioning calls the external Holded API to create accounts,
+    // so a double-submit could create duplicate accounts (and orphan a Holded account when
+    // the second local write hits the unique BudgetCategoryId constraint). Disable both
+    // provision buttons on first submit; show a spinner on the one that was clicked.
+    document.querySelectorAll('.js-provision-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            var clicked = form.querySelector('button[type="submit"]');
+            document.querySelectorAll('.js-provision-form button[type="submit"]').forEach(function (b) {
+                b.disabled = true;
+            });
+            if (clicked) {
+                clicked.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Working…';
+            }
+        });
+    });
+</script>

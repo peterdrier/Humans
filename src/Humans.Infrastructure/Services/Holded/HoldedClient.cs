@@ -136,7 +136,7 @@ public sealed class HoldedClient : IHoldedClient
         // TODO(probe): confirm create-expenses-account payload field names against live API
         var payload = new { name, accountNum };
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/invoicing/v1/expensesaccounts")
-            { Content = JsonContent.Create(payload) };
+        { Content = JsonContent.Create(payload) };
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
         var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))

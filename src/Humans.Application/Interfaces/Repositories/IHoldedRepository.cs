@@ -10,7 +10,6 @@ public interface IHoldedRepository : IRepository
     // Category map
     Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default);
     Task AddCategoryMapAsync(HoldedCategoryMap row, CancellationToken ct = default);
-    Task ArchiveCategoryMapAsync(Guid id, Instant now, CancellationToken ct = default);
 
     // Docs
     Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
