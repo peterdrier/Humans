@@ -14,6 +14,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -227,6 +228,15 @@ public class ProfileController(
             preview,
             p => Url.Action(nameof(Picture), new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
 
+        // Meal preference + allergies live on the shift profile (VolunteerEventProfile),
+        // not the main Profile. Surfaced on Edit as a second entry point alongside the
+        // dedicated DietaryMedical page. includeMedical:false — medical conditions stay
+        // owned by DietaryMedical (GDPR Art. 9 health data with restricted visibility).
+        var shiftProfile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+        viewModel.DietaryPreference = shiftProfile?.DietaryPreference ?? string.Empty;
+        viewModel.Allergies = shiftProfile is null ? [] : [.. shiftProfile.Allergies];
+        viewModel.AllergyOtherText = shiftProfile?.AllergyOtherText;
+
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
     }
@@ -265,6 +275,15 @@ public class ProfileController(
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
                 localizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
+        }
+
+        // Allergy "Other" requires accompanying free text (mirrors DietaryMedical POST).
+        // Validated here, before any persistence, so a bad submit can't half-save
+        // (main profile written but shift profile rejected, or vice versa).
+        if (model.Allergies.Contains(DietaryOptions.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
+        {
+            ModelState.AddModelError(nameof(model.AllergyOtherText),
+                localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
         }
 
         if (ModelState.ErrorCount > 0)
@@ -458,6 +477,17 @@ public class ProfileController(
         await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
         await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
+
+        // Persist meal preference + allergies onto the shift profile. Load the
+        // existing profile and set ONLY these three fields so Intolerances,
+        // IntoleranceOtherText, and MedicalConditions (owned by the DietaryMedical
+        // page) are preserved — we deliberately do not use
+        // DietaryMedicalViewModel.ApplyTo, which would null those out.
+        var sp = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+        sp.DietaryPreference = string.IsNullOrWhiteSpace(model.DietaryPreference) ? null : model.DietaryPreference;
+        sp.Allergies = [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))];
+        sp.AllergyOtherText = model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null;
+        await shiftMgmt.UpdateShiftProfileAsync(sp);
 
         SetSuccess(localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
@@ -1547,6 +1577,129 @@ public class ProfileController(
         {
             logger.LogError(ex, "Failed to save shift info for user");
             SetError("Failed to save shift info.");
+            return View(model);
+        }
+    }
+
+    [HttpGet("Me/DietaryMedical")]
+    public async Task<IActionResult> DietaryMedical(
+        string? returnAction = null,
+        Guid? shiftId = null,
+        Guid? rotaId = null,
+        int? startDayOffset = null,
+        int? endDayOffset = null)
+    {
+        try
+        {
+            var user = await GetCurrentUserInfoAsync();
+            if (user is null)
+                return NotFound();
+
+            // includeMedical: true — the form must pre-populate the user's own medical info.
+            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: true);
+            var vm = profile is null
+                ? new DietaryMedicalViewModel()
+                : DietaryMedicalViewModel.FromProfile(profile);
+
+            // Carryover from the dietary-gate redirect (ShiftsController.SignUp/SignUpRange).
+            // The POST handler reads these to replay the original signup after a successful save.
+            vm.ReturnAction = returnAction;
+            vm.ShiftId = shiftId;
+            vm.RotaId = rotaId;
+            vm.StartDayOffset = startDayOffset;
+            vm.EndDayOffset = endDayOffset;
+
+            return View(vm);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load dietary/medical info for user");
+            SetError(localizer["Profile_DietaryMedical_LoadFailed"].Value);
+            return RedirectToAction(nameof(Me));
+        }
+    }
+
+    [HttpPost("Me/DietaryMedical")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DietaryMedical(DietaryMedicalViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        // Server-side validation for the "Other text required iff Other selected" rule
+        // (DataAnnotations can't express the conditional requirement cleanly).
+        if (model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
+        {
+            ModelState.AddModelError(nameof(model.AllergyOtherText), localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
+            return View(model);
+        }
+        if (model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.IntoleranceOtherText))
+        {
+            ModelState.AddModelError(nameof(model.IntoleranceOtherText), localizer["Profile_DietaryMedical_IntoleranceOther_Required"].Value);
+            return View(model);
+        }
+
+        try
+        {
+            var user = await GetCurrentUserInfoAsync();
+            if (user is null)
+                return NotFound();
+
+            var profile = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+            model.ApplyTo(profile);
+            await shiftMgmt.UpdateShiftProfileAsync(profile);
+
+            // Signup-replay branches — the user was bounced here from
+            // ShiftsController.SignUp/SignUpRange by the dietary gate. After a
+            // successful save we re-run the original signup and land them on
+            // /Shifts with the appropriate flash. See
+            // docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md.
+            // Replay failure does NOT roll back the dietary save — the user can
+            // retry the signup directly from /Shifts without re-entering it.
+            // The inline flash-mapping duplicates ShiftsController's two existing
+            // inline copies; extract on the third call site per project doctrine.
+            switch (model.ReturnAction)
+            {
+                case "signup" when model.ShiftId is { } sid:
+                    {
+                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var result = await shiftSignupService.SignUpAsync(
+                            user.Id, sid, actorUserId: null, isPrivileged: privileged);
+                        if (!result.Success)
+                            SetError(result.Error ?? "Shift signup failed.");
+                        else
+                            SetSuccess(result.Warning is not null
+                                ? $"Signed up successfully. Note: {result.Warning}"
+                                : "Signed up successfully!");
+                        return RedirectToAction("Index", "Shifts");
+                    }
+                case "signuprange" when model.RotaId is { } rid
+                                         && model.StartDayOffset is { } sd
+                                         && model.EndDayOffset is { } ed:
+                    {
+                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var result = await shiftSignupService.SignUpRangeAsync(
+                            user.Id, rid, sd, ed, actorUserId: null, isPrivileged: privileged, skipConflicts: true);
+                        if (!result.Success)
+                            SetError(result.Error ?? "Shift range signup failed.");
+                        else
+                            SetSuccess(result.Warning is not null
+                                ? $"Signed up for date range. Note: {result.Warning}"
+                                : "Signed up for date range!");
+                        return RedirectToAction("Index", "Shifts");
+                    }
+                case "shifts":
+                    SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
+                    return RedirectToAction("Index", "Shifts");
+                default:
+                    SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
+                    return RedirectToAction("Index", "Home");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save dietary/medical info");
+            SetError(localizer["Profile_DietaryMedical_SaveFailed"].Value);
             return View(model);
         }
     }

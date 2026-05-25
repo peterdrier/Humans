@@ -162,4 +162,44 @@ public class ShiftTests
         };
         shift.IsAllDay.Should().BeTrue();
     }
+
+    [HumansFact]
+    public void QualifiesForCantinaMeal_AllDayShift_ReturnsTrue()
+    {
+        var shift = CreateShift();
+        shift.IsAllDay = true;
+        shift.Duration = Duration.FromHours(0);
+
+        shift.QualifiesForCantinaMeal().Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void QualifiesForCantinaMeal_SixHourShift_ReturnsTrue()
+    {
+        var shift = CreateShift();
+        shift.IsAllDay = false;
+        shift.Duration = Duration.FromHours(6);
+
+        shift.QualifiesForCantinaMeal().Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void QualifiesForCantinaMeal_FiveHourFiftyNineMinuteShift_ReturnsFalse()
+    {
+        var shift = CreateShift();
+        shift.IsAllDay = false;
+        shift.Duration = Duration.FromMinutes(359);
+
+        shift.QualifiesForCantinaMeal().Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void QualifiesForCantinaMeal_ShortAllDayShift_StillQualifies()
+    {
+        var shift = CreateShift();
+        shift.IsAllDay = true;
+        shift.Duration = Duration.FromHours(2);
+
+        shift.QualifiesForCantinaMeal().Should().BeTrue();
+    }
 }

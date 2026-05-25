@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -17,6 +18,7 @@ namespace Humans.Infrastructure.Repositories.Teams;
 /// registered as Singleton.
 /// </para>
 /// </summary>
+[Grandfathered("HUM0025", justification: "GoogleSyncOutboxEvents (owned by GoogleSyncOutboxRepository) is written here so each team mutation is atomic with its outbox append; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "GoogleSyncOutboxEvents")]
 internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory) : ITeamRepository
 {
     // ==========================================================================

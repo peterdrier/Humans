@@ -556,6 +556,26 @@
                         <vc:things-to-do user-id="@Model.CurrentUserId" is-volunteer-member="true" has-shift-signups="true" />
                     </div>
                 </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:dietary-missing-banner&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Red dietary-info nudge shown on /Shifts and /Shifts/Mine. Self-gates: renders only when the user has a
+                        qualifying cantina signup but no dietary preference on file — so it's empty here unless your account matches.
+                    </div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:dietary-missing-banner user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
             </section>
 
             @* ============== SHIFTS & ROTA ============== *@

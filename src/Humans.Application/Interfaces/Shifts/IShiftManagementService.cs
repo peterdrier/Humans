@@ -360,6 +360,16 @@ public interface IShiftManagementService : IApplicationService
     Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
 
     /// <summary>
+    /// True when the user has at least one Pending or Confirmed signup on a
+    /// future-or-current qualifying shift (see <see cref="Shift.QualifiesForCantinaMeal"/>).
+    /// Used by the dashboard Things-to-do nudge for dietary/medical info.
+    /// Returns false when no active event settings exist (fail closed).
+    /// </summary>
+    Task<bool> HasQualifyingCantinaSignupAsync(
+        Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes every <c>VolunteerEventProfile</c> row owned by
     /// <paramref name="userId"/>. Returns the number of rows removed. Used by
     /// the account anonymization flow so the job does not write to

@@ -308,6 +308,7 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/{id}/Admin/Emails/ClearGoogle`, `/Profile/{id}/Admin/Emails/ClearPrimary` | Admin remediation — drop a single row's flag without auto-promoting a successor |
 | `/Profile/{id}/Admin/Emails/Verify` | Admin manual verification (`PolicyNames.AdminOnly`) — marks a pending plain UserEmail row verified without consuming a token; creates a merge request when the address is already verified on another account |
 | `/Profile/Me/ShiftInfo` | Shift preferences |
+| `/Profile/Me/DietaryMedical` | Dietary preference, allergies, intolerances, medical conditions (per spec [#279](../features/profiles/dietary-medical-nudge.md); dashboard nudge surfaces this when a human has an active 6h+ signup) |
 | `/Profile/Me/CommunicationPreferences` | Per-category email/in-app communication preferences |
 | `/Profile/Me/Notifications` | Permanent redirect to `/Profile/Me/CommunicationPreferences` |
 | `/Profile/Me/Privacy` | Privacy / deletion |

@@ -132,6 +132,16 @@ public class Shift
     }
 
     /// <summary>
+    /// True when this shift qualifies a volunteer for cantina meal planning.
+    /// All-day shifts always qualify (08:00–18:00 = 10h);
+    /// timed shifts qualify when <see cref="Duration"/> is at least 6 hours.
+    /// Pure helper — no DB hit, no clock, no <see cref="EventSettings"/> needed.
+    /// See: docs/features/profiles/dietary-medical-nudge.md
+    /// </summary>
+    public bool QualifiesForCantinaMeal() =>
+        IsAllDay || Duration >= Duration.FromHours(6);
+
+    /// <summary>
     /// Whether this shift falls in the build period (before gate opening).
     /// </summary>
     public bool IsEarlyEntry => DayOffset < 0;

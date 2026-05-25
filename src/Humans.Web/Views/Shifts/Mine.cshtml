@@ -47,6 +47,8 @@
 
     <vc:temp-data-alerts />
 
+    @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.UserId })
+
     @if (Model.EventSettings == null)
     {
         <div class="alert alert-info">@Localizer["Shifts_NoActiveEventConfigured"]</div>

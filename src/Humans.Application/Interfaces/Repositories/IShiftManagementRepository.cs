@@ -317,6 +317,23 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<Guid> GetActiveEventIdAsync(Guid eventSettingsId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a user's active signups (Pending or Confirmed) scoped to a single
+    /// event (via <c>ShiftSignup -> Shift -> Rota -> EventSettingsId</c>), with each
+    /// signup's <see cref="ShiftSignup.Shift"/> navigation eagerly loaded
+    /// so callers can inspect <see cref="Shift.Duration"/>, <see cref="Shift.IsAllDay"/>,
+    /// and call <see cref="Shift.GetAbsoluteEnd"/> without further DB hits.
+    /// Cross-section rule: signup-owner navigation is intentionally NOT eager-loaded
+    /// (volunteer identity is the consumer's concern, not this query's).
+    /// Event scoping is mandatory: stale signups from a prior event would otherwise
+    /// be resolved against the current event's <c>GateOpeningDate</c> and could
+    /// spuriously qualify the gate.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================

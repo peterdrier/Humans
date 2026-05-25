@@ -35,13 +35,23 @@ namespace Humans.Application.Architecture;
 /// Both are informational — the analyzer only branches on the presence of the
 /// attribute with the matching <see cref="RuleId"/>.
 /// </para>
+///
+/// <para>
+/// The optional <see cref="Scope"/> further narrows the grandfather to a single
+/// sub-target named by the rule (used by HUM0025, which grandfathers at
+/// (repository, DbSet) granularity — one attribute per shared table). It is the
+/// DbSet property name, e.g. <c>scope: "Users"</c>. <see cref="AttributeUsageAttribute.AllowMultiple"/>
+/// lets a repository carry one entry per shared table. Rules that do not use a
+/// scope (HUM0009, HUM0024, …) leave it <c>null</c> and ignore it.
+/// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-public sealed class GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef)
+public sealed class GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef, string? scope = null)
     : Attribute
 {
     public string RuleId { get; } = ruleId;
     public string Justification { get; } = justification;
     public string Since { get; } = since;
     public string IssueRef { get; } = issueRef;
+    public string? Scope { get; } = scope;
 }

@@ -1,0 +1,177 @@
+@model Humans.Web.Models.DietaryMedicalViewModel
+@{
+    ViewData["Title"] = Localizer["Profile_DietaryMedical_PageTitle"].Value;
+}
+
+<div class="row">
+    <div class="col-12" style="max-width: 720px; margin: 0 auto;">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_MyProfile"]</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Profile_DietaryMedical_PageTitle"]</li>
+            </ol>
+        </nav>
+
+        <vc:temp-data-alerts />
+
+        <h1>@Localizer["Profile_DietaryMedical_PageTitle"]</h1>
+
+        <form asp-action="DietaryMedical" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            @* Carryover routing data for the post-save signup-replay branch
+               (see ProfileController.DietaryMedical POST + the design doc). *@
+            <input type="hidden" asp-for="ReturnAction" />
+            <input type="hidden" asp-for="ShiftId" />
+            <input type="hidden" asp-for="RotaId" />
+            <input type="hidden" asp-for="StartDayOffset" />
+            <input type="hidden" asp-for="EndDayOffset" />
+
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3" id="validationSummary">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
+
+            @* ===== Dietary Preference (required radio group) ===== *@
+            <fieldset class="mb-4">
+                <legend class="h6">
+                    @Localizer["Profile_DietaryMedical_DietaryPreference_Label"]
+                    <span class="text-danger" aria-hidden="true">*</span>
+                    <span class="visually-hidden">(required)</span>
+                </legend>
+                @foreach (var pref in DietaryMedicalViewModel.DietaryPreferences)
+                {
+                    var isSelected = string.Equals(Model.DietaryPreference, pref, StringComparison.Ordinal);
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               asp-for="DietaryPreference"
+                               value="@pref"
+                               id="dp-@pref"
+                               checked="@(isSelected ? "checked" : null)" />
+                        <label class="form-check-label" for="dp-@pref">
+                            @Localizer[$"Profile_DietaryMedical_DietaryPreference_{pref}"]
+                        </label>
+                    </div>
+                }
+                <span asp-validation-for="DietaryPreference" class="text-danger"></span>
+            </fieldset>
+
+            @* ===== Allergies (multi-checkbox + Other text) ===== *@
+            <fieldset class="mb-4">
+                <legend class="h6">@Localizer["Profile_DietaryMedical_Allergies_Label"]</legend>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var opt in DietaryMedicalViewModel.AllergyOptions.Where(o => o != DietaryMedicalViewModel.OtherOption))
+                    {
+                        var isChecked = Model.Allergies.Contains(opt);
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="Allergies"
+                                   value="@opt"
+                                   id="al-@opt"
+                                   checked="@(isChecked ? "checked" : null)" />
+                            <label class="form-check-label" for="al-@opt">@opt</label>
+                        </div>
+                    }
+                </div>
+                @* Other on its own line — visual hint that it opens a free-text field *@
+                <div class="form-check mt-2 pt-2 border-top">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="Allergies"
+                           value="@DietaryMedicalViewModel.OtherOption"
+                           id="al-@DietaryMedicalViewModel.OtherOption"
+                           checked="@(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "checked" : null)" />
+                    <label class="form-check-label" for="al-@DietaryMedicalViewModel.OtherOption">@DietaryMedicalViewModel.OtherOption</label>
+                </div>
+                <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
+                    <label asp-for="AllergyOtherText" class="form-label">@Localizer["Profile_DietaryMedical_AllergyOther_Label"]</label>
+                    <input asp-for="AllergyOtherText" class="form-control" maxlength="500" />
+                    <span asp-validation-for="AllergyOtherText" class="text-danger"></span>
+                </div>
+            </fieldset>
+
+            @* ===== Intolerances (multi-checkbox + Other text) ===== *@
+            <fieldset class="mb-4">
+                <legend class="h6">@Localizer["Profile_DietaryMedical_Intolerances_Label"]</legend>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var opt in DietaryMedicalViewModel.IntoleranceOptions.Where(o => o != DietaryMedicalViewModel.OtherOption))
+                    {
+                        var isChecked = Model.Intolerances.Contains(opt);
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="Intolerances"
+                                   value="@opt"
+                                   id="in-@opt"
+                                   checked="@(isChecked ? "checked" : null)" />
+                            <label class="form-check-label" for="in-@opt">@opt</label>
+                        </div>
+                    }
+                </div>
+                @* Other on its own line — visual hint that it opens a free-text field *@
+                <div class="form-check mt-2 pt-2 border-top">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="Intolerances"
+                           value="@DietaryMedicalViewModel.OtherOption"
+                           id="in-@DietaryMedicalViewModel.OtherOption"
+                           checked="@(Model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) ? "checked" : null)" />
+                    <label class="form-check-label" for="in-@DietaryMedicalViewModel.OtherOption">@DietaryMedicalViewModel.OtherOption</label>
+                </div>
+                <div class="mt-3" id="intolerance-other-wrapper" style="display: @(Model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
+                    <label asp-for="IntoleranceOtherText" class="form-label">@Localizer["Profile_DietaryMedical_IntoleranceOther_Label"]</label>
+                    <input asp-for="IntoleranceOtherText" class="form-control" maxlength="500" />
+                    <span asp-validation-for="IntoleranceOtherText" class="text-danger"></span>
+                </div>
+            </fieldset>
+
+            @* ===== Medical Conditions (private textarea, collapsed by default) =====
+               Wrapped in <details> so it's clearly optional and visually de-emphasized;
+               a volunteer hesitant to disclose (e.g., epilepsy) won't be blocked from
+               submitting the cantina-critical dietary radios above. *@
+            <details class="mt-4 mb-4">
+                <summary class="text-muted">
+                    <strong>@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</strong>
+                    <span class="badge bg-secondary ms-2">@Localizer["Common_Optional"]</span>
+                </summary>
+                <div class="mt-3 ps-3 border-start border-secondary border-2">
+                    <p class="text-muted small">@Localizer["Profile_DietaryMedical_MedicalConditions_Hint"]</p>
+                    <textarea asp-for="MedicalConditions" class="form-control" rows="4" maxlength="4000"></textarea>
+                    <span asp-validation-for="MedicalConditions" class="text-danger"></span>
+                    <div class="form-text">@Localizer["Profile_DietaryMedical_MedicalConditions_VisibilityNote"]</div>
+                </div>
+            </details>
+
+            <div class="d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script nonce="@Context.Items["CspNonce"]">
+        // Toggle the "Other" text input visibility based on the matching checkbox.
+        // Server-side validation (ProfileController) still enforces the conditional-required
+        // rule, so users with JS disabled get a normal validation error and resubmit.
+        (function () {
+            function wireOther(prefix, otherValue) {
+                var checkbox = document.getElementById(prefix + '-' + otherValue);
+                var wrapper = document.getElementById(prefix === 'al' ? 'allergy-other-wrapper' : 'intolerance-other-wrapper');
+                if (!checkbox || !wrapper) return;
+                checkbox.addEventListener('change', function () {
+                    wrapper.style.display = checkbox.checked ? 'block' : 'none';
+                });
+            }
+            var otherValue = '@DietaryMedicalViewModel.OtherOption';
+            wireOther('al', otherValue);
+            wireOther('in', otherValue);
+        })();
+    </script>
+}

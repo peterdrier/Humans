@@ -38,6 +38,7 @@ _Avoid_: director
   - **Section** ← "vertical" / "vertical slice" (hard-rules), "section" (design-rules / atoms).
   - **Orchestrator** ← "director" (memory atoms).
 - `AgentService` is labelled "orchestrator" in design-rules but owns `agent_*` tables → by this glossary it is a **Section**, not an Orchestrator. The label is wrong.
+- **EventParticipation** reads as an Events concept but its EF config lives in `Configurations/Shifts/` → the `event_participations` table is owned by the **Shifts** Lane. Name is a smell; ownership follows the config. (Surfaced 2026-05-25 grill — confirm the true owner with Peter.)
 - Headwords above are the grill's opinionated picks; final naming is Peter's (hand-edit).
 - **Orphan** is *not* a role. It named the instinct "this could stand alone instead of being bolted onto User" (the merge-id mistake). Resolved: cross-lane needs go to an **Orchestrator** (e.g. an Audit orchestrator that gathers merged ids and calls Audit *with* the list), keeping the Crosscut pure. Don't re-introduce "orphan" as a role.
 

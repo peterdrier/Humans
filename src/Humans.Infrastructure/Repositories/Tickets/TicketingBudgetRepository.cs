@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Humans.Application.DTOs;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -18,6 +19,7 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// per-request, short-lived instance — the same pattern as the other §15
 /// repositories (Profile, User, etc., per design-rules §15b).
 /// </remarks>
+[Grandfathered("HUM0025", justification: "Reads Tickets-owned TicketOrders for the Tickets→Budget bridge; route through ITicketServiceRead.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "TicketOrders")]
 internal sealed class TicketingBudgetRepository(IDbContextFactory<HumansDbContext> factory) : ITicketingBudgetRepository
 {
     public async Task<IReadOnlyList<PaidTicketOrderSummary>> GetPaidOrderSummariesAsync(

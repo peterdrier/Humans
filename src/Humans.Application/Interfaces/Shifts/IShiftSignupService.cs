@@ -59,6 +59,18 @@ public interface IShiftSignupService : IApplicationService
     Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false);
 
     /// <summary>
+    /// Returns the set of all-day shifts within the given offset range on the rota.
+    /// Used by callers that need to peek the candidate set before calling
+    /// <see cref="SignUpRangeAsync"/> — e.g. the dietary-prompt gate that needs
+    /// to know whether any shift in the range qualifies for cantina meals.
+    /// </summary>
+    Task<IReadOnlyList<Shift>> PeekRangeShiftsAsync(
+        Guid rotaId,
+        int startDayOffset,
+        int endDayOffset,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Approves all pending signups sharing a SignupBlockId.
     /// </summary>
     Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId);

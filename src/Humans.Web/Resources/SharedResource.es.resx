@@ -5758,4 +5758,103 @@
     <value>Fecha de montaje de barrio eliminada</value>
     <comment>TODO: translate</comment>
   </data>
+  <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentimientos pendientes</value></data>
+  <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registro incompleto</value></data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importar mi foto de Google</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Copia la foto de tu cuenta de Google como foto de perfil. Podr&#xE1;s reemplazarla m&#xE1;s tarde subiendo una nueva.</value></data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>Tu foto de Google se ha importado como foto de perfil.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>No podemos importar una foto de Google: tu cuenta no est&#xE1; vinculada a Google o no se captur&#xF3; un avatar al iniciar sesi&#xF3;n.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Termina de configurar tu perfil primero y luego podr&#xE1;s importar tu foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Ya tienes una foto de perfil personalizada. Elim&#xED;nala primero para importar tu foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>No pudimos obtener tu foto de Google. Int&#xE9;ntalo m&#xE1;s tarde o sube una directamente.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>No se pudo procesar tu foto de Google: formato no admitido o respuesta err&#xF3;nea.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>No pudimos importar tu foto de Google: la URL del avatar guardado no parece ser una direcci&#xF3;n de Google. Sube una directamente.</value></data>
+  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Resumen de la Junta: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
+  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Resumen de la Junta &amp;mdash; {1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+{3}
+{2}
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
+  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Elementos pendientes</value></data>
+  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>No hubo nuevas aprobaciones ayer.</value></data>
+  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} en espera de revisi&#xF3;n de incorporaci&#xF3;n</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} a&#xFA;n completando la incorporaci&#xF3;n</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} solicitudes de nivel pendientes de voto ({1} necesitan el tuyo)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
+  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} solicitudes de equipo pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} con requisitos de consentimiento pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminaciones de cuenta pendientes</value><comment>{0} = count</comment></data>
+  <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Cuéntanos sobre tu alimentación</value></data>
+  <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>Lo necesitamos para planificar las comidas de la cantina</value></data>
+  <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Gracias — ya tenemos lo necesario</value></data>
+  <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Rellenar</value></data>
+  <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Cuéntanos tus necesidades alimentarias para estar listos cuando te apuntes.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Necesitamos tus datos alimentarios</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estás apuntada a un turno largo. La cantina no puede planificar tus comidas hasta que nos digas tus preferencias.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
+  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Información alimentaria y médica</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Preferencia alimentaria</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnívoro/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetariano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescetariano/a</value></data>
+  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Alergias</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Otra alergia — describe cuál</value></data>
+  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerancias</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Otra intolerancia — describe cuál</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Solo visible para ti y los No-Info Admins. Cualquier cosa que el equipo deba saber — diabetes, epilepsia, lesiones graves, etc.</value></data>
+  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Tu información alimentaria y médica se ha guardado.</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Describe la otra alergia.</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Describe la otra intolerancia.</value></data>
+  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>No se pudo cargar la información alimentaria y médica.</value></data>
+  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información alimentaria y médica.</value></data>
+  <data name="Cantina_Roster_PageTitle" xml:space="preserve"><value>Roster semanal de cantina</value></data>
+  <data name="Cantina_Roster_NoActiveEvent" xml:space="preserve"><value>No hay evento activo</value></data>
+  <data name="Cantina_Roster_TotalOnSite" xml:space="preserve"><value>personas únicas en el sitio esta semana</value></data>
+  <data name="Cantina_Roster_Unanswered" xml:space="preserve"><value>aún no han respondido</value></data>
+  <data name="Cantina_Roster_DietaryBreakdown" xml:space="preserve"><value>Desglose alimentario</value></data>
+  <data name="Cantina_Roster_AllergyRollup" xml:space="preserve"><value>Alergias</value></data>
+  <data name="Cantina_Roster_IntoleranceRollup" xml:space="preserve"><value>Intolerancias</value></data>
+  <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Otras alergias (texto libre)</value></data>
+  <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Otras intolerancias (texto libre)</value></data>
+  <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Nombre playero</value></data>
+  <data name="Cantina_Roster_TableArrivesOn" xml:space="preserve"><value>Llega el</value></data>
+  <data name="Cantina_Roster_TableNoShift" xml:space="preserve"><value>Sin turno</value></data>
+  <data name="Cantina_Roster_NoShift_FullWeek" xml:space="preserve"><value>(con turno cada día)</value></data>
+  <data name="Cantina_Roster_Unanswered_RowLabel" xml:space="preserve"><value>(sin responder)</value></data>
+  <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Alimentación</value></data>
+  <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Alergias</value></data>
+  <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Otra alergia</value></data>
+  <data name="Cantina_Roster_TableIntolerances" xml:space="preserve"><value>Intolerancias</value></data>
+  <data name="Cantina_Roster_TableIntoleranceOther" xml:space="preserve"><value>Otra intolerancia</value></data>
+  <data name="Cantina_Roster_DownloadCsv" xml:space="preserve"><value>Descargar CSV</value></data>
+  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>Ningún humano se ha apuntado a turnos esta semana todavía.</value></data>
+  <data name="Cantina_Roster_WeekPickerLabel" xml:space="preserve"><value>Semana</value></data>
+  <data name="Cantina_Roster_ThisWeek" xml:space="preserve"><value>Esta semana</value></data>
+  <data name="Cantina_Roster_PrevWeek" xml:space="preserve"><value>Semana anterior</value></data>
+  <data name="Cantina_Roster_NextWeek" xml:space="preserve"><value>Semana siguiente</value></data>
+  <data name="Cantina_Roster_WeekOf" xml:space="preserve"><value>Semana del</value></data>
+  <data name="Cantina_Roster_PerDayTable_Heading" xml:space="preserve"><value>Por día</value></data>
+  <data name="Cantina_Roster_PerDayTable_Date" xml:space="preserve"><value>Día</value></data>
+  <data name="Cantina_Roster_PerDayTable_Total" xml:space="preserve"><value>En el sitio</value></data>
+  <data name="Cantina_Roster_PerDayTable_Unanswered" xml:space="preserve"><value>Sin responder</value></data>
+  <data name="Cantina_Roster_RosterHeading" xml:space="preserve"><value>Listado</value></data>
+  <data name="Cantina_Roster_ShowRoster" xml:space="preserve"><value>Ver listado ({0} personas)</value></data>
+  <data name="Cantina_Day_PageTitle" xml:space="preserve"><value>Roster diario</value></data>
+  <data name="Cantina_Day_TodayBadge" xml:space="preserve"><value>Hoy</value></data>
+  <data name="Cantina_Day_TotalOnSite" xml:space="preserve"><value>personas en el sitio</value></data>
+  <data name="Cantina_Day_Unanswered" xml:space="preserve"><value>aún no han respondido</value></data>
+  <data name="Cantina_Day_DownloadCsv" xml:space="preserve"><value>Descargar matriz CSV</value></data>
+  <data name="Cantina_Day_EmptyState" xml:space="preserve"><value>Nadie se ha apuntado a turnos este día todavía.</value></data>
+  <data name="Cantina_Matrix_BurnerColumn" xml:space="preserve"><value>Nombre playero</value></data>
+  <data name="Cantina_Matrix_OtherAllergy" xml:space="preserve"><value>Otra alergia</value></data>
+  <data name="Cantina_Matrix_OtherAllergyText" xml:space="preserve"><value>Texto de otra alergia</value></data>
+  <data name="Cantina_Matrix_OtherIntolerance" xml:space="preserve"><value>Otra intolerancia</value></data>
+  <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Texto de otra intolerancia</value></data>
+  <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALES</value></data>
+  <data name="Nav_Cantina" xml:space="preserve"><value>Cantina</value></data>
+  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Primero cuéntanos tus necesidades alimentarias.</value></data>
+  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Un momento — necesitamos tu información alimentaria antes de apuntarte a este turno.</value></data>
+  <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Solo visible para ti y los No-Info Admins.</value></data>
 </root>

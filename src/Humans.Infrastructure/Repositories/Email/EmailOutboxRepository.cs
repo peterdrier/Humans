@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -16,6 +17,7 @@ namespace Humans.Infrastructure.Repositories.Email;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository is
 /// registered as Singleton while <c>HumansDbContext</c> stays Scoped.
 /// </summary>
+[Grandfathered("HUM0025", justification: "Per-key SystemSettings access shared with DriveActivityMonitorRepository (disjoint keys); split the table or route through an owning service.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "SystemSettings")]
 internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> factory) : IEmailOutboxRepository
 {
     // ==========================================================================

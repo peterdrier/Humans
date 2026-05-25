@@ -44,10 +44,22 @@
             </select>
         </div>
         <div class="col-auto">
-            <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
-                    data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
-                @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
-            </button>
+            @if (Model.SignupsBlockedByMissingDietary)
+            {
+                <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
+                        disabled
+                        aria-disabled="true"
+                        title="@Localizer["Shifts_SignupDisabledTooltip_MissingDietary"]">
+                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
+                        data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
+                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                </button>
+            }
         </div>
         <script type="application/json" class="js-user-signups-data">
             @Html.Raw(System.Text.Json.JsonSerializer.Serialize(

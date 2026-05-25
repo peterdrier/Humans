@@ -290,6 +290,66 @@
                     <button type="button" id="addLanguage" class="btn btn-outline-secondary btn-sm mb-3">
                         <i class="fa-solid fa-plus me-1"></i> @Localizer["ProfileEdit_AddLanguage"]
                     </button>
+
+                    <hr />
+
+                    @* ===== Dietary preference + allergies =====
+                       Second entry point for the meal-pref + allergy fields on
+                       VolunteerEventProfile (also editable on /Profile/Me/DietaryMedical).
+                       Intolerances + medical conditions stay on that page. *@
+                    <h6>@Localizer["Profile_DietaryMedical_DietaryPreference_Label"]</h6>
+                    <div class="mb-3">
+                        @foreach (var pref in DietaryMedicalViewModel.DietaryPreferences)
+                        {
+                            var isSelected = string.Equals(Model.DietaryPreference, pref, StringComparison.Ordinal);
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       asp-for="DietaryPreference"
+                                       value="@pref"
+                                       id="dp-@pref"
+                                       checked="@(isSelected ? "checked" : null)" />
+                                <label class="form-check-label" for="dp-@pref">
+                                    @Localizer[$"Profile_DietaryMedical_DietaryPreference_{pref}"]
+                                </label>
+                            </div>
+                        }
+                        <span asp-validation-for="DietaryPreference" class="text-danger"></span>
+                    </div>
+
+                    <h6>@Localizer["Profile_DietaryMedical_Allergies_Label"]</h6>
+                    <div class="mb-3">
+                        <div class="d-flex flex-wrap gap-3">
+                            @foreach (var opt in DietaryMedicalViewModel.AllergyOptions.Where(o => o != DietaryMedicalViewModel.OtherOption))
+                            {
+                                var isChecked = Model.Allergies.Contains(opt);
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           name="Allergies"
+                                           value="@opt"
+                                           id="al-@opt"
+                                           checked="@(isChecked ? "checked" : null)" />
+                                    <label class="form-check-label" for="al-@opt">@opt</label>
+                                </div>
+                            }
+                        </div>
+                        @* Other on its own line — visual hint that it opens a free-text field *@
+                        <div class="form-check mt-2 pt-2 border-top">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="Allergies"
+                                   value="@DietaryMedicalViewModel.OtherOption"
+                                   id="al-@DietaryMedicalViewModel.OtherOption"
+                                   checked="@(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "checked" : null)" />
+                            <label class="form-check-label" for="al-@DietaryMedicalViewModel.OtherOption">@DietaryMedicalViewModel.OtherOption</label>
+                        </div>
+                        <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
+                            <label asp-for="AllergyOtherText" class="form-label">@Localizer["Profile_DietaryMedical_AllergyOther_Label"]</label>
+                            <input asp-for="AllergyOtherText" class="form-control" maxlength="500" />
+                            <span asp-validation-for="AllergyOtherText" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1061,6 +1121,21 @@
                     e.preventDefault();
                     e.returnValue = '';
                 }
+            });
+        })();
+    </script>
+
+    @* Toggle the allergy "Other" free-text field based on its checkbox. Server-side
+       validation (ProfileController.Edit POST) still enforces the conditional-required
+       rule, so JS-disabled users get a normal validation error and resubmit. *@
+    <script nonce="@Context.Items["CspNonce"]">
+        (function () {
+            var otherValue = '@DietaryMedicalViewModel.OtherOption';
+            var checkbox = document.getElementById('al-' + otherValue);
+            var wrapper = document.getElementById('allergy-other-wrapper');
+            if (!checkbox || !wrapper) return;
+            checkbox.addEventListener('change', function () {
+                wrapper.style.display = checkbox.checked ? 'block' : 'none';
             });
         })();
     </script>

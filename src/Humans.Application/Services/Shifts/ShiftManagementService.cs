@@ -1816,6 +1816,25 @@ public sealed class ShiftManagementService(
         return profile;
     }
 
+    public async Task<bool> HasQualifyingCantinaSignupAsync(
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        // Fail closed when no event is active — the nudge would be meaningless
+        // (no shifts to attend means no cantina meals to plan for).
+        var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
+        if (eventSettings is null)
+            return false;
+
+        var now = clock.GetCurrentInstant();
+        var signups = await repo.GetUserActiveSignupsForCantinaGateAsync(userId, eventSettings.Id, ct);
+
+        return signups.Any(s =>
+            s.Shift is not null
+            && s.Shift.QualifiesForCantinaMeal()
+            && s.Shift.GetAbsoluteEnd(eventSettings) > now);
+    }
+
     public async Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default)
     {

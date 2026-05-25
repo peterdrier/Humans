@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -22,6 +23,12 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// registered as <b>Singleton</b> while <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </summary>
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "EventSettings")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Rotas")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ShiftSignups")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Shifts")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "VolunteerEventProfiles")]
+[Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "VolunteerTagPreferences")]
 internal sealed class ShiftManagementRepository(IDbContextFactory<HumansDbContext> factory) : IShiftManagementRepository
 {
     // ==========================================================================
@@ -665,6 +672,21 @@ internal sealed class ShiftManagementRepository(IDbContextFactory<HumansDbContex
             .OrderBy(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.ShiftSignups
+            .AsNoTracking()
+            .Include(s => s.Shift)
+            .Where(s => s.UserId == userId
+                && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
+                && s.Shift!.Rota!.EventSettingsId == eventSettingsId)
+            .ToListAsync(ct);
     }
 
     // ==========================================================================

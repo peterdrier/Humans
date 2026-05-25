@@ -105,7 +105,18 @@
                                 @foreach (var p in Model.FilterPeriods) { <input type="hidden" name="periods" value="@p" /> }
                                 @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
                                 @if (!string.IsNullOrEmpty(Model.Sort)) { <input type="hidden" name="sort" value="@Model.Sort" /> }
-                                <button type="submit" class="btn btn-sm btn-success">@Localizer["Shifts_SignUpButton"]</button>
+                                @if (Model.SignupsBlockedByMissingDietary)
+                                {
+                                    <button type="submit"
+                                            class="btn btn-sm btn-success"
+                                            disabled
+                                            aria-disabled="true"
+                                            title="@Localizer["Shifts_SignupDisabledTooltip_MissingDietary"]">@Localizer["Shifts_SignUpButton"]</button>
+                                }
+                                else
+                                {
+                                    <button type="submit" class="btn btn-sm btn-success">@Localizer["Shifts_SignUpButton"]</button>
+                                }
                             </form>
                         }
                     </td>

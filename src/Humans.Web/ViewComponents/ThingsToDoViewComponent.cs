@@ -119,6 +119,38 @@ public class ThingsToDoViewComponent(
                     IconClass = "fa-solid fa-calendar-check"
                 });
             }
+
+            // 5. Dietary & medical nudge — fires whenever DietaryPreference is empty.
+            // Copy varies by whether the user has an active qualifying signup; the
+            // item is the same Key either way so it disappears with the rest of the
+            // card when DietaryPreference becomes non-empty.
+            // See docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md
+            try
+            {
+                var dietaryProfile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+                var dietaryEmpty = string.IsNullOrEmpty(dietaryProfile?.DietaryPreference);
+                if (dietaryEmpty)
+                {
+                    var hasQualifyingSignup = await shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
+                    var descriptionKey = hasQualifyingSignup
+                        ? "Todo_DietaryMedical_Pending"
+                        : "Todo_DietaryMedical_NoShift_Pending";
+                    model.Items.Add(new TodoItem
+                    {
+                        Key = "dietary-medical",
+                        Title = localizer["Todo_DietaryMedical_Title"].Value,
+                        Description = localizer[descriptionKey].Value,
+                        IsDone = false,
+                        ActionUrl = Url.Action("DietaryMedical", "Profile"),
+                        ActionText = localizer["Todo_DietaryMedical_Action"].Value,
+                        IconClass = "fa-solid fa-utensils",
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to check dietary/medical nudge for user {UserId}", userId);
+            }
         }
         catch (Exception ex)
         {
@@ -139,10 +171,6 @@ public class ThingsToDoViewComponent(
     {
         return profile.Skills.Count == 0
             && profile.Quirks.Count == 0
-            && profile.Languages.Count == 0
-            && profile.Allergies.Count == 0
-            && profile.Intolerances.Count == 0
-            && string.IsNullOrEmpty(profile.DietaryPreference)
-            && string.IsNullOrEmpty(profile.MedicalConditions);
+            && profile.Languages.Count == 0;
     }
 }

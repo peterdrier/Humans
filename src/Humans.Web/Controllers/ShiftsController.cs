@@ -79,6 +79,11 @@ public class ShiftsController(
             isPrivileged),
             HttpContext.RequestAborted);
 
+        // Dietary-prompt tightening (#279): lock the rota Sign-Up buttons + show the banner
+        // when this human has a qualifying signup but no dietary preference on file.
+        model.UserId = user.Id;
+        model.SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user.Id, HttpContext.RequestAborted);
+
         return View(model);
     }
 
@@ -104,6 +109,8 @@ public class ShiftsController(
         }
 
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
+        if (await RedirectIfDietaryMissingAsync(user, shiftId) is { } gate)
+            return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
@@ -122,6 +129,61 @@ public class ShiftsController(
             sort);
     }
 
+    // Lockout flag shared by the dietary banner and the rota-table Sign-Up
+    // buttons: true when the user has a qualifying cantina signup but no
+    // recorded DietaryPreference. Computed once per request on the top-level
+    // VM (Index/Mine); the views propagate it to each rota-partial. Mirrors
+    // the banner's own self-check and the SignUp gate's condition. Medical
+    // conditions are intentionally excluded (only DietaryPreference blocks).
+    private async Task<bool> ComputeSignupsBlockedByMissingDietaryAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (!await shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct)) return false;
+        var profile = await shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+        return string.IsNullOrEmpty(profile?.DietaryPreference);
+    }
+
+    // Dietary gate: if the shift qualifies for a cantina meal (all-day or ≥6h)
+    // and the user hasn't recorded a DietaryPreference yet, bounce them to
+    // ProfileController.DietaryMedical with returnAction=signup so the
+    // post-save handler can replay the signup. Medical conditions are
+    // intentionally excluded from the gate (only DietaryPreference blocks).
+    private async Task<IActionResult?> RedirectIfDietaryMissingAsync(UserInfo user, Guid shiftId)
+    {
+        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
+        if (shift is null || !shift.QualifiesForCantinaMeal()) return null;
+
+        var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return null;
+
+        SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
+        return RedirectToAction(
+            actionName: "DietaryMedical",
+            controllerName: "Profile",
+            routeValues: new { returnAction = "signup", shiftId });
+    }
+
+    // Range variant of the dietary gate. PeekRangeShiftsAsync already filters to
+    // all-day shifts in the inclusive window, and every all-day shift
+    // QualifiesForCantinaMeal(), so "any shift qualifies" reduces to "filtered
+    // list is non-empty". Mirrors the single-shift gate above, including the
+    // SetInfo message key, so the user sees a consistent nudge regardless of
+    // which signup path tripped the gate.
+    private async Task<IActionResult?> RedirectIfDietaryMissingForRangeAsync(
+        UserInfo user, Guid rotaId, int startDayOffset, int endDayOffset)
+    {
+        var rangeShifts = await signupService.PeekRangeShiftsAsync(rotaId, startDayOffset, endDayOffset, HttpContext.RequestAborted);
+        if (rangeShifts.Count == 0) return null;
+
+        var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+        if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return null;
+
+        SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
+        return RedirectToAction(
+            actionName: "DietaryMedical",
+            controllerName: "Profile",
+            routeValues: new { returnAction = "signuprange", rotaId, startDayOffset, endDayOffset });
+    }
+
     [HttpPost("SignUpRange")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
@@ -133,6 +195,8 @@ public class ShiftsController(
         }
 
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
+        if (await RedirectIfDietaryMissingForRangeAsync(user, rotaId, startDayOffset, endDayOffset) is { } gate)
+            return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
@@ -251,7 +315,12 @@ public class ShiftsController(
         var signups = userView.Signups;
 
         var now = clock.GetCurrentInstant();
-        var model = new MyShiftsViewModel { EventSettings = es };
+        var model = new MyShiftsViewModel
+        {
+            EventSettings = es,
+            UserId = user.Id,
+            SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user.Id, HttpContext.RequestAborted),
+        };
 
         var mineTeamNames = await LoadTeamNamesForSignupsAsync(signups);
         var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now, onMissingSignupData: signup =>

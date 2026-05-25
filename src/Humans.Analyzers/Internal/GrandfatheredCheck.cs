@@ -80,4 +80,59 @@ internal static class GrandfatheredCheck
         HasGrandfatherFor(type, attributeSymbol, ruleId)
             ? DiagnosticSeverity.Warning
             : DiagnosticSeverity.Error;
+
+    /// <summary>
+    /// Returns <c>true</c> if <paramref name="type"/> carries
+    /// <c>[Grandfathered("<paramref name="ruleId"/>", …, scope: "<paramref name="scope"/>")]</c>.
+    /// Used by rules that grandfather at a finer granularity than the whole type
+    /// (HUM0025: a (repository, DbSet) pair). The <c>scope</c> is the 5th
+    /// positional constructor argument; an attribute applied with the 4-argument
+    /// shape (no scope) never matches a scoped query.
+    /// </summary>
+    public static bool HasGrandfatherForScope(
+        INamedTypeSymbol type,
+        INamedTypeSymbol? attributeSymbol,
+        string ruleId,
+        string scope)
+    {
+        if (attributeSymbol is null)
+            return false;
+
+        foreach (var attr in type.GetAttributes())
+        {
+            if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attributeSymbol))
+                continue;
+
+            var args = attr.ConstructorArguments;
+            if (args.Length == 0)
+                continue;
+
+            if (args[0].Value is not string ruleIdValue ||
+                !string.Equals(ruleIdValue, ruleId, System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var scopeValue = args.Length >= 5 ? args[4].Value as string : null;
+            if (scopeValue is not null && string.Equals(scopeValue, scope, System.StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Scoped counterpart of <see cref="EffectiveSeverity"/>: returns
+    /// <see cref="DiagnosticSeverity.Warning"/> when the type is grandfathered
+    /// for the (<paramref name="ruleId"/>, <paramref name="scope"/>) pair,
+    /// otherwise <see cref="DiagnosticSeverity.Error"/>.
+    /// </summary>
+    public static DiagnosticSeverity EffectiveSeverityForScope(
+        INamedTypeSymbol type,
+        INamedTypeSymbol? attributeSymbol,
+        string ruleId,
+        string scope) =>
+        HasGrandfatherForScope(type, attributeSymbol, ruleId, scope)
+            ? DiagnosticSeverity.Warning
+            : DiagnosticSeverity.Error;
 }
