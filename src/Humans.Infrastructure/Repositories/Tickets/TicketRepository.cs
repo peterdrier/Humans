@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
@@ -23,6 +24,8 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// per method — same pattern as <c>ProfileRepository</c>, <c>UserRepository</c>,
 /// and <c>TicketingBudgetRepository</c> (design-rules §15b).
 /// </remarks>
+[Grandfathered("HUM0025", justification: "Tickets-section table also read by TicketingBudgetRepository; route the Budget bridge through ITicketServiceRead.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "TicketOrders")]
+[Grandfathered("HUM0025", justification: "Cross-section read of UserEmails for attendee matching; migrate to an IUserEmailService bulk lookup.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
 internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factory) : ITicketRepository
 {
     // ── TicketSyncState ──────────────────────────────────────────────────────

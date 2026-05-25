@@ -21,15 +21,15 @@ A1 is a **single-repository-per-table** analyzer (renamed from "cross-section Db
 
 Accepted gaps: (a) sole-foreign-writer — N=1 but the repo's `[Section]` Lane ≠ the table's `Configurations/<Lane>/` folder — not caught by the count; optional cheap cross-check later. (b) nav/`Include` reads until Phase 2.
 
-Counting unit = top-level types implementing `IRepository` in the Infrastructure compilation; framework stores (Identity `UserStore` etc.) are not repositories and don't count (their DbContext access is already governed by HUM0009 grandfathers). HUM id: **HUM0025** (HUM0023 was skipped, HUM0024 taken). Initial `(repo, table)` grandfather set: read from `docs/architecture/service-data-access-map.md` §"Cross-Section Analysis" at build time.
+Counting unit = top-level types implementing `IRepository` in the Infrastructure compilation; framework stores (Identity `UserStore` etc.) are not repositories and don't count (their DbContext access is already governed by HUM0009 grandfathers). HUM id: **HUM0025** (HUM0024 taken; HUM0023 was taken mid-flight by the Events write analyzer in #769, now subsumed here). Initial `(repo, table)` grandfather set: derived empirically from a whole-compilation build, cross-checked against `docs/architecture/service-data-access-map.md` §"Cross-Section Analysis".
 
-Replaces: `NotificationDbSetWriteAnalyzer` (HUM0022) and the `Only_*Repository_Writes_*` ratchet tests (Events, AuditLog).
+Replaces: `NotificationDbSetWriteAnalyzer` (HUM0022), `EventDbSetWriteAnalyzer` (HUM0023, merged in #769 after this plan was drafted), and the `Only_AuditLogRepository_Writes_*` ratchet test (the Events ratchet was already retired by #769).
 
 ## Current state (main @ 9355223d6)
 
-Analyzers: HUM0001–0022 + HUM0024 (no HUM0023). Active git pattern is "convert ratchet → analyzer" (concurrency HUM0007, obsolete-nav HUM0021, cross-section-EF-join HUM0024, **Notification DbSet writes HUM0022**).
+Analyzers: HUM0001–0024 (HUM0023 added by #769). Active git pattern is "convert ratchet → analyzer" (concurrency HUM0007, obsolete-nav HUM0021, cross-section-EF-join HUM0024, **Notification DbSet writes HUM0022**, **Event DbSet writes HUM0023**).
 
-**The fork:** DbSet-write ownership is enforced three ways for one rule — Notifications → analyzer `NotificationDbSetWriteAnalyzer` (HUM0022, hardcodes Notification DbSets + `NotificationRepository`); Events → ratchet test `Only_EventRepository_Writes_Event_DbSets`; AuditLog → ratchet test `Only_AuditLogRepository_Writes_AuditLogEntries_DbSet`.
+**The fork:** DbSet-write ownership is enforced three ways for one rule — Notifications → analyzer `NotificationDbSetWriteAnalyzer` (HUM0022, hardcodes Notification DbSets + `NotificationRepository`); Events → analyzer `EventDbSetWriteAnalyzer` (HUM0023, hardcodes the seven event_* DbSets + `EventRepository`; #769 promoted it from the former ratchet test); AuditLog → ratchet test `Only_AuditLogRepository_Writes_AuditLogEntries_DbSet`. Two hardcoded per-section analyzers + one ratchet, same rule.
 
 Two live `SaveChangesInterceptor`s: `UserInfoSaveChangesInterceptor`, `LegalDocumentSaveChangesInterceptor`. `IOrchestrator` marker does **not** exist ([`orchestrator-marker`] atom is "to build").
 

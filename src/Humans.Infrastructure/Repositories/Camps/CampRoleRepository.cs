@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -7,6 +8,8 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Camps;
 
+[Grandfathered("HUM0025", justification: "Camps-section table also accessed by CampRepository; converge the Camps repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "CampMembers")]
+[Grandfathered("HUM0025", justification: "Camps-section table also accessed by CampRepository; converge the Camps repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "CampRoleAssignments")]
 internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> factory) : ICampRoleRepository
 {
     public async Task<IReadOnlyList<CampRoleDefinition>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)

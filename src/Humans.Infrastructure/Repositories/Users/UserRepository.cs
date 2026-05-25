@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -10,6 +11,9 @@ using Humans.Infrastructure.Data;
 namespace Humans.Infrastructure.Repositories.Users;
 
 /// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
+[Grandfathered("HUM0025", justification: "Cross-section read of UserEmails (Profiles-owned); route through IUserEmailService.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
+[Grandfathered("HUM0025", justification: "Identity UserLogins also accessed by DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserLogins")]
+[Grandfathered("HUM0025", justification: "Users is also accessed by UserEmailRepository and DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
 internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory) : IUserRepository
 {
     // Reads — User

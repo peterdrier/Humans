@@ -1,9 +1,0 @@
-# Baseline: only AuditLogRepository may write to ctx.AuditLogEntries
-# One locator per line: relative/path.cs:stable-key
-# Stable keys only — line numbers are informational and stripped for diffing.
-# Generated 2026-05-12 (align/auditlog Phase 2 Step 4).
-#
-# No known violations remain. The DriveActivityMonitorRepository write was
-# fixed (2026-05-25): the service now emits anomalies through
-# IAuditLogService.LogAsync per anomaly, so AuditLogRepository is the sole
-# writer of audit_log_entries.

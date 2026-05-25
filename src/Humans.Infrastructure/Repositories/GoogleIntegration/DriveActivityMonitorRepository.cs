@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -19,6 +20,9 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
+[Grandfathered("HUM0025", justification: "Per-key SystemSettings access shared with EmailOutboxRepository (disjoint keys); split the table or route through an owning service.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "SystemSettings")]
+[Grandfathered("HUM0025", justification: "Cross-section read of Identity UserLogins; migrate to IUserService.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserLogins")]
+[Grandfathered("HUM0025", justification: "Cross-section read of the Users table; migrate to IUserService.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
 internal sealed class DriveActivityMonitorRepository(
     IDbContextFactory<HumansDbContext> factory,
     ILogger<DriveActivityMonitorRepository> logger) : IDriveActivityMonitorRepository

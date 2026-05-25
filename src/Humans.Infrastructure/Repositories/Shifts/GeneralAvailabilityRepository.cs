@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -13,6 +14,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
+[Grandfathered("HUM0025", justification: "Shifts-section table also read by ShiftSignupRepository for conflict checks; route reads through the owning repository.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "GeneralAvailability")]
 internal sealed class GeneralAvailabilityRepository(IDbContextFactory<HumansDbContext> factory)
     : IGeneralAvailabilityRepository
 {
