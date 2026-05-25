@@ -30,6 +30,15 @@ public sealed class CrossSectionEfJoinAnalyzerTests
             public sealed class CollectionNavigationBuilder { }
         }
 
+        namespace Humans.Application.Architecture
+        {
+            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+            public sealed class GrandfatheredAttribute : System.Attribute
+            {
+                public GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef) { }
+            }
+        }
+
         namespace Humans.Domain.Entities
         {
             public sealed class User { }
@@ -70,6 +79,36 @@ public sealed class CrossSectionEfJoinAnalyzerTests
 
             namespace Humans.Infrastructure.Data.Configurations.Teams
             {
+                public sealed class TeamMemberConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.TeamMember>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.TeamMember> builder) =>
+                        builder.HasOne<Humans.Domain.Entities.User>();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        var hit = diagnostics.Where(IsHum0024).Should().ContainSingle().Subject;
+        hit.Severity.Should().Be(DiagnosticSeverity.Error);
+    }
+
+    [HumansFact]
+    public async Task Reports_warning_for_grandfathered_configuration()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Data.Configurations.Teams
+            {
+                [Humans.Application.Architecture.Grandfathered(
+                    ruleId: "HUM0024",
+                    justification: "Pre-existing cross-section EF navigation join.",
+                    since: "2026-05-25",
+                    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
                 public sealed class TeamMemberConfiguration :
                     Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.TeamMember>
                 {

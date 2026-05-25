@@ -83,9 +83,10 @@ assertion families that are plausible analyzer candidates:
 - Application service read methods should not expose domain/EF entities.
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.
-- Cross-section EF nav configuration is warning-enforced by `HUM0024`.
-  Existing warnings represent debt to migrate to bare FK columns and
-  service-level stitching.
+- Cross-section EF nav configuration is error-enforced by `HUM0024`, with
+  existing violators carrying `[Grandfathered("HUM0024", ...)]` to downgrade
+  to warning. Those warnings represent debt to migrate to bare FK columns and
+  service-level stitching; delete the attribute once the join is gone.
 
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 

@@ -34,11 +34,12 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         title: Title,
         messageFormat: MessageFormat,
         category: AnalyzerCategories.Architecture,
-        defaultSeverity: DiagnosticSeverity.Warning,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
             "A section's EF model must not configure HasOne/HasMany navigation joins to entities owned by " +
-            "another section. Existing debt is warning-only while migrations off those joins continue.");
+            "another section. Existing violators carry [Grandfathered(\"HUM0024\", ...)] until their joins " +
+            "are migrated to bare FK columns and service-level stitching.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -62,14 +63,17 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         if (ownership.EntitySections.Count == 0 || ownership.ConfigurationSections.Count == 0)
             return;
 
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
+
         context.RegisterOperationAction(
-            ctx => AnalyzeInvocation(ctx, ownership),
+            ctx => AnalyzeInvocation(ctx, ownership, grandfatheredAttr),
             OperationKind.Invocation);
     }
 
     private static void AnalyzeInvocation(
         OperationAnalysisContext context,
-        OwnershipMap ownership)
+        OwnershipMap ownership,
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var op = (IInvocationOperation)context.Operation;
         if (!RelationshipMethods.Contains(op.TargetMethod.Name))
@@ -100,14 +104,14 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         if (string.Equals(thisSection, targetSection, StringComparison.Ordinal))
             return;
 
+        var severity = GrandfatheredCheck.EffectiveSeverity(configType, grandfatheredAttr, DiagnosticId);
         context.ReportDiagnostic(Diagnostic.Create(
-            Rule,
-            op.Syntax.GetLocation(),
-            configType.Name,
-            op.TargetMethod.Name,
-            thisSection,
-            targetSection,
-            target.Name));
+            descriptor: Rule,
+            location: op.Syntax.GetLocation(),
+            effectiveSeverity: severity,
+            additionalLocations: null,
+            properties: null,
+            messageArgs: [configType.Name, op.TargetMethod.Name, thisSection, targetSection, target.Name]));
     }
 
     private static OwnershipMap BuildOwnershipMap(
