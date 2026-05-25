@@ -90,7 +90,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task CreateDraftAsync_Throws_WhenNoActiveYear()
     {
-        _budgetService.GetActiveYearAsync().Returns((BudgetYear?)null);
+        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
 
         var act = async () => await _sut.CreateDraftAsync(Guid.NewGuid(), Guid.NewGuid(), null);
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -1282,7 +1282,36 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         };
         year.Groups.Add(group);
 
-        _budgetService.GetActiveYearAsync().Returns(year);
+        var yearDetail = new BudgetYearDetail(
+            year.Id,
+            year.Year,
+            year.Name,
+            year.Status,
+            year.IsDeleted,
+            [
+                new BudgetGroupDetail(
+                    group.Id,
+                    group.BudgetYearId,
+                    group.Name,
+                    group.SortOrder,
+                    group.IsRestricted,
+                    group.IsDepartmentGroup,
+                    group.IsTicketingGroup,
+                    null,
+                    [
+                        new BudgetCategoryDetail(
+                            category.Id,
+                            category.BudgetGroupId,
+                            category.Name,
+                            category.AllocatedAmount,
+                            category.ExpenditureType,
+                            category.TeamId,
+                            category.SortOrder,
+                            [])
+                    ])
+            ]);
+
+        _budgetService.GetActiveYearAsync().Returns(yearDetail);
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
 
         return (year, category);

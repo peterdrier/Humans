@@ -36,7 +36,11 @@ public class GoogleController(
         [FromServices] ISyncSettingsService syncSettingsService,
         [FromServices] IUserServiceRead userService)
     {
-        var settings = await syncSettingsService.GetAllAsync();
+        var settings = (await syncSettingsService.GetAllAsync())
+            // Sort by the enum's string name to match the prior EF ordering
+            // (ServiceType is stored via .HasConversion<string>()).
+            .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
+            .ToList();
 
         // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
         // rather than an EF .Include across the section boundary (design-rules §6).

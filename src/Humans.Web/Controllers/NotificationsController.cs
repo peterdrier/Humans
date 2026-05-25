@@ -34,9 +34,15 @@ public class NotificationsController(
 
         return View(new NotificationInboxViewModel
         {
-            NeedsAttention = result.NeedsAttention.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
-            Informational = result.Informational.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
-            Resolved = result.Resolved.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            NeedsAttention = result.NeedsAttention
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Informational = result.Informational
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Resolved = result.Resolved
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
             Meters = meters,
             UnreadCount = result.UnreadCount,
             SearchTerm = search,
@@ -59,8 +65,12 @@ public class NotificationsController(
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
-            Actionable = result.Actionable.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
-            Informational = result.Informational.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Actionable = result.Actionable
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Informational = result.Informational
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
             Meters = meters,
             ActionableCount = result.ActionableCount,
         });

@@ -1,8 +1,0 @@
-# Baseline: only NotificationRepository may write to ctx.Notifications or ctx.NotificationRecipients
-# One locator per line: relative/path.cs:stable-key
-# Stable keys only — line numbers are informational and stripped for diffing.
-# Generated 2026-05-14 (align/notifications Phase 2).
-#
-# The Notifications section is fan-in: every other section dispatches through
-# INotificationService / INotificationEmitter rather than writing the DbSets
-# directly. Empty baseline is the steady state.

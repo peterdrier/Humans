@@ -1,7 +1,5 @@
-using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Tests.Architecture.Ratchet;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 using NotificationMeterProvider = Humans.Application.Services.Notifications.NotificationMeterProvider;
@@ -115,61 +113,4 @@ public class NotificationsArchitectureTests
     // Sealed-repository check is covered by the generic
     // IRepositoryImplementationsAreSealedRule across every repository.
 
-    // ── Sole-writer DbSet rule ───────────────────────────────────────────────
-
-    /// <summary>
-    /// Only <c>NotificationRepository</c> may write to
-    /// <c>ctx.Notifications</c> or <c>ctx.NotificationRecipients</c>. Any
-    /// other production class calling <c>.Add</c>, <c>.AddRange</c>,
-    /// <c>.Update</c>, <c>.Remove</c>, or <c>.Attach</c> on either DbSet is
-    /// a cross-section boundary violation: callers must go through
-    /// <see cref="Humans.Application.Interfaces.Notifications.INotificationService"/>,
-    /// <see cref="Humans.Application.Interfaces.Notifications.INotificationEmitter"/>,
-    /// or <see cref="Humans.Application.Interfaces.Notifications.INotificationInboxService"/>.
-    /// </summary>
-    [HumansFact]
-    public void Only_NotificationRepository_Writes_Notification_DbSets()
-    {
-        var repoRoot = RatchetTestRunner.LocateRepoRoot();
-        var violations = ScanNotificationDbSetWrites(repoRoot);
-        RatchetTestRunner.Run(
-            "OnlyNotificationRepositoryWritesNotificationDbSets",
-            "tests/Humans.Application.Tests/Architecture/Baselines/OnlyNotificationRepositoryWritesNotificationDbSets.baseline.txt",
-            violations);
-    }
-
-    // Matches the write-operation call chains on either notification DbSet.
-    // e.g. ctx.Notifications.Add(...)  /  .AddRange  /  .Update  /  .Remove  /  .Attach
-    //     ctx.NotificationRecipients.Add(...)  / ... etc.
-    private static readonly Regex NotificationWriteRegex = new(
-        @"(?:Notifications|NotificationRecipients)\s*\.\s*(?:Add|AddRange|Update|Remove|Attach)\b",
-        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
-        TimeSpan.FromSeconds(2));
-
-    internal static IEnumerable<string> ScanNotificationDbSetWrites(string repoRoot)
-    {
-        foreach (var path in RatchetTestRunner.EnumerateSourceFiles(repoRoot))
-        {
-            // The canonical owner is NotificationRepository — exclude it from violation reporting.
-            if (path.Replace('\\', '/').EndsWith(
-                    "Infrastructure/Repositories/Notifications/NotificationRepository.cs",
-                    StringComparison.Ordinal))
-                continue;
-
-            var content = File.ReadAllText(path);
-            if (!NotificationWriteRegex.IsMatch(content)) continue;
-
-            var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
-            var ordinal = 0;
-            foreach (var match in NotificationWriteRegex.Matches(content).Cast<Match>())
-            {
-                ordinal++;
-                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
-                var dbset = match.Value.StartsWith("NotificationRecipients", StringComparison.Ordinal)
-                    ? "NotificationRecipients-write"
-                    : "Notifications-write";
-                yield return $"{rel}:{dbset}#{ordinal} # L{line}";
-            }
-        }
-    }
 }

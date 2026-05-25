@@ -21,9 +21,9 @@ internal sealed class SyncSettingsRepository(IDbContextFactory<HumansDbContext> 
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Cross-domain nav UpdatedByUser intentionally NOT loaded — callers
         // resolve display names via IUserService (design-rules §6).
+        // Display ordering is the controller's job (display-sort-in-controllers atom).
         return await ctx.SyncServiceSettings
             .AsNoTracking()
-            .OrderBy(s => s.ServiceType)
             .ToListAsync(ct);
     }
 

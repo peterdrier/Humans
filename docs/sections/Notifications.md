@@ -176,6 +176,7 @@ All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a re
 ### Touch-and-clean guidance
 
 - Do **not** add new `DbContext.Notifications` / `DbContext.NotificationRecipients` reads outside this section. New notification shapes go behind new methods on `INotificationService` / `INotificationEmitter` / `INotificationInboxService`.
+- `HUM0022` enforces that only `NotificationRepository` writes `DbContext.Notifications` / `DbContext.NotificationRecipients`.
 - Do **not** introduce a stored meter. Every meter is a delegate that calls the owning section's service. If a count is too expensive to compute on demand, fix the owning section (add a narrow, indexable count method to its repository) — do not persist a denormalised counter.
 - When adding a new `NotificationSource`, pair the emission with a decision about whether a meter should track it. If yes, add a count method to the owning section's service and wire it into `NotificationMeterProvider`; if no, ensure `/Notifications` filtering handles the new source. Update `NotificationSource → MessageCategory` mapping so preference suppression works.
 - Callers of dispatch should treat it as fire-and-forget; if you need to swallow exceptions, do it at the call site after a log (design-rules §7a analogue).
