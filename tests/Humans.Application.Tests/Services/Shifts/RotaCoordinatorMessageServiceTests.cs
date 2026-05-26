@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
@@ -9,6 +10,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.Shifts;
@@ -17,17 +19,22 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// Orchestration tests for <see cref="RotaCoordinatorMessageService"/>:
 /// recipient fan-out, per-recipient shift list, audit log, and the failure shapes
 /// (missing message body, missing rota, missing signups). Issue
-/// nobodies-collective/Humans#732.
+/// nobodies-collective/Humans#732. Team-scoped variants cover the
+/// <c>SendTeamRotasMessageAsync</c> path (fan-out across all current/upcoming
+/// rotas in a team, deduped by user).
 /// </summary>
 public sealed class RotaCoordinatorMessageServiceTests
 {
     private readonly IShiftSignupRepository _signupRepo = Substitute.For<IShiftSignupRepository>();
+    private readonly IShiftManagementRepository _mgmtRepo = Substitute.For<IShiftManagementRepository>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 15, 12, 0));
 
     private RotaCoordinatorMessageService CreateSut() =>
-        new(_signupRepo, _userService, _emailService, _auditLog,
+        new(_signupRepo, _mgmtRepo, _teamService, _userService, _emailService, _auditLog, _clock,
             NullLogger<RotaCoordinatorMessageService>.Instance);
 
     [HumansFact]
@@ -311,6 +318,339 @@ public sealed class RotaCoordinatorMessageServiceTests
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
+    }
+
+    // ============================================================
+    // SendTeamRotasMessageAsync — team-scoped fan-out across all
+    // current/upcoming rotas in a team.
+    // ============================================================
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_RejectsBlankMessage()
+    {
+        var result = await CreateSut().SendTeamRotasMessageAsync(Guid.NewGuid(), Guid.NewGuid(), "   ");
+
+        result.Succeeded.Should().BeFalse();
+        result.Error.Should().Contain("required");
+        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorTeamRotasMessageAsync(null!);
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenTeamMissing()
+    {
+        var teamId = Guid.NewGuid();
+        _teamService.GetTeamAsync(teamId).Returns((TeamInfo?)null);
+
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello");
+
+        result.Succeeded.Should().BeFalse();
+        result.Error.Should().Contain("Team not found");
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenNoActiveEvent()
+    {
+        var (teamId, _) = StubTeam();
+        _mgmtRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettings?)null);
+
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello");
+
+        result.Succeeded.Should().BeFalse();
+        result.Error.Should().Contain("no upcoming rotas");
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_ExcludesRotasWithNoFutureShifts()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+
+        var pastShift = MakeShift(Guid.Empty, dayOffset: -30, startHour: 10);
+        var futureShift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 14);
+
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+
+        var pastOnlyRota = MakeTeamRota(teamId, es, "PastOnly", [(pastShift, [userA])]);
+        var futureRota = MakeTeamRota(teamId, es, "Future", [(futureShift, [userB])]);
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([pastOnlyRota, futureRota]);
+
+        var sender = Guid.NewGuid();
+        StubUsers(sender, userA, userB);
+
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+
+        // userB's email queued; userA (past-only rota) skipped.
+        await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
+            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "b@example.com"),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendCoordinatorTeamRotasMessageAsync(
+            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "a@example.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_FiltersInactiveSignupStatuses()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+
+        var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var sender = Guid.NewGuid();
+        var confirmed = Guid.NewGuid();
+        var pending = Guid.NewGuid();
+        var withdrawn = Guid.NewGuid();
+
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [confirmed, pending, withdrawn])]);
+        // Override the default Confirmed status on two of the three signups.
+        rota.Shifts.First().ShiftSignups.First(s => s.UserId == pending).Status = SignupStatus.Pending;
+        rota.Shifts.First().ShiftSignups.First(s => s.UserId == withdrawn).Status = SignupStatus.Withdrawn;
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([rota]);
+
+        // Withdrawn user is filtered before user lookup, so only the two active
+        // recipients are stubbed; if the service ever called GetUserInfosAsync
+        // for the withdrawn id, the test would surface that via the wrong count.
+        StubUsers(sender, confirmed, pending);
+
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+
+        result.Succeeded.Should().BeTrue();
+        result.RecipientCount.Should().Be(2, "withdrawn is excluded; pending + confirmed are kept");
+        await _emailService.Received(2).SendCoordinatorTeamRotasMessageAsync(
+            Arg.Any<CoordinatorTeamRotasMessageRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_DedupesRecipient_AcrossMultipleRotas()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+
+        var userA = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+
+        var shiftR1 = MakeShift(Guid.Empty, dayOffset: 30, startHour: 9);
+        var shiftR2 = MakeShift(Guid.Empty, dayOffset: 31, startHour: 14);
+
+        var rotaA = MakeTeamRota(teamId, es, "Aardvark", [(shiftR1, [userA])]);
+        var rotaB = MakeTeamRota(teamId, es, "Beaver", [(shiftR2, [userA])]);
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([rotaA, rotaB]);
+
+        StubUsers(sender, userA);
+
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+
+        result.Succeeded.Should().BeTrue();
+        result.RecipientCount.Should().Be(1, "user appears in two rotas but should receive exactly one email");
+        result.RotaCount.Should().Be(2);
+
+        await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
+            Arg.Is<CoordinatorTeamRotasMessageRequest>(r =>
+                r.RecipientEmail == "a@example.com"
+                && r.ShiftGroups.Count == 2
+                && r.ShiftGroups.Any(g => g.RotaName == "Aardvark")
+                && r.ShiftGroups.Any(g => g.RotaName == "Beaver")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_GroupsShiftsByRota_InAlphabeticalRotaOrder()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+        var userA = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+
+        var shiftZ = MakeShift(Guid.Empty, dayOffset: 30, startHour: 9);
+        var shiftA = MakeShift(Guid.Empty, dayOffset: 31, startHour: 14);
+
+        var zRota = MakeTeamRota(teamId, es, "Zebra", [(shiftZ, [userA])]);
+        var aRota = MakeTeamRota(teamId, es, "Antelope", [(shiftA, [userA])]);
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([zRota, aRota]);
+
+        StubUsers(sender, userA);
+
+        CoordinatorTeamRotasMessageRequest? captured = null;
+        await _emailService.SendCoordinatorTeamRotasMessageAsync(
+            Arg.Do<CoordinatorTeamRotasMessageRequest>(r => captured = r),
+            Arg.Any<CancellationToken>());
+
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+
+        captured.Should().NotBeNull();
+        captured!.ShiftGroups[0].RotaName.Should().Be("Antelope", "rotas grouped alphabetically by name");
+        captured.ShiftGroups[1].RotaName.Should().Be("Zebra");
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+        var userA = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+
+        var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA])]);
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([rota]);
+        StubUsers(sender, userA);
+
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "schedule change");
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CoordinatorTeamRotasMessageSent,
+            nameof(Team),
+            teamId,
+            Arg.Is<string>(d => d.Contains("schedule change") && d.Contains("Test Team")),
+            sender,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_IsolatesPerRecipientFailures()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+
+        var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA, userB])]);
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([rota]);
+        StubUsers(sender, userA, userB);
+
+        _emailService
+            .When(s => s.SendCoordinatorTeamRotasMessageAsync(
+                Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "a@example.com"),
+                Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
+
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hi");
+
+        result.Succeeded.Should().BeTrue("partial dispatch returns success");
+        result.RecipientCount.Should().Be(1);
+        await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
+            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "b@example.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetTeamRotasRecipientPreviewAsync_ReturnsDedupedNamesAndRotaCount()
+    {
+        var (teamId, _) = StubTeam();
+        var es = StubEvent();
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+
+        var shift1 = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var shift2 = MakeShift(Guid.Empty, dayOffset: 31, startHour: 12);
+        var rota1 = MakeTeamRota(teamId, es, "R1", [(shift1, [userA, userB])]);
+        var rota2 = MakeTeamRota(teamId, es, "R2", [(shift2, [userA])]);
+
+        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+            .Returns([rota1, rota2]);
+
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Alice"),
+                    [userB] = MakeUserInfoWithEmail(userB, "b@example.com", "Bob"),
+                }));
+
+        var preview = await CreateSut().GetTeamRotasRecipientPreviewAsync(teamId);
+
+        preview.RotaCount.Should().Be(2);
+        preview.RecipientNames.Should().BeEquivalentTo(["Alice", "Bob"]);
+    }
+
+    private (Guid TeamId, TeamInfo Team) StubTeam()
+    {
+        var teamId = Guid.NewGuid();
+        var team = new TeamInfo(
+            teamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: []);
+        _teamService.GetTeamAsync(teamId).Returns(team);
+        return (teamId, team);
+    }
+
+    private EventSettings StubEvent()
+    {
+        var es = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Test Event",
+            TimeZoneId = "UTC",
+            GateOpeningDate = new LocalDate(2026, 6, 1),
+            BuildStartOffset = -30,
+            EventEndOffset = 60,
+            StrikeEndOffset = 90,
+            IsShiftBrowsingOpen = true,
+            IsActive = true,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+        _mgmtRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(es);
+        return es;
+    }
+
+    /// <summary>
+    /// Builds a team-scoped Rota with EventSettings wired up and Shift+ShiftSignup
+    /// collections populated as the team-level path expects (via Rota.Shifts →
+    /// Shift.ShiftSignups). Each tuple is (shift, recipient user ids); all signups
+    /// default to Confirmed status.
+    /// </summary>
+    private static Rota MakeTeamRota(
+        Guid teamId,
+        EventSettings es,
+        string name,
+        IReadOnlyList<(Shift Shift, Guid[] UserIds)> shiftsWithSignups)
+    {
+        var rota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = teamId,
+            Name = name,
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            EventSettings = es,
+        };
+        foreach (var (shift, userIds) in shiftsWithSignups)
+        {
+            shift.RotaId = rota.Id;
+            foreach (var uid in userIds)
+            {
+                shift.ShiftSignups.Add(MakeSignup(uid, shift));
+            }
+            rota.Shifts.Add(shift);
+        }
+        return rota;
     }
 
     private static Rota MakeRota(out EventSettings es)

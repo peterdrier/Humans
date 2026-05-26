@@ -409,6 +409,58 @@ public class ShiftAdminController(
             .ToList();
     }
 
+    // Team-level coordinator message — siblings of the per-rota EmailRota actions
+    // above. Same management gate, same Reply-To behaviour, audit attached to the
+    // Team entity.
+    [HttpGet("Email")]
+    public async Task<IActionResult> EmailTeamRotas(string slug)
+    {
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id);
+
+        var vm = new EmailTeamRotasViewModel
+        {
+            TeamSlug = slug,
+            TeamName = team.Name,
+            RotaCount = preview.RotaCount,
+            RecipientCount = preview.RecipientNames.Count,
+            RecipientNames = preview.RecipientNames,
+        };
+        return View(vm);
+    }
+
+    [HttpPost("Email")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EmailTeamRotas(string slug, EmailTeamRotasViewModel model)
+    {
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return teamError;
+
+        // Repopulate display fields before any return-with-error path so the
+        // re-rendered form still shows the recipient list and counts.
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id);
+        model.TeamSlug = slug;
+        model.TeamName = team.Name;
+        model.RotaCount = preview.RotaCount;
+        model.RecipientCount = preview.RecipientNames.Count;
+        model.RecipientNames = preview.RecipientNames;
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var result = await rotaMessenger.SendTeamRotasMessageAsync(team.Id, user.Id, model.Message);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue team rota emails.");
+            return View(model);
+        }
+
+        SetSuccess($"Queued {result.RecipientCount} email(s) across {result.RotaCount} rota(s) in '{result.TeamName}'.");
+        return RedirectToAction(nameof(Index), new { slug });
+    }
+
     [HttpPost("Rotas/{rotaId}/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRota(string slug, Guid rotaId)

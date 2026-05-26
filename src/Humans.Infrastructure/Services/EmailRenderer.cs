@@ -202,6 +202,53 @@ public class EmailRenderer(
                     senderLine));
         });
 
+    public EmailContent RenderCoordinatorTeamRotasMessage(
+        string recipientName,
+        string senderName,
+        string? senderEmail,
+        string teamName,
+        string messageText,
+        IReadOnlyList<RotaShiftGroup> shiftGroups,
+        string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            ArgumentNullException.ThrowIfNull(shiftGroups);
+
+            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
+
+            // Per-rota groups: bold rota name then <ul><li> shift lines.
+            // Empty-groups fallback mirrors the per-rota renderer.
+            string shiftGroupsHtml;
+            if (shiftGroups.Count == 0 || shiftGroups.All(g => g.ShiftLines.Count == 0))
+            {
+                shiftGroupsHtml = $"<p><em>{HtmlEncode(L("Email_CoordinatorRotaMessage_NoShifts"))}</em></p>";
+            }
+            else
+            {
+                shiftGroupsHtml = string.Concat(shiftGroups.Select(g =>
+                {
+                    var lines = g.ShiftLines.Count == 0
+                        ? string.Empty
+                        : "<ul>" + string.Concat(g.ShiftLines.Select(line => $"<li>{HtmlEncode(line)}</li>")) + "</ul>";
+                    return $"<p><strong>{HtmlEncode(g.RotaName)}</strong></p>{lines}";
+                }));
+            }
+
+            var senderLine = !string.IsNullOrEmpty(senderEmail)
+                ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"
+                : $"<p><strong>{HtmlEncode(senderName)}</strong></p>";
+
+            return new EmailContent(
+                Lf("Email_CoordinatorTeamRotasMessage_Subject", HtmlEncode(teamName)),
+                Lf("Email_CoordinatorTeamRotasMessage_Body",
+                    HtmlEncode(recipientName),
+                    HtmlEncode(senderName),
+                    HtmlEncode(teamName),
+                    sanitizedMessage,
+                    shiftGroupsHtml,
+                    senderLine));
+        });
+
     public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(
             L("Email_MagicLinkLogin_Subject"),

@@ -174,4 +174,5 @@ public enum AuditAction
     ContainerPlacementCleared,
     ContainerPlacementNotesUpdated,
     CoordinatorRotaMessageSent,
+    CoordinatorTeamRotasMessageSent,
 }

@@ -258,6 +258,32 @@ public sealed class OutboxEmailService(
     }
 
     /// <inheritdoc />
+    public async Task SendCoordinatorTeamRotasMessageAsync(
+        CoordinatorTeamRotasMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var content = renderer.RenderCoordinatorTeamRotasMessage(
+            request.RecipientName,
+            request.SenderName,
+            request.SenderEmail,
+            request.TeamName,
+            request.MessageText,
+            request.ShiftGroups,
+            request.Culture);
+
+        await EnqueueAsync(
+            request.RecipientEmail,
+            request.RecipientName,
+            content,
+            "coordinator_team_rotas_message",
+            cancellationToken,
+            replyTo: request.SenderEmail,
+            category: MessageCategory.VolunteerUpdates);
+    }
+
+    /// <inheritdoc />
     public async Task SendMagicLinkLoginAsync(
         string toEmail,
         string displayName,

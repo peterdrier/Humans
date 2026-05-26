@@ -1041,6 +1041,20 @@
                 </form>
             </div>
         </div>
+
+        @* Email Everyone in Upcoming Rotas *@
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Email everyone in upcoming rotas</h5></div>
+            <div class="card-body">
+                <p class="mb-2">
+                    Send a single message to every human signed up on any of this team's current or upcoming rotas.
+                    Each recipient gets one email listing their own shifts; replies come back to you.
+                </p>
+                <a asp-action="EmailTeamRotas" asp-route-slug="@Model.Department.Slug" class="btn btn-outline-primary">
+                    Compose&hellip;
+                </a>
+            </div>
+        </div>
     }
 </div>
 

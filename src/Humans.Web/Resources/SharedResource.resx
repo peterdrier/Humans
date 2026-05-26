@@ -2308,6 +2308,19 @@
   <data name="EmailRota_Success" xml:space="preserve"><value>Queued {0} email(s) to recipients on rota '{1}'.</value><comment>{0} = recipient count, {1} = rota name</comment></data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve"><value>This rota has no active signups to email.</value></data>
 
+  <!-- Coordinator Team Rotas Message ("Email everyone in upcoming rotas") -->
+  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve"><value>A message about your shifts with {0}</value><comment>{0} = team name (HTML-encoded)</comment></data>
+  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts across this team's upcoming rotas:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=team name, {3}=message body, {4}=per-rota shift groups HTML, {5}=sender contact block HTML</comment></data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve"><value>Email team: {0}</value><comment>{0} = team name</comment></data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve"><value>Email team</value></data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve"><value>Email everyone in upcoming rotas: {0}</value><comment>{0} = team name</comment></data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve"><value>Recipients ({0})</value><comment>{0} = recipient count</comment></data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve"><value>across {0} rota(s)</value><comment>{0} = rota count</comment></data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve"><value>No one is signed up to this team's upcoming rotas yet.</value></data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve"><value>Your message</value></data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Plain text only. Each recipient will see this body plus their own shift list across the team's upcoming rotas.</value></data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
+
   <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Missing Consents</value></data>
   <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Incomplete Signup</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Import my Google photo</value></data>

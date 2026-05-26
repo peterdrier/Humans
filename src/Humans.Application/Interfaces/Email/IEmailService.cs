@@ -243,6 +243,18 @@ public interface IEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a personalized team-level coordinator message to a single signup,
+    /// covering all current/upcoming rotas in the team. The body carries the
+    /// coordinator's free-text message plus the recipient's shifts grouped by
+    /// rota (each rota in its own timezone). Category is
+    /// <see cref="MessageCategory.VolunteerUpdates"/>; replies go to the
+    /// coordinator's email when supplied.
+    /// </summary>
+    Task SendCoordinatorTeamRotasMessageAsync(
+        CoordinatorTeamRotasMessageRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a magic link login email to an existing user.
     /// </summary>
     Task SendMagicLinkLoginAsync(
@@ -400,6 +412,29 @@ public record CoordinatorRotaMessageRequest(
     string MessageText,
     IReadOnlyList<string> ShiftLines,
     string? Culture = null);
+
+/// <summary>
+/// Payload for a coordinator team-level "email all rotas" message to a single signup.
+/// <see cref="ShiftGroups"/> are pre-rendered, per-rota lists of chronologically-ordered
+/// shift labels for the recipient (each rota's shifts in the rota's own timezone) — the
+/// renderer HTML-encodes them, it does not parse or sort them.
+/// </summary>
+public record CoordinatorTeamRotasMessageRequest(
+    string RecipientEmail,
+    string RecipientName,
+    string SenderName,
+    string? SenderEmail,
+    string TeamName,
+    string MessageText,
+    IReadOnlyList<RotaShiftGroup> ShiftGroups,
+    string? Culture = null);
+
+/// <summary>
+/// A recipient's shifts on a single rota, ready for the team-level coordinator
+/// message renderer. <see cref="ShiftLines"/> are already chronological and
+/// formatted in the rota's timezone.
+/// </summary>
+public sealed record RotaShiftGroup(string RotaName, IReadOnlyList<string> ShiftLines);
 
 /// <summary>
 /// Payload for enqueuing a campaign-code email.

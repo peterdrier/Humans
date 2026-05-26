@@ -33,7 +33,62 @@ public interface IRotaCoordinatorMessageService : IApplicationService
         Guid senderUserId,
         string messageText,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Queues one personalised email per recipient across every current/upcoming
+    /// rota in the given team in the active event. Recipients = distinct users with
+    /// a Pending or Confirmed signup on any shift in any included rota — deduped
+    /// across rotas so each human receives one email. Body lists the recipient's
+    /// own shifts grouped by rota, each rota in its own timezone.
+    /// </summary>
+    /// <param name="teamId">Team whose rotas' signups receive the message.</param>
+    /// <param name="senderUserId">Coordinator sending the message. Used for
+    /// audit attribution and the Reply-To header.</param>
+    /// <param name="messageText">Free-text body composed by the coordinator.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Outcome with recipient + rota counts and team name for the
+    /// coordinator-facing success message; failure shape on misconfiguration
+    /// (no active event, team has no upcoming rotas, etc.).</returns>
+    Task<TeamRotasMessageDispatchResult> SendTeamRotasMessageAsync(
+        Guid teamId,
+        Guid senderUserId,
+        string messageText,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the recipient names + counts the team-level compose form needs to
+    /// preview audience size — same audience definition as
+    /// <see cref="SendTeamRotasMessageAsync"/>, but no email is enqueued.
+    /// </summary>
+    Task<TeamRotasRecipientPreview> GetTeamRotasRecipientPreviewAsync(
+        Guid teamId,
+        CancellationToken ct = default);
 }
+
+/// <summary>
+/// Outcome of <see cref="IRotaCoordinatorMessageService.SendTeamRotasMessageAsync"/>.
+/// </summary>
+public sealed record TeamRotasMessageDispatchResult(
+    bool Succeeded,
+    int RecipientCount,
+    int RotaCount,
+    string? TeamName,
+    string? Error)
+{
+    public static TeamRotasMessageDispatchResult Success(int recipientCount, int rotaCount, string teamName) =>
+        new(true, recipientCount, rotaCount, teamName, null);
+
+    public static TeamRotasMessageDispatchResult Failure(string error) =>
+        new(false, 0, 0, null, error);
+}
+
+/// <summary>
+/// Preview payload for the team-level compose form: who would receive the message
+/// and across how many rotas, without enqueuing anything.
+/// </summary>
+public sealed record TeamRotasRecipientPreview(
+    int RotaCount,
+    IReadOnlyList<string> RecipientNames);
 
 /// <summary>
 /// Outcome of <see cref="IRotaCoordinatorMessageService.SendRotaMessageAsync"/>.
