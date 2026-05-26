@@ -106,6 +106,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - Wave allocation pulls available codes ordered by `CampaignCode.ImportOrder` so batch order is stable and reproducible.
 - Campaign emails are queued through the email outbox system. Each grant tracks the status and timestamp of the most recent delivery attempt; failed enqueues flip the single grant to `Failed` (the loop persists/enqueues one grant at a time so a mid-loop throw cannot orphan grants).
 - Humans opt out of campaign emails by setting `MessageCategory.CampaignCodes = opted-out` via the unsubscribe / communication-preferences flow. Opted-out humans are excluded from future wave sends. (Today `CampaignCodes` is an always-on category, so the gate is a no-op guard for a future opt-outable state.)
+<!-- wheat: docs/superpowers/specs/2026-03-14-email-outbox-campaigns-design.md §Template Substitution Security -->
+- Campaign template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes every value via `System.Net.WebUtility.HtmlEncode` before insertion into `Campaign.EmailBodyTemplate` / `EmailSubject` — recipient display names are user-controlled and would otherwise be an HTML-injection vector. Placeholder matching uses `StringComparison.Ordinal`. The full substitution vocabulary is `{{Code}}` and `{{Name}}`; new placeholders must be added at the renderer with the same encoding guard.
 
 ## Negative Access Rules
 

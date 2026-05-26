@@ -48,6 +48,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |
 | BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../sections/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
 | ExpenseReport / ExpenseLine / ExpenseAttachment / HoldedExpenseOutboxEvent | [Expenses](../sections/Expenses.md) | Expense reports and Holded sync outbox. |
+| HoldedExpenseDoc / HoldedCategoryMap / HoldedSyncState / HoldedCreditorBalance / HoldedPayment | [Finance](../sections/Finance.md) | Holded actuals cache (Feature 1) + creditor/payment cache (Feature 2). |
 | StoreProduct / StoreOrder / StoreOrderLine / StorePayment / StoreInvoice / StoreTreasurySyncState | [Store](../sections/Store.md) | |
 | Issue / IssueComment | [Issues](../sections/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |

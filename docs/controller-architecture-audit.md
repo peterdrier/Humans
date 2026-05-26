@@ -1,18 +1,18 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-05-25 (freshness-sweep regeneration).
+Living document. Last updated: 2026-05-26 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 76 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 80 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-Controllers documented in the previous audit that no longer exist: `BarrioEventsController` (its actions folded into `EventsController` as the `Barrio*` family). `EventsApiController` and `MailerAdminController` were not removed — they moved into the `Controllers/Api/` and `Controllers/Mailer/` subfolders respectively.
+Newly added since the previous audit (purposes are name-derived defaults — review for accuracy): `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), and a previously-undocumented `DebugController` (`/Debug/ClientStats`).
 
-Newly added since the previous audit (purposes are name-derived defaults — review for accuracy): `ShiftWorkloadAdminController`, `TicketsOnsiteAdminController`.
+New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POST), `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx`, and `TicketTransferController.Confirm` replacing the prior `Lookup` action.
 
 ---
 
@@ -240,6 +240,15 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Resend | /Admin/Campaigns/Grants/{grantId}/Resend | POST | Resend code to a grant | OK |
 | RetryAllFailed | /Admin/Campaigns/{id}/RetryAllFailed | POST | Retry all failed sends | OK |
 
+## CantinaController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Roster | /Cantina/Roster | GET | Weekly cantina meal roster | OK |
+| Csv | /Cantina/Roster/Csv | GET | Export weekly cantina roster as CSV | → `RosterCsv` ? (`Csv` alone is ambiguous next to `Roster` / `Day` / `DayCsv`) |
+| Day | /Cantina/Roster/Day | GET | Single-day cantina roster | OK |
+| DayCsv | /Cantina/Roster/Day/Csv | GET | Export single-day cantina roster as CSV | OK |
+
 ## CityPlanningApiController
 
 | Method | Route | Verb | Purpose | Suggestion |
@@ -302,6 +311,12 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Edit | /Camp/{slug}/Containers/{id}/Edit | POST | Edit a container | OK |
 | Delete | /Camp/{slug}/Containers/{id}/Delete | POST | Delete a container | OK |
 
+## DebugController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| ClientStats | /Debug/ClientStats | GET | Debug page returning client request/UA stats | OK |
+
 ## DevLoginController
 
 | Method | Route | Verb | Purpose | Suggestion |
@@ -318,6 +333,12 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | SeedCampRoles | /dev/seed/camp-roles | POST | Seed camp roles | OK |
 | SeedDashboard | /dev/seed/dashboard | POST | Seed sample shift-dashboard data (non-prod) | OK |
 | ResetDashboard | /dev/seed/dashboard/reset | POST | Reset dashboard | OK |
+
+## EarlyEntryRosterController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Shifts/Admin/EarlyEntry | GET | Cross-source early-entry roster (camp roles + ticket stubs) | OK |
 
 ## EmailController
 
@@ -496,6 +517,10 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | EnsureTicketingGroup | /Finance/Years/{id}/EnsureTicketingGroup | POST | Ensure the ticketing budget group exists | OK |
 | UpdateTicketingProjection | /Finance/TicketingProjection/{groupId}/Update | POST | Update ticketing projection inputs | OK |
 | SyncTicketingBudget | /Finance/TicketingBudget/{yearId}/Sync | POST | Sync ticketing budget from sales | OK |
+| HoldedAccounts | /Finance/HoldedAccounts | GET | Holded creditor account provisioning view | OK |
+| ProvisionHoldedAccounts | /Finance/HoldedAccounts/Provision | POST | Provision creditor accounts in Holded | OK |
+| HoldedUnmatched | /Finance/HoldedUnmatched | GET | List unmatched Holded creditor entries | OK |
+| RunHoldedSync | /Finance/HoldedSync/Run | POST | Trigger Holded sync (expense actuals) | OK |
 
 ## GoogleController
 
@@ -744,6 +769,8 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | CancelDeletion | /Profile/Me/Privacy/CancelDeletion | POST | Cancel pending deletion | OK |
 | ShiftInfo | /Profile/Me/ShiftInfo | GET | Shift profile info form | OK |
 | ShiftInfo | /Profile/Me/ShiftInfo | POST | Submit shift profile info | OK |
+| DietaryMedical | /Profile/Me/DietaryMedical | GET | Dietary & medical info form (moved from Shifts profile) | OK |
+| DietaryMedical | /Profile/Me/DietaryMedical | POST | Submit dietary & medical info | OK |
 | CommunicationPreferences | /Profile/Me/CommunicationPreferences | GET | Communication preferences page | OK |
 | UpdatePreference | /Profile/Me/CommunicationPreferences/Update | POST | Update a single comms preference | OK |
 | Notifications | /Profile/Me/Notifications | GET | Permanent redirect to CommunicationPreferences | OK |
@@ -973,9 +1000,9 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Send | /Tickets/Transfers/Send | GET | Send-transfer form | OK |
-| Lookup | /Tickets/Transfers/Lookup | POST | Look up a recipient | OK |
-| Submit | /Tickets/Transfers/Submit | POST | Submit a transfer | OK |
+| Index | /Tickets/Transfers | GET | Transfer landing (own attendees + send/lookup form) | OK |
+| Confirm | /Tickets/Transfers/Confirm | POST | Confirm a transfer (recipient + attendee preview) | OK |
+| Submit | /Tickets/Transfers | POST | Submit a transfer | OK |
 | Cancel | /Tickets/Transfers/Cancel | POST | Cancel a transfer | OK |
 
 ## TimezoneApiController
@@ -1003,6 +1030,7 @@ Newly added since the previous audit (purposes are name-derived defaults — rev
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Shifts/Dashboard/VolunteerTracking | GET | Volunteer tracking dashboard | OK |
+| ExportXlsx | /Shifts/Dashboard/VolunteerTracking/ExportXlsx | GET | Export volunteer tracking grid as XLSX | OK |
 | SetCampSetup | /Shifts/Dashboard/VolunteerTracking/SetCampSetup | POST | Set camp setup | OK |
 | ClearCampSetup | /Shifts/Dashboard/VolunteerTracking/ClearCampSetup | POST | Clear camp setup | OK |
 | SetDayOff | /Shifts/Dashboard/VolunteerTracking/SetDayOff | POST | Set day off | OK |
