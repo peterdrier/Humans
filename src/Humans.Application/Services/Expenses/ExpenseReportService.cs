@@ -106,9 +106,9 @@ public sealed class ExpenseReportService(
 
         var owed = status?.OwedToMember ?? 0m;
         var totalPaid = status?.TotalPaid ?? 0m;
-        // Settled iff the creditor balance is non-negative — same trigger as PollHoldedPaidStatusAsync,
-        // so the timeline never contradicts the report's Paid status badge.
-        var paid = status is not null && status.Balance >= 0m;
+        // Settled iff a KNOWN creditor balance is non-negative — same trigger as PollHoldedPaidStatusAsync,
+        // so the timeline never contradicts the report's Paid status badge. A null balance is unknown.
+        var paid = status?.Balance is { } b && b >= 0m;
 
         return new ExpenseHoldedTimeline(
             RegisteredInHolded: report.HoldedDocId is not null,
@@ -967,8 +967,9 @@ public sealed class ExpenseReportService(
                     accountNum, report.HoldedContactId, ct);
                 if (status is null) continue;
 
-                // Treasury pays the creditor account in aggregate: balance >= 0 means the member is settled.
-                if (status.Balance >= 0m)
+                // Treasury pays the creditor account in aggregate: a KNOWN balance >= 0 means settled.
+                // A null balance is unknown (no cached row) — never settle on it (would falsely mark Paid).
+                if (status.Balance is { } bal && bal >= 0m)
                 {
                     var paidAt = status.LastPaymentDate is { } d
                         ? d.AtStartOfDayInZone(zone).ToInstant()
@@ -987,9 +988,9 @@ public sealed class ExpenseReportService(
             }
             catch (HoldedTransientException ex)
             {
-                logger.LogWarning(ex,
-                    "Transient error polling Holded creditor status for report {ReportId} — retry next run",
-                    report.Id);
+                logger.LogWarning(
+                    "Transient error polling Holded creditor status for report {ReportId}: {Error} — retry next run",
+                    report.Id, ex.Message);
             }
         }
     }
@@ -1004,6 +1005,11 @@ public sealed class ExpenseReportService(
     {
         // 1. Enrich/upsert the Holded contact. Legal name -> name; burner -> tradeName (only with a legal name).
         var holdedContactId = await UpsertHoldedContactAsync(report, ct);
+
+        // Persist the contact id immediately (before the retryable doc-create + attachment steps) so a later
+        // transient/permanent failure can't leave HoldedContactId null and make the retry create a DUPLICATE
+        // contact — the retry reuses this id as an update. The supplier-account number is backfilled in step 4.
+        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
         var input = new HoldedPurchaseDocumentInput
         {
@@ -1068,15 +1074,15 @@ public sealed class ExpenseReportService(
         }
         catch (HoldedTransientException ex)
         {
-            logger.LogWarning(ex,
-                "Could not resolve supplier account number for contact {ContactId} — will backfill on the paid poll",
-                holdedContactId);
+            logger.LogWarning(
+                "Could not resolve supplier account number for contact {ContactId}: {Error} — will backfill on the paid poll",
+                holdedContactId, ex.Message);
         }
         catch (HoldedPermanentException ex)
         {
-            logger.LogWarning(ex,
-                "Permanent error resolving supplier account number for contact {ContactId} — will backfill on the paid poll",
-                holdedContactId);
+            logger.LogWarning(
+                "Permanent error resolving supplier account number for contact {ContactId}: {Error} — will backfill on the paid poll",
+                holdedContactId, ex.Message);
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
 

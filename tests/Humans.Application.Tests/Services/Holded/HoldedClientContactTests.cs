@@ -67,7 +67,9 @@ public class HoldedClientContactTests
 
         var id = await client.UpsertContactAsync(new HoldedContactInput
         {
-            Name = "Legal", TradeName = "Burner", ExistingContactId = "c-exist",
+            Name = "Legal",
+            TradeName = "Burner",
+            ExistingContactId = "c-exist",
         });
 
         method.Should().Be("PUT");

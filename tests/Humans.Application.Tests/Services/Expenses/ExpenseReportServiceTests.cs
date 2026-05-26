@@ -1313,6 +1313,24 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
     }
 
+    [HumansFact]
+    public async Task PollHoldedPaidStatus_does_not_mark_paid_when_balance_unknown()
+    {
+        // No cached balance row (Balance == null) even though a payment exists — must NOT settle.
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: null, OwedToMember: 0m,
+                LastPaymentDate: new LocalDate(2026, 5, 20), TotalPaid: 60m));
+
+        await _sut.PollHoldedPaidStatusAsync(batchSize: 50);
+
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+    }
+
     /// <summary>
     /// Seeds a report through Draft → Submit → Approve → SepaSent and sets the contact link,
     /// mirroring the production flow that precedes paid polling.

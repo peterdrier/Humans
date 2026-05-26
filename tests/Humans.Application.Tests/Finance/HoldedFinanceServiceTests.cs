@@ -317,4 +317,23 @@ public class HoldedFinanceServiceTests
 
         status.Should().BeNull();
     }
+
+    [HumansFact]
+    public async Task GetCreditorStatus_balance_is_null_when_no_balance_row_even_with_payments()
+    {
+        // Payments cached but the 400000xx balance row is missing (cache gap / unresolved account).
+        // Balance must stay null (unknown) — NOT coerced to 0 — so polling never falsely marks Paid.
+        _repo.GetCreditorBalanceByAccountNumAsync(default, default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        {
+            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 60m, Date = new LocalDate(2026, 4, 1) },
+        });
+
+        var status = await MakeService().GetCreditorStatusAsync(40000007, "c1");
+
+        status.Should().NotBeNull();
+        status!.Balance.Should().BeNull();
+        status.OwedToMember.Should().Be(0m);
+        status.TotalPaid.Should().Be(60m);
+    }
 }

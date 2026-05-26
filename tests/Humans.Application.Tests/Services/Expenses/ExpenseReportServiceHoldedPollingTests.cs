@@ -62,23 +62,23 @@ public class ExpenseReportServiceHoldedPollingTests
         string? holdedContactId = "contact-1",
         int? supplierAccountNum = 40000007,
         string holdedDocId = "holded-doc-1") => new()
-    {
-        Id = Guid.NewGuid(),
-        SubmitterUserId = Guid.NewGuid(),
-        BudgetCategoryId = Guid.NewGuid(),
-        BudgetYearId = Guid.NewGuid(),
-        Status = ExpenseReportStatus.SepaSent,
-        PayeeName = "",
-        PayeeIban = "",
-        Total = 0m,
-        HoldedDocId = holdedDocId,
-        HoldedContactId = holdedContactId,
-        HoldedSupplierAccountNum = supplierAccountNum,
-        SepaSentAt = Instant.FromUtc(2026, 5, 9, 10, 0),
-        CreatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
-        UpdatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
-        Lines = [],
-    };
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = Guid.NewGuid(),
+            BudgetCategoryId = Guid.NewGuid(),
+            BudgetYearId = Guid.NewGuid(),
+            Status = ExpenseReportStatus.SepaSent,
+            PayeeName = "",
+            PayeeIban = "",
+            Total = 0m,
+            HoldedDocId = holdedDocId,
+            HoldedContactId = holdedContactId,
+            HoldedSupplierAccountNum = supplierAccountNum,
+            SepaSentAt = Instant.FromUtc(2026, 5, 9, 10, 0),
+            CreatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+            UpdatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+            Lines = [],
+        };
 
     private static HoldedCreditorStatus MakeSettledStatus(LocalDate? lastPaymentDate = null) =>
         new(40000007, Balance: 0m, OwedToMember: 0m,

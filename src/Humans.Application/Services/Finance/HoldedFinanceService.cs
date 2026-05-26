@@ -401,7 +401,9 @@ public sealed class HoldedFinanceService(
         if (balanceRow is null && payments.Length == 0)
             return null;
 
-        var balance = balanceRow?.Balance ?? 0m;
+        // Leave Balance null when no balance row is cached — a missing balance is UNKNOWN, not settled.
+        // Coercing to 0 would make downstream polling falsely mark reports Paid (Codex P1).
+        var balance = balanceRow?.Balance;
         var lastPaymentDate = payments.Length == 0
             ? (LocalDate?)null
             : payments.Max(p => p.Date);
@@ -409,7 +411,7 @@ public sealed class HoldedFinanceService(
         return new HoldedCreditorStatus(
             SupplierAccountNum: balanceRow?.SupplierAccountNum ?? supplierAccountNum,
             Balance: balance,
-            OwedToMember: Math.Max(0m, -balance),
+            OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
             LastPaymentDate: lastPaymentDate,
             TotalPaid: payments.Sum(p => p.Amount));
     }
