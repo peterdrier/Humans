@@ -4,6 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
@@ -31,9 +32,13 @@ public sealed class ExpenseReportService(
     IUserService userService,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
+    IHoldedFinanceService holdedFinance,
     IClock clock,
     ILogger<ExpenseReportService> logger) : IExpenseReportService, IUserDataContributor
 {
+    // Stored for future Holded Finance integration tasks (creditor status polling etc.).
+    private readonly IHoldedFinanceService _holdedFinance = holdedFinance;
+
     public static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
 
@@ -60,13 +65,59 @@ public sealed class ExpenseReportService(
             or ExpenseReportStatus.Approved;
         var iban = await GetSubmitterIbanViewAsync(viewerUserId, ct);
 
+        var timeline = isSubmitter
+            ? await BuildHoldedTimelineAsync(report, ct)
+            : null;
+
         return new ExpenseDetailViewData(
             CategoryDisplayName: categoryName,
             CanEdit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
             CanSubmit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
             CanWithdraw: isSubmitter && canWithdraw,
             HasIban: iban.HasIban,
-            MaskedIban: iban.MaskedIban);
+            MaskedIban: iban.MaskedIban,
+            HoldedTimeline: timeline);
+    }
+
+    /// <summary>
+    /// Aggregates the submitter's owed/paid round-trip from the cached Holded creditor balance.
+    /// The balance already sums all of a member's outstanding docs; when it exceeds the member's
+    /// own registered-unpaid ER totals, the remainder is shown as fronted/adjustments (spec §3).
+    /// </summary>
+    private async Task<ExpenseHoldedTimeline?> BuildHoldedTimelineAsync(
+        ExpenseReportDto report, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(report.HoldedContactId))
+            return new ExpenseHoldedTimeline(
+                RegisteredInHolded: false, OwedToMember: 0m, MemberRegisteredTotal: 0m,
+                OtherAmount: 0m, Paid: false, PaidOn: null, TotalPaid: 0m);
+
+        var status = await _holdedFinance.GetCreditorStatusAsync(
+            report.HoldedSupplierAccountNum, report.HoldedContactId, ct);
+
+        var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
+        // A report with a HoldedDocId is already booked as a payable in Holded (the purchase doc
+        // is created at outbox-drain time), so it contributes to the creditor balance from
+        // Approved onward — both Approved and SepaSent count toward the registered-unpaid total.
+        var memberRegisteredTotal = memberReports
+            .Where(r => r.HoldedDocId is not null
+                     && r.Status is ExpenseReportStatus.Approved or ExpenseReportStatus.SepaSent)
+            .Sum(r => r.Total);
+
+        var owed = status?.OwedToMember ?? 0m;
+        var totalPaid = status?.TotalPaid ?? 0m;
+        // Settled iff a KNOWN creditor balance is non-negative — same trigger as PollHoldedPaidStatusAsync,
+        // so the timeline never contradicts the report's Paid status badge. A null balance is unknown.
+        var paid = status?.Balance is { } b && b >= 0m;
+
+        return new ExpenseHoldedTimeline(
+            RegisteredInHolded: report.HoldedDocId is not null,
+            OwedToMember: owed,
+            MemberRegisteredTotal: memberRegisteredTotal,
+            OtherAmount: Math.Max(0m, owed - memberRegisteredTotal),
+            Paid: paid,
+            PaidOn: status?.LastPaymentDate,
+            TotalPaid: totalPaid);
     }
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
@@ -768,10 +819,9 @@ public sealed class ExpenseReportService(
     }
 
     public async Task<bool> MarkPaidAsync(
-        Guid reportId, CancellationToken ct = default)
+        Guid reportId, Instant paidAt, CancellationToken ct = default)
     {
-        var now = clock.GetCurrentInstant();
-        var ok = await repo.MarkPaidAsync(reportId, now, ct);
+        var ok = await repo.MarkPaidAsync(reportId, paidAt, ct);
         if (!ok) return false;
 
         await auditLogService.LogAsync(
@@ -887,43 +937,60 @@ public sealed class ExpenseReportService(
             .Take(batchSize)
             .ToList();
 
-        if (batch.Count == 0)
-            return;
+        if (batch.Count == 0) return;
+
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
         foreach (var report in batch)
         {
-            if (report.HoldedDocId is null)
+            if (string.IsNullOrEmpty(report.HoldedContactId))
             {
                 logger.LogWarning(
-                    "SepaSent report {ReportId} has no HoldedDocId — skipping",
-                    report.Id);
+                    "SepaSent report {ReportId} has no HoldedContactId — skipping paid poll", report.Id);
                 continue;
             }
 
             try
             {
-                var doc = await holdedClient.GetPurchaseDocumentAsync(report.HoldedDocId, ct);
-
-                if (doc.PaymentsPending == 0 && doc.ApprovedAt is not null)
+                // Backfill the supplier-account number if it wasn't resolved at push time.
+                var accountNum = report.HoldedSupplierAccountNum;
+                if (accountNum is null)
                 {
-                    await MarkPaidAsync(report.Id, ct);
+                    var contact = await holdedClient.GetContactAsync(report.HoldedContactId, ct);
+                    accountNum = contact.SupplierAccountNum;
+                    if (accountNum is not null)
+                        await repo.SetHoldedContactLinkAsync(
+                            report.Id, report.HoldedContactId, accountNum, clock.GetCurrentInstant(), ct);
+                }
+
+                var status = await _holdedFinance.GetCreditorStatusAsync(
+                    accountNum, report.HoldedContactId, ct);
+                if (status is null) continue;
+
+                // Treasury pays the creditor account in aggregate: a KNOWN balance >= 0 means settled.
+                // A null balance is unknown (no cached row) — never settle on it (would falsely mark Paid).
+                if (status.Balance is { } bal && bal >= 0m)
+                {
+                    var paidAt = status.LastPaymentDate is { } d
+                        ? d.AtStartOfDayInZone(zone).ToInstant()
+                        : clock.GetCurrentInstant();
+                    await MarkPaidAsync(report.Id, paidAt, ct);
                     logger.LogInformation(
-                        "Marked expense report {ReportId} as Paid (HoldedDocId={HoldedDocId})",
-                        report.Id, report.HoldedDocId);
+                        "Marked expense report {ReportId} Paid via creditor balance (contact {ContactId})",
+                        report.Id, report.HoldedContactId);
                 }
             }
             catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
             {
                 logger.LogWarning(
-                    "Holded doc {HoldedDocId} for report {ReportId} deleted out-of-band — skipping",
-                    report.HoldedDocId, report.Id);
+                    "Holded contact {ContactId} for report {ReportId} missing — skipping",
+                    report.HoldedContactId, report.Id);
             }
             catch (HoldedTransientException ex)
             {
                 logger.LogWarning(
-                    ex,
-                    "Transient error polling Holded for report {ReportId} (HoldedDocId={HoldedDocId}) — will retry next run",
-                    report.Id, report.HoldedDocId);
+                    "Transient error polling Holded creditor status for report {ReportId}: {Error} — retry next run",
+                    report.Id, ex.Message);
             }
         }
     }
@@ -936,8 +1003,17 @@ public sealed class ExpenseReportService(
         Instant now,
         CancellationToken ct)
     {
+        // 1. Enrich/upsert the Holded contact. Legal name -> name; burner -> tradeName (only with a legal name).
+        var holdedContactId = await UpsertHoldedContactAsync(report, ct);
+
+        // Persist the contact id immediately (before the retryable doc-create + attachment steps) so a later
+        // transient/permanent failure can't leave HoldedContactId null and make the retry create a DUPLICATE
+        // contact — the retry reuses this id as an update. The supplier-account number is backfilled in step 4.
+        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
+
         var input = new HoldedPurchaseDocumentInput
         {
+            ContactId = holdedContactId,
             ContactName = submitterName,
             Date = report.SubmittedAt ?? report.CreatedAt,
             Description = report.Note ?? "",
@@ -953,7 +1029,7 @@ public sealed class ExpenseReportService(
                 .ToList(),
         };
 
-        // Idempotency: reuse existing Holded doc id if a prior retry failed during attachment upload.
+        // 2. Create the purchase doc (idempotent on HoldedDocId).
         string holdedDocId;
         if (string.IsNullOrEmpty(report.HoldedDocId))
         {
@@ -965,21 +1041,16 @@ public sealed class ExpenseReportService(
             holdedDocId = report.HoldedDocId;
         }
 
+        // 3. Upload attachments.
         foreach (var line in report.Lines.OrderBy(l => l.SortOrder))
         {
-            if (line.AttachmentId is null || line.Attachment is null)
-            {
-                continue;
-            }
+            if (line.AttachmentId is null || line.Attachment is null) continue;
 
             var bytes = await fileStorage.TryReadAsync(
                 AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
             if (bytes is null)
-            {
-                // Throw so the outbox event stays unprocessed and Hangfire retries.
                 throw new InvalidOperationException(
                     $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");
-            }
             using var stream = new MemoryStream(bytes, writable: false);
             await holdedClient.UploadAttachmentAsync(
                 holdedDocId,
@@ -992,7 +1063,61 @@ public sealed class ExpenseReportService(
                 ct);
         }
 
+        // 4. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
+        // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
+        // (that would strand a created doc as permanently-failed). A null num is backfilled on the paid poll.
+        int? supplierAccountNum = null;
+        try
+        {
+            var contact = await holdedClient.GetContactAsync(holdedContactId, ct);
+            supplierAccountNum = contact.SupplierAccountNum;
+        }
+        catch (HoldedTransientException ex)
+        {
+            logger.LogWarning(
+                "Could not resolve supplier account number for contact {ContactId}: {Error} — will backfill on the paid poll",
+                holdedContactId, ex.Message);
+        }
+        catch (HoldedPermanentException ex)
+        {
+            logger.LogWarning(
+                "Permanent error resolving supplier account number for contact {ContactId}: {Error} — will backfill on the paid poll",
+                holdedContactId, ex.Message);
+        }
+        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
+
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
+    }
+
+    /// <summary>
+    /// Upserts the submitter's Holded contact. Reuses an existing <c>HoldedContactId</c> when present
+    /// (update), else creates. Legal name is the official identity; the burner is recognizability only
+    /// and is never written to the official <c>name</c> slot.
+    /// </summary>
+    private async Task<string> UpsertHoldedContactAsync(ExpenseReportDto report, CancellationToken ct)
+    {
+        var legalName = report.PayeeName;
+        string? burner = null;
+        if (!string.IsNullOrWhiteSpace(legalName))
+        {
+            var info = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
+            var display = info?.BurnerName;
+            if (!string.IsNullOrWhiteSpace(display) &&
+                !string.Equals(display, legalName, StringComparison.Ordinal))
+            {
+                burner = display;
+            }
+        }
+
+        return await holdedClient.UpsertContactAsync(new HoldedContactInput
+        {
+            Name = legalName,
+            TradeName = burner,
+            CustomId = report.SubmitterUserId.ToString(),
+            Type = "creditor",
+            Iban = string.IsNullOrWhiteSpace(report.PayeeIban) ? null : report.PayeeIban,
+            ExistingContactId = string.IsNullOrEmpty(report.HoldedContactId) ? null : report.HoldedContactId,
+        }, ct);
     }
 
     private async Task ProcessHoldedUpdateTagAsync(

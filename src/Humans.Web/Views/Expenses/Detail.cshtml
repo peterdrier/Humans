@@ -152,6 +152,49 @@
             </div>
         </div>
 
+        @if (Model.HoldedTimeline is { RegisteredInHolded: true } tl)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><strong>Payment status</strong></div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2">
+                            <i class="fa-solid fa-circle-check text-success me-1"></i>
+                            Submitted &amp; approved
+                        </li>
+                        <li class="mb-2">
+                            <i class="fa-solid fa-building-columns text-info me-1"></i>
+                            Registered in Holded
+                            @if (tl.OwedToMember > 0)
+                            {
+                                <span class="fw-semibold">&mdash; &euro;@tl.OwedToMember.ToString("N2") owed to you</span>
+                            }
+                        </li>
+                        @if (tl.OtherAmount > 0)
+                        {
+                            <li class="mb-2 text-muted">
+                                <i class="fa-solid fa-circle-info me-1"></i>
+                                Includes &euro;@tl.OtherAmount.ToString("N2") other (fronted / adjustments in Holded)
+                            </li>
+                        }
+                        @if (tl.Paid)
+                        {
+                            <li class="mb-0">
+                                <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
+                                Paid&nbsp;&euro;@tl.TotalPaid.ToString("N2")@(tl.PaidOn is { } d ? $" on {d:yyyy-MM-dd}" : "") &mdash; balance &euro;0
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="mb-0 text-muted">
+                                <i class="fa-regular fa-clock me-1"></i>Awaiting payment
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
         @if (Model.CanSubmit)
         {
             <div class="card border-primary">

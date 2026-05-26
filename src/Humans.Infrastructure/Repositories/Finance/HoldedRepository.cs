@@ -85,6 +85,82 @@ internal sealed class HoldedRepository(IDbContextFactory<HumansDbContext> factor
             .ToListAsync(ct);
     }
 
+    // ── Creditor balances ────────────────────────────────────────────────────
+
+    public async Task UpsertCreditorBalancesAsync(
+        IReadOnlyList<HoldedCreditorBalance> rows, Instant now, CancellationToken ct = default)
+    {
+        if (rows.Count == 0) return;
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var nums = rows.Select(r => r.SupplierAccountNum).ToList();
+        var existing = await ctx.HoldedCreditorBalances
+            .Where(b => nums.Contains(b.SupplierAccountNum))
+            .ToDictionaryAsync(b => b.SupplierAccountNum, ct);
+        foreach (var r in rows)
+        {
+            if (existing.TryGetValue(r.SupplierAccountNum, out var cur))
+            {
+                cur.Name = r.Name;
+                cur.Balance = r.Balance;
+                cur.LastSyncedAt = now;
+                cur.UpdatedAt = now;
+            }
+            else
+            {
+                r.LastSyncedAt = now;
+                ctx.HoldedCreditorBalances.Add(r);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<HoldedCreditorBalance?> GetCreditorBalanceByAccountNumAsync(
+        int accountNum, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedCreditorBalances.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.SupplierAccountNum == accountNum, ct);
+    }
+
+    // ── Payments ──────────────────────────────────────────────────────────────
+
+    public async Task UpsertPaymentsAsync(
+        IReadOnlyList<HoldedPayment> rows, Instant now, CancellationToken ct = default)
+    {
+        if (rows.Count == 0) return;
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = rows.Select(r => r.HoldedPaymentId).ToList();
+        var existing = await ctx.HoldedPayments
+            .Where(p => ids.Contains(p.HoldedPaymentId))
+            .ToDictionaryAsync(p => p.HoldedPaymentId, ct);
+        foreach (var r in rows)
+        {
+            if (existing.TryGetValue(r.HoldedPaymentId, out var cur))
+            {
+                cur.HoldedContactId = r.HoldedContactId;
+                cur.Amount = r.Amount;
+                cur.Date = r.Date;
+                cur.DocumentType = r.DocumentType;
+                cur.LastSyncedAt = now;
+            }
+            else
+            {
+                r.LastSyncedAt = now;
+                ctx.HoldedPayments.Add(r);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedPayment>> GetPaymentsByContactAsync(
+        string holdedContactId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedPayments.AsNoTracking()
+            .Where(p => p.HoldedContactId == holdedContactId)
+            .ToListAsync(ct);
+    }
+
     // ── Sync state (singleton, seeded by migration) ──────────────────────────
 
     public async Task<HoldedSyncState> GetSyncStateAsync(CancellationToken ct = default)

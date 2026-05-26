@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -70,6 +71,13 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = submitter.ToUserInfo() }));
 
+        // Contact enrichment (Feature 2): the create path upserts the Holded contact and then
+        // resolves its supplier-account number, so stub both calls for the outbox-mechanics tests.
+        _holdedClient.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+            .Returns("holded-contact-1");
+        _holdedClient.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 });
+
         _sut = new ExpenseReportService(
             _repo,
             _fileStorage,
@@ -78,6 +86,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
+            Substitute.For<IHoldedFinanceService>(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>());
     }
@@ -401,6 +410,28 @@ public class ExpenseReportServiceHoldedOutboxTests
             .MarkOutboxFailedPermanentlyAsync(Guid.Empty, null!, default, CancellationToken.None);
     }
 
+    [HumansFact]
+    public async Task CreateIncomingDoc_PersistsContactLinkBeforeDocCreate_SoRetryReusesContact()
+    {
+        // Even when doc-create fails, the contact id must already be persisted, so the retry
+        // reuses it (update mode) instead of creating a DUPLICATE creditor contact.
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new HoldedTransientException("timeout")));
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize);
+
+        // Contact link persisted (with the upserted id, num still null) BEFORE the failed create.
+        await _repo.Received(1).SetHoldedContactLinkAsync(
+            report.Id, "holded-contact-1", null, Now, Arg.Any<CancellationToken>());
+    }
+
     // ─── Permanent error ──────────────────────────────────────────────────────
 
     [HumansFact]
@@ -443,6 +474,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
+            Substitute.For<IHoldedFinanceService>(),
             _clock,
             logger);
 

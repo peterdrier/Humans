@@ -31,6 +31,7 @@ public sealed class HoldedClient : IHoldedClient
     {
         var payload = new
         {
+            contactId = input.ContactId, // TODO(probe): confirm field name (contactId vs contact)
             contactName = input.ContactName,
             date = input.Date.ToUnixTimeSeconds(),
             desc = input.Description,
@@ -157,6 +158,84 @@ public sealed class HoldedClient : IHoldedClient
         return arr.Select(ParsePurchaseDoc).ToList();
     }
 
+    public async Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default)
+    {
+        // TODO(probe): confirm contact payload field names (name/tradeName/customId/type/iban) against live API.
+        var payload = new
+        {
+            name = input.Name,
+            tradeName = input.TradeName,
+            customId = input.CustomId,
+            type = input.Type,
+            iban = input.Iban,
+        };
+
+        var isUpdate = !string.IsNullOrEmpty(input.ExistingContactId);
+        using var req = new HttpRequestMessage(
+            isUpdate ? HttpMethod.Put : HttpMethod.Post,
+            isUpdate
+                ? $"/api/invoicing/v1/contacts/{input.ExistingContactId}"
+                : "/api/invoicing/v1/contacts")
+        { Content = JsonContent.Create(payload) };
+        AttachAuth(req);
+
+        using var resp = await SendAsync(req, ct);
+        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
+            ?? throw new HoldedTransientException("Holded returned empty body");
+        return node["id"]?.GetValue<string>()
+            ?? input.ExistingContactId
+            ?? throw new HoldedTransientException("Holded contact upsert response missing id");
+    }
+
+    public async Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/invoicing/v1/contacts/{contactId}");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+            ?? throw new HoldedTransientException("Holded returned empty body");
+
+        return new HoldedContactDto
+        {
+            Id = node["id"]?.GetValue<string>() ?? contactId,
+            Name = node["name"]?.GetValue<string>(),
+            SupplierAccountNum = ReadInt(node["supplierRecord"]?["num"]),
+        };
+    }
+
+    public async Task<IReadOnlyList<HoldedChartAccountDto>> ListChartOfAccountsAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/accounting/v1/chartofaccounts");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
+        return arr.Where(n => n is not null).Select(n => new HoldedChartAccountDto
+        {
+            Num = ReadInt(n!["num"]) ?? 0,
+            Name = n["name"]?.GetValue<string>() ?? "",
+            Balance = ReadDecimal(n["balance"]),
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<HoldedPaymentDto>> ListPaymentsAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/payments");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
+        return arr.Where(n => n is not null).Select(n => new HoldedPaymentDto
+        {
+            Id = n!["id"]?.GetValue<string>() ?? "",
+            ContactId = n["contactId"]?.GetValue<string>() ?? "",
+            Amount = ReadDecimal(n["amount"]),
+            Date = ReadInstant(n["date"]) ?? Instant.FromUnixTimeSeconds(0),
+            DocumentType = n["documentType"]?.GetValue<string>(),
+        }).ToList();
+    }
+
     private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
     {
         Id = n!["id"]?.GetValue<string>() ?? "",
@@ -215,6 +294,10 @@ public sealed class HoldedClient : IHoldedClient
 
     private static decimal ReadDecimal(JsonNode? node) =>
         node?.GetValue<decimal>() ?? 0m;
+
+    // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
+    private static int? ReadInt(JsonNode? node) =>
+        node is null ? null : (int?)node.GetValue<decimal>();
 
     private static Instant? ReadInstant(JsonNode? node)
     {

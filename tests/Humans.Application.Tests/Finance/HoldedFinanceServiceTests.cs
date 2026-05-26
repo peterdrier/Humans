@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Finance;
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -255,5 +256,84 @@ public class HoldedFinanceServiceTests
         savedState.Should().NotBeNull();
         savedState!.SyncStatus.Should().Be(HoldedSyncStatus.Error);
         savedState.LastError.Should().NotBeNullOrEmpty();
+    }
+
+    // ─── Creditor data ──────────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task SyncCreditorData_caches_only_400000xx_balances_and_all_payments()
+    {
+        _client.ListChartOfAccountsAsync(default).ReturnsForAnyArgs(new List<HoldedChartAccountDto>
+        {
+            new() { Num = 40000001, Name = "Daniela", Balance = -3180m },
+            new() { Num = 40000004, Name = "Peter",   Balance = -23m },
+            new() { Num = 62900000, Name = "Otros",   Balance = 12m },  // not a creditor acct
+        });
+        _client.ListPaymentsAsync(default).ReturnsForAnyArgs(new List<HoldedPaymentDto>
+        {
+            new() { Id = "p1", ContactId = "c1", Amount = 50m, Date = FixedNow, DocumentType = "purchase" },
+        });
+
+        IReadOnlyList<HoldedCreditorBalance>? balances = null;
+        await _repo.UpsertCreditorBalancesAsync(
+            Arg.Do<IReadOnlyList<HoldedCreditorBalance>>(b => balances = b), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        IReadOnlyList<HoldedPayment>? payments = null;
+        await _repo.UpsertPaymentsAsync(
+            Arg.Do<IReadOnlyList<HoldedPayment>>(p => payments = p), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        await MakeService().SyncCreditorDataAsync();
+
+        balances.Should().NotBeNull();
+        balances!.Select(b => b.SupplierAccountNum).Should().BeEquivalentTo(new[] { 40000001, 40000004 });
+        payments.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task GetCreditorStatus_computes_owed_and_paid()
+    {
+        _repo.GetCreditorBalanceByAccountNumAsync(40000001, default).ReturnsForAnyArgs(
+            new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -3180m });
+        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        {
+            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1) },
+            new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
+        });
+
+        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1");
+
+        status.Should().NotBeNull();
+        status!.OwedToMember.Should().Be(3180m);
+        status.TotalPaid.Should().Be(150m);
+        status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 20));
+    }
+
+    [HumansFact]
+    public async Task GetCreditorStatus_returns_null_when_nothing_cached()
+    {
+        _repo.GetCreditorBalanceByAccountNumAsync(default, default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync(default!, default).ReturnsForAnyArgs(new List<HoldedPayment>());
+
+        var status = await MakeService().GetCreditorStatusAsync(40000099, "c-unknown");
+
+        status.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetCreditorStatus_balance_is_null_when_no_balance_row_even_with_payments()
+    {
+        // Payments cached but the 400000xx balance row is missing (cache gap / unresolved account).
+        // Balance must stay null (unknown) — NOT coerced to 0 — so polling never falsely marks Paid.
+        _repo.GetCreditorBalanceByAccountNumAsync(default, default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        {
+            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 60m, Date = new LocalDate(2026, 4, 1) },
+        });
+
+        var status = await MakeService().GetCreditorStatusAsync(40000007, "c1");
+
+        status.Should().NotBeNull();
+        status!.Balance.Should().BeNull();
+        status.OwedToMember.Should().Be(0m);
+        status.TotalPaid.Should().Be(60m);
     }
 }

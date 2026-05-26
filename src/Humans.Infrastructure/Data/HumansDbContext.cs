@@ -119,6 +119,8 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<HoldedExpenseDoc> HoldedExpenseDocs => Set<HoldedExpenseDoc>();
     public DbSet<HoldedCategoryMap> HoldedCategoryMap => Set<HoldedCategoryMap>();
     public DbSet<HoldedSyncState> HoldedSyncStates => Set<HoldedSyncState>();
+    public DbSet<HoldedCreditorBalance> HoldedCreditorBalances => Set<HoldedCreditorBalance>();
+    public DbSet<HoldedPayment> HoldedPayments => Set<HoldedPayment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

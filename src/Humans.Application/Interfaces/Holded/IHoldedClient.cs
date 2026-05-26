@@ -35,4 +35,16 @@ public interface IHoldedClient
     /// <summary>Reads one page of purchase documents (1-based). Empty list = past the end.</summary>
     Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsPageAsync(
         int page, int limit, CancellationToken ct = default);
+
+    /// <summary>Creates or updates a contact; returns the contact id.</summary>
+    Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
+
+    /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
+    Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
+
+    /// <summary>Reads the full chart of accounts (trial balance) in one call.</summary>
+    Task<IReadOnlyList<HoldedChartAccountDto>> ListChartOfAccountsAsync(CancellationToken ct = default);
+
+    /// <summary>Reads all payment rows (contactId, amount, date) in one call.</summary>
+    Task<IReadOnlyList<HoldedPaymentDto>> ListPaymentsAsync(CancellationToken ct = default);
 }

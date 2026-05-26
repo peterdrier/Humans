@@ -150,7 +150,7 @@ public interface IExpenseReportService : IApplicationService
         CancellationToken ct = default);
 
     Task<bool> MarkPaidAsync(
-        Guid reportId, CancellationToken ct = default);
+        Guid reportId, NodaTime.Instant paidAt, CancellationToken ct = default);
 
     /// <summary>True iff the category has at least one budget coordinator
     /// (so the Submitted -> CoordinatorEndorsed step is required).</summary>
@@ -164,8 +164,9 @@ public interface IExpenseReportService : IApplicationService
     Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Polls Holded for payment status on SepaSent expense reports and marks them Paid
-    /// when their Holded purchase document shows PaymentsPending == 0 and ApprovedAt != null.
+    /// Reconciles payment status on SepaSent expense reports against the member's Holded creditor
+    /// balance and marks them Paid when that balance is settled (≥ 0) — treasury pays the creditor
+    /// account in aggregate, not per-document. Missing supplier-account numbers are backfilled here.
     /// Called by the recurring job.
     /// </summary>
     Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default);
@@ -198,4 +199,15 @@ public sealed record ExpenseDetailViewData(
     bool CanSubmit,
     bool CanWithdraw,
     bool HasIban,
-    string? MaskedIban);
+    string? MaskedIban,
+    ExpenseHoldedTimeline? HoldedTimeline);
+
+/// <summary>Round-trip timeline for the submitter, sourced from the Holded creditor balance.</summary>
+public sealed record ExpenseHoldedTimeline(
+    bool RegisteredInHolded,
+    decimal OwedToMember,
+    decimal MemberRegisteredTotal,   // sum of this member's registered-but-unpaid ER totals
+    decimal OtherAmount,             // max(0, OwedToMember - MemberRegisteredTotal): fronted / adjustments
+    bool Paid,
+    NodaTime.LocalDate? PaidOn,
+    decimal TotalPaid);

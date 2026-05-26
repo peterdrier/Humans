@@ -144,7 +144,8 @@ public sealed class ExpensesController(
                 CanSubmit = detail.CanSubmit,
                 CanWithdraw = detail.CanWithdraw,
                 HasIban = detail.HasIban,
-                MaskedIban = detail.MaskedIban
+                MaskedIban = detail.MaskedIban,
+                HoldedTimeline = detail.HoldedTimeline
             };
             return View(model);
         }

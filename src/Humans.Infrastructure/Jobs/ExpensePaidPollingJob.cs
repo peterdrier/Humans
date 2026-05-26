@@ -5,10 +5,9 @@ using Humans.Application.Interfaces.Expenses;
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
-/// Polls Holded for payment status on SepaSent expense reports.
-/// Runs every 15 minutes; caps at 50 reports per run (oldest SepaSentAt first).
-/// Transitions reports whose Holded purchase document shows PaymentsPending == 0
-/// and ApprovedAt != null to the Paid state.
+/// Reconciles payment status on SepaSent expense reports against the Holded creditor balance.
+/// Caps at 50 reports per run (oldest SepaSentAt first). Transitions a report to Paid when the
+/// member's creditor account balance is settled (≥ 0) — treasury pays the account in aggregate.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 120)]
 public class ExpensePaidPollingJob(IExpenseReportService expenseService) : IRecurringJob

@@ -1,11 +1,13 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -25,6 +27,8 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
 
     public ExpenseReportServiceTests()
@@ -44,7 +48,8 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             _teamService,
             _userService,
             AuditLog,
-            Substitute.For<IHoldedClient>(),
+            _holdedClient,
+            _holdedFinance,
             Clock,
             NullLogger<ExpenseReportService>.Instance);
     }
@@ -1179,7 +1184,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.SepaSent);
 
-        var ok = await _sut.MarkPaidAsync(reportId);
+        var ok = await _sut.MarkPaidAsync(reportId, FakeNow);
         ok.Should().BeTrue();
 
         (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Paid);
@@ -1243,6 +1248,201 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
 
         result.Should().HaveCount(1);
         result[0].Id.Should().Be(submittedId);
+    }
+
+    // ─────────────────────── Holded timeline (submitter view) ───────────────────
+
+    [HumansFact]
+    public async Task GetDetailViewData_builds_timeline_with_owed_and_other()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow);
+        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(reportId);
+        var detail = await _sut.GetDetailViewDataAsync(userId, report!);
+
+        detail.HoldedTimeline.Should().NotBeNull();
+        detail.HoldedTimeline!.RegisteredInHolded.Should().BeTrue();
+        detail.HoldedTimeline.OwedToMember.Should().Be(200m);
+        detail.HoldedTimeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
+    // ─────────────────────── PollHoldedPaidStatus (creditor balance) ──────────
+
+    [HumansFact]
+    public async Task PollHoldedPaidStatus_marks_paid_when_creditor_balance_settled()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: 0m, OwedToMember: 0m,
+                LastPaymentDate: new LocalDate(2026, 5, 20), TotalPaid: 121m));
+
+        await _sut.PollHoldedPaidStatusAsync(batchSize: 50);
+
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Paid);
+        loaded.PaidAt.Should().Be(new LocalDate(2026, 5, 20).AtStartOfDayInZone(
+            NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+    }
+
+    [HumansFact]
+    public async Task PollHoldedPaidStatus_does_not_mark_paid_when_balance_still_negative()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        await _sut.PollHoldedPaidStatusAsync(batchSize: 50);
+
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+    }
+
+    [HumansFact]
+    public async Task PollHoldedPaidStatus_does_not_mark_paid_when_balance_unknown()
+    {
+        // No cached balance row (Balance == null) even though a payment exists — must NOT settle.
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: null, OwedToMember: 0m,
+                LastPaymentDate: new LocalDate(2026, 5, 20), TotalPaid: 60m));
+
+        await _sut.PollHoldedPaidStatusAsync(batchSize: 50);
+
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+    }
+
+    /// <summary>
+    /// Seeds a report through Draft → Submit → Approve → SepaSent and sets the contact link,
+    /// mirroring the production flow that precedes paid polling.
+    /// </summary>
+    private async Task<Guid> SeedSepaSentReportAsync(
+        Guid userId, Guid categoryId, string contactId, int accountNum)
+    {
+        SetupUserAndProfile(userId, "Test User", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, categoryId);
+        var flipped = await _sut.MarkSepaSentAsync([reportId], Guid.NewGuid());
+        if (!flipped.Contains(reportId))
+            throw new InvalidOperationException("SeedSepaSentReportAsync: MarkSepaSentAsync did not flip the report");
+
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, contactId, accountNum, FakeNow);
+        return reportId;
+    }
+
+    // ─────────────────────── Holded contact enrichment ───────────────────────
+
+    [HumansFact]
+    public async Task DrainHoldedOutboxAsync_UpsertContactWithLegalNameBurnerAndCustomId_PersistsContactLink()
+    {
+        // Arrange — active year + user with distinct legal name and burner
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        const string legalFirst = "Maria";
+        const string legalLast = "Garcia";
+        const string legalName = "Maria Garcia";
+        const string burnerName = "Meri"; // deliberately different from legal name
+        const string iban = "ES9121000418450200051332";
+
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = burnerName,
+                FirstName = legalFirst,
+                LastName = legalLast,
+                Iban = iban,
+            }));
+
+        // Seed approved report with an attachment via the real service flow
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+
+        // Reload so we can verify the line's attachment key for fileStorage
+        var reportBefore = await _sut.GetAsync(reportId);
+        var line = reportBefore!.Lines[0];
+
+        // Configure Holded substitutes
+        _holdedClient.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        // Also set up category for DrainHoldedOutboxAsync (it re-fetches)
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            ToBudgetCategorySnapshot(new BudgetCategory
+            {
+                Id = category.Id,
+                BudgetGroupId = Guid.NewGuid(),
+                Name = "Test Category",
+                TeamId = null,
+                SortOrder = 0,
+                CreatedAt = FakeNow,
+                UpdatedAt = FakeNow,
+            }));
+
+        // Act
+        await _sut.DrainHoldedOutboxAsync(100);
+
+        // Assert — contact upserted with legal name in Name, burner in TradeName, userId as CustomId
+        await _holdedClient.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i =>
+                i.Name == legalName &&
+                i.TradeName == burnerName &&
+                i.CustomId == userId.ToString() &&
+                i.Type == "creditor"),
+            Arg.Any<CancellationToken>());
+
+        // Assert — contact link persisted on the report
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.HoldedContactId.Should().Be("contact-123");
+        loaded.HoldedSupplierAccountNum.Should().Be(40000007);
+    }
+
+    /// <summary>
+    /// Seeds a report all the way through Draft → line → attachment → Submit → Approve
+    /// using the real sut + expenseRepo, so the outbox event row is written.
+    /// </summary>
+    private async Task<Guid> SeedApprovedReportWithAttachmentAsync(Guid submitterId, Guid categoryId)
+    {
+        var reportId = await _sut.CreateDraftAsync(submitterId, categoryId, "outbox test note");
+        var lineId = await _sut.AddLineAsync(reportId, submitterId, "Test line", 50m);
+
+        await using var stream = new MemoryStream([7, 8, 9]);
+        await _sut.AttachFileToLineAsync(
+            reportId, submitterId, lineId, "receipt.pdf", "application/pdf", stream);
+
+        var submitted = await _sut.SubmitAsync(reportId, submitterId);
+        if (!submitted) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: SubmitAsync returned false");
+
+        var approved = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null);
+        if (!approved) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: ApproveAsync returned false");
+
+        return reportId;
     }
 
     // ─────────────────────────── Helpers ─────────────────────────────────────

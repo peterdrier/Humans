@@ -94,6 +94,14 @@ public interface IExpenseRepository : IRepository
     Task SetHoldedDocIdAsync(
         Guid reportId, string holdedDocId, NodaTime.Instant updatedAt,
         CancellationToken ct = default);
+    /// <summary>
+    /// Persists the Holded contact id and (optionally) the resolved 400000xx supplier-account
+    /// number on the report. A null <paramref name="supplierAccountNum"/> leaves any existing
+    /// number untouched (it is resolved post-doc-creation and may not exist on the first call).
+    /// </summary>
+    Task SetHoldedContactLinkAsync(
+        Guid reportId, string holdedContactId, int? supplierAccountNum,
+        NodaTime.Instant updatedAt, CancellationToken ct = default);
     Task IncrementOutboxRetryAsync(
         Guid outboxEventId, string error, CancellationToken ct = default);
     Task MarkOutboxFailedPermanentlyAsync(

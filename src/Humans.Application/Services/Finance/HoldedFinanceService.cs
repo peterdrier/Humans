@@ -318,6 +318,104 @@ public sealed class HoldedFinanceService(
         return "Tags not matched";
     }
 
+    // ─── Creditor data (Feature 2) ──────────────────────────────────────────────
+
+    private const int CreditorAccountMin = 40000000;
+    private const int CreditorAccountMax = 40000099;
+
+    public async Task SyncCreditorDataAsync(CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var epoch = Instant.FromUnixTimeSeconds(0);
+
+        try
+        {
+            var chart = await client.ListChartOfAccountsAsync(ct);
+            var balances = chart
+                .Where(a => a.Num >= CreditorAccountMin && a.Num <= CreditorAccountMax)
+                .Select(a => new HoldedCreditorBalance
+                {
+                    Id = Guid.NewGuid(),
+                    SupplierAccountNum = a.Num,
+                    Name = a.Name,
+                    Balance = a.Balance,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                })
+                .ToList();
+            await repo.UpsertCreditorBalancesAsync(balances, now, ct);
+
+            var payments = (await client.ListPaymentsAsync(ct))
+                // Skip malformed rows: no id/contact, or a missing/epoch-0 date (would store 1970-01-01).
+                .Where(p => !string.IsNullOrEmpty(p.Id) && !string.IsNullOrEmpty(p.ContactId)
+                         && p.Date != epoch)
+                .Select(p => new HoldedPayment
+                {
+                    Id = Guid.NewGuid(),
+                    HoldedPaymentId = p.Id,
+                    HoldedContactId = p.ContactId,
+                    Amount = p.Amount,
+                    Date = p.Date.InZone(zone).Date,
+                    DocumentType = p.DocumentType,
+                    CreatedAt = now,
+                })
+                .ToList();
+            await repo.UpsertPaymentsAsync(payments, now, ct);
+
+            logger.LogInformation(
+                "Holded creditor sync cached {BalanceCount} creditor balances and {PaymentCount} payments",
+                balances.Count, payments.Count);
+        }
+        catch (Exception ex)
+        {
+            // Surface the failure in the same sync-state widget the actuals pull uses, then rethrow
+            // so Hangfire records the job failure too.
+            logger.LogError(ex, "HoldedFinanceService.SyncCreditorDataAsync failed");
+            try
+            {
+                var state = await repo.GetSyncStateAsync(CancellationToken.None);
+                state.SyncStatus = HoldedSyncStatus.Error;
+                state.LastError = ex.Message;
+                state.StatusChangedAt = now;
+                await repo.SaveSyncStateAsync(state, CancellationToken.None);
+            }
+            catch (Exception saveEx)
+            {
+                logger.LogError(saveEx, "Failed to persist creditor-sync error state");
+            }
+            throw;
+        }
+    }
+
+    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
+        int? supplierAccountNum, string holdedContactId, CancellationToken ct = default)
+    {
+        var balanceRow = supplierAccountNum is { } num
+            ? await repo.GetCreditorBalanceByAccountNumAsync(num, ct)
+            : null;
+        var payments = string.IsNullOrEmpty(holdedContactId)
+            ? Array.Empty<HoldedPayment>()
+            : (await repo.GetPaymentsByContactAsync(holdedContactId, ct)).ToArray();
+
+        if (balanceRow is null && payments.Length == 0)
+            return null;
+
+        // Leave Balance null when no balance row is cached — a missing balance is UNKNOWN, not settled.
+        // Coercing to 0 would make downstream polling falsely mark reports Paid (Codex P1).
+        var balance = balanceRow?.Balance;
+        var lastPaymentDate = payments.Length == 0
+            ? (LocalDate?)null
+            : payments.Max(p => p.Date);
+
+        return new HoldedCreditorStatus(
+            SupplierAccountNum: balanceRow?.SupplierAccountNum ?? supplierAccountNum,
+            Balance: balance,
+            OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
+            LastPaymentDate: lastPaymentDate,
+            TotalPaid: payments.Sum(p => p.Amount));
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────────
 
     /// <summary>
