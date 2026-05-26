@@ -5,7 +5,6 @@ using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -17,8 +16,7 @@ public class HomeController(
     IOnboardingWidgetState widgetState,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
-    ILogger<HomeController> logger,
-    ITicketTransferService ticketTransferService) : HumansControllerBase(userService)
+    ILogger<HomeController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
 
@@ -111,23 +109,6 @@ public class HomeController(
                 .ToList(),
             PendingCount = data.PendingSignupCount,
         };
-
-        var attendeeRows = await ticketTransferService.GetMyAttendeesAsync(user.Id, cancellationToken);
-
-        viewModel.MyAttendees = attendeeRows
-            .Select(a => new MyAttendeeRowVm(
-                AttendeeId: a.AttendeeId,
-                AttendeeName: a.AttendeeName,
-                AttendeeEmail: a.AttendeeEmail,
-                VendorTicketId: a.VendorTicketId,
-                TicketTypeName: a.TicketTypeName,
-                Status: a.Status,
-                CanSendTransfer: a.CanSendTransfer,
-                HasPendingOutgoingTransfer: a.HasPendingOutgoingTransfer,
-                PendingTransferRequestId: a.PendingTransferRequestId))
-            .ToList();
-
-        viewModel.PendingTransferOutCount = attendeeRows.Count(a => a.HasPendingOutgoingTransfer);
 
         return View("Dashboard", viewModel);
     }

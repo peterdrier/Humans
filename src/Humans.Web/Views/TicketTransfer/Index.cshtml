@@ -9,9 +9,6 @@
         .Where(t => t.IsCurrentOwner && t.Status != TicketAttendeeStatus.Void)
         .ToList();
     var sendable = held.Where(t => t.CanSendTransfer).ToList();
-    TicketStubInfo Stub(MyAttendeeRowDto a) =>
-        new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
-            a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
     string NotSendableReason(MyAttendeeRowDto t) =>
         t.HasPendingOutgoingTransfer ? "Transfer already pending"
         : t.Status == TicketAttendeeStatus.CheckedIn ? "Already checked in — can't be transferred"
@@ -47,7 +44,7 @@
                     {
                         <label class="d-flex align-items-center gap-3 m-0" style="cursor:pointer">
                             <input type="radio" name="attendeeId" value="@t.AttendeeId" required />
-                            <vc:ticket-stub stub="@Stub(t)" />
+                            <vc:ticket-stub stub="@TicketStubInfo.From(t, Model.HolderEarlyEntry)" />
                         </label>
                     }
                     else
@@ -55,7 +52,7 @@
                         <div class="d-flex align-items-center gap-3" style="opacity:.6">
                             <input type="radio" disabled />
                             <div>
-                                <vc:ticket-stub stub="@Stub(t)" />
+                                <vc:ticket-stub stub="@TicketStubInfo.From(t, Model.HolderEarlyEntry)" />
                                 <small class="text-muted d-block mt-1">@NotSendableReason(t)</small>
                             </div>
                         </div>

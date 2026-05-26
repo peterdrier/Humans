@@ -5,7 +5,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -36,7 +35,6 @@ public class HomeControllerTests
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
-    private readonly ITicketTransferService _ticketTransferService = Substitute.For<ITicketTransferService>();
 
     public HomeControllerTests()
     {
@@ -67,8 +65,7 @@ public class HomeControllerTests
             _widgetState,
             _configuration,
             _configRegistry,
-            NullLogger<HomeController>.Instance,
-            _ticketTransferService);
+            NullLogger<HomeController>.Instance);
 
         var claims = new List<Claim>
         {

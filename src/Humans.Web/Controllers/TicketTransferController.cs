@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Web.Models;
@@ -11,6 +12,7 @@ namespace Humans.Web.Controllers;
 [Route("Tickets/Transfers")]
 public sealed class TicketTransferController(
     ITicketTransferService service,
+    IEarlyEntryService earlyEntryService,
     IUserServiceRead userService,
     ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
 {
@@ -23,7 +25,13 @@ public sealed class TicketTransferController(
 
         var mine = await service.GetMyAttendeesAsync(user.Id, ct);
         var transfers = await service.GetBySenderAsync(user.Id, ct);
-        return View("Index", new TicketTransferWizardViewModel { MyTickets = mine, MyTransfers = transfers });
+        var earlyEntry = await earlyEntryService.GetForUserAsync(user.Id, ct);
+        return View("Index", new TicketTransferWizardViewModel
+        {
+            MyTickets = mine,
+            MyTransfers = transfers,
+            HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
+        });
     }
 
     // Step C: resolve the chosen (ticket, recipient) pair server-side and show the confirmation.
@@ -37,10 +45,12 @@ public sealed class TicketTransferController(
         var mine = await service.GetMyAttendeesAsync(user.Id, ct);
         var transfers = await service.GetBySenderAsync(user.Id, ct);
         var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
+        var earlyEntry = await earlyEntryService.GetForUserAsync(user.Id, ct);
         return View("Index", new TicketTransferWizardViewModel
         {
             MyTickets = mine,
             MyTransfers = transfers,
+            HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
             Confirm = confirm,
             Error = confirm is null
                 ? "Couldn't set up that transfer — choose one of your tickets and a valid recipient (not yourself)."
@@ -70,10 +80,12 @@ public sealed class TicketTransferController(
             var mine = await service.GetMyAttendeesAsync(user.Id, ct);
             var transfers = await service.GetBySenderAsync(user.Id, ct);
             var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
+            var earlyEntry = await earlyEntryService.GetForUserAsync(user.Id, ct);
             return View("Index", new TicketTransferWizardViewModel
             {
                 MyTickets = mine,
                 MyTransfers = transfers,
+                HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
                 Confirm = confirm,
                 Reason = reason,
                 Error = ex.Message,

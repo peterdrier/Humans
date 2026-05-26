@@ -49,20 +49,6 @@ public class DashboardViewModel
     public int UserTicketCount { get; set; }
     public string? TicketPurchaseUrl { get; set; }
 
-    /// <summary>Attendees on the user's orders (rendered when count > 1).</summary>
-    public IReadOnlyList<MyAttendeeRowVm> MyAttendees { get; set; } = [];
-
-    /// <summary>How many transfer requests this user has currently in Pending state.</summary>
-    public int PendingTransferOutCount { get; set; }
+    // The holder's ticket stubs are rendered by <vc:my-ticket-stubs user-id="…" />,
+    // which fetches attendees + Early Entry itself — no stub data plumbed here.
 }
-
-public sealed record MyAttendeeRowVm(
-    Guid AttendeeId,
-    string AttendeeName,
-    string? AttendeeEmail,
-    string VendorTicketId,
-    string TicketTypeName,
-    Humans.Domain.Enums.TicketAttendeeStatus Status,
-    bool CanSendTransfer,
-    bool HasPendingOutgoingTransfer,
-    Guid? PendingTransferRequestId);

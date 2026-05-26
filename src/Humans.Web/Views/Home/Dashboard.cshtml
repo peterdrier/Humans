@@ -1,11 +1,7 @@
-@using Humans.Application.DTOs
 @using Humans.Domain.Enums
 @model Humans.Web.Models.DashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
-    TicketStubInfo TicketStub(MyAttendeeRowVm a) =>
-        new(a.AttendeeName, a.AttendeeEmail, a.VendorTicketId, a.Status,
-            a.HasPendingOutgoingTransfer, a.PendingTransferRequestId);
 }
 
 <vc:temp-data-alerts />
@@ -184,19 +180,11 @@
                             }
                         </div>
                     </div>
-                    @if (Model.MyAttendees.Count > 0)
-                    {
-                        <div class="d-flex flex-wrap gap-3 mt-3">
-                            @foreach (var att in Model.MyAttendees)
-                            {
-                                <vc:ticket-stub stub="@TicketStub(att)" />
-                            }
-                        </div>
-                        <div class="mt-3">
-                            <a class="btn btn-sm btn-outline-secondary"
-                               asp-controller="TicketTransfer" asp-action="Index">Transfers…</a>
-                        </div>
-                    }
+                    <vc:my-ticket-stubs user-id="@Model.UserId" />
+                    <div class="mt-3">
+                        <a class="btn btn-sm btn-outline-secondary"
+                           asp-controller="TicketTransfer" asp-action="Index">Transfers…</a>
+                    </div>
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)
                 {

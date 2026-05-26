@@ -92,4 +92,16 @@ public sealed record TicketStubInfo(
     TicketAttendeeStatus Status,
     bool HasPendingTransfer,
     Guid? PendingTransferRequestId,
-    LocalDate? EarlyEntryDate = null);
+    LocalDate? EarlyEntryDate)
+{
+    /// <summary>
+    /// Projects an attendee row into a stub, stamping the holder's earliest entry
+    /// date. Single mapper for every surface that renders a holder's own stubs
+    /// (homepage strip + transfer wizard) so the EE pill can never be dropped on
+    /// one surface and present on another. <paramref name="holderEarlyEntry"/> is
+    /// the viewer's EE (one value, shown on each of their stubs); null = no EE.
+    /// </summary>
+    public static TicketStubInfo From(MyAttendeeRowDto row, LocalDate? holderEarlyEntry) =>
+        new(row.AttendeeName, row.AttendeeEmail, row.VendorTicketId, row.Status,
+            row.HasPendingOutgoingTransfer, row.PendingTransferRequestId, holderEarlyEntry);
+}
