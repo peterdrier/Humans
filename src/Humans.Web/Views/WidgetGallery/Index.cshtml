@@ -959,9 +959,9 @@
                         <span class="wg-card-path">src/Humans.Web/TagHelpers/MarkdownEditorTagHelper.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Textarea upgraded with the EasyMDE WYSIWYG-ish Markdown editor (toolbar, side-by-side preview, syntax help).
+                        Textarea upgraded with the EasyMDE WYSIWYG-ish Markdown editor (toolbar, preview, syntax help).
                         Server-side rendering is unchanged — the textarea posts raw Markdown and <code>HtmlHelperExtensions.SanitizedMarkdown</code> still owns rendering. Loads EasyMDE from jsDelivr with SRI; degrades to a plain textarea if JS fails.
-                        Pages using this helper must include <code>&lt;partial name="_MarkdownHelp" /&gt;</code> once for the toolbar "?" button modal.
+                        The toolbar "?" button modal (<code>_MarkdownHelp</code>) is auto-emitted once per request — no manual <code>&lt;partial&gt;</code> needed.
                     </div>
                     @ParamsBlock(
                         ("asp-for", "<code>ModelExpression?</code> — standard model binding (preferred); validation/ModelState work as with a plain textarea"),
@@ -976,7 +976,6 @@
                     )
                     <div class="wg-card-example">
                         <markdown-editor name="widget-gallery-markdown" value="**Hello** _editor_." rows="4" />
-                        @await Html.PartialAsync("_MarkdownHelp")
                     </div>
                 </div>
 

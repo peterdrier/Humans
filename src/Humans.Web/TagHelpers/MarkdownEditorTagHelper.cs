@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Text.Encodings.Web;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -23,15 +24,17 @@ namespace Humans.Web.TagHelpers;
 /// Graceful degradation: if EasyMDE JS fails to load, the bare textarea still
 /// submits Markdown as plain text.
 ///
-/// Loads EasyMDE assets from jsDelivr with SRI integrity on first use per request.
-/// The toolbar includes a "?" button that opens the existing
-/// <c>_MarkdownHelp</c> modal — pages using this helper must include
-/// <c>&lt;partial name="_MarkdownHelp" /&gt;</c> once.
+/// Loads EasyMDE assets from jsDelivr with SRI integrity on first use per request,
+/// and auto-emits the shared <c>_MarkdownHelp</c> modal so the toolbar "?" button
+/// always has something to open — callers do not need to include the partial.
 /// </summary>
 [HtmlTargetElement("markdown-editor", Attributes = "asp-for", TagStructure = TagStructure.WithoutEndTag)]
 [HtmlTargetElement("markdown-editor", Attributes = "name", TagStructure = TagStructure.WithoutEndTag)]
 [HtmlTargetElement("markdown-editor", TagStructure = TagStructure.WithoutEndTag)]
-public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextAccessor httpContextAccessor) : TagHelper
+public class MarkdownEditorTagHelper(
+    IHtmlGenerator htmlGenerator,
+    IHttpContextAccessor httpContextAccessor,
+    IHtmlHelper htmlHelper) : TagHelper
 {
     // EasyMDE 2.18.0 — MIT, actively maintained fork of SimpleMDE.
     private const string EasyMdeCssHref = "https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css";
@@ -82,7 +85,7 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
     [ViewContext]
     public ViewContext ViewContext { get; set; } = default!;
 
-    public override void Process(TagHelperContext context, TagHelperOutput output)
+    public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(output);
@@ -195,6 +198,13 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
             output.Content.AppendHtml(
                 $"<script src=\"{EasyMdeJsSrc}\" " +
                 $"integrity=\"{EasyMdeJsIntegrity}\" crossorigin=\"anonymous\" defer{nonceAttr}></script>");
+
+            // Render the help modal partial once per request so callers don't have to.
+            ((IViewContextAware)htmlHelper).Contextualize(ViewContext);
+            var modalHtml = await htmlHelper.PartialAsync("_MarkdownHelp");
+            using var modalWriter = new StringWriter(CultureInfo.InvariantCulture);
+            modalHtml.WriteTo(modalWriter, HtmlEncoder.Default);
+            output.Content.AppendHtml(modalWriter.ToString());
         }
 
         // Encode the textarea id for use inside a JS string literal.
