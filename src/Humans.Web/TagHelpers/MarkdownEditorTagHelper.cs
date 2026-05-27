@@ -231,7 +231,7 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
                     '|',
                     'code', 'horizontal-rule', 'link', 'table',
                     '|',
-                    'preview', 'side-by-side', 'fullscreen',
+                    'preview',
                     {{ name: 'guide', action: function() {{
                         var modalEl = document.getElementById('markdownHelpModal');
                         if (!modalEl || typeof bootstrap === 'undefined') {{ return; }}
