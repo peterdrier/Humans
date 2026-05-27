@@ -52,7 +52,10 @@ public sealed class AgentSectionDocReader(
         catch (NotFoundException)
         {
             // Whitelisted key but no file in the repo — treat as miss so the tool degrades
-            // cleanly rather than crashing the dispatcher.
+            // cleanly rather than crashing the dispatcher. Log per
+            // memory/code/always-log-problems.md so a missing section guide is visible in
+            // the prod log viewer (which only renders Warning+) instead of disappearing.
+            logger.LogWarning("Section guide {Section} not found on GitHub (docs/sections)", canonicalKey);
             return null;
         }
         catch (Exception ex)

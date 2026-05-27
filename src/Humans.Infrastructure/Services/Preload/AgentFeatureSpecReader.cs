@@ -42,6 +42,10 @@ public sealed class AgentFeatureSpecReader(
         }
         catch (NotFoundException)
         {
+            // 404 from GitHub — file is absent from the configured repo/branch. Log per
+            // memory/code/always-log-problems.md so a missing feature spec is visible in
+            // the prod log viewer rather than silently returning an empty preload entry.
+            logger.LogWarning("Agent feature spec {Stem} not found on GitHub (docs/features)", stem);
             return null;
         }
         catch (Exception ex)
