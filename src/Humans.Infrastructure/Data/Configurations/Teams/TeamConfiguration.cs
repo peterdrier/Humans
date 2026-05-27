@@ -110,19 +110,6 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .HasForeignKey(jr => jr.TeamId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // google_resources is owned by TeamResourceService. The Team → GoogleResource
-        // navigation was removed to enforce ownership — the relationship is now
-        // configured from the GoogleResource side only via its Team nav property.
-        // Restrict (not SetNull): GoogleResource.TeamId is non-nullable, so SetNull
-        // would produce a NOT NULL violation on team delete. Teams should never be
-        // hard-deleted if resources exist — the caller must unlink resources first.
-#pragma warning disable CS0618 // GoogleResource.Team is an obsolete cross-domain nav kept so EF FK constraint stays modelled.
-        builder.HasMany<GoogleResource>()
-            .WithOne(gr => gr.Team)
-            .HasForeignKey(gr => gr.TeamId)
-            .OnDelete(DeleteBehavior.Restrict);
-#pragma warning restore CS0618
-
         builder.HasIndex(t => t.Slug)
             .IsUnique();
 

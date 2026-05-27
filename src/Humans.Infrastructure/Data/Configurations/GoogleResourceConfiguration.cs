@@ -46,5 +46,14 @@ public class GoogleResourceConfiguration : IEntityTypeConfiguration<GoogleResour
         builder.HasIndex(gr => new { gr.TeamId, gr.GoogleId })
             .HasFilter("\"IsActive\" = true")
             .IsUnique();
+
+        // Restrict (not SetNull): GoogleResource.TeamId is non-nullable, so
+        // SetNull would produce a NOT NULL violation on team delete. Teams
+        // should never be hard-deleted if resources exist; callers must unlink
+        // resources first.
+        builder.HasOne<Team>()
+            .WithMany()
+            .HasForeignKey(gr => gr.TeamId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

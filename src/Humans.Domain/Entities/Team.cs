@@ -155,15 +155,6 @@ public class Team
     public ICollection<TeamJoinRequest> JoinRequests { get; } = new List<TeamJoinRequest>();
 
     /// <summary>
-    /// Reverse navigation kept solely so EF can declare the FK + cascade behavior
-    /// for <c>LegalDocument.Team</c>. Not read by application code — query via
-    /// <c>ILegalDocumentSyncService</c>. Collection-side nav is left unmarked to
-    /// avoid the obsolete-nav scanner false-positive on <c>DbContext.LegalDocuments</c>
-    /// (same identifier).
-    /// </summary>
-    public ICollection<LegalDocument> LegalDocuments { get; } = new List<LegalDocument>();
-
-    /// <summary>
     /// Navigation property to role definitions.
     /// </summary>
     public ICollection<TeamRoleDefinition> RoleDefinitions { get; } = new List<TeamRoleDefinition>();

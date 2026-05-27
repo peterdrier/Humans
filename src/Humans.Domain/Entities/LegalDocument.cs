@@ -25,15 +25,6 @@ public class LegalDocument
     public Guid TeamId { get; set; }
 
     /// <summary>
-    /// Cross-domain navigation to the owning <see cref="Team"/>. Kept so EF's
-    /// snapshot remains in sync with the schema; do not read in application
-    /// code — resolve via <c>ITeamService</c>. See design-rules §6c.
-    /// </summary>
-    [Architecture.ExpiresOn("2026-06-01", reason: "peterdrier#719 — Legal section migrated off LegalDocument.Team. Schedule-for-strip in a follow-up PR once prod-verified.")]
-    [Obsolete("Cross-domain nav — resolve via ITeamService instead of navigating LegalDocument.Team. See design-rules §6c.")]
-    public Team Team { get; set; } = null!;
-
-    /// <summary>
     /// Grace period in days before membership becomes inactive due to missing re-consent.
     /// </summary>
     public int GracePeriodDays { get; set; } = 7;

@@ -21,10 +21,8 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="IProfileRepository"/>, <see cref="IUserRepository"/>, etc.
 ///
 /// <para>
-/// <see cref="Humans.Domain.Entities.LegalDocument.Team"/> is a cross-domain
-/// nav that this section's invariants document schedules for strip. This
-/// repository never <c>.Include</c>s it; callers that need team data call
-/// <see cref="Teams.ITeamService"/> and stitch by
+/// Legal documents carry a cross-section TeamId only. Callers that need team
+/// data call <see cref="Teams.ITeamService"/> and stitch by
 /// <see cref="Humans.Domain.Entities.LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
@@ -74,7 +72,7 @@ public interface ILegalDocumentRepository : IRepository
 
     /// <summary>
     /// Returns active, required legal documents for any of the given teams with
-    /// <c>Team</c> and <c>Versions</c> included. Read-only (AsNoTracking).
+    /// <c>Versions</c> included. Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
