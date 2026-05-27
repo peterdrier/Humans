@@ -1,5 +1,4 @@
 using Humans.Application.Configuration;
-using Humans.Domain.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -100,7 +99,7 @@ public class DevSeedController(
         return await SeedDashboardCoreAsync(reset: false, cancellationToken);
     }
 
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [HttpPost("dashboard/reset")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetDashboard(CancellationToken cancellationToken)

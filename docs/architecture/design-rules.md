@@ -404,10 +404,22 @@ await _budgetService.DeleteLineItemAsync(id);
 ### Rules
 
 - **No `isPrivileged` booleans.** Don't pass auth decisions as parameters to services. If the controller maps it wrong, the service silently does the wrong thing.
-- **No inline `IsInRole` chains in controllers** for resource-scoped checks. Use the handler. `[Authorize(Roles = ...)]` is still fine for simple route-level role gates.
+- **No inline `IsInRole` chains in controllers** for resource-scoped checks. Use the handler. Simple route-level role gates use `[Authorize(Policy = PolicyNames.X)]` — never raw `[Authorize(Roles = "...")]` strings. Views use the `authorize-policy="PolicyName"` tag helper for element-level visibility; reusable views/components that need conditional logic inject `IAuthorizationService` (see `auth-in-views-self-resolving` memory atom).
 - **Services are auth-free by default.** They don't check roles, don't inject `IHttpContextAccessor`, don't receive boolean privilege flags. Authorization happens before the service is called.
-- **Exception: full-Admin destructive deletes.** Application services may inject `IAdminAuthorizationService` and call `RequireCurrentUserIsAdminAsync` only for methods whose operation permanently deletes data or performs a destructive reset/delete cleanup, and whose authorization rule is exactly "must hold the full `Admin` role." The controller/action must still carry the matching `[Authorize(Roles = RoleNames.Admin)]` or stricter route-level guard. Do not use this exception for resource-scoped auth, read paths, ordinary edits, privilege flags, or direct `IHttpContextAccessor` access.
+- **Exception: full-Admin destructive deletes.** Application services may inject `IAdminAuthorizationService` and call `RequireCurrentUserIsAdminAsync` only for methods whose operation permanently deletes data or performs a destructive reset/delete cleanup, and whose authorization rule is exactly "must hold the full `Admin` role." The controller/action must still carry the matching `[Authorize(Policy = PolicyNames.AdminOnly)]` or stricter route-level guard. Do not use this exception for resource-scoped auth, read paths, ordinary edits, privilege flags, or direct `IHttpContextAccessor` access.
 - **New sections need a handler.** When adding a new section with resource-scoped auth, add a `*OperationRequirement` + `*AuthorizationHandler` pair. Don't invent a new pattern.
+
+### Tombstone: do not push authorization into services
+
+Two prior attempts shipped service-layer authorization and both produced startup crashes:
+
+- **PR #210 (role assignment, commit `225ac14`)** — `TeamService → RoleAssignmentService → IAuthorizationService → TeamAuthorizationHandler → ITeamService` formed a DI cycle that crashed DI validation on startup. The hot-fix made `TeamAuthorizationHandler` lazily resolve `ITeamService` via `IServiceProvider` — a service-locator escape hatch that hides the cycle from the validator rather than removes it.
+- **PR for Google sync (`1626098`)** — reverted in `bbbe508` for the same cycle.
+- **Budget mutations (#420)** — drafted, closed as *won't do* on 2026-04-15 once the pattern was retired.
+
+The unwind PR removed `ClaimsPrincipal` parameters from `IRoleAssignmentService`, moved the `AuthorizeAsync` call to `ProfileController`, deleted `SystemPrincipal`, and removed the `IServiceProvider` hack. `RoleAssignmentAuthorizationHandler` and `RoleAssignmentOperationRequirement` remain — they are invoked from controllers, which is the correct pattern.
+
+**Do not reopen this without updating §11 first.** Service-layer auth gives no real defence-in-depth here: one UI, no public API, background jobs are trusted server code, controllers are the only human-facing mutation path. Resource-based handlers belong; in-service `AuthorizeAsync` does not.
 
 ## 12. Immutable Entity Rules
 

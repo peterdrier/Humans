@@ -59,7 +59,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 - [`admin-role-superset`](code/admin-role-superset.md) — Admin = global superset; TeamsAdmin/CampAdmin/TicketAdmin = supersets in their domain. Always include both.
 - [`always-log-problems`](code/always-log-problems.md) — log expected problems at LogWarning without exception object; LogInformation is invisible in prod
-- [`authorization-conventions`](code/authorization-conventions.md) — `[Authorize(Roles = ...)]` with `RoleGroups`/`RoleNames`; no inline `IsInRole` chains
+- [`authorization-conventions`](code/authorization-conventions.md) — `[Authorize(Policy = PolicyNames.X)]` on controllers; `authorize-policy="X"` tag helper or injected `IAuthorizationService` in views; never raw `Roles = "..."` or inline `User.IsInRole` chains
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — reusable views/components inject `IAuthorizationService` and resolve their own gates; don't pre-compute `Can…` bools on view models
 - [`controller-base-conventions`](code/controller-base-conventions.md) — inherit `HumansControllerBase`; use `GetCurrentUserAsync`/`SetSuccess`/`SetError`. No raw `_userManager` or `TempData["..."]`.
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents

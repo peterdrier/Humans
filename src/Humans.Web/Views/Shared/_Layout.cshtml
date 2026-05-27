@@ -1,4 +1,7 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
 @inject IConfiguration Configuration
+@inject IAuthorizationService AuthService
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -30,16 +33,10 @@
         <nav class="navbar navbar-expand-lg navbar-dark mb-3">
             <div class="container">
                 @{
+                    var isAnyAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
+                    var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded;
                     string? buildHashTooltip = null;
-                    if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.HumanAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.CampAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.FeedbackAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.FinanceAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin))
+                    if (isAnyAdmin)
                     {
                         var brandAssembly = System.Reflection.Assembly.GetEntryAssembly()!;
                         var brandAttr = (System.Reflection.AssemblyInformationalVersionAttribute?)
@@ -108,16 +105,14 @@
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="MySubmissions">My Submissions</a></li>
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Schedule">My Schedule</a></li>
-                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
-                                         || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                                    @if (isEventsAdminOrAdmin)
                                     {
                                         <li><hr class="dropdown-divider" /></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventsDashboard" asp-action="Index">Guide Dashboard</a></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventsModeration" asp-action="Index">Moderate Events</a></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventsExport" asp-action="Index">Export Guide</a></li>
                                     }
-                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
-                                         || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                                    @if (isEventsAdminOrAdmin)
                                     {
                                         <li><hr class="dropdown-divider" /></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Settings">Guide Settings</a></li>
