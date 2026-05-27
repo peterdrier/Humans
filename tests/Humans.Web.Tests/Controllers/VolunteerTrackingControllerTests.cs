@@ -653,6 +653,7 @@ public class VolunteerTrackingControllerTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
     }
 
     [HumansFact]
@@ -699,6 +700,7 @@ public class VolunteerTrackingControllerTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
     }
 
     [HumansFact]

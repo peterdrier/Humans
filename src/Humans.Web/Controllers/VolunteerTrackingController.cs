@@ -350,8 +350,8 @@ public sealed class VolunteerTrackingController(
             await auditLogService.LogAsync(
                 AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
                 $"DayOffset={dayOffset}; marked available by coordinator", current.Id);
+            SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
         }
-        SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
         return RedirectBack(returnUrl);
     }
 
@@ -373,8 +373,8 @@ public sealed class VolunteerTrackingController(
             await auditLogService.LogAsync(
                 AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
                 $"DayOffset={dayOffset}; availability cleared by coordinator", current.Id);
+            SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
         }
-        SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
         return RedirectBack(returnUrl);
     }
 
