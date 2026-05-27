@@ -1925,6 +1925,44 @@ public class ProfileController(
         return PartialView("_HumanPopover", vm);
     }
 
+    // Reduced popover served to anonymous viewers on public team pages (#771).
+    // Mirrors the AllowAnonymous Profile/Picture endpoint pattern: only renders
+    // when the target user is an active coordinator on a team that publishes
+    // its coordinators (IsPublicPage && ShowCoordinatorsOnPublicPage). Returns
+    // 404 otherwise so anonymous probes can't enumerate users. Filtering on the
+    // controller per peters-hard-rules.md ("controllers ... responsible for
+    // formatting, sorting, filtering") and to avoid expanding ITeamServiceRead
+    // surface (memory/architecture/interface-method-additions-are-debt.md);
+    // mirrors the inline TeamInfo filter the authenticated Popover uses above.
+    [AllowAnonymous]
+    [HttpGet("{id:guid}/PublicPopover")]
+    public async Task<IActionResult> PublicPopover(Guid id, CancellationToken ct)
+    {
+        var info = await _userService.GetUserInfoAsync(id, ct);
+        if (info is null) return NotFound();
+
+        var roleLabels = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive
+                && !t.IsHidden
+                && t.IsPublicPage
+                && t.ShowCoordinatorsOnPublicPage
+                && t.Members.Any(m => m.UserId == id && m.Role == TeamMemberRole.Coordinator))
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => $"Coordinator · {t.Name}")
+            .ToList();
+
+        if (roleLabels.Count == 0) return NotFound();
+
+        var vm = new PublicPopoverViewModel
+        {
+            UserId = info.Id,
+            DisplayName = info.BurnerName,
+            RoleLabels = roleLabels
+        };
+
+        return PartialView("_HumanPopoverPublic", vm);
+    }
+
     [HttpGet("{id:guid}/SendMessage")]
     public async Task<IActionResult> SendMessage(Guid id)
     {
