@@ -68,7 +68,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentService.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 2. **Enabled gate.** If `AgentSettings.Enabled = false`, widget is hidden and `POST /Agent/Ask` returns `503 ServiceUnavailable`.
 3. **Rate limit.** Per-user daily and hourly caps from `AgentSettings`. Over-cap requests return `429 TooManyRequests` without hitting the provider.
-4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history`, `get_shift_details` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
+4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history`, `get_shift_details` are valid tool names. Unknown names return a tool error. `fetch_section_guide` is restricted to a whitelisted set of section keys; `fetch_feature_spec` accepts only filename-safe stems (letters, digits, `-`, `_`). Both fetch from `nobodies-collective/Humans@main` via `IGuideContentSource` and cannot read arbitrary paths.
 5. **Tool loop bound.** At most `AnthropicOptions.MaxToolCallsPerTurn` (default 3) tool calls per turn, enforced server-side.
 6. **Refusal logging.** Every refused turn writes an `AgentMessage` with `RefusalReason != null`.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
@@ -124,7 +124,7 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 ### Touch-and-clean guidance
 
 - Do **not** call the Anthropic SDK directly outside `AnthropicClient`.
-- Do **not** read `docs/sections/` or `docs/features/` outside `AgentSectionDocReader` / `AgentFeatureSpecReader`.
+- Do **not** fetch `docs/sections/` or `docs/features/` markdown outside `AgentSectionDocReader` / `AgentFeatureSpecReader`; both route through the shared `IGuideContentSource` (Octokit, cached) and enforce the whitelist + filename-safe-stem validation.
 - Do **not** add new tool names without updating both `AgentToolNames` and `IAgentToolDispatcher` whitelist; an unknown name must be a hard error, never a fallthrough.
 - Do **not** make `route_to_issue` (or any future handoff tool) write rows server-side. Handoffs are propose-only; the user submits.
 - `AgentSettings.PreloadConfig` defaults to `Tier1` (8 highest-signal sections in the index). If non-admin users start asking about sections outside that set and the model can't help, an admin can flip the live setting to `Tier2` at `/Agent/Admin/Settings` — both tiers fit Anthropic ITPM caps because section bodies route through tool calls, not preload.
