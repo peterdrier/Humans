@@ -227,12 +227,11 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
                         var sel = cm.getSelection() || 'task';
                         cm.replaceSelection('- [ ] ' + sel);
                     }}, className: 'fa-solid fa-square-check', title: 'Task list' }},
-                    'quote', 'code', 'horizontal-rule',
+                    'quote',
                     '|',
-                    'link', 'table',
+                    'code', 'horizontal-rule', 'link', 'table',
                     '|',
                     'preview', 'side-by-side', 'fullscreen',
-                    '|',
                     {{ name: 'guide', action: function() {{
                         var modalEl = document.getElementById('markdownHelpModal');
                         if (!modalEl || typeof bootstrap === 'undefined') {{ return; }}
