@@ -2279,6 +2279,11 @@
 
   <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve"><value>Camp set-up date saved.</value></data>
   <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared.</value></data>
+  <data name="VolTrack_Msg_AvailabilitySet" xml:space="preserve"><value>Availability updated.</value></data>
+  <data name="VolTrack_Msg_AvailabilityCleared" xml:space="preserve"><value>Availability updated.</value></data>
+  <data name="VolTrack_Popover_MarkAvailable" xml:space="preserve"><value>Mark available</value></data>
+  <data name="VolTrack_Popover_UnmarkAvailable" xml:space="preserve"><value>Unmark available</value></data>
+  <data name="Profile_BuildStrip_Title" xml:space="preserve"><value>Build availability &amp; tracking</value></data>
 
   <data name="VolTrack_Err_BadRequest" xml:space="preserve"><value>Invalid request.</value></data>
   <data name="VolTrack_Err_BadDate" xml:space="preserve"><value>Invalid date format.</value></data>

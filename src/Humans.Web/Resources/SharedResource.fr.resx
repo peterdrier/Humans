@@ -5692,6 +5692,26 @@
     <value>Date d'installation du camp effacée.</value>
     <comment>TODO: translate</comment>
   </data>
+  <data name="VolTrack_Msg_AvailabilitySet" xml:space="preserve">
+    <value>Availability updated.</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Msg_AvailabilityCleared" xml:space="preserve">
+    <value>Availability updated.</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkAvailable" xml:space="preserve">
+    <value>Mark available</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Popover_UnmarkAvailable" xml:space="preserve">
+    <value>Unmark available</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="Profile_BuildStrip_Title" xml:space="preserve">
+    <value>Build availability &amp; tracking</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
   <data name="VolTrack_Err_BadRequest" xml:space="preserve">
     <value>Requête invalide.</value>
     <comment>TODO: translate</comment>
