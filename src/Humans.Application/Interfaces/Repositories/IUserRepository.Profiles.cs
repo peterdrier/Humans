@@ -1,13 +1,11 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Repository for the <c>profiles</c> and <c>profile_languages</c> tables.
-/// The only non-test file that may write to those DbSets.
+/// Profile operations on <see cref="IUserRepository"/>.
 /// </summary>
 /// <remarks>
 /// Read methods may include aggregate-local collections (<c>VolunteerHistory</c>,
@@ -15,8 +13,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
 /// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
-[Section("Humans")]
-public interface IProfileRepository : IRepository
+public partial interface IUserRepository
 {
     /// <summary>
     /// Loads a single profile by user id for mutation. Returns a tracked entity
@@ -38,7 +35,7 @@ public interface IProfileRepository : IRepository
     /// to populate the profile cache. Trivial at ~500-user scale.
     /// Read-only (AsNoTracking).
     /// </summary>
-    Task<IReadOnlyList<Profile>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the <c>UserId</c> for the profile with the given <paramref name="profileId"/>,

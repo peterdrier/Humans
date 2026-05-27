@@ -42,9 +42,9 @@ public class ProfileArchitectureTests
             .Should().BeNull(
                 because: "picture service callers read UserInfo.Profile via IUserService.GetUserInfoAsync / GetUserInfosAsync");
 
-        typeof(IProfileRepository)
+        typeof(IUserRepository)
             .GetMethod("GetByUserIdsAsync")
             .Should().BeNull(
-                because: "IProfileRepository has no fan-out reader path; the only legitimate batched profile read is UserInfo.Profile off the cache");
+                because: "IUserRepository has no profile fan-out reader path; the only legitimate batched profile read is UserInfo.Profile off the cache");
     }
 }

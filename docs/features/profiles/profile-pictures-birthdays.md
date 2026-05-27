@@ -109,7 +109,7 @@ The read path lives in `IProfileService.GetProfilePictureAsync` and is the only 
 
 1. Reads the DB `ProfilePictureContentType` column via a cheap scalar projection. If null (no picture, or the row was anonymized), it returns `null` and the endpoint responds with 404 — even if a stale file still exists on disk.
 2. Otherwise tries the filesystem store first. A hit is returned immediately, avoiding a `bytea` load.
-3. On a filesystem miss it falls back to `IProfileRepository.GetProfilePictureDataAsync` (DB) and best-effort writes the bytes back to the filesystem so subsequent reads use the fast path. Migration failures are logged but never break the current request.
+3. On a filesystem miss it returns `null`; the DB bytes column is no longer a serving fallback.
 
 Saves and removals dual-write: `SaveProfileAsync` writes both DB and filesystem, `AnonymizeExpiredProfileAsync` clears the DB column AND best-effort deletes the filesystem file. If the filesystem delete fails during anonymization an `Error` is logged so an operator can clean up the stale file out-of-band, but the read-path content-type gate ensures a stale file is never served to clients (GDPR-compliant). Phase 2 of #527 will drop the DB columns once phase 1 has bedded in.
 

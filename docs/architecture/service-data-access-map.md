@@ -93,7 +93,7 @@ Folder: `src/Humans.Application/Services/Profiles/`. Owns `Profiles`,
 
 ### ProfileService (Scoped — `IProfilePictureService`)
 
-Repository: `IProfileRepository` (read-only — fetches profile row to resolve
+Repository: `IUserRepository` (read-only profile methods - fetches profile row to resolve
 storage paths).
 
 | Table | R/W |
@@ -113,7 +113,7 @@ the picture file. No `IMemoryCache`.
 
 ### ContactFieldService (Scoped)
 
-Repositories: `IContactFieldRepository`, `IProfileRepository`.
+Repository: `IUserRepository` (profile and contact-field methods).
 
 | Table | R/W |
 |-------|-----|
@@ -173,14 +173,14 @@ caches; the unified read-model is evicted via `IUserInfoInvalidator`.
 
 ### DuplicateAccountService (Scoped)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`, `IProfileRepository`.
+Repositories: `IUserRepository`, `IUserEmailRepository`.
 
 | Table | R/W |
 |-------|-----|
 | Profiles | R/W |
-| ContactFields | R/W (via `IProfileRepository`) |
-| ProfileLanguages | R/W (via `IProfileRepository`) |
-| VolunteerHistoryEntries | R/W (via `IProfileRepository`) |
+| ContactFields | R/W (via `IUserRepository`) |
+| ProfileLanguages | R/W (via `IUserRepository`) |
+| VolunteerHistoryEntries | R/W (via `IUserRepository`) |
 | UserEmails | R/W |
 | Users | R/W |
 | EventParticipations | R/W (via `IUserRepository`) |
@@ -219,7 +219,6 @@ interface's `[SurfaceBudget]` is intentionally suspended for now.
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
 Repositories: `IUserRepository`, `IUserEmailRepository`,
-`IProfileRepository`, `IContactFieldRepository`,
 `ICommunicationPreferenceRepository`.
 
 | Table | R/W | Repo |
@@ -228,13 +227,13 @@ Repositories: `IUserRepository`, `IUserEmailRepository`,
 | UserEmails | R | IUserEmailRepository |
 | EventParticipations | R/W | IUserRepository |
 | IdentityUserLogins | R | IUserRepository |
-| Profiles | R/W | IProfileRepository |
-| ContactFields | R | IContactFieldRepository |
+| Profiles | R/W | IUserRepository |
+| ContactFields | R | IUserRepository |
 | CommunicationPreferences | R | ICommunicationPreferenceRepository |
-| ProfileLanguages | R/W | IProfileRepository |
-| VolunteerHistoryEntries | R | IProfileRepository |
+| ProfileLanguages | R/W | IUserRepository |
+| VolunteerHistoryEntries | R | IUserRepository |
 
-The five-repo injection composes the `UserInfo` projection inside
+The three-repo injection composes the `UserInfo` projection inside
 `CachingUserService` — a single cached read-model fanning out from the
 inner `UserService` over the User + Profile section repositories.
 Implements `IUserDataContributor`, `IUserMerge`.
@@ -1799,7 +1798,7 @@ remaining design-rule violations.
 
 1. **`IUserMerge` retired most cross-section profile/identity writes.**
    `AccountMergeService` no longer injects `IUserRepository` /
-   `IProfileRepository` directly — it fans out over
+   profile-owned repositories directly — it fans out over
    `IEnumerable<IUserMerge>`, with each section's service implementing
    `IUserMerge` to reassign its own owned rows. `DuplicateAccountService`
    still uses direct repositories pending convergence on the same pattern.

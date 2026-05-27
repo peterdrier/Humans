@@ -21,7 +21,7 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// <remarks>
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains short-lived
-/// per method — same pattern as <c>ProfileRepository</c>, <c>UserRepository</c>,
+/// per method — same pattern as <c>UserRepository</c>,
 /// and <c>TicketingBudgetRepository</c> (design-rules §15b).
 /// </remarks>
 [Grandfathered("HUM0025", justification: "Tickets-section table also read by TicketingBudgetRepository; route the Budget bridge through ITicketServiceRead.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "TicketOrders")]
