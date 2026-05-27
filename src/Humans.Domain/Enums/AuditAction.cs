@@ -176,7 +176,7 @@ public enum AuditAction
     CoordinatorRotaMessageSent,
     CoordinatorTeamRotasMessageSent,
     // Coordinator edits a volunteer's declared build availability on their behalf
-    // (Profile build strip). #<issue>.
+    // (Profile build strip).
     VolunteerAvailabilitySet,
     VolunteerAvailabilityCleared,
 }
