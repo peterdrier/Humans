@@ -111,6 +111,8 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 - Magic-link login tokens are single-use: once a token reaches `VerifyLoginTokenAsync` successfully, it is reserved in the replay cache for the remainder of its 15-minute lifetime and cannot be used again.
 - Magic-link signup sends are rate-limited to 1 email per 60 seconds per target address. The reservation is released on downstream send failure so the caller can retry.
 - Verified-email resolution goes through `IUserEmailService.FindVerifiedEmailWithUserAsync` — never through raw `DbContext.UserEmails` queries. Unverified rows are ignored (their auto-link would bypass the merge-request review gate).
+<!-- wheat: docs/superpowers/specs/2026-03-23-session1-auth-google-sync-design.md §Batch 1 -->
+- Google OAuth remote failures (missing/expired correlation cookie, user-cancelled consent, browser cookie restrictions) are handled by an `OnRemoteFailure` handler on the Google authentication options in `Program.cs` that logs at Warning and redirects to `/Account/Login?error=sign-in-failed`; the unhandled `CorrelationException` would otherwise propagate as a 500. The login view reads `Request.Query["error"]` and renders a localized dismissible alert.
 
 ## Negative Access Rules
 

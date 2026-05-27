@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-05-26
+**Generated:** 2026-05-27
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -929,17 +929,21 @@ shifts surface. No cache (single active row, cold path).
 
 ### RotaCoordinatorMessageService (Scoped)
 
-Repository: `IShiftSignupRepository`.
+Repositories: `IShiftSignupRepository`, `IShiftManagementRepository`.
 
 | Table | R/W |
 |-------|-----|
 | ShiftSignups | R |
-| Rotas | R (via repo) |
-| Shifts | R (via repo) |
+| Rotas | R (via repos) |
+| Shifts | R (via repos) |
+| EventSettings | R (via `IShiftManagementRepository.GetActiveEventSettingsAsync` — team-level dispatch path) |
 
-Cross-section calls via `IUserServiceRead`, `IEmailService`,
-`IAuditLogService`. Groups active signups by user and enqueues one
-personalised email per recipient via the outbox. No cache.
+Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`,
+`IEmailService`, `IAuditLogService`. Implements per-rota
+(`SendRotaMessageAsync`) and team-level (`SendTeamRotasMessageAsync`,
+PR #795) dispatch — groups active signups by user across one or many
+rotas and enqueues one personalised email per recipient via the outbox.
+No cache.
 
 ### WorkloadService (Scoped) — `Shifts/Workload/`
 
@@ -1216,7 +1220,6 @@ Repository: `ITicketRepository`.
 | TicketOrders | R |
 | TicketAttendees | R |
 | TicketSyncStates | R |
-| UserEmails | R (via `ITicketRepository` projections — attendee/email matching for ticket counts; reached via `ctx.Set<UserEmail>()`) |
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
@@ -1225,10 +1228,12 @@ inner; `CachingTicketQueryService` intercepts. Cross-section calls via
 Implements `IUserDataContributor` (the GDPR contributor is the inner, one
 per section).
 
-**Cross-section table read (design-rule violation):** `TicketRepository`
-materialises `UserEmail` projections for attendee matching.
-`IUserEmailService` does not yet expose a bulk lookup; this is the
-cleanest single fix to retire the violation.
+> **Change since prior sweep:** `TicketRepository` no longer reads
+> `UserEmails` directly (PR #802) — the prior `GetAllUserEmailLookupEntriesAsync`
+> projection has been retired. Email-to-user matching for ticket sync now
+> routes through `IUserServiceRead.GetAllUserInfosAsync` (see
+> `TicketSyncService.BuildEmailLookupAsync`). The cross-section
+> design-rule violation on `UserEmails` is closed.
 
 ### CachingTicketQueryService (Singleton, Infrastructure)
 
@@ -1262,8 +1267,11 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
-`IUserService`, `ICampaignService`, `IShiftManagementService`,
-`ITicketCacheInvalidator`. Implements `ITicketSyncService`, `IUserMerge`.
+`IUserServiceRead`, `IUserService`, `ICampaignService`,
+`IShiftManagementService`, `ITicketCacheInvalidator`. Implements
+`ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
+verified-email → user-id map by fanning out over `IUserServiceRead.GetAllUserInfosAsync`
+(replaces the prior `TicketRepository` projection — PR #802).
 
 ### TicketTransferService (Scoped)
 
@@ -1775,14 +1783,14 @@ formatters with no DI dependencies.
 After the §15 / `IUserMerge` consolidation and the more recent
 `GoogleAdminService` / `CampRepository.GetCampLeadsAsync` /
 `CalendarRepository` / `BudgetRepository` / `EventRepository` /
-`ShiftSignupRepository` cleanups, only a handful of repositories still
-reach across boundaries directly. These are the remaining design-rule
-violations.
+`ShiftSignupRepository` / `TicketRepository` cleanups, only a handful
+of repositories still reach across boundaries directly. These are the
+remaining design-rule violations.
 
 | Table | Owning Section | Cross-Section Repo Readers (violations) |
 |-------|----------------|-----------------------------------------|
 | **Users** | Users | Profiles (`UserEmailRepository` writes `GoogleEmail`/`GoogleEmailStatus`/`Email` and the `UserEmailWithUser` read; `DuplicateAccountService` via `IUserRepository`), Google Integration (`DriveActivityMonitorRepository.TryResolveEmailByGoogleUserIdAsync` reads via IdentityUserLogins join) |
-| **UserEmails** | Profiles | Tickets (`TicketRepository` `UserEmail` projections for attendee matching via `ctx.Set<UserEmail>()`) |
+| **UserEmails** | Profiles | Users (`UserRepository.Include(u => u.UserEmails)` — `UserInfo` projection bridge; tracked under HUM0025 grandfathering as the read-model boundary) |
 | **EventParticipations** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
 | **IdentityUserLogins** | Users | Google Integration (`DriveActivityMonitorRepository`), Profiles (`DuplicateAccountService` via `IUserRepository`) |
 | **GoogleSyncOutboxEvents** | Google Integration | Teams (`TeamRepository` writes outbox events on team mutations) |
@@ -1814,10 +1822,13 @@ violations.
    Application-layer service named `ProfileService` is now a thin
    `IProfilePictureService` implementation for picture-bytes IO.
 
-4. **Tickets ↔ Profiles email lookup.** `TicketRepository`
-   materialises `UserEmail` projections for attendee matching via
-   `ctx.Set<UserEmail>()`. `IUserEmailService` does not yet expose a bulk
-   lookup; this is the cleanest single fix to retire the violation.
+4. **Tickets ↔ Profiles email lookup retired (PR #802).**
+   `TicketRepository` no longer projects `UserEmail` rows directly.
+   `TicketSyncService.BuildEmailLookupAsync` fans out over
+   `IUserServiceRead.GetAllUserInfosAsync` and synthesises the
+   verified-email → user-id map from the cached `UserInfo` slices.
+   `UserEmails` is now only read cross-section by `UserRepository`
+   itself for `UserInfo` projection (the unified read-model bridge).
 
 5. **Teams ↔ Google outbox.** `TeamRepository` writes
    `GoogleSyncOutboxEvents` so each team mutation is atomic with its
