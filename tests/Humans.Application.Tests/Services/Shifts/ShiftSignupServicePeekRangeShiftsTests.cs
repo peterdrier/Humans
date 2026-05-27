@@ -75,6 +75,7 @@ public class ShiftSignupServicePeekRangeShiftsTests : IDisposable
             repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             membership,
             auditLog,
             Substitute.For<INotificationService>(),

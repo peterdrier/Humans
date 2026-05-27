@@ -62,6 +62,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             membership,
             AuditLog,
             Substitute.For<INotificationService>(),

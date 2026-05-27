@@ -65,6 +65,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             _membership,
             AuditLog,
             Substitute.For<INotificationService>(),

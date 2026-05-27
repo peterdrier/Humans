@@ -59,6 +59,7 @@ public sealed class ShiftSignupServiceFilterIncompleteOnboardingTests : ServiceT
             repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             _membership,
             AuditLog,
             Substitute.For<INotificationService>(),

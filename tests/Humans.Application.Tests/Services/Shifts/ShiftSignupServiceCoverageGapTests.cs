@@ -71,6 +71,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             signupRepo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             membership,
             AuditLog,
             _notificationService,
