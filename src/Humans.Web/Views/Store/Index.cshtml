@@ -20,7 +20,7 @@
 }
 else
 {
-    @foreach (var cp in Model.Counterparties)
+    @foreach (var cp in Model.Counterparties.OrderBy(c => c.CounterpartyType).ThenBy(c => c.DisplayName, StringComparer.Ordinal))
     {
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">

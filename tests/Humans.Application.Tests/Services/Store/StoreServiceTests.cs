@@ -244,6 +244,10 @@ public class StoreServiceTests
         var actor = Guid.NewGuid();
         StoreOrder? captured = null;
         await _repo.AddOrderAsync(Arg.Do<StoreOrder>(o => captured = o), Arg.Any<CancellationToken>());
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(campSeasonId, Guid.NewGuid(), "alpha", 2026, null,
+                "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
         var orderId = await _service.CreateOrderAsync(campSeasonId, "First order", actor);
 

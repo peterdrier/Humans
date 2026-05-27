@@ -50,7 +50,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var row in s.ByCounterparty)
+                @foreach (var row in s.ByCounterparty.OrderBy(r => r.CounterpartyType).ThenBy(r => r.CounterpartyName, StringComparer.Ordinal))
                 {
                     string paidClass =
                         row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "paid" :
@@ -139,7 +139,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var cp in s.CrossTab.Counterparties)
+                @foreach (var cp in s.CrossTab.Counterparties.OrderBy(c => c.CounterpartyType).ThenBy(c => c.CounterpartyName, StringComparer.Ordinal))
                 {
                     <tr>
                         <td>@cp.CounterpartyType</td>

@@ -54,13 +54,13 @@ public class StoreService(
             }
         }
 
-        // Team-coordinator counterparties — departments only
+        // Team-coordinator counterparties — departments only.
+        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
         var teams = await teamService.GetTeamsAsync(ct);
         foreach (var team in teams.Values
             .Where(t => t.ParentTeamId is null
                         && t.ManagementRoleHolderUserIds is not null
-                        && t.ManagementRoleHolderUserIds.Contains(userId))
-            .OrderBy(t => t.Name, StringComparer.Ordinal))
+                        && t.ManagementRoleHolderUserIds.Contains(userId)))
         {
             var existing = await repo.GetOrderForTeamAsync(team.Id, year, ct);
             IReadOnlyList<OrderDto> orders;
@@ -279,8 +279,8 @@ public class StoreService(
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
     {
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct);
-        var year = season?.Year ?? 0;
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
+            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
 
         var now = clock.GetCurrentInstant();
         var order = new StoreOrder
@@ -288,7 +288,7 @@ public class StoreService(
             Id = Guid.NewGuid(),
             CampSeasonId = campSeasonId,
             TeamId = null,
-            Year = year,
+            Year = season.Year,
             Label = label,
             State = StoreOrderState.Open,
             CreatedAt = now,
@@ -716,11 +716,8 @@ public class StoreService(
                 0m));
         }
 
-        var byCounterpartySorted = byCounterparty
-            .OrderBy(s => s.CounterpartyType)
-            .ThenBy(s => s.CounterpartyName, StringComparer.Ordinal)
-            .ToList();
-
+        // Counterparty row ordering is the view's concern
+        // (memory/architecture/display-sort-in-controllers.md).
         // by-item aggregates lines from BOTH camp and team orders so suppliers see the full demand.
         var allLineProjections = campOrdersInYear
             .Concat(teamOrders)
@@ -779,16 +776,11 @@ public class StoreService(
                 total,
                 perProduct));
         }
-        var counterpartyRowsSorted = counterpartyRows
-            .OrderBy(r => r.CounterpartyType)
-            .ThenBy(r => r.CounterpartyName, StringComparer.Ordinal)
-            .ToList();
-
         return new StoreSummaryDto(
             year,
-            byCounterpartySorted,
+            byCounterparty,
             byItem,
-            new StoreCrossTabDto(productColumns, counterpartyRowsSorted));
+            new StoreCrossTabDto(productColumns, counterpartyRows));
     }
 
     private static ProductDto MapProduct(StoreProduct p) =>
