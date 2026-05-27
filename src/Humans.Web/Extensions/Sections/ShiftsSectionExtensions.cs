@@ -56,7 +56,9 @@ internal static class ShiftsSectionExtensions
 
         // VolunteerTracking — Scoped repository so multi-step camp-setup + blocked-day mutations share one change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
-        services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
+        services.AddScoped<ShiftsVolunteerTrackingService>();
+        services.AddScoped<IVolunteerTrackingService>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
+        services.AddScoped<IVolunteerTrackingServiceRead>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
         services.AddScoped<Humans.Application.Services.Shifts.VolunteerTrackingExportService>();
         services.AddScoped<IVolunteerTrackingExportService>(sp =>
             sp.GetRequiredService<Humans.Application.Services.Shifts.VolunteerTrackingExportService>());
