@@ -32,9 +32,10 @@ namespace Humans.Web.Tests.Controllers;
 /// Verifies <see cref="VolunteerTrackingController"/> wiring:
 /// authorization attributes (read = ShiftDashboardAccess, write =
 /// VolunteerTrackingWrite), Index sort/filter/empty-event behavior,
-/// and the SetCampSetup / ClearCampSetup / SetBlock action flows
-/// (success → 302 + audit, validation failures → no audit, service
-/// rejection → error TempData).
+/// and the write actions (SetCampSetup / ClearCampSetup / SetDayOff /
+/// ClearDayOff / SetAvailabilityDay / ClearAvailabilityDay): success
+/// → 302 + audit, validation failures → no audit, service rejection
+/// → error TempData, and returnUrl honored when local.
 ///
 /// This is a unit-test project (no Testcontainers/WebApplicationFactory),
 /// so policy enforcement is verified by reflection on the
