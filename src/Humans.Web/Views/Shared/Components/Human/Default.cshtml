@@ -43,7 +43,7 @@
         }
         else
         {
-            @Html.Raw($"<span{popoverAttrs}>{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName)}</span>")
+            <span>@Model.DisplayName</span>
         }
         break;
 
@@ -52,11 +52,6 @@
         {
             var titleAttr = $" title=\"{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName)}\"";
             @Html.Raw($"<a href=\"{Model.Href}\"{titleAttr}{popoverAttrs}>{AvatarHtml(null)}</a>")
-        }
-        else if (Model.ShowPopoverPublic)
-        {
-            var titleAttr = $" title=\"{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName)}\"";
-            @Html.Raw($"<span class=\"d-inline-block\"{titleAttr}{popoverAttrs}>{AvatarHtml(null)}</span>")
         }
         else
         {
@@ -72,7 +67,7 @@
         }
         else
         {
-            @Html.Raw($"<div class=\"d-flex align-items-center\"{popoverAttrs}>{AvatarHtml("me-2")}<div><div class=\"fw-semibold\">{nameEnc}</div></div></div>")
+            @Html.Raw($"<div class=\"d-flex align-items-center\">{AvatarHtml("me-2")}<div><div class=\"fw-semibold\">{nameEnc}</div></div></div>")
         }
         break;
 
