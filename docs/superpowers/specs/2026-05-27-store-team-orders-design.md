@@ -62,7 +62,7 @@ No backfill script. New writes populate `Year` lazily:
 
 ```csharp
 Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default);
-Task<IReadOnlyList<OrderDto>> GetOrdersForTeamAsync(Guid teamId, CancellationToken ct = default);
+Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default);
 ```
 
 ### `IStoreService` modifications (guard rails)
