@@ -1,9 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Application.Tests.Agent;
 
@@ -68,26 +70,25 @@ public class AgentPreloadCorpusBuilderTests
 
     private static IAgentPreloadCorpusBuilder MakeBuilder()
     {
-        var env = new TestHostEnvironment();
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var reader = new AgentSectionDocReader(env);
+        var reader = new AgentSectionDocReader(
+            new StubSource(),
+            cache,
+            Options.Create(new GuideSettings { CacheTtlHours = 6 }),
+            NullLogger<AgentSectionDocReader>.Instance);
         return new AgentPreloadCorpusBuilder(reader, cache);
     }
 
-    private static string RepoRoot()
+    /// <summary>
+    /// Returns synthetic section bodies whose H1 tagline contains the key — enough for the
+    /// builder's index assertions (it only reads the first non-empty line after the H1).
+    /// </summary>
+    private sealed class StubSource : IGuideContentSource
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "docs", "sections")))
-            dir = dir.Parent;
-        return dir?.FullName ?? AppContext.BaseDirectory;
-    }
+        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+            Task.FromResult($"# {fileStem}\n\nTagline for {fileStem}.");
 
-    private sealed class TestHostEnvironment : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = "Test";
-        public string ApplicationName { get; set; } = "Humans.Application.Tests";
-        public string ContentRootPath { get; set; } = RepoRoot();
-        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
-            new Microsoft.Extensions.FileProviders.PhysicalFileProvider(RepoRoot());
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
+            Task.FromResult($"# {fileStem}\n\nTagline for {fileStem}.");
     }
 }
