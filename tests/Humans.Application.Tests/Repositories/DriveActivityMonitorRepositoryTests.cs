@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -11,10 +10,8 @@ using Humans.Infrastructure.Repositories.GoogleIntegration;
 namespace Humans.Application.Tests.Repositories;
 
 /// <summary>
-/// Tests for <see cref="DriveActivityMonitorRepository"/> — the owner of
-/// <c>system_settings["DriveActivityMonitor:LastRunAt"]</c>, anomaly audit
-/// persistence for the Drive activity monitor, and the
-/// Google-OAuth-id → email fallback lookup.
+/// Tests for <see cref="DriveActivityMonitorRepository"/>, the owner of
+/// <c>system_settings["DriveActivityMonitor:LastRunAt"]</c>.
 /// </summary>
 public sealed class DriveActivityMonitorRepositoryTests : IDisposable
 {
@@ -151,58 +148,4 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         rows[0].Value.Should().Be(NodaTime.Text.InstantPattern.General.Format(next));
     }
 
-    [HumansFact]
-    public async Task TryResolveEmailByGoogleUserIdAsync_ReturnsNull_WhenLoginNotFound()
-    {
-        var result = await _repository.TryResolveEmailByGoogleUserIdAsync("nonexistent");
-        result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task TryResolveEmailByGoogleUserIdAsync_ReturnsEmail_WhenGoogleLoginExists()
-    {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = "known@example.com",
-            UserName = "known@example.com",
-            DisplayName = "Known",
-        };
-        _seedContext.Users.Add(user);
-        _seedContext.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
-        {
-            LoginProvider = "Google",
-            ProviderKey = "google-id-7",
-            ProviderDisplayName = "Google",
-            UserId = user.Id,
-        });
-        await _seedContext.SaveChangesAsync();
-
-        var result = await _repository.TryResolveEmailByGoogleUserIdAsync("google-id-7");
-        result.Should().Be("known@example.com");
-    }
-
-    [HumansFact]
-    public async Task TryResolveEmailByGoogleUserIdAsync_IgnoresNonGoogleLoginsWithSameProviderKey()
-    {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = "someone@example.com",
-            UserName = "someone@example.com",
-            DisplayName = "Someone",
-        };
-        _seedContext.Users.Add(user);
-        _seedContext.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
-        {
-            LoginProvider = "Microsoft",
-            ProviderKey = "shared-id",
-            ProviderDisplayName = "Microsoft",
-            UserId = user.Id,
-        });
-        await _seedContext.SaveChangesAsync();
-
-        var result = await _repository.TryResolveEmailByGoogleUserIdAsync("shared-id");
-        result.Should().BeNull();
-    }
 }

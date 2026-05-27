@@ -11,8 +11,6 @@ using Humans.Infrastructure.Data;
 namespace Humans.Infrastructure.Repositories.Users;
 
 /// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
-[Grandfathered("HUM0025", justification: "Identity UserLogins also accessed by DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserLogins")]
-[Grandfathered("HUM0025", justification: "Users is also accessed by DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
 internal sealed partial class UserRepository : IUserRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;

@@ -1,7 +1,9 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,6 +30,7 @@ public class DriveActivityMonitorServiceTests
     private readonly IGoogleDriveActivityClient _client;
     private readonly ITeamResourceService _teamResources;
     private readonly IDriveActivityMonitorRepository _repository;
+    private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
     private readonly FakeClock _clock;
     private readonly DriveActivityMonitorService _service;
@@ -41,15 +44,17 @@ public class DriveActivityMonitorServiceTests
         _client = Substitute.For<IGoogleDriveActivityClient>();
         _teamResources = Substitute.For<ITeamResourceService>();
         _repository = Substitute.For<IDriveActivityMonitorRepository>();
+        _userService = Substitute.For<IUserServiceRead>();
         _auditLog = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
 
         _client.IsConfigured.Returns(true);
         _client.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns(ServiceAccountEmail);
         _client.GetServiceAccountClientIdAsync(Arg.Any<CancellationToken>()).Returns(ServiceAccountClientId);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
 
         _service = new DriveActivityMonitorService(
-            _client, _teamResources, _repository, _auditLog, _clock,
+            _client, _teamResources, _repository, _userService, _auditLog, _clock,
             NullLogger<DriveActivityMonitorService>.Instance);
     }
 
@@ -153,10 +158,11 @@ public class DriveActivityMonitorServiceTests
 
         // Directory API should be hit exactly once per unique people/ id (per-run cache).
         await _client.Received(1).TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_FallsBackToLocalDbWhenDirectoryLookupFails()
+    public async Task CheckForAnomalousActivityAsync_FallsBackToUserInfoWhenDirectoryLookupFails()
     {
         var resource = BuildResource("Fallback-Drive");
         SeedResources(resource);
@@ -169,8 +175,12 @@ public class DriveActivityMonitorServiceTests
 
         _client.TryResolvePersonEmailAsync("people/42", Arg.Any<CancellationToken>())
             .Returns((string?)null);
-        _repository.TryResolveEmailByGoogleUserIdAsync("42", Arg.Any<CancellationToken>())
-            .Returns("localdb@example.com");
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                BuildUserInfo(
+                    "userinfo@example.com",
+                    new UserExternalLoginInfo("Google", "42"))
+            ]);
 
         var count = await _service.CheckForAnomalousActivityAsync();
 
@@ -179,7 +189,77 @@ public class DriveActivityMonitorServiceTests
             AuditAction.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
-            Arg.Is<string>(d => d.Contains("localdb@example.com", StringComparison.Ordinal)),
+            Arg.Is<string>(d => d.Contains("userinfo@example.com", StringComparison.Ordinal)),
+            JobName);
+    }
+
+    [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_LeavesRawPeopleIdWhenUserInfoFallbackFails()
+    {
+        var resource = BuildResource("Fallback-Failure-Drive");
+        SeedResources(resource);
+
+        var anomalousEvent = BuildPermissionChangeEvent(
+            actorPersonName: "people/42",
+            addedRole: "reader",
+            targetUser: "people/42");
+        SeedActivity(resource.GoogleId, anomalousEvent);
+
+        _client.TryResolvePersonEmailAsync("people/42", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<IReadOnlyCollection<UserInfo>>(
+                new InvalidOperationException("user cache failed")));
+
+        var count = await _service.CheckForAnomalousActivityAsync();
+
+        count.Should().Be(1);
+        await _repository.Received(1).AdvanceLastRunMarkerAsync(
+            _clock.GetCurrentInstant(),
+            Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d => d.Contains("people/42", StringComparison.Ordinal)),
+            JobName);
+    }
+
+    [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_SkipsAmbiguousUserInfoProviderKeys()
+    {
+        var resource = BuildResource("Ambiguous-Drive");
+        SeedResources(resource);
+
+        var anomalousEvent = BuildPermissionChangeEvent(
+            actorPersonName: "people/42",
+            addedRole: "reader",
+            targetUser: "people/42");
+        SeedActivity(resource.GoogleId, anomalousEvent);
+
+        _client.TryResolvePersonEmailAsync("people/42", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                BuildUserInfo(
+                    "first@example.com",
+                    new UserExternalLoginInfo("Google", "42")),
+                BuildUserInfo(
+                    "second@example.com",
+                    new UserExternalLoginInfo("Google", "42"))
+            ]);
+
+        var count = await _service.CheckForAnomalousActivityAsync();
+
+        count.Should().Be(1);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d =>
+                d.Contains("people/42", StringComparison.Ordinal) &&
+                !d.Contains("first@example.com", StringComparison.Ordinal) &&
+                !d.Contains("second@example.com", StringComparison.Ordinal)),
             JobName);
     }
 
@@ -295,6 +375,35 @@ public class DriveActivityMonitorServiceTests
         name,
         GoogleResourceType.DriveFolder,
         Url: null);
+
+    private UserInfo BuildUserInfo(string email, params UserExternalLoginInfo[] externalLogins) =>
+        new(
+            Guid.NewGuid(),
+            BurnerName: email,
+            IsGdprAnonymized: false,
+            PreferredLanguage: "en",
+            FallbackPictureUrl: null,
+            CreatedAt: _clock.GetCurrentInstant(),
+            LastLoginAt: null,
+            LastConsentReminderSentAt: null,
+            DeletionRequestedAt: null,
+            DeletionScheduledFor: null,
+            DeletionEligibleAfter: null,
+            UnsubscribedFromCampaigns: false,
+            ICalToken: null,
+            SuppressScheduleChangeEmails: false,
+            MagicLinkSentAt: null,
+            GoogleEmailStatus: GoogleEmailStatus.Unknown,
+            ContactSource: null,
+            ExternalSourceId: null,
+            MergedToUserId: null,
+            MergedAt: null,
+            IdentityEmailColumn: email,
+            UserEmails: [],
+            EventParticipations: [],
+            ExternalLogins: externalLogins,
+            Profile: null,
+            CommunicationPreferences: []);
 
     private static DriveActivityEvent BuildPermissionChangeEvent(
         string actorPersonName, string addedRole, string targetUser) =>

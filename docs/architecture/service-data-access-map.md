@@ -598,20 +598,17 @@ Repository: `IDriveActivityMonitorRepository`.
 | Table | R/W |
 |-------|-----|
 | GoogleResources | R (via `ITeamResourceService`) |
-| Users | R (via repo `TryResolveEmailByGoogleUserIdAsync` — join with IdentityUserLogins) |
-| IdentityUserLogins | R (via repo) |
+| Users / IdentityUserLogins | R (via `IUserServiceRead.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
 | SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`) |
 
-**Cross-section reads (design-rule violations):** the
-`DriveActivityMonitorRepository` queries `Users` and `IdentityUserLogins`
-directly to resolve Google user ids → email. Audit-log writes have already
-been migrated to `IAuditLogService` (the prior `AuditLogEntries` direct
-read/write is gone). The remaining cleanup path is to inject
-`IUserService` for the email lookup so the repo only owns
-`SystemSettings`-key plumbing.
+Google `people/{id}` fallback resolution goes through the Users read-model:
+the service builds a per-run Google provider-key -> `UserInfo` index from
+`IUserServiceRead.GetAllUserInfosAsync` and uses `UserInfo.Email`. The
+repository owns only the `SystemSettings` key plumbing. Audit-log writes go
+through `IAuditLogService`.
 
 Cross-section calls via `IGoogleDriveActivityClient`,
-`ITeamResourceService`, `IAuditLogService`. No cache.
+`ITeamResourceService`, `IUserServiceRead`, `IAuditLogService`. No cache.
 
 ### GoogleRemovalNotificationService (Scoped)
 
@@ -1784,10 +1781,10 @@ remaining design-rule violations.
 
 | Table | Owning Section | Cross-Section Repo Readers (violations) |
 |-------|----------------|-----------------------------------------|
-| **Users** | Users | Profiles (`UserEmailRepository` writes `GoogleEmail`/`GoogleEmailStatus`/`Email` and the `UserEmailWithUser` read; `DuplicateAccountService` via `IUserRepository`), Google Integration (`DriveActivityMonitorRepository.TryResolveEmailByGoogleUserIdAsync` reads via IdentityUserLogins join) |
+| **Users** | Users | Profiles (`UserEmailRepository` writes `GoogleEmail`/`GoogleEmailStatus`/`Email` and the `UserEmailWithUser` read; `DuplicateAccountService` via `IUserRepository`) |
 | **UserEmails** | Profiles | Users (`UserRepository.Include(u => u.UserEmails)` — `UserInfo` projection bridge; tracked under HUM0025 grandfathering as the read-model boundary) |
 | **EventParticipations** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
-| **IdentityUserLogins** | Users | Google Integration (`DriveActivityMonitorRepository`), Profiles (`DuplicateAccountService` via `IUserRepository`) |
+| **IdentityUserLogins** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
 | **GoogleSyncOutboxEvents** | Google Integration | Teams (`TeamRepository` writes outbox events on team mutations) |
 
 ### Notable Cross-Section Patterns
@@ -1831,13 +1828,11 @@ remaining design-rule violations.
    via `IGoogleSyncOutboxRepository`. The atomicity benefit outweighs
    the boundary cost.
 
-6. **DriveActivityMonitor still reaches into the User identity tables.**
-   `DriveActivityMonitorRepository` joins `IdentityUserLogins` and `Users`
-   to resolve a Google `people/{client_id}` actor back to an email.
-   Audit-log writes have already been migrated to `IAuditLogService` (the
-   prior `AuditLogEntries` direct write is gone). The remaining cleanup
-   path is to inject `IUserService` for the email lookup so the repo only
-   owns its `SystemSettings`-key plumbing.
+6. **DriveActivityMonitor user fallback uses UserInfo.**
+   `DriveActivityMonitorService` resolves Google `people/{client_id}` actors
+   through Directory first, then through a per-run Google provider-key ->
+   `UserInfo` index from `IUserServiceRead.GetAllUserInfosAsync`. The
+   repository owns only its `SystemSettings` key.
 
 7. **SystemSettings has per-key ownership (no single owner service).**
    Each key is owned by the section whose repository accesses it; this
