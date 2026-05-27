@@ -21,11 +21,11 @@ Per-camp catalog ordering, multi-method payments, and consolidated Holded factur
 
 ## Concepts
 
-- A **Store Product** is a catalog item available to Camp Leads in a given event year (price, VAT rate, optional deposit, ordering deadline). Products are created and edited by StoreAdmin.
-- A **Store Order** is a Camp Lead's order against a `CampSeason`. Lifecycle: **Open** → **InvoiceIssued**. Multiple orders per `CampSeason` are allowed, distinguished by an optional `Label`.
+- A **Store Product** is a catalog item available to Camp Leads and department coordinators in a given event year (price, VAT rate, optional deposit, ordering deadline). Products are created and edited by StoreAdmin.
+- A **Store Order** is owned by exactly one counterparty — either a `CampSeason` (billable, full lifecycle Open → InvoiceIssued, multiple orders per season allowed) **or** a `Team` (non-billable, department-level only, stays `Open` indefinitely, one order per team per year). The "exactly one" invariant is service-enforced, not DB-enforced. Both kinds reuse the same `StoreProduct` catalog and the `OrderableUntil` deadline gate.
 - A **Store Order Line** is a line on an order that snapshots the product's price, VAT, and deposit at the time the line was added — later catalog edits never mutate existing lines.
-- A **Store Payment** is a payment against an order, recorded with one of three methods (`Stripe`, `BankTransfer`, `Manual`). Negative amounts represent refunds.
-- A **Store Invoice** is the consolidated Holded factura issued for an order. One invoice per order, written once at issuance.
+- A **Store Payment** is a payment against a camp order, recorded with one of three methods (`Stripe`, `BankTransfer`, `Manual`). Negative amounts represent refunds. Team orders never have payments.
+- A **Store Invoice** is the consolidated Holded factura issued for a camp order. One invoice per order, written once at issuance. Team orders never receive invoices.
 - A **Store Treasury Sync State** is the singleton cursor row that the treasury-sync job uses to track its last successful Holded poll.
 
 ## Data Model
@@ -61,16 +61,20 @@ A camp's order against a season.
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| CampSeasonId | Guid | FK only — no nav |
-| Label | string(100)? | Optional disambiguator within a season |
-| State | StoreOrderState (int) | Open or InvoiceIssued |
-| CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; FinanceAdmin always |
-| IssuedInvoiceId | Guid? | Set when invoice is issued |
+| CampSeasonId | Guid? | FK only — no nav. Set for camp orders; null for team orders. |
+| TeamId | Guid? | FK only — no nav. Set for team orders; null for camp orders. |
+| Year | int | Event year the catalog draws from. Always set on write; lazy-backfilled from `CampSeason.Year` for legacy camp rows. |
+| Label | string(100)? | Optional disambiguator within a season (camp orders only) |
+| State | StoreOrderState (int) | Open or InvoiceIssued; team orders stay Open |
+| CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; FinanceAdmin always. Never populated on team orders. |
+| IssuedInvoiceId | Guid? | Set when invoice is issued (camp orders only) |
 | CreatedAt / UpdatedAt | Instant | |
 
-**Indexes:** `CampSeasonId`, `State`.
+**Indexes:** `CampSeasonId`, `TeamId`, `State`.
 
-**Cross-section linkage:** `CampSeasonId` is a bare `Guid` column — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampService.GetCampSeasonByIdAsync`.
+**Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampService.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
+
+**Year backfill rule:** new writes always populate `Year`. Pre-existing camp rows may carry `Year = 0` until they're next saved through the service, at which point the column is backfilled from `CampSeason.Year`.
 
 **Aggregate-local navs:** `StoreOrder.Lines`, `StoreOrder.Payments`.
 
@@ -163,14 +167,15 @@ Stored as int via `HasConversion<int>()`.
 
 ## Routing
 
-- `/Store` — Camp Lead order browse + create + line edit.
-- `/Store/Order/{id}` — Camp Lead order detail (balance + Pay button).
+- `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card.
+- `/Store/Order/{id}` — Order detail. Camp orders show balance + Pay button. Team orders show only lines + add-line form + a "non-billable" footer (no counterparty form, no Pay, no payments list).
+- `/Store/Team/{teamId}/Create` — POST: department coordinator creates their team's order for the active event year.
 - `/Store/Admin/Catalog` — StoreAdmin catalog CRUD (`StoreAdminController`, policy `StoreCatalogAdmin`).
 - `/Store/Admin/Catalog/Edit[/{id}]` — Create / edit product.
 - `/Store/Admin/Catalog/Save` — POST save product.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
 - `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice. **Not yet implemented (Phase 5 stub).**
-- `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-camp, by-item, camps × products cross-tab for a given year. Reuses `PolicyNames.StoreCatalogAdmin`.
+- `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
 
 ## Actors & Roles
@@ -178,13 +183,19 @@ Stored as int via `HasConversion<int>()`.
 | Actor | Capabilities |
 |-------|--------------|
 | Camp Lead | View / create orders for camp-seasons they lead. Add and remove lines while order is Open and the product's `OrderableUntil` has not passed. Edit counterparty fields while Open. Initiate Stripe checkout to pay. |
-| StoreAdmin | **Store-domain superset** (per `memory/code/admin-role-superset.md`): catalog CRUD, view all orders, record manual payments, issue invoices, run treasury sync. Equivalent to FinanceAdmin within the Store section. |
-| FinanceAdmin, Admin | All Camp Lead and StoreAdmin capabilities. Record manual payments (incl. refunds via negative amounts) regardless of order state. Issue invoice (single + Issue All). View `/Store/Summary`. Run treasury sync on demand. |
+| Coordinator (department) | View / create the single team order for departments (top-level teams) they coordinate, scoped to the active event year. Add and remove lines while the product's `OrderableUntil` has not passed. No pay, no counterparty edit, no invoice — team orders are non-billable. |
+| StoreAdmin | **Store-domain superset** (per `memory/code/admin-role-superset.md`): catalog CRUD, view all orders, record manual payments, issue invoices, run treasury sync. Equivalent to FinanceAdmin within the Store section. EditCounterparty/Pay remain denied on team orders even for admins. |
+| FinanceAdmin, Admin | All Camp Lead and StoreAdmin capabilities. Record manual payments (incl. refunds via negative amounts) regardless of order state. Issue invoice (single + Issue All). View `/Store/Admin/Summary`. Run treasury sync on demand. EditCounterparty/Pay remain denied on team orders. |
 
 ## Invariants
 
-- An order follows the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
-- Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil` (enforced in `StoreService.AddLineAsync` / `RemoveLineAsync`).
+- An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `StoreService.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
+- **Team orders are non-billable.** `UpdateCounterpartyAsync`, `RecordManualPaymentAsync`, `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject any order whose `TeamId is not null` with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
+- A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.
+- At most **one team order per team per year** — enforced by `CreateTeamOrderAsync` via a repo lookup before insert.
+- Camp orders follow the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
+- Team orders stay in **Open** indefinitely. The implicit close-out signal is per-product `OrderableUntil` — once every catalog product has passed its deadline, the order is effectively read-only.
+- Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil` (enforced in `StoreService.AddLineAsync` / `RemoveLineAsync`). The deadline gate is per-product and identical for camp and team orders.
 - Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
 - Line snapshots (`UnitPriceSnapshot`, `VatRateSnapshot`, `DepositAmountSnapshot`) are written at add-time and never recomputed — later catalog edits to `StoreProduct` do not propagate to existing lines.
 - Payments may be recorded regardless of order state — payments do not freeze on issuance.
@@ -217,7 +228,8 @@ Stored as int via `HasConversion<int>()`.
 ## Cross-Section Dependencies
 
 - **Camps:** `ICampService` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
-- **Shifts:** `IShiftManagementService.GetActiveAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog` and (b) compute "today in event time zone" for the `OrderableUntil` deadline gate.
+- **Teams:** `ITeamServiceRead` for department lookups (team name, department check via `ParentTeamId is null`, coordinator check via `ManagementRoleHolderUserIds`). Existing methods only — no new surface added to its `[SurfaceBudget(4)]`.
+- **Shifts:** `IShiftManagementService.GetActiveAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
 - **Holded connector** (Infrastructure): `IHoldedClient` extended with `UpsertContactAsync`, `CreateInvoiceAsync`, `ListTreasuryEntriesAsync` in Phase 4.
 - **Stripe connector** (Infrastructure): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for `checkout.session.completed` ingestion.
