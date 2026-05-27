@@ -28,3 +28,4 @@ HUM0025 | Humans.Architecture   | Error    | A DbSet table is referenced (read o
 HUM0026 | Humans.Architecture   | Error    | IOrchestrator implementer injects an I*Repository, HumansDbContext, or IDbContextFactory<HumansDbContext>
 HUM0027 | Humans.Architecture   | Error    | Type implements both IApplicationService and IOrchestrator — the role axis is exclusive
 HUM0028 | Humans.Architecture   | Error    | Interface extends IInvalidator (downgrades to Warning for interfaces carrying [Grandfathered("HUM0028", ...)])
+HUM0029 | Humans.Architecture   | Error    | Cross-section read interface (I*Read) exposes EF entity, Microsoft.EntityFrameworkCore type, or System.Linq.IQueryable in a method signature (downgrades to Warning for interfaces carrying [Grandfathered("HUM0029", ...)])
