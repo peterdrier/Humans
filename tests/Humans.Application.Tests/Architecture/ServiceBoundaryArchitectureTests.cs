@@ -26,7 +26,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICityPlanningRepository)] = "CityPlanning",
             [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",
-            [typeof(IContactFieldRepository)] = "Humans",
             [typeof(IContainerRepository)] = "Containers",
             [typeof(IDriveActivityMonitorRepository)] = "GoogleIntegration",
             [typeof(IEmailOutboxRepository)] = "Email",
@@ -39,7 +38,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IIssuesRepository)] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
             [typeof(INotificationRepository)] = "Notifications",
-            [typeof(IProfileRepository)] = "Humans",
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [typeof(IShiftSignupRepository)] = "Shifts",
@@ -103,7 +101,6 @@ public class ServiceBoundaryArchitectureTests
     {
         RepositoryOwners[typeof(IUserRepository)].Should().Be("Humans");
         RepositoryOwners[typeof(IUserEmailRepository)].Should().Be("Humans");
-        RepositoryOwners[typeof(IProfileRepository)].Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Profiles.ProfileService)).Should().Be("Humans");
     }

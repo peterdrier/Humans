@@ -18,7 +18,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>AsNoTracking</c>; writes create and dispose short-lived contexts via
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>
 /// so the repository can be registered Singleton alongside
-/// <see cref="IProfileRepository"/>, <see cref="IUserRepository"/>, etc.
+/// <see cref="IUserRepository"/>, etc.
 ///
 /// <para>
 /// Legal documents carry a cross-section TeamId only. Callers that need team

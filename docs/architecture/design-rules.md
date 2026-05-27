@@ -48,7 +48,7 @@ Repository **implementations** (the classes that talk to `DbContext`) live in `H
 
 ### 2c. Table Ownership Is Strict and Sectional
 
-Each domain's tables are owned by exactly one service (and that service's repository). **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs a profile, it calls `IProfileService` — it does not query the `profiles` table, does not instantiate `IProfileRepository`, does not access the Profile section's in-memory cache directly.
+Each domain's tables are owned by exactly one service (and that service's repository). **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs person/profile display data, it calls `IUserServiceRead` - it does not query the `profiles` table, instantiate `IUserRepository`, or access the Users/Profile read-model cache directly.
 
 ### 2d. Cache Ownership Follows Data Ownership
 
@@ -70,8 +70,8 @@ Every domain has a narrow, entity-shaped **repository interface** in `Humans.App
 ### 3b. Canonical Repository Shape
 
 ```csharp
-// Humans.Application/Interfaces/Repositories/IProfileRepository.cs
-public interface IProfileRepository
+// Humans.Application/Interfaces/Repositories/IUserRepository.Profiles.cs
+public partial interface IUserRepository
 {
     Task<Profile?> GetByIdAsync(Guid profileId, CancellationToken ct = default);
     Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
@@ -336,7 +336,7 @@ Wrong patterns — each violates an invariant somewhere:
 
 ```csharp
 // WRONG — reaches into another domain's repository
-public class CampService(ICampRepository repo, IProfileRepository profileRepo) : ICampService { ... }
+public class CampService(ICampRepository repo, IUserRepository userRepo) : ICampService { ... }
 
 // WRONG — uses IDbContextFactory to query another domain's tables directly
 public class CampService(ICampRepository repo, IDbContextFactory<HumansDbContext> factory) : ICampService
@@ -580,7 +580,7 @@ For the Google Workspace section in particular, the cached projection isn't a ta
 
 - **1 business service** still lives in `Humans.Infrastructure/Services/` and injects `HumansDbContext` directly: `HumansMetricsService`. All other files in that folder are connectors, stubs, or renderers that correctly stay in Infrastructure. Target: 0. Migration progress by section:
   - **Governance** — migrated 2026-04-15 in PR #503.
-  - **Profiles** — fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into `ProfileService`/`IProfileRepository`; it no longer exists as a separate service.)
+  - **Profiles** — fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into the profile methods on `IUserRepository`; it no longer exists as a separate service.)
   - **User** — migrated 2026-04-21 in PR #243 — `UserService` now lives in `Humans.Application.Services.Users`, goes through `IUserRepository`, and invalidates the UserInfo cache on writes. A §15 caching decorator now owns the `UserInfo` read model (`CachingUserService`, Singleton, keyed-inner `UserService`, `TrackedCache<Guid, UserInfo>`). Its warm path calls the normal `IUserService.GetAllUserInfosAsync` read surface; there is no cache-only repository helper.
   - **City Planning** — migrated 2026-04-22 in PR #543 — `CityPlanningService` now lives in `Humans.Application.Services.CityPlanning`, goes through `ICityPlanningRepository`, and routes cross-section reads (camps, teams, profiles, users) through the owning service interfaces. Cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` replaced with a batched `IUserService.GetByIdsAsync` lookup. Option A (no decorator) — admin-facing, low-traffic.
   - **Audit Log** — migrated 2026-04-22 for issue #552 — `AuditLogService` now lives in `Humans.Application.Services.AuditLog`, goes through `IAuditLogRepository`, and persists each entry immediately (auto-saved per call) rather than relying on a shared-scope `SaveChanges` from the caller. The repository is append-only per §12 — no update or delete surface — enforced by `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods`. Option A (no decorator) — writes are scattered across every section (~96 call sites) and reads are admin-only.
@@ -625,7 +625,6 @@ For the Google Workspace section in particular, the cached projection isn't a ta
   - `CityPlanningRepository`
   - `CommunicationPreferenceRepository`
   - `ConsentRepository`
-  - `ContactFieldRepository`
   - `DriveActivityMonitorRepository`
   - `EmailOutboxRepository`
   - `FeedbackRepository`
@@ -633,7 +632,6 @@ For the Google Workspace section in particular, the cached projection isn't a ta
   - `GoogleSyncOutboxRepository`
   - `LegalDocumentRepository`
   - `NotificationRepository`
-  - `ProfileRepository`
   - `RoleAssignmentRepository`
   - `ShiftRepository` (single concrete, implements `IShiftManagementRepository` + `IShiftSignupRepository`)
   - `SyncSettingsRepository`

@@ -15,8 +15,7 @@ namespace Humans.Application.Services.Profiles;
 /// Service for managing contact fields with visibility controls.
 /// </summary>
 public sealed class ContactFieldService(
-    IContactFieldRepository repository,
-    IProfileRepository profileRepository,
+    IUserRepository userRepository,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
     IRoleAssignmentService roleAssignmentService,
@@ -57,7 +56,7 @@ public sealed class ContactFieldService(
         Guid profileId,
         CancellationToken cancellationToken = default)
     {
-        var fields = await repository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
+        var fields = await userRepository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
 
         return fields.Select(cf => new ContactFieldEditDto(
             cf.Id,
@@ -77,7 +76,7 @@ public sealed class ContactFieldService(
         var now = clock.GetCurrentInstant();
 
         // Entities detached after call (IDbContextFactory) — pass mutations explicitly to BatchSaveAsync.
-        var existingFields = await repository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
+        var existingFields = await userRepository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -116,10 +115,10 @@ public sealed class ContactFieldService(
             }
         }
 
-        await repository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
+        await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
 
         // see #703 — UserInfo invalidation bypasses interceptor + caching decorator; failure self-heals on next miss.
-        var ownerUserId = await profileRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         if (ownerUserId is not null)
         {
             try
@@ -178,7 +177,7 @@ public sealed class ContactFieldService(
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
-        => repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
+        => userRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
