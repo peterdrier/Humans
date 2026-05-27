@@ -20,7 +20,7 @@ namespace Humans.Application.Interfaces.Users;
 /// into User/Profile cascade code. Synchronous orchestration (not event-bus):
 /// at ~500-user scale, explicit call order is simpler than a pub/sub hop.
 /// </remarks>
-public interface IAccountDeletionService : IApplicationService
+public interface IAccountDeletionService : IOrchestrator
 {
     /// <summary>
     /// User-initiated account-deletion request. Sets the 30-day scheduled

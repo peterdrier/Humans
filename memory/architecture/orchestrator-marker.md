@@ -15,4 +15,11 @@ An **Orchestrator** exists because an action genuinely crosses multiple sections
 
 **Homed ≠ owns.** An Orchestrator may be *homed* in a section's namespace for controller-wiring convenience while *owning* no lane. Code location is not table ownership.
 
-**Enforcement (to build):** an analyzer (next free `HUM####`) fails the build when a type implementing `IOrchestrator` injects any `I*Repository`. Until the marker + analyzer land this is convention; creating `IOrchestrator` + the analyzer is the follow-up. Keeping crosscuts pure is the sibling rule — see [[crosscut-purity]].
+**Enforcement (built — SP1, PR #805).** Marker `IOrchestrator` lives in `Humans.Application.Interfaces` as a sibling of `IApplicationService`. Two analyzers run in the `Humans.Application` compilation:
+
+- **HUM0026 — Error.** A type implementing `IOrchestrator` may not inject any `I*Repository`, `HumansDbContext`, or `IDbContextFactory<HumansDbContext>`. No grandfather machinery; a violation means the role marker is wrong (relocate the access into the owning section's Section service).
+- **HUM0027 — Error.** A type may carry `IOrchestrator` xor `IApplicationService`, never both. The role axis is exclusive — `IApplicationService` grants own-lane repository access, which an orchestrator is banned from.
+
+**Capability marker, sibling of role markers.** `IInvalidator` (the cache-invalidator family, HUM0028 ratchet) and `IFanout` (terminology only, no analyzer) co-exist alongside `IOrchestrator` / `IApplicationService` on a per-type basis. See [[crosscut-purity]] for the sibling rule on keeping crosscuts pure.
+
+**Roster (SP1 settle).** `IGdprExportService`, `IEarlyEntryService`, `IOnboardingService`, `IHumanLifecycleService`, `IAccountDeletionService` carry `IOrchestrator` and no longer carry `IApplicationService`. `AgentService` is **not** an orchestrator — it owns `agent_*` and injects `IAgentRepository`, so it remains a Section. The design-rules §15i "orchestrator" label on it is wrong.

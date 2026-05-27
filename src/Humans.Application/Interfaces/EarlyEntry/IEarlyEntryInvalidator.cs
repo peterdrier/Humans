@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.EarlyEntry;
 
 /// <summary>
@@ -7,7 +9,12 @@ namespace Humans.Application.Interfaces.EarlyEntry;
 /// after their writes. Pure eviction (the cache has no warmup); the next read
 /// lazy-reloads.
 /// </summary>
-public interface IEarlyEntryInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing early-entry cache flushed by section providers; remains until EarlyEntryService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IEarlyEntryInvalidator : IInvalidator
 {
     /// <summary>Evict one user's cached EE (member-level grant/signup change).</summary>
     void InvalidateUser(Guid userId);

@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Shifts;
 
 /// <summary>
@@ -16,7 +18,12 @@ namespace Humans.Application.Interfaces.Shifts;
 /// Issue #720.
 /// </para>
 /// </remarks>
-public interface IShiftViewInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing shift-view cache flushed cross-section (deletion cascade); remains until ShiftViewService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IShiftViewInvalidator : IInvalidator
 {
     /// <summary>
     /// Drops the cached <see cref="DTOs.Shifts.ShiftUserView"/> for a single

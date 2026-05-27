@@ -61,14 +61,15 @@ public class ServiceBoundaryArchitectureTests
     {
         var unmarked = ApplicationInterfaceTypes()
             .Where(IsApplicationServiceBoundaryName)
-            .Where(t => t != typeof(IApplicationService))
+            .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
             .Where(t => !typeof(IApplicationService).IsAssignableFrom(t))
+            .Where(t => !typeof(IOrchestrator).IsAssignableFrom(t))
             .Select(t => t.FullName)
             .Order(StringComparer.Ordinal)
             .ToList();
 
         unmarked.Should().BeEmpty(
-            because: "I*Service, I*Query, and I*Calculator interfaces are application service boundaries and must be searchable/reforge-addressable via IApplicationService");
+            because: "I*Service, I*Query, and I*Calculator interfaces are application service boundaries and must be searchable/reforge-addressable via IApplicationService or IOrchestrator");
     }
 
     [HumansFact]

@@ -25,3 +25,6 @@ HUM0020 | Humans.Architecture   | Error    | Caching decorator references a repo
 HUM0021 | Humans.Architecture   | Warning  | Read of obsolete cross-domain navigation property from Application, Web, or Infrastructure
 HUM0024 | Humans.Architecture   | Error    | EF configuration creates a navigation join across section boundaries (downgrades to Warning for classes carrying [Grandfathered("HUM0024", ...)])
 HUM0025 | Humans.Architecture   | Error    | A DbSet table is referenced (read or written) by more than one repository — a table must belong to exactly one repository (downgrades to Warning for repos carrying [Grandfathered("HUM0025", ..., scope: "<DbSet>")])
+HUM0026 | Humans.Architecture   | Error    | IOrchestrator implementer injects an I*Repository, HumansDbContext, or IDbContextFactory<HumansDbContext>
+HUM0027 | Humans.Architecture   | Error    | Type implements both IApplicationService and IOrchestrator — the role axis is exclusive
+HUM0028 | Humans.Architecture   | Error    | Interface extends IInvalidator (downgrades to Warning for interfaces carrying [Grandfathered("HUM0028", ...)])

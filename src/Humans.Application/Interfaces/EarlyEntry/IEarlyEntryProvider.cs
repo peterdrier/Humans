@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.EarlyEntry;
 /// the cross-source view. Read-only. A section with nothing to contribute
 /// (e.g. no EE start date configured) returns an empty list.
 /// </summary>
-public interface IEarlyEntryProvider
+public interface IEarlyEntryProvider : IFanout
 {
     Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct);
 }
