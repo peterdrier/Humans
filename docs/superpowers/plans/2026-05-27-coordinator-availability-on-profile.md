@@ -111,7 +111,13 @@ public interface IVolunteerTrackingServiceRead
 
 - [ ] **Step 4: Make the full interface inherit it**
 
-In `IVolunteerTrackingService.cs`, change the declaration to `: IVolunteerTrackingServiceRead` (keep any existing base it already has — likely `IApplicationService`; result e.g. `public interface IVolunteerTrackingService : IVolunteerTrackingServiceRead`). Remove `GetUserBuildStripAsync` from the full interface if you were tempted to add it there — it lives on the read interface only.
+In `IVolunteerTrackingService.cs` the current declaration is `public interface IVolunteerTrackingService : IApplicationService`. **Keep `IApplicationService`** and add the read interface:
+
+```csharp
+public interface IVolunteerTrackingService : IApplicationService, IVolunteerTrackingServiceRead
+```
+
+Dropping `IApplicationService` would break `ServiceBoundaryArchitectureTests.Application_boundary_interfaces_are_marked_as_application_services` (every `I*Service` must be `IApplicationService`-assignable; `IVolunteerTrackingServiceRead` ends in `Read` and is intentionally NOT marked, mirroring `ITeamServiceRead`). Do **not** add `GetUserBuildStripAsync` to the full interface — it's inherited from the read interface.
 
 - [ ] **Step 5: Build (will fail — `VolunteerTrackingService` doesn't implement the new method yet)**
 
@@ -141,15 +147,20 @@ public async Task GetUserBuildStrip_marks_declared_days_available()
 {
     var es = MakeEvent(buildStartOffset: -3);          // offsets -3,-2,-1
     var userId = Guid.NewGuid();
+    // Harness default: GateOpening 2026-06-16, clock 2026-06-15 → todayOffset = -1.
     var sut = BuildSut(es,
         participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) },
-        availability: new[] { Availability(userId, es.Id, [-2]) });   // declared -2 only
+        availabilities: new[] { Availability(userId, es.Id, [-2, -1]) });
 
     var strip = await sut.GetUserBuildStripAsync(userId);
 
     strip.Should().NotBeNull();
-    strip!.Row.Cells.Single(c => c.DayOffset == -2).DeclaredAvailable.Should().BeTrue();
-    strip.Row.Cells.Single(c => c.DayOffset == -1).DeclaredAvailable.Should().BeFalse();
+    // Declared flag set on exactly the declared days:
+    strip!.Row.Cells.Where(c => c.DeclaredAvailable).Select(c => c.DayOffset)
+        .Should().BeEquivalentTo(new[] { -2, -1 });
+    // Precedence: -2 is before today → AvailableUnbooked; -1 is today/future → AvailableExpected.
+    strip.Row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+    strip.Row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.AvailableExpected);
 }
 
 [HumansFact]
@@ -180,7 +191,7 @@ public async Task GetUserBuildStrip_returns_row_for_user_with_no_availability_ro
 }
 ```
 
-> If `BuildSut` has no `availability:` parameter, extend the harness: it already injects `IGeneralAvailabilityRepository` (used by the unbooked cohort). Add an optional `availability` param that stubs `GetByUserAndEventAsync` / `GetByEventAsync`. Mirror how `signups`/`participations` are stubbed. Add an `Availability(userId, esId, int[] offsets)` factory returning a `GeneralAvailability` (or the repo's read shape).
+> **Harness extension required.** `BuildSut` already has an `availabilities:` parameter and a private `Availability(userId, esId, IReadOnlyList<int> offsets)` factory (reuse both). BUT its fake `IGeneralAvailabilityRepository` currently stubs only `GetByEventAsync` — it does **not** stub `GetByUserAndEventAsync`, which `GetUserBuildStripAsync` calls. Add that stub to `BuildSut` (return the matching `Availability` from the `availabilities` arg, or null). Without it NSubstitute returns null and the declared-day tests fail.
 
 - [ ] **Step 2: Run — verify FAIL** (no implementation / not compiling)
 
@@ -193,13 +204,13 @@ Expected: FAIL.
 public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(
     Guid userId, CancellationToken ct = default)
 {
-    var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+    var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
     if (es is null) return null;
 
     var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
-    var todayOffset = OffsetOf(es, _clock.GetCurrentInstant().InZone(zone).Date);
+    var todayOffset = OffsetOf(es, clock.GetCurrentInstant().InZone(zone).Date);
 
-    var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+    var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
     var daySignups = signups
         .Where(s => s.UserId == userId)
         .GroupBy(s => s.DayOffset)
@@ -211,12 +222,12 @@ public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(
                 RotaNames: (IReadOnlyList<string>)g.Select(x => x.RotaName)
                     .Distinct(StringComparer.Ordinal).ToList()));
 
-    var bs = (await _trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false))
+    var bs = (await trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false))
         .FirstOrDefault(r => r.UserId == userId);
     int? setupOffset = bs?.BarrioSetupStartDate is { } d ? OffsetOf(es, d) : null;
     var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? [];
 
-    var availRow = await _availability.GetByUserAndEventAsync(userId, es.Id, ct).ConfigureAwait(false);
+    var availRow = await availability.GetByUserAndEventAsync(userId, es.Id, ct).ConfigureAwait(false);
     var availSet = availRow?.AvailableDayOffsets.ToHashSet() ?? [];
 
     var hasSignups = daySignups.Count > 0;
@@ -273,7 +284,7 @@ public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(
 }
 ```
 
-> Field names: confirm `_shiftManagement`, `_trackingRepo`, `_availability`, `_clock`, `OffsetOf` match the existing class (they do as of this writing). `_availability` is `IGeneralAvailabilityRepository` and exposes `GetByUserAndEventAsync(userId, esId, ct)`.
+> Names: `VolunteerTrackingService` uses a **primary constructor** — reference params directly as `shiftManagement`, `trackingRepo`, `availability`, `clock` (NO underscores). `OffsetOf` is the existing `private static` helper. `availability` is `IGeneralAvailabilityRepository` and exposes `GetByUserAndEventAsync(userId, esId, ct)`.
 
 - [ ] **Step 4: Run — verify PASS** (and the existing cohort tests still pass)
 
@@ -387,7 +398,7 @@ public async Task SetDayAvailabilityAsync(
     Guid userId, Guid eventSettingsId, int dayOffset, bool available,
     CancellationToken ct = default)
 {
-    var current = await _repo.GetByUserAndEventAsync(userId, eventSettingsId, ct).ConfigureAwait(false);
+    var current = await repo.GetByUserAndEventAsync(userId, eventSettingsId, ct).ConfigureAwait(false);
     var offsets = current?.AvailableDayOffsets.ToList() ?? [];
 
     if (available)
@@ -401,8 +412,8 @@ public async Task SetDayAvailabilityAsync(
     }
 
     offsets.Sort();
-    await _repo.UpsertAsync(userId, eventSettingsId, offsets, _clock.GetCurrentInstant(), ct).ConfigureAwait(false);
-    _viewInvalidator.InvalidateUser(userId);
+    await repo.UpsertAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
+    viewInvalidator.InvalidateUser(userId);
 }
 ```
 
@@ -465,25 +476,27 @@ services.AddScoped<IVolunteerTrackingServiceRead>(sp => sp.GetRequiredService<Sh
 // Existing SetDayOff with returnUrl=null → still RedirectToActionResult to Index (no regression).
 ```
 
-Use NSubstitute to assert `availabilityService.Received().SetDayAvailabilityAsync(userId, esId, dayOffset, true, Arg.Any<CancellationToken>())` and `auditLogService.Received().LogAsync(AuditAction.VolunteerAvailabilitySet, ...)`. Stub `shiftManagement.GetActiveAsync()` to return an `EventSettings` with a known `Id`.
+Use NSubstitute to assert `availabilityService.Received().SetDayAvailabilityAsync(userId, esId, dayOffset, true, Arg.Any<CancellationToken>())` and `auditLogService.Received().LogAsync(AuditAction.VolunteerAvailabilitySet, ...)`. Stub `shiftManagementService.GetActiveAsync()` to return an `EventSettings` with a known `Id`.
 
 - [ ] **Step 2: Run — verify FAIL.**
 Run: `dotnet test tests/Humans.Web.Tests -v quiet --filter "FullyQualifiedName~VolunteerTrackingControllerTests"`
 Expected: FAIL.
 
-- [ ] **Step 3: Add ctor deps.** Extend the primary constructor:
+- [ ] **Step 3: Add ONE ctor dep.** The controller already has a 7-param primary constructor (incl. `IShiftManagementService shiftManagementService`, `exportService`, `xlsxBuilder`, `IUserServiceRead userService`). **Only add `IGeneralAvailabilityService availabilityService`** — do NOT rename `shiftManagementService`, drop the export deps, or change `userService` to a non-Read type (the base `HumansControllerBase` takes `IUserServiceRead`). Result:
 
 ```csharp
 public sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
-    IGeneralAvailabilityService availabilityService,
-    IShiftManagementService shiftManagement,
-    IUserService userService,
+    IShiftManagementService shiftManagementService,
+    IGeneralAvailabilityService availabilityService,   // <-- added
+    IVolunteerTrackingExportService exportService,
+    VolunteerTrackingXlsxBuilder xlsxBuilder,
+    IUserServiceRead userService,
     IAuditLogService auditLogService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 ```
 
-Add `using Humans.Application.Interfaces.Shifts;` if not present (it is).
+`using Humans.Application.Interfaces.Shifts;` is already present.
 
 - [ ] **Step 4: Add a redirect helper** (private, near the bottom of the controller):
 
@@ -501,7 +514,7 @@ private IActionResult RedirectBack(string? returnUrl) =>
 public async Task<IActionResult> SetAvailabilityDay(
     Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
 {
-    var es = await shiftManagement.GetActiveAsync();
+    var es = await shiftManagementService.GetActiveAsync();
     if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
 
     var current = await GetCurrentUserInfoAsync();
@@ -521,7 +534,7 @@ public async Task<IActionResult> SetAvailabilityDay(
 public async Task<IActionResult> ClearAvailabilityDay(
     Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
 {
-    var es = await shiftManagement.GetActiveAsync();
+    var es = await shiftManagementService.GetActiveAsync();
     if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
 
     var current = await GetCurrentUserInfoAsync();
@@ -652,7 +665,7 @@ namespace Humans.Web.ViewComponents;
 
 public class VolunteerBuildStripViewComponent(
     IVolunteerTrackingServiceRead tracking,
-    IUserService userService,
+    IUserServiceRead userService,
     ILogger<VolunteerBuildStripViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
@@ -683,7 +696,7 @@ public class VolunteerBuildStripViewComponent(
 }
 ```
 
-> Confirm `IUserService.GetUserInfoAsync(Guid)` and `UserInfo.BurnerName` signatures (used identically in `VolunteerTrackingController.Index`).
+> `GetUserInfoAsync(Guid)` is on `IUserServiceRead` and `UserInfo.BurnerName` exists (used identically in `VolunteerTrackingController.Index`). Inject the `*Read` interface, matching `ShiftSignupsViewComponent`'s use of `ITeamServiceRead` — never the full write interface from a cross-section host.
 
 - [ ] **Step 2: Build** — `dotnet build src/Humans.Web -v quiet`. Expected: success.
 - [ ] **Step 3: Commit** — `git add ... && git commit -m "feat(profile): VolunteerBuildStripViewComponent"`
@@ -702,7 +715,7 @@ public class VolunteerBuildStripViewComponent(
 <vc:volunteer-build-strip user-id="@Model.UserId" />
 ```
 
-- [ ] **Step 2: Add resource keys** to **every** `SharedResource*.resx` (at minimum `SharedResource.resx` (English) and `SharedResource.es.resx` (Spanish) — see the i18n change-enforcement rule in `memory/`):
+- [ ] **Step 2: Add resource keys** to **every** locale `.resx` in `src/Humans.Web/Resources/` — all six: `SharedResource.resx` (English), `.es`, `.ca`, `.de`, `.fr`, `.it` (per the i18n change-enforcement rule in `memory/`; `dotnet build` may fail on missing keys per existing tooling). Existing `VolTrack_Popover_*` / `VolTrack_Main_*` keys are already present in each, so follow their placement:
 
 | Key | English | Spanish (draft — confirm with Peter) |
 |---|---|---|
@@ -711,6 +724,8 @@ public class VolunteerBuildStripViewComponent(
 | `VolTrack_Popover_UnmarkAvailable` | `Unmark available` | `Quitar disponible` |
 | `VolTrack_Msg_AvailabilitySet` | `Availability updated.` | `Disponibilidad actualizada.` |
 | `VolTrack_Msg_AvailabilityCleared` | `Availability updated.` | `Disponibilidad actualizada.` |
+
+> `ca`/`de`/`fr`/`it`: add the same keys. If you can't produce confident translations, copy the English value and flag for Peter in the PR — every key must exist in every file so the build/i18n check passes. Don't leave a key missing in any locale.
 
 - [ ] **Step 3: Build** — `dotnet build Humans.slnx -v quiet`. Expected: success.
 - [ ] **Step 4: Commit** — `git commit -am "feat(profile): show coordinator build strip + i18n keys"`
@@ -738,4 +753,5 @@ Expected: build clean; all tests pass (incl. `ProfileArchitectureTests`, `Servic
 
 - [ ] Suggest a version bump per the project's release flow (this is a user-facing feature).
 - [ ] Open a PR to `main` on the fork per the two-remote workflow (preview env at `{pr_id}.n.burn.camp`).
-- [ ] Consider a `memory/` atom if any new project rule surfaced (e.g. "single-volunteer build strip is a ViewComponent rendering the shared partial").
+- [ ] Update the stale note in `src/Humans.Web/Views/.../WidgetGallery/Index.cshtml` (~line 1081) that claims the heatmap partials are "context-bound … cannot render in isolation" — no longer true (`VolunteerBuildStripViewComponent` renders `_VolunteerHeatmap` standalone with a `HeatmapPartialModel`). Grep for the text to find the exact line.
+- [ ] Consider a `memory/` atom if any new project rule surfaced (e.g. "single-volunteer build strip is a ViewComponent rendering the shared `_VolunteerHeatmap` partial; coordinator availability edits POST to VolunteerTrackingController with returnUrl").
