@@ -36,11 +36,11 @@ public class MarkdownEditorTagHelper(
     IHttpContextAccessor httpContextAccessor,
     IHtmlHelper htmlHelper) : TagHelper
 {
-    // EasyMDE 2.18.0 — MIT, actively maintained fork of SimpleMDE.
-    private const string EasyMdeCssHref = "https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css";
-    private const string EasyMdeCssIntegrity = "sha384-uqD/OYCNfagd1EgXMgl5QedTD5K+B3e9b8GYo/41t7+Serf7CBxvl+tU1gHd+qd1";
-    private const string EasyMdeJsSrc = "https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js";
-    private const string EasyMdeJsIntegrity = "sha384-KtB38COewxfrhJxoN2d+olxJAeT08LF8cVZ6DQ8Poqu89zIptqO6zAXoIxpGNWYE";
+    // EasyMDE 2.21.0 — MIT, actively maintained fork of SimpleMDE.
+    private const string EasyMdeCssHref = "https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.css";
+    private const string EasyMdeCssIntegrity = "sha384-ZoLYv3S+AsZX+zhbN1D1+WPpc8f+DmLfxfgw+qn0Nq8wJPOYQQXEW5ZrRhcGozlG";
+    private const string EasyMdeJsSrc = "https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.js";
+    private const string EasyMdeJsIntegrity = "sha384-mTM6vzy+/UiHrMBClNGViM9qEv0/26iCGqpJKhSzdnjrxbKjO3vkT62ujXQ8B5iv";
 
     private const string AssetsEmittedKey = "MarkdownEditor.AssetsEmitted";
     private const string InstanceCounterKey = "MarkdownEditor.InstanceCounter";
@@ -198,6 +198,14 @@ public class MarkdownEditorTagHelper(
             output.Content.AppendHtml(
                 $"<script src=\"{EasyMdeJsSrc}\" " +
                 $"integrity=\"{EasyMdeJsIntegrity}\" crossorigin=\"anonymous\" defer{nonceAttr}></script>");
+
+            // Force the toolbar to a single horizontally-scrollable row instead of wrapping
+            // into 2–3 ragged rows when the container is narrower than the full button strip.
+            var styleNonceAttr = nonce is not null
+                ? $" nonce=\"{HtmlEncoder.Default.Encode(nonce)}\""
+                : string.Empty;
+            output.Content.AppendHtml(
+                $"<style{styleNonceAttr}>.editor-toolbar{{white-space:nowrap;overflow-x:auto;overflow-y:hidden;}}</style>");
 
             // Render the help modal partial once per request so callers don't have to.
             ((IViewContextAware)htmlHelper).Contextualize(ViewContext);
