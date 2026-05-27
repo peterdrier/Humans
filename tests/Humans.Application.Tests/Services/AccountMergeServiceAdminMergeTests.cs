@@ -17,7 +17,7 @@ namespace Humans.Application.Tests.Services;
 public class AccountMergeServiceAdminMergeTests
 {
     private readonly IAccountMergeRepository _mergeRepo = Substitute.For<IAccountMergeRepository>();
-    private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
+    private readonly IUserRepository _userEmailRepo = Substitute.For<IUserRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -56,7 +56,7 @@ public class AccountMergeServiceAdminMergeTests
             Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
         await _userService.Received(1).AnonymizeForMergeAsync(src, tgt,
             Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
-        await _userEmailRepo.DidNotReceive().MarkVerifiedAsync(
+        await _userEmailRepo.DidNotReceive().MarkUserEmailVerifiedAsync(
             Arg.Any<Guid>(), Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
     }
 

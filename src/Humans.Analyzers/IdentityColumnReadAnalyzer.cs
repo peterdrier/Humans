@@ -12,7 +12,7 @@ namespace Humans.Analyzers;
 /// <c>UserName</c>, <c>NormalizedUserName</c>). Read paths go through
 /// <c>UserInfo.Email</c> / <c>UserInfo.PrimaryEmail</c> /
 /// <c>IUserEmailService.GetPrimaryEmailAsync</c> /
-/// <c>IUserEmailRepository</c> instead. Pairs with HUM0002 (writes) and
+/// <c>IUserEmailService</c> instead. Pairs with HUM0002 (writes) and
 /// HUM0003 (FindByEmailAsync/FindByNameAsync).
 ///
 /// Issue nobodies-collective/Humans#506.
@@ -31,7 +31,7 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
         "NormalizedUserName) are virtual overrides that compute from " +
         "UserEmails or Id; reading them couples application code to a " +
         "vestigial Identity field. Use UserInfo.Email / UserInfo.PrimaryEmail " +
-        "via IUserService, or IUserEmailService / IUserEmailRepository for " +
+        "via IUserService, or IUserEmailService for " +
         "direct UserEmail-backed lookups.";
 
     public static readonly DiagnosticDescriptor Rule = new(

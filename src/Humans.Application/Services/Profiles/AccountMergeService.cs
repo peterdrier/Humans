@@ -18,7 +18,7 @@ namespace Humans.Application.Services.Profiles;
 // AcceptAsync fans out IUserMerge across sections to re-FK source→target, then tombstones source via AnonymizeForMergeAsync.
 public sealed class AccountMergeService(
     IAccountMergeRepository mergeRepository,
-    IUserEmailRepository userEmailRepository,
+    IUserRepository userRepository,
     IAuditLogService auditLogService,
     IUserInfoInvalidator userInfoInvalidator,
     ILogger<AccountMergeService> logger,
@@ -94,7 +94,7 @@ public sealed class AccountMergeService(
                 IsolationLevel = IsolationLevel.ReadCommitted
             },
             TransactionScopeAsyncFlowOption.Enabled);
-        var verified = await userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
+        var verified = await userRepository.MarkUserEmailVerifiedAsync(request.PendingEmailId, now, ct);
         if (!verified)
             throw new InvalidOperationException(
                 $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
@@ -227,7 +227,7 @@ public sealed class AccountMergeService(
             TransactionScopeAsyncFlowOption.Enabled))
         {
             // Best-effort remove the target's pending email.
-            await userEmailRepository.RemoveByIdAsync(request.PendingEmailId, ct);
+            await userRepository.RemoveUserEmailByIdAsync(request.PendingEmailId, ct);
 
             request.Status = AccountMergeRequestStatus.Rejected;
             request.ResolvedAt = now;

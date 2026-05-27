@@ -90,16 +90,16 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = factory.Services.CreateAsyncScope();
-        var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserEmailRepository>();
+        var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-        var targetEmails = await emailRepo.GetByUserIdReadOnlyAsync(targetId);
+        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId);
         var collapsed = targetEmails.Should()
             .ContainSingle(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase)).Subject;
         collapsed.IsVerified.Should().BeTrue("source's verified flag should OR-combine into the target row");
         collapsed.IsPrimary.Should().BeTrue("target's authoritative IsPrimary should be preserved");
         collapsed.IsGoogle.Should().BeTrue("target's authoritative IsGoogle should be preserved");
 
-        var sourceEmails = await emailRepo.GetByUserIdReadOnlyAsync(sourceId);
+        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId);
         sourceEmails.Should().NotContain(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -124,16 +124,16 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = factory.Services.CreateAsyncScope();
-        var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserEmailRepository>();
+        var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-        var targetEmails = await emailRepo.GetByUserIdReadOnlyAsync(targetId);
+        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId);
 
         // Same address collapses to a single target row.
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, collapseEmail, StringComparison.OrdinalIgnoreCase));
         // Source-only address re-FK'd onto target.
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, sourceOnlyEmail, StringComparison.OrdinalIgnoreCase));
 
-        var sourceEmails = await emailRepo.GetByUserIdReadOnlyAsync(sourceId);
+        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId);
         sourceEmails.Should().BeEmpty();
     }
 

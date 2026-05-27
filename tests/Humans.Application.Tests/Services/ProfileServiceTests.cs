@@ -25,7 +25,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     private readonly ProfileEditorService _editor;
     private readonly IUserRepository _userRepository;
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailRepository _userEmailRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
@@ -38,10 +37,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
         _userRepository = new UserRepository(DbFactory, Clock);
-        _userEmailRepository = new UserEmailRepository(DbFactory);
         var storageUserService = new UserService(
             _userRepository,
-            _userEmailRepository,
             _communicationPreferenceRepository,
             AdminAuthorization,
             Clock,
@@ -407,7 +404,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     /// </summary>
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
-        _userEmailRepository,
         _communicationPreferenceRepository,
         AdminAuthorization,
         Clock,

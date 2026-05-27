@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Infrastructure.Repositories.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
@@ -10,21 +10,21 @@ using NodaTime;
 namespace Humans.Application.Tests.Repositories;
 
 /// <summary>
-/// Repository tests for <see cref="UserEmailRepository"/> — PR 4 Task 4.
+/// Repository tests for <see cref="UserRepository"/> — PR 4 Task 4.
 /// </summary>
-public sealed class UserEmailRepositoryTests : IDisposable
+public sealed class UserRepositoryUserEmailTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
-    private readonly UserEmailRepository _repo;
+    private readonly UserRepository _repo;
 
-    public UserEmailRepositoryTests()
+    public UserRepositoryUserEmailTests()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new UserEmailRepository(new TestDbContextFactory(options));
+        _repo = new UserRepository(new TestDbContextFactory(options));
     }
 
     public void Dispose()
@@ -33,7 +33,7 @@ public sealed class UserEmailRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetGoogleExclusiveAsync_FlipsExclusively()
+    public async Task SetUserEmailGoogleExclusiveAsync_FlipsExclusively()
     {
         var userId = Guid.NewGuid();
         var rowA = await SeedVerifiedAsync(userId, "a@x.test", isGoogle: true);
@@ -41,7 +41,7 @@ public sealed class UserEmailRepositoryTests : IDisposable
         var rowC = await SeedVerifiedAsync(userId, "c@x.test", isGoogle: false);
 
         var updatedAt = Instant.FromUtc(2026, 4, 30, 12, 0);
-        await _repo.SetGoogleExclusiveAsync(userId, rowB.Id, updatedAt, CancellationToken.None);
+        await _repo.SetUserEmailGoogleExclusiveAsync(userId, rowB.Id, updatedAt, CancellationToken.None);
 
         var reloadedA = await GetByIdAsync(rowA.Id);
         var reloadedB = await GetByIdAsync(rowB.Id);

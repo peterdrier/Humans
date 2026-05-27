@@ -1,49 +1,46 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Repository for the <c>user_emails</c> table.
-/// The only non-test file that may write to this DbSet.
+/// User-owned storage operations for the <c>user_emails</c> table.
 /// </summary>
-[Section("Humans")]
-public interface IUserEmailRepository : IRepository
+public partial interface IUserRepository
 {
     /// <summary>
     /// Returns all emails for a user, read-only, ordered by
     /// <c>DisplayOrder</c> then <c>CreatedAt</c>.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(
+    Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns detached entities intended to be mutated in-memory and passed back
-    /// to <see cref="UpdateAsync"/> or <see cref="UpdateBatchAsync"/>. The returned
+    /// to <see cref="UpdateUserEmailAsync"/> or <see cref="UpdateUserEmailsAsync"/>. The returned
     /// entities are NOT tracked — callers must explicitly hand mutated entities
     /// back to a write method for persistence.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetByUserIdForMutationAsync(
+    Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a single email by id and user id, tracked for modification.
     /// </summary>
-    Task<UserEmail?> GetByIdAndUserIdAsync(
+    Task<UserEmail?> GetUserEmailByIdAndUserIdAsync(
         Guid emailId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a single email by id, read-only.
     /// </summary>
-    Task<UserEmail?> GetByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default);
+    Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
     /// Checks whether an email (or gmail/googlemail alternate) already
     /// exists for this user.
     /// </summary>
-    Task<bool> ExistsForUserAsync(
+    Task<bool> UserEmailExistsForUserAsync(
         Guid userId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default);
 
@@ -51,7 +48,7 @@ public interface IUserEmailRepository : IRepository
     /// Checks whether a verified email (or gmail/googlemail alternate) exists
     /// for a different user. Used for conflict/merge detection.
     /// </summary>
-    Task<bool> ExistsVerifiedForOtherUserAsync(
+    Task<bool> VerifiedUserEmailExistsForOtherUserAsync(
         Guid userId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default);
 
@@ -59,7 +56,7 @@ public interface IUserEmailRepository : IRepository
     /// Returns the first verified email matching the normalized (or alternate)
     /// address that belongs to a different user. For merge flow.
     /// </summary>
-    Task<UserEmail?> GetConflictingVerifiedEmailAsync(
+    Task<UserEmail?> GetConflictingVerifiedUserEmailAsync(
         Guid excludeEmailId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default);
 
@@ -76,7 +73,7 @@ public interface IUserEmailRepository : IRepository
     /// row touched. Returns the count of <c>user_emails</c> rows ultimately
     /// attributed to <paramref name="targetUserId"/>.
     /// </summary>
-    Task<int> ReassignToUserAsync(
+    Task<int> ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 
@@ -88,7 +85,7 @@ public interface IUserEmailRepository : IRepository
     /// deleted CLR property.
     /// </summary>
     Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
-        GetLegacyBackfillSnapshotsByUserIdAsync(
+        GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
             Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -96,21 +93,34 @@ public interface IUserEmailRepository : IRepository
     /// scan to detect overlapping addresses across users. Trivial to load in
     /// full at ~500-user scale.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the subset of <paramref name="userIds"/> that have at least one
+    /// <see cref="UserEmail"/> row.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsHavingAnyUserEmailAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Removes every <see cref="UserEmail"/> row for the given user. Used
     /// during account merge/duplicate-resolve to wipe the source's addresses
     /// before anonymization.
     /// </summary>
-    Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default);
+    Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes every <see cref="UserEmail"/> row for the given users.
+    /// </summary>
+    Task RemoveAllUserEmailsForUsersAndSaveAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Marks a single email as verified and bumps <see cref="UserEmail.UpdatedAt"/>
     /// to <paramref name="now"/>. Returns false if the email does not exist.
     /// Used by <c>AccountMergeService.AcceptAsync</c> to complete a merge.
     /// </summary>
-    Task<bool> MarkVerifiedAsync(
+    Task<bool> MarkUserEmailVerifiedAsync(
         Guid emailId, Instant now, CancellationToken ct = default);
 
     /// <summary>
@@ -118,7 +128,7 @@ public interface IUserEmailRepository : IRepository
     /// exist. Used by <c>AccountMergeService.RejectAsync</c> to clear the
     /// pending unverified address on rejection.
     /// </summary>
-    Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default);
+    Task<bool> RemoveUserEmailByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every <see cref="UserEmail"/> row whose <c>Email</c> matches one
@@ -126,7 +136,7 @@ public interface IUserEmailRepository : IRepository
     /// Used by the Google admin workspace-accounts list to match Google-side
     /// accounts to human records without loading the full table.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetByEmailsAsync(
+    Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
         IReadOnlyCollection<string> emails, CancellationToken ct = default);
 
     /// <summary>
@@ -134,14 +144,14 @@ public interface IUserEmailRepository : IRepository
     /// <c>Email</c> equal to <paramref name="email"/> (case-insensitive),
     /// irrespective of user. Used by admin account-linking flows.
     /// </summary>
-    Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default);
+    Task<bool> AnyUserEmailWithEmailAsync(string email, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a mapping of userId → verified notification-target email for all users
     /// that have one. If a user has multiple verified notification-target emails,
     /// one is picked arbitrarily.
     /// </summary>
-    Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
+    Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
         CancellationToken ct = default);
 
     /// <summary>
@@ -150,14 +160,14 @@ public interface IUserEmailRepository : IRepository
     /// "who hasn't bought") so secondary verified addresses are discoverable
     /// even when they differ from the notification-target email.
     /// </summary>
-    Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+    Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedUserEmailAsync(
         string searchTerm, CancellationToken ct = default);
 
     /// <summary>
     /// Finds a verified UserEmail matching the normalized (or alternate) address,
     /// returning minimal User info for conflict checking.
     /// </summary>
-    Task<UserEmailWithUser?> FindVerifiedWithUserAsync(
+    Task<UserEmailWithUser?> FindVerifiedUserEmailWithUserAsync(
         string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default);
 
@@ -168,7 +178,7 @@ public interface IUserEmailRepository : IRepository
     /// Used by account provisioning to dedupe incoming contacts against
     /// every known email for every user.
     /// </summary>
-    Task<UserEmail?> FindByNormalizedEmailAsync(
+    Task<UserEmail?> FindUserEmailByNormalizedEmailAsync(
         string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default);
 
@@ -176,7 +186,7 @@ public interface IUserEmailRepository : IRepository
     /// Returns the email address for a verified email owned by the user,
     /// or null if not found or not verified.
     /// </summary>
-    Task<string?> GetVerifiedEmailAddressAsync(
+    Task<string?> GetVerifiedUserEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken ct = default);
 
     /// <summary>
@@ -184,14 +194,14 @@ public interface IUserEmailRepository : IRepository
     /// the given string exactly (no gmail/googlemail aliasing). Returns
     /// <c>null</c> if no verified row matches.
     /// </summary>
-    Task<Guid?> GetUserIdByVerifiedEmailAsync(
+    Task<Guid?> GetUserIdByVerifiedUserEmailAsync(
         string email, CancellationToken ct = default);
 
     /// <summary>
     /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
     /// and ends with <paramref name="suffix"/>.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+    Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
         CancellationToken ct = default);
@@ -205,18 +215,18 @@ public interface IUserEmailRepository : IRepository
     /// address is verified for more than one user (invariant violation —
     /// treat as ambiguous / return null to the caller).
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
+    Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedUserEmailAsync(
         string email, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the distinct UserIds whose verified UserEmail matches the given
     /// normalized address (or its gmail/googlemail alternate). Same matching
-    /// semantics as <see cref="FindVerifiedWithUserAsync"/>, but returns the
+    /// semantics as <see cref="FindVerifiedUserEmailWithUserAsync"/>, but returns the
     /// full set rather than picking one arbitrary owner — so classifiers can
     /// detect service-level uniqueness drift instead of silently attaching to
     /// the wrong account.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserEmailUserIdsAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
@@ -225,7 +235,7 @@ public interface IUserEmailRepository : IRepository
     /// Used by @nobodies.team provisioning to block a prefix that is already
     /// attached to another human regardless of verification state.
     /// </summary>
-    Task<Guid?> GetOtherUserIdHavingEmailAsync(
+    Task<Guid?> GetOtherUserIdHavingUserEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
@@ -241,7 +251,7 @@ public interface IUserEmailRepository : IRepository
     /// (gmail/googlemail alternate, lowercase, trimmed). Sole legitimate
     /// caller: <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
     /// </summary>
-    Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+    Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(
         string normalizedEmail, string? alternateEmail, Guid excludeUserId,
         CancellationToken ct = default);
 
@@ -257,7 +267,7 @@ public interface IUserEmailRepository : IRepository
     /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>. All parameters
     /// are optional; a no-op call is allowed but pointless.
     /// </summary>
-    Task ApplyReconcilePlanAsync(
+    Task ApplyUserEmailReconcilePlanAsync(
         UserEmail? displacedRowToDelete,
         UserEmail? rowToDelete,
         UserEmail? rowToUpdate,
@@ -271,21 +281,21 @@ public interface IUserEmailRepository : IRepository
     /// on every row whose <c>IsGoogle</c> value changes. Owner-gate
     /// (userId match) is performed by the caller.
     /// </summary>
-    Task SetGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default);
+    Task SetUserEmailGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default);
 
-    Task AddAsync(UserEmail email, CancellationToken ct = default);
-    Task RemoveAsync(UserEmail email, CancellationToken ct = default);
-    Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);
+    Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default);
+    Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default);
+    Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to a single <see cref="UserEmail"/> entity by attaching it
     /// to a fresh context and marking it as Modified.
     /// </summary>
-    Task UpdateAsync(UserEmail email, CancellationToken ct = default);
+    Task UpdateUserEmailAsync(UserEmail email, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to multiple <see cref="UserEmail"/> entities in one
     /// SaveChanges call. Each entity is attached and marked as Modified.
     /// </summary>
-    Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default);
+    Task UpdateUserEmailsAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default);
 }

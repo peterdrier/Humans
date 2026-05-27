@@ -47,7 +47,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ITicketingBudgetRepository)] = "Tickets",
             [typeof(ITicketRepository)] = "Tickets",
             [typeof(ITicketTransferRepository)] = "Tickets",
-            [typeof(IUserEmailRepository)] = "Humans",
             [typeof(IUserRepository)] = "Humans",
             [typeof(IVolunteerTrackingRepository)] = "Shifts",
         };
@@ -100,7 +99,6 @@ public class ServiceBoundaryArchitectureTests
     public void Users_and_profiles_share_one_repository_ownership_section()
     {
         RepositoryOwners[typeof(IUserRepository)].Should().Be("Humans");
-        RepositoryOwners[typeof(IUserEmailRepository)].Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Profiles.ProfileService)).Should().Be("Humans");
     }

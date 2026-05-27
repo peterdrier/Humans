@@ -7,7 +7,7 @@ HUM0002 | Humans.Architecture   | Error    | Write to Identity-derived User colu
 HUM0003 | Humans.Architecture   | Error    | UserManager.FindByEmailAsync / FindByNameAsync called from Application or Web
 HUM0004 | Humans.Architecture   | Error    | Profile.IsSuspended written outside allowlisted dual-writers
 HUM0005 | Humans.Architecture   | Error    | IUserEmailService.UpdateEmailAsync called from outside AccountController
-HUM0006 | Humans.Architecture   | Error    | IUserEmailRepository.UpdateEmailAsync called from outside UserEmailService
+HUM0006 | Humans.Architecture   | Error    | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services
 HUM0007 | Humans.Architecture   | Error    | Concurrency token metadata is forbidden in live source
 HUM0008 | Humans.Architecture   | Error    | Controller constructor injects HumansDbContext
 HUM0009 | Humans.Architecture   | Error    | Class uses HumansDbContext but does not implement IRepository (downgrades to Warning for classes carrying [Grandfathered("HUM0009", ...)])

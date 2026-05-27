@@ -25,16 +25,17 @@ public partial interface IUserRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Loads a single user by id with the <see cref="User.UserEmails"/>
-    /// collection populated. Read-only (AsNoTracking). Returns null if the
-    /// user does not exist.
+    /// Loads a single user by id. Read-only (AsNoTracking). Returns null if
+    /// the user does not exist. <see cref="User.UserEmails"/> is owned by
+    /// the UserEmail methods on this repository and is not populated by this method.
     /// </summary>
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batched user fetch keyed by id with each user's
-    /// <see cref="User.UserEmails"/> collection populated. Missing users are
-    /// absent from the returned dictionary. Read-only (AsNoTracking).
+    /// Batched user fetch keyed by id. Missing users are absent from the
+    /// returned dictionary. Read-only (AsNoTracking). <see cref="User.UserEmails"/>
+    /// is owned by the UserEmail methods on this repository and is not populated by
+    /// this method.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
         IReadOnlyCollection<Guid> userIds,
@@ -47,10 +48,11 @@ public partial interface IUserRepository : IRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
+    /// Finds a user whose legacy <c>GoogleEmail</c> shadow column matches the given
     /// normalized address (case-insensitive). If <paramref name="alternateEmail"/>
-    /// is non-null, also matches users whose email matches the alternate form
-    /// (gmail.com ↔ googlemail.com). Read-only.
+    /// is non-null, also matches the alternate form. Canonical
+    /// <c>user_emails</c> matching is owned by the UserEmail methods on this repository.
+    /// Read-only.
     /// </summary>
     Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
@@ -60,7 +62,7 @@ public partial interface IUserRepository : IRepository
     /// whose legacy <c>GoogleEmail</c> shadow column matches the given address
     /// (case-insensitive), or null if no such user exists.
     /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailRepository.GetOtherUserIdHavingEmailAsync (matches the user_emails table — the canonical location for Google identity once UserEmail.IsGoogle is sole source of truth).")]
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserRepository.GetOtherUserIdHavingUserEmailAsync (matches the user_emails table — the canonical location for Google identity once UserEmail.IsGoogle is sole source of truth).")]
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
 
@@ -152,14 +154,14 @@ public partial interface IUserRepository : IRepository
 
     /// <summary>
     /// Returns userIds of users that have at least one row in
-    /// <c>AspNetUserLogins</c> but zero rows in <c>user_emails</c>. Used by the
-    /// EmailProblems admin scan to surface ghost auth artifacts (case 8).
+    /// <c>AspNetUserLogins</c>. Used by <c>IUserService</c> together with
+    /// UserEmail methods on this repository to surface ghost auth artifacts.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Permanently deletes users after the caller has cleared cross-section
-    /// references. Also removes user_emails and AspNetUserLogins rows for
+    /// references and UserEmail rows. Also removes AspNetUserLogins rows for
     /// those users. Returns the number of user rows deleted.
     /// </summary>
     Task<int> DeleteUsersAsync(
@@ -219,19 +221,21 @@ public partial interface IUserRepository : IRepository
         Guid userId, ContactSource source, CancellationToken ct = default);
 
     /// <summary>
-    /// Purges (anonymizes + locks out) a user: removes all UserEmail rows and
-    /// all AspNetUserLogins rows for the user, overwrites <c>Email</c>/
+    /// Purges (anonymizes + locks out) a user: removes all AspNetUserLogins
+    /// rows for the user, overwrites <c>Email</c>/
     /// <c>NormalizedEmail</c>/<c>UserName</c>/<c>NormalizedUserName</c> with a
     /// sentinel <c>purged-{guid}@deleted.local</c> address, prepends "Purged"
     /// to the display name, and permanently locks out the account. Atomic:
-    /// email removal, login removal, and user anonymization happen in one
+    /// login removal and user anonymization happen in one
     /// <c>SaveChangesAsync</c>. Returns the original display name if the user
     /// was purged; null if the user did not exist.
     /// </summary>
     /// <remarks>
-    /// Used by <c>IUserService.PurgeAsync</c>. Removes <c>UserEmail</c> rows so
-    /// the unique-index constraint does not block a future account creation
-    /// reusing the same email. Also removes <c>AspNetUserLogins</c> rows so a
+    /// Used by <c>IUserService.PurgeAsync</c>. <c>IUserService</c> removes
+    /// <c>UserEmail</c> rows through this repository before calling
+    /// this method so the unique-index constraint does not block a future
+    /// account creation reusing the same email. Also removes
+    /// <c>AspNetUserLogins</c> rows so a
     /// re-signup via the same Google identity is not blocked by an orphan login
     /// pointing at a tombstoned, locked-out user. Does not touch Profile or
     /// other section-owned rows — those are either retained (audit) or removed
@@ -257,9 +261,9 @@ public partial interface IUserRepository : IRepository
 
     /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization in
-    /// one atomic save: renames the user to <c>Deleted User</c> + sentinel
-    /// email, removes every <c>UserEmail</c> row and every
-    /// <c>AspNetUserLogins</c> row, clears phone/picture/iCal token, clears
+    /// one save: renames the user to <c>Deleted User</c> + sentinel
+    /// email, removes every <c>AspNetUserLogins</c> row, clears
+    /// phone/picture/iCal token, clears
     /// all deletion fields, sets the security stamp, and permanently locks
     /// out the account. Returns a small summary of the prior identity
     /// (effective email, display name, preferred language) or <c>null</c> if

@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -387,10 +388,10 @@ public interface IUserEmailService : IApplicationService
     /// <summary>
     /// Sets the user's canonical Google Workspace identity to the given verified
     /// email row. Single-transaction exclusive flip via
-    /// <see cref="IUserEmailRepository.SetGoogleExclusiveAsync"/>: the target row's
+    /// <see cref="IUserRepository.SetUserEmailGoogleExclusiveAsync"/>: the target row's
     /// <see cref="UserEmail.IsGoogle"/> goes to true, every sibling row for the
     /// same user is cleared. Owner-gated via
-    /// <see cref="IUserEmailRepository.GetByIdAndUserIdAsync"/>; returns
+    /// <see cref="IUserRepository.GetUserEmailByIdAndUserIdAsync"/>; returns
     /// <c>false</c> if the row is not found for this user or is not verified.
     /// Service-auth-free per the design rules: the controller authorizes against
     /// <paramref name="userId"/>, which is the <b>target</b> user (not the actor).
@@ -408,7 +409,7 @@ public interface IUserEmailService : IApplicationService
     /// invariant violation that bypasses <see cref="SetGoogleAsync"/>).
     /// Returns <c>false</c> when the row is not found for this user or is
     /// already cleared. Owner-gated via
-    /// <see cref="IUserEmailRepository.GetByIdAndUserIdAsync"/>.
+    /// <see cref="IUserRepository.GetUserEmailByIdAndUserIdAsync"/>.
     /// </summary>
     Task<bool> ClearGoogleAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,

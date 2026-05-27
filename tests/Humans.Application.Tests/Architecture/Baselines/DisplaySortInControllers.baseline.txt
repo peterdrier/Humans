@@ -50,8 +50,8 @@ src/Humans.Infrastructure/Repositories/Users/UserRepository.ContactFields.cs:Ord
 src/Humans.Infrastructure/Repositories/Users/UserRepository.ContactFields.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.Profiles.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.Profiles.cs:ThenBy#1
-src/Humans.Infrastructure/Repositories/Profiles/UserEmailRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Profiles/UserEmailRepository.cs:ThenBy#1
+src/Humans.Infrastructure/Repositories/Users/UserRepository.UserEmails.cs:OrderBy#1
+src/Humans.Infrastructure/Repositories/Users/UserRepository.UserEmails.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#3

@@ -11,9 +11,8 @@ using Humans.Infrastructure.Data;
 namespace Humans.Infrastructure.Repositories.Users;
 
 /// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
-[Grandfathered("HUM0025", justification: "Cross-section read of UserEmails (Profiles-owned); route through IUserEmailService.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
 [Grandfathered("HUM0025", justification: "Identity UserLogins also accessed by DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserLogins")]
-[Grandfathered("HUM0025", justification: "Users is also accessed by UserEmailRepository and DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
+[Grandfathered("HUM0025", justification: "Users is also accessed by DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
 internal sealed partial class UserRepository : IUserRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
@@ -37,7 +36,6 @@ internal sealed partial class UserRepository : IUserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
     }
 
@@ -50,7 +48,6 @@ internal sealed partial class UserRepository : IUserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var list = await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .Where(u => userIds.Contains(u.Id))
             .ToListAsync(ct);
 
@@ -59,11 +56,9 @@ internal sealed partial class UserRepository : IUserRepository
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
     {
-        // Include UserEmails so computed User.Email isn't null.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .ToListAsync(ct);
     }
 
@@ -71,38 +66,17 @@ internal sealed partial class UserRepository : IUserRepository
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
         // ILIKE: escape '_' / '%' in input or alex_smith@... matches alexXsmith@...
-        // Lookup verifies user_emails first; falls back to legacy GoogleEmail shadow column.
+        // Canonical UserEmail lookup is owned by the UserEmail methods on this
+        // repository; this is the legacy GoogleEmail shadow-column fallback only.
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        var userIdByEmail = escapedAlternate is null
-            ? await ctx.UserEmails
-                .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, escapedEmail, "\\"))
-                .Select(e => (Guid?)e.UserId)
-                .FirstOrDefaultAsync(ct)
-            : await ctx.UserEmails
-                .Where(e => e.IsVerified && (
-                    EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
-                    EF.Functions.ILike(e.Email, escapedAlternate, "\\")))
-                .Select(e => (Guid?)e.UserId)
-                .FirstOrDefaultAsync(ct);
-
-        if (userIdByEmail is not null)
-        {
-            return await ctx.Users
-                .AsNoTracking()
-                .Include(u => u.UserEmails)
-                .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
-        }
-
-        // Fallback: legacy GoogleEmail shadow column.
         if (escapedAlternate is null)
         {
             return await ctx.Users
                 .AsNoTracking()
-                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u =>
                     EF.Property<string?>(u, "GoogleEmail") != null
                     && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\"),
@@ -111,7 +85,6 @@ internal sealed partial class UserRepository : IUserRepository
 
         return await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u =>
                 EF.Property<string?>(u, "GoogleEmail") != null && (
                     EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\") ||
@@ -309,27 +282,14 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        var loginUserIds = await ctx.Set<IdentityUserLogin<Guid>>()
+        return await ctx.Set<IdentityUserLogin<Guid>>()
             .AsNoTracking()
             .Select(l => l.UserId)
             .Distinct()
             .ToListAsync(ct);
-
-        if (loginUserIds.Count == 0) return [];
-
-        var withEmail = await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => loginUserIds.Contains(e.UserId))
-            .Select(e => e.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var withEmailSet = withEmail.ToHashSet();
-        return loginUserIds.Where(id => !withEmailSet.Contains(id)).ToList();
     }
 
     public async Task<bool> SetContactSourceIfNullAsync(
@@ -354,10 +314,6 @@ internal sealed partial class UserRepository : IUserRepository
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
-
-        await ctx.UserEmails
-            .Where(e => userIds.Contains(e.UserId))
-            .ExecuteDeleteAsync(ct);
 
         await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => userIds.Contains(l.UserId))
@@ -502,10 +458,6 @@ internal sealed partial class UserRepository : IUserRepository
 #pragma warning disable HUM_USER_DISPLAYNAME // Purge returns and rewrites the legacy label for audit/debug flows.
         var displayName = user.DisplayName;
 
-        // Free the unique index and null out User.Email.
-        var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
-        ctx.UserEmails.RemoveRange(userEmails);
-
         // Drop external logins so a returning Google user can land on a fresh
         // account, not this tombstone. See nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
@@ -552,9 +504,7 @@ internal sealed partial class UserRepository : IUserRepository
         Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users
-            .Include(u => u.UserEmails)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        var user = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user is null)
             return null;
@@ -569,9 +519,6 @@ internal sealed partial class UserRepository : IUserRepository
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
-
-        // Free the unique index and prevent email-lookup discovery.
-        ctx.UserEmails.RemoveRange(user.UserEmails);
 
         // Drop external logins for the same reason — see nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()

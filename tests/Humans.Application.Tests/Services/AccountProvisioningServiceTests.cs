@@ -212,7 +212,7 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
             Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
+        public Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -286,6 +286,106 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> WriteBackStateIfNullAsync(
             Guid userId, ProfileState state, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
+            Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
+            Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> GetUserEmailByIdAndUserIdAsync(
+            Guid emailId, Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> UserEmailExistsForUserAsync(
+            Guid userId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> VerifiedUserEmailExistsForOtherUserAsync(
+            Guid userId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> GetConflictingVerifiedUserEmailAsync(
+            Guid excludeEmailId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> ReassignUserEmailsToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
+            GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
+                Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetUserIdsHavingAnyUserEmailAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAllUserEmailsForUsersAndSaveAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> MarkUserEmailVerifiedAsync(
+            Guid emailId, Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RemoveUserEmailByIdAsync(Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
+            IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> AnyUserEmailWithEmailAsync(string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
+            CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedUserEmailAsync(
+            string searchTerm, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmailWithUser?> FindVerifiedUserEmailWithUserAsync(
+            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> FindUserEmailByNormalizedEmailAsync(
+            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<string?> GetVerifiedUserEmailAddressAsync(
+            Guid userId, Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetUserIdByVerifiedUserEmailAsync(
+            string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
+            string prefix, string suffix, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedUserEmailAsync(
+            string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserEmailUserIdsAsync(
+            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetOtherUserIdHavingUserEmailAsync(
+            string email, Guid excludeUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(
+            string normalizedEmail, string? alternateEmail, Guid excludeUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task ApplyUserEmailReconcilePlanAsync(
+            UserEmail? displacedRowToDelete,
+            UserEmail? rowToDelete,
+            UserEmail? rowToUpdate,
+            UserEmail? rowToInsert,
+            CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task SetUserEmailGoogleExclusiveAsync(
+            Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task UpdateUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task UpdateUserEmailsAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 
@@ -717,14 +817,11 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_GoesThroughIUserEmailService_NotIUserEmailRepository()
+    public async Task FindOrCreateUserByEmailAsync_RoutesEmailRowsThroughIUserEmailService()
     {
-        // Issue nobodies-collective/Humans#687: AccountProvisioningService no
-        // longer references IUserEmailRepository. The fixture wires
-        // FindAnyUserIdByEmailAsync + AddProvisionedEmailAsync through the
-        // mocked IUserEmailService — if the service called the repository
-        // directly the fixture wouldn't satisfy the lookups and the test
-        // wouldn't produce a row. The presence of the row proves the route.
+        // Issue nobodies-collective/Humans#687: email-row policy still routes
+        // through IUserEmailService even though Users now owns the underlying
+        // repository storage methods.
         var result = await _service.FindOrCreateUserByEmailAsync(
             "jane@example.com", "Jane", ContactSource.MailerLite);
 

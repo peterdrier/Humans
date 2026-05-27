@@ -25,7 +25,6 @@ internal static class ProfileSectionExtensions
         IConfiguration configuration)
     {
         // Profile section — see #504. Singleton repos so CachingUserService injects directly without scope-factory.
-        services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
         services.AddSingleton<IAccountMergeRepository, AccountMergeRepository>();
 

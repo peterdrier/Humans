@@ -17,7 +17,6 @@ namespace Humans.Application.Services.Profiles;
 public sealed class DuplicateAccountService(
     IUserRepository userRepository,
     IUserService userService,
-    IUserEmailRepository userEmailRepository,
     IAuditLogService auditLogService,
     IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
@@ -215,7 +214,7 @@ public sealed class DuplicateAccountService(
                 await roleAssignmentService.RevokeAllActiveAsync(sourceUserId, ct);
 
                 // 5. Delete source's email rows.
-                await userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
+                await userRepository.RemoveAllUserEmailsForUserAndSaveAsync(sourceUserId, ct);
 
                 // 6. Anonymize source. NOTE: does NOT migrate VolunteerHistory/Languages (asymmetric vs AccountMergeService.AcceptAsync).
                 await userRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);

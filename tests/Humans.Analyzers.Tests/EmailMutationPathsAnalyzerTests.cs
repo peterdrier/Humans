@@ -15,9 +15,9 @@ public class EmailMutationPathsAnalyzerTests
 
         namespace Humans.Application.Interfaces.Repositories
         {
-            public interface IUserEmailRepository
+            public interface IUserRepository
             {
-                System.Threading.Tasks.Task ApplyReconcilePlanAsync(object? a, object? b, object? c, object? d);
+                System.Threading.Tasks.Task ApplyUserEmailReconcilePlanAsync(object? a, object? b, object? c, object? d);
             }
         }
         """;
@@ -90,9 +90,9 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
+                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
                     {
-                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
+                        await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -116,9 +116,9 @@ public class EmailMutationPathsAnalyzerTests
                 public class UserEmailService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
+                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
                     {
-                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
+                        await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -142,9 +142,9 @@ public class EmailMutationPathsAnalyzerTests
                 public class UserService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
+                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
                     {
-                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
+                        await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -205,11 +205,11 @@ public class EmailMutationPathsAnalyzerTests
     {
         var source = InterfaceStubs + """
 
-            namespace Humans.Infrastructure.Repositories.Profiles
+            namespace Humans.Infrastructure.Repositories.Users
             {
-                public class UserEmailRepository : Humans.Application.Interfaces.Repositories.IUserEmailRepository
+                public class UserRepository : Humans.Application.Interfaces.Repositories.IUserRepository
                 {
-                    public async System.Threading.Tasks.Task ApplyReconcilePlanAsync(
+                    public async System.Threading.Tasks.Task ApplyUserEmailReconcilePlanAsync(
                         object? a, object? b, object? c, object? d)
                     {
                         await System.Threading.Tasks.Task.CompletedTask;
@@ -222,9 +222,9 @@ public class EmailMutationPathsAnalyzerTests
                 public class Sneaky
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Infrastructure.Repositories.Profiles.UserEmailRepository concrete)
+                        Humans.Infrastructure.Repositories.Users.UserRepository concrete)
                     {
-                        await concrete.ApplyReconcilePlanAsync(null, null, null, null);
+                        await concrete.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -282,9 +282,9 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeBackgroundJob
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
+                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
                     {
-                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
+                        await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }

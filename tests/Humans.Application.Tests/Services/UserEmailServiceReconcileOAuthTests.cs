@@ -23,7 +23,7 @@ namespace Humans.Application.Tests.Services;
 /// </summary>
 public class UserEmailServiceReconcileOAuthTests
 {
-    private readonly IUserEmailRepository _repository = Substitute.For<IUserEmailRepository>();
+    private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly UserManager<User> _userManager;
@@ -66,7 +66,7 @@ public class UserEmailServiceReconcileOAuthTests
         UserEmailReconcilePlanCommand command,
         CancellationToken ct)
     {
-        await _repository.ApplyReconcilePlanAsync(
+        await _repository.ApplyUserEmailReconcilePlanAsync(
             command.DisplacedRowToDelete,
             command.RowToDelete,
             command.RowToUpdate,
@@ -96,7 +96,7 @@ public class UserEmailServiceReconcileOAuthTests
                 Provider = Provider, ProviderKey = ProviderKey,
             },
         };
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(rows);
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -105,7 +105,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         result.Outcome.Should().Be(ReconcileOutcome.NoChange);
         result.AffectedRowId.Should().Be(rowId);
-        await _repository.DidNotReceive().ApplyReconcilePlanAsync(
+        await _repository.DidNotReceive().ApplyUserEmailReconcilePlanAsync(
             Arg.Any<UserEmail?>(), Arg.Any<UserEmail?>(),
             Arg.Any<UserEmail?>(), Arg.Any<UserEmail?>(),
             Arg.Any<CancellationToken>());
@@ -132,7 +132,7 @@ public class UserEmailServiceReconcileOAuthTests
             Provider = Provider,
             ProviderKey = ProviderKey,
         };
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { tagged });
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -143,9 +143,9 @@ public class UserEmailServiceReconcileOAuthTests
         result.AffectedRowId.Should().Be(rowId);
         result.PreviousEmail.Should().Be("old@example.com");
         tagged.Email.Should().Be("new@example.com");
-        // The data change is applied atomically via ApplyReconcilePlanAsync —
+        // The data change is applied atomically via ApplyUserEmailReconcilePlanAsync —
         // rewrite is a single row-to-update with no delete and no insert.
-        await _repository.Received(1).ApplyReconcilePlanAsync(
+        await _repository.Received(1).ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: Arg.Is<UserEmail?>(r => r == null),
             rowToDelete: Arg.Is<UserEmail?>(r => r == null),
             rowToUpdate: Arg.Is<UserEmail?>(r => r != null && r.Id == rowId),
@@ -192,7 +192,7 @@ public class UserEmailServiceReconcileOAuthTests
             IsPrimary = false,
             IsGoogle = false,
         };
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { oldRow, sibling });
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -211,7 +211,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         // Atomic plan: update the sibling AND delete the old tagged row in
         // one transaction.
-        await _repository.Received(1).ApplyReconcilePlanAsync(
+        await _repository.Received(1).ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: Arg.Is<UserEmail?>(r => r == null),
             rowToDelete: Arg.Is<UserEmail?>(r => r != null && r.Id == oldRowId),
             rowToUpdate: Arg.Is<UserEmail?>(r => r != null && r.Id == siblingId),
@@ -242,7 +242,7 @@ public class UserEmailServiceReconcileOAuthTests
             IsPrimary = true,
             IsGoogle = true,
         };
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { sibling });
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -257,7 +257,7 @@ public class UserEmailServiceReconcileOAuthTests
         sibling.IsPrimary.Should().BeTrue("sibling kept its IsPrimary — no old row to flip it from");
         sibling.IsGoogle.Should().BeTrue("sibling kept its IsGoogle — no old row to flip it from");
         // Atomic plan: update the sibling, no delete (no old tagged row).
-        await _repository.Received(1).ApplyReconcilePlanAsync(
+        await _repository.Received(1).ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: Arg.Is<UserEmail?>(r => r == null),
             rowToDelete: Arg.Is<UserEmail?>(r => r == null),
             rowToUpdate: Arg.Is<UserEmail?>(r => r != null && r.Id == siblingId),
@@ -271,11 +271,11 @@ public class UserEmailServiceReconcileOAuthTests
     public async Task NewRowCreated_NoTaggedRow_NoSibling_NoCrossUser_InsertsVerifiedTaggedRow()
     {
         var userId = Guid.NewGuid();
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail>());
 
         UserEmail? planned = null;
-        await _repository.ApplyReconcilePlanAsync(
+        await _repository.ApplyUserEmailReconcilePlanAsync(
             Arg.Any<UserEmail?>(),
             Arg.Any<UserEmail?>(),
             Arg.Any<UserEmail?>(),
@@ -320,7 +320,7 @@ public class UserEmailServiceReconcileOAuthTests
         };
         // Signing user has no rows at all → reconcile would NewRowCreate, but
         // cross-user check fires first.
-        _repository.GetByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail>());
         // Displaced user retains another verified row after the delete, so the
         // "left without verified email" flag stays false.
@@ -332,9 +332,9 @@ public class UserEmailServiceReconcileOAuthTests
             IsVerified = true,
             IsPrimary = false,
         };
-        _repository.GetByUserIdForMutationAsync(displacedUserId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(displacedUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { displacedRow, displacedSurvivor });
-        _repository.FindOtherUsersVerifiedRowAsync(
+        _repository.FindOtherUsersVerifiedUserEmailRowAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), signingUserId, Arg.Any<CancellationToken>())
             .Returns(displacedRow);
 
@@ -350,7 +350,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         // Atomic plan: the displaced row is deleted AND the signing user's
         // NewRowCreated insert happens in the same transaction.
-        await _repository.Received(1).ApplyReconcilePlanAsync(
+        await _repository.Received(1).ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: Arg.Is<UserEmail?>(r => r != null && r.Id == displacedRowId),
             rowToDelete: Arg.Is<UserEmail?>(r => r == null),
             rowToUpdate: Arg.Is<UserEmail?>(r => r == null),
@@ -383,13 +383,13 @@ public class UserEmailServiceReconcileOAuthTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail>());
         // Displaced user has ONLY the row being displaced — after the delete
         // they're left with zero verified emails.
-        _repository.GetByUserIdForMutationAsync(displacedUserId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(displacedUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { displacedRow });
-        _repository.FindOtherUsersVerifiedRowAsync(
+        _repository.FindOtherUsersVerifiedUserEmailRowAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), signingUserId, Arg.Any<CancellationToken>())
             .Returns(displacedRow);
 
@@ -438,9 +438,9 @@ public class UserEmailServiceReconcileOAuthTests
             Provider = Provider,
             ProviderKey = ProviderKey,
         };
-        _repository.GetByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { tagged });
-        _repository.FindOtherUsersVerifiedRowAsync(
+        _repository.FindOtherUsersVerifiedUserEmailRowAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), signingUserId, Arg.Any<CancellationToken>())
             .Returns(blocker);
 
@@ -457,7 +457,7 @@ public class UserEmailServiceReconcileOAuthTests
         // No mutation: signing user's tagged row keeps its old email; blocker
         // row is not removed; no new row is inserted; no atomic plan applied.
         tagged.Email.Should().Be("old@example.com");
-        await _repository.DidNotReceive().ApplyReconcilePlanAsync(
+        await _repository.DidNotReceive().ApplyUserEmailReconcilePlanAsync(
             Arg.Any<UserEmail?>(), Arg.Any<UserEmail?>(),
             Arg.Any<UserEmail?>(), Arg.Any<UserEmail?>(),
             Arg.Any<CancellationToken>());

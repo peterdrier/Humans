@@ -95,10 +95,10 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Purges a human at the User aggregate — removes all UserEmail rows for
-    /// the user, anonymizes the email/display name, and permanently locks out
-    /// the account. Returns the prior display name on success, or <c>null</c>
-    /// if the user did not exist. Invalidates the UserInfo cache on
+    /// Purges a human at the User aggregate — removes all UserEmail rows
+    /// through <c>IUserRepository</c>, anonymizes the display name, and
+    /// permanently locks out the account. Returns the prior display name on
+    /// success, or <c>null</c> if the user did not exist. Invalidates the UserInfo cache on
     /// success so downstream consumers see the purged view. Cross-section
     /// invalidation (ActiveTeams cache, etc.) is owned by the caller —
     /// <see cref="IAccountDeletionService.PurgeAsync"/> is the orchestrator
@@ -108,10 +108,10 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
 
     /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization
-    /// on the User aggregate in one atomic save — renames to
-    /// <c>Deleted User</c> + sentinel email, removes <c>UserEmail</c> rows,
-    /// clears phone/picture/iCal/deletion fields, sets the security stamp,
-    /// and permanently locks out the account. Returns the pre-write identity
+    /// on the User aggregate — removes <c>UserEmail</c> rows through
+    /// <c>IUserRepository</c>, renames to <c>Deleted User</c>, clears
+    /// phone/picture/iCal/deletion fields, sets the security stamp, and
+    /// permanently locks out the account. Returns the pre-write identity
     /// slice or <c>null</c> if the user does not exist. Invalidates the
     /// UserInfo cache on success. Cross-section cascade (team
     /// memberships, role assignments, profile anonymization, shift cleanup)
@@ -387,9 +387,9 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
 
     /// <summary>
     /// Permanently deletes the requested user rows after the caller has cleared
-    /// cross-section references. Also removes the users' email rows and
-    /// external login rows. Requires the current authenticated user to hold
-    /// the full Admin role.
+    /// cross-section references. Removes the users' email rows through
+    /// <c>IUserRepository</c> and removes external login rows through
+    /// <c>IUserRepository</c>. Requires the current authenticated user to hold the full Admin role.
     /// </summary>
     Task<int> DeleteUsersAsync(
         IReadOnlyCollection<Guid> userIds,

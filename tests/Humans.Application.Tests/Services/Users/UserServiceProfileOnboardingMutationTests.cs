@@ -8,6 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -22,12 +23,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     public UserServiceProfileOnboardingMutationTests()
     {
         var userRepository = new UserRepository(DbFactory, Clock);
-        var userEmailRepository = new UserEmailRepository(DbFactory);
         var communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
 
         _service = new UserService(
             userRepository,
-            userEmailRepository,
             communicationPreferenceRepository,
             AdminAuthorization,
             Clock,
@@ -78,6 +77,87 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             string.Equals(s.SectionName, GdprExportSections.Account, StringComparison.Ordinal));
         var accountJson = System.Text.Json.JsonSerializer.Serialize(accountSlice.Data);
         accountJson.Should().Contain("\"Email\":\"g@example.com\"");
+    }
+
+    [HumansFact]
+    public async Task GetByIdAsync_HydratesUserEmailsThroughUserRepository()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "Hydrated User");
+        var email = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "hydrated@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        Db.UserEmails.Add(email);
+        await Db.SaveChangesAsync();
+
+        var user = await _service.GetByIdAsync(userId);
+
+        user.Should().NotBeNull();
+        user!.UserEmails.Should().ContainSingle(e =>
+            e.Id == email.Id && e.Email == "hydrated@example.com");
+    }
+
+    [HumansFact]
+    public async Task GetUsersWithLoginsButNoEmailsAsync_ComposesLoginAndUserEmailRepositories()
+    {
+        var userWithEmail = SeedUser(Guid.NewGuid(), "Has Email");
+        var userWithoutEmail = SeedUser(Guid.NewGuid(), "Ghost Login");
+        await Db.Set<IdentityUserLogin<Guid>>().AddRangeAsync(
+            new IdentityUserLogin<Guid>
+            {
+                UserId = userWithEmail.Id,
+                LoginProvider = "Google",
+                ProviderKey = "has-email-sub",
+                ProviderDisplayName = "Google",
+            },
+            new IdentityUserLogin<Guid>
+            {
+                UserId = userWithoutEmail.Id,
+                LoginProvider = "Google",
+                ProviderKey = "ghost-sub",
+                ProviderDisplayName = "Google",
+            });
+        Db.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userWithEmail.Id,
+            Email = "has-email@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        });
+        await Db.SaveChangesAsync();
+
+        var result = await _service.GetUsersWithLoginsButNoEmailsAsync();
+
+        result.Should().Equal([userWithoutEmail.Id]);
+    }
+
+    [HumansFact]
+    public async Task PurgeOwnDataAsync_RemovesUserEmailsThroughUserRepository()
+    {
+        var user = SeedUser(Guid.NewGuid(), "Purge Me");
+        Db.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Email = "purge-me@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        });
+        await Db.SaveChangesAsync();
+
+        var displayName = await _service.PurgeOwnDataAsync(user.Id);
+
+        displayName.Should().Be("Purge Me");
+        var remaining = await Db.UserEmails.AsNoTracking()
+            .Where(e => e.UserId == user.Id)
+            .ToListAsync();
+        remaining.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -442,7 +522,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
             userRepository,
-            new UserEmailRepository(DbFactory),
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
             Clock,

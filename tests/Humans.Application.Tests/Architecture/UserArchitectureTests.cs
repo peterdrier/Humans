@@ -11,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
-using AccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -21,21 +20,6 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    public static TheoryData<Type, Type> ForbiddenConstructorEdges => new()
-    {
-        { typeof(AccountProvisioningService), typeof(IUserEmailRepository) },
-    };
-
-    [HumansTheory]
-    [MemberData(nameof(ForbiddenConstructorEdges))]
-    public void User_services_do_not_take_forbidden_constructor_edges(Type serviceType, Type dependencyType)
-    {
-        var ctor = serviceType.GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().NotContain(dependencyType);
-    }
-
     [HumansFact]
     public void UserService_has_expected_cache_and_invalidation_shape()
     {
@@ -93,8 +77,8 @@ public class UserArchitectureTests
         var typesToScan = new[]
         {
             typeof(IUserEmailService),
-            typeof(Humans.Infrastructure.Repositories.Profiles.UserEmailRepository),
-            typeof(IUserEmailRepository),
+            typeof(Humans.Infrastructure.Repositories.Users.UserRepository),
+            typeof(IUserRepository),
         };
 
         foreach (var t in typesToScan)
@@ -143,7 +127,6 @@ public class UserArchitectureTests
         // singleton is exposed under both interface keys.
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IUserRepository>());
-        services.AddSingleton(Substitute.For<IUserEmailRepository>());
         services.AddSingleton(Substitute.For<ICommunicationPreferenceRepository>());
         services.AddSingleton(Substitute.For<IServiceScopeFactory>());
         services.AddSingleton(Substitute.For<ILogger<CachingUserService>>());
