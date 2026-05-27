@@ -147,7 +147,6 @@ internal sealed partial class UserRepository
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
         var profiles = await ctx.Profiles
             .Where(p => userIdList.Contains(p.UserId) && !p.IsSuspended)
             .ToListAsync(ct);
@@ -160,7 +159,6 @@ internal sealed partial class UserRepository
             profile.State = ProfileState.Suspended;
             profile.UpdatedAt = now;
         }
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
 
         if (profiles.Count > 0)
         {
