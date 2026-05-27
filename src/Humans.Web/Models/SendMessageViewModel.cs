@@ -12,4 +12,6 @@ public class SendMessageViewModel
     public string Message { get; set; } = string.Empty;
 
     public bool IncludeContactInfo { get; set; } = true;
+
+    public string SenderEmail { get; set; } = string.Empty;
 }

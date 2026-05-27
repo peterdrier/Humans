@@ -33,7 +33,13 @@
 
             <div class="mb-3 form-check">
                 <input asp-for="IncludeContactInfo" class="form-check-input" type="checkbox" />
-                <label asp-for="IncludeContactInfo" class="form-check-label">@Localizer["SendMessage_IncludeContactInfo"]</label>
+                <label asp-for="IncludeContactInfo" class="form-check-label">
+                    @Localizer["SendMessage_IncludeContactInfo"]
+                    @if (!string.IsNullOrEmpty(Model.SenderEmail))
+                    {
+                        <span class="text-muted">(@Model.SenderEmail)</span>
+                    }
+                </label>
                 <div class="form-text">@Localizer["SendMessage_IncludeContactInfoHelp"]</div>
             </div>
 

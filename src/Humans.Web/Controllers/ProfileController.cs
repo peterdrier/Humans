@@ -1948,7 +1948,8 @@ public class ProfileController(
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
-            RecipientDisplayName = targetInfo.BurnerName
+            RecipientDisplayName = targetInfo.BurnerName,
+            SenderEmail = currentUser.Email ?? string.Empty
         };
 
         return View(viewModel);
@@ -1978,6 +1979,7 @@ public class ProfileController(
 
         model.RecipientId = id;
         model.RecipientDisplayName = targetUser.BurnerName;
+        model.SenderEmail = currentUser.Email ?? string.Empty;
 
         if (!ModelState.IsValid)
             return View(model);
