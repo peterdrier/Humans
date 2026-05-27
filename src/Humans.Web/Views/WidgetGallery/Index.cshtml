@@ -953,6 +953,36 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;markdown-editor&gt;</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/TagHelpers/MarkdownEditorTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Textarea upgraded with the EasyMDE WYSIWYG-ish Markdown editor (toolbar, side-by-side preview, syntax help).
+                        Server-side rendering is unchanged — the textarea posts raw Markdown and <code>HtmlHelperExtensions.SanitizedMarkdown</code> still owns rendering. Loads EasyMDE from jsDelivr with SRI; degrades to a plain textarea if JS fails.
+                        Pages using this helper must include <code>&lt;partial name="_MarkdownHelp" /&gt;</code> once for the toolbar "?" button modal.
+                    </div>
+                    @ParamsBlock(
+                        ("asp-for", "<code>ModelExpression?</code> — standard model binding (preferred); validation/ModelState work as with a plain textarea"),
+                        ("name", "<code>string?</code> — explicit name when <code>asp-for</code> is not used"),
+                        ("value", "<code>string?</code> — explicit initial value when <code>asp-for</code> is not used"),
+                        ("id", "<code>string?</code> — optional explicit id; defaults to the asp-for/name expression"),
+                        ("rows", "<code>int</code> — textarea height before the EasyMDE upgrade (default 6)"),
+                        ("class", "<code>string?</code> — additional CSS classes for the textarea (<code>form-control</code> is always applied)"),
+                        ("required", "<code>bool</code> — emits HTML <code>required</code>"),
+                        ("maxlength", "<code>int</code> — emits HTML <code>maxlength</code> when &gt; 0"),
+                        ("placeholder", "<code>string?</code> — HTML <code>placeholder</code>")
+                    )
+                    <div class="wg-card-example">
+                        <markdown-editor name="widget-gallery-markdown" value="**Hello** _editor_." rows="4" />
+                        @await Html.PartialAsync("_MarkdownHelp")
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_MarkdownHelp.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>

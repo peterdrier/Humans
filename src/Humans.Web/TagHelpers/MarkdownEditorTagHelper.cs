@@ -173,6 +173,13 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
             output.Content.AppendHtml(writer.ToString());
         }
 
+        // Read CSP nonce from HttpContext.Items (set by CspNonceMiddleware). Raw HTML written via
+        // AppendHtml bypasses NonceTagHelper, so we stamp the nonce ourselves on every <script> we emit.
+        var nonce = httpContext?.Items["CspNonce"] as string;
+        var nonceAttr = nonce is not null
+            ? $" nonce=\"{HtmlEncoder.Default.Encode(nonce)}\""
+            : string.Empty;
+
         // Per-request, emit CSS/JS asset tags exactly once. After that only the init script.
         var alreadyEmitted = httpContext is not null && httpContext.Items.ContainsKey(AssetsEmittedKey);
         if (!alreadyEmitted)
@@ -187,15 +194,16 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
                 $"integrity=\"{EasyMdeCssIntegrity}\" crossorigin=\"anonymous\">");
             output.Content.AppendHtml(
                 $"<script src=\"{EasyMdeJsSrc}\" " +
-                $"integrity=\"{EasyMdeJsIntegrity}\" crossorigin=\"anonymous\" defer></script>");
+                $"integrity=\"{EasyMdeJsIntegrity}\" crossorigin=\"anonymous\" defer{nonceAttr}></script>");
         }
 
         // Encode the textarea id for use inside a JS string literal.
         var jsIdLiteral = JavaScriptEncoder.Default.Encode(uniqueId);
 
         // Inline init script — defers EasyMDE construction until the asset script has loaded.
-        // NonceTagHelper attaches the CSP nonce automatically.
-        var initScript = $@"<script>
+        // We stamp the CSP nonce directly because this <script> is emitted as raw HTML via
+        // AppendHtml and never re-parsed by NonceTagHelper.
+        var initScript = $@"<script{nonceAttr}>
 (function() {{
     function initMde() {{
         if (typeof EasyMDE === 'undefined') {{ return false; }}
@@ -218,7 +226,7 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
                         var cm = editor.codemirror;
                         var sel = cm.getSelection() || 'task';
                         cm.replaceSelection('- [ ] ' + sel);
-                    }}, className: 'fa fa-square-check', title: 'Task list' }},
+                    }}, className: 'fa-solid fa-square-check', title: 'Task list' }},
                     'quote', 'code', 'horizontal-rule',
                     '|',
                     'link', 'table',
@@ -229,7 +237,7 @@ public class MarkdownEditorTagHelper(IHtmlGenerator htmlGenerator, IHttpContextA
                         var modalEl = document.getElementById('markdownHelpModal');
                         if (!modalEl || typeof bootstrap === 'undefined') {{ return; }}
                         bootstrap.Modal.getOrCreateInstance(modalEl).show();
-                    }}, className: 'fa fa-circle-question', title: 'Markdown help' }}
+                    }}, className: 'fa-solid fa-circle-question', title: 'Markdown help' }}
                 ]
             }});
         }} catch (e) {{
