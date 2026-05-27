@@ -29,7 +29,6 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         _fileStorage = new InMemoryFileStorage();
 
         var repo = new CampRepository(DbFactory);
-        var roleRepo = new CampRoleRepository(DbFactory);
 
         _userService = NewDbBackedUserService();
 
@@ -39,7 +38,6 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         _service = new CampService(
             repo,
-            roleRepo,
             _userService,
             AuditLog,
             Substitute.For<ISystemTeamSync>(),

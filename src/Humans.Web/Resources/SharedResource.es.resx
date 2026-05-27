@@ -5851,7 +5851,6 @@
   <data name="Cantina_Matrix_OtherIntolerance" xml:space="preserve"><value>Otra intolerancia</value></data>
   <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Texto de otra intolerancia</value></data>
   <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALES</value></data>
-  <data name="Nav_Cantina" xml:space="preserve"><value>Cantina</value></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Primero cuéntanos tus necesidades alimentarias.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Un momento — necesitamos tu información alimentaria antes de apuntarte a este turno.</value></data>
   <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>

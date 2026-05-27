@@ -10,7 +10,7 @@ using Humans.Infrastructure.Data;
 namespace Humans.Infrastructure.Repositories.Profiles;
 
 /// <summary>EF-backed <see cref="IUserEmailRepository"/>.</summary>
-[Grandfathered("HUM0025", justification: "UserEmails is also accessed by UserRepository and TicketRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
+[Grandfathered("HUM0025", justification: "UserEmails is also accessed by UserRepository to build UserInfo; converge analyzer ownership on the read model boundary.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
 [Grandfathered("HUM0025", justification: "Audited Users.GoogleEmail/GoogleEmailStatus/Email bridge write; route through IUserService.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
 internal sealed class UserEmailRepository(IDbContextFactory<HumansDbContext> factory) : IUserEmailRepository
 {

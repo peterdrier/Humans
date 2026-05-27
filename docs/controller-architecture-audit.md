@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-05-26 (freshness-sweep regeneration).
+Living document. Last updated: 2026-05-27 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -12,7 +12,7 @@ Living document. Last updated: 2026-05-26 (freshness-sweep regeneration).
 
 Newly added since the previous audit (purposes are name-derived defaults — review for accuracy): `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), and a previously-undocumented `DebugController` (`/Debug/ClientStats`).
 
-New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POST), `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx`, and `TicketTransferController.Confirm` replacing the prior `Lookup` action.
+New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POST), `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx`, `TicketTransferController.Confirm` replacing the prior `Lookup` action, and `ShiftAdminController.EmailTeamRotas` (GET+POST) — team-level coordinator rota message.
 
 ---
 
@@ -830,6 +830,8 @@ New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POS
 | MoveRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Move | POST | Move a rota to another team | OK |
 | EmailRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Email | GET | Email-rota compose form | OK |
 | EmailRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Email | POST | Email the rota's volunteers | OK |
+| EmailTeamRotas | /Teams/{slug}/Shifts/Email | GET | Team-level rota message compose form | OK |
+| EmailTeamRotas | /Teams/{slug}/Shifts/Email | POST | Email all volunteers across current/upcoming team rotas | OK |
 | DeleteRota | /Teams/{slug}/Shifts/Rotas/{rotaId}/Delete | POST | Delete a rota | OK |
 | DeleteShift | /Teams/{slug}/Shifts/Shifts/{shiftId}/Delete | POST | Delete a shift | OK |
 | BailRange | /Teams/{slug}/Shifts/BailRange | POST | Admin bail a signup range | OK |

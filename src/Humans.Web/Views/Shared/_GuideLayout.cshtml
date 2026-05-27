@@ -37,14 +37,11 @@
             @Model.Html
         </article>
 
-        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
-        {
-            <form asp-action="Refresh" method="post" class="mt-4">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-secondary btn-sm">
-                    Refresh from GitHub
-                </button>
-            </form>
-        }
+        <form asp-action="Refresh" method="post" class="mt-4" authorize-policy="AdminOnly">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                Refresh from GitHub
+            </button>
+        </form>
     </section>
 </div>
