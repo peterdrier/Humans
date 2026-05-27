@@ -530,6 +530,65 @@ public class VolunteerTrackingServiceTests
         result.Removed.Should().BeFalse();
     }
 
+    // ----------------------------------------------------------------------
+    // GetUserBuildStripAsync
+    // ----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_returns_null_when_no_active_event()
+    {
+        var sut = BuildSut(activeEvent: null);
+        (await sut.GetUserBuildStripAsync(Guid.NewGuid())).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_marks_declared_days_available()
+    {
+        var es = MakeEvent(buildStartOffset: -3);          // offsets -3,-2,-1
+        var userId = Guid.NewGuid();
+        // Harness default: GateOpening 2026-06-16, clock 2026-06-15 → todayOffset = -1.
+        var sut = BuildSut(es,
+            participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) },
+            availabilities: new[] { Availability(userId, es.Id, [-2, -1]) });
+
+        var strip = await sut.GetUserBuildStripAsync(userId);
+
+        strip.Should().NotBeNull();
+        // Declared flag set on exactly the declared days:
+        strip!.Row.Cells.Where(c => c.DeclaredAvailable).Select(c => c.DayOffset)
+            .Should().BeEquivalentTo(new[] { -2, -1 });
+        // Precedence: -2 is before today → AvailableUnbooked; -1 is today/future → AvailableExpected.
+        strip.Row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        strip.Row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.AvailableExpected);
+    }
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_reflects_signups_and_dayoffs()
+    {
+        var es = MakeEvent(buildStartOffset: -3);
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(es,
+            signups: new[] { new EligibleBuildSignup(userId, -3, SignupStatus.Confirmed, "Cleanup") },
+            participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) });
+
+        var strip = await sut.GetUserBuildStripAsync(userId);
+
+        strip!.Row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Confirmed);
+    }
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_returns_row_for_user_with_no_availability_row()
+    {
+        var es = MakeEvent(buildStartOffset: -2);
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(es, participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) });
+
+        var strip = await sut.GetUserBuildStripAsync(userId);
+
+        strip.Should().NotBeNull();
+        strip!.Row.Cells.Should().OnlyContain(c => c.DeclaredAvailable == false);
+    }
+
     [HumansFact]
     public async Task MainCohort_dayoff_renders_DayOff_state_and_does_not_count_as_gap()
     {
@@ -672,6 +731,16 @@ public class VolunteerTrackingServiceTests
                 var rows = (availabilities ?? [])
                     .Where(a => a.EventSettingsId == eventId).ToList();
                 return Task.FromResult<IReadOnlyList<GeneralAvailability>>(rows);
+            });
+        availabilityRepo
+            .GetByUserAndEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var userId = call.ArgAt<Guid>(0);
+                var eventId = call.ArgAt<Guid>(1);
+                var row = (availabilities ?? [])
+                    .FirstOrDefault(a => a.UserId == userId && a.EventSettingsId == eventId);
+                return Task.FromResult<GeneralAvailability?>(row);
             });
 
         var userService = Substitute.For<IUserService>();

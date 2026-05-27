@@ -306,6 +306,88 @@ public sealed class VolunteerTrackingService(
         return new ClearDayOffResult(removed);
     }
 
+    public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        if (es is null) return null;
+
+        var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+        var todayOffset = OffsetOf(es, clock.GetCurrentInstant().InZone(zone).Date);
+
+        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var daySignups = signups
+            .Where(s => s.UserId == userId)
+            .GroupBy(s => s.DayOffset)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    Status: g.Any(x => x.Status == SignupStatus.Confirmed)
+                        ? SignupStatus.Confirmed : SignupStatus.Pending,
+                    RotaNames: (IReadOnlyList<string>)g.Select(x => x.RotaName)
+                        .Distinct(StringComparer.Ordinal).ToList()));
+
+        var bs = (await trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false))
+            .FirstOrDefault(r => r.UserId == userId);
+        int? setupOffset = bs?.BarrioSetupStartDate is { } d ? OffsetOf(es, d) : null;
+        var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? [];
+
+        var availRow = await availability.GetByUserAndEventAsync(userId, es.Id, ct).ConfigureAwait(false);
+        var availSet = availRow?.AvailableDayOffsets.ToHashSet() ?? [];
+
+        var hasSignups = daySignups.Count > 0;
+        int firstSignupDay = hasSignups ? daySignups.Keys.Min() : 0;
+        var lastExpectedDay = Math.Min(setupOffset ?? int.MaxValue, 0);
+
+        var cells = new List<VolunteerCell>(-es.BuildStartOffset);
+        int gapCount = 0;
+        for (int day = es.BuildStartOffset; day < 0; day++)
+        {
+            bool declared = availSet.Contains(day);
+            VolunteerCellState state;
+            IReadOnlyList<string> rotaNames = [];
+
+            if (setupOffset.HasValue && day >= setupOffset.Value)
+                state = VolunteerCellState.CampSetup;
+            else if (daySignups.TryGetValue(day, out var info))
+            {
+                state = info.Status == SignupStatus.Confirmed
+                    ? VolunteerCellState.Confirmed : VolunteerCellState.Pending;
+                rotaNames = info.RotaNames;
+            }
+            else if (dayOffSet.Contains(day))
+                state = VolunteerCellState.DayOff;
+            else if (hasSignups && day >= firstSignupDay && day < lastExpectedDay)
+            {
+                state = VolunteerCellState.Gap;
+                gapCount++;
+            }
+            else if (declared && day < todayOffset)
+                state = VolunteerCellState.AvailableUnbooked;
+            else if (declared)
+                state = VolunteerCellState.AvailableExpected;
+            else
+                state = VolunteerCellState.Outside;
+
+            cells.Add(new VolunteerCell(day, state, rotaNames, declared));
+        }
+
+        var dayOffSummaries = (bs?.DayOffs ?? [])
+            .Select(x => new DayOffSummary(x.DayOffset, x.Reason))
+            .ToList();
+
+        var row = new VolunteerHeatmapRow(
+            userId,
+            firstSignupDay,
+            hasSignups ? daySignups.Keys.Max() : 0,
+            bs?.BarrioSetupStartDate,
+            gapCount,
+            cells,
+            dayOffSummaries);
+
+        return new VolunteerBuildStripDto(es.BuildStartOffset, es.GateOpeningDate, row);
+    }
+
     private async Task<EventSettings> RequireActiveEventAsync(CancellationToken ct) =>
         await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("No active event");

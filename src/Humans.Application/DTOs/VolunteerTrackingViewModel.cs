@@ -24,7 +24,8 @@ public enum VolunteerCellState
 public sealed record VolunteerCell(
     int DayOffset,
     VolunteerCellState State,
-    IReadOnlyList<string> RotaNames);
+    IReadOnlyList<string> RotaNames,
+    bool DeclaredAvailable = false);
 
 public sealed record VolunteerHeatmapRow(
     Guid UserId,
@@ -52,3 +53,10 @@ public sealed record VolunteerTrackingViewModel(
     LocalDate Today,
     IReadOnlyList<VolunteerHeatmapRow> MainCohort,
     IReadOnlyList<VolunteerCohortRow> UnbookedCohort);
+
+/// <summary>One volunteer's build-window strip for the profile build-strip
+/// view component. Reuses <see cref="VolunteerHeatmapRow"/>.</summary>
+public sealed record VolunteerBuildStripDto(
+    int BuildStartOffset,
+    LocalDate GateOpeningDate,
+    VolunteerHeatmapRow Row);
