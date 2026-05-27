@@ -32,19 +32,19 @@ public sealed class OnboardingService(
 
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
     {
-        // Invariant: anyone with ConsentCheckStatus.Flagged must appear in the queue so a CC can
-        // resolve them — even if a prior admin override flipped IsApproved=true or the profile was
-        // later rejected. Pending list keeps the original NeedsConsentReview gate.
+        // Invariant: anyone with an unresolved Flagged consent check must appear in the queue so a
+        // CC can resolve them — even if a prior admin override flipped IsApproved=true. Rejected
+        // profiles are excluded (see UserInfo.IsConsentCheckFlagged): Clear is blocked on them and
+        // the row would otherwise be unresolvable. Pending list keeps the NeedsConsentReview gate.
         var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
 
         var flagged = all
-            .Where(u => u.Profile?.ConsentCheckStatus == ConsentCheckStatus.Flagged)
+            .Where(u => u.IsConsentCheckFlagged)
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
         var pending = all
-            .Where(u => u.NeedsConsentReview
-                && u.Profile!.ConsentCheckStatus != ConsentCheckStatus.Flagged)
+            .Where(u => u.NeedsConsentReview && !u.IsConsentCheckFlagged)
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 

@@ -156,9 +156,8 @@ public sealed class OnboardingServiceTests
     [HumansFact]
     public async Task GetReviewQueueAsync_FlaggedUserAlreadyApproved_StillAppearsInFlagged()
     {
-        // Invariant: anyone with ConsentCheckStatus.Flagged must appear in the review queue,
-        // so a Consent Coordinator can resolve them — even if a prior admin override flipped
-        // IsApproved=true while the flag was still on the profile.
+        // Invariant: anyone with an unresolved Flagged consent check must appear in the review
+        // queue so a CC can resolve them — even if a prior admin override flipped IsApproved=true.
         var approvedFlaggedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
         var approvedFlaggedProfile = new Profile
@@ -175,9 +174,49 @@ public sealed class OnboardingServiceTests
             UpdatedAt = now,
         };
 
+        StubReviewQueueDependencies(
+            [UserInfoStubHelpers.MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]);
+
+        var data = await BuildSut().GetReviewQueueAsync();
+
+        data.Flagged.Should().ContainSingle(u => u.Id == approvedFlaggedId);
+        data.Pending.Should().NotContain(u => u.Id == approvedFlaggedId);
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_FlaggedUserAlreadyRejected_IsExcluded()
+    {
+        // Rejected profiles have already been dealt with — Clear is blocked with AlreadyRejected,
+        // so a flagged+rejected row would be unresolvable from the queue UI. Exclude them.
+        var rejectedFlaggedId = Guid.NewGuid();
+        var now = Instant.FromUnixTimeSeconds(1);
+        var rejectedFlaggedProfile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = rejectedFlaggedId,
+            BurnerName = "Burner",
+            FirstName = "Flagged",
+            LastName = "Rejected",
+            State = ProfileState.Active,
+            ConsentCheckStatus = ConsentCheckStatus.Flagged,
+            RejectedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        StubReviewQueueDependencies(
+            [UserInfoStubHelpers.MakeUserInfo(rejectedFlaggedId, rejectedFlaggedProfile)]);
+
+        var data = await BuildSut().GetReviewQueueAsync();
+
+        data.Flagged.Should().NotContain(u => u.Id == rejectedFlaggedId);
+        data.Pending.Should().NotContain(u => u.Id == rejectedFlaggedId);
+    }
+
+    private void StubReviewQueueDependencies(IReadOnlyCollection<UserInfo> users)
+    {
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
-                [UserInfoStubHelpers.MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]));
+            .Returns(Task.FromResult(users));
         _applicationDecisionService.GetUserIdsWithPendingApplicationAsync(
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
@@ -188,10 +227,5 @@ public sealed class OnboardingServiceTests
                 RequiredConsentCount: 0,
                 PendingConsentCount: 0,
                 MissingConsentVersionIds: []));
-
-        var data = await BuildSut().GetReviewQueueAsync();
-
-        data.Flagged.Should().ContainSingle(u => u.Id == approvedFlaggedId);
-        data.Pending.Should().NotContain(u => u.Id == approvedFlaggedId);
     }
 }
