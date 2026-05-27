@@ -37,7 +37,8 @@ public class StoreController(
         {
             Year = pageData.Year,
             Catalog = pageData.Catalog,
-            Counterparties = pageData.Counterparties
+            Counterparties = pageData.Counterparties,
+            IsAdmin = isPrivilegedReader
         };
         return View(model);
     }

@@ -7,6 +7,8 @@ public sealed class StoreIndexViewModel
     public int Year { get; init; }
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
     public IReadOnlyList<StoreCounterpartyOrders> Counterparties { get; init; } = [];
+    /// <summary>True when the viewer can administer the Store (StoreAdmin / FinanceAdmin / Admin). Surfaces per-row admin affordances such as Delete.</summary>
+    public bool IsAdmin { get; init; }
 }
 
 public sealed class StoreOrderViewModel

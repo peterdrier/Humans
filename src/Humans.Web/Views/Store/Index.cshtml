@@ -85,7 +85,20 @@ else
                                         <td class="text-end">@order.Lines.Count</td>
                                     }
                                     <td class="text-end">
-                                        <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                                        <div class="d-inline-flex gap-1">
+                                            @if (Model.IsAdmin && order.BalanceEur == 0m)
+                                            {
+                                                <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            title="Delete (zero balance)"
+                                                            data-confirm="Delete this zero-balance order? This cannot be undone.">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                                        </div>
                                     </td>
                                 </tr>
                             }
