@@ -3,8 +3,8 @@ using System.Text;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +15,7 @@ using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
+[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Export")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsExportController(

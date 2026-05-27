@@ -3,9 +3,9 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +16,7 @@ using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
+[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Moderate")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsModerationController(
