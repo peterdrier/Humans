@@ -29,8 +29,8 @@ public class StoreSummaryControllerTests(HumansWebApplicationFactory factory)
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadAsStringAsync();
-        body.Should().Contain("By camp");
+        body.Should().Contain("By counterparty");
         body.Should().Contain("By item");
-        body.Should().Contain("Camps × products");
+        body.Should().Contain("Counterparties × products");
     }
 }

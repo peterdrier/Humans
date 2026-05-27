@@ -4,8 +4,9 @@ namespace Humans.Application.Services.Store.Dtos;
 
 public record OrderSummaryDto(
     Guid OrderId,
-    Guid CampSeasonId,
-    string CampName,
+    StoreOrderCounterpartyType CounterpartyType,
+    Guid CounterpartyId,
+    string CounterpartyName,
     string? Label,
     StoreOrderState State,
     decimal TotalDueEur,

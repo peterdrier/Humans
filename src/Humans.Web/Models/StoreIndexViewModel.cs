@@ -6,14 +6,14 @@ public sealed class StoreIndexViewModel
 {
     public int Year { get; init; }
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
-    public IReadOnlyList<StoreCampSeasonOrders> CampSeasons { get; init; } = [];
+    public IReadOnlyList<StoreCounterpartyOrders> Counterparties { get; init; } = [];
 }
 
 public sealed class StoreOrderViewModel
 {
     public OrderDto Order { get; init; } = null!;
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
-    public string CampName { get; init; } = string.Empty;
+    public string CounterpartyDisplayName { get; init; } = string.Empty;
     public bool CanEdit { get; init; }
     /// <summary>True when the camp lead may initiate Stripe Checkout against this order (auth + balance > 0 + Stripe configured).</summary>
     public bool CanPay { get; init; }
@@ -24,7 +24,7 @@ public sealed class StoreOrderViewModel
     {
         Order = pageData.Order,
         Catalog = pageData.Catalog,
-        CampName = pageData.CampName,
+        CounterpartyDisplayName = pageData.CounterpartyDisplayName,
         CanEdit = pageData.CanEdit,
         CanPay = pageData.CanPay,
         IsStripeConfigured = pageData.IsStripeConfigured

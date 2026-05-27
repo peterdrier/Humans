@@ -36,6 +36,7 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
+        services.AddScoped(_ => Substitute.For<ITeamServiceRead>());
         services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
         services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
         // Expense resource-based handlers
