@@ -162,6 +162,65 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_DoesNotLoadUserInfo_WhenAllPeopleIdsResolvedByDirectory()
+    {
+        var resource = BuildResource("MultiActor-Drive");
+        SeedResources(resource);
+
+        var eventA = BuildPermissionChangeEvent(
+            actorPersonName: "people/111",
+            addedRole: "writer",
+            targetUser: "people/111");
+        var eventB = BuildPermissionChangeEvent(
+            actorPersonName: "people/222",
+            addedRole: "reader",
+            targetUser: "people/222");
+        SeedActivity(resource.GoogleId, eventA, eventB);
+
+        _client.TryResolvePersonEmailAsync("people/111", Arg.Any<CancellationToken>())
+            .Returns("actor-a@example.com");
+        _client.TryResolvePersonEmailAsync("people/222", Arg.Any<CancellationToken>())
+            .Returns("actor-b@example.com");
+
+        var count = await _service.CheckForAnomalousActivityAsync();
+
+        count.Should().Be(2);
+        await _userService.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_LeavesRawPeopleIdWhenUserInfoHasNullEmail()
+    {
+        var resource = BuildResource("NullEmail-Drive");
+        SeedResources(resource);
+
+        var anomalousEvent = BuildPermissionChangeEvent(
+            actorPersonName: "people/99",
+            addedRole: "writer",
+            targetUser: "people/99");
+        SeedActivity(resource.GoogleId, anomalousEvent);
+
+        _client.TryResolvePersonEmailAsync("people/99", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                BuildUserInfoWithNullEmail(new UserExternalLoginInfo("Google", "99"))
+            ]);
+
+        var count = await _service.CheckForAnomalousActivityAsync();
+
+        count.Should().Be(1);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d =>
+                d.Contains("people/99", StringComparison.Ordinal) &&
+                !d.Contains("Skipping ambiguous", StringComparison.Ordinal)),
+            JobName);
+    }
+
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_FallsBackToUserInfoWhenDirectoryLookupFails()
     {
         var resource = BuildResource("Fallback-Drive");
@@ -399,6 +458,35 @@ public class DriveActivityMonitorServiceTests
             MergedToUserId: null,
             MergedAt: null,
             IdentityEmailColumn: email,
+            UserEmails: [],
+            EventParticipations: [],
+            ExternalLogins: externalLogins,
+            Profile: null,
+            CommunicationPreferences: []);
+
+    private UserInfo BuildUserInfoWithNullEmail(params UserExternalLoginInfo[] externalLogins) =>
+        new(
+            Guid.NewGuid(),
+            BurnerName: "Deleted User",
+            IsGdprAnonymized: true,
+            PreferredLanguage: "en",
+            FallbackPictureUrl: null,
+            CreatedAt: _clock.GetCurrentInstant(),
+            LastLoginAt: null,
+            LastConsentReminderSentAt: null,
+            DeletionRequestedAt: null,
+            DeletionScheduledFor: null,
+            DeletionEligibleAfter: null,
+            UnsubscribedFromCampaigns: false,
+            ICalToken: null,
+            SuppressScheduleChangeEmails: false,
+            MagicLinkSentAt: null,
+            GoogleEmailStatus: GoogleEmailStatus.Unknown,
+            ContactSource: null,
+            ExternalSourceId: null,
+            MergedToUserId: null,
+            MergedAt: null,
+            IdentityEmailColumn: null,
             UserEmails: [],
             EventParticipations: [],
             ExternalLogins: externalLogins,

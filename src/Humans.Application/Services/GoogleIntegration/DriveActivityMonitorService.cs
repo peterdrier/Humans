@@ -416,6 +416,9 @@ public sealed class DriveActivityMonitorService(
                 if (!string.Equals(login.Provider, "Google", StringComparison.Ordinal))
                     continue;
 
+                if (userInfo.Email is null)
+                    continue;
+
                 if (ambiguous.Contains(login.ProviderKey))
                     continue;
 
