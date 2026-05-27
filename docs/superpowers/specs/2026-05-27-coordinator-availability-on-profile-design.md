@@ -105,9 +105,12 @@ Clean Architecture layers, respecting the constitution (`docs/architecture/peter
   /// Add (available=true) or remove (available=false) one build-day offset
   /// from the user's declared availability. Read-modify-write; preserves
   /// any out-of-build offsets; invalidates the user's shift view cache.
-  Task SetDayAvailabilityAsync(Guid userId, Guid eventSettingsId, int dayOffset, bool available);
+  Task SetDayAvailabilityAsync(
+      Guid userId, Guid eventSettingsId, int dayOffset, bool available,
+      CancellationToken ct = default);
   ```
-  Implementation in `GeneralAvailabilityService`: load current offsets via the repo, add/remove `dayOffset`, `UpsertAsync`, `_viewInvalidator.InvalidateUser(userId)`. The whole-list `SetAvailabilityAsync` (volunteer self-service) is untouched. (Per-day logic goes in the service, not the controller — constitution.)
+  Implementation in `GeneralAvailabilityService`: load current offsets via `GetByUserAndEventAsync` (null row → empty set, so `available=true` upserts a fresh row), add/remove `dayOffset`, `UpsertAsync`, `_viewInvalidator.InvalidateUser(userId)`. The whole-list `SetAvailabilityAsync` (volunteer self-service) is untouched. (Per-day logic goes in the service, not the controller — constitution.)
+  - **Range guard:** reject `dayOffset` outside the build window (`dayOffset < BuildStartOffset || dayOffset >= 0`) — mirrors `SetDayOffAsync`'s guard. The toggle only renders on in-build cells, so this only defends against hand-crafted POSTs; return a no-op/false result rather than throwing.
 
 ### Web
 
@@ -133,7 +136,15 @@ Clean Architecture layers, respecting the constitution (`docs/architecture/peter
 
 ### DI
 
-`Program.cs`: register `IVolunteerTrackingServiceRead` against the same `VolunteerTrackingService` registration (mirror the Teams read/full pairing). No new service classes.
+`ShiftsSectionExtensions.cs`: register `IVolunteerTrackingServiceRead` against the **same instance** as `IVolunteerTrackingService`. VolunteerTracking has no caching decorator, so follow the local `GeneralAvailabilityService` precedent (lines 53–55) rather than the Teams decorator pattern — register the concrete type once and map both interfaces to it:
+
+```csharp
+services.AddScoped<ShiftsVolunteerTrackingService>();
+services.AddScoped<IVolunteerTrackingService>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
+services.AddScoped<IVolunteerTrackingServiceRead>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
+```
+
+(Replaces the current direct `AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>()` at line 59.) No new service classes.
 
 ## New durable surface (Reuse-First audit)
 
@@ -157,7 +168,8 @@ TDD on the regression-prone service logic; lighter coverage on wiring.
 
 ### Service tests (`Humans.Application` test project, Shifts)
 - `SetDayAvailabilityAsync`: add a new offset; remove an existing offset; remove a non-present offset (no-op); preserves out-of-build offsets; calls `InvalidateUser`.
-- `GetUserBuildStripAsync`: null when no active event; row cells carry correct `State` and `DeclaredAvailable`; volunteer with no signups but with declared days; volunteer with signups; camp-setup and day-off reflected in cells; window metadata correct.
+- `GetUserBuildStripAsync`: null when no active event; row cells carry correct `State` and `DeclaredAvailable`; volunteer with no signups but with declared days; volunteer with **no `GeneralAvailability` row at all** → all cells `DeclaredAvailable = false`, row still returned; volunteer with signups; camp-setup and day-off reflected in cells; window metadata correct.
+- `SetDayAvailabilityAsync` out-of-build `dayOffset` → no-op/false, no upsert (range guard).
 - Regression: `GetTrackingDataAsync` cohort output unchanged after the `BuildCells` refactor (existing tests should stay green; add an explicit `DeclaredAvailable` assertion on a cohort row).
 
 ### Controller tests (`Humans.Web` tests, `VolunteerTrackingControllerTests`)
