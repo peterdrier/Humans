@@ -769,7 +769,9 @@ public sealed class TicketQueryService(
             TicketTypeName: a.TicketTypeName,
             Price: a.Price,
             Status: a.Status,
-            MatchedUserId: a.MatchedUserId)).ToList());
+            MatchedUserId: a.MatchedUserId)).ToList(),
+        StripeFee: o.StripeFee,
+        ApplicationFee: o.ApplicationFee);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)

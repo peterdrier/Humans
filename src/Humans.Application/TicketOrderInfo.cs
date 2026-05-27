@@ -36,4 +36,6 @@ public sealed record TicketOrderInfo(
     Instant PurchasedAt,
     Guid? MatchedUserId,
     bool IsCurrentEvent,
-    IReadOnlyList<TicketAttendeeInfo> Attendees);
+    IReadOnlyList<TicketAttendeeInfo> Attendees,
+    decimal? StripeFee = null,
+    decimal? ApplicationFee = null);

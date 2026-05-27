@@ -24,13 +24,6 @@ namespace Humans.Application.Interfaces.Repositories;
 /// callers mutate them in memory and pass them back to the matching write
 /// method.
 /// </para>
-/// <para>
-/// <b>Relation to <c>ITicketingBudgetRepository</c>:</b> Intentionally
-/// distinct. That repository is a narrow read-only shape for the
-/// Tickets→Budget bridge (<c>TicketingBudgetService</c>). Merging the two
-/// would couple TicketSync's write surface to Budget's read surface — two
-/// things that evolve on very different cadences.
-/// </para>
 /// </remarks>
 [Section("Tickets")]
 public interface ITicketRepository : IRepository

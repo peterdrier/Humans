@@ -120,6 +120,24 @@ Fixing strategy:
 
 Do not collapse methods that represent real domain concepts, authorization boundaries, operational queue semantics, expensive server-side queries that cannot safely materialize, or intentionally bounded search/tool APIs.
 
+## Read-Model Enrichment Rule
+
+When a caller needs a stable fact about an aggregate already exposed through a bounded or cached canonical read model, prefer adding scalar fields to that DTO over adding a new interface, repository, service method, or one-off query implementation.
+
+Good pattern:
+
+- add `StripeFee` and `ApplicationFee` to `TicketOrderInfo`
+- let callers derive totals from `ITicketServiceRead.GetTicketOrdersAsync()`
+- keep the existing cached/read boundary as the one source of ticket-order facts
+
+Bad pattern:
+
+- add `ITicketingBudgetRepository`
+- add `TicketingBudgetRepository`
+- duplicate a `TicketOrders` query only to project two fee values and a count
+
+New durable surfaces are justified when the data is unbounded, permission-specific, expensive to materialize through the read model, transactional, sensitive, not a stable fact of the aggregate, or when adding the fields would pollute the canonical DTO with screen-only concerns. Otherwise, a few scalar DTO properties are lower weight than another interface, implementation, DI registration, test fixture, cache path, and HUM0025 ownership surface.
+
 ## Section Read-Service Rules
 
 When a section exposes both a full service interface and a `*ServiceRead` interface, code outside the owning section should depend on the read interface unless it truly writes, invalidates caches, performs an owning-section workflow, or needs an entity-only method that has no read-model equivalent yet.

@@ -3,7 +3,7 @@ using NodaTime;
 namespace Humans.Application.DTOs;
 
 /// <summary>
-/// A projected week of ticket sales — virtual line items not yet materialized.
+/// A projected week of ticket sales - virtual line items not yet materialized.
 /// </summary>
 public class TicketingWeekProjection
 {
@@ -30,17 +30,3 @@ public record TicketingWeeklyActuals(
     decimal Revenue,
     decimal StripeFees,
     decimal TicketTailorFees);
-
-/// <summary>
-/// A single paid ticket order summary — the primitive shape the
-/// <c>ITicketingBudgetRepository</c> returns so <c>TicketingBudgetService</c>
-/// can do the ISO-week bucketing in memory without holding EF types. The
-/// <c>TicketCount</c> is pre-computed server-side from the order's attendees
-/// (Valid + CheckedIn only).
-/// </summary>
-public record PaidTicketOrderSummary(
-    Instant PurchasedAt,
-    decimal TotalAmount,
-    decimal? StripeFee,
-    decimal? ApplicationFee,
-    int TicketCount);
