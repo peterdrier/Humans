@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 
 namespace Humans.Domain.Entities;
@@ -40,6 +41,7 @@ public class Profile
     public string? PlaceId { get; set; }
 
     [PersonalData]
+    [MarkdownContent]
     public string? Bio { get; set; }
 
     [PersonalData]

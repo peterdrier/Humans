@@ -27,7 +27,7 @@
         <h1>@Model.Campaign.Title <span class="badge @statusClass fs-6">@Model.Campaign.Status</span></h1>
         @if (!string.IsNullOrWhiteSpace(Model.Campaign.Description))
         {
-            <p class="text-muted mb-0">@Model.Campaign.Description</p>
+            <div class="text-muted mb-0">@Html.SanitizedMarkdown(Model.Campaign.Description)</div>
         }
     </div>
     <div class="d-flex gap-2">

@@ -43,7 +43,7 @@
             <div class="card-body">
                 @if (!string.IsNullOrEmpty(Model.Description))
                 {
-                    <p class="card-text">@Model.Description</p>
+                    <div class="card-text">@Html.SanitizedMarkdown(Model.Description)</div>
                 }
                 else
                 {
