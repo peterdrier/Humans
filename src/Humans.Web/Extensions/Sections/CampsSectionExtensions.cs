@@ -48,7 +48,6 @@ internal static class CampsSectionExtensions
         // Registered under both ICampRoleService and IGoogleGroupMembershipSource so
         // the Google sync orchestrator can enumerate the Camps claim alongside the
         // Teams claim. Mirrors the Teams pattern in TeamsSectionExtensions.
-        services.AddSingleton<ICampRoleRepository, CampRoleRepository>();
         services.AddScoped<CampsCampRoleService>();
         services.AddScoped<ICampRoleService>(sp => sp.GetRequiredService<CampsCampRoleService>());
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampsCampRoleService>());

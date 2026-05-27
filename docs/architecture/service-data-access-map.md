@@ -637,7 +637,7 @@ Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 
 ### CampService (Scoped — wrapped by CachingCampService Singleton decorator)
 
-Repositories: `ICampRepository`, `ICampRoleRepository`.
+Repository: `ICampRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -673,7 +673,7 @@ Implements `ICampService`, `ICampServiceRead`, `IUserMerge`,
 
 ### CampRoleService (Scoped)
 
-Repository: `ICampRoleRepository`.
+Repository: `ICampRepository`.
 
 | Table | R/W |
 |-------|-----|

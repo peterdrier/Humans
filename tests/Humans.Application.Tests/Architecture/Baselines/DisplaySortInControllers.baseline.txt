@@ -25,11 +25,11 @@ src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#7
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#8
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#9
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:ThenBy#1
-src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:ThenBy#2
+src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#1
+src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#2
+src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderByDescending#1
+src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:ThenBy#1
+src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#3

@@ -15,8 +15,7 @@ using NodaTime;
 namespace Humans.Application.Services.Camps;
 
 public sealed class CampRoleService(
-    ICampRoleRepository repo,
-    ICampRepository campRepo,
+    ICampRepository repo,
     ICampService campService,
     IUserServiceRead userService,
     IUserEmailService userEmailService,
@@ -427,7 +426,7 @@ public sealed class CampRoleService(
         // (2) Walk legacy camp_leads → CampRoleAssignment against Camp Lead role.
         if (campLead is null)
             throw new InvalidOperationException("Camp Lead special role definition is missing after seed.");
-        var leadSnapshots = await campRepo.GetLeadMigrationSnapshotsAsync(ct);
+        var leadSnapshots = await repo.GetLeadMigrationSnapshotsAsync(ct);
         var leadsMigrated = 0;
         var leadsAlreadyMigrated = 0;
         var skippedCampSlugs = new List<string>();
@@ -437,7 +436,7 @@ public sealed class CampRoleService(
             ct.ThrowIfCancellationRequested();
 
             // Pick a target season for the migration.
-            var seasonId = await campRepo.GetCampSeasonForLeadMigrationAsync(lead.CampId, ct);
+            var seasonId = await repo.GetCampSeasonForLeadMigrationAsync(lead.CampId, ct);
             if (seasonId is null)
             {
                 logger.LogWarning(

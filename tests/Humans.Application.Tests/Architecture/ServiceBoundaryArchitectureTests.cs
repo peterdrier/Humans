@@ -23,7 +23,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICalendarRepository)] = "Calendar",
             [typeof(ICampaignRepository)] = "Campaigns",
             [typeof(ICampRepository)] = "Camps",
-            [typeof(ICampRoleRepository)] = "Camps",
             [typeof(ICityPlanningRepository)] = "CityPlanning",
             [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",

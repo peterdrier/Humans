@@ -10,7 +10,7 @@
   src/Humans.Infrastructure/Data/Configurations/Camps/**
   src/Humans.Infrastructure/Data/Configurations/Camps/CampMemberConfiguration.cs
   src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs
-  src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs
+  src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/CampAdminController.cs
   src/Humans.Web/Controllers/CampApiController.cs
@@ -290,7 +290,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Filesystem I/O for camp images is abstracted behind the shared `IFileStorage` abstraction (Application interface + `FileSystemFileStorage` implementation in `Humans.Infrastructure`, rooted at `wwwroot/`); the service never touches `System.IO`.
 - **Cross-domain navs stripped:** `CampLead.User` (issue nobodies-collective/Humans#542) — consumers route through `IUserService.GetByIdsAsync(...)`.
 - `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data.
-- `CampRoleService` lives in `Humans.Application.Services.Camps.CampRoleService` and goes through `ICampRoleRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It owns `camp_role_definitions` and `camp_role_assignments` and never imports `Microsoft.EntityFrameworkCore`. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetByIdsAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
+- `CampRoleService` lives in `Humans.Application.Services.Camps.CampRoleService` and goes through `ICampRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. The role-heavy methods are grouped in `CampRepository.Roles.cs`; `CampRepository` owns `camp_role_definitions` and `camp_role_assignments` alongside the rest of the Camps tables and never imports `Microsoft.EntityFrameworkCore` into Application. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetByIdsAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CampsArchitectureTests.cs`.
 - **Read/write interface split.** `ICampServiceRead` (5 methods: GetCampsForYearAsync, GetCampBySlugAsync, GetCampSeasonByIdAsync, GetSettingsAsync, SearchAsync) is the cross-section read surface — returns only CampInfo-family projections (CampInfo with computed `Active`, CampSeasonInfo), CampSettingsInfo, CampSearchHit; no EF entities. `ICampService : ICampServiceRead` adds writes, cache invalidation, per-user/lead/membership reads, and Camps-internal reads. External sections inject `ICampServiceRead`. CampLookup/CampSeasonLookup were folded into CampInfo/CampSeasonInfo. See `memory/architecture/section-read-write-split.md`.
 

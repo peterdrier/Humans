@@ -14,7 +14,7 @@ public sealed class HumansFactAttribute : FactAttribute
         [CallerLineNumber] int sourceLineNumber = -1)
         : base(sourceFilePath, sourceLineNumber)
     {
-        base.Timeout = DefaultTimeoutFor(sourceFilePath);
+        base.Timeout = DefaultTimeout;
     }
 
     public new int Timeout
@@ -42,8 +42,5 @@ public sealed class HumansFactAttribute : FactAttribute
     public new string? SkipWhen { get => base.SkipWhen; set => base.SkipWhen = value; }
     public new Type[]? SkipExceptions { get => base.SkipExceptions; set => base.SkipExceptions = value; }
 
-    private static int DefaultTimeoutFor(string? sourceFilePath) =>
-        sourceFilePath?.Contains("Humans.Integration.Tests", StringComparison.Ordinal) == true
-            ? 30000
-            : 30000;
+    private const int DefaultTimeout = 30000;
 }
