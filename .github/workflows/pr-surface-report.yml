@@ -29,13 +29,57 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "pull/${{ github.event.pull_request.number }}/head:pr-surface-head"
 
+      - name: Setup .NET
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Generate Reforge score delta inputs
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -euo pipefail
+          dotnet tool install --global reforge --version 0.13.*
+          REFORGE="$HOME/.dotnet/tools/reforge"
+
+          BASE_DIR="$(mktemp -d)"
+          HEAD_DIR="$(mktemp -d)"
+          rmdir "$BASE_DIR" "$HEAD_DIR"
+          git worktree add --detach "$BASE_DIR" "${{ github.event.pull_request.base.sha }}"
+          git worktree add --detach "$HEAD_DIR" pr-surface-head
+
+          CONFIG_ARGS=()
+          if [ -f "$HEAD_DIR/reforge.surface-score.json" ]; then
+            CONFIG_ARGS=(--config "$HEAD_DIR/reforge.surface-score.json")
+          elif [ -f "$BASE_DIR/reforge.surface-score.json" ]; then
+            CONFIG_ARGS=(--config "$BASE_DIR/reforge.surface-score.json")
+          fi
+
+          "$REFORGE" stop || true
+          (
+            cd "$BASE_DIR"
+            "$REFORGE" surface-score --solution Humans.slnx "${CONFIG_ARGS[@]}" --format Json --top 200 > "$GITHUB_WORKSPACE/reforge-base.json"
+          )
+          "$REFORGE" stop || true
+          (
+            cd "$HEAD_DIR"
+            "$REFORGE" surface-score --solution Humans.slnx "${CONFIG_ARGS[@]}" --format Json --top 200 > "$GITHUB_WORKSPACE/reforge-head.json"
+          )
+          "$REFORGE" stop || true
+
       - name: Generate surface report
         run: |
+          REFORGE_ARGS=()
+          if [ -f reforge-base.json ] && [ -f reforge-head.json ]; then
+            REFORGE_ARGS=(--reforge-base-json reforge-base.json --reforge-head-json reforge-head.json)
+          fi
+
           python3 scripts/pr-surface-report.py \
             --base "${{ github.event.pull_request.base.sha }}" \
             --head "pr-surface-head" \
             --base-label "${{ github.event.pull_request.base.sha }}" \
             --head-label "${{ github.event.pull_request.head.sha }}" \
+            "${REFORGE_ARGS[@]}" \
             --output pr-surface-report.md \
             --json-output pr-surface-report.json
 

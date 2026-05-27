@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a PR surface report from a git diff."""
+"""Generate a PR surface report from git and Reforge deltas."""
 
 from __future__ import annotations
 
@@ -11,12 +11,19 @@ from collections import defaultdict
 from pathlib import Path
 
 
-COMMENT_PREFIXES = ("//", "/*", "*", "*/", "#", "@*", "<!--", "--")
+INTERFACES_PREFIX = "src/Humans.Application/Interfaces/"
 MIGRATIONS_PREFIX = "src/Humans.Infrastructure/Migrations/"
 
 
 def run_git(args: list[str]) -> str:
     return subprocess.check_output(["git", *args], text=True, encoding="utf-8")
+
+
+def try_run_git(args: list[str]) -> str:
+    try:
+        return run_git(args)
+    except subprocess.CalledProcessError:
+        return ""
 
 
 def normalize(path: str) -> str:
@@ -31,19 +38,8 @@ def classify_path(path: str) -> str:
         return "tests"
     if path.startswith(("docs/", "memory/")) or path.endswith(".md"):
         return "docs"
-    return "code"
-
-
-def classify_line(path: str, line: str) -> str:
-    path_bucket = classify_path(path)
-    if path_bucket in {"migrations", "tests", "docs"}:
-        return path_bucket
-
-    stripped = line.strip()
-    if stripped == "":
-        return "blank"
-    if stripped.startswith(COMMENT_PREFIXES):
-        return "comments"
+    if path.startswith((".github/", ".config/")) or not path.endswith((".cs", ".cshtml", ".razor", ".csproj", ".props", ".targets", ".json")):
+        return "other"
     return "code"
 
 
@@ -79,78 +75,21 @@ def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[
     return added_files, changed_files, migration_files
 
 
-def parse_diff(base: str, head: str) -> tuple[dict[str, dict[str, int]], dict[str, list[str]]]:
-    raw = run_git(["diff", "--find-renames", "--find-copies", "--unified=0", f"{base}...{head}"])
+def parse_numstat(base: str, head: str) -> dict[str, dict[str, int]]:
+    raw = run_git(["diff", "--numstat", "--find-renames", "--find-copies", f"{base}...{head}"])
     counts: dict[str, dict[str, int]] = defaultdict(lambda: {"added": 0, "deleted": 0})
-    inventory: dict[str, list[str]] = defaultdict(list)
-
-    old_path = ""
-    new_path = ""
-    old_line = 0
-    new_line = 0
-
-    public_type_re = re.compile(r"^\s*public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*(?:class|record|interface|enum|struct)\s+\w+")
-    interface_method_re = re.compile(r"^\s*(?:Task|ValueTask|IReadOnly|IAsync|bool|int|string|Guid|void|[A-Z]\w+)\S*\s+\w+\s*\([^;]*\)\s*;")
-    service_method_re = re.compile(r"^\s*(?:public|internal)\s+(?:async\s+)?[\w<>,\[\]\?]+\s+\w+\s*\(")
-    route_re = re.compile(r"^\s*\[(?:Route|HttpGet|HttpPost|HttpPut|HttpDelete|HttpPatch)\b")
-    action_re = re.compile(r"^\s*public\s+(?:async\s+)?(?:Task<)?IActionResult\b")
-    di_re = re.compile(r"\bservices\.Add(?:Keyed)?(?:Scoped|Singleton|Transient)\b")
-    package_re = re.compile(r"<PackageReference\b")
-
     for line in raw.splitlines():
-        if line.startswith("diff --git "):
-            old_path = ""
-            new_path = ""
+        parts = line.split("\t")
+        if len(parts) < 3:
             continue
-        if line.startswith("--- "):
-            path = line[4:].strip()
-            old_path = "" if path == "/dev/null" else normalize(path.removeprefix("a/"))
+        added_raw, deleted_raw, path_raw = parts[0], parts[1], parts[-1]
+        if added_raw == "-" or deleted_raw == "-":
             continue
-        if line.startswith("+++ "):
-            path = line[4:].strip()
-            new_path = "" if path == "/dev/null" else normalize(path.removeprefix("b/"))
-            continue
-        if line.startswith("@@ "):
-            match = re.search(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
-            if match:
-                old_line = int(match.group(1))
-                new_line = int(match.group(2))
-            continue
-        if line.startswith("+") and not line.startswith("+++"):
-            content = line[1:]
-            path = new_path or old_path
-            bucket = classify_line(path, content)
-            counts[bucket]["added"] += 1
-
-            stripped = content.strip()
-            location = f"{path}:{new_line}: {stripped}"
-            if stripped and not stripped.startswith(COMMENT_PREFIXES):
-                if public_type_re.match(content):
-                    inventory["public_types"].append(location)
-                if "/Interfaces/" in path and interface_method_re.match(content):
-                    inventory["interface_methods"].append(location)
-                if ("/Services/" in path or "/Repositories/" in path) and service_method_re.match(content):
-                    inventory["service_repository_methods"].append(location)
-                if route_re.match(content) or ("/Controllers/" in path and action_re.match(content)):
-                    inventory["routes_actions"].append(location)
-                if di_re.search(content):
-                    inventory["di_registrations"].append(location)
-                if path.endswith((".csproj", ".props", ".targets")) and package_re.search(content):
-                    inventory["package_references"].append(location)
-            new_line += 1
-            continue
-        if line.startswith("-") and not line.startswith("---"):
-            content = line[1:]
-            path = old_path or new_path
-            bucket = classify_line(path, content)
-            counts[bucket]["deleted"] += 1
-            old_line += 1
-            continue
-        if old_path or new_path:
-            old_line += 1
-            new_line += 1
-
-    return counts, inventory
+        path = normalize(path_raw)
+        bucket = classify_path(path)
+        counts[bucket]["added"] += int(added_raw)
+        counts[bucket]["deleted"] += int(deleted_raw)
+    return counts
 
 
 def limited(items: list[str], limit: int = 25) -> list[str]:
@@ -164,7 +103,169 @@ def bullet_list(items: list[str]) -> str:
 
 
 def short_ref(ref: str) -> str:
-    return ref[:8] if re.fullmatch(r"[0-9a-fA-F]{40}", ref) else ref
+    return ref[:8] if len(ref) == 40 and all(c in "0123456789abcdefABCDEF" for c in ref) else ref
+
+
+def load_json(path: str | None) -> dict | None:
+    if not path:
+        return None
+    data = Path(path).read_bytes()
+    for encoding in ("utf-8", "utf-8-sig", "utf-16"):
+        try:
+            return json.loads(data.decode(encoding))
+        except UnicodeError:
+            continue
+    return json.loads(data.decode("utf-8"))
+
+
+def format_delta(delta: int) -> str:
+    return f"+{delta}" if delta > 0 else str(delta)
+
+
+def compare_number_maps(base: dict[str, int], head: dict[str, int]) -> list[tuple[str, int, int, int]]:
+    rows: list[tuple[str, int, int, int]] = []
+    for key in sorted(set(base) | set(head)):
+        base_value = int(base.get(key) or 0)
+        head_value = int(head.get(key) or 0)
+        delta = head_value - base_value
+        if delta != 0:
+            rows.append((key, base_value, head_value, delta))
+    return sorted(rows, key=lambda row: (-abs(row[3]), row[0]))
+
+
+def groups_by_name(score: dict) -> dict[str, int]:
+    return {
+        str(group["name"]): int(group.get("total") or 0)
+        for group in score.get("groups", [])
+    }
+
+
+def git_files(ref: str, prefix: str) -> list[str]:
+    raw = run_git(["ls-tree", "-r", "--name-only", ref, "--", prefix])
+    return [normalize(line) for line in raw.splitlines() if line.endswith(".cs")]
+
+
+def normalize_signature(signature: str) -> str:
+    return " ".join(signature.replace("\t", " ").split()).rstrip(";")
+
+
+def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
+    interfaces: dict[str, dict[str, object]] = {}
+    interface_re = re.compile(r"\binterface\s+(I[A-Za-z0-9_]*)\b")
+
+    for path in git_files(ref, INTERFACES_PREFIX):
+        content = try_run_git(["show", f"{ref}:{path}"])
+        current: str | None = None
+        depth = 0
+        pending_signature: list[str] = []
+
+        for raw_line in content.splitlines():
+            line = raw_line.split("//", 1)[0].strip()
+            if not line or line.startswith("["):
+                continue
+
+            if current is None:
+                match = interface_re.search(line)
+                if not match:
+                    continue
+                current = match.group(1)
+                interfaces.setdefault(current, {"path": path, "methods": set()})
+                depth = line.count("{") - line.count("}")
+                continue
+
+            depth += line.count("{") - line.count("}")
+            if "(" in line or pending_signature:
+                pending_signature.append(line)
+                if ";" in line:
+                    signature = normalize_signature(" ".join(pending_signature))
+                    pending_signature.clear()
+                    if "(" in signature and ")" in signature:
+                        interfaces[current]["methods"].add(signature)
+
+            if depth <= 0:
+                current = None
+                depth = 0
+                pending_signature.clear()
+
+    return interfaces
+
+
+def interface_delta(base: str, head: str) -> dict[str, object]:
+    base_interfaces = extract_interface_symbols(base)
+    head_interfaces = extract_interface_symbols(head)
+    new_interfaces = [
+        f"{name} ({head_interfaces[name]['path']})"
+        for name in sorted(set(head_interfaces) - set(base_interfaces))
+    ]
+
+    added_methods: dict[str, list[str]] = {}
+    for name in sorted(set(base_interfaces) & set(head_interfaces)):
+        base_methods = base_interfaces[name]["methods"]
+        head_methods = head_interfaces[name]["methods"]
+        added = sorted(head_methods - base_methods)
+        if added:
+            added_methods[name] = added
+
+    return {
+        "new_interfaces": new_interfaces,
+        "added_interface_methods": added_methods,
+    }
+
+
+def interface_delta_markdown(delta: dict[str, object]) -> str:
+    new_interfaces = list(delta.get("new_interfaces", []))
+    added_methods = dict(delta.get("added_interface_methods", {}))
+    if not new_interfaces and not added_methods:
+        return "### Interface Surface\n\nNo new interfaces or interface methods."
+
+    sections = ["### Interface Surface"]
+    if new_interfaces:
+        sections.extend(["", "**New interfaces**", "", bullet_list(new_interfaces)])
+    if added_methods:
+        sections.extend(["", "**Added interface methods**"])
+        for name, methods in added_methods.items():
+            sections.extend(["", f"`{name}`", "", bullet_list(list(methods))])
+    return "\n".join(sections)
+
+
+def reforge_delta_markdown(base_score: dict | None, head_score: dict | None) -> str:
+    if not base_score or not head_score:
+        return "### Reforge Surface Score\n\nNot available for this run.\n"
+
+    sections: list[str] = ["### Reforge Surface Score", ""]
+    total_delta = int(head_score.get("total") or 0) - int(base_score.get("total") or 0)
+    sections.extend(
+        [
+            "| metric | base | head | delta |",
+            "|---|---:|---:|---:|",
+            f"| total | {int(base_score.get('total') or 0)} | {int(head_score.get('total') or 0)} | {format_delta(total_delta)} |",
+            "",
+        ]
+    )
+
+    section_rows = compare_number_maps(groups_by_name(base_score), groups_by_name(head_score))
+    if section_rows:
+        sections.extend(["#### Section Deltas", "", "| section | base | head | delta |", "|---|---:|---:|---:|"])
+        sections.extend(
+            f"| {name} | {base} | {head} | {format_delta(delta)} |"
+            for name, base, head, delta in section_rows
+        )
+        sections.append("")
+    else:
+        sections.extend(["#### Section Deltas", "", "No section score changes.", ""])
+
+    rule_rows = compare_number_maps(base_score.get("byRule", {}), head_score.get("byRule", {}))
+    if rule_rows:
+        sections.extend(["#### Rule Deltas", "", "| rule | base | head | delta |", "|---|---:|---:|---:|"])
+        sections.extend(
+            f"| `{name}` | {base} | {head} | {format_delta(delta)} |"
+            for name, base, head, delta in rule_rows
+        )
+        sections.append("")
+    else:
+        sections.extend(["#### Rule Deltas", "", "No rule score changes.", ""])
+
+    return "\n".join(sections)
 
 
 def build_markdown(
@@ -174,20 +275,22 @@ def build_markdown(
     added_files: list[str],
     changed_files: list[str],
     migration_files: list[str],
-    inventory: dict[str, list[str]],
+    base_score: dict | None,
+    head_score: dict | None,
+    interfaces: dict[str, object],
     base_label: str,
     head_label: str,
 ) -> str:
-    categories = ["code", "comments", "tests", "migrations", "docs", "blank"]
+    categories = ["code", "migrations", "tests", "docs", "other"]
     rows = [
         f"| {category} | {counts.get(category, {}).get('added', 0)} | {counts.get(category, {}).get('deleted', 0)} |"
         for category in categories
         if counts.get(category, {}).get("added", 0) or counts.get(category, {}).get("deleted", 0)
     ]
     loc_section = (
-        "### LOC\n\n| bucket | added | deleted |\n|---|---:|---:|\n" + "\n".join(rows)
+        "### Diff Size\n\n| bucket | added | deleted |\n|---|---:|---:|\n" + "\n".join(rows)
         if rows
-        else "### LOC\n\nNo line changes detected."
+        else "### Diff Size\n\nNo line changes detected."
     )
     migration_status = "OK" if len(migration_files) <= 1 else "BLOCK"
     summary = f"{len(changed_files)} changed file(s) | EF migrations: {len(migration_files)}/1"
@@ -199,6 +302,10 @@ def build_markdown(
         f"Compared `{short_ref(base_label)}`...`{short_ref(head_label)}`.",
         "",
         f"**Summary:** {summary}",
+        "",
+        reforge_delta_markdown(base_score, head_score).rstrip(),
+        "",
+        interface_delta_markdown(interfaces).rstrip(),
         "",
         loc_section,
     ]
@@ -216,20 +323,6 @@ def build_markdown(
             ]
         )
 
-    inventory_sections = [
-        ("Public types", inventory.get("public_types", [])),
-        ("Interface methods", inventory.get("interface_methods", [])),
-        ("Service/repository methods", inventory.get("service_repository_methods", [])),
-        ("Routes/actions", inventory.get("routes_actions", [])),
-        ("DI registrations", inventory.get("di_registrations", [])),
-        ("Package references", inventory.get("package_references", [])),
-    ]
-    non_empty_inventory = [(title, items) for title, items in inventory_sections if items]
-    if non_empty_inventory:
-        sections.extend(["", "### Surface Inventory"])
-        for title, items in non_empty_inventory:
-            sections.extend(["", f"**{title}**", "", bullet_list(items)])
-
     return "\n".join(sections) + "\n"
 
 
@@ -239,12 +332,17 @@ def main() -> int:
     parser.add_argument("--head", required=True)
     parser.add_argument("--base-label")
     parser.add_argument("--head-label")
+    parser.add_argument("--reforge-base-json")
+    parser.add_argument("--reforge-head-json")
     parser.add_argument("--output", default="pr-surface-report.md")
     parser.add_argument("--json-output", default="pr-surface-report.json")
     args = parser.parse_args()
 
     added_files, changed_files, migration_files = parse_name_status(args.base, args.head)
-    counts, inventory = parse_diff(args.base, args.head)
+    counts = parse_numstat(args.base, args.head)
+    base_score = load_json(args.reforge_base_json)
+    head_score = load_json(args.reforge_head_json)
+    interfaces = interface_delta(args.base, args.head)
     base_label = args.base_label or args.base
     head_label = args.head_label or args.head
     markdown = build_markdown(
@@ -254,7 +352,9 @@ def main() -> int:
         added_files,
         changed_files,
         migration_files,
-        inventory,
+        base_score,
+        head_score,
+        interfaces,
         base_label,
         head_label,
     )
@@ -272,7 +372,11 @@ def main() -> int:
                 "changed_files": changed_files,
                 "migration_files": migration_files,
                 "migration_count": len(migration_files),
-                "inventory": inventory,
+                "reforge": {
+                    "base": base_score,
+                    "head": head_score,
+                },
+                "interfaces": interfaces,
             },
             indent=2,
         ),
