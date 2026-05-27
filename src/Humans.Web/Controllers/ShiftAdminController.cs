@@ -426,7 +426,9 @@ public class ShiftAdminController(
             TeamName = team.Name,
             RotaCount = preview.RotaCount,
             RecipientCount = preview.RecipientNames.Count,
-            RecipientNames = preview.RecipientNames,
+            RecipientNames = preview.RecipientNames
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
         };
         return View(vm);
     }
@@ -445,7 +447,9 @@ public class ShiftAdminController(
         model.TeamName = team.Name;
         model.RotaCount = preview.RotaCount;
         model.RecipientCount = preview.RecipientNames.Count;
-        model.RecipientNames = preview.RecipientNames;
+        model.RecipientNames = preview.RecipientNames
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         if (!ModelState.IsValid)
             return View(model);

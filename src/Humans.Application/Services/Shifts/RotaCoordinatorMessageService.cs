@@ -172,7 +172,6 @@ public sealed class RotaCoordinatorMessageService(
             .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n!)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new TeamRotasRecipientPreview(groups.Count, names);
@@ -258,7 +257,7 @@ public sealed class RotaCoordinatorMessageService(
         }
 
         if (byUser.Count == 0)
-            return new DispatchSummary(0, 0, 0, []);
+            return new DispatchSummary(0, 0, 0);
 
         var recipientIds = byUser.Keys.ToList();
         var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
@@ -266,7 +265,6 @@ public sealed class RotaCoordinatorMessageService(
         var queued = 0;
         var skipped = 0;
         var failed = 0;
-        var queuedNames = new List<string>();
 
         foreach (var (userId, entries) in byUser)
         {
@@ -311,7 +309,6 @@ public sealed class RotaCoordinatorMessageService(
             {
                 await enqueue(request, ct);
                 queued++;
-                queuedNames.Add(recipient.BurnerName);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -322,7 +319,7 @@ public sealed class RotaCoordinatorMessageService(
             }
         }
 
-        return new DispatchSummary(queued, skipped, failed, queuedNames);
+        return new DispatchSummary(queued, skipped, failed);
     }
 
     // Chronologically ordered "ddd MMMM d [@ HH:mm]" lines in the rota's timezone.
@@ -365,6 +362,5 @@ public sealed class RotaCoordinatorMessageService(
     private sealed record DispatchSummary(
         int Queued,
         int Skipped,
-        int Failed,
-        IReadOnlyList<string> QueuedRecipientNames);
+        int Failed);
 }

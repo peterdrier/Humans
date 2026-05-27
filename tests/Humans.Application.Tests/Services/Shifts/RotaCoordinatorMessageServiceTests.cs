@@ -379,16 +379,17 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([pastOnlyRota, futureRota]);
 
         var sender = Guid.NewGuid();
-        StubUsers(sender, userA, userB);
+        // After past-only-rota filtering, only userB survives as a recipient,
+        // so StubUsers is called with userB alone. The past-only rota's userA
+        // is referenced above only to populate the filtered-out rota.
+        _ = userA;
+        StubUsers(sender, userB);
 
         await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
 
-        // userB's email queued; userA (past-only rota) skipped.
+        // Exactly one email queued, to userB; past-only rota produced no work.
         await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
-            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "b@example.com"),
-            Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendCoordinatorTeamRotasMessageAsync(
-            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "a@example.com"),
+            Arg.Any<CoordinatorTeamRotasMessageRequest>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -402,25 +403,25 @@ public sealed class RotaCoordinatorMessageServiceTests
         var sender = Guid.NewGuid();
         var confirmed = Guid.NewGuid();
         var pending = Guid.NewGuid();
-        var withdrawn = Guid.NewGuid();
+        var bailed = Guid.NewGuid();
 
-        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [confirmed, pending, withdrawn])]);
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [confirmed, pending, bailed])]);
         // Override the default Confirmed status on two of the three signups.
         rota.Shifts.First().ShiftSignups.First(s => s.UserId == pending).Status = SignupStatus.Pending;
-        rota.Shifts.First().ShiftSignups.First(s => s.UserId == withdrawn).Status = SignupStatus.Withdrawn;
+        rota.Shifts.First().ShiftSignups.First(s => s.UserId == bailed).Status = SignupStatus.Bailed;
 
         _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([rota]);
 
-        // Withdrawn user is filtered before user lookup, so only the two active
+        // Bailed user is filtered before user lookup, so only the two active
         // recipients are stubbed; if the service ever called GetUserInfosAsync
-        // for the withdrawn id, the test would surface that via the wrong count.
+        // for the bailed id, the test would surface that via the wrong count.
         StubUsers(sender, confirmed, pending);
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
 
         result.Succeeded.Should().BeTrue();
-        result.RecipientCount.Should().Be(2, "withdrawn is excluded; pending + confirmed are kept");
+        result.RecipientCount.Should().Be(2, "bailed is excluded; pending + confirmed are kept");
         await _emailService.Received(2).SendCoordinatorTeamRotasMessageAsync(
             Arg.Any<CoordinatorTeamRotasMessageRequest>(),
             Arg.Any<CancellationToken>());

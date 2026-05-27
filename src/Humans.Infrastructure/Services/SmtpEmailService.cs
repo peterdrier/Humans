@@ -242,6 +242,18 @@ public class SmtpEmailService(
         metrics.RecordEmailSent("coordinator_rota_message");
     }
 
+    public async Task SendCoordinatorTeamRotasMessageAsync(
+        CoordinatorTeamRotasMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var content = renderer.RenderCoordinatorTeamRotasMessage(
+            request.RecipientName, request.SenderName, request.SenderEmail,
+            request.TeamName, request.MessageText, request.ShiftGroups, request.Culture);
+        await SendEmailAsync(request.RecipientEmail, content.Subject, content.HtmlBody, cancellationToken, request.SenderEmail);
+        metrics.RecordEmailSent("coordinator_team_rotas_message");
+    }
+
     public async Task SendMagicLinkLoginAsync(
         string toEmail, string displayName, string magicLinkUrl,
         string? culture = null, CancellationToken ct = default)

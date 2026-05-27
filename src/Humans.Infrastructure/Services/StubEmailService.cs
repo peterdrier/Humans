@@ -222,6 +222,18 @@ public class StubEmailService(ILogger<StubEmailService> logger) : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendCoordinatorTeamRotasMessageAsync(
+        CoordinatorTeamRotasMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        logger.LogInformation(
+            "[STUB] Would send coordinator team-rotas message to {Email} ({RecipientName}) from {SenderName} for team {TeamName} ({RotaCount} rota(s)) [Culture: {Culture}]",
+            request.RecipientEmail, request.RecipientName, request.SenderName, request.TeamName,
+            request.ShiftGroups.Count, request.Culture);
+        return Task.CompletedTask;
+    }
+
     public Task SendMagicLinkLoginAsync(
         string toEmail, string displayName, string magicLinkUrl,
         string? culture = null, CancellationToken ct = default)
