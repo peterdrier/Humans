@@ -128,9 +128,11 @@ Clean Architecture layers, respecting the constitution (`docs/architecture/peter
 
 - **`HeatmapPartialModel`** (`Models/VolunteerHeatmapPartialModels.cs`): add `bool ShowAvailabilityControls` (default false).
 
-- **`ProfileController.ViewProfile`**: when the existing view gate passes, call `IVolunteerTrackingServiceRead.GetUserBuildStripAsync(id)`, map to `HeatmapPartialModel([Row], BuildStartOffset, GateOpeningDate, displayNameByUserId, ShowAvailabilityControls: true)`, expose on `ProfileViewModel`. New ctor dep: `IVolunteerTrackingServiceRead` (read interface — cross-section compliant). No write actions added to ProfileController.
+- **New `VolunteerBuildStripViewComponent`** (`Web/ViewComponents/`) — the host for the strip on the profile, mirroring the **existing** `ShiftSignupsViewComponent` (which is exactly the analogous coordinator-only shift section on the profile, and itself cross-section-calls `ITeamServiceRead`). Injects `IVolunteerTrackingServiceRead`; `InvokeAsync(Guid userId)` calls `GetUserBuildStripAsync(userId)`, maps the result to `HeatmapPartialModel([Row], BuildStartOffset, GateOpeningDate, displayNameByUserId, ShowAvailabilityControls: true)`, and returns the **existing** `_VolunteerHeatmap.cshtml` partial as its view (`return View("~/Views/VolunteerTracking/_VolunteerHeatmap.cshtml", model)`). Returns empty content when the strip is null (no active event). The `displayNameByUserId` is the single `{ userId → BurnerName }` entry (looked up via `IUserService`, as the tracking page does).
 
-- **`Views/Profile/Index.cshtml`**: render the card (with the partial) in the coordinator-only block, grouped with no-show history + shift signups. Render nothing when the strip model is null (no active event) or the viewer can't see it.
+  This keeps **`ProfileController` and `ProfileViewModel` unchanged** — the strip is purely a view-layer addition, like `<vc:shift-signups>`.
+
+- **`Views/Profile/Index.cshtml`**: under the existing coordinator gate, immediately after `<vc:shift-signups ... />`, add `<vc:volunteer-build-strip user-id="@Model.UserId" />`. The existing `@if (!Model.IsOwnProfile && Model.CanViewShiftSignups)` block already enforces the view gate (the spec's required `coordinator || privileged-approver` rule) — reused, no new flag.
 
 - **Localization**: add `VolTrack_Popover_MarkAvailable` / `VolTrack_Popover_UnmarkAvailable` (+ a card title key, e.g. `Profile_BuildStrip_Title`) to every locale `.resx`, mirroring the existing `VolTrack_Popover_*` keys.
 
@@ -157,7 +159,8 @@ Per `CLAUDE.md` → Reuse-First Change Discipline. Interface/public surface requ
 | `VolunteerCell.DeclaredAvailable` (field) | Availability is orthogonal to the mutually-exclusive `State` enum. | A parallel single-user cell DTO would duplicate `VolunteerCell`; one additive field is smaller. |
 | `IGeneralAvailabilityService.SetDayAvailabilityAsync` | Per-day add/remove is logic that the constitution forbids in the controller. | `SetAvailabilityAsync` replaces the entire list; calling get+set from the controller would put read-modify-write logic in the controller. |
 | `HeatmapPartialModel.ShowAvailabilityControls` (field) | Scope the new toggle to the profile; leave the tracking page unchanged. | No existing flag distinguishes hosts. |
-| 2 controller actions + 2 audit enum values | New capability; no existing endpoint edits a volunteer's availability on their behalf. | — |
+| `VolunteerBuildStripViewComponent` (Web class) | Host the strip on the profile without touching `ProfileController`/`ProfileViewModel`. | Directly mirrors the existing `ShiftSignupsViewComponent` (same role, same `*Read` cross-section pattern). Renders the existing `_VolunteerHeatmap` partial — no new view file. |
+| 2 controller actions + 2 audit enum values (`VolunteerAvailabilitySet`/`Cleared`, appended at the end of the positional enum) | New capability; no existing endpoint edits a volunteer's availability on their behalf. | — |
 | `returnUrl` params on 4 existing actions | Lets the shared forms return to the profile. | Optional + `Url.IsLocalUrl`-validated; default path preserves current behavior. |
 
 No new repository, no new service class, no schema/migration, no new dependency.
@@ -177,17 +180,17 @@ TDD on the regression-prone service logic; lighter coverage on wiring.
 - `returnUrl` honored only when `Url.IsLocalUrl` (local path → `LocalRedirect`; off-site/absolute → falls back to `Index`).
 - Existing camp-setup/day-off actions still redirect to `Index` when `returnUrl` is null (no behavioral regression).
 
-### Profile gate test
-- Coordinator/approver viewing another profile → strip model populated; non-coordinator → null/absent; own profile → absent.
+### View gate (Index.cshtml)
+- The strip renders only inside the existing `!IsOwnProfile && CanViewShiftSignups` block (same gate as `<vc:shift-signups>`). No own-profile / non-coordinator path renders it. (Covered by the existing `CanViewShiftSignups` computation + tests; the new `<vc:>` tag sits inside that proven gate.)
 
-### Architecture test
-- Profile→Shifts build-strip call uses `IVolunteerTrackingServiceRead`, not the full `IVolunteerTrackingService` (no new full-interface cross-section dependency from the Profiles section).
+### Cross-section compliance
+- By construction: the strip's only cross-section read is `IVolunteerTrackingServiceRead` (full interface never injected outside Shifts), mirroring `ShiftSignupsViewComponent`'s use of `ITeamServiceRead`. No new bespoke architecture test — per the constitution, call-site boundary rules are analyzer territory, not tests; the existing `ProfileArchitectureTests` / `ServiceBoundaryArchitectureTests` must stay green.
 
 ## Out of scope / assumptions
 
 - **Event-day availability** (positive offsets). Build window only.
 - **Bulk availability edit** on the profile — the volunteer's own whole-list `/Shifts/Mine/Availability` form stays the only multi-day editor; coordinators toggle one day at a time (matches the per-cell interaction model the user chose).
-- **Extracting `_VolunteerHeatmap` into a ViewComponent.** Reuse the partial by path for now; ViewComponent extraction is a possible later cleanup (noted, not done).
+- **Rewriting `_VolunteerHeatmap` itself as a ViewComponent.** The new `VolunteerBuildStripViewComponent` *renders* the existing partial by path; the partial stays a partial (still used directly by the tracking page). Converting the partial's internals into a component is a possible later cleanup, not done here.
 - **Coordinator-attribution column on `GeneralAvailability`.** No schema change; "who set it" is captured in the audit log (matches how camp-setup/day-off attribution is also audited, though those additionally store `SetByUserId` on their own entity — availability does not, and the audit trail is sufficient here).
 - The pre-existing Profile→Shifts dependencies on the full `IShiftSignupService` / `IShiftManagementService` interfaces are existing tech debt (constitution §Tech debt); this change neither relies on nor extends them, and adds its new cross-section read via the compliant `*Read` interface.
 
